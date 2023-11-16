@@ -5,17 +5,6 @@ trigger:
     - release-*
     - refs/tags/*
     - build-
-pr:
-  branches:
-    include:
-    - '*'  # must quote since "*" is a YAML reserved character; we want a string
-  paths:
-    exclude:
-    - '.github/workflows/quarto-render.yml'
-    - '_quarto.yml'
-    - 'quarto-materials/*'
-    - '**/.md'
-    - 'doc/source/conf.py'
 
 variables:
   - name: MANYLINUX_IMAGE
@@ -24,25 +13,6 @@ variables:
     value: ghcr.io/ihnorton/tiledb-manylinux2014_x86_64:2023-04-02
 
 stages:
-  - stage: CI
-    condition: and(not(startsWith(variables['Build.SourceBranch'], 'refs/tags')), not(startsWith(variables['Build.SourceBranchName'], 'build-')))
-    variables:
-      BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-    jobs:
-    - job: linux_manylinux
-      pool: { vmImage: $(imageName) }
-      container: ${{ variables.MANYLINUX_IMAGE }}
-      variables:
-        imageName: 'ubuntu-20.04'
-        TILEDB_SERIALIZATION: ON
-        CXX: g++
-        CC: gcc
-        CXXFLAGS: "-lrt"
-        CFLAGS: "-lrt"
-        USE_MANYLINUX: ON
-      steps:
-      - template: scripts/azure-linux_mac.yml
-
   - stage: Build_Release
     condition: or(or(or(startsWith(variables['Build.SourceBranch'], 'refs/tags'), eq(variables['Build.SourceBranchName'], 'dev')), startsWith(variables['Build.SourceBranchName'], 'release-')), startsWith(variables['Build.SourceBranchName'], 'build-'))
     variables:
