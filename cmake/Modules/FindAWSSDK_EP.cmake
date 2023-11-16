@@ -34,25 +34,8 @@ include(TileDBCommon)
 set(AWS_SERVICES identity-management sts s3)
 
 if(TILEDB_VCPKG)
-  # Provides:  ${AWSSDK_LINK_LIBRARIES} ${AWSSDK_PLATFORM_DEPS}
-  # TODO: We may need to conditionally use ${AWSSDK_PLATFORM_DEPS} here for dynamically linked deps, but
-  #       it lists bare "pthread;curl" which leads to linkage of system versions. For static linkage, we
-  #       handle those elsewhere at the moment.
+  # Provides:  ${AWSSDK_LINK_LIBRARIES}
   find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
-
-  if (TILEDB_STATIC)
-
-    set(AWSSDK_EXTRA_LIBS)
-    # Since AWS SDK 1.11, AWSSDK_THIRD_PARTY_LIBS was replaced by AWSSDK_COMMON_RUNTIME_LIBS.
-    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS AWSSDK_COMMON_RUNTIME_LIBS)
-      if (TARGET AWS::${TARGET})
-        list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
-      endif()
-    endforeach()
-    install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
-  endif()
-
-  install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
   return()
 endif()
 
@@ -187,19 +170,4 @@ if (NOT AWSSDK_FOUND)
   else ()
     message(FATAL_ERROR "Could not find AWSSDK (required).")
   endif ()
-endif ()
-
-if (AWSSDK_FOUND)
-  if (TILEDB_STATIC)
-    set(AWSSDK_EXTRA_LIBS)
-    # Since AWS SDK 1.11, AWSSDK_THIRD_PARTY_LIBS was replaced by AWSSDK_COMMON_RUNTIME_LIBS.
-    foreach(TARGET IN LISTS AWSSDK_THIRD_PARTY_LIBS AWSSDK_COMMON_RUNTIME_LIBS)
-      if (TARGET AWS::${TARGET})
-        list(APPEND AWSSDK_EXTRA_LIBS "AWS::${TARGET}")
-      endif()
-    endforeach()
-    install_all_target_libs("${AWSSDK_EXTRA_LIBS}")
-  endif()
-
-  install_all_target_libs("${AWSSDK_LINK_LIBRARIES}")
 endif ()

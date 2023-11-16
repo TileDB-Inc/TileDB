@@ -42,7 +42,6 @@ if (TILEDB_VCPKG)
   else()
     set(ZSTD_TARGET zstd::libzstd_shared)
   endif()
-  install_target_libs(${ZSTD_TARGET})
   return()
 endif()
 
@@ -136,9 +135,4 @@ if (ZSTD_FOUND AND NOT ZSTD_TARGET)
     INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}"
   )
   set(ZSTD_TARGET zstd::libzstd)
-endif()
-
-# If we built a static EP, install it if required.
-if (ZSTD_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(${ZSTD_TARGET})
 endif()
