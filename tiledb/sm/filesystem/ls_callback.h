@@ -62,32 +62,9 @@ static bool no_filter(const std::string_view&) {
   return true;
 }
 
-using LsObject = std::pair<std::string, uint64_t>;
-using LsObjects = std::vector<LsObject>;
-
-class LsIterator {
- public:
-  using value_type = LsObject;
-  using difference_type = ptrdiff_t;
-  using pointer = LsObject*;
-  using reference = LsObject&;
-  using iterator_category = std::forward_iterator_tag;
-
-  LsIterator()
-      : pos_(0) {
-  }
-
- private:
-  LsObjects::iterator it_;
-  LsObjects objects_;
-  LsObjects::size_type pos_;
-};
-
 template <FilePredicate F, DirectoryPredicate D>
 class LsScanner {
  public:
-  using iterator = LsIterator;
-
   LsScanner(
       const URI& prefix, F file_filter, D dir_filter, bool recursive = false)
       : prefix_(prefix)
@@ -96,17 +73,11 @@ class LsScanner {
       , is_recursive_(recursive) {
   }
 
-  inline const LsObjects& results() const {
-    return results_;
-  }
-
  protected:
   URI prefix_;
   F file_filter_;
   D dir_filter_;
   bool is_recursive_;
-  // TODO: remove
-  LsObjects results_;
 };
 
 }  // namespace tiledb::sm
