@@ -202,7 +202,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   }
   // Otherwise, if we did not specify an SAS token
   // and we are connecting to an HTTPS endpoint,
-  // use ChainedTokenCredential to authenticate using Azure AD.
+  // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
   else if (
       sas_token.empty() &&
       utils::parse::starts_with(blob_endpoint, "https://")) {
@@ -232,7 +232,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       return Status::Ok();
     } catch (...) {
       LOG_INFO(
-          "Failed to get Azure AD token, falling back to anonymous "
+          "Failed to get Microsoft Entra ID token, falling back to anonymous "
           "authentication");
     }
   }
