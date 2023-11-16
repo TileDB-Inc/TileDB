@@ -119,6 +119,10 @@ jobs:
         with:
           name: tiledb-build
           path: build-${{ matrix.platform }}.tar.gz
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: failure() # only run this job if the build step failed
 
   Publish-Release:
     needs: Build-Release
