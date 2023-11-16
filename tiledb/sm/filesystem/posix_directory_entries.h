@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * This is a wrapper for the scandir function on posix. It ensures that all the
@@ -75,9 +74,18 @@ class PosixDirectoryEntries {
     // pointer that will call std::free on destruction.
     directory_entries_.reset(directory_entries);
 
-    // Reserve can throw, but that means we are out of memory, so we don't clean
-    // up here.
-    directory_entries_pointers_.reserve(num_entries);
+    // Reserve can throw, so we need to clean up if it does.
+    try {
+      directory_entries_pointers_.reserve(num_entries);
+    } catch (...) {
+      // Free all memory.
+      for (int i = 0; i < num_entries; i++) {
+        std::free(directory_entries[i]);
+      }
+      std::free(directory_entries);
+
+      throw;
+    }
 
     // Put every pointers in `paths` in it's own unique pointer that will call
     // std::free on desctuction of this object.
@@ -114,8 +122,7 @@ class PosixDirectoryEntries {
   std::vector<tiledb_unique_c_ptr<dirent>> directory_entries_pointers_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // !_WIN32
 
