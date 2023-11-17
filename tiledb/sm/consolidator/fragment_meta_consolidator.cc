@@ -40,7 +40,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
@@ -93,7 +93,7 @@ Status FragmentMetaConsolidator::consolidate(
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   auto write_version = array.array_schema_latest().write_version();
-  auto name = storage_format::compute_consolidated_fragment_name(
+  auto name = storage_format::generate_consolidated_fragment_name(
       first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);

@@ -34,8 +34,10 @@
 #define TILEDB_GENERATE_URI_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
+using namespace tiledb::sm;
 
 namespace tiledb::storage_format {
 
@@ -73,6 +75,19 @@ std::string generate_timestamped_name(
  */
 std::string generate_timestamped_name(
     uint64_t timestamp, format_version_t format_version);
+
+/**
+ * Generates a consolidated fragment name in the form
+ * `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
+ *
+ * @param first The first URI.
+ * @param last The last URI.
+ * @param format_version The write version.
+ *
+ * @return consolidated fragment name.
+ */
+std::string generate_consolidated_fragment_name(
+    const URI& first, const URI& last, format_version_t format_version);
 
 }  // namespace tiledb::storage_format
 

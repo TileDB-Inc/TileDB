@@ -40,7 +40,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
@@ -650,7 +650,7 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto fragment_name = storage_format::compute_consolidated_fragment_name(
+  auto fragment_name = storage_format::generate_consolidated_fragment_name(
       first, last, write_version);
 
   // Create write query

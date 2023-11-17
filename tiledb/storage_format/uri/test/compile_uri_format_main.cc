@@ -26,7 +26,6 @@
  * THE SOFTWARE.
  */
 
-#include "../fragment_name.h"
 #include "../generate_uri.h"
 #include "../parse_uri.h"
 
@@ -34,11 +33,10 @@ using namespace tiledb::storage_format;
 using namespace tiledb::sm::utils::parse;
 
 int main() {
-  (void)compute_consolidated_fragment_name(
-      tiledb::sm::URI{}, tiledb::sm::URI{}, 1);
-
   (void)generate_timestamped_name(1, 2, 1);
   (void)generate_timestamped_name(1, 1);
+  (void)generate_consolidated_fragment_name(
+      tiledb::sm::URI{}, tiledb::sm::URI{}, 1);
 
   std::pair<uint64_t, uint64_t> x;
   (void)get_timestamp_range(tiledb::sm::URI{}, &x);

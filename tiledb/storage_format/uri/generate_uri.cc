@@ -29,6 +29,7 @@
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <sstream>
 
@@ -40,6 +41,13 @@ std::string generate_timestamped_name(
     uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version) {
   std::string uuid;
   throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
+
+  if (timestamp_start > timestamp_end) {
+    throw std::logic_error(
+        "Error generating timestamped name; "
+        "start timestamp cannot be after end timestamp.");
+  }
+
   std::stringstream ss;
   ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
      << version;
@@ -52,6 +60,17 @@ std::string generate_timestamped_name(
   timestamp =
       (timestamp != 0) ? timestamp : sm::utils::time::timestamp_now_ms();
   return generate_timestamped_name(timestamp, timestamp, format_version);
+}
+
+std::string generate_consolidated_fragment_name(
+    const URI& first, const URI& last, format_version_t format_version) {
+  // Get timestamp ranges
+  std::pair<uint64_t, uint64_t> t_first, t_last;
+  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
+  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
+
+  return generate_timestamped_name(
+      t_first.first, t_last.second, (uint64_t)format_version);
 }
 
 }  // namespace tiledb::storage_format

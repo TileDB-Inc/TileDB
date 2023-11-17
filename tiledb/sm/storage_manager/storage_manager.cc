@@ -72,7 +72,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/storage_format/uri/fragment_name.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
@@ -293,7 +293,7 @@ void StorageManagerCanonical::write_consolidated_commits_file(
     ArrayDirectory array_dir,
     const std::vector<URI>& commit_uris) {
   // Compute the file name.
-  auto name = storage_format::compute_consolidated_fragment_name(
+  auto name = storage_format::generate_consolidated_fragment_name(
       commit_uris.front(), commit_uris.back(), write_version);
 
   // Compute size of consolidated file. Save the sizes of the files to re-use
