@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -90,7 +90,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
         // or to get the timestamp_end from the parent array. This fix is
         // blocked by current discussion on a timestamp refactor design.
         if (!fragment_name_.has_value()) {
-          fragment_name_ = storage_format::generate_fragment_name(
+          fragment_name_ = storage_format::generate_timestamped_name(
               array->timestamp_end_opened_at(),
               array->array_schema_latest().write_version());
         }
