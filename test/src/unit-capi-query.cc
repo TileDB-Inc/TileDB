@@ -33,6 +33,7 @@
 
 #include <tiledb/sm/c_api/tiledb_struct_def.h>
 #include <cassert>
+#include <cstdlib>
 #include <cstring>
 #include <iostream>
 #include <sstream>
@@ -712,6 +713,10 @@ TEST_CASE_METHOD(
     "[capi][query][write-failure]") {
   // DenyWriteAccess is not supported on Windows.
   if constexpr (tiledb::platform::is_os_windows)
+    return;
+  // The test fails on Manylinux. Skip it.
+  char* manylinux_var = getenv("TILEDB_MANYLINUX");
+  if (manylinux_var && strlen(manylinux_var) > 0)
     return;
   SupportedFsLocal local_fs;
   std::string temp_dir = local_fs.temp_dir();

@@ -1931,6 +1931,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
     std::vector<uint64_t>& cell_offsets,
     std::vector<ResultTile*>& result_tiles) {
   auto& aggregates = aggregates_[name];
+  const bool validity_only = null_count_aggregate_only(name);
 
   bool var_sized = false;
   bool nullable = false;
@@ -1988,7 +1989,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
           // Compute aggregate.
           AggregateBuffer aggregate_buffer{make_aggregate_buffer(
               name,
-              var_sized,
+              var_sized && !validity_only,
               nullable,
               cell_val_num,
               count_bitmap,

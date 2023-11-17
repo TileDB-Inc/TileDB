@@ -564,7 +564,7 @@ void ReaderBase::load_processed_conditions() {
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   // The filtered data here contains the memory allocations for all of the
   // filtered data that is read by `read_attribute_tiles`. To prevent
@@ -583,7 +583,8 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
   // been used and the tiles are unfiltered so the data can be deleted.
   auto filtered_data{read_attribute_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(
+        unfilter_tiles(name.name(), name.validity_only(), result_tiles));
   }
 
   return Status::Ok();
@@ -596,14 +597,14 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   // information about the lifetime of this object.
   auto filtered_data{read_coordinate_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
   }
 
   return Status::Ok();
 }
 
 std::vector<FilteredData> ReaderBase::read_attribute_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
@@ -613,11 +614,11 @@ std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
-  return read_tiles(names, result_tiles);
+  return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
 std::vector<FilteredData> ReaderBase::read_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
   std::vector<FilteredData> filtered_data;
@@ -632,7 +633,10 @@ std::vector<FilteredData> ReaderBase::read_tiles(
   filtered_data.reserve(names.size());
 
   // Run all attributes independently.
-  for (auto name : names) {
+  for (auto n : names) {
+    auto& name = n.name();
+    auto val_only = n.validity_only();
+
     // Create the filtered data blocks. This will also kick off the read for the
     // data blocks right after the memory is allocated so that we can optimize
     // read and memory allocations.
@@ -648,6 +652,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         name,
         var_sized,
         nullable,
+        val_only,
         storage_manager_,
         read_tasks);
 
@@ -665,7 +670,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
       // Construct a TileSizes class.
       ResultTile::TileSizes tile_sizes{
-          fragment, name, var_sized, nullable, tile_idx};
+          fragment, name, var_sized, nullable, val_only, tile_idx};
 
       // Construct a tile data class.
       // See the explanation in 'read_and_unfilter_attribute_tiles' for more
@@ -677,8 +682,12 @@ std::vector<FilteredData> ReaderBase::read_tiles(
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
       ResultTile::TileData tile_data{
-          filtered_data.back().fixed_filtered_data(fragment.get(), tile),
-          filtered_data.back().var_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().fixed_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().var_filtered_data(fragment.get(), tile),
           filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
       // Initialize the tile(s)
@@ -714,6 +723,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
 ReaderBase::load_tile_chunk_data(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -735,25 +745,29 @@ ReaderBase::load_tile_chunk_data(
   }
 
   const auto t = &tile_tuple->fixed_tile();
-  const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  const auto t_var =
+      var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
   const FilterPipeline& filters = array_schema_.filters(name);
-  if (!var_size ||
-      !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
+  if (!validity_only) {
+    if (!var_size || !filters.skip_offsets_filtering(
+                         t_var->type(), array_schema_.version())) {
+      if (var_size) {
+        unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+      } else {
+        unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      }
+    }
+
     if (var_size) {
-      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
-    } else {
-      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
     }
   }
 
-  if (var_size) {
-    unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
-  }
   if (nullable) {
     unfiltered_tile_validity_size =
         t_validity->load_chunk_data(tile_chunk_validity_data);
@@ -780,6 +794,7 @@ Status ReaderBase::zip_tile_coordinates(
 
 Status ReaderBase::post_process_unfiltered_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable) const {
@@ -802,7 +817,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 
   throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-  if (var_size) {
+  if (var_size && !validity_only) {
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
@@ -820,6 +835,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
+    const bool validity_only,
     const std::vector<ResultTile*>& result_tiles) const {
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
@@ -863,6 +879,7 @@ Status ReaderBase::unfilter_tiles(
         auto&& [st, tile_size, tile_var_size, tile_validity_size] =
             load_tile_chunk_data(
                 name,
+                validity_only,
                 result_tiles[i],
                 var_size,
                 nullable,
@@ -890,6 +907,7 @@ Status ReaderBase::unfilter_tiles(
       [&](uint64_t i, uint64_t range_thread_idx) {
         return unfilter_tile(
             name,
+            validity_only,
             result_tiles[i],
             var_size,
             nullable,
@@ -904,7 +922,7 @@ Status ReaderBase::unfilter_tiles(
   // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
     RETURN_NOT_OK(post_process_unfiltered_tile(
-        name, result_tiles[i], var_size, nullable));
+        name, validity_only, result_tiles[i], var_size, nullable));
   }
 
   return Status::Ok();
@@ -912,6 +930,7 @@ Status ReaderBase::unfilter_tiles(
 
 Status ReaderBase::unfilter_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -935,7 +954,7 @@ Status ReaderBase::unfilter_tile(
   }
 
   auto t = &tile_tuple->fixed_tile();
-  auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  auto t_var = var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   FilterPipeline fixed_filters;
@@ -943,18 +962,20 @@ Status ReaderBase::unfilter_tile(
   FilterPipeline validity_filters;
 
   // Create our filter pipelines
-  if (!var_size) {
-    fixed_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
-  } else {
-    fixed_filters = array_schema_.cell_var_offsets_filters();
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
+  if (!validity_only) {
+    if (!var_size) {
+      fixed_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
+    } else {
+      fixed_filters = array_schema_.cell_var_offsets_filters();
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
 
-    var_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &var_filters, array_->get_encryption_key()));
+      var_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &var_filters, array_->get_encryption_key()));
+    }
   }
 
   if (nullable) {
@@ -964,48 +985,52 @@ Status ReaderBase::unfilter_tile(
   }
 
   bool skip_offsets_filtering = false;
-  if (var_size) {
+  if (var_size && !validity_only) {
     skip_offsets_filtering = var_filters.skip_offsets_filtering(
         t_var->type(), array_schema_.version());
   }
 
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
-  // Unfiltered fixed data
-  if (!skip_offsets_filtering &&
-      thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
-    // Compute chunk boundaries
-    auto&& [t_min, t_max] = compute_chunk_min_max(
-        tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
+  if (!validity_only) {
+    // Unfiltered fixed data
+    if (!skip_offsets_filtering &&
+        thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
+      // Compute chunk boundaries
+      auto&& [t_min, t_max] = compute_chunk_min_max(
+          tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
 
-    // Reverse the tile filters.
-    RETURN_NOT_OK(fixed_filters.run_reverse(
-        stats_,
-        t,
-        nullptr,
-        tile_chunk_fixed_data,
-        t_min,
-        t_max,
-        concurrency_level,
-        storage_manager_->config()));
-  }
+      // Reverse the tile filters.
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(fixed_filters.run_reverse(
+          stats_,
+          t,
+          nullptr,
+          tile_chunk_fixed_data,
+          t_min,
+          t_max,
+          concurrency_level,
+          storage_manager_->config()));
+    }
 
-  // Prevent processing past the end of chunks in case there are more
-  // threads than chunks.
-  if (var_size &&
-      thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
-    auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
-        tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
-    // Reverse the filters of tile var data
-    RETURN_NOT_OK(var_filters.run_reverse(
-        stats_,
-        t_var,
-        skip_offsets_filtering ? t : nullptr,
-        tile_chunk_var_data,
-        tvar_min,
-        tvar_max,
-        concurrency_level,
-        storage_manager_->config()));
+    // Prevent processing past the end of chunks in case there are more
+    // threads than chunks.
+    if (var_size &&
+        thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
+      auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+          tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
+      // Reverse the filters of tile var data
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(var_filters.run_reverse(
+          stats_,
+          t_var,
+          skip_offsets_filtering ? t : nullptr,
+          tile_chunk_var_data,
+          tvar_min,
+          tvar_max,
+          concurrency_level,
+          storage_manager_->config()));
+    }
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -1019,6 +1044,7 @@ Status ReaderBase::unfilter_tile(
         thread_idx);
 
     // Reverse the tile validity filters.
+    stats_->add_counter("tiles_unfiltered", 1);
     RETURN_NOT_OK(validity_filters.run_reverse(
         stats_,
         t_validity,

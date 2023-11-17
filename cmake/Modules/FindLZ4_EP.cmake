@@ -36,7 +36,6 @@ include(TileDBCommon)
 
 if(TILEDB_VCPKG)
   find_package(lz4 REQUIRED)
-  install_target_libs(lz4::lz4)
   return()
 endif()
 
@@ -128,9 +127,4 @@ if (LZ4_FOUND AND NOT TARGET lz4::lz4)
     IMPORTED_LOCATION "${LZ4_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${LZ4_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (LZ4_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(lz4::lz4)
 endif()

@@ -34,9 +34,7 @@
 include(TileDBCommon)
 
 if (TILEDB_VCPKG)
-  find_package(fmt REQUIRED)
   find_package(spdlog CONFIG REQUIRED)
-  install_all_target_libs("fmt::fmt;spdlog::spdlog")
 endif()
 
 
@@ -125,10 +123,4 @@ elseif(TARGET spdlog::spdlog)
       target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
     endif()
   endif()
-endif()
-
-
-# If we built a static EP, install it if required.
-if (TILEDB_SPDLOG_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(spdlog::spdlog)
 endif()

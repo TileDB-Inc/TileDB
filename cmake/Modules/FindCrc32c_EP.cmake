@@ -90,8 +90,3 @@ if (Crc32c_FOUND AND NOT TARGET Crc32c::crc32c)
     INTERFACE_INCLUDE_DIRECTORIES "${Crc32c_INCLUDE_DIR}"
   )
 endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_CRC32C_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Crc32c::crc32c)
-endif()

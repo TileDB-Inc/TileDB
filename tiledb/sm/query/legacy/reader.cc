@@ -1664,8 +1664,8 @@ Status Reader::compute_result_coords(
     std::vector<std::string> timestamps = {constants::timestamps};
     load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(), timestamps);
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(timestamps), tmp_result_tiles));
   }
 
   // Read and unfilter delete timestamps.
@@ -1674,8 +1674,8 @@ Status Reader::compute_result_coords(
     load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(),
         delete_timestamps);
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(delete_timestamps, tmp_result_tiles));
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(delete_timestamps), tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.

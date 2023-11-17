@@ -278,19 +278,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       ResultTile::TileTuple* tile_tuple,
       optional<void*> bitmap_data);
 
-  /** Returns wether the field is for aggregation only or not. */
-  bool aggregate_only(const std::string& name) const {
-    if (condition_.has_value() && condition_->field_names().count(name) != 0) {
-      return false;
-    }
-
-    if (buffers_.count(name) != 0) {
-      return false;
-    }
-
-    return true;
-  }
-
   /**
    * Returns wether or not we can aggregate the tile with only the fragment
    * metadata.
