@@ -35,7 +35,7 @@
 
 #ifdef HAVE_S3
 
-#include "ls_callback.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"

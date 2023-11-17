@@ -1,5 +1,5 @@
 /**
- * @file ls_callback.h
+ * @file ls_scanner.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This defines the type definition used for ls callback functions in VFS.
+ * This defines the LsScanner class and related types used for VFS.
  */
 
-#ifndef TILEDB_LS_CALLBACK_H
-#define TILEDB_LS_CALLBACK_H
+#ifndef TILEDB_LS_SCANNER_H
+#define TILEDB_LS_SCANNER_H
 
 #include "tiledb/sm/filesystem/uri.h"
 
@@ -94,4 +94,4 @@ class LsScanner {
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_LS_CALLBACK_H
+#endif  // TILEDB_LS_SCANNER_H
