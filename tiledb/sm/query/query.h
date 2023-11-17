@@ -952,7 +952,12 @@ class Query {
   std::unordered_map<std::string, shared_ptr<IAggregator>>
       default_channel_aggregates_;
 
-  uint64_t hardcoded_agg_;
+  uint64_t hardcoded_agg_min_;
+  uint64_t hardcoded_agg_max_;
+  uint64_t hardcoded_agg_count_;
+  uint64_t hardcoded_agg_nullcount_;
+  uint64_t hardcoded_agg_sum_;
+  uint64_t hardcoded_agg_mean_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

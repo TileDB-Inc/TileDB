@@ -45,6 +45,8 @@
 #include "tiledb/sm/query/dimension_label/array_dimension_label_queries.h"
 #include "tiledb/sm/query/legacy/reader.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/aggregators/count_aggregator.h"
+#include "tiledb/sm/query/readers/aggregators/min_max_aggregator.h"
 #include "tiledb/sm/query/readers/aggregators/sum_aggregator.h"
 #include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
@@ -135,10 +137,40 @@ Query::Query(
   rest_scratch_ = make_shared<Buffer>(HERE());
 
   bool found = false;
-  const Status& st =
-      config_.get<uint64_t>("sm.hardcoded_agg", &hardcoded_agg_, &found);
+  const Status& st = config_.get<uint64_t>(
+      "sm.hardcoded_agg_min_", &hardcoded_agg_min_, &found);
   if (!st.ok() || !found) {
-    hardcoded_agg_ = 0;
+    hardcoded_agg_min_ = 0;
+  }
+  found = false;
+  const Status& st1 = config_.get<uint64_t>(
+      "sm.hardcoded_agg_max_", &hardcoded_agg_max_, &found);
+  if (!st1.ok() || !found) {
+    hardcoded_agg_max_ = 0;
+  }
+  found = false;
+  const Status& st2 = config_.get<uint64_t>(
+      "sm.hardcoded_agg_count_", &hardcoded_agg_count_, &found);
+  if (!st2.ok() || !found) {
+    hardcoded_agg_count_ = 0;
+  }
+  found = false;
+  const Status& st3 = config_.get<uint64_t>(
+      "sm.hardcoded_agg_nullcount_", &hardcoded_agg_nullcount_, &found);
+  if (!st3.ok() || !found) {
+    hardcoded_agg_nullcount_ = 0;
+  }
+  found = false;
+  const Status& st4 = config_.get<uint64_t>(
+      "sm.hardcoded_agg_sum_", &hardcoded_agg_sum_, &found);
+  if (!st4.ok() || !found) {
+    hardcoded_agg_sum_ = 0;
+  }
+  found = false;
+  const Status& st5 = config_.get<uint64_t>(
+      "sm.hardcoded_agg_mean_", &hardcoded_agg_mean_, &found);
+  if (!st5.ok() || !found) {
+    hardcoded_agg_mean_ = 0;
   }
 }
 
@@ -1586,13 +1618,73 @@ void Query::set_subarray_unsafe(const void* subarray) {
 Status Query::submit() {
   uint64_t sum = 0;
   uint64_t sum_size = 8;
-  if (hardcoded_agg_ == 1 && default_channel_aggregates_.size() == 0) {
+  if (hardcoded_agg_sum_ == 1) {
     buffers_.clear();
     default_channel_aggregates_.emplace(
-        "a",
-        std::make_shared<SumAggregator<int64_t>>(
-            tiledb::sm::FieldInfo("a", false, false, 1, Datatype::UINT64)));
-    throw_if_not_ok(set_data_buffer("a", &sum, &sum_size, false, false));
+        "agg_sum",
+        std::make_shared<SumAggregator<uint64_t>>(tiledb::sm::FieldInfo(
+            "c_current_cdemo_sk", false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(set_data_buffer("agg_sum", &sum, &sum_size, false, false));
+  }
+
+  double mean = 0;
+  uint64_t mean_size = 8;
+  if (hardcoded_agg_mean_ > 0) {
+    buffers_.clear();
+    std::string field = "c_birth_year";
+    if (hardcoded_agg_mean_ == 1) {
+      field = "c_current_cdemo_sk";
+    }
+    default_channel_aggregates_.emplace(
+        "agg_mean",
+        std::make_shared<MeanAggregator<uint64_t>>(
+            tiledb::sm::FieldInfo(field, false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(
+        set_data_buffer("agg_mean", &mean, &mean_size, false, false));
+  }
+
+  uint64_t min = 0;
+  uint64_t min_size = 8;
+  if (hardcoded_agg_min_ == 1) {
+    buffers_.clear();
+    default_channel_aggregates_.emplace(
+        "agg_min",
+        std::make_shared<MinAggregator<uint64_t>>(tiledb::sm::FieldInfo(
+            "c_birth_day", false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(set_data_buffer("agg_min", &min, &min_size, false, false));
+  }
+
+  uint64_t max = 0;
+  uint64_t max_size = 8;
+  if (hardcoded_agg_max_ == 1) {
+    buffers_.clear();
+    default_channel_aggregates_.emplace(
+        "agg_max",
+        std::make_shared<MaxAggregator<uint64_t>>(tiledb::sm::FieldInfo(
+            "c_current_cdemo_sk", false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(set_data_buffer("agg_max", &max, &max_size, false, false));
+  }
+
+  uint64_t count = 0;
+  uint64_t count_size = 8;
+  if (hardcoded_agg_count_ == 1) {
+    buffers_.clear();
+    default_channel_aggregates_.emplace(
+        "agg_count", std::make_shared<CountAggregator>());
+    throw_if_not_ok(
+        set_data_buffer("agg_count", &count, &count_size, false, false));
+  }
+
+  uint64_t nullcount = 0;
+  uint64_t nullcount_size = 8;
+  if (hardcoded_agg_nullcount_ == 1) {
+    buffers_.clear();
+    default_channel_aggregates_.emplace(
+        "agg_nullcount",
+        std::make_shared<NullCountAggregator>(tiledb::sm::FieldInfo(
+            "c_current_cdemo_sk", false, false, 1, Datatype::UINT64)));
+    throw_if_not_ok(set_data_buffer(
+        "agg_nullcount", &nullcount, &nullcount_size, false, false));
   }
 
   // Do not resubmit completed reads.
