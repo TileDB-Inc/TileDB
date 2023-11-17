@@ -59,7 +59,7 @@ endif()
 
 # Verify that the sanitizer is one that some compiler supports
 string(TOLOWER ${SANITIZER} SANITIZER)
-if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
+if (NOT SANITIZER MATCHES "^address$")
     message(FATAL_ERROR "Unsupported sanitizer ${sanitizer}")
 endif()
 
