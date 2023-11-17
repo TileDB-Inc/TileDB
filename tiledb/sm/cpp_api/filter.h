@@ -50,9 +50,7 @@ class FilterOptionTypeError : public TypeError {
             "Cannot set filter option '" + option_name(option) +
             "' with type '" + tiledb::impl::type_to_tiledb<Actual>().name +
             "'; Option value must be '" +
-            tiledb::impl::type_to_tiledb<Expected>().name + "'.")
-
-  {
+            tiledb::impl::type_to_tiledb<Expected>().name + "'.") {
   }
 
   FilterOptionTypeError(
