@@ -39,6 +39,7 @@ list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 include(CIConfig)
 include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
+include(Sanitizer)
 include(TileDBToolchain)
 
 ############################################################
@@ -246,28 +247,6 @@ include(CheckAVX2Support)
 CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
-endif()
-
-# HACK: Set the sanitizer configuration globally after the
-# superbuild has finished. We want to enable sanitization for
-# TileDB, but not our dependencies.
-#
-# The reasoning for setting this globally is due to false positives
-# in the `AddressSanitizerContainerOverflow` checks [1].
-#
-# [1] https://github.com/google/sanitizers/wiki/AddressSanitizerContainerOverflow#false-positives
-if (SANITIZER)
-  string(TOLOWER ${SANITIZER} SANITIZER)
-  if (NOT SANITIZER MATCHES "^(address|memory|leak|thread|undefined)$")
-    message(FATAL_ERROR "Unknown clang sanitizer: ${SANITIZER})")
-  else()
-    message(STATUS "The TileDB library is compiled with sanitizer ${SANITIZER} enabled")
-  endif()
-  add_compile_options(-DTILEDB_SANITIZER=${SANITIZER})
-  add_compile_options(
-    "$<$<NOT:$<C_COMPILER_ID:MSVC>>:-g;-fno-omit-frame-pointer;-fno-optimize-sibling-calls>"
-    -fsanitize=${SANITIZER})
-  add_link_options(-fsanitize=${SANITIZER})
 endif()
 
 #######################################################
