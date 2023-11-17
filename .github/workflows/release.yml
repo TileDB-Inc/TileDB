@@ -45,7 +45,7 @@ jobs:
             cmake_args: -DCMAKE_OSX_ARCHITECTURES=arm64
             triplet: arm64-osx-release
     runs-on: ${{ matrix.os }}
-    container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || '' }}
+    container: ${{ matrix.manylinux && 'quay.io/pypa/manylinux2014_x86_64:2023-11-13-f6b0c51' || '' }}
     env:
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
