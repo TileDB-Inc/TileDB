@@ -467,10 +467,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param f The FilePredicate to invoke on each object for filtering.
    * @param d The DirectoryPredicate to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
-   * @param recursive Whether to recursively list subdirectories.
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  void ls_recursive(const URI& parent, F f, D d = tiledb::sm::no_filter) const {
+  void ls_recursive(const URI& parent, F f, D d = accept_all_dirs) const {
     if (parent.is_s3()) {
 #ifdef HAVE_S3
       s3().ls_filtered(parent, f, d, true);

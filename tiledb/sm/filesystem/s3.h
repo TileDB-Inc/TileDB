@@ -152,8 +152,6 @@ std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
 
 }  // namespace
 
-class TileDBS3Client;
-
 /**
  * The s3-specific configuration parameters.
  *
@@ -406,7 +404,7 @@ class S3ScanIterator {
   using difference_type = ptrdiff_t;
   using pointer = std::vector<Aws::S3::Model::Object>::const_iterator;
   using reference = const Aws::S3::Model::Object&;
-  using iterator_category = std::forward_iterator_tag;
+  using iterator_category = std::input_iterator_tag;
 
   /** Default constructor. */
   S3ScanIterator() = default;
@@ -414,12 +412,21 @@ class S3ScanIterator {
   /**
    * Constructor.
    *
-   * @param ptr The pointer to the current object.
    * @param scanner The scanner that created this iterator.
    */
-  S3ScanIterator(pointer ptr, T* scanner)
-      : ptr_(ptr)
-      , scanner_(scanner) {
+  explicit S3ScanIterator(T* scanner)
+      : scanner_(scanner)
+      , ptr_(scanner->begin_) {
+  }
+
+  /**
+   * Constructor.
+   *
+   * @param scanner The scanner that created this iterator.
+   */
+  explicit S3ScanIterator(T* scanner, pointer ptr)
+      : scanner_(scanner)
+      , ptr_(ptr) {
   }
 
   /** Copy constructor. */
@@ -451,26 +458,43 @@ class S3ScanIterator {
    * Calls the scanner's next() method to advance to the next object.
    */
   S3ScanIterator& operator++() {
-    ptr_++;
-    scanner_->next();
+    scanner_->next(ptr_);
     return *this;
   }
 
   /** Inequality operator. */
   bool operator!=(const S3ScanIterator& rhs) const {
-    return scanner_->more_to_fetch() || ptr_ != rhs.ptr_;
+    return ptr_ != rhs.ptr_;
   }
 
   /** Equality operator. */
   bool operator==(const S3ScanIterator& rhs) const {
-    return !scanner_->more_to_fetch() && ptr_ == rhs.ptr_;
+    return ptr_ == rhs.ptr_;
+  }
+
+  /**
+   * @return Iterator to the beginning of the results being iterated on.
+   * Input iterators are single-pass, so we return a copy of this iterator at
+   * it's current position.
+   */
+  S3ScanIterator begin() {
+    return *this;
+  }
+
+  /**
+   * @return Iterator to the end of the results being iterated on.
+   */
+  S3ScanIterator end() {
+    // Constructs an iterator with ptr_ set to the end of the scanner's results.
+    return S3ScanIterator<T>(scanner_, scanner_->end_);
   }
 
  private:
-  /** Pointer to the current S3 object. */
-  pointer ptr_;
   /** Pointer to the scanner that created this iterator. */
   T* scanner_;
+
+  /** Pointer to the current S3 object. */
+  pointer ptr_;
 };
 
 /**
@@ -493,7 +517,7 @@ class S3Scanner : public LsScanner<F, D> {
       const std::shared_ptr<TileDBS3Client>& client,
       const URI& prefix,
       F file_filter,
-      D dir_filter = no_filter,
+      D dir_filter = accept_all_dirs,
       bool recursive = false);
 
   /**
@@ -502,16 +526,21 @@ class S3Scanner : public LsScanner<F, D> {
    * batch, this will fetch the next batch of results from S3. If the results
    * are not truncated and we reach the end of the current batch, the scan is
    * done.
+   *
+   * @param ptr Reference to the current data iterator.
+   * @sa S3ScanIterator::operator++()
    */
-  void next();
+  void next(S3ScanIterator<S3Scanner<F, D>>::pointer& ptr);
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the
    * continuation token for the next request, if the results were truncated.
+   *
+   * @return A pointer to the first result in the new batch.
    */
-  void fetch_results() {
+  S3ScanIterator<S3Scanner<F, D>>::pointer fetch_results() {
     // If this is our first request, GetIsTruncated() will be false.
-    if (list_objects_outcome_.GetResult().GetIsTruncated()) {
+    if (more_to_fetch()) {
       // If results are truncated on a subsequent request, we set the next
       // continuation token before resubmitting our request.
       Aws::String next_marker =
@@ -523,20 +552,27 @@ class S3Scanner : public LsScanner<F, D> {
       }
       list_objects_request_.SetContinuationToken(std::move(next_marker));
     }
-    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
-    if (!list_objects_outcome_.IsSuccess()) {
+    auto outcome = client_->ListObjectsV2(list_objects_request_);
+    if (!outcome.IsSuccess()) {
       throw S3Exception(
           std::string("Error while listing with prefix '") +
           this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
+          delimiter_ + "'" + outcome_error_message(outcome));
     }
 
-    // Update the iterators respective to the newly fetched results.
-    begin_ = S3ScanIterator<S3Scanner<F, D>>(
-        list_objects_outcome_.GetResult().GetContents().begin(), this);
-    ptr_ = begin_;
-    end_ = S3ScanIterator<S3Scanner<F, D>>(
-        list_objects_outcome_.GetResult().GetContents().end(), this);
+    if (!outcome.GetResult().GetContents().empty()) {
+      // Update the iterators respective to the newly fetched results.
+      list_objects_outcome_ = outcome;
+      begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+      end_ = list_objects_outcome_.GetResult().GetContents().end();
+    } else {
+      // If the request returned no results, we've reached the end of the scan.
+      // We hit this case when the number of objects in the bucket is a multiple
+      // of the current max_keys.
+      begin_ = end_;
+    }
+
+    return begin_;
   }
 
   /**
@@ -546,22 +582,8 @@ class S3Scanner : public LsScanner<F, D> {
     return list_objects_outcome_.GetResult().GetIsTruncated();
   }
 
-  /**
-   * Returns true if we have reached the end of the current batch of results,
-   * and the AWS ListObjects request was not truncated.
-   */
-  [[nodiscard]] inline bool is_done() const {
-    return !more_to_fetch() && ptr_ == end_;
-  }
-
-  /** Iterator to the beginning of the ListObjects results. */
-  inline auto begin() const {
-    return begin_;
-  }
-
-  /** Iterator to the end of the ListObjects results. */
-  inline auto end() const {
-    return end_;
+  S3ScanIterator<S3Scanner<F, D>> iterator() {
+    return S3ScanIterator<S3Scanner<F, D>>(this);
   }
 
  private:
@@ -570,7 +592,7 @@ class S3Scanner : public LsScanner<F, D> {
   /** Delimiter used for ListObjects request. */
   std::string delimiter_;
   /** Iterators for the current objects fetched from S3. */
-  S3ScanIterator<S3Scanner<F, D>> ptr_, begin_, end_;
+  std::vector<Aws::S3::Model::Object>::const_iterator begin_, end_;
 
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
@@ -752,20 +774,29 @@ class S3 {
    * @param recursive Whether to recursively list subdirectories.
    */
   template <FilePredicate F, DirectoryPredicate D>
-  void ls_filtered(
+  LsObjects ls_filtered(
       const URI& parent,
       F f,
-      D d = tiledb::sm::no_filter,
+      D d = tiledb::sm::accept_all_dirs,
       bool recursive = false) const {
     throw_if_not_ok(init_client());
     S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
-    std::vector<Aws::S3::Model::Object> objects;
-    for (auto object : s3_scanner) {
-      objects.emplace_back(object);
+    LsObjects objects;
+    for (auto object : s3_scanner.iterator()) {
+      objects.emplace_back(
+          parent.to_string() + "/" + object.GetKey(), object.GetSize());
     }
-    // TODO: Remove print debug
-    std::cout << "Collected " << objects.size() << " total results."
-              << std::endl;
+    return objects;
+  }
+
+  template <FilePredicate F, DirectoryPredicate D>
+  S3Scanner<F, D> scanner(
+      const URI& parent,
+      F f,
+      D d = tiledb::sm::accept_all_dirs,
+      bool recursive = false) const {
+    throw_if_not_ok(init_client());
+    return S3Scanner<F, D>(client_, parent, f, d, recursive);
   }
 
   /**
@@ -1562,47 +1593,45 @@ S3Scanner<F, D>::S3Scanner(
   list_objects_request_.SetPrefix(aws_uri_str.c_str());
   // Empty delimiter returns recursive results from S3.
   list_objects_request_.SetDelimiter(delimiter_.c_str());
-
-  // TODO: Remove; Used to test batch collection with small max_keys.
-  list_objects_request_.SetMaxKeys(10);
+  // The default max_keys for ListObjects is 1000.
 
   if (client_->requester_pays()) {
     list_objects_request_.SetRequestPayer(
         Aws::S3::Model::RequestPayer::requester);
   }
   fetch_results();
+  next(begin_);
 }
 
 template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next() {
+void S3Scanner<F, D>::next(S3ScanIterator<S3Scanner<F, D>>::pointer& ptr) {
   // Increment the iterator if we found a result on the last call.
   if (found_) {
     found_ = false;
-    ++ptr_;
-    return;
-  }
-  if (is_done()) {
-    fetch_results();
+    ptr++;
   }
 
-  auto object = *ptr_;
-  uint64_t size = object.GetSize();
-  std::string path = "s3://" + list_objects_request_.GetBucket() +
-                     S3::add_front_slash(object.GetKey());
-  if (!this->file_filter_(path, size)) {
-    // S3ScanIterator::operator++, will call this function to check next result.
-    ++ptr_;
-    return;
-  } else {
-    // iterator is at the next object within results accepted by the filters.
-    found_ = true;
-    return;
+  // If results were truncated, fetch more when we reach the end of this batch.
+  if (more_to_fetch() && ptr == end_) {
+    ptr = fetch_results();
   }
-  // TODO: Add support for directory pruning.
 
-  // If we are done with the current results, fetch more if they're available.
-  if (is_done()) {
-    fetch_results();
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" + list_objects_request_.GetBucket() +
+                       S3::add_front_slash(object.GetKey());
+    if (!this->file_filter_(path, size)) {
+      ptr++;
+    } else {
+      // iterator is at the next object within results accepted by the filters.
+      found_ = true;
+      return;
+    }
+    if (more_to_fetch() && ptr == end_) {
+      ptr = fetch_results();
+    }
+    // TODO: Add support for directory pruning.
   }
 }
 

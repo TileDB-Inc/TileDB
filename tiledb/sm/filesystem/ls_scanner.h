@@ -52,13 +52,13 @@ concept DirectoryPredicate = true;
 
 namespace tiledb::sm {
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
-// TODO: rename or remove
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
-// TODO: rename or remove
-static bool no_filter(const std::string_view&) {
+static bool accept_all_dirs(const std::string_view&) {
   return true;
 }
+
+using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
 /**
  * LsScanner is a base class for scanning a filesystem for objects that match

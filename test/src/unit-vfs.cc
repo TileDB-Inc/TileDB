@@ -364,10 +364,8 @@ TEMPLATE_LIST_TEST_CASE(
     return;
   }
 
-  // TODO: Use or remove.
-  auto file_filter = [](const std::string_view&, uint64_t) { return true; };
-
-  bool recursive = GENERATE(false, true);
+  // TODO: Fails when recursive is false, because AWS prefix includes subdir_N/
+  bool recursive = GENERATE(true, false);
   DYNAMIC_SECTION(
       fs.temp_dir_.backend_name()
       << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
@@ -378,8 +376,8 @@ TEMPLATE_LIST_TEST_CASE(
 #ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    CHECK_NOTHROW(fs.s3().ls_filtered(
-        path, VFSTestBase::no_file_filter, no_filter, recursive));
+    auto ls_objects = fs.s3().ls_filtered(
+        path, VFSTestBase::no_file_filter, accept_all_dirs, recursive);
 
     if (!recursive) {
       // If non-recursive, all objects in the first directory should be
@@ -388,17 +386,53 @@ TEMPLATE_LIST_TEST_CASE(
     }
     std::sort(fs.expected_results_.begin(), fs.expected_results_.end());
 
-    // TODO: Get / check results.
-//    CHECK(ls_objects.size() == fs.expected_results_.size());
-//    CHECK(ls_objects == fs.expected_results_);
+    CHECK(ls_objects.size() == fs.expected_results_.size());
+    CHECK(ls_objects == fs.expected_results_);
 #endif
+  }
+}
+
+TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
+  S3Test s3_test({10, 50});
+  bool recursive = GENERATE(true, false);
+  auto file_filter = [](const std::string_view& path, uint64_t) {
+    if (path.find("test_file_1") != std::string::npos) {
+      return true;
+    }
+    return false;
+  };
+
+  DYNAMIC_SECTION(
+      "S3ScanIterator with recursion: " << (recursive ? "true" : "false")) {
+    // If testing with recursion use the root directory, otherwise use a subdir.
+    auto path =
+        recursive ? s3_test.temp_dir_ : s3_test.temp_dir_.join_path("subdir_1");
+    auto scan =
+        s3_test.s3().scanner(path, file_filter, accept_all_dirs, recursive);
+    //  tiledb::sm::TileDBS3Client s3(
+    //      &tiledb::test::g_helper_stats, &s3_test.io_, s3_test.vfs_.config());
+    //  S3Scanner scanner(
+    //      s3, s3_test.temp_dir_, file_filter, accept_all_dirs, recursive);
+    auto iter = scan.iterator();
+    std::vector<Aws::S3::Model::Object> results_vector(
+        iter.begin(), iter.end());
+    for (const auto& result : results_vector) {
+      std::cout << result.GetKey() << std::endl;
+      CHECK(file_filter(result.GetKey(), 0));
+    }
+    if (recursive) {
+      CHECK(results_vector.size() == 13);
+    } else {
+      CHECK(results_vector.size() == 2);
+    }
   }
 }
 
 TEST_CASE(
     "VFS: ls_recursive throws for unsupported backends",
     "[vfs][ls_recursive]") {
-  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
+  // Local and mem fs tests are in
+  // tiledb/sm/filesystem/test/unit_ls_filtered.cc
   std::string prefix = GENERATE("s3://", "hdfs://", "azure://", "gcs://");
   VFSTest vfs_test({1}, prefix);
   if (!vfs_test.is_supported()) {
