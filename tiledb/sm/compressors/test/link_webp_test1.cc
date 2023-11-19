@@ -130,16 +130,9 @@ int main(int argc, const char* argv[]) {
     // *** turns out, there is -NO- symbol in webpdecoder that is not also in
     // webp! left here anyway, in case libraries are ever de-dupped.
     const int dec_version = WebPGetDecoderVersion();
-    auto vp8l_dec = VP8LNew();
-    VP8LClear(vp8l_dec);
 
     VP8StatusCode status;
     WebPDecoderOptions webpdecoptions;
-    WebPDecBuffer webpdec_buffer;
-    status = WebPAllocateDecBuffer(512, 512, &webpdecoptions, &webpdec_buffer);
-    if (status == VP8_STATUS_OK) {
-      WebPFreeDecBuffer(&webpdec_buffer);
-    }
 
     // webpdemux
     const int demux_version = WebPGetDemuxVersion();
