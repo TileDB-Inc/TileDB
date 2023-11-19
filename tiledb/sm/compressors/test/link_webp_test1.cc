@@ -131,9 +131,6 @@ int main(int argc, const char* argv[]) {
     // webp! left here anyway, in case libraries are ever de-dupped.
     const int dec_version = WebPGetDecoderVersion();
 
-    VP8StatusCode status;
-    WebPDecoderOptions webpdecoptions;
-
     // webpdemux
     const int demux_version = WebPGetDemuxVersion();
     // webpmux
