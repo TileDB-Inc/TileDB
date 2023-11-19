@@ -98,15 +98,7 @@ uint64_t reference_a_value(uint64_t v) {
 
 extern "C" int WebPGetDemuxVersion(void);
 extern "C" int WebPGetMuxVersion(void);
-extern "C" VP8StatusCode WebPAllocateDecBuffer(
-    int width,
-    int height,
-    const WebPDecoderOptions* const options,
-    WebPDecBuffer* const buffer);
 extern "C" void WebPFreeDecBuffer(WebPDecBuffer* const buffer);
-typedef void VP8LDecoder;
-extern "C" VP8LDecoder* VP8LNew(void);
-extern "C" void VP8LClear(VP8LDecoder*);
 
 int main(int argc, const char* argv[]) {
   int return_value = -1;
