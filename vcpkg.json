@@ -16,15 +16,6 @@
         "zstd"
     ],
     "features": {
-        "abseil": {
-            "description": "Enables building of abseil library and linkage test",
-            "dependencies": [
-                {
-                    "name": "abseil",
-                    "version>=": "20211102.0"
-                }
-            ]
-        },
         "azure": {
             "description": "Support Azure Blob Storage",
             "dependencies": [

@@ -68,7 +68,6 @@ Configuration:
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
     --enable-_crc32                 enables building of crc32 library and linkage test
-    --enable-abseil                 enables building of abseil library and linkage test
     --enable-experimental-features  enables experimental TileDB features
     --enable-rest-tests             enables REST tests
     --enable-aws-s3-config          enables AWS S3 configuration for tests
@@ -117,7 +116,6 @@ tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_crc32="OFF"
 tiledb_build_webp="ON"
-tiledb_build_abseil="OFF"
 tiledb_tests_enable_rest="OFF"
 tiledb_tests_aws_s3_config="OFF"
 tiledb_install_find_dependencies="ON"
@@ -157,7 +155,6 @@ while test $# != 0; do
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
     --enable-_crc32) tiledb_build_crc32="ON";;
-    --enable-abseil) tiledb_build_abseil="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
     --enable-rest-tests) tiledb_tests_enable_rest="ON";;
     --enable-aws-s3-config) tiledb_tests_aws_s3_config="ON";;
@@ -188,7 +185,6 @@ for en in "${enables[@]}"; do
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
     _crc32) tiledb_build_crc32="ON";;
-    abseil) tiledb_build_abseil="ON";;
     hdfs) tiledb_hdfs="ON";;
     static-tiledb) tiledb_static="ON";;
     experimental-features) tiledb_experimental_features="ON";;
@@ -197,10 +193,6 @@ for en in "${enables[@]}"; do
     *) die "Unknown option: --enable-$en" ;;
   esac
 done
-
-if [ "${tiledb_build_abseil}" = "ON" ]; then
-    echo "Argument '--build-abseil' is obsolete and will be removed in TileDB 2.18"
-fi
 
 if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"

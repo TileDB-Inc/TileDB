@@ -28,7 +28,7 @@
 if(NOT TILEDB_CRC32)
   message("skipping target unit_link_crc32, found NOT TILEDB_CRC32")
 else()
-  message("adding target unit_link_absl, have TILEDB_ABSEIL")
+  message("adding target unit_link_crc32, have TILEDB_CRC32")
 
   add_executable(unit_link_crc32 EXCLUDE_FROM_ALL src/crc32_link_test.cc)
 

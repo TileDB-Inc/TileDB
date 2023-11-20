@@ -68,9 +68,6 @@ Enables building TileDB CLI tools (experimental)
 .PARAMETER EnableExperimentalFeatures
 Enables building TileDB Experimental features
 
-.PARAMETER EnableAbseil
-(Obsolete) Enables building of Abseil and simple linkage test
-
 .PARAMETER _EnableCrc32
 Enables building of Crc32 and simple linkage test
 
@@ -137,7 +134,6 @@ Param(
     [switch]$EnableStaticTileDB,
     [switch]$EnableTools,
     [switch]$EnableExperimentalFeatures,
-    [switch]$EnableAbseil,
     [switch]$EnableBuildDeps,
     [switch]$_EnableCrc32,
     [switch]$EnableArrowTests,
@@ -273,11 +269,6 @@ if ($EnableTools.IsPresent) {
 $TileDBExperimentalFeatures = "OFF"
 if ($EnableExperimentalFeatures.IsPresent) {
     $TileDBExperimentalFeatures = "ON"
-}
-
-if ($EnableAbseil.IsPresent) {
-  # remove in 2.18
-  Write-Host "EnableAbseil is deprecated and will be removed"
 }
 
 $TileDBBuildDeps = "OFF";
