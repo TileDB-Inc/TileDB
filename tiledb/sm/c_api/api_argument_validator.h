@@ -81,14 +81,6 @@ inline int32_t sanity_check(
   return TILEDB_OK;
 }
 
-/**
- * This function is dead code. Validity of the context is now checked in the
- * exception wrapper.
- */
-inline constexpr int32_t sanity_check(tiledb_ctx_t*) {
-  return TILEDB_OK;
-}
-
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
   if (array_schema == nullptr || array_schema->array_schema_ == nullptr) {

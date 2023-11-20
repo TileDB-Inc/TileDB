@@ -93,11 +93,3 @@ if (wil_FOUND AND NOT TARGET wil::wil)
           INTERFACE_INCLUDE_DIRECTORIES "${wil_INCLUDE_DIR}"
           )
 endif()
-
-# If we built a static EP, install it if required.
-if(TARGET wil::wil)
-  get_target_property(target_type wil::wil TYPE)
-  if (target_type STREQUAL STATIC_LIBRARY AND TILEDB_INSTALL_STATIC_DEPS)
-    install_target_libs(wil::wil)
-  endif()
-endif()

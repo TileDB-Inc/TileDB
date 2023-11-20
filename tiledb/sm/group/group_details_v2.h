@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -65,7 +64,7 @@ class GroupDetailsV2 : public GroupDetails {
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail
    */
   static shared_ptr<GroupDetails> deserialize(
       Deserializer& deserializer, const URI& group_uri);
@@ -75,7 +74,7 @@ class GroupDetailsV2 : public GroupDetails {
    *
    * @param buff The buffer to deserialize from.
    * @param version The format spec version.
-   * @return Status and Attribute
+   * @return Group detail
    */
   static shared_ptr<GroupDetails> deserialize(
       const std::vector<shared_ptr<Deserializer>>& deserializer,

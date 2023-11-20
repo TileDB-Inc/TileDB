@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,8 +60,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class WriterBaseStatusException : public StatusException {
  public:
@@ -225,7 +224,7 @@ WriterBase::WriterBase(
   auto new_fragment_str =
       fragment_name.has_value() ?
           fragment_name.value() :
-          storage_format::generate_fragment_name(timestamp, write_version);
+          storage_format::generate_timestamped_name(timestamp, write_version);
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
@@ -607,21 +606,12 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
   file_uris.reserve(buffer_name.size() * 3);
 
   for (const auto& name : buffer_name) {
-    auto&& [status, uri] = meta->uri(name);
-    RETURN_NOT_OK(status);
-
-    file_uris.emplace_back(*uri);
+    file_uris.emplace_back(meta->uri(name));
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK(status);
-
-      file_uris.emplace_back(*var_uri);
+      file_uris.emplace_back(meta->var_uri(name));
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK(status);
-
-      file_uris.emplace_back(*validity_uri);
+      file_uris.emplace_back(meta->validity_uri(name));
     }
   }
 
@@ -706,7 +696,7 @@ void WriterBase::set_coords_metadata(
       start_tile_idx,
       end_tile_idx,
       [&](uint64_t i) {
-        throw_if_not_ok(meta->set_mbr(i - start_tile_idx, mbrs[i]));
+        meta->set_mbr(i - start_tile_idx, mbrs[i]);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -714,7 +704,7 @@ void WriterBase::set_coords_metadata(
   // Set last tile cell number
   auto dim_0{array_schema_.dimension_ptr(0)};
   const auto& dim_tiles = tiles.find(dim_0->name())->second;
-  auto cell_num = dim_tiles[end_tile_idx - 1].cell_num();
+  auto cell_num = dim_tiles.at(end_tile_idx - 1).cell_num();
   meta->set_last_tile_cell_num(cell_num);
 }
 
@@ -810,7 +800,7 @@ Status WriterBase::create_fragment(
       buffers_.count(constants::delete_timestamps) != 0;
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
-      storage_manager_,
+      &storage_manager_->resources(),
       nullptr,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
@@ -819,7 +809,7 @@ Status WriterBase::create_fragment(
       has_timestamps,
       has_delete_metadata);
 
-  RETURN_NOT_OK((frag_meta)->init(subarray_.ndrange(0)));
+  frag_meta->init(subarray_.ndrange(0));
   return Status::Ok();
 }
 
@@ -1117,25 +1107,10 @@ Status WriterBase::write_tiles(
   // For easy reference
   const bool var_size = array_schema_.var_size(name);
   const bool nullable = array_schema_.is_nullable(name);
-  auto&& [status, uri] = frag_meta->uri(name);
-  RETURN_NOT_OK(status);
+  auto uri = frag_meta->uri(name);
 
-  Status st;
-  optional<URI> var_uri;
-  if (!var_size)
-    var_uri = URI("");
-  else {
-    tie(st, var_uri) = frag_meta->var_uri(name);
-    RETURN_NOT_OK(st);
-  }
-
-  optional<URI> validity_uri;
-  if (!nullable)
-    validity_uri = URI("");
-  else {
-    tie(st, validity_uri) = frag_meta->validity_uri(name);
-    RETURN_NOT_OK(st);
-  }
+  URI var_uri = var_size ? frag_meta->var_uri(name) : URI("");
+  URI validity_uri = nullable ? frag_meta->validity_uri(name) : URI("");
 
   // Compute and set var buffer sizes for the min/max metadata
   const auto has_min_max_md = has_min_max_metadata(name, var_size);
@@ -1150,7 +1125,7 @@ Status WriterBase::write_tiles(
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->vfs()->write(
-        *uri,
+        uri,
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
         remote_global_order_write));
@@ -1160,7 +1135,7 @@ Status WriterBase::write_tiles(
     if (var_size) {
       auto& t_var = tile.var_tile();
       RETURN_NOT_OK(storage_manager_->vfs()->write(
-          *var_uri,
+          var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size(),
           remote_global_order_write));
@@ -1185,7 +1160,7 @@ Status WriterBase::write_tiles(
     if (nullable) {
       auto& t_val = tile.validity_tile();
       RETURN_NOT_OK(storage_manager_->vfs()->write(
-          *validity_uri,
+          validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size(),
           remote_global_order_write));
@@ -1199,19 +1174,13 @@ Status WriterBase::write_tiles(
   // writes
   if (close_files) {
     std::vector<URI> closing_uris;
-    auto&& [st1, uri] = frag_meta->uri(name);
-    RETURN_NOT_OK(st1);
-    closing_uris.push_back(*uri);
+    closing_uris.push_back(frag_meta->uri(name));
 
     if (var_size) {
-      auto&& [st2, var_uri] = frag_meta->var_uri(name);
-      RETURN_NOT_OK(st2);
-      closing_uris.push_back(*var_uri);
+      closing_uris.push_back(frag_meta->var_uri(name));
     }
     if (nullable) {
-      auto&& [st2, validity_uri] = frag_meta->validity_uri(name);
-      RETURN_NOT_OK(st2);
-      closing_uris.push_back(*validity_uri);
+      closing_uris.push_back(frag_meta->validity_uri(name));
     }
     for (auto& u : closing_uris) {
       if (layout_ == Layout::GLOBAL_ORDER) {
@@ -1235,5 +1204,4 @@ bool WriterBase::remote_query() const {
   return remote_query_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

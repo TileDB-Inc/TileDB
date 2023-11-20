@@ -58,7 +58,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/unique_rwlock.h"
 #include "tiledb/platform/platform.h"
-#include "tiledb/sm/filesystem/ssl_config.h"
+#include "tiledb/sm/config/config_iter.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
@@ -160,8 +160,7 @@ Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 namespace {
 
@@ -217,11 +216,76 @@ std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
 
 }  // namespace
 
-class S3StatusException : public StatusException {
+class S3Exception : public StatusException {
  public:
-  explicit S3StatusException(const std::string& message)
+  explicit S3Exception(const std::string& message)
       : StatusException("S3", message) {
   }
+};
+
+S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
+  Headers ret;
+  auto iter = ConfigIter(cfg, constants::s3_header_prefix);
+  for (; !iter.end(); iter.next()) {
+    auto key = iter.param();
+    if (key.size() == 0) {
+      continue;
+    }
+    ret[key] = iter.value();
+  }
+  return ret;
+}
+
+/**
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
+ *
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(
+            creds, client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  virtual void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
+    }
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
 };
 
 /* ********************************* */
@@ -235,20 +299,74 @@ static std::once_flag aws_lib_initialized;
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-S3::S3()
-    : stats_(nullptr)
+S3::S3(
+    stats::Stats* parent_stats, ThreadPool* thread_pool, const Config& config)
+    : s3_params_(S3Parameters(config))
+    , stats_(parent_stats->create_child("S3"))
     , state_(State::UNINITIALIZED)
     , credentials_provider_(nullptr)
-    , file_buffer_size_(0)
-    , max_parallel_ops_(1)
-    , multipart_part_size_(0)
-    , vfs_thread_pool_(nullptr)
-    , use_virtual_addressing_(false)
-    , use_multipart_upload_(true)
-    , request_payer_(Aws::S3::Model::RequestPayer::NOT_SET)
+    , file_buffer_size_(
+          s3_params_.multipart_part_size_ * s3_params_.max_parallel_ops_)
+    , vfs_thread_pool_(thread_pool)
+    , request_payer_(
+          s3_params_.requester_pays_ ? Aws::S3::Model::RequestPayer::requester :
+                                       Aws::S3::Model::RequestPayer::NOT_SET)
     , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET)
-    , object_canned_acl_(Aws::S3::Model::ObjectCannedACL::NOT_SET)
-    , bucket_canned_acl_(Aws::S3::Model::BucketCannedACL::NOT_SET) {
+    , object_canned_acl_(
+          S3_ObjectCannedACL_from_str(s3_params_.object_acl_str_))
+    , bucket_canned_acl_(
+          S3_BucketCannedACL_from_str(s3_params_.bucket_acl_str_))
+    , ssl_config_(S3SSLConfig(config)) {
+  assert(thread_pool);
+  options_.loggingOptions.logLevel =
+      aws_log_name_to_level(s3_params_.logging_level_);
+
+  // By default, curl sets the signal handler for SIGPIPE to SIG_IGN while
+  // executing. When curl is done executing, it restores the previous signal
+  // handler. This is not thread safe, so the AWS SDK disables this behavior
+  // in curl using the `CURLOPT_NOSIGNAL` option.
+  // Here, we set the `installSigPipeHandler` AWS SDK option to `true` to allow
+  // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
+  // SIGPIPE may be raised from the socket library when the peer disconnects
+  // unexpectedly.
+  options_.httpOptions.installSigPipeHandler = true;
+
+  // Initialize the library once per process.
+  if (!s3_params_.skip_init_)
+    std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
+  if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
+    Aws::Utils::Logging::InitializeAWSLogging(
+        Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
+            "TileDB", Aws::Utils::Logging::LogLevel::Trace, "tiledb_s3_"));
+  }
+
+  auto sse = s3_params_.sse_algorithm_;
+  if (!sse.empty()) {
+    if (sse == "aes256") {
+      sse_ = Aws::S3::Model::ServerSideEncryption::AES256;
+    } else if (sse == "kms") {
+      sse_ = Aws::S3::Model::ServerSideEncryption::aws_kms;
+      if (s3_params_.sse_kms_key_id_.empty()) {
+        throw S3Exception(
+            "Config parameter 'vfs.s3.sse_kms_key_id' must be set "
+            "for kms server-side encryption.");
+      }
+    } else {
+      throw S3Exception(
+          "Unknown 'vfs.s3.sse' config value " + sse +
+          "; supported values are 'aes256' and 'kms'.");
+    }
+  }
+
+  // Ensure `sse_kms_key_id` was only set for kms encryption.
+  if (!s3_params_.sse_kms_key_id_.empty() &&
+      sse_ != Aws::S3::Model::ServerSideEncryption::aws_kms) {
+    throw S3Exception(
+        "Config parameter 'vfs.s3.sse_kms_key_id' may only be "
+        "set for 'vfs.s3.sse' == 'kms'.");
+  }
+
+  state_ = State::INITIALIZED;
 }
 
 S3::~S3() {
@@ -273,128 +391,6 @@ S3::~S3() {
 /*                 API               */
 /* ********************************* */
 
-Status S3::init(
-    stats::Stats* const parent_stats,
-    const Config& config,
-    ThreadPool* const thread_pool) {
-  // already initialized
-  if (state_ == State::DISCONNECTED)
-    return Status::Ok();
-
-  assert(state_ == State::UNINITIALIZED);
-
-  stats_ = parent_stats->create_child("S3");
-
-  if (thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_S3Error("Can't initialize with null thread pool."));
-  }
-
-  bool found = false;
-  auto logging_level = config.get("vfs.s3.logging_level", &found);
-  assert(found);
-
-  options_.loggingOptions.logLevel = aws_log_name_to_level(logging_level);
-
-  // By default, curl sets the signal handler for SIGPIPE to SIG_IGN while
-  // executing. When curl is done executing, it restores the previous signal
-  // handler. This is not thread safe, so the AWS SDK disables this behavior
-  // in curl using the `CURLOPT_NOSIGNAL` option.
-  // Here, we set the `installSigPipeHandler` AWS SDK option to `true` to allow
-  // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
-  // SIGPIPE may be raised from the socket library when the peer disconnects
-  // unexpectedly.
-  options_.httpOptions.installSigPipeHandler = true;
-
-  bool skip_init;
-  RETURN_NOT_OK(config.get<bool>("vfs.s3.skip_init", &skip_init, &found));
-  assert(found);
-
-  // Initialize the library once per process.
-  if (!skip_init)
-    std::call_once(aws_lib_initialized, [this]() { Aws::InitAPI(options_); });
-
-  if (options_.loggingOptions.logLevel != Aws::Utils::Logging::LogLevel::Off) {
-    Aws::Utils::Logging::InitializeAWSLogging(
-        Aws::MakeShared<Aws::Utils::Logging::DefaultLogSystem>(
-            "TileDB", Aws::Utils::Logging::LogLevel::Trace, "tiledb_s3_"));
-  }
-
-  vfs_thread_pool_ = thread_pool;
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.s3.max_parallel_ops", &max_parallel_ops_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.s3.multipart_part_size", &multipart_part_size_, &found));
-  assert(found);
-  file_buffer_size_ = multipart_part_size_ * max_parallel_ops_;
-  region_ = config.get<std::string>("vfs.s3.region").value_or("");
-  assert(found);
-  RETURN_NOT_OK(config.get<bool>(
-      "vfs.s3.use_virtual_addressing", &use_virtual_addressing_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<bool>(
-      "vfs.s3.use_multipart_upload", &use_multipart_upload_, &found));
-  assert(found);
-
-  bool request_payer;
-  RETURN_NOT_OK(
-      config.get<bool>("vfs.s3.requester_pays", &request_payer, &found));
-  assert(found);
-
-  if (request_payer)
-    request_payer_ = Aws::S3::Model::RequestPayer::requester;
-
-  auto object_acl_str = config.get("vfs.s3.object_canned_acl", &found);
-  assert(found);
-  if (found) {
-    object_canned_acl_ = S3_ObjectCannedACL_from_str(object_acl_str);
-  }
-
-  auto bucket_acl_str = config.get("vfs.s3.bucket_canned_acl", &found);
-  assert(found);
-  if (found) {
-    bucket_canned_acl_ = S3_BucketCannedACL_from_str(bucket_acl_str);
-  }
-
-  auto sse = config.get("vfs.s3.sse", &found);
-  assert(found);
-
-  auto sse_kms_key_id = config.get("vfs.s3.sse_kms_key_id", &found);
-  assert(found);
-
-  if (!sse.empty()) {
-    if (sse == "aes256") {
-      sse_ = Aws::S3::Model::ServerSideEncryption::AES256;
-    } else if (sse == "kms") {
-      sse_ = Aws::S3::Model::ServerSideEncryption::aws_kms;
-      sse_kms_key_id_ = sse_kms_key_id;
-      if (sse_kms_key_id_.empty()) {
-        return Status_S3Error(
-            "Config parameter 'vfs.s3.sse_kms_key_id' must be set "
-            "for kms server-side encryption.");
-      }
-    } else {
-      return Status_S3Error(
-          "Unknown 'vfs.s3.sse' config value " + sse +
-          "; supported values are 'aes256' and 'kms'.");
-    }
-  }
-
-  // Ensure `sse_kms_key_id` was only set for kms encryption.
-  if (!sse_kms_key_id.empty() &&
-      sse_ != Aws::S3::Model::ServerSideEncryption::aws_kms) {
-    return Status_S3Error(
-        "Config parameter 'vfs.s3.sse_kms_key_id' may only be "
-        "set for 'vfs.s3.sse' == 'kms'.");
-  }
-
-  config_ = config;
-
-  state_ = State::INITIALIZED;
-  return Status::Ok();
-}
-
 Status S3::create_bucket(const URI& bucket) const {
   RETURN_NOT_OK(init_client());
 
@@ -409,9 +405,9 @@ Status S3::create_bucket(const URI& bucket) const {
 
   // Set the bucket location constraint equal to the S3 region.
   // Note: empty string and 'us-east-1' are parsing errors in the SDK.
-  if (!region_.empty() && region_ != "us-east-1") {
+  if (!s3_params_.region_.empty() && s3_params_.region_ != "us-east-1") {
     Aws::S3::Model::CreateBucketConfiguration cfg;
-    Aws::String region_str(region_.c_str());
+    Aws::String region_str(s3_params_.region_.c_str());
     auto location_constraint = Aws::S3::Model::BucketLocationConstraintMapper::
         GetBucketLocationConstraintForName(region_str);
     cfg.SetLocationConstraint(location_constraint);
@@ -531,7 +527,7 @@ Status S3::empty_bucket(const URI& bucket) const {
 
 Status S3::flush_object(const URI& uri) {
   RETURN_NOT_OK(init_client());
-  if (!use_multipart_upload_) {
+  if (!s3_params_.use_multipart_upload_) {
     return flush_direct(uri);
   }
   if (!uri.is_s3()) {
@@ -596,10 +592,10 @@ Status S3::flush_object(const URI& uri) {
 
 void S3::finalize_and_flush_object(const URI& uri) {
   throw_if_not_ok(init_client());
-  if (!use_multipart_upload_) {
-    throw S3StatusException{
-        "Global order write failed! S3 multipart upload is"
-        " disabled from config"};
+  if (!s3_params_.use_multipart_upload_) {
+    throw S3Exception(
+        "Global order write failed! S3 multipart upload is disabled from "
+        "config");
   }
 
   Aws::Http::URI aws_uri{uri.c_str()};
@@ -610,10 +606,10 @@ void S3::finalize_and_flush_object(const URI& uri) {
 
   auto state_iter = multipart_upload_states_.find(uri_path);
   if (state_iter == multipart_upload_states_.end()) {
-    throw S3StatusException{
+    throw S3Exception(
         "Global order write failed! Couldn't find a multipart upload state "
         "associated with buffer: " +
-        uri.last_path_part()};
+        uri.last_path_part());
   }
 
   auto& state = state_iter->second;
@@ -655,7 +651,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
         make_multipart_complete_request(state);
     auto outcome = client_->CompleteMultipartUpload(complete_request);
     if (!outcome.IsSuccess()) {
-      throw S3StatusException{
+      throw S3Exception{
           std::string("Failed to flush S3 object ") + uri.c_str() +
           outcome_error_message(outcome)};
     }
@@ -667,7 +663,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
 
     auto outcome = client_->AbortMultipartUpload(abort_request);
     if (!outcome.IsSuccess()) {
-      throw S3StatusException{
+      throw S3Exception{
           std::string("Failed to flush S3 object ") + uri.c_str() +
           outcome_error_message(outcome)};
     }
@@ -1133,8 +1129,9 @@ Status S3::touch(const URI& uri) const {
     put_object_request.SetRequestPayer(request_payer_);
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     put_object_request.SetServerSideEncryption(sse_);
-  if (!sse_kms_key_id_.empty())
-    put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (!s3_params_.sse_kms_key_id_.empty())
+    put_object_request.SetSSEKMSKeyId(
+        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
@@ -1172,7 +1169,7 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
   uint64_t nbytes_filled;
   RETURN_NOT_OK(fill_file_buffer(buff, buffer, length, &nbytes_filled));
 
-  if ((!use_multipart_upload_) && (nbytes_filled != length)) {
+  if ((!s3_params_.use_multipart_upload_) && (nbytes_filled != length)) {
     std::stringstream errmsg;
     errmsg << "Direct write failed! " << nbytes_filled
            << " bytes written to buffer, " << length << " bytes requested.";
@@ -1182,7 +1179,7 @@ Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
   // Flush file buffer
   // multipart objects will flush whenever the writes exceed file_buffer_size_
   // write_direct should just append to buffer and upload later
-  if (use_multipart_upload_) {
+  if (s3_params_.use_multipart_upload_) {
     if (buff->size() == file_buffer_size_)
       RETURN_NOT_OK(flush_file_buffer(uri, buff, is_last_part));
 
@@ -1212,10 +1209,10 @@ void S3::global_order_write_buffered(
     const URI& uri, const void* buffer, uint64_t length) {
   throw_if_not_ok(init_client());
 
-  if (!use_multipart_upload_) {
-    throw S3StatusException(
-        "Global order write failed! S3 multipart upload is "
-        "disabled from config");
+  if (!s3_params_.use_multipart_upload_) {
+    throw S3Exception(
+        "Global order write failed! S3 multipart upload is disabled from "
+        "config");
   }
 
   // Get file buffer
@@ -1330,9 +1327,10 @@ void S3::global_order_write(
   uint64_t num_ops = utils::math::ceil(
       merged.size(),
       std::max(
-          multipart_part_size_,
+          s3_params_.multipart_part_size_,
           tiledb::sm::constants::s3_min_multipart_part_size));
-  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
+  num_ops =
+      std::min(std::max(num_ops, uint64_t(1)), s3_params_.max_parallel_ops_);
 
   auto upload_id = state.upload_id;
 
@@ -1345,7 +1343,7 @@ void S3::global_order_write(
   } else {
     std::vector<MakeUploadPartCtx> ctx_vec;
     ctx_vec.resize(num_ops);
-    const uint64_t bytes_per_op = multipart_part_size_;
+    const uint64_t bytes_per_op = s3_params_.multipart_part_size_;
     const int part_num_base = state.part_number;
     throw_if_not_ok(
         parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t op_idx) {
@@ -1368,8 +1366,7 @@ void S3::global_order_write(
     for (auto& ctx : ctx_vec) {
       auto st = get_make_upload_part_req(uri, uri_path, ctx);
       if (!st.ok()) {
-        throw S3StatusException{
-            "S3 parallel write multipart error; " + st.message()};
+        throw S3Exception{"S3 parallel write multipart error; " + st.message()};
       }
     }
   }
@@ -1392,18 +1389,14 @@ Status S3::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  auto s3_config_source = config_.get<std::string>(
-      "vfs.s3.config_source", Config::MustFindMarker());
+  auto s3_config_source = s3_params_.config_source_;
   if (s3_config_source != "auto" && s3_config_source != "config_files" &&
       s3_config_source != "sts_profile_with_web_identity") {
-    throw S3StatusException(
+    throw S3Exception(
         "Unknown 'vfs.s3.config_source' config value " + s3_config_source +
         "; supported values are 'auto', 'config_files' and "
         "'sts_profile_with_web_identity'");
   }
-
-  auto aws_no_sign_request =
-      config_.get<bool>("vfs.s3.no_sign_request", Config::MustFindMarker());
 
   if (client_ != nullptr) {
     // Check credentials. If expired, refresh it
@@ -1411,19 +1404,15 @@ Status S3::init_client() const {
       Aws::Auth::AWSCredentials credentials =
           credentials_provider_->GetAWSCredentials();
       if (credentials.IsExpired()) {
-        return LOG_STATUS(
-            Status_S3Error(std::string("AWS credentials are expired.")));
-      } else if (!aws_no_sign_request && credentials.IsEmpty()) {
-        return LOG_STATUS(Status_S3Error(std::string(
+        throw S3Exception("AWS credentials are expired.");
+      } else if (!s3_params_.no_sign_request_ && credentials.IsEmpty()) {
+        throw S3Exception(
             "AWS credentials were not provided. For public S3 data, consider "
-            "setting the vfs.s3.no_sign_request config option.")));
+            "setting the vfs.s3.no_sign_request config option.");
       }
     }
     return Status::Ok();
   }
-
-  auto s3_endpoint_override = config_.get<std::string>(
-      "vfs.s3.endpoint_override", Config::MustFindMarker());
 
   // ClientConfiguration should be lazily init'ed here in init_client to avoid
   // potential slowdowns for non s3 users as the ClientConfig now attempts to
@@ -1439,114 +1428,65 @@ Status S3::init_client() const {
 
   auto& client_config = *client_config_.get();
 
-  if (!region_.empty())
-    client_config.region = region_.c_str();
+  if (!s3_params_.region_.empty())
+    client_config.region = s3_params_.region_.c_str();
 
-  if (!s3_endpoint_override.empty()) {
-    client_config.endpointOverride = s3_endpoint_override;
+  if (!s3_params_.endpoint_override_.empty()) {
+    client_config.endpointOverride = s3_params_.endpoint_override_;
   }
 
-  auto proxy_host =
-      config_.get<std::string>("vfs.s3.proxy_host", Config::MustFindMarker());
-
-  auto proxy_port =
-      config_.get<uint32_t>("vfs.s3.proxy_port", Config::MustFindMarker());
-
-  auto proxy_username = config_.get<std::string>(
-      "vfs.s3.proxy_username", Config::MustFindMarker());
-
-  auto proxy_password = config_.get<std::string>(
-      "vfs.s3.proxy_password", Config::MustFindMarker());
-
-  auto proxy_scheme =
-      config_.get<std::string>("vfs.s3.proxy_scheme", Config::MustFindMarker());
-
-  if (!proxy_host.empty()) {
-    client_config.proxyHost = proxy_host;
-    client_config.proxyPort = proxy_port;
-    client_config.proxyScheme = proxy_scheme == "https" ?
+  if (!s3_params_.proxy_host_.empty()) {
+    client_config.proxyHost = s3_params_.proxy_host_;
+    client_config.proxyPort = s3_params_.proxy_port_;
+    client_config.proxyScheme = s3_params_.proxy_scheme_ == "https" ?
                                     Aws::Http::Scheme::HTTPS :
                                     Aws::Http::Scheme::HTTP;
-    client_config.proxyUserName = proxy_username;
-    client_config.proxyPassword = proxy_password;
+    client_config.proxyUserName = s3_params_.proxy_username_;
+    client_config.proxyPassword = s3_params_.proxy_password_;
   }
 
-  auto s3_scheme =
-      config_.get<std::string>("vfs.s3.scheme", Config::MustFindMarker());
-
-  auto connect_timeout_ms = config_.get<int64_t>(
-      "vfs.s3.connect_timeout_ms", Config::MustFindMarker());
-
-  auto request_timeout_ms = config_.get<int64_t>(
-      "vfs.s3.request_timeout_ms", Config::MustFindMarker());
-
-  auto aws_access_key_id = config_.get<std::string>(
-      "vfs.s3.aws_access_key_id", Config::MustFindMarker());
-
-  auto aws_secret_access_key = config_.get<std::string>(
-      "vfs.s3.aws_secret_access_key", Config::MustFindMarker());
-
-  auto aws_session_token = config_.get<std::string>(
-      "vfs.s3.aws_session_token", Config::MustFindMarker());
-
-  auto aws_role_arn =
-      config_.get<std::string>("vfs.s3.aws_role_arn", Config::MustFindMarker());
-
-  auto aws_external_id = config_.get<std::string>(
-      "vfs.s3.aws_external_id", Config::MustFindMarker());
-
-  auto aws_load_frequency = config_.get<std::string>(
-      "vfs.s3.aws_load_frequency", Config::MustFindMarker());
-
-  auto aws_session_name = config_.get<std::string>(
-      "vfs.s3.aws_session_name", Config::MustFindMarker());
-
-  auto connect_max_tries = config_.get<int64_t>(
-      "vfs.s3.connect_max_tries", Config::MustFindMarker());
-
-  auto connect_scale_factor = config_.get<int64_t>(
-      "vfs.s3.connect_scale_factor", Config::MustFindMarker());
-
-  SSLConfig ssl_cfg = S3SSLConfig(config_);
-
-  client_config.scheme = (s3_scheme == "http") ? Aws::Http::Scheme::HTTP :
-                                                 Aws::Http::Scheme::HTTPS;
-  client_config.connectTimeoutMs = (long)connect_timeout_ms;
-  client_config.requestTimeoutMs = (long)request_timeout_ms;
-  client_config.caFile = ssl_cfg.ca_file();
-  client_config.caPath = ssl_cfg.ca_path();
-  client_config.verifySSL = ssl_cfg.verify();
+  client_config.scheme = (s3_params_.scheme_ == "http") ?
+                             Aws::Http::Scheme::HTTP :
+                             Aws::Http::Scheme::HTTPS;
+  client_config.connectTimeoutMs = (long)s3_params_.connect_timeout_ms_;
+  client_config.requestTimeoutMs = (long)s3_params_.request_timeout_ms_;
+  client_config.caFile = ssl_config_.ca_file();
+  client_config.caPath = ssl_config_.ca_path();
+  client_config.verifySSL = ssl_config_.verify();
 
   client_config.retryStrategy = Aws::MakeShared<S3RetryStrategy>(
       constants::s3_allocation_tag.c_str(),
       stats_,
-      connect_max_tries,
-      connect_scale_factor);
+      s3_params_.connect_max_tries_,
+      s3_params_.connect_scale_factor_);
 
   // If the user says not to sign a request, use the
   // AnonymousAWSCredentialsProvider This is equivalent to --no-sign-request on
   // the aws cli
-  if (aws_no_sign_request) {
+  if (s3_params_.no_sign_request_) {
     credentials_provider_ =
         make_shared<Aws::Auth::AnonymousAWSCredentialsProvider>(HERE());
   } else {  // Check other authentication methods
-    switch ((!aws_access_key_id.empty() ? 1 : 0) +
-            (!aws_secret_access_key.empty() ? 2 : 0) +
-            (!aws_role_arn.empty() ? 4 : 0) +
+    switch ((!s3_params_.aws_access_key_id_.empty() ? 1 : 0) +
+            (!s3_params_.aws_secret_access_key_.empty() ? 2 : 0) +
+            (!s3_params_.aws_role_arn_.empty() ? 4 : 0) +
             (s3_config_source == "config_files" ? 8 : 0) +
             (s3_config_source == "sts_profile_with_web_identity" ? 16 : 0)) {
       case 0:
         break;
       case 1:
       case 2:
-        return Status_S3Error(
+        throw S3Exception(
             "Insufficient authentication credentials; "
             "Both access key id and secret key are needed");
       case 3: {
-        Aws::String access_key_id(aws_access_key_id.c_str());
-        Aws::String secret_access_key(aws_secret_access_key.c_str());
+        Aws::String access_key_id(s3_params_.aws_access_key_id_.c_str());
+        Aws::String secret_access_key(
+            s3_params_.aws_secret_access_key_.c_str());
         Aws::String session_token(
-            !aws_session_token.empty() ? aws_session_token.c_str() : "");
+            !s3_params_.aws_session_token_.empty() ?
+                s3_params_.aws_session_token_.c_str() :
+                "");
         credentials_provider_ =
             make_shared<Aws::Auth::SimpleAWSCredentialsProvider>(
                 HERE(), access_key_id, secret_access_key, session_token);
@@ -1555,15 +1495,19 @@ Status S3::init_client() const {
       case 4: {
         // If AWS Role ARN provided instead of access_key and secret_key,
         // temporary credentials will be fetched by assuming this role.
-        Aws::String role_arn(aws_role_arn.c_str());
+        Aws::String role_arn(s3_params_.aws_role_arn_.c_str());
         Aws::String external_id(
-            !aws_external_id.empty() ? aws_external_id.c_str() : "");
+            !s3_params_.aws_external_id_.empty() ?
+                s3_params_.aws_external_id_.c_str() :
+                "");
         int load_frequency(
-            !aws_load_frequency.empty() ?
-                std::stoi(aws_load_frequency) :
+            !s3_params_.aws_load_frequency_.empty() ?
+                std::stoi(s3_params_.aws_load_frequency_) :
                 Aws::Auth::DEFAULT_CREDS_LOAD_FREQ_SECONDS);
         Aws::String session_name(
-            !aws_session_name.empty() ? aws_session_name.c_str() : "");
+            !s3_params_.aws_session_name_.empty() ?
+                s3_params_.aws_session_name_.c_str() :
+                "");
         credentials_provider_ =
             make_shared<Aws::Auth::STSAssumeRoleCredentialsProvider>(
                 HERE(),
@@ -1577,10 +1521,9 @@ Status S3::init_client() const {
       case 7: {
         s3_tp_executor_->Stop();
 
-        throw S3StatusException{
+        throw S3Exception(
             "Ambiguous authentication credentials; both permanent and "
-            "temporary "
-            "authentication credentials are configured"};
+            "temporary authentication credentials are configured");
       }
       case 8: {
         credentials_provider_ =
@@ -1596,10 +1539,11 @@ Status S3::init_client() const {
       default: {
         s3_tp_executor_->Stop();
 
-        throw S3StatusException{
-            "Ambiguous authentification options; Setting "
-            "vfs.s3.config_source is mutually exclusive with providing "
-            "either permanent or temporary credentials"};
+        throw S3Exception(
+            "Ambiguous authentification options; Setting vfs.s3.config_source "
+            "is "
+            "mutually exclusive with providing either permanent or temporary "
+            "credentials");
       }
     }
   }
@@ -1612,20 +1556,21 @@ Status S3::init_client() const {
   static std::mutex static_client_init_mtx;
   {
     std::lock_guard<std::mutex> static_lck(static_client_init_mtx);
-
     if (credentials_provider_ == nullptr) {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-          use_virtual_addressing_);
+          s3_params_.use_virtual_addressing_);
     } else {
-      client_ = make_shared<Aws::S3::S3Client>(
+      client_ = make_shared<TileDBS3Client>(
           HERE(),
+          s3_params_,
           credentials_provider_,
           *client_config_,
           Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy::Never,
-          use_virtual_addressing_);
+          s3_params_.use_virtual_addressing_);
     }
   }
 
@@ -1648,8 +1593,9 @@ Status S3::copy_object(const URI& old_uri, const URI& new_uri) {
     copy_object_request.SetRequestPayer(request_payer_);
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     copy_object_request.SetServerSideEncryption(sse_);
-  if (!sse_kms_key_id_.empty())
-    copy_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (!s3_params_.sse_kms_key_id_.empty())
+    copy_object_request.SetSSEKMSKeyId(
+        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     copy_object_request.SetACL(object_canned_acl_);
   }
@@ -1740,9 +1686,9 @@ Status S3::initiate_multipart_request(
     multipart_upload_request.SetRequestPayer(request_payer_);
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     multipart_upload_request.SetServerSideEncryption(sse_);
-  if (!sse_kms_key_id_.empty())
+  if (!s3_params_.sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
-        Aws::String(sse_kms_key_id_.c_str()));
+        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     multipart_upload_request.SetACL(object_canned_acl_);
   }
@@ -1877,15 +1823,16 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
     put_object_request.SetRequestPayer(request_payer_);
   if (sse_ != Aws::S3::Model::ServerSideEncryption::NOT_SET)
     put_object_request.SetServerSideEncryption(sse_);
-  if (!sse_kms_key_id_.empty())
-    put_object_request.SetSSEKMSKeyId(Aws::String(sse_kms_key_id_.c_str()));
+  if (!s3_params_.sse_kms_key_id_.empty())
+    put_object_request.SetSSEKMSKeyId(
+        Aws::String(s3_params_.sse_kms_key_id_.c_str()));
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
 
   auto put_object_outcome = client_->PutObject(put_object_request);
   if (!put_object_outcome.IsSuccess()) {
-    throw S3StatusException(
+    throw S3Exception(
         std::string("Cannot write object '") + uri.c_str() +
         outcome_error_message(put_object_outcome));
   }
@@ -1895,7 +1842,7 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   Aws::StringStream md5_hex;
   md5_hex << "\"" << Aws::Utils::HashingUtils::HexEncode(md5_hash) << "\"";
   if (md5_hex.str() != put_object_outcome.GetResult().GetETag()) {
-    throw S3StatusException(
+    throw S3Exception(
         "Object uploaded successfully, but MD5 hash does "
         "not match result from server!' ");
   }
@@ -1913,12 +1860,13 @@ Status S3::write_multipart(
   // thread should write less), and cap the number of parallel operations at the
   // configured max number. Length must be evenly divisible by
   // multipart_part_size_ unless this is the last part.
-  uint64_t num_ops = last_part ?
-                         utils::math::ceil(length, multipart_part_size_) :
-                         (length / multipart_part_size_);
-  num_ops = std::min(std::max(num_ops, uint64_t(1)), max_parallel_ops_);
+  uint64_t num_ops =
+      last_part ? utils::math::ceil(length, s3_params_.multipart_part_size_) :
+                  (length / s3_params_.multipart_part_size_);
+  num_ops =
+      std::min(std::max(num_ops, uint64_t(1)), s3_params_.max_parallel_ops_);
 
-  if (!last_part && length % multipart_part_size_ != 0) {
+  if (!last_part && length % s3_params_.multipart_part_size_ != 0) {
     return LOG_STATUS(
         Status_S3Error("Length not evenly divisible by part length"));
   }
@@ -2000,7 +1948,7 @@ Status S3::write_multipart(
   } else {
     std::vector<MakeUploadPartCtx> ctx_vec;
     ctx_vec.resize(num_ops);
-    const uint64_t bytes_per_op = multipart_part_size_;
+    const uint64_t bytes_per_op = s3_params_.multipart_part_size_;
     const int part_num_base = state->part_number;
     auto status = parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t i) {
       uint64_t begin = i * bytes_per_op,
@@ -2158,7 +2106,6 @@ URI S3::generate_chunk_uri(
   return buffering_dir.join_path(chunk_name);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif

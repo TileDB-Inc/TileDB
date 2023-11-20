@@ -118,3 +118,9 @@ add_subdirectory(vfs)
 # `query_plan`: no dependencies yet
 add_subdirectory(query_plan)
 
+# `query_aggregate`: no dependencies
+add_subdirectory(query_aggregate)
+
+# `query_field`: no dependencies
+add_subdirectory(query_field)
+

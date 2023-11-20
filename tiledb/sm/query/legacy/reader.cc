@@ -51,6 +51,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -335,7 +336,7 @@ Status Reader::load_initial_data() {
 
   // Load processed conditions from fragment metadata.
   if (delete_and_update_conditions_.size() > 0) {
-    throw_if_not_ok(load_processed_conditions());
+    load_processed_conditions();
   }
 
   initial_data_loaded_ = true;
@@ -1359,11 +1360,11 @@ Status Reader::copy_partitioned_var_cells(
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
 
-        RETURN_NOT_OK(tile_var->read(var_dest, tile_var_offset, cell_var_size));
+        tile_var->read(var_dest, tile_var_offset, cell_var_size);
 
         if (nullable)
-          RETURN_NOT_OK(tile_validity->read(
-              validity_dest, cell_idx, constants::cell_validity_size));
+          tile_validity->read(
+              validity_dest, cell_idx, constants::cell_validity_size);
       }
     }
 
@@ -1402,12 +1403,11 @@ Status Reader::process_tiles(
 
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
-  RETURN_NOT_OK(load_tile_offsets(subarray.relevant_fragments(), read_names));
+  load_tile_offsets(subarray.relevant_fragments(), read_names);
 
   // Pre-load all var attribute var tile sizes into memory for attributes
   // to be read.
-  RETURN_NOT_OK(
-      load_tile_var_sizes(subarray.relevant_fragments(), var_size_read_names));
+  load_tile_var_sizes(subarray.relevant_fragments(), var_size_read_names);
 
   // Get the maximum number of attributes to read and unfilter in parallel.
   // Each attribute requires additional memory to buffer reads into
@@ -1627,9 +1627,9 @@ Status Reader::compute_result_coords(
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+  load_tile_offsets(
       read_state_.partitioner_.subarray().relevant_fragments(),
-      zipped_coords_names));
+      zipped_coords_names);
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -1643,11 +1643,11 @@ Status Reader::compute_result_coords(
     if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
   }
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-      read_state_.partitioner_.subarray().relevant_fragments(), dim_names));
-  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
+  load_tile_offsets(
+      read_state_.partitioner_.subarray().relevant_fragments(), dim_names);
+  load_tile_var_sizes(
       read_state_.partitioner_.subarray().relevant_fragments(),
-      var_size_dim_names));
+      var_size_dim_names);
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
@@ -1662,20 +1662,20 @@ Status Reader::compute_result_coords(
   // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
-    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-        read_state_.partitioner_.subarray().relevant_fragments(), timestamps));
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(timestamps, tmp_result_tiles));
+    load_tile_offsets(
+        read_state_.partitioner_.subarray().relevant_fragments(), timestamps);
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(timestamps), tmp_result_tiles));
   }
 
   // Read and unfilter delete timestamps.
   {
     std::vector<std::string> delete_timestamps = {constants::delete_timestamps};
-    RETURN_CANCEL_OR_ERROR(load_tile_offsets(
+    load_tile_offsets(
         read_state_.partitioner_.subarray().relevant_fragments(),
-        delete_timestamps));
-    RETURN_CANCEL_OR_ERROR(
-        read_and_unfilter_attribute_tiles(delete_timestamps, tmp_result_tiles));
+        delete_timestamps);
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(delete_timestamps), tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -1718,52 +1718,16 @@ Status Reader::dedup_result_coords(
 
 Status Reader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return dense_read<int8_t>();
-    case Datatype::UINT8:
-      return dense_read<uint8_t>();
-    case Datatype::INT16:
-      return dense_read<int16_t>();
-    case Datatype::UINT16:
-      return dense_read<uint16_t>();
-    case Datatype::INT32:
-      return dense_read<int>();
-    case Datatype::UINT32:
-      return dense_read<unsigned>();
-    case Datatype::INT64:
-      return dense_read<int64_t>();
-    case Datatype::UINT64:
-      return dense_read<uint64_t>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return dense_read<int64_t>();
-    default:
-      return logger_->status(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      return dense_read<decltype(T)>();
+    } else {
+      return Status_ReaderError(
+          "Cannot read dense array; Unsupported domain type");
+    }
+  };
+  return apply_with_type(g, type);
 }
 
 template <class T>

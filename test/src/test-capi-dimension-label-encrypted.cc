@@ -101,7 +101,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_array_schema{nullptr};
   check_tiledb_error_with(
       tiledb_array_schema_load(ctx, array_name.c_str(), &loaded_array_schema),
-      "[TileDB::TileIO] Error: Error reading generic tile; tile is encrypted "
+      "GenericTileIO: Error reading generic tile; tile is encrypted "
       "with AES_256_GCM but given key is for NO_ENCRYPTION");
 
   // Check the array schema can be loaded with the encryption key.
@@ -123,7 +123,7 @@ TEST_CASE_METHOD(
   tiledb_array_schema_t* loaded_label_array_schema{nullptr};
   require_tiledb_error_with(
       tiledb_array_schema_load(ctx, dim_label_uri, &loaded_label_array_schema),
-      "[TileDB::TileIO] Error: Error reading generic tile; tile is encrypted "
+      "GenericTileIO: Error reading generic tile; tile is encrypted "
       "with AES_256_GCM but given key is for NO_ENCRYPTION");
 
   // Check the dimension label can be opened with the encryption key.

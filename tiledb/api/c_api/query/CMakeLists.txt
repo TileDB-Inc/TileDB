@@ -25,26 +25,17 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   query_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_query OBJECT ${SOURCES})
-target_link_libraries(capi_query PUBLIC export)
-target_link_libraries(capi_query PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_query PUBLIC constants $<TARGET_OBJECTS:constants>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_query EXCLUDE_FROM_ALL)
-target_sources(compile_capi_query PRIVATE test/compile_capi_query_main.cc)
-target_link_libraries(compile_capi_query PRIVATE capi_query)
-add_dependencies(all_link_complete compile_capi_query)
+commence(object_library capi_query)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline constants exception_wrapper)
+conclude(object_library)
 
 add_test_subdirectory()

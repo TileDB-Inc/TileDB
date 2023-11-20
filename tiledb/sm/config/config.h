@@ -409,14 +409,14 @@ class Config {
   /** The default posix permissions for directory creations */
   static const std::string VFS_FILE_POSIX_DIRECTORY_PERMISSIONS;
 
-  /** The default maximum number of parallel file:/// operations. */
-  static const std::string VFS_FILE_MAX_PARALLEL_OPS;
-
   /** The maximum size (in bytes) to read-ahead in the VFS. */
   static const std::string VFS_READ_AHEAD_SIZE;
 
   /** The maximum size (in bytes) of the VFS read-ahead cache . */
   static const std::string VFS_READ_AHEAD_CACHE_SIZE;
+
+  /** The type of read logging to perform in the VFS. */
+  static const std::string VFS_READ_LOGGING_MODE;
 
   /** Azure storage account name. */
   static const std::string VFS_AZURE_STORAGE_ACCOUNT_NAME;
@@ -465,6 +465,9 @@ class Config {
 
   /** GCS request timeout in milliseconds. */
   static const std::string VFS_GCS_REQUEST_TIMEOUT_MS;
+
+  /** GCS maximum buffer size for non-multipart uploads. */
+  static const std::string VFS_GCS_MAX_DIRECT_UPLOAD_SIZE;
 
   /** S3 region. */
   static const std::string VFS_S3_REGION;

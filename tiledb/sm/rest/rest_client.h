@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -101,6 +101,21 @@ class RestClient {
       const URI& uri);
 
   /**
+   * Get an array schema from the rest server. This will eventually replace the
+   * get_array_schema_from_rest after TileDB-Cloud-REST merges support for the
+   * POST endpoint.
+   *
+   * @param uri The Array URI to load the schema from.
+   * @return shared_ptr<ArraySchema> The loaded array schema.
+   */
+  shared_ptr<ArraySchema> post_array_schema_from_rest(
+      const Config& config,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end,
+      bool include_enumerations = false);
+
+  /**
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
@@ -126,6 +141,36 @@ class RestClient {
    * @param uri Array URI to delete
    */
   void delete_array_from_rest(const URI& uri);
+
+  /**
+   * Deletes the fragments written between the given timestamps from the array
+   * at the given URI from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param array Array to delete fragments from
+   * @param timestamp_start The start timestamp at which to delete fragments
+   * @param timestamp_end The end timestamp at which to delete fragments
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void post_delete_fragments_to_rest(
+      const URI& uri,
+      Array* array,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end);
+
+  /**
+   * Deletes the fragments with the given URIs from the array at the given URI
+   * from the REST server.
+   *
+   * @param uri Array URI to delete fragments from
+   * @param array Array to delete fragments from
+   * @param fragment_uris The uris of the fragments to be deleted
+   *
+   * #TODO Implement API endpoint on TileDBCloud.
+   */
+  void post_delete_fragments_list_to_rest(
+      const URI& uri, Array* array, const std::vector<URI>& fragment_uris);
 
   /**
    * Deregisters an array at the given URI from the REST server.

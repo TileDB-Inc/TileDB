@@ -33,28 +33,16 @@
 #ifndef TILEDB_MIN_MAX_AGGREGATOR_H
 #define TILEDB_MIN_MAX_AGGREGATOR_H
 
-#include "tiledb/sm/query/readers/aggregators/field_info.h"
+#include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
 #include "tiledb/sm/query/readers/aggregators/iaggregator.h"
+#include "tiledb/sm/query/readers/aggregators/min_max.h"
+#include "tiledb/sm/query/readers/aggregators/validity_policies.h"
 
 #include <functional>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class QueryBuffer;
-
-/** Convert type to a value type. **/
-template <typename T>
-struct min_max_type_data {
-  using type = T;
-  typedef T value_type;
-};
-
-template <>
-struct min_max_type_data<std::string> {
-  using type = std::string;
-  typedef std::string_view value_type;
-};
 
 /**
  * Comparator aggregator base class to handle partial specialization of some
@@ -90,22 +78,6 @@ class ComparatorAggregatorBase {
   /* ********************************* */
 
   /**
-   * Get the value at a certain cell index for the input buffers.
-   *
-   * @tparam VALUE_T Value type.
-   * @param fixed_data Fixed data buffer.
-   * @param var_data Var data buffer.
-   * @param cell_idx Cell index.
-   *
-   * @return Value.
-   */
-  template <typename VALUE_T>
-  VALUE_T value_at(
-      const void* fixed_data,
-      const char* var_data,
-      const uint64_t cell_idx) const;
-
-  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -132,9 +104,11 @@ class ComparatorAggregatorBase {
 
 template <typename T, typename Op>
 class ComparatorAggregator : public ComparatorAggregatorBase<T>,
+                             public InputFieldValidator,
+                             public OutputBufferValidator,
                              public IAggregator {
  protected:
-  using VALUE_T = typename min_max_type_data<T>::value_type;
+  using VALUE_T = typename type_data<T>::value_type;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -150,6 +124,9 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
    */
   ComparatorAggregator(const FieldInfo& field_info);
 
+  /** Virtual destructor. */
+  virtual ~ComparatorAggregator() = default;
+
   DISABLE_COPY_AND_COPY_ASSIGN(ComparatorAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ComparatorAggregator);
 
@@ -164,9 +141,19 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   }
 
   /** Returns if the aggregation is var sized or not. */
-  bool var_sized() override {
+  bool aggregation_var_sized() override {
     return ComparatorAggregatorBase<T>::field_info_.var_sized_;
   };
+
+  /** Returns if the aggregation is nullable or not. */
+  bool aggregation_nullable() override {
+    return ComparatorAggregatorBase<T>::field_info_.is_nullable_;
+  }
+
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return false;
+  }
 
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
@@ -191,6 +178,13 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
   void aggregate_data(AggregateBuffer& input_data) override;
 
   /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) override;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -200,61 +194,48 @@ class ComparatorAggregator : public ComparatorAggregatorBase<T>,
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) override;
 
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  Datatype output_datatype() override {
+    return ComparatorAggregatorBase<T>::field_info_.type_;
+  }
+
  private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  virtual VALUE_T tile_metadata_value(TileMetadata& tile_metadata) = 0;
+
+  /**
+   * Update the value of the aggregation, if required.
+   *
+   * @param value Candidate value.
+   * @param count Count of values considered.
+   */
+  void update_value(VALUE_T value, uint64_t count);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** AggregateWithCount to do summation of AggregateBuffer data. */
+  AggregateWithCount<T, VALUE_T, MinMax<Op>, NonNull> aggregate_with_count_;
 
   /** Mutex protecting `value_`. */
   std::mutex value_mtx_;
 
   /** Operation function to determine value. */
   Op op_;
-
-  /* ********************************* */
-  /*           PRIVATE METHODS         */
-  /* ********************************* */
-
-  /**
-   * Potentially update the min/max value with the value at cell index 'c'.
-   *
-   * @param value Value to possibly update.
-   * @param fixed_data Fixed data.
-   * @param var_data Var data.
-   * @param c Cell index.
-   */
-  inline void update_min_max(
-      optional<VALUE_T>& value,
-      const void* fixed_data,
-      const char* var_data,
-      const uint64_t c) {
-    auto cmp = ComparatorAggregatorBase<T>::template value_at<VALUE_T>(
-        fixed_data, var_data, c);
-    if (!value.has_value()) {
-      value = cmp;
-    } else if (op_(cmp, value.value())) {
-      value = cmp;
-    }
-  }
-
-  /**
-   * Get the min/max value of cells for the input data.
-   *
-   * @tparam BITMAP_T Bitmap type.
-   * @param input_data Input data for the min/max.
-   *
-   * @return {Computed min/max for the cells}.
-   */
-  template <typename BITMAP_T>
-  optional<T> min_max(AggregateBuffer& input_data);
 };
 
 template <typename T>
-class MinAggregator
-    : public ComparatorAggregator<
-          T,
-          std::less<typename min_max_type_data<T>::value_type>> {
+class MinAggregator : public ComparatorAggregator<
+                          T,
+                          std::less<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -267,20 +248,39 @@ class MinAggregator
    * @param field info Field info.
    */
   MinAggregator(const FieldInfo field_info)
-      : ComparatorAggregator<
-            T,
-            std::less<typename min_max_type_data<T>::value_type>>(field_info){};
+      : ComparatorAggregator<T, std::less<typename type_data<T>::value_type>>(
+            field_info){};
 
   DISABLE_COPY_AND_COPY_ASSIGN(MinAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MinAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate. */
+  std::string aggregate_name() override {
+    return constants::aggregate_min_str;
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.min_as<VALUE_T>();
+  }
 };
 
 template <typename T>
-class MaxAggregator
-    : public ComparatorAggregator<
-          T,
-          std::greater<typename min_max_type_data<T>::value_type>> {
+class MaxAggregator : public ComparatorAggregator<
+                          T,
+                          std::greater<typename type_data<T>::value_type>> {
  public:
+  using VALUE_T = typename type_data<T>::value_type;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -295,14 +295,31 @@ class MaxAggregator
   MaxAggregator(const FieldInfo field_info)
       : ComparatorAggregator<
             T,
-            std::greater<typename min_max_type_data<T>::value_type>>(
-            field_info){};
+            std::greater<typename type_data<T>::value_type>>(field_info){};
 
   DISABLE_COPY_AND_COPY_ASSIGN(MaxAggregator);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MaxAggregator);
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  std::string aggregate_name() override {
+    return constants::aggregate_max_str;
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE FUNCTIONS         */
+  /* ********************************* */
+
+  /** Returns the tile metadata value for the full tile data. */
+  VALUE_T tile_metadata_value(TileMetadata& tile_metadata) override {
+    return tile_metadata.max_as<VALUE_T>();
+  }
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_MIN_MAX_AGGREGATOR_H

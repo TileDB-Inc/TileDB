@@ -35,6 +35,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -281,14 +282,11 @@ std::string_view ResultTile::coord_string(
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
 
   offsets_t offset = 0;
-  Status st =
-      coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
+  coord_tile_off.read(&offset, pos * sizeof(uint64_t), sizeof(uint64_t));
 
   offsets_t next_offset = 0;
-  st = coord_tile_off.read(
+  coord_tile_off.read(
       &next_offset, (pos + 1) * sizeof(uint64_t), sizeof(uint64_t));
-  assert(st.ok());
 
   auto size = next_offset - offset;
 
@@ -388,7 +386,8 @@ Status ResultTile::read(
     auto cell_size = tile.cell_size();
     auto nbytes = len * cell_size;
     auto offset = pos * cell_size;
-    return tile.read(buffer, offset, nbytes);
+    tile.read(buffer, offset, nbytes);
+    return Status::Ok();
   } else if (
       name == constants::coords && !coord_tiles_[0].first.empty() &&
       !coords_tile_.has_value()) {
@@ -403,8 +402,7 @@ Status ResultTile::read(
         auto& coord_tile = coord_tiles_[d].second->fixed_tile();
         auto cell_size = coord_tile.cell_size();
         auto tile_offset = (pos + c) * cell_size;
-        RETURN_NOT_OK(
-            coord_tile.read(buff + buff_offset, tile_offset, cell_size));
+        coord_tile.read(buff + buff_offset, tile_offset, cell_size);
         buff_offset += cell_size;
       }
     }
@@ -432,8 +430,7 @@ Status ResultTile::read(
     auto dim_size = cell_size / domain_->dim_num();
     uint64_t offset = pos * cell_size + dim_size * dim_offset;
     for (uint64_t c = 0; c < len; ++c) {
-      RETURN_NOT_OK(coords_tile_->fixed_tile().read(
-          buff + (c * dim_size), offset, dim_size));
+      coords_tile_->fixed_tile().read(buff + (c * dim_size), offset, dim_size);
       offset += cell_size;
     }
   };
@@ -463,9 +460,8 @@ Status ResultTile::read_nullable(
   auto validity_nbytes = len * validity_cell_size;
   auto validity_offset = pos * validity_cell_size;
 
-  RETURN_NOT_OK(tile.read(buffer, offset, nbytes));
-  RETURN_NOT_OK(
-      tile_validity.read(buffer_validity, validity_offset, validity_nbytes));
+  tile.read(buffer, offset, nbytes);
+  tile_validity.read(buffer_validity, validity_offset, validity_nbytes);
 
   return Status::Ok();
 }
@@ -761,10 +757,7 @@ void ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
     std::vector<uint8_t>* result_bitmap,
-    const Layout& cell_order) {
-  // We do not use `cell_order` for this template type.
-  (void)cell_order;
-
+    const Layout&) {
   // For easy reference.
   auto coords_num = result_tile->cell_num();
   auto r = (const T*)range.data();
@@ -1050,12 +1043,9 @@ void ResultTile::compute_results_count_sparse(
     const NDRange& ranges,
     const std::vector<uint64_t>& range_indexes,
     std::vector<BitmapType>& result_count,
-    const Layout& cell_order,
+    const Layout&,
     const uint64_t min_cell,
     const uint64_t max_cell) {
-  // We don't use cell_order for this template type.
-  (void)cell_order;
-
   // For easy reference.
   auto stores_zipped_coords = result_tile->stores_zipped_coords();
   auto dim_num = result_tile->domain()->dim_num();
@@ -1221,133 +1211,29 @@ void ResultTile::set_compute_results_func() {
   compute_results_sparse_func_.resize(dim_num);
   compute_results_count_sparse_uint8_t_func_.resize(dim_num);
   compute_results_count_sparse_uint64_t_func_.resize(dim_num);
+
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim{domain_->dimension_ptr(d)};
-    switch (dim->type()) {
-      case Datatype::INT32:
-        compute_results_dense_func_[d] = compute_results_dense<int32_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int32_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int32_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int32_t>;
-        break;
-      case Datatype::INT64:
-        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int64_t>;
-        break;
-      case Datatype::INT8:
-        compute_results_dense_func_[d] = compute_results_dense<int8_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int8_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int8_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int8_t>;
-        break;
-      case Datatype::UINT8:
-        compute_results_dense_func_[d] = compute_results_dense<uint8_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint8_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint8_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint8_t>;
-        break;
-      case Datatype::INT16:
-        compute_results_dense_func_[d] = compute_results_dense<int16_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int16_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int16_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int16_t>;
-        break;
-      case Datatype::UINT16:
-        compute_results_dense_func_[d] = compute_results_dense<uint16_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint16_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint16_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint16_t>;
-        break;
-      case Datatype::UINT32:
-        compute_results_dense_func_[d] = compute_results_dense<uint32_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint32_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint32_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint32_t>;
-        break;
-      case Datatype::UINT64:
-        compute_results_dense_func_[d] = compute_results_dense<uint64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<uint64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, uint64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, uint64_t>;
-        break;
-      case Datatype::FLOAT32:
-        compute_results_dense_func_[d] = compute_results_dense<float>;
-        compute_results_sparse_func_[d] = compute_results_sparse<float>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, float>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, float>;
-        break;
-      case Datatype::FLOAT64:
-        compute_results_dense_func_[d] = compute_results_dense<double>;
-        compute_results_sparse_func_[d] = compute_results_sparse<double>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, double>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, double>;
-        break;
-      case Datatype::DATETIME_YEAR:
-      case Datatype::DATETIME_MONTH:
-      case Datatype::DATETIME_WEEK:
-      case Datatype::DATETIME_DAY:
-      case Datatype::DATETIME_HR:
-      case Datatype::DATETIME_MIN:
-      case Datatype::DATETIME_SEC:
-      case Datatype::DATETIME_MS:
-      case Datatype::DATETIME_US:
-      case Datatype::DATETIME_NS:
-      case Datatype::DATETIME_PS:
-      case Datatype::DATETIME_FS:
-      case Datatype::DATETIME_AS:
-      case Datatype::TIME_HR:
-      case Datatype::TIME_MIN:
-      case Datatype::TIME_SEC:
-      case Datatype::TIME_MS:
-      case Datatype::TIME_US:
-      case Datatype::TIME_NS:
-      case Datatype::TIME_PS:
-      case Datatype::TIME_FS:
-      case Datatype::TIME_AS:
-        compute_results_dense_func_[d] = compute_results_dense<int64_t>;
-        compute_results_sparse_func_[d] = compute_results_sparse<int64_t>;
-        compute_results_count_sparse_uint8_t_func_[d] =
-            compute_results_count_sparse<uint8_t, int64_t>;
-        compute_results_count_sparse_uint64_t_func_[d] =
-            compute_results_count_sparse<uint64_t, int64_t>;
-        break;
-      case Datatype::STRING_ASCII:
+
+    auto g = [&](auto T) {
+      if constexpr (std::is_same_v<decltype(T), char>) {
         compute_results_dense_func_[d] = nullptr;
-        compute_results_sparse_func_[d] = compute_results_sparse<char>;
+        compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
         compute_results_count_sparse_uint8_t_func_[d] =
             compute_results_count_sparse_string<uint8_t>;
         compute_results_count_sparse_uint64_t_func_[d] =
             compute_results_count_sparse_string<uint64_t>;
-        break;
-      default:
-        compute_results_dense_func_[d] = nullptr;
-        compute_results_sparse_func_[d] = nullptr;
-        compute_results_count_sparse_uint8_t_func_[d] = nullptr;
-        compute_results_count_sparse_uint64_t_func_[d] = nullptr;
-        break;
-    }
+        return;
+      } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+        compute_results_dense_func_[d] = compute_results_dense<decltype(T)>;
+        compute_results_sparse_func_[d] = compute_results_sparse<decltype(T)>;
+        compute_results_count_sparse_uint8_t_func_[d] =
+            compute_results_count_sparse<uint8_t, decltype(T)>;
+        compute_results_count_sparse_uint64_t_func_[d] =
+            compute_results_count_sparse<uint64_t, decltype(T)>;
+      }
+    };
+    apply_with_type(g, dim->type());
   }
 }
 

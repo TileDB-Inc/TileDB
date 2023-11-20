@@ -34,9 +34,9 @@
 #define TILEDB_FIELD_INFO_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/enums/datatype.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FieldInfo {
  public:
@@ -44,7 +44,14 @@ class FieldInfo {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  FieldInfo() = delete;
+  /**
+   * Default constructor.
+   */
+  FieldInfo()
+      : var_sized_(false)
+      , is_nullable_(false)
+      , cell_val_num_(1)
+      , type_(Datatype::UINT8){};
 
   /**
    * Constructor.
@@ -53,16 +60,19 @@ class FieldInfo {
    * @param var_sized Is the field var sized?
    * @param is_nullable Is the field nullable?
    * @param cell_val_num Cell val num.
+   * @param type Data type of the field
    */
   FieldInfo(
       const std::string name,
       const bool var_sized,
       const bool is_nullable,
-      const unsigned cell_val_num)
+      const unsigned cell_val_num,
+      const Datatype type)
       : name_(name)
       , var_sized_(var_sized)
       , is_nullable_(is_nullable)
-      , cell_val_num_(cell_val_num){};
+      , cell_val_num_(cell_val_num)
+      , type_(type){};
 
   /* ********************************* */
   /*         PUBLIC ATTRIBUTES         */
@@ -79,9 +89,11 @@ class FieldInfo {
 
   /** Cell val num. */
   const unsigned cell_val_num_;
+
+  /** The data type of the field. */
+  const Datatype type_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FIELD_INFO_H

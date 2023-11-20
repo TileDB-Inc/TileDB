@@ -88,15 +88,6 @@ namespace common {
     }                               \
   } while (false)
 
-#define RETURN_NOT_OK_ELSE_TUPLE(s, else_, ...) \
-  do {                                          \
-    Status _s = (s);                            \
-    if (!_s.ok()) {                             \
-      else_;                                    \
-      return {_s, __VA_ARGS__};                 \
-    }                                           \
-  } while (false)
-
 /**
  * The original `Status` class, used as a ubiquitous return value to avoid
  * throwing exceptions.
@@ -307,10 +298,6 @@ inline Status Status_BufferError(const std::string& msg) {
 /** Return a Query error class Status with a given message **/
 inline Status Status_QueryError(const std::string& msg) {
   return {"[TileDB::Query] Error", msg};
-}
-/** Return a ValidityVector error class Status with a given message **/
-inline Status Status_ValidityVectorError(const std::string& msg) {
-  return {"[TileDB::ValidityVector] Error", msg};
 }
 /** Return a Status_VFSError error class Status with a given message **/
 inline Status Status_VFSError(const std::string& msg) {

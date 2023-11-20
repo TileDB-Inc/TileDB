@@ -227,6 +227,10 @@ TEST_CASE_METHOD(
   // Write a correct item
   group.put_metadata("key", TILEDB_INT32, 1, &v);
 
+  // Consolidate and vacuum metadata with default config
+  group.consolidate_metadata(ctx_, group1_uri);
+  group.vacuum_metadata(ctx_, group1_uri);
+
   // Close group
   group.close();
 
@@ -686,6 +690,8 @@ TEST_CASE_METHOD(
     GroupCPPFx,
     "C++ API: Group, write/read, relative named",
     "[cppapi][group][read]") {
+  bool remove_by_name = GENERATE(true, false);
+
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
@@ -784,11 +790,21 @@ TEST_CASE_METHOD(
   set_group_timestamp(&group2, 2);
   group2.open(TILEDB_WRITE);
 
-  group1.remove_member(group2_uri.to_string());
+  if (remove_by_name) {
+    group1.remove_member("three");
+  } else {
+    group1.remove_member(group2_uri.to_string());
+  }
+
   // Group is the latest element
   group1_expected.resize(group1_expected.size() - 1);
 
-  group2.remove_member(array3_relative_uri);
+  if (remove_by_name) {
+    group2.remove_member("four");
+  } else {
+    group2.remove_member(array3_relative_uri);
+  }
+
   // There should be nothing left in group2
   group2_expected.clear();
 
@@ -813,6 +829,114 @@ TEST_CASE_METHOD(
   // Close group
   group1.close();
   group2.close();
+  remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupCPPFx,
+    "C++ API: Group, delete by URI, duplicates",
+    "[cppapi][group][delete]") {
+  bool nameless_uri = GENERATE(true, false);
+
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  tiledb::Group::create(ctx_, group1_uri.to_string());
+
+  REQUIRE(
+      tiledb_vfs_create_dir(
+          ctx_.ptr().get(), vfs_, (temp_dir + "group1/arrays").c_str()) ==
+      TILEDB_OK);
+
+  const std::string array1_relative_uri("arrays/array1");
+  const tiledb::sm::URI array1_uri(temp_dir + "group1/arrays/array1");
+  const std::string array2_relative_uri("arrays/array2");
+  const tiledb::sm::URI array2_uri(temp_dir + "group1/arrays/array2");
+  create_array(array1_uri.to_string());
+  create_array(array2_uri.to_string());
+
+  // Set expected
+  std::vector<tiledb::Object> group1_expected = {
+      tiledb::Object(
+          tiledb::Object::Type::Array, array1_uri.to_string(), "one"),
+      tiledb::Object(
+          tiledb::Object::Type::Array, array2_uri.to_string(), "two"),
+      nameless_uri ?
+          tiledb::Object(
+              tiledb::Object::Type::Array, array2_uri.to_string(), nullopt) :
+          tiledb::Object(
+              tiledb::Object::Type::Array, array2_uri.to_string(), "three"),
+  };
+
+  tiledb::Group group1(ctx_, group1_uri.to_string(), TILEDB_WRITE);
+  group1.close();
+  set_group_timestamp(&group1, 1);
+  group1.open(TILEDB_WRITE);
+
+  group1.add_member(array1_relative_uri, true, "one");
+  group1.add_member(array2_relative_uri, true, "two");
+  group1.add_member(
+      array2_relative_uri,
+      true,
+      nameless_uri ? nullopt : std::make_optional<std::string>("three"));
+
+  // Close group from write mode
+  group1.close();
+
+  // Reopen in read mode
+  group1.open(TILEDB_READ);
+
+  std::vector<tiledb::Object> group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  bool is_relative;
+  is_relative = group1.is_relative("one");
+  REQUIRE(is_relative == true);
+  is_relative = group1.is_relative("two");
+  REQUIRE(is_relative == true);
+
+  if (!nameless_uri) {
+    is_relative = group1.is_relative("three");
+    REQUIRE(is_relative == true);
+  }
+
+  // Close group
+  group1.close();
+
+  // Remove assets from group
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_WRITE);
+  if (nameless_uri) {
+    group1.remove_member(array2_relative_uri);
+  } else {
+    CHECK_THROWS_WITH(
+        group1.remove_member(array2_relative_uri),
+        Catch::Matchers::ContainsSubstring(
+            "there are multiple members with the "
+            "same URI, please remove by name."));
+    group1.remove_member("three");
+  }
+
+  // Group is the latest element
+  group1_expected.resize(group1_expected.size() - 1);
+
+  // Close group
+  group1.close();
+
+  // Check read again
+  set_group_timestamp(&group1, 2);
+  group1.open(TILEDB_READ);
+
+  group1_received = read_group(group1);
+  REQUIRE_THAT(
+      group1_received, Catch::Matchers::UnorderedEquals(group1_expected));
+
+  // Close group
+  group1.close();
   remove_temp_dir(temp_dir);
 }
 

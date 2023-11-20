@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
@@ -107,7 +108,7 @@ Status FragmentConsolidator::consolidate(
   // must be fetched (even before `config_.timestamp_start_`),
   // to compute the anterior ND range that can help determine
   // which dense fragments are consolidatable.
-  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       config_.timestamp_start_,
@@ -216,7 +217,7 @@ Status FragmentConsolidator::consolidate_fragments(
   }
 
   // Get all fragment info
-  FragmentInfo fragment_info(URI(array_name), storage_manager_);
+  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       0,
@@ -371,7 +372,7 @@ Status FragmentConsolidator::consolidate_internal(
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
-  RETURN_NOT_OK(array_for_reads->load_fragments(to_consolidate));
+  array_for_reads->load_fragments(to_consolidate);
 
   if (array_for_reads->is_empty()) {
     return Status::Ok();
@@ -649,9 +650,8 @@ Status FragmentConsolidator::create_queries(
   auto last = (*query_r)->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
-  auto fragment_name =
-      array_for_reads->array_directory().compute_new_fragment_name(
-          first, last, write_version);
+  auto fragment_name = storage_format::generate_consolidated_fragment_name(
+      first, last, write_version);
 
   // Create write query
   *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
@@ -92,7 +93,8 @@ Status FragmentMetaConsolidator::consolidate(
   auto first = meta.front()->fragment_uri();
   auto last = meta.back()->fragment_uri();
   auto write_version = array.array_schema_latest().write_version();
-  auto name = array_dir.compute_new_fragment_name(first, last, write_version);
+  auto name = storage_format::generate_consolidated_fragment_name(
+      first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
   RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
@@ -102,8 +104,7 @@ Status FragmentMetaConsolidator::consolidate(
   auto meta_name = uri.remove_trailing_slash().last_path_part();
   auto pos = meta_name.find_last_of('.');
   meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  uint32_t meta_version = 0;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(meta_name, &meta_version));
+  auto meta_version = utils::parse::get_fragment_version(meta_name);
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
@@ -122,12 +123,12 @@ Status FragmentMetaConsolidator::consolidate(
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
-        throw_if_not_ok(meta[i]->write_footer(size_computation_serializer));
+        meta[i]->write_footer(size_computation_serializer);
         tiles[i].reset(tdb_new(
             WriterTile,
             WriterTile::from_generic(size_computation_serializer.size())));
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
-        throw_if_not_ok(meta[i]->write_footer(serializer));
+        meta[i]->write_footer(serializer);
 
         return Status::Ok();
       });
@@ -173,9 +174,8 @@ Status FragmentMetaConsolidator::consolidate(
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
   GenericTileIO tile_io(storage_manager_->resources(), uri);
-  uint64_t nbytes = 0;
-  RETURN_NOT_OK(tile_io.write_generic(&tile, enc_key, &nbytes));
-  (void)nbytes;
+  [[maybe_unused]] uint64_t nbytes = 0;
+  tile_io.write_generic(&tile, enc_key, &nbytes);
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();

@@ -41,6 +41,7 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/capnp_utils.h"
+#include "tiledb/sm/serialization/query_aggregates.h"
 #endif
 // clang-format on
 
@@ -73,7 +74,7 @@
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 #include "tiledb/sm/serialization/query.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -1414,6 +1415,17 @@ Status query_to_capnp(
   buffer_names.insert(
       buffer_names.end(), dim_label_names.begin(), dim_label_names.end());
 
+  // Add aggregate buffers
+  const auto aggregate_names = query.aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
+  // TODO: add API in query to get all buffers in one go
+  // Deserialization gets the list of buffers from wire then call
+  // set_data_buffer which knows on which structure to set. We should have a
+  // function here as well that gets all buffer names or even better, all
+  // buffers
+
   uint64_t total_fixed_len_bytes = 0;
   uint64_t total_var_len_bytes = 0;
   uint64_t total_validity_len_bytes = 0;
@@ -1582,6 +1594,16 @@ Status query_to_capnp(
     }
   }
 
+  // The server should throw if it's about to serialize an incomplete query
+  // that has aggregates on it, this behavior is currently not supported.
+  if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
+      !query.has_aggregates()) {
+    throw Status_SerializationError(
+        "Aggregates are not currently supported in incomplete remote "
+        "queries");
+  }
+  query_channels_to_capnp(query, query_builder);
+
   return Status::Ok();
 }
 
@@ -1654,6 +1676,11 @@ Status query_from_capnp(
     }
   }
 
+  // It's important that deserialization of query channels/aggregates happens
+  // before deserializing buffers. set_data_buffer won't know whether a buffer
+  // is aggregate or not if the list of aggregates per channel is not populated.
+  query_channels_from_capnp(query_reader, query);
+
   const auto& schema = query->array_schema();
   // Deserialize and set attribute buffers.
   if (!query_reader.hasAttributeBufferHeaders()) {
@@ -1686,8 +1713,19 @@ Status query_from_capnp(
     uint8_t* existing_validity_buffer = nullptr;
     uint64_t existing_validity_buffer_size = 0;
 
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    auto aggregate = query->get_aggregate(name);
+    if (aggregate.has_value()) {
+      var_size = aggregate.value()->aggregation_var_sized();
+      nullable = aggregate.value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
     const QueryBuffer& query_buffer = query->buffer(name);
     if (type == QueryType::READ) {
       // We use the query_buffer directly in order to get the original buffer
@@ -1971,6 +2009,15 @@ Status query_from_capnp(
         Buffer offsets_buff(nullptr, fixedlen_size);
         Buffer varlen_buff(nullptr, varlen_size);
         Buffer validitylen_buff(nullptr, validitylen_size);
+
+        // Aggregates don't have incomplete queries, and only set the results on
+        // completion, so we don't need to have go allocate memory.
+        if (query->is_aggregate(name)) {
+          offsets_buff = Buffer(fixedlen_size);
+          varlen_buff = Buffer(fixedlen_size);
+          validitylen_buff = Buffer(validitylen_size);
+        }
+
         // For the server on reads we want to set the original user requested
         // buffer sizes This handles the case of incomplete queries where on
         // the second `submit()` call the client's buffer size will be the
@@ -2006,19 +2053,39 @@ Status query_from_capnp(
         attr_state->validity_len_data.swap(validitylen_buff);
         if (var_size) {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->var_len_size, false, true));
+              name,
+              attr_state->var_len_data.data(),
+              &attr_state->var_len_size,
+              false,
+              true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data_as<uint64_t>(),
+              &attr_state->fixed_len_size,
+              false,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                false,
+                true));
           }
         } else {
           throw_if_not_ok(query->set_data_buffer(
-              name, nullptr, &attr_state->fixed_len_size, false, true));
+              name,
+              attr_state->fixed_len_data.data(),
+              &attr_state->fixed_len_size,
+              false,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, nullptr, &attr_state->validity_len_size, false, true));
+                name,
+                attr_state->validity_len_data.data_as<uint8_t>(),
+                &attr_state->validity_len_size,
+                false,
+                true));
           }
         }
       } else if (query_type == QueryType::WRITE) {
@@ -2676,9 +2743,8 @@ Status query_est_result_size_reader_from_capnp(
 Status query_est_result_size_serialize(
     Query* query,
     SerializationType serialize_type,
-    bool clientside,
+    bool,
     Buffer* serialized_buffer) {
-  (void)clientside;
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::EstimatedResultSize::Builder est_result_size_builder =
@@ -2728,9 +2794,8 @@ Status query_est_result_size_serialize(
 Status query_est_result_size_deserialize(
     Query* query,
     SerializationType serialize_type,
-    bool clientside,
+    bool,
     const Buffer& serialized_buffer) {
-  (void)clientside;
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {

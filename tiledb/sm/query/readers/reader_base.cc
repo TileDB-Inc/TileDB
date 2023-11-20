@@ -53,6 +53,7 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/subarray/subarray.h"
+#include "tiledb/type/apply_with_type.h"
 
 namespace tiledb {
 namespace sm {
@@ -440,13 +441,13 @@ bool ReaderBase::include_timestamps(const unsigned f) const {
                          !dups || timestamps_needed);
 }
 
-Status ReaderBase::load_tile_offsets(
+void ReaderBase::load_tile_offsets(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -465,23 +466,18 @@ Status ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        RETURN_NOT_OK(fragment->load_tile_offsets(
-            *encryption_key, std::move(filtered_names)));
+        fragment->load_tile_offsets(*encryption_key, filtered_names);
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_tile_var_sizes(
+void ReaderBase::load_tile_var_sizes(
     const RelevantFragments& relevant_fragments,
     const std::vector<std::string>& names) {
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       relevant_fragments.size(),
@@ -502,23 +498,57 @@ Status ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          throw_if_not_ok(fragment->load_tile_var_sizes(*encryption_key, name));
+          fragment->load_tile_var_sizes(*encryption_key, name);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
-Status ReaderBase::load_processed_conditions() {
+void ReaderBase::load_tile_metadata(
+    const RelevantFragments& relevant_fragments,
+    const std::vector<std::string>& names) {
+  auto timer_se = stats_->start_timer("load_tile_metadata");
+  const auto encryption_key = array_->encryption_key();
+
+  throw_if_not_ok(parallel_for(
+      storage_manager_->compute_tp(),
+      0,
+      relevant_fragments.size(),
+      [&](const uint64_t i) {
+        auto frag_idx = relevant_fragments[i];
+        auto& fragment = fragment_metadata_[frag_idx];
+
+        // Generate the list of name with aggregates.
+        const auto& schema = fragment->array_schema();
+        std::vector<std::string> to_load;
+        for (auto& n : names) {
+          // Not a member of array schema, this field was added in array
+          // schema evolution, ignore for this fragment's tile metadata.
+          if (!schema->is_field(n)) {
+            continue;
+          }
+
+          if (aggregates_.count(n) != 0) {
+            to_load.emplace_back(n);
+          }
+        }
+
+        fragment->load_tile_max_values(*encryption_key, to_load);
+        fragment->load_tile_min_values(*encryption_key, to_load);
+        fragment->load_tile_sum_values(*encryption_key, to_load);
+        fragment->load_tile_null_count_values(*encryption_key, to_load);
+
+        return Status::Ok();
+      }));
+}
+
+void ReaderBase::load_processed_conditions() {
   auto timer_se = stats_->start_timer("load_processed_conditions");
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
-  const auto status = parallel_for(
+  throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
       fragment_metadata_.size(),
@@ -526,19 +556,15 @@ Status ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          RETURN_NOT_OK(fragment->load_processed_conditions(*encryption_key));
+          fragment->load_processed_conditions(*encryption_key);
         }
 
         return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
-
-  return Status::Ok();
+      }));
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   // The filtered data here contains the memory allocations for all of the
   // filtered data that is read by `read_attribute_tiles`. To prevent
@@ -557,7 +583,8 @@ Status ReaderBase::read_and_unfilter_attribute_tiles(
   // been used and the tiles are unfiltered so the data can be deleted.
   auto filtered_data{read_attribute_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(
+        unfilter_tiles(name.name(), name.validity_only(), result_tiles));
   }
 
   return Status::Ok();
@@ -570,14 +597,14 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   // information about the lifetime of this object.
   auto filtered_data{read_coordinate_tiles(names, result_tiles)};
   for (auto& name : names) {
-    RETURN_NOT_OK(unfilter_tiles(name, result_tiles));
+    RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
   }
 
   return Status::Ok();
 }
 
 std::vector<FilteredData> ReaderBase::read_attribute_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
@@ -587,11 +614,11 @@ std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
-  return read_tiles(names, result_tiles);
+  return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
 std::vector<FilteredData> ReaderBase::read_tiles(
-    const std::vector<std::string>& names,
+    const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
   std::vector<FilteredData> filtered_data;
@@ -606,7 +633,10 @@ std::vector<FilteredData> ReaderBase::read_tiles(
   filtered_data.reserve(names.size());
 
   // Run all attributes independently.
-  for (auto name : names) {
+  for (auto n : names) {
+    auto& name = n.name();
+    auto val_only = n.validity_only();
+
     // Create the filtered data blocks. This will also kick off the read for the
     // data blocks right after the memory is allocated so that we can optimize
     // read and memory allocations.
@@ -622,6 +652,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         name,
         var_sized,
         nullable,
+        val_only,
         storage_manager_,
         read_tasks);
 
@@ -639,7 +670,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
       // Construct a TileSizes class.
       ResultTile::TileSizes tile_sizes{
-          fragment, name, var_sized, nullable, tile_idx};
+          fragment, name, var_sized, nullable, val_only, tile_idx};
 
       // Construct a tile data class.
       // See the explanation in 'read_and_unfilter_attribute_tiles' for more
@@ -651,8 +682,12 @@ std::vector<FilteredData> ReaderBase::read_tiles(
       // 'unfilter_tiles' so that the filter pipeline can stop using the
       // 'ResultTile' object to get access to the filtered data.
       ResultTile::TileData tile_data{
-          filtered_data.back().fixed_filtered_data(fragment.get(), tile),
-          filtered_data.back().var_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().fixed_filtered_data(fragment.get(), tile),
+          val_only ?
+              nullptr :
+              filtered_data.back().var_filtered_data(fragment.get(), tile),
           filtered_data.back().nullable_filtered_data(fragment.get(), tile)};
 
       // Initialize the tile(s)
@@ -688,6 +723,7 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 tuple<Status, optional<uint64_t>, optional<uint64_t>, optional<uint64_t>>
 ReaderBase::load_tile_chunk_data(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -709,25 +745,29 @@ ReaderBase::load_tile_chunk_data(
   }
 
   const auto t = &tile_tuple->fixed_tile();
-  const auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  const auto t_var =
+      var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
   const FilterPipeline& filters = array_schema_.filters(name);
-  if (!var_size ||
-      !filters.skip_offsets_filtering(t_var->type(), array_schema_.version())) {
+  if (!validity_only) {
+    if (!var_size || !filters.skip_offsets_filtering(
+                         t_var->type(), array_schema_.version())) {
+      if (var_size) {
+        unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
+      } else {
+        unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      }
+    }
+
     if (var_size) {
-      unfiltered_tile_size = t->load_offsets_chunk_data(tile_chunk_data);
-    } else {
-      unfiltered_tile_size = t->load_chunk_data(tile_chunk_data);
+      unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
     }
   }
 
-  if (var_size) {
-    unfiltered_tile_var_size = t_var->load_chunk_data(tile_chunk_var_data);
-  }
   if (nullable) {
     unfiltered_tile_validity_size =
         t_validity->load_chunk_data(tile_chunk_validity_data);
@@ -746,7 +786,7 @@ Status ReaderBase::zip_tile_coordinates(
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
     auto version = tile->format_version();
     if (version > 1 || using_compression) {
-      RETURN_NOT_OK(tile->zip_coordinates());
+      tile->zip_coordinates();
     }
   }
   return Status::Ok();
@@ -754,6 +794,7 @@ Status ReaderBase::zip_tile_coordinates(
 
 Status ReaderBase::post_process_unfiltered_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable) const {
@@ -776,7 +817,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 
   throw_if_not_ok(zip_tile_coordinates(name, &t));
 
-  if (var_size) {
+  if (var_size && !validity_only) {
     auto& t_var = tile_tuple->var_tile();
     t_var.clear_filtered_buffer();
     throw_if_not_ok(zip_tile_coordinates(name, &t_var));
@@ -794,6 +835,7 @@ Status ReaderBase::post_process_unfiltered_tile(
 
 Status ReaderBase::unfilter_tiles(
     const std::string& name,
+    const bool validity_only,
     const std::vector<ResultTile*>& result_tiles) const {
   const auto stat_type = (array_schema_.is_attr(name)) ? "unfilter_attr_tiles" :
                                                          "unfilter_coord_tiles";
@@ -837,6 +879,7 @@ Status ReaderBase::unfilter_tiles(
         auto&& [st, tile_size, tile_var_size, tile_validity_size] =
             load_tile_chunk_data(
                 name,
+                validity_only,
                 result_tiles[i],
                 var_size,
                 nullable,
@@ -864,6 +907,7 @@ Status ReaderBase::unfilter_tiles(
       [&](uint64_t i, uint64_t range_thread_idx) {
         return unfilter_tile(
             name,
+            validity_only,
             result_tiles[i],
             var_size,
             nullable,
@@ -878,7 +922,7 @@ Status ReaderBase::unfilter_tiles(
   // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
     RETURN_NOT_OK(post_process_unfiltered_tile(
-        name, result_tiles[i], var_size, nullable));
+        name, validity_only, result_tiles[i], var_size, nullable));
   }
 
   return Status::Ok();
@@ -886,6 +930,7 @@ Status ReaderBase::unfilter_tiles(
 
 Status ReaderBase::unfilter_tile(
     const std::string& name,
+    const bool validity_only,
     ResultTile* const tile,
     const bool var_size,
     const bool nullable,
@@ -909,7 +954,7 @@ Status ReaderBase::unfilter_tile(
   }
 
   auto t = &tile_tuple->fixed_tile();
-  auto t_var = var_size ? &tile_tuple->var_tile() : nullptr;
+  auto t_var = var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
   FilterPipeline fixed_filters;
@@ -917,18 +962,20 @@ Status ReaderBase::unfilter_tile(
   FilterPipeline validity_filters;
 
   // Create our filter pipelines
-  if (!var_size) {
-    fixed_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
-  } else {
-    fixed_filters = array_schema_.cell_var_offsets_filters();
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &fixed_filters, array_->get_encryption_key()));
+  if (!validity_only) {
+    if (!var_size) {
+      fixed_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
+    } else {
+      fixed_filters = array_schema_.cell_var_offsets_filters();
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &fixed_filters, array_->get_encryption_key()));
 
-    var_filters = array_schema_.filters(name);
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &var_filters, array_->get_encryption_key()));
+      var_filters = array_schema_.filters(name);
+      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+          &var_filters, array_->get_encryption_key()));
+    }
   }
 
   if (nullable) {
@@ -938,48 +985,52 @@ Status ReaderBase::unfilter_tile(
   }
 
   bool skip_offsets_filtering = false;
-  if (var_size) {
+  if (var_size && !validity_only) {
     skip_offsets_filtering = var_filters.skip_offsets_filtering(
         t_var->type(), array_schema_.version());
   }
 
   auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
 
-  // Unfiltered fixed data
-  if (!skip_offsets_filtering &&
-      thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
-    // Compute chunk boundaries
-    auto&& [t_min, t_max] = compute_chunk_min_max(
-        tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
+  if (!validity_only) {
+    // Unfiltered fixed data
+    if (!skip_offsets_filtering &&
+        thread_idx <= tile_chunk_fixed_data.filtered_chunks_.size() - 1) {
+      // Compute chunk boundaries
+      auto&& [t_min, t_max] = compute_chunk_min_max(
+          tile_chunk_fixed_data.chunk_offsets_.size(), num_threads, thread_idx);
 
-    // Reverse the tile filters.
-    RETURN_NOT_OK(fixed_filters.run_reverse(
-        stats_,
-        t,
-        nullptr,
-        tile_chunk_fixed_data,
-        t_min,
-        t_max,
-        concurrency_level,
-        storage_manager_->config()));
-  }
+      // Reverse the tile filters.
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(fixed_filters.run_reverse(
+          stats_,
+          t,
+          nullptr,
+          tile_chunk_fixed_data,
+          t_min,
+          t_max,
+          concurrency_level,
+          storage_manager_->config()));
+    }
 
-  // Prevent processing past the end of chunks in case there are more
-  // threads than chunks.
-  if (var_size &&
-      thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
-    auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
-        tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
-    // Reverse the filters of tile var data
-    RETURN_NOT_OK(var_filters.run_reverse(
-        stats_,
-        t_var,
-        skip_offsets_filtering ? t : nullptr,
-        tile_chunk_var_data,
-        tvar_min,
-        tvar_max,
-        concurrency_level,
-        storage_manager_->config()));
+    // Prevent processing past the end of chunks in case there are more
+    // threads than chunks.
+    if (var_size &&
+        thread_idx <= tile_chunk_var_data.filtered_chunks_.size() - 1) {
+      auto&& [tvar_min, tvar_max] = compute_chunk_min_max(
+          tile_chunk_var_data.chunk_offsets_.size(), num_threads, thread_idx);
+      // Reverse the filters of tile var data
+      stats_->add_counter("tiles_unfiltered", 1);
+      RETURN_NOT_OK(var_filters.run_reverse(
+          stats_,
+          t_var,
+          skip_offsets_filtering ? t : nullptr,
+          tile_chunk_var_data,
+          tvar_min,
+          tvar_max,
+          concurrency_level,
+          storage_manager_->config()));
+    }
   }
 
   // Prevent processing past the end of chunks in case there are more
@@ -993,6 +1044,7 @@ Status ReaderBase::unfilter_tile(
         thread_idx);
 
     // Reverse the tile validity filters.
+    stats_->add_counter("tiles_unfiltered", 1);
     RETURN_NOT_OK(validity_filters.run_reverse(
         stats_,
         t_validity,
@@ -1203,127 +1255,26 @@ void ReaderBase::validate_attribute_order(
     std::vector<uint64_t>& frag_first_array_tile_idx) {
   auto timer_se = stats_->start_timer("validate_attribute_order");
 
-  switch (attribute_type) {
-    case Datatype::INT8:
-      validate_attribute_order<IndexType, int8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT8:
-      validate_attribute_order<IndexType, uint8_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT16:
-      validate_attribute_order<IndexType, int16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT16:
-      validate_attribute_order<IndexType, uint16_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT32:
-      validate_attribute_order<IndexType, int32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT32:
-      validate_attribute_order<IndexType, uint32_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::INT64:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::UINT64:
-      validate_attribute_order<IndexType, uint64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT32:
-      validate_attribute_order<IndexType, float>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::FLOAT64:
-      validate_attribute_order<IndexType, double>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      validate_attribute_order<IndexType, int64_t>(
-          attribute_name,
-          increasing_data,
-          array_non_empty_domain,
-          non_empty_domains,
-          frag_first_array_tile_idx);
-      break;
-    case Datatype::STRING_ASCII:
+  auto g = [&](auto T) {
+    if constexpr (std::is_same_v<decltype(T), char>) {
       validate_attribute_order<IndexType, std::string_view>(
           attribute_name,
           increasing_data,
           array_non_empty_domain,
           non_empty_domains,
           frag_first_array_tile_idx);
-      break;
-    default:
+    } else if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
+      validate_attribute_order<IndexType, decltype(T)>(
+          attribute_name,
+          increasing_data,
+          array_non_empty_domain,
+          non_empty_domains,
+          frag_first_array_tile_idx);
+    } else {
       throw ReaderBaseStatusException("Invalid attribute type");
-  }
+    }
+  };
+  apply_with_type(g, attribute_type);
 }
 
 // Explicit template instantiations

@@ -215,7 +215,7 @@ class GeneralFunctionNode<
       std::is_same_v<decltype(output_items_), std::tuple<>>};
 
   /**
-   * Helper function to deal with tuples.  Applies the same single input single
+   * Helper function to deal with tuples. Applies the same single input single
    * output function to elements of an input tuple to set values of an output
    * tuple.
    *
@@ -236,7 +236,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Helper function to deal with tuples.  A tuple version of simple nodes
+   * Helper function to deal with tuples. A tuple version of simple nodes
    * extract.  Copies items from inputs_ (Sinks) to a tuple of input_items.
    *
    * @note Elements are processed in order from 0 to sizeof(Ts)-1
@@ -258,7 +258,7 @@ class GeneralFunctionNode<
   }
 
   /**
-   * Helper function to deal with tuples.  A tuple version of simple node
+   * Helper function to deal with tuples. A tuple version of simple node
    * inject. Copies items from tuple of output_items to outputs_ (Sources).
    *
    * @note Elements are processed in order from 0 to sizeof(Ts)-1

@@ -61,18 +61,20 @@ std::mutex catch2_macro_mutex;
 namespace tiledb {
 namespace test {
 
-const std::string& get_temp_path() {
-  // Ensure the path has a trailing delimiter.
-  static std::string temp_path =
-      (std::filesystem::temp_directory_path() /
-       ("tiledb_test_" + std::to_string(getpid())) / "")
-          .string();
-
-  return temp_path;
-}
-
 // Command line arguments.
 std::string g_vfs;
+
+void throw_if_setup_failed(capi_return_t rc) {
+  if (rc != TILEDB_OK) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
+
+void throw_if_setup_failed(bool condition) {
+  if (!condition) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
 
 void check_tiledb_error_with(
     tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
@@ -558,7 +560,6 @@ void create_array(
     const std::string& array_name,
     tiledb_encryption_type_t enc_type,
     const char* key,
-    uint32_t key_len,
     tiledb_array_type_t array_type,
     const std::vector<std::string>& dim_names,
     const std::vector<tiledb_datatype_t>& dim_types,
@@ -651,8 +652,6 @@ void create_array(
   rc = tiledb_config_set(config, "sm.encryption_key", key, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len);
   tiledb_ctx_t* ctx_array;
   REQUIRE(tiledb_ctx_alloc(config, &ctx_array) == TILEDB_OK);
   rc = tiledb_array_create(ctx_array, array_name.c_str(), array_schema);
@@ -793,54 +792,43 @@ void create_ctx_and_vfs(
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
+  throw_if_setup_failed(error == nullptr);
   if (s3_supported) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.s3.endpoint_override", "localhost:9999", &error));
+    throw_if_setup_failed(
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.s3.use_virtual_addressing", "false", &error));
+    throw_if_setup_failed(
+        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error));
+    throw_if_setup_failed(error == nullptr);
 #endif
   }
   if (azure_supported) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "http://127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config,
+        "vfs.azure.storage_account_key",
+        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+        "K1SZFPTOtr/KBHBeksoGMGw==",
+        &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config,
+        "vfs.azure.blob_endpoint",
+        "http://127.0.0.1:10000/devstoreaccount1",
+        &error));
   }
-  REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_ctx_alloc(config, ctx));
+  throw_if_setup_failed(ctx != nullptr);
 
   // Create VFS
   *vfs = nullptr;
-  REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_vfs_alloc(*ctx, config, vfs));
+  throw_if_setup_failed(vfs != nullptr);
   tiledb_config_free(&config);
 }
 
@@ -1079,7 +1067,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers) {
@@ -1088,7 +1075,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1122,7 +1108,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* subarray,
     tiledb_layout_t layout,
@@ -1133,7 +1118,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       subarray,
       layout,
@@ -1157,7 +1141,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     tiledb_layout_t layout,
     const QueryBuffers& buffers,
@@ -1167,7 +1150,6 @@ void write_array(
       array_name,
       encryption_type,
       key,
-      key_len,
       timestamp,
       nullptr,
       layout,
@@ -1187,8 +1169,7 @@ void write_array(
       ctx,
       array_name,
       TILEDB_NO_ENCRYPTION,
-      nullptr,
-      0,
+      "",
       timestamp,
       subarray,
       layout,
@@ -1201,7 +1182,6 @@ void write_array(
     const std::string& array_name,
     tiledb_encryption_type_t encryption_type,
     const char* key,
-    uint64_t key_len,
     uint64_t timestamp,
     const void* sub,
     tiledb_layout_t layout,
@@ -1232,8 +1212,6 @@ void write_array(
     REQUIRE(err == nullptr);
     rc = tiledb_array_set_config(ctx, array, cfg);
     REQUIRE(rc == TILEDB_OK);
-    tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-        key_len);
   }
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1850,7 +1828,9 @@ int submit_query_wrapper(
   // 4. Server -> Client : Send query response
   std::vector<uint8_t> serialized2;
   rc = serialize_query(server_ctx, server_deser_query, &serialized2, 0);
-  REQUIRE(rc == TILEDB_OK);
+  if (rc != TILEDB_OK) {
+    return rc;
+  }
 
   if (!refactored_query_v2) {
     // Close array and clean up
@@ -1950,13 +1930,31 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers) {
   int rc = 0;
-  const auto buffer_names = query->query_->buffer_names();
+  auto buffer_names = query->query_->buffer_names();
+  const auto aggregate_names = query->query_->aggregate_buffer_names();
+  buffer_names.insert(
+      buffer_names.end(), aggregate_names.begin(), aggregate_names.end());
+
   for (uint64_t i = 0; i < buffer_names.size(); i++) {
     const auto& name = buffer_names[i];
     const auto& buff = query->query_->buffer(name);
     const auto& schema = query->query_->array_schema();
-    auto var_size = schema.var_size(name);
-    auto nullable = schema.is_nullable(name);
+
+    // TODO: This is yet another instance where there needs to be a common
+    // mechanism for reporting the common properties of a field.
+    // Refactor to use query_field_t.
+    bool var_size = false;
+    bool nullable = false;
+    if (query->query_->is_aggregate(name)) {
+      var_size =
+          query->query_->get_aggregate(name).value()->aggregation_var_sized();
+      nullable =
+          query->query_->get_aggregate(name).value()->aggregation_nullable();
+    } else {
+      var_size = schema.var_size(name);
+      nullable = schema.is_nullable(name);
+    }
+
     if (var_size && buff.buffer_var_ == nullptr) {
       // Variable-sized buffer
       query_buffers.attr_or_dim_data.emplace_back(*buff.buffer_var_size_);

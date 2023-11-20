@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,14 +34,14 @@
 #define TILEDB_GENERATE_URI_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/filesystem/uri.h"
 
 using namespace tiledb::common;
+using namespace tiledb::sm;
 
 namespace tiledb::storage_format {
 
 /**
- * Generates a new URI.
- *
  * Generate a new URI in the form `__t1_t2_uuid_v`, where `t1` is the starting
  * timestamp, `t2` is the ending timestamp,  and `v` is the current format
  * version. For instance,
@@ -55,7 +55,7 @@ namespace tiledb::storage_format {
  *
  * @return The new URI.
  */
-std::string generate_uri(
+std::string generate_timestamped_name(
     uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version);
 
 /**
@@ -73,8 +73,21 @@ std::string generate_uri(
  *
  * @return new fragment name.
  */
-std::string generate_fragment_name(
+std::string generate_timestamped_name(
     uint64_t timestamp, format_version_t format_version);
+
+/**
+ * Generates a consolidated fragment name in the form
+ * `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
+ *
+ * @param first The first URI.
+ * @param last The last URI.
+ * @param format_version The write version.
+ *
+ * @return consolidated fragment name.
+ */
+std::string generate_consolidated_fragment_name(
+    const URI& first, const URI& last, format_version_t format_version);
 
 }  // namespace tiledb::storage_format
 

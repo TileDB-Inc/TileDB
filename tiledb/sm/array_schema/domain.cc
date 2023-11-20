@@ -201,28 +201,35 @@ uint64_t Domain::cell_num_per_tile() const {
 
 template <>
 int Domain::cell_order_cmp_impl<char>(
-    const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b) {
-  // Must be var-sized
-  assert(dim->var_size());
-  (void)dim;
-
-  auto var_a{a.value_as<const char[]>()};
-  auto var_b{b.value_as<const char[]>()};
+    const Dimension*, const UntypedDatumView a, const UntypedDatumView b) {
+  auto var_a = reinterpret_cast<const char*>(a.content());
+  auto var_b = reinterpret_cast<const char*>(b.content());
   auto size_a{a.size()};
   auto size_b{b.size()};
   auto size = std::min(size_a, size_b);
 
-  // Check common prefix of size `size`
-  for (uint64_t i = 0; i < size; ++i) {
-    if (var_a[i] < var_b[i])
+  if (size != 0) {
+    size_t i = 0;
+    while (var_a[i] == var_b[i]) {
+      if (i == size - 1) {
+        break;
+      }
+      ++i;
+    }
+
+    if (var_a[i] < var_b[i]) {
       return -1;
-    if (var_a[i] > var_b[i])
+    }
+
+    if (var_a[i] > var_b[i]) {
       return 1;
+    }
   }
 
   // Equal common prefix, so equal if they have the same size
-  if (size_a == size_b)
+  if (size_a == size_b) {
     return 0;
+  }
 
   // Equal common prefix, so the smaller size wins
   return (size_a < size_b) ? -1 : 1;
@@ -230,10 +237,7 @@ int Domain::cell_order_cmp_impl<char>(
 
 template <class T>
 int Domain::cell_order_cmp_impl(
-    const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b) {
-  assert(!dim->var_size());
-  (void)dim;
-
+    const Dimension*, const UntypedDatumView a, const UntypedDatumView b) {
   auto ca = a.template value_as<T>();
   auto cb = b.template value_as<T>();
   if (ca < cb)
@@ -441,7 +445,6 @@ void Domain::get_end_of_cell_slab(
   } else {
     for (unsigned d = 0; d < dim_num_; ++d)
       end[d] = start[d];
-    (void)subarray;
   }
 }
 

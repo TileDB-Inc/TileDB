@@ -1458,7 +1458,7 @@ void test_apply_tile<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -1468,9 +1468,8 @@ void test_apply_tile<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -1479,8 +1478,8 @@ void test_apply_tile<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators<char*>(
@@ -1506,7 +1505,7 @@ void test_apply_tile(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators<T>(
       field_name,
@@ -1596,8 +1595,6 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  */
 template <typename T>
 void test_apply(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
@@ -1772,7 +1769,8 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -1785,9 +1783,8 @@ TEST_CASE(
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
     offsets[cells] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -1796,8 +1793,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -2172,7 +2169,7 @@ void test_apply_tile_dense<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -2182,9 +2179,8 @@ void test_apply_tile_dense<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2193,8 +2189,8 @@ void test_apply_tile_dense<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_dense<char*>(
@@ -2220,7 +2216,7 @@ void test_apply_tile_dense(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_dense<T>(
       field_name,
@@ -2489,7 +2485,8 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -2502,9 +2499,8 @@ TEST_CASE(
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
     offsets[cells] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2513,8 +2509,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -2872,7 +2868,7 @@ void test_apply_tile_sparse<char*>(
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -2882,9 +2878,8 @@ void test_apply_tile_sparse<char*>(
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -2893,8 +2888,8 @@ void test_apply_tile_sparse<char*>(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_sparse<char*>(
@@ -2920,7 +2915,7 @@ void test_apply_tile_sparse(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_sparse<T>(
       field_name,
@@ -3840,7 +3835,7 @@ TEST_CASE(
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4124,12 +4119,12 @@ TEST_CASE(
   Tile* const tile = &tile_tuple->var_tile();
 
   std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40, 44};
-  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
 
   // Write the tile offsets.
   Tile* const tile_offsets = &tile_tuple->fixed_tile();
-  REQUIRE(tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-              .ok());
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4535,12 +4530,12 @@ TEST_CASE(
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
 
-  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
 
   // Write the tile offsets.
   Tile* const tile_offsets = &tile_tuple->fixed_tile();
-  REQUIRE(tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-              .ok());
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4800,15 +4795,15 @@ TEST_CASE(
   // Populate the data tile.
   std::vector<float> values = {
       3.4f, 1.3f, 2.2f, 4.5f, 2.8f, 2.1f, 1.7f, 3.3f, 1.9f, 4.2f};
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(float)));
 
   Tile* const tile_validity = &tile_tuple->validity_tile();
   std::vector<uint8_t> validity(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     validity[i] = i % 2;
   }
-  REQUIRE(
-      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
 
   std::vector<TestParams> tp_vec;
   populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4909,7 +4904,8 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
@@ -4922,9 +4918,8 @@ TEST_CASE(
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
     offsets[cells] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t))
-            .ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
@@ -4933,8 +4928,8 @@ TEST_CASE(
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value

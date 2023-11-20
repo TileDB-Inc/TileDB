@@ -126,10 +126,6 @@ if (TILEDB_CMAKE_IDE)
   set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
 
-# When building static TileDB, we also need to install any static dependencies
-# built as external projects.
-set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
-
 # Set main TileDB Source
 set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
@@ -363,6 +359,8 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
@@ -568,15 +566,13 @@ if (TILEDB_TESTS)
   # C API support
   add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
   # C API basics
-  add_dependencies(tests unit_capi_error unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_config unit_capi_context)
   add_dependencies(tests unit_capi_array)
   add_dependencies(tests unit_capi_buffer)
   add_dependencies(tests unit_capi_buffer_list)
   add_dependencies(tests unit_capi_data_order)
   add_dependencies(tests unit_capi_datatype)
   add_dependencies(tests unit_capi_filesystem)
-  add_dependencies(tests unit_capi_object_type)
-  add_dependencies(tests unit_capi_object_walk_order)
   add_dependencies(tests unit_capi_query_type)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema

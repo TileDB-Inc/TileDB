@@ -32,11 +32,6 @@
 
 #ifdef HAVE_GCS
 
-#include <google/cloud/status.h>
-#include <google/cloud/storage/client_options.h>
-#include "google/cloud/storage/oauth2/credentials.h"
-#include "google/cloud/storage/oauth2/google_credentials.h"
-
 #include <sstream>
 #include <unordered_set>
 
@@ -108,8 +103,14 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.request_timeout_ms", &request_timeout_ms_, &found));
   assert(found);
+  uint64_t max_direct_upload_size;
+  RETURN_NOT_OK(config.get<uint64_t>(
+      "vfs.gcs.max_direct_upload_size", &max_direct_upload_size, &found));
+  assert(found);
 
-  write_cache_max_size_ = max_parallel_ops_ * multi_part_part_size_;
+  write_cache_max_size_ = use_multi_part_upload_ ?
+                              max_parallel_ops_ * multi_part_part_size_ :
+                              max_direct_upload_size;
 
   state_ = State::INITIALIZED;
   return Status::Ok();
@@ -697,8 +698,9 @@ Status GCS::write(
   if (!use_multi_part_upload_) {
     if (nbytes_filled != length) {
       std::stringstream errmsg;
-      errmsg << "Direct write failed! " << nbytes_filled
-             << " bytes written to buffer, " << length << " bytes requested.";
+      errmsg << "Cannot write more than " << write_cache_max_size_
+             << " bytes without multi-part uploads. This limit can be "
+                "configured with the 'vfs.gcs.max_direct_upload_size' option.";
       return LOG_STATUS(Status_GCSError(errmsg.str()));
     } else {
       return Status::Ok();
@@ -932,7 +934,7 @@ Status GCS::upload_part(
     const std::string& object_part_path,
     const void* const buffer,
     const uint64_t length) {
-  std::string write_buffer(
+  absl::string_view write_buffer(
       static_cast<const char*>(buffer), static_cast<size_t>(length));
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
@@ -1102,14 +1104,18 @@ Status GCS::flush_object_direct(const URI& uri) {
   std::string object_path;
   RETURN_NOT_OK(parse_gcs_uri(uri, &bucket_name, &object_path));
 
-  std::string write_buffer(
-      static_cast<const char*>(write_cache_buffer->data()),
-      write_cache_buffer->size());
+  Buffer buffer_moved;
 
   // Protect 'write_cache_map_' from multiple writers.
   std::unique_lock<std::mutex> cache_lock(write_cache_map_lock_);
+  // Erasing the buffer from the map will free its memory.
+  // We have to move it to a local variable first.
+  buffer_moved = std::move(*write_cache_buffer);
   write_cache_map_.erase(uri.to_string());
   cache_lock.unlock();
+
+  absl::string_view write_buffer(
+      static_cast<const char*>(buffer_moved.data()), buffer_moved.size());
 
   google::cloud::StatusOr<google::cloud::storage::ObjectMetadata>
       object_metadata = client_->InsertObject(

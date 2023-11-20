@@ -309,6 +309,16 @@ class Azure {
    */
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
+  /**
+   * Returns a reference to the Azure blob service client.
+   *
+   * Used for testing. Calling code should include the Azure SDK headers to make
+   * use of the BlobServiceClient.
+   */
+  const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
+    return *client_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */

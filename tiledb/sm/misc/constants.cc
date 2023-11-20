@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -676,7 +676,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 20;
+const format_version_t base_format_version = 21;
 
 /**
  * The TileDB serialization format version number.
@@ -700,6 +700,9 @@ const format_version_t deletes_min_version = 16;
 
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
+
+/** The lowest version supported for tile min/max/sum/null count data. */
+const format_version_t tile_metadata_min_version = 11;
 
 /** The lowest version supported format version for enumerations. */
 const format_version_t enumerations_min_format_version = 20;
@@ -730,6 +733,9 @@ const unsigned int gcs_attempt_sleep_ms = 1000;
 
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";
+
+/** The config key prefix for S3 custom headers. */
+const std::string s3_header_prefix = "vfs.s3.custom_headers.";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const std::string special_name_prefix = "__";

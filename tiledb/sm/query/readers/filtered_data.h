@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
@@ -152,9 +153,10 @@ class FilteredData {
    * @param result_tiles Sorted list (per fragment/tile index) of result tiles.
    * Only the fragment index and tile index of each result tiles is used here.
    * Nothing is mutated inside of the vector.
-   * @param name Name of the attribute.
-   * @param var_sized Is the attribute var sized?
-   * @param nullable Is the attribute nullable?
+   * @param name Name of the field.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param validity_only Is the field read for validity only?
    * @param storage_manager Storage manager.
    * @param read_tasks Read tasks to queue new tasks on for new data blocks.
    */
@@ -168,6 +170,7 @@ class FilteredData {
       const std::string& name,
       const bool var_sized,
       const bool nullable,
+      const bool validity_only,
       StorageManager* storage_manager,
       std::vector<ThreadPool::Task>& read_tasks)
       : name_(name)
@@ -179,6 +182,8 @@ class FilteredData {
     if (result_tiles.size() == 0) {
       return;
     }
+
+    uint64_t tiles_allocated = 0;
 
     // Store data on the datablock in progress for fixed, var and nullable data.
     std::optional<unsigned> current_frag_idx{nullopt};
@@ -198,18 +203,22 @@ class FilteredData {
 
       // Make new blocks, if required as we go for fixed, var and nullable data.
       auto fragment{fragment_metadata[rt->frag_idx()].get()};
-      make_new_block_if_required(
-          fragment,
-          min_batch_size,
-          max_batch_size,
-          min_batch_gap,
-          current_frag_idx,
-          current_fixed_offset,
-          current_fixed_size,
-          rt,
-          TileType::FIXED);
+      if (!validity_only) {
+        tiles_allocated++;
+        make_new_block_if_required(
+            fragment,
+            min_batch_size,
+            max_batch_size,
+            min_batch_gap,
+            current_frag_idx,
+            current_fixed_offset,
+            current_fixed_size,
+            rt,
+            TileType::FIXED);
+      }
 
-      if (var_sized) {
+      if (var_sized && !validity_only) {
+        tiles_allocated++;
         make_new_block_if_required(
             fragment,
             min_batch_size,
@@ -223,6 +232,7 @@ class FilteredData {
       }
 
       if (nullable) {
+        tiles_allocated++;
         make_new_block_if_required(
             fragment,
             min_batch_size,
@@ -256,6 +266,8 @@ class FilteredData {
           *current_frag_idx, current_nullable_offset, current_nullable_size);
       queue_last_block_for_read(TileType::NULLABLE);
     }
+
+    reader.stats()->add_counter("tiles_allocated", tiles_allocated);
 
     current_fixed_data_block_ = fixed_data_blocks_.begin();
     current_var_data_block_ = var_data_blocks_.begin();
@@ -439,21 +451,15 @@ class FilteredData {
   inline URI file_uri(const FragmentMetadata* fragment, const TileType type) {
     switch (type) {
       case TileType::FIXED: {
-        auto&& [status, uri]{fragment->uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->uri(name_);
       }
 
       case TileType::VAR: {
-        auto&& [status, uri]{fragment->var_uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->var_uri(name_);
       }
 
       case TileType::NULLABLE: {
-        auto&& [status, uri]{fragment->validity_uri(name_)};
-        throw_if_not_ok(status);
-        return std::move(*uri);
+        return fragment->validity_uri(name_);
       }
 
       default:

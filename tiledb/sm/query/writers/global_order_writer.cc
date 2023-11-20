@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,8 +58,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GlobalOrderWriterStatusException : public StatusException {
  public:
@@ -192,14 +191,13 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
   // Used in serialization when FragmentMetadata is built from ground up
-  global_write_state_->frag_meta_->set_storage_manager(storage_manager_);
+  global_write_state_->frag_meta_->set_context_resources(
+      &storage_manager_->resources());
 
   return Status::Ok();
 }
 
 Status GlobalOrderWriter::init_global_write_state() {
-  auto uri = global_write_state_->frag_meta_->fragment_uri();
-
   // Initialize global write state for attribute and coordinates
   for (const auto& it : buffers_) {
     // Initialize last tiles
@@ -253,36 +251,31 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
   // TODO: to be refactored, there are multiple places in writers where
   // we iterate over the internal fragment files manually
   for (const auto& name : buffer_names()) {
-    auto&& [st1, uri] = meta->uri(name);
-    RETURN_NOT_OK_TUPLE(st1, {});
+    auto uri = meta->uri(name);
 
-    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(*uri);
+    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(uri);
     RETURN_NOT_OK_TUPLE(st2, {});
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
     if (!state.has_value()) {
       return {Status::Ok(), {}};
     }
-    result[uri->remove_trailing_slash().last_path_part()] = std::move(*state);
+    result[uri.remove_trailing_slash().last_path_part()] = std::move(*state);
 
     if (array_schema_.var_size(name)) {
-      auto&& [status, var_uri] = meta->var_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
+      auto var_uri = meta->var_uri(name);
       auto&& [st, var_state] =
-          storage_manager_->vfs()->multipart_upload_state(*var_uri);
+          storage_manager_->vfs()->multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[var_uri->remove_trailing_slash().last_path_part()] =
+      result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
     }
     if (array_schema_.is_nullable(name)) {
-      auto&& [status, validity_uri] = meta->validity_uri(name);
-      RETURN_NOT_OK_TUPLE(status, {});
-
+      auto validity_uri = meta->validity_uri(name);
       auto&& [st, val_state] =
-          storage_manager_->vfs()->multipart_upload_state(*validity_uri);
+          storage_manager_->vfs()->multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
-      result[validity_uri->remove_trailing_slash().last_path_part()] =
+      result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
     }
   }
@@ -518,9 +511,13 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
 void GlobalOrderWriter::clean_up() {
   if (global_write_state_ != nullptr) {
-    auto meta = global_write_state_->frag_meta_;
-    const auto& uri = meta->fragment_uri();
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    const auto& uri = global_write_state_->frag_meta_->fragment_uri();
+
+    // Cleanup the fragment we are currently writing. There is a chance that the
+    // URI is empty if creating the first fragment had failed.
+    if (!uri.empty()) {
+      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+    }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
@@ -801,9 +798,17 @@ Status GlobalOrderWriter::global_write() {
     // Compute the number of tiles that will fit in this fragment.
     auto num = num_tiles_to_write(idx, tile_num, tiles);
 
+    // If we're resuming a fragment write and the first tile doesn't fit into
+    // the previous fragment, we need to start a new fragment and recalculate
+    // the number of tiles to write.
+    if (current_fragment_size_ > 0 && num == 0) {
+      RETURN_CANCEL_OR_ERROR(start_new_fragment());
+      num = num_tiles_to_write(idx, tile_num, tiles);
+    }
+
     // Set new number of tiles in the fragment metadata
     auto new_num_tiles = frag_meta->tile_index_base() + num;
-    throw_if_not_ok(frag_meta->set_num_tiles(new_num_tiles));
+    frag_meta->set_num_tiles(new_num_tiles);
 
     if (new_num_tiles == 0) {
       throw GlobalOrderWriterStatusException(
@@ -841,7 +846,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 
   // Reserve space for the last tile in the fragment metadata
   auto meta = global_write_state_->frag_meta_;
-  throw_if_not_ok(meta->set_num_tiles(meta->tile_index_base() + 1));
+  meta->set_num_tiles(meta->tile_index_base() + 1);
 
   // Filter last tiles
   RETURN_CANCEL_OR_ERROR(filter_last_tiles(cell_num_last_tiles));
@@ -929,15 +934,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (last_tile_cell_idx != 0) {
     if (coord_dups.empty()) {
       do {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++cell_idx;
         ++last_tile_cell_idx;
@@ -945,15 +950,15 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     } else {
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(last_tile.fixed_tile().write(
+          last_tile.fixed_tile().write(
               buffer + cell_idx * cell_size,
               last_tile_cell_idx * cell_size,
-              cell_size));
+              cell_size);
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -992,14 +997,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     // Write all remaining cells one by one
     if (coord_dups.empty()) {
       for (uint64_t i = 0; i < cell_num_to_write;) {
-        RETURN_NOT_OK(tile_it->fixed_tile().write(
-            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile));
+        tile_it->fixed_tile().write(
+            buffer + cell_idx * cell_size, 0, cell_size * cell_num_per_tile);
 
         if (nullable) {
-          RETURN_NOT_OK(tile_it->validity_tile().write(
+          tile_it->validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               0,
-              constants::cell_validity_size * cell_num_per_tile));
+              constants::cell_validity_size * cell_num_per_tile);
         }
 
         cell_idx += cell_num_per_tile;
@@ -1015,14 +1020,14 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
         }
 
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
-          RETURN_NOT_OK(tile_it->fixed_tile().write(
-              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size));
+          tile_it->fixed_tile().write(
+              buffer + cell_idx * cell_size, cell_idx * cell_size, cell_size);
 
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx * constants::cell_validity_size,
                 cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       }
@@ -1033,29 +1038,29 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   last_tile_cell_idx = 0;
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
-      RETURN_NOT_OK(last_tile.fixed_tile().write(
+      last_tile.fixed_tile().write(
           buffer + cell_idx * cell_size,
           last_tile_cell_idx * cell_size,
-          cell_size));
+          cell_size);
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx * constants::cell_validity_size,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
-        RETURN_NOT_OK(last_tile.fixed_tile().write(
+        last_tile.fixed_tile().write(
             buffer + cell_idx * cell_size,
             last_tile_cell_idx * cell_size,
-            cell_size));
+            cell_size);
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx * constants::cell_validity_size,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
         ++last_tile_cell_idx;
       }
@@ -1102,10 +1107,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     if (coord_dups.empty()) {
       do {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1115,16 +1120,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++cell_idx;
@@ -1134,10 +1139,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
       do {
         if (coord_dups.find(cell_idx) == coord_dups.end()) {
           // Write offset.
-          RETURN_NOT_OK(last_tile.offset_tile().write(
+          last_tile.offset_tile().write(
               &last_var_offset,
               last_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1148,16 +1153,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(last_tile.var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          last_tile.var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(last_tile.validity_tile().write(
+            last_tile.validity_tile().write(
                 buffer_validity + cell_idx,
                 last_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
           ++last_tile_cell_idx;
         }
@@ -1212,10 +1217,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
           }
 
           // Write offset.
-          RETURN_NOT_OK(tile_it->offset_tile().write(
+          tile_it->offset_tile().write(
               &last_var_offset,
               current_tile_cell_idx * sizeof(last_var_offset),
-              sizeof(last_var_offset)));
+              sizeof(last_var_offset));
 
           // Write var-sized value(s).
           auto buff_offset =
@@ -1226,16 +1231,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                   prepare_buffer_offset(
                       buffer, cell_idx + 1, attr_datatype_size) -
                       buff_offset;
-          RETURN_NOT_OK(tile_it->var_tile().write_var(
-              buffer_var + buff_offset, last_var_offset, var_size));
+          tile_it->var_tile().write_var(
+              buffer_var + buff_offset, last_var_offset, var_size);
           last_var_offset += var_size;
 
           // Write validity value(s).
           if (nullable) {
-            RETURN_NOT_OK(tile_it->validity_tile().write(
+            tile_it->validity_tile().write(
                 buffer_validity + cell_idx,
                 current_tile_cell_idx * constants::cell_validity_size,
-                constants::cell_validity_size));
+                constants::cell_validity_size);
           }
         }
       } else {
@@ -1249,10 +1254,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
             }
 
             // Write offset.
-            RETURN_NOT_OK(tile_it->offset_tile().write(
+            tile_it->offset_tile().write(
                 &last_var_offset,
                 current_tile_cell_idx * sizeof(last_var_offset),
-                sizeof(last_var_offset)));
+                sizeof(last_var_offset));
 
             // Write var-sized value(s).
             auto buff_offset =
@@ -1263,16 +1268,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                     prepare_buffer_offset(
                         buffer, cell_idx + 1, attr_datatype_size) -
                         buff_offset;
-            RETURN_NOT_OK(tile_it->var_tile().write_var(
-                buffer_var + buff_offset, last_var_offset, var_size));
+            tile_it->var_tile().write_var(
+                buffer_var + buff_offset, last_var_offset, var_size);
             last_var_offset += var_size;
 
             // Write validity value(s).
             if (nullable) {
-              RETURN_NOT_OK(tile_it->validity_tile().write(
+              tile_it->validity_tile().write(
                   buffer_validity + cell_idx,
                   current_tile_cell_idx * constants::cell_validity_size,
-                  constants::cell_validity_size));
+                  constants::cell_validity_size);
             }
 
             ++current_tile_cell_idx;
@@ -1290,10 +1295,10 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (coord_dups.empty()) {
     for (; cell_idx < cell_num; ++cell_idx, ++last_tile_cell_idx) {
       // Write offset.
-      RETURN_NOT_OK(last_tile.offset_tile().write(
+      last_tile.offset_tile().write(
           &last_var_offset,
           last_tile_cell_idx * sizeof(last_var_offset),
-          sizeof(last_var_offset)));
+          sizeof(last_var_offset));
 
       // Write var-sized value(s).
       auto buff_offset =
@@ -1303,26 +1308,26 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
               *buffer_var_size - buff_offset :
               prepare_buffer_offset(buffer, cell_idx + 1, attr_datatype_size) -
                   buff_offset;
-      RETURN_NOT_OK(last_tile.var_tile().write_var(
-          buffer_var + buff_offset, last_var_offset, var_size));
+      last_tile.var_tile().write_var(
+          buffer_var + buff_offset, last_var_offset, var_size);
       last_var_offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        RETURN_NOT_OK(last_tile.validity_tile().write(
+        last_tile.validity_tile().write(
             buffer_validity + cell_idx,
             last_tile_cell_idx * constants::cell_validity_size,
-            constants::cell_validity_size));
+            constants::cell_validity_size);
       }
     }
   } else {
     for (; cell_idx < cell_num; ++cell_idx) {
       if (coord_dups.find(cell_idx) == coord_dups.end()) {
         // Write offset.
-        RETURN_NOT_OK(last_tile.offset_tile().write(
+        last_tile.offset_tile().write(
             &last_var_offset,
             last_tile_cell_idx * sizeof(last_var_offset),
-            sizeof(last_var_offset)));
+            sizeof(last_var_offset));
 
         // Write var-sized value(s).
         auto buff_offset =
@@ -1332,16 +1337,16 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
                                 prepare_buffer_offset(
                                     buffer, cell_idx + 1, attr_datatype_size) -
                                     buff_offset;
-        RETURN_NOT_OK(last_tile.var_tile().write_var(
-            buffer_var + buff_offset, last_var_offset, var_size));
+        last_tile.var_tile().write_var(
+            buffer_var + buff_offset, last_var_offset, var_size);
         last_var_offset += var_size;
 
         // Write validity value(s).
         if (nullable) {
-          RETURN_NOT_OK(last_tile.validity_tile().write(
+          last_tile.validity_tile().write(
               buffer_validity + cell_idx,
               last_tile_cell_idx * constants::cell_validity_size,
-              constants::cell_validity_size));
+              constants::cell_validity_size);
         }
 
         ++last_tile_cell_idx;
@@ -1432,7 +1437,7 @@ Status GlobalOrderWriter::start_new_fragment() {
   const auto write_version = array_->array_schema_latest().write_version();
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
-  auto new_fragment_str = storage_format::generate_uri(
+  auto new_fragment_str = storage_format::generate_timestamped_name(
       fragment_timestamp_range_.first,
       fragment_timestamp_range_.second,
       write_version);
@@ -1446,5 +1451,4 @@ Status GlobalOrderWriter::start_new_fragment() {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

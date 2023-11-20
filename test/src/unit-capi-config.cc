@@ -304,9 +304,9 @@ void check_save_to_file() {
   ss << "vfs.azure.max_retry_delay_ms 60000\n";
   ss << "vfs.azure.retry_delay_ms 800\n";
   ss << "vfs.azure.use_block_list_upload true\n";
-  ss << "vfs.file.max_parallel_ops 1\n";
   ss << "vfs.file.posix_directory_permissions 755\n";
   ss << "vfs.file.posix_file_permissions 644\n";
+  ss << "vfs.gcs.max_direct_upload_size 10737418240\n";
   ss << "vfs.gcs.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
   ss << "vfs.gcs.multi_part_size 5242880\n";
@@ -684,6 +684,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.min_parallel_size"] = "10485760";
   all_param_values["vfs.read_ahead_size"] = "102400";
   all_param_values["vfs.read_ahead_cache_size"] = "10485760";
+  all_param_values["vfs.read_logging_mode"] = "";
   all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
@@ -691,6 +692,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.gcs.multi_part_size"] = "5242880";
   all_param_values["vfs.gcs.use_multi_part_upload"] = "true";
   all_param_values["vfs.gcs.request_timeout_ms"] = "3000";
+  all_param_values["vfs.gcs.max_direct_upload_size"] = "10737418240";
   all_param_values["vfs.azure.storage_account_name"] = "";
   all_param_values["vfs.azure.storage_account_key"] = "";
   all_param_values["vfs.azure.storage_sas_token"] = "";
@@ -704,7 +706,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.azure.max_retry_delay_ms"] = "60000";
   all_param_values["vfs.file.posix_file_permissions"] = "644";
   all_param_values["vfs.file.posix_directory_permissions"] = "755";
-  all_param_values["vfs.file.max_parallel_ops"] = "1";
   all_param_values["vfs.s3.scheme"] = "https";
   all_param_values["vfs.s3.region"] = "us-east-1";
   all_param_values["vfs.s3.aws_access_key_id"] = "";
@@ -752,6 +753,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["min_parallel_size"] = "10485760";
   vfs_param_values["read_ahead_size"] = "102400";
   vfs_param_values["read_ahead_cache_size"] = "10485760";
+  vfs_param_values["read_logging_mode"] = "";
   vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =
@@ -759,6 +761,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["gcs.multi_part_size"] = "5242880";
   vfs_param_values["gcs.use_multi_part_upload"] = "true";
   vfs_param_values["gcs.request_timeout_ms"] = "3000";
+  vfs_param_values["gcs.max_direct_upload_size"] = "10737418240";
   vfs_param_values["azure.storage_account_name"] = "";
   vfs_param_values["azure.storage_account_key"] = "";
   vfs_param_values["azure.storage_sas_token"] = "";
@@ -772,7 +775,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["azure.max_retry_delay_ms"] = "60000";
   vfs_param_values["file.posix_file_permissions"] = "644";
   vfs_param_values["file.posix_directory_permissions"] = "755";
-  vfs_param_values["file.max_parallel_ops"] = "1";
   vfs_param_values["s3.scheme"] = "https";
   vfs_param_values["s3.region"] = "us-east-1";
   vfs_param_values["s3.aws_access_key_id"] = "";
@@ -821,6 +823,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   gcs_param_values["multi_part_size"] = "5242880";
   gcs_param_values["use_multi_part_upload"] = "true";
   gcs_param_values["request_timeout_ms"] = "3000";
+  gcs_param_values["max_direct_upload_size"] = "10737418240";
 
   std::map<std::string, std::string> azure_param_values;
   azure_param_values["storage_account_name"] = "";

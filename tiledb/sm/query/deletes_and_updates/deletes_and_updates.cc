@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,8 +41,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class DeleteAndUpdateStatusException : public StatusException {
  public:
@@ -139,16 +138,15 @@ Status DeletesAndUpdates::dowork() {
   uint64_t timestamp = array_->timestamp_end_opened_at();
   auto write_version = array_->array_schema_latest().write_version();
   auto new_fragment_str =
-      storage_format::generate_fragment_name(timestamp, write_version);
+      storage_format::generate_timestamped_name(timestamp, write_version);
 
   // Check that the delete or update isn't in the middle of a fragment
   // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
-    uint32_t version;
     auto name = uri.remove_trailing_slash().last_path_part();
-    RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-    if (version < constants::consolidation_with_timestamps_min_version) {
+    auto format_version = utils::parse::get_fragment_version(name);
+    if (format_version < constants::consolidation_with_timestamps_min_version) {
       std::pair<uint64_t, uint64_t> fragment_timestamp_range;
       RETURN_NOT_OK(
           utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
@@ -192,5 +190,4 @@ std::string DeletesAndUpdates::name() {
   return "DeletesAndUpdates";
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

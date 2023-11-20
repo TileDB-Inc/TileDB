@@ -70,9 +70,8 @@ TEST_CASE(
   std::string value_3 = "strmetadata";
   uint32_t value_3_size = static_cast<uint32_t>(value_3.size());
 
-  CHECK(metadata_to_serialize1
-            .put(key_1.c_str(), Datatype::INT32, 2, value_1_vector.data())
-            .ok());
+  metadata_to_serialize1.put(
+      key_1.c_str(), Datatype::INT32, 2, value_1_vector.data());
 
   SizeComputationSerializer size_computation_serializer1;
   metadata_to_serialize1.serialize(size_computation_serializer1);
@@ -82,9 +81,7 @@ TEST_CASE(
   Serializer serializer1(tile1.data(), tile1.size());
   metadata_to_serialize1.serialize(serializer1);
 
-  CHECK(
-      metadata_to_serialize2.put(key_2.c_str(), Datatype::FLOAT64, 1, &value_2)
-          .ok());
+  metadata_to_serialize2.put(key_2.c_str(), Datatype::FLOAT64, 1, &value_2);
 
   SizeComputationSerializer size_computation_serializer2;
   metadata_to_serialize2.serialize(size_computation_serializer2);
@@ -94,13 +91,8 @@ TEST_CASE(
   Serializer serializer2(tile2.data(), tile2.size());
   metadata_to_serialize2.serialize(serializer2);
 
-  CHECK(metadata_to_serialize3
-            .put(
-                key_3.c_str(),
-                Datatype::STRING_ASCII,
-                value_3_size,
-                value_3.data())
-            .ok());
+  metadata_to_serialize3.put(
+      key_3.c_str(), Datatype::STRING_ASCII, value_3_size, value_3.data());
 
   SizeComputationSerializer size_computation_serializer3;
   metadata_to_serialize3.serialize(size_computation_serializer3);
@@ -151,7 +143,7 @@ TEST_CASE(
 
   // Read key_1 metadata
   const int32_t* v_1;
-  CHECK(meta.get("key1", &type, &v_num, (const void**)(&v_1)).ok());
+  meta.get("key1", &type, &v_num, (const void**)(&v_1));
   CHECK(type == Datatype::INT32);
   CHECK(v_num == (uint32_t)(value_1_vector.size()));
   CHECK(*(v_1) == 100);
@@ -159,14 +151,14 @@ TEST_CASE(
 
   // Read key_2 metadata
   const double* v_2;
-  CHECK(meta.get("key2", &type, &v_num, (const void**)(&v_2)).ok());
+  meta.get("key2", &type, &v_num, (const void**)(&v_2));
   CHECK(type == Datatype::FLOAT64);
   CHECK(v_num == value_2_size);
   CHECK(*(v_2) == value_2);
 
   // Read key_3 metadata
   const char* v_3;
-  CHECK(meta.get("key3", &type, &v_num, (const void**)(&v_3)).ok());
+  meta.get("key3", &type, &v_num, (const void**)(&v_3));
   CHECK(type == Datatype::STRING_ASCII);
   CHECK(v_num == value_3_size);
   CHECK(std::string(v_3, value_3_size) == value_3);

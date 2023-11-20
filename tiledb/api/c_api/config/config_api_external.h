@@ -317,16 +317,29 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.min_batch_gap` <br>
  *    The minimum number of bytes between two VFS read batches.<br>
  *    **Default**: 500KB
+ * - `vfs.read_logging_mode` <br>
+ *    Log read operations at varying levels of verbosity.<br>
+ *   **Default: ""**
+ *    Possible values:<br>
+ *    <ul>
+ *     <li><pre>""</pre> An empty string disables read logging.</li>
+ *     <li><pre>"fragments"</pre> Log each fragment read.</li>
+ *     <li><pre>"fragment_files"</pre> Log each individual fragment file
+ *         read.</li>
+ *     <li><pre>"all_files"</pre> Log all files read.</li>
+ *     <li><pre>"all_reads"</pre> Log all files with offset and length
+ *         parameters.</li>
+ *     <li><pre>"all_reads_always"</pre> Log all files with offset and length
+ *         parameters on every read, not just the first read. On large arrays
+ *         the read cache may get large so this trades of RAM usage vs
+ *         increased log verbosity.</li>
+ *   </ul>
  * - `vfs.file.posix_file_permissions` <br>
  *    Permissions to use for posix file system with file creation.<br>
  *    **Default**: 644
  * - `vfs.file.posix_directory_permissions` <br>
  *    Permissions to use for posix file system with directory creation.<br>
  *    **Default**: 755
- * - `vfs.file.max_parallel_ops` <br>
- *    The maximum number of parallel operations on objects with `file:///`
- *    URIs. <br>
- *    **Default**: `1`
  * - `vfs.azure.storage_account_name` <br>
  *    Set the name of the Azure Storage account to use. <br>
  *    **Default**: ""
@@ -387,6 +400,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.gcs.request_timeout_ms` <br>
  *    The maximum amount of time to retry network requests to GCS. <br>
  *    **Default**: "3000"
+ * - `vfs.gcs.max_direct_upload_size` <br>
+ *    The maximum size in bytes of a direct upload to GCS. Ignored
+ *    if `vfs.gcs.use_multi_part_upload` is set to true. <br>
+ *    **Default**: "10737418240"
  * - `vfs.s3.region` <br>
  *    The S3 region, if S3 is enabled. <br>
  *    **Default**: us-east-1
@@ -462,6 +479,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The scale factor for exponential backoff when connecting to S3.
  *    Any `long` value is acceptable. <br>
  *    **Default**: 25
+ * - `vfs.s3.custom_headers.*` <br>
+ *    (Optional) Prefix for custom headers on s3 requests. For each custom
+ *    header, use "vfs.s3.custom_headers.header_key" = "header_value" <br>
+ *    **Optional. No Default**
  * - `vfs.s3.logging_level` <br>
  *    The AWS SDK logging level. This is a process-global setting. The
  *    configuration of the most recently constructed context will set
@@ -499,6 +520,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.s3.sse` <br>
  *    The server-side encryption algorithm to use. Supported non-empty
  *    values are "aes256" and "kms" (AWS key management service). <br>
+ *    **Default**: ""
+ * - `vfs.s3.sse_kms_key_id` <br>
+ *    The server-side encryption key to use if
+ *    vfs.s3.sse == "kms" (AWS key management service). <br>
  *    **Default**: ""
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.

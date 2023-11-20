@@ -23,6 +23,9 @@ steps:
   condition: eq(variables['Agent.OS'], 'Darwin')
   displayName: 'Install brew packages for macOS build'
 
+- bash: python ./scripts/ci/patch_vcpkg_triplets.py
+  displayName: Prevent vpckg from building debug variants
+
 # Tried using mamba for manylinux missing packages - switched to custom image instead.
 #- bash: |
 #    curl -Ls https://micro.mamba.pm/api/micromamba/linux-64/latest | tar -xvj bin/micromamba
@@ -57,7 +60,7 @@ steps:
 
     # Set up arguments for bootstrap.sh
     BUILD_BINARIESDIRECTORY=${BUILD_BINARIESDIRECTORY:-$BUILD_REPOSITORY_LOCALPATH/build/dist}
-    cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib";
+    cmake_args="-DCMAKE_INSTALL_PREFIX=${BUILD_BINARIESDIRECTORY} -DTILEDB_TESTS=OFF -DTILEDB_INSTALL_LIBDIR=lib -DTILEDB_INSTALL_FIND_DEPENDENCIES=OFF";
     mkdir -p ${BUILD_BINARIESDIRECTORY}
 
     # Enable TILEDB_STATIC by default
@@ -133,7 +136,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Build.Repository.LocalPath)'
+    rootFolderOrFile: '$(Build.Repository.LocalPath)/build'
     includeRootFolder: false
     archiveType: 'tar' # Options: zip, 7z, tar, wim
     tarCompression: 'gz' # Optional. Options: gz, bz2, xz, none

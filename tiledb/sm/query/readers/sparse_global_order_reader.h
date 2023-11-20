@@ -513,6 +513,16 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       QueryBuffer& query_buffer);
 
   /**
+   * Get the sorted unique result tile list from the result cell slabs.
+   *
+   * @param result_cell_slabs Result cell slabs.
+   * @param aggregate_only Are we generating the list for aggregate only fields?
+   * @return vector of result tiles.
+   */
+  std::vector<ResultTile*> result_tiles_to_load(
+      std::vector<ResultCellSlab>& result_cell_slabs, bool aggregate_only);
+
+  /**
    * Copy cell slabs.
    *
    * @param names Attribute/dimensions to compute for.
@@ -553,6 +563,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param name Field to aggregate.
    * @param var_sized Is the field var sized?
    * @param nullable Is the field nullable?
+   * @param cell_size Cell size.
    * @param min_cell Min cell to aggregate.
    * @param min_cell Max cell to aggregate.
    * @param rt Result tile.
@@ -561,9 +572,36 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::string name,
       const bool var_sized,
       const bool nullable,
+      const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
       ResultTile& rt);
+
+  /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rcs Result cell slab.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(ResultCellSlab& rcs) {
+    auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'. Second,
+    // we only do it when a full tile is used in the result cell slab structure
+    // by making sure that the cell slab starts at 0 and ends at the end of the
+    // tile. When we perform the merge to order everything in global order for
+    // this reader, we might end up not using a cell in a tile at all because it
+    // has a duplicate entry (with the same coordinates) written at a later
+    // timestamp. There is no way to know that this happened in a tile at the
+    // moment so the best we can do for now is to use fragment metadata only
+    // when a full tile was merged in the cell slab structure. Finally, we check
+    // the fragment metadata has indeed tile metadata.
+    return rt->copy_full_tile() && rcs.start_ == 0 &&
+           rcs.length_ == rt->cell_num() && frag_md->has_tile_metadata();
+  }
 
   /**
    * Process aggregates.

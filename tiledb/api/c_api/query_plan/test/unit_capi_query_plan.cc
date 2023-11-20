@@ -1,5 +1,5 @@
 /**
- * @file tiledeb/api/c_api/query_plan/test/unit_capi_query_plan.cc
+ * @file tiledb/api/c_api/query_plan/test/unit_capi_query_plan.cc
  *
  * @section LICENSE
  *
@@ -304,7 +304,7 @@ TEST_CASE_METHOD(
   CHECK(json_plan["TileDB Query Plan"]["Query.Strategy.Name"] == "DenseReader");
   CHECK(
       json_plan["TileDB Query Plan"]["Query.Attributes"] ==
-      std::vector({"a2", "a1"}));
+      std::vector({"a1", "a2"}));
   CHECK(
       json_plan["TileDB Query Plan"]["Query.Dimensions"] ==
       std::vector({"dim_1", "dim_2"}));
@@ -370,7 +370,7 @@ TEST_CASE_METHOD(
       "GlobalOrderWriter");
   CHECK(
       json_plan["TileDB Query Plan"]["Query.Attributes"] ==
-      std::vector({"b", "a", "__coords"}));
+      std::vector({"__coords", "a", "b"}));
   CHECK(
       json_plan["TileDB Query Plan"]["Query.Dimensions"] ==
       std::vector<std::string>());

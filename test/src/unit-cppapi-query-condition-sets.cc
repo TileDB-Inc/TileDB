@@ -169,7 +169,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"barney", "wilma"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr2", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) {
     return (c.a2 == "barney" || c.a2 == "wilma");
@@ -186,7 +187,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"hack", "pack"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr5", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr5", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) {
     return (c.a5 == "hack" || c.a5 == "pack");
@@ -218,7 +220,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"wilma", "betty"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr6", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr6", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) { return (c.a6 == 1 || c.a6 == 3); });
 }
@@ -233,7 +236,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"blue", "umber"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr3", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr3", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) {
     return (c.a3 == "blue" || c.a3 == "umber");
@@ -348,7 +352,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"wilma"};
-  auto qc1 = QueryConditionExperimental::create(ctx_, "attr2", values);
+  auto qc1 =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
   auto qc2 = qc1.negate();
 
   check_read(qc2, [](const QCSetsCell& c) { return !(c.a2 == "wilma"); });
@@ -383,7 +388,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"wilma", "betty"};
-  auto qc1 = QueryConditionExperimental::create(ctx_, "attr2", values);
+  auto qc1 =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
   auto qc2 = QueryCondition::create(ctx_, "attr1", 2.0f, TILEDB_GT);
   auto qc3 = qc1.combine(qc2, TILEDB_AND);
 
@@ -402,7 +408,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"wilma", "betty"};
-  auto qc1 = QueryConditionExperimental::create(ctx_, "attr2", values);
+  auto qc1 =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
   auto qc2 = QueryCondition::create(ctx_, "attr1", 3.0f, TILEDB_EQ);
   auto qc3 = qc1.combine(qc2, TILEDB_OR);
 
@@ -420,11 +427,13 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> del_values = {"wilma"};
-  auto del_qc = QueryConditionExperimental::create(ctx_, "attr2", del_values);
+  auto del_qc =
+      QueryConditionExperimental::create(ctx_, "attr2", del_values, TILEDB_IN);
   write_delete(del_qc);
 
   std::vector<std::string> values = {"wilma", "betty"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr2", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_IN);
 
   check_read(qc, [](const QCSetsCell& c) {
     // Every instance of "wilma" was deleted so we only expect "betty"
@@ -442,7 +451,7 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"", "foo"};
-  auto qc = QueryConditionExperimental::create(ctx_, "dim", values);
+  auto qc = QueryConditionExperimental::create(ctx_, "dim", values, TILEDB_IN);
 
   REQUIRE_THROWS(check_read(qc, [](const QCSetsCell&) -> bool {
     throw std::logic_error("Shouldn't get here.");
@@ -459,7 +468,8 @@ TEST_CASE_METHOD(
   create_array(type, serialize);
 
   std::vector<std::string> values = {"oh", "hi"};
-  auto qc = QueryConditionExperimental::create(ctx_, "attr5", values);
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr5", values, TILEDB_IN);
 
   REQUIRE_THROWS(check_read(qc, [](const QCSetsCell&) -> bool {
     throw std::logic_error("Shouldn't get here.");
@@ -1007,5 +1017,5 @@ T CPPQueryConditionFx::choose_value(std::vector<T>& values) {
 }
 
 float CPPQueryConditionFx::random() {
-  return static_cast<float>(std::rand()) / RAND_MAX;
+  return static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX);
 }

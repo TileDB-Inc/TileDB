@@ -65,12 +65,20 @@ namespace serialization {
 #ifdef TILEDB_SERIALIZATION
 
 Status group_metadata_to_capnp(
-    const Group* group, capnp::GroupMetadata::Builder* group_metadata_builder) {
+    Group* group,
+    capnp::GroupMetadata::Builder* group_metadata_builder,
+    bool load) {
   // Set config
   auto config_builder = group_metadata_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata;
+  if (load) {
+    RETURN_NOT_OK(group->metadata(&metadata));
+  } else {
+    metadata = const_cast<Metadata*>(group->metadata());
+  }
+
   if (metadata->num()) {
     auto metadata_builder = group_metadata_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
@@ -135,13 +143,12 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
 }
 
 Status group_details_to_capnp(
-    const Group* group,
-    capnp::Group::GroupDetails::Builder* group_details_builder) {
+    Group* group, capnp::Group::GroupDetails::Builder* group_details_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
-  auto& group_details = group->group_details();
+  auto group_details = group->group_details();
 
   if (group_details != nullptr) {
     const auto& group_members = group->members();
@@ -158,7 +165,13 @@ Status group_details_to_capnp(
     }
   }
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata;
+  if (group->group_uri().is_tiledb()) {
+    metadata = const_cast<Metadata*>(group->metadata());
+  } else {
+    RETURN_NOT_OK(group->metadata(&metadata));
+  }
+
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
@@ -187,8 +200,7 @@ Status group_details_from_capnp(
   return Status::Ok();
 }
 
-Status group_to_capnp(
-    const Group* group, capnp::Group::Builder* group_builder) {
+Status group_to_capnp(Group* group, capnp::Group::Builder* group_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
@@ -362,9 +374,7 @@ Status group_create_to_capnp(
 }
 
 Status group_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::Builder groupBuilder = message.initRoot<capnp::Group>();
@@ -462,9 +472,7 @@ Status group_deserialize(
 }
 
 Status group_details_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::GroupDetails::Builder groupDetailsBuilder =
@@ -722,14 +730,16 @@ Status group_create_serialize(
 }
 
 Status group_metadata_serialize(
-    const Group* group,
+    Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Buffer* serialized_buffer,
+    bool load) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupMetadata::Builder group_metadata_builder =
         message.initRoot<capnp::GroupMetadata>();
-    RETURN_NOT_OK(group_metadata_to_capnp(group, &group_metadata_builder));
+    RETURN_NOT_OK(
+        group_metadata_to_capnp(group, &group_metadata_builder, load));
 
     serialized_buffer->reset_size();
     serialized_buffer->reset_offset();
@@ -777,7 +787,7 @@ Status group_metadata_serialize(
 
 #else
 
-Status group_serialize(const Group*, SerializationType, Buffer*) {
+Status group_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -787,7 +797,7 @@ Status group_deserialize(Group*, SerializationType, const Buffer&) {
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_details_serialize(const Group*, SerializationType, Buffer*) {
+Status group_details_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -812,7 +822,7 @@ Status group_create_serialize(const Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_metadata_serialize(const Group*, SerializationType, Buffer*) {
+Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

@@ -326,9 +326,9 @@ TEMPLATE_TEST_CASE(
  * Some deduction guides
  */
 namespace tiledb::common {
-Task(node&)->Task<node>;
+Task(node&) -> Task<node>;
 
-Task(const node&)->Task<node>;
+Task(const node&) -> Task<node>;
 
 template <template <class> class M, class T>
 Task(producer_node<M, T>) -> Task<node>;

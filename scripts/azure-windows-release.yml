@@ -8,6 +8,9 @@ steps:
   env: { sourceVersion: $(Build.SourceVersion) }
   displayName: Git Hash 7-digit
 
+- powershell: python ./scripts/ci/patch_vcpkg_triplets.py
+  displayName: Prevent vpckg from building debug variants
+
 - powershell: |
     mkdir $env:AGENT_BUILDDIRECTORY\build
     cd $env:AGENT_BUILDDIRECTORY\build
@@ -24,7 +27,7 @@ steps:
       $host.SetShouldExit(3)
     }
 
-    $bootstrapOptions = "-EnableVerbose -EnableStaticTileDB"
+    $bootstrapOptions = "-EnableVerbose -DisableTests -DisableInstallFindDependencies"
     if ($env:TILEDB_S3 -eq "ON") {
       $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
     }
@@ -32,16 +35,15 @@ steps:
       $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
     }
     if ($env:TILEDB_GCS -eq "ON") {
-      $bootstrapOptions = "-EnableGCS " + $bootstrapOptions
+      $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
       #NOTE: GCS simulator not yet actually in place.
     }
     if ($env:TILEDB_SERIALIZATION -eq "ON") {
       $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
     }
-    # static already added above as initial default
-    # if ($env:TILEDB_STATIC -eq "ON") {
-    #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
-    # }
+    if ($env:TILEDB_STATIC -eq "ON") {
+      $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
+    }
     # if ($env:TILEDB_HDFS -eq "ON") {
     #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
     #}
@@ -56,10 +58,6 @@ steps:
     # }
     # if ($env:TILEDB_CI_TSAN -eq "ON") {
     #  $bootstrapOptions = $bootstrapOptions + " -EnableSanitizer thread -EnableDebug"
-    # }
-    # static already added above as initial default
-    # if ($env:TILEDB_FORCE_BUILD_DEPS" -eq "ON") {
-    #   $bootstrapOptions = $bootstrapOptions + " -EnableBuildDeps"
     # }
     if ($env:TILEDB_WEBP -eq "OFF") {
       $bootstrapOptions = $bootstrapOptions + " -DisableWebP"
@@ -116,7 +114,7 @@ steps:
 
 - task: ArchiveFiles@2
   inputs:
-    rootFolderOrFile: '$(Agent.BuildDirectory)\s\'
+    rootFolderOrFile: '$(Agent.BuildDirectory)\build\'
     includeRootFolder: false
     archiveType: 'zip' # Options: zip, 7z, tar, wim
     archiveFile: $(Build.ArtifactStagingDirectory)/tiledb-$(ARTIFACT_OS)-$(ARTIFACT_ARCH)-build-dir.zip

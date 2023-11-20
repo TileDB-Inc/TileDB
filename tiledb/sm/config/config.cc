@@ -168,9 +168,9 @@ const std::string Config::VFS_MIN_BATCH_GAP = "512000";
 const std::string Config::VFS_MIN_BATCH_SIZE = "20971520";
 const std::string Config::VFS_FILE_POSIX_FILE_PERMISSIONS = "644";
 const std::string Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS = "755";
-const std::string Config::VFS_FILE_MAX_PARALLEL_OPS = "1";
 const std::string Config::VFS_READ_AHEAD_SIZE = "102400";          // 100KiB
 const std::string Config::VFS_READ_AHEAD_CACHE_SIZE = "10485760";  // 10MiB;
+const std::string Config::VFS_READ_LOGGING_MODE = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_NAME = "";
 const std::string Config::VFS_AZURE_STORAGE_ACCOUNT_KEY = "";
 const std::string Config::VFS_AZURE_STORAGE_SAS_TOKEN = "";
@@ -189,6 +189,7 @@ const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
 const std::string Config::VFS_GCS_MULTI_PART_SIZE = "5242880";
 const std::string Config::VFS_GCS_USE_MULTI_PART_UPLOAD = "true";
 const std::string Config::VFS_GCS_REQUEST_TIMEOUT_MS = "3000";
+const std::string Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE = "10737418240";
 const std::string Config::VFS_S3_REGION = "us-east-1";
 const std::string Config::VFS_S3_AWS_ACCESS_KEY_ID = "";
 const std::string Config::VFS_S3_AWS_SECRET_ACCESS_KEY = "";
@@ -390,8 +391,7 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair(
         "vfs.file.posix_directory_permissions",
         Config::VFS_FILE_POSIX_DIRECTORY_PERMISSIONS),
-    std::make_pair(
-        "vfs.file.max_parallel_ops", Config::VFS_FILE_MAX_PARALLEL_OPS),
+    std::make_pair("vfs.read_logging_mode", Config::VFS_READ_LOGGING_MODE),
     std::make_pair(
         "vfs.azure.storage_account_name",
         Config::VFS_AZURE_STORAGE_ACCOUNT_NAME),
@@ -422,6 +422,9 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.gcs.use_multi_part_upload", Config::VFS_GCS_USE_MULTI_PART_UPLOAD),
     std::make_pair(
         "vfs.gcs.request_timeout_ms", Config::VFS_GCS_REQUEST_TIMEOUT_MS),
+    std::make_pair(
+        "vfs.gcs.max_direct_upload_size",
+        Config::VFS_GCS_MAX_DIRECT_UPLOAD_SIZE),
     std::make_pair("vfs.s3.region", Config::VFS_S3_REGION),
     std::make_pair(
         "vfs.s3.aws_access_key_id", Config::VFS_S3_AWS_ACCESS_KEY_ID),
@@ -778,8 +781,6 @@ Status Config::sanity_check(
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.posix_directory_permissions") {
     RETURN_NOT_OK(utils::parse::convert(value, &v32));
-  } else if (param == "vfs.file.max_parallel_ops") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.scheme") {
     if (value != "http" && value != "https")
       return LOG_STATUS(

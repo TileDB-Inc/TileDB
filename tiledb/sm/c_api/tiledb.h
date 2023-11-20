@@ -1097,6 +1097,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_subarray_t(
  * either hold the values to be written (if it is a write query), or will hold
  * the results from a read query.
  *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds values to be written
+ * which can be freed at any time after query completion. For reads, the buffer
+ * is allocated by the caller and will contain data read by the query after
+ * completion. The freeing of this memory is up to the caller once they are done
+ * referencing the read data.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -1126,6 +1133,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_data_buffer(
 
 /**
  * Sets the starting offsets of each cell value in the data buffer.
+ *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds offsets to be written
+ * which can be freed at any time after query completion. For reads, the buffer
+ * is allocated by the caller and will contain offset data read by the query
+ * after completion. The freeing of this memory is up to the caller once they
+ * are done referencing the read data.
  *
  * **Example:**
  *
@@ -1158,6 +1172,13 @@ TILEDB_EXPORT int32_t tiledb_query_set_offsets_buffer(
 /**
  * Sets the validity byte map that has exactly one value for each value in the
  * data buffer.
+ *
+ * The caller owns the `buffer` provided and is responsible for freeing the
+ * memory associated with it. For writes, the buffer holds validity values to be
+ * written which can be freed at any time after query completion. For reads, the
+ * buffer is allocated by the caller and will contain the validity map read by
+ * the query after completion. The freeing of this memory is up to the caller
+ * once they are done referencing the read data.
  *
  * **Example:**
  *
@@ -2933,11 +2954,37 @@ TILEDB_EXPORT int32_t tiledb_array_get_open_timestamp_end(
  * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
  *   the current timestamp.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ *
+ * @note This function was deprecated in release 2.18 in favor of
+ * tiledb_array_delete_fragments_v2.
  */
-TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_fragments(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     const char* uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end) TILEDB_NOEXCEPT;
+
+/**
+ * Deletes array fragments written between the input timestamps.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_fragments_v2(
+ *   ctx, "hdfs:///temp/my_array", 0, UINT64_MAX);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri_str The URI of the fragments' parent Array.
+ * @param timestamp_start The epoch timestamp in milliseconds.
+ * @param timestamp_end The epoch timestamp in milliseconds. Use UINT64_MAX for
+ *   the current timestamp.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete_fragments_v2(
+    tiledb_ctx_t* ctx,
+    const char* uri_str,
     uint64_t timestamp_start,
     uint64_t timestamp_end) TILEDB_NOEXCEPT;
 
@@ -2955,14 +3002,14 @@ TILEDB_EXPORT int32_t tiledb_array_delete_fragments(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The URI of the fragments' parent Array.
+ * @param uri_str The URI of the fragments' parent Array.
  * @param fragment_uris The URIs of the fragments to be deleted.
  * @param num_fragments The number of fragments to be deleted.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_delete_fragments_list(
     tiledb_ctx_t* ctx,
-    const char* array_uri,
+    const char* uri_str,
     const char* fragment_uris[],
     const size_t num_fragments) TILEDB_NOEXCEPT;
 

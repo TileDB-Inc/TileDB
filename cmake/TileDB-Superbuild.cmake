@@ -122,7 +122,7 @@ if (NOT WIN32)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindOpenSSL_EP.cmake)
 endif()
 
-if (TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
+if ((TILEDB_S3 AND NOT WIN32 AND NOT TILEDB_VCPKG) OR TILEDB_AZURE OR TILEDB_GCS OR TILEDB_SERIALIZATION)
   # Need libcurl either with GCS or serialization support.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCurl_EP.cmake)
 endif()
@@ -140,10 +140,6 @@ if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageBlobs_EP.cmake)
-endif()
-
-if (TILEDB_GCS AND NOT TILEDB_VCPKG)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindGCSSDK_EP.cmake)
 endif()
 
 if (TILEDB_TESTS)
@@ -208,7 +204,7 @@ set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
 
 find_package(ClangTools)
 if (NOT ${CLANG_FORMAT_FOUND})
-  find_program(CLANG_FORMAT_BIN NAMES clang-format-14 clang-format-13 clang-format-12 clang-format-11 clang-format-10 clang-format-9 clang-format-8 clang-format-7 clang-format-6.0 clang-format-5.0 clang-format-4.0)
+  find_program(CLANG_FORMAT_BIN NAMES clang-format-16)
   if(CLANG_FORMAT_BIN)
     set(CLANG_FORMAT_FOUND TRUE)
   endif()

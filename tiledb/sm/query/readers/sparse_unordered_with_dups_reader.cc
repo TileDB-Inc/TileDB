@@ -1473,6 +1473,7 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
       storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
+        const bool agg_only = aggregate_only(name);
         const auto var_sized = array_schema_.var_size(name);
         auto mem_usage = &total_mem_usage_per_attr[i];
         const bool is_timestamps = name == constants::timestamps ||
@@ -1490,7 +1491,14 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
         uint64_t idx = 0;
         for (; idx < max_rt_idx; idx++) {
           // Size of the tile in memory.
-          auto rt = (UnorderedWithDupsResultTile<BitmapType>*)result_tiles[idx];
+          auto rt = static_cast<UnorderedWithDupsResultTile<BitmapType>*>(
+              result_tiles[idx]);
+
+          // Skip this tile if it's aggregate only and we can aggregate it with
+          // the fragment metadata only.
+          if (agg_only && can_aggregate_tile_with_frag_md(rt)) {
+            continue;
+          }
 
           // Skip for fields added in schema evolution.
           if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(
@@ -1649,10 +1657,27 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   // Read a few attributes at a time.
   std::optional<std::string> last_field_to_overflow{std::nullopt};
   uint64_t buffer_idx{0};
+  optional<std::vector<ResultTile*>> result_tiles_agg_only;
   while (buffer_idx < names.size()) {
+    // Generate a list of filtered result tiles for aggregates only fields.
+    bool agg_only = aggregate_only(names[buffer_idx]);
+    if (agg_only && result_tiles_agg_only == nullopt) {
+      result_tiles_agg_only = std::vector<ResultTile*>();
+      for (auto& rt : result_tiles) {
+        if (!can_aggregate_tile_with_frag_md(
+                static_cast<UnorderedWithDupsResultTile<BitmapType>*>(rt))) {
+          result_tiles_agg_only->emplace_back(rt);
+        }
+      }
+    }
+
     // Read and unfilter as many attributes as can fit in the budget.
     auto names_to_copy = read_and_unfilter_attributes(
-        names, mem_usage_per_attr, &buffer_idx, result_tiles);
+        names,
+        mem_usage_per_attr,
+        &buffer_idx,
+        agg_only ? *result_tiles_agg_only : result_tiles,
+        agg_only);
 
     // Process one field at a time for buffers in memory.
     for (const auto& name : names_to_copy) {
@@ -1874,6 +1899,7 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
     const std::string name,
     const bool var_sized,
     const bool nullable,
+    const uint64_t cell_size,
     const bool count_bitmap,
     const uint64_t min_cell,
     const uint64_t max_cell,
@@ -1894,7 +1920,8 @@ SparseUnorderedWithDupsReader<BitmapType>::make_aggregate_buffer(
                  nullopt,
       count_bitmap,
       rt.bitmap().data() != nullptr ? std::make_optional(rt.bitmap().data()) :
-                                      nullopt);
+                                      nullopt,
+      cell_size);
 }
 
 template <class BitmapType>
@@ -1904,13 +1931,16 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
     std::vector<uint64_t>& cell_offsets,
     std::vector<ResultTile*>& result_tiles) {
   auto& aggregates = aggregates_[name];
+  const bool validity_only = null_count_aggregate_only(name);
 
   bool var_sized = false;
   bool nullable = false;
+  unsigned cell_val_num = 0;
 
   if (name != constants::count_of_rows) {
     var_sized = array_schema_.var_size(name);
     nullable = array_schema_.is_nullable(name);
+    cell_val_num = array_schema_.cell_val_num(name);
   }
 
   const bool count_bitmap = std::is_same<BitmapType, uint64_t>::value;
@@ -1932,31 +1962,43 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
           return Status::Ok();
         }
 
-        uint64_t cell_num =
-            fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
-        auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
-            compute_parallelization_parameters(
-                range_thread_idx,
-                num_range_threads,
-                0,
-                cell_num,
-                cell_offsets[i],
-                nullptr);
-        if (skip_aggregate) {
-          return Status::Ok();
-        }
+        if (can_aggregate_tile_with_frag_md(rt)) {
+          if (range_thread_idx == 0) {
+            auto t = rt->tile_idx();
+            auto md =
+                fragment_metadata_[rt->frag_idx()]->get_tile_metadata(name, t);
+            for (auto& aggregate : aggregates) {
+              aggregate->aggregate_tile_with_frag_md(md);
+            }
+          }
+        } else {
+          uint64_t cell_num =
+              fragment_metadata_[rt->frag_idx()]->cell_num(rt->tile_idx());
+          auto&& [skip_aggregate, src_min_pos, src_max_pos, dest_cell_offset] =
+              compute_parallelization_parameters(
+                  range_thread_idx,
+                  num_range_threads,
+                  0,
+                  cell_num,
+                  cell_offsets[i],
+                  nullptr);
+          if (skip_aggregate) {
+            return Status::Ok();
+          }
 
-        // Compute aggregate.
-        AggregateBuffer aggregate_buffer{make_aggregate_buffer(
-            name,
-            var_sized,
-            nullable,
-            count_bitmap,
-            src_min_pos,
-            src_max_pos,
-            *rt)};
-        for (auto& aggregate : aggregates) {
-          aggregate->aggregate_data(aggregate_buffer);
+          // Compute aggregate.
+          AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+              name,
+              var_sized && !validity_only,
+              nullable,
+              cell_val_num,
+              count_bitmap,
+              src_min_pos,
+              src_max_pos,
+              *rt)};
+          for (auto& aggregate : aggregates) {
+            aggregate->aggregate_data(aggregate_buffer);
+          }
         }
 
         return Status::Ok();

@@ -41,7 +41,13 @@ namespace sm {
 
 class MemoryTracker {
  public:
-  enum class MemoryType { RTREE, FOOTER, TILE_OFFSETS, MIN_MAX_SUM_NULL_COUNT };
+  enum class MemoryType {
+    RTREE,
+    FOOTER,
+    TILE_OFFSETS,
+    MIN_MAX_SUM_NULL_COUNT,
+    ENUMERATION
+  };
 
   /** Constructor. */
   MemoryTracker() {

@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api/exception_wrapper/test/CMakeLists.txt
+# tiledb/api/c_api_support/exception_wrapper/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -23,22 +23,64 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+include(unit_test)
 
-add_executable(unit_capi_exception_wrapper EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_exception_wrapper PUBLIC Catch2::Catch2WithMain)
+commence(unit_test capi_exception_wrapper)
+  this_target_sources(
+      unit_capi_exception_wrapper.cc
+      unit_capi_error_tree.cc)
+  this_target_object_libraries(
+      # The exception wrapper is wrapped up with the context, so that's the
+      # top-level dependency required for the test.
+      capi_context_stub)
+conclude(unit_test)
 
-# Sources for code under test
-target_link_libraries(unit_capi_exception_wrapper PUBLIC exception_wrapper)
-target_link_libraries(unit_capi_exception_wrapper PUBLIC capi_context_stub)
+#
+# Hook Tests
+#
+# These following two unit test runners are a pair, one compiled without an API
+# hook compiled in, one without. They run the same test, although with different
+# expectations about the results. The hook is specified in two different ways:
+# * In the ordinary way, with an additional include directory
+# * Specifically for testing, with a compile definition.
+# The two different ways are used to verify that the hook is activated or not
+# as appropriate.
+#
+# Changing the API hook changes the API object libraries. The API hook is
+# perforce a low-level mechanism. It changes the definition of C API calls. The
+# exception handler is intertwined with a few of the API classes, notably the
+# handles for context and error (and config gets pulled in as a dependency). As
+# a result, whereas the without-hook test runner can use an existing object
+# library, the with-hook ones needs to recompile an equivalent.
+#
 
-# Sources for tests
-target_sources(unit_capi_exception_wrapper PUBLIC
-    unit_capi_exception_wrapper.cc
-    )
+# Hook tests without the hook
+commence(unit_test capi_ew_without_hook)
+  this_target_sources(
+      unit_capi_hook.cc
+      unit_capi_hook_without.cc)
+  this_target_object_libraries(
+      capi_context_stub)
+conclude(unit_test)
 
-add_test(
-    NAME "unit_capi_exception_wrapper"
-    COMMAND $<TARGET_FILE:unit_capi_exception_wrapper>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+# Hook tests with the hook included.
+commence(unit_test capi_ew_with_hook)
+  this_target_sources(
+      unit_capi_hook.cc
+      unit_capi_hook_with.cc
+      ../../../c_api/config/config_api.cc
+      ../../../c_api/context/context_api.cc
+      ../../../c_api/error/error_api.cc
+      ../../../../sm/storage_manager/context.cc
+      ../../../../sm/storage_manager/context_resources.cc
+  )
+  this_target_link_libraries(export)
+  this_target_object_libraries(
+      exception_wrapper
+      storage_manager_stub
+      vfs
+  )
+  target_compile_definitions(unit_capi_ew_with_hook PUBLIC WITH_HOOK)
+  target_include_directories(
+      unit_capi_ew_with_hook PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/hook)
+conclude(unit_test)

@@ -108,6 +108,10 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
 
   producer_node_impl(producer_node_impl&& rhs) noexcept = default;
 
+  auto get_output_port() {
+    return *reinterpret_cast<SourceBase*>(this);
+  }
+
   /** Utility functions for indicating what kind of node and state of the ports
    * being used.
    *
@@ -221,6 +225,9 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
     std::stop_source stop_source_;
     assert(!stop_source_.stop_requested());
 
+    // #pragma clang diagnostic push
+    // #pragma ide diagnostic ignored "UnreachableCode"
+
     switch (this->program_counter_) {
       case 0: {
         ++this->program_counter_;
@@ -277,6 +284,11 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
       default:
         break;
     }
+
+#ifdef __clang__
+#pragma clang diagnostic push
+#endif
+
     return scheduler_event_type::error;
   }
 
@@ -293,7 +305,8 @@ struct producer_node_impl : public node_base, public Source<Mover, T> {
 /** A producer node is a shared pointer to the implementation class */
 template <template <class> class Mover, class T>
 struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
-  using Base = std::shared_ptr<producer_node_impl<Mover, T>>;
+  using PreBase = producer_node_impl<Mover, T>;
+  using Base = std::shared_ptr<PreBase>;
   using Base::Base;
 
   using node_type = node_t<producer_node_impl<Mover, T>>;
@@ -301,8 +314,7 @@ struct producer_node : public std::shared_ptr<producer_node_impl<Mover, T>> {
 
   template <class Function>
   explicit producer_node(Function&& f)
-      : Base{std::make_shared<producer_node_impl<Mover, T>>(
-            std::forward<Function>(f))} {
+      : Base{std::make_shared<PreBase>(std::forward<Function>(f))} {
   }
 
   explicit producer_node(producer_node_impl<Mover, T>& impl)

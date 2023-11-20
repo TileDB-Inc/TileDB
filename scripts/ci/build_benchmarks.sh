@@ -29,7 +29,7 @@ set -xeuo pipefail
 pushd $GITHUB_WORKSPACE/test/benchmarking
 mkdir -p build
 cd build
-cmake -DCMAKE_PREFIX_PATH=$GITHUB_WORKSPACE/build/dist ../src
+cmake -DCMAKE_PREFIX_PATH="$GITHUB_WORKSPACE/build/dist;$GITHUB_WORKSPACE/build/vcpkg_installed/$VCPKG_TARGET_TRIPLET" ../src
 make
 popd
 

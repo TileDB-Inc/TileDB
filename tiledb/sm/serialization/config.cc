@@ -108,9 +108,7 @@ Status config_serialize(
     const Config& config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
-    const bool client_side) {
-  // Currently client_side is unused
-  (void)client_side;
+    const bool) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Config::Builder configBuilder = message.initRoot<capnp::Config>();

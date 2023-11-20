@@ -61,7 +61,13 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Deleter() = default;
+  Deleter()
+      : ctx_(nullptr) {
+  }
+
+  Deleter(const Context* ctx)
+      : ctx_(ctx) {
+  }
 
   /* ********************************* */
   /*              DELETERS             */
@@ -143,17 +149,19 @@ class Deleter {
     tiledb_consolidation_plan_free(&p);
   }
 
-  void operator()(tiledb_string_t* p) const {
-    capi_status_t result = tiledb_status(tiledb_string_free(&p));
-    if (result != TILEDB_OK) {
-      log_warn("Could not free string; Error code: " + std::to_string(result));
-    }
+  void operator()(tiledb_query_channel_t* p) const {
+    tiledb_query_channel_free(ctx_->ptr().get(), &p);
+  }
+
+  void operator()(tiledb_channel_operation_t* p) const {
+    tiledb_aggregate_free(ctx_->ptr().get(), &p);
   }
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+  const Context* ctx_;
 };
 
 }  // namespace impl

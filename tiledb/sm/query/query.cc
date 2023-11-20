@@ -417,6 +417,16 @@ std::vector<std::string> Query::dimension_label_buffer_names() const {
   return ret;
 }
 
+std::vector<std::string> Query::aggregate_buffer_names() const {
+  std::vector<std::string> buffer_names;
+  buffer_names.reserve(aggregate_buffers_.size());
+
+  for (const auto& buffer : aggregate_buffers_) {
+    buffer_names.push_back(buffer.first);
+  }
+  return buffer_names;
+}
+
 std::vector<std::string> Query::unwritten_buffer_names() const {
   std::vector<std::string> ret;
   for (auto& name : buffer_names()) {
@@ -443,6 +453,12 @@ QueryBuffer Query::buffer(const std::string& name) const {
     // Dimension label buffer
     auto buf = label_buffers_.find(name);
     if (buf != label_buffers_.end()) {
+      return buf->second;
+    }
+  } else if (is_aggregate(name)) {
+    // Aggregate buffer
+    auto buf = aggregate_buffers_.find(name);
+    if (buf != aggregate_buffers_.end()) {
       return buf->second;
     }
   } else {
@@ -479,7 +495,6 @@ Status Query::finalize() {
 
   RETURN_NOT_OK(strategy_->finalize());
 
-  copy_aggregates_data_to_user_buffer();
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
 }
@@ -1044,7 +1059,8 @@ Status Query::set_data_buffer(
 
   // If this is an aggregate buffer, set it and return.
   if (is_aggregate(name)) {
-    const bool is_var = default_channel_aggregates_[name]->var_sized();
+    const bool is_var =
+        default_channel_aggregates_[name]->aggregation_var_sized();
     if (!is_var) {
       // Fixed size data buffer
       aggregate_buffers_[name].set_data_buffer(buffer, buffer_size);
@@ -1136,6 +1152,15 @@ Status Query::set_data_buffer(
   }
 
   return Status::Ok();
+}
+
+std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
+    std::string output_field_name) const {
+  auto it = default_channel_aggregates_.find(output_field_name);
+  if (it == default_channel_aggregates_.end()) {
+    return nullopt;
+  }
+  return it->second;
 }
 
 Status Query::set_offsets_buffer(
@@ -1272,17 +1297,14 @@ Status Query::set_validity_buffer(
     const bool serialization_allow_new_attr) {
   RETURN_NOT_OK(check_set_fixed_buffer(name));
 
-  ValidityVector validity_vector;
-  RETURN_NOT_OK(validity_vector.init_bytemap(
-      buffer_validity_bytemap, buffer_validity_bytemap_size));
   // Check validity buffer
-  if (check_null_buffers && validity_vector.buffer() == nullptr) {
+  if (check_null_buffers && buffer_validity_bytemap == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer is null"));
   }
 
   // Check validity buffer size
-  if (check_null_buffers && validity_vector.buffer_size() == nullptr) {
+  if (check_null_buffers && buffer_validity_bytemap_size == nullptr) {
     return logger_->status(Status_QueryError(
         "Cannot set buffer; " + name + " validity buffer size is null"));
   }
@@ -1296,7 +1318,8 @@ Status Query::set_validity_buffer(
           "' is not nullable"));
     }
 
-    aggregate_buffers_[name].set_validity_buffer(std::move(validity_vector));
+    aggregate_buffers_[name].set_validity_buffer(
+        {buffer_validity_bytemap, buffer_validity_bytemap_size});
 
     return Status::Ok();
   }
@@ -1331,7 +1354,8 @@ Status Query::set_validity_buffer(
   }
 
   // Set attribute/dimension buffer
-  buffers_[name].set_validity_buffer(std::move(validity_vector));
+  buffers_[name].set_validity_buffer(
+      {buffer_validity_bytemap, buffer_validity_bytemap_size});
 
   return Status::Ok();
 }

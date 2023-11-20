@@ -188,6 +188,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-tile-metadata-generator.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
+  src/unit-request-handlers.cc
   src/unit-resource-pool.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
@@ -261,6 +262,7 @@ endif()
 if (TILEDB_TESTS_ENABLE_REST)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-rest-dense_array.cc
+    src/unit-rest-enumerations.cc
   )
 endif()
 
@@ -286,6 +288,8 @@ add_executable(
 
 add_dependencies(tiledb_unit tiledb_test_support_lib)
 
+target_compile_options(tiledb_unit PRIVATE "$<$<CXX_COMPILER_ID:MSVC>:/utf-8>")
+
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
@@ -301,6 +305,7 @@ target_include_directories(
 target_link_libraries(tiledb_unit
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
+    TILEDB_CORE_OBJECTS
     Catch2::Catch2
     tiledb_test_support_lib
 )

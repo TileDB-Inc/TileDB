@@ -58,31 +58,30 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
 std::vector<std::shared_ptr<GroupMember>> GroupDetailsV1::members_to_serialize()
     const {
   std::lock_guard<std::mutex> lck(mtx_);
-  decltype(members_by_uri_) members_by_uri = members_by_uri_;
+  decltype(members_) members = members_;
 
   // Remove members first
   for (const auto& member : members_to_modify_) {
-    auto& uri = member->uri();
+    auto key = member->key();
     if (member->deleted()) {
-      members_by_uri.erase(uri.to_string());
+      members.erase(key);
 
       // Check to remove relative URIs
-      auto uri_str = uri.to_string();
-      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
+      if (key.find(group_uri_.add_trailing_slash().to_string()) !=
           std::string::npos) {
         // Get the substring relative path
-        auto relative_uri = uri_str.substr(
-            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
-        members_by_uri.erase(relative_uri);
+        auto relative_uri = key.substr(
+            group_uri_.add_trailing_slash().to_string().size(), key.size());
+        members.erase(relative_uri);
       }
     } else {
-      members_by_uri.emplace(member->uri().to_string(), member);
+      members.emplace(member->uri().to_string(), member);
     }
   }
 
   std::vector<std::shared_ptr<GroupMember>> result;
-  result.reserve(members_by_uri.size());
-  for (auto& it : members_by_uri) {
+  result.reserve(members.size());
+  for (auto& it : members) {
     result.emplace_back(it.second);
   }
   return result;

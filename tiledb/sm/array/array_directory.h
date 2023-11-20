@@ -33,6 +33,7 @@
 #ifndef TILEDB_ARRAY_DIRECTORY_H
 #define TILEDB_ARRAY_DIRECTORY_H
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -47,8 +48,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Mode for the ArrayDirectory class. */
 enum class ArrayDirectoryMode {
@@ -394,7 +394,8 @@ class ArrayDirectory {
    */
   std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
       const std::vector<std::string>& enumeration_paths,
-      const EncryptionKey& encryption_key) const;
+      const EncryptionKey& encryption_key,
+      MemoryTracker& memory_tracker) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -453,13 +454,6 @@ class ArrayDirectory {
 
   /** Returns the URI for a vacuum file. */
   URI get_vacuum_uri(const URI& fragment_uri) const;
-
-  /**
-   * The new fragment name is computed
-   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
-   */
-  std::string compute_new_fragment_name(
-      const URI& first, const URI& last, format_version_t format_version) const;
 
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
@@ -826,10 +820,10 @@ class ArrayDirectory {
    */
   shared_ptr<const Enumeration> load_enumeration(
       const std::string& enumeration_path,
-      const EncryptionKey& encryption_key) const;
+      const EncryptionKey& encryption_key,
+      MemoryTracker& memory_tracker) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_DIRECTORY_H
