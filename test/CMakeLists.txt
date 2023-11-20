@@ -406,6 +406,3 @@ add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
-
-#add tests related to external items
-add_subdirectory(external)
