@@ -67,7 +67,7 @@ target_link_libraries(tiledb_regression
   PUBLIC
     Catch2::Catch2WithMain
     local_install
-    tiledb_shared
+    tiledb
 )
 
 target_include_directories(tiledb_regression
