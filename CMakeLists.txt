@@ -578,10 +578,6 @@ if (TILEDB_TESTS)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
-  if (TILEDB_WEBP)
-    add_dependencies(tests unit_link_webp)
-  endif()
-
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
   endif()
