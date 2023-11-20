@@ -47,7 +47,8 @@ Configuration:
     --disable-avx2                  disables use of AVX2 instructions
     --disable-webp                  disables building of webp library and linkage test
     --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
-    --enable-static-tiledb          enables building TileDB as a static library
+    --enable-static-tiledb          enables building TileDB as a static library (this is the default)
+    --enable-shared-tiledb          enables building TileDB as a shared library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
     --enable-debug                  enable debug build
@@ -103,7 +104,7 @@ tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
 tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
-tiledb_static="OFF"
+build_shared_libs="OFF"
 tiledb_disable_avx2=""
 tiledb_assertions="OFF"
 tiledb_serialization="OFF"
@@ -144,7 +145,9 @@ while test $# != 0; do
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
-    --enable-static-tiledb) tiledb_static="ON";;
+    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default."
+                            build_shared_libs="OFF";;
+    --enable-shared-tiledb) build_shared_libs="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-tools) tiledb_tools="ON";;
@@ -184,7 +187,9 @@ for en in "${enables[@]}"; do
     _crc32) tiledb_build_crc32="ON";;
     abseil) tiledb_build_abseil="ON";;
     hdfs) tiledb_hdfs="ON";;
-    static-tiledb) tiledb_static="ON";;
+    static-tiledb)  echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default."
+                    build_shared_libs="OFF";;
+    shared-tiledb) build_shared_libs="ON";;
     experimental-features) tiledb_experimental_features="ON";;
     rest-tests) tiledb_tests_enable_rest="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
@@ -231,6 +236,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
+    -DBUILD_SHARED_LIBS=${build_shared_libs} \
     -DTILEDB_VCPKG=${tiledb_vcpkg} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
@@ -243,7 +249,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_STATS=${tiledb_stats} \
-    -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \
