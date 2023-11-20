@@ -54,7 +54,7 @@ namespace tiledb::sm {
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
-static bool accept_all_dirs(const std::string_view&) {
+[[maybe_unused]] static bool accept_all_dirs(const std::string_view&) {
   return true;
 }
 
