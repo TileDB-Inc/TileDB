@@ -96,10 +96,6 @@ uint64_t reference_a_value(uint64_t v) {
 #pragma warning(disable : 4701)  // 'config', 'picture_no_alpha'
 #endif
 
-extern "C" int WebPGetDemuxVersion(void);
-extern "C" int WebPGetMuxVersion(void);
-extern "C" void WebPFreeDecBuffer(WebPDecBuffer* const buffer);
-
 int main(int argc, const char* argv[]) {
   int return_value = -1;
   const char *in_file = NULL, *out_file = NULL;
