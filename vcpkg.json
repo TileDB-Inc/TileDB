@@ -4,7 +4,6 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        "liblzma",
         "libmagic",
         "lz4",
         {
