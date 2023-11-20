@@ -82,6 +82,7 @@ jobs:
         run: |
           cmake -S . -B build \
             -DCMAKE_BUILD_TYPE=Release \
+            -DBUILD_SHARED_LIBS=ON \
             -DCMAKE_INSTALL_PREFIX=./dist \
             -DTILEDB_S3=ON \
             -DTILEDB_AZURE=ON \
@@ -89,7 +90,6 @@ jobs:
             -DTILEDB_HDFS=${{ startsWith(matrix.platform, 'windows') && 'OFF' || 'ON' }} \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_WEBP=ON \
-            -DTILEDB_STATIC=OFF \
             -DTILEDB_TESTS=OFF \
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
             ${{ matrix.cmake_args }}
