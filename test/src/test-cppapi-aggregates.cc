@@ -131,7 +131,9 @@ struct CppAggregatesFx {
       std::vector<uint8_t>& a1_validity,
       const bool validate_count = true);
   void validate_tiles_read(Query& query, bool is_count = false);
+  void validate_tiles_read_null_count(Query& query);
   void validate_tiles_read_var(Query& query);
+  void validate_tiles_read_null_count_var(Query& query);
   void remove_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -140,9 +142,7 @@ struct CppAggregatesFx {
 template <class T>
 CppAggregatesFx<T>::CppAggregatesFx()
     : vfs_(ctx_) {
-  Config cfg;
-  cfg["sm.allow_aggregates_experimental"] = "true";
-  ctx_ = Context(cfg);
+  ctx_ = Context();
   vfs_ = VFS(ctx_);
 
   remove_array();
@@ -1141,24 +1141,28 @@ void CppAggregatesFx<T>::validate_data_var(
   }
 }
 
+uint64_t get_stat(std::string name, std::string& stats) {
+  // Parse num_tiles_read from the stats.
+  std::string to_find =
+      "\"Context.StorageManager.Query.Reader." + name + "\": ";
+  auto start_pos = stats.find(to_find);
+
+  if (start_pos != std::string::npos) {
+    start_pos += to_find.length();
+    auto end_pos = stats.find("\n", start_pos);
+    auto str = stats.substr(start_pos, end_pos - start_pos);
+    return std::stoull(str);
+  }
+
+  return 0;
+}
+
 template <class T>
 void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
   // Validate the number of tiles read.
   auto stats = query.stats();
 
-  // Parse num_tiles_read from the stats.
-  std::string to_find =
-      "\"Context.StorageManager.Query.Reader.num_tiles_read\": ";
-  auto start_pos = stats.find(to_find);
-
-  uint64_t num_tiles_read = 0;
-  if (start_pos != std::string::npos) {
-    start_pos += to_find.length();
-    auto end_pos = stats.find("\n", start_pos);
-    auto str = stats.substr(start_pos, end_pos - start_pos);
-    num_tiles_read = std::stoull(str);
-  }
-
+  uint64_t num_tiles_read = get_stat("num_tiles_read", stats);
   uint64_t expected_num_tiles_read;
   if (dense_) {
     // Dense has 5 tiles. If we request data or have a query condition, we'll
@@ -1166,21 +1170,30 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
     if (request_data_ || set_qc_) {
       expected_num_tiles_read = 5;
     } else if (set_ranges_) {
-      // If we request range, we split all tiles, we'll have to read all.
+      // If we request range, we split all tiles, we'll have to read all instead
+      // of using fragment metadata.
       expected_num_tiles_read = is_count ? 0 : 5;
     } else {
-      // One space tile has two result tiles, we'll have to read them.
+      // One space tile has two result tiles, we'll have to read them instead of
+      // using fragment metadata.
       expected_num_tiles_read = is_count ? 0 : 2;
     }
   } else {
     if (request_data_) {
+      // Sparse has 5 tiles * 3 (2 dims/1 attr). One of them will be filtered
+      // out when we set ranges.
       if (set_ranges_) {
+        // If we set ranges, we filter out one of the 5 tiles.
         expected_num_tiles_read = 12;
       } else {
+        // Everything is read.
         expected_num_tiles_read = 15;
       }
     } else {
       if (set_ranges_) {
+        // For count, we only read dimension tiles, one of which is filtered so
+        // we read 2 dims * 4 tiles. For the attribute, we can process 2 tiles
+        // with duplicates and 1 without using the fragment metadata.
         if (allow_dups_) {
           expected_num_tiles_read = is_count ? 8 : 10;
         } else {
@@ -1188,8 +1201,13 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
         }
       } else {
         if (allow_dups_) {
+          // No ranges, array with duplicates can do it all with fragment
+          // metadata only.
           expected_num_tiles_read = 0;
         } else {
+          // Arrays without duplicates need to run deduplication, so we read the
+          // dimension tiles (2 dims * 5 tiles). Only one tile for the attribute
+          // can be processed with fragment metadata only.
           expected_num_tiles_read = is_count ? 10 : 14;
         }
       }
@@ -1200,23 +1218,76 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
 }
 
 template <class T>
+void CppAggregatesFx<T>::validate_tiles_read_null_count(Query& query) {
+  // Validate the number of tiles read.
+  auto stats = query.stats();
+
+  uint64_t num_tiles_alloced = get_stat("tiles_allocated", stats);
+  uint64_t num_tiles_unfiltered = get_stat("tiles_unfiltered", stats);
+  uint64_t expected_num_tiles;
+  if (dense_) {
+    // Dense has 5 tiles. If we request data or have a query condition, we'll
+    // read all of them.
+    if (request_data_ || set_qc_) {
+      expected_num_tiles = 10;
+    } else if (set_ranges_) {
+      // If we request range, we split all tiles, we'll have to read all, but
+      // only nullable tiles.
+      expected_num_tiles = 5;
+    } else {
+      // One space tile has two result tiles, we'll have to read them.
+      expected_num_tiles = 2;
+    }
+  } else {
+    // Sparse has 5 tiles * 4 (2 dims/1 attr (fixed tile + nullable tile)). One
+    // of them will be filtered out when we set ranges.
+    if (request_data_) {
+      if (set_ranges_) {
+        // If we set ranges, we filter out one of the 5 tiles.
+        expected_num_tiles = 16;
+      } else {
+        // Everything is read.
+        expected_num_tiles = 20;
+      }
+    } else {
+      if (set_ranges_) {
+        // We read dimension tiles to filter ranges, one of which is filtered so
+        // we read 2 dims * 4 tiles. For the attribute, we can process 2 tiles
+        // with duplicates and 1 without using the fragment metadata. Note that
+        // we only add one per space tile for the attribute because we only read
+        // the validity tile.
+        if (allow_dups_) {
+          expected_num_tiles = 10;
+        } else {
+          expected_num_tiles = 11;
+        }
+      } else {
+        if (allow_dups_) {
+          // No ranges, array with duplicates can do it all with fragment
+          // metadata only.
+          expected_num_tiles = 0;
+        } else {
+          // Arrays without duplicates need to run deduplication, so we read the
+          // dimension tiles (2 dims * 5 tiles). Only one tile for the attribute
+          // can be processed with fragment metadata only. Note that we only add
+          // one per space tile for the attribute because we only read the
+          // validity tile.
+          expected_num_tiles = 14;
+        }
+      }
+    }
+  }
+
+  CHECK(num_tiles_alloced == expected_num_tiles);
+  CHECK(num_tiles_unfiltered == expected_num_tiles);
+}
+
+template <class T>
 void CppAggregatesFx<T>::validate_tiles_read_var(Query& query) {
   // Validate the number of tiles read.
   auto stats = query.stats();
 
-  // Parse num_tiles_read from the stats.
-  std::string to_find =
-      "\"Context.StorageManager.Query.Reader.num_tiles_read\": ";
-  auto start_pos = stats.find(to_find);
-
-  uint64_t num_tiles_read = 0;
-  if (start_pos != std::string::npos) {
-    start_pos += to_find.length();
-    auto end_pos = stats.find("\n", start_pos);
-    auto str = stats.substr(start_pos, end_pos - start_pos);
-    num_tiles_read = std::stoull(str);
-  }
-
+  uint64_t num_tiles_read = get_stat("num_tiles_read", stats);
   uint64_t expected_num_tiles_read;
   if (dense_) {
     // Dense has 5 tiles. If we request data or have a query condition or set
@@ -1228,7 +1299,11 @@ void CppAggregatesFx<T>::validate_tiles_read_var(Query& query) {
       expected_num_tiles_read = 2;
     }
   } else {
+    // Sparse has 4 tiles * 3 (2 dims/1 attr). One of them will be filtered
+    // out when we set ranges.
     if (request_data_) {
+      // We request data so everything is read. With ranges we read 3 tiles,
+      // without 4. 2 dims, 1 attr, means we have to multiply by 3.
       if (set_ranges_) {
         expected_num_tiles_read = 9;
       } else {
@@ -1236,12 +1311,20 @@ void CppAggregatesFx<T>::validate_tiles_read_var(Query& query) {
       }
     } else {
       if (set_ranges_) {
+        // To process ranges, we read 3 tiles * 2 dims at a minimum. For the
+        // attribute, the array with duplicates can process one tile with the
+        // fragment metadata, which is not the case for the array with no
+        // duplicates.
         if (allow_dups_) {
           expected_num_tiles_read = 8;
         } else {
           expected_num_tiles_read = 9;
         }
       } else {
+        // No ranges, the array with no duplicates can do it all with only
+        // fragment metadata. The array with no duplicates cannot because the
+        // cell slab structure never includes a full tile. It needs to read all
+        // coordinate tiles and all attribute tiles.
         if (allow_dups_) {
           expected_num_tiles_read = 0;
         } else {
@@ -1252,6 +1335,71 @@ void CppAggregatesFx<T>::validate_tiles_read_var(Query& query) {
   }
 
   CHECK(num_tiles_read == expected_num_tiles_read);
+}
+
+template <class T>
+void CppAggregatesFx<T>::validate_tiles_read_null_count_var(Query& query) {
+  // Validate the number of tiles read.
+  auto stats = query.stats();
+
+  uint64_t num_tiles_alloced = get_stat("tiles_allocated", stats);
+  uint64_t num_tiles_unfiltered = get_stat("tiles_unfiltered", stats);
+  uint64_t expected_num_tiles;
+  if (dense_) {
+    // Dense has 5 tiles. If we request data or have a query condition we'll
+    // read all of them.
+    if (request_data_ || set_qc_) {
+      expected_num_tiles = 15;
+    } else if (set_ranges_) {
+      // If we set ranges, we only read the validity tiles.
+      expected_num_tiles = 5;
+    } else {
+      // One space tile has two result tiles, we'll have to read them.
+      expected_num_tiles = 2;
+    }
+  } else {
+    // Sparse has 4 tiles * 5 (2 dims/1 attr (offset tile + var tile + nullable
+    // tile)). One of them will be filtered out when we set ranges.
+    if (request_data_) {
+      // We request data so everything is read. With ranges we read 3 tiles,
+      // without 4. 2 dims, 1 nullable var attr, means we have to multiply by 5.
+      if (set_ranges_) {
+        expected_num_tiles = 15;
+      } else {
+        expected_num_tiles = 20;
+      }
+    } else {
+      if (set_ranges_) {
+        // To process ranges, we read 3 tiles * 2 dims at a minimum. For the
+        // attribute, the array with duplicates can process one tile with the
+        // fragment metadata, which is not the case for the array with no
+        // duplicates. Note that we only add one per space tile for the
+        // attribute because we only read the validity tile.
+        if (allow_dups_) {
+          expected_num_tiles = 8;
+        } else {
+          // 3 * 2 for dims, 3 * 1 for attr.
+          expected_num_tiles = 9;
+        }
+      } else {
+        // No ranges, the array with no duplicates can do it all with only
+        // fragment metadata. The array with no duplicates cannot because the
+        // cell slab structure never includes a full tile. It needs to read all
+        // coordinate tiles and all attribute tiles. Note that we only add one
+        // per space tile for the attribute because we only read the validity
+        // tile.
+        if (allow_dups_) {
+          expected_num_tiles = 0;
+        } else {
+          // 4 * 2 for dims, 4 * 1 for attr.
+          expected_num_tiles = 12;
+        }
+      }
+    }
+  }
+
+  CHECK(num_tiles_alloced == expected_num_tiles);
+  CHECK(num_tiles_unfiltered == expected_num_tiles);
 }
 
 template <class T>
@@ -1975,6 +2123,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
           }
 
           CppAggregatesFx<T>::validate_tiles_read(query);
+          CppAggregatesFx<T>::validate_tiles_read_null_count(query);
         }
       }
     }
@@ -2070,6 +2219,7 @@ TEST_CASE_METHOD(
           }
 
           validate_tiles_read_var(query);
+          validate_tiles_read_null_count_var(query);
         }
       }
     }

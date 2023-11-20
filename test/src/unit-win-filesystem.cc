@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,10 +36,13 @@
 #include "test/support/src/helpers.h"
 
 #include <cassert>
+#include <filesystem>
+#include "tiledb/common/random/prng.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
+#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/filesystem/win.h"
 
 #include <Windows.h>
@@ -60,23 +63,15 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 }
 
 struct WinFx {
-  const std::string& TEMP_DIR = tiledb::test::get_temp_path();
   Win win_;
   Config vfs_config_;
+  TemporaryLocalDirectory temp_dir_;
 
   WinFx() {
     REQUIRE(win_.init(vfs_config_).ok());
-
-    if (path_exists(TEMP_DIR)) {
-      REQUIRE(win_.remove_dir(TEMP_DIR).ok());
-    }
   }
 
-  ~WinFx() {
-    if (path_exists(TEMP_DIR)) {
-      REQUIRE(win_.remove_dir(TEMP_DIR).ok());
-    }
-  }
+  ~WinFx() = default;
 
   bool path_exists(std::string path) {
     return win_.is_file(path) || win_.is_dir(path);
@@ -85,8 +80,9 @@ struct WinFx {
 
 TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
   using tiledb::sm::path_win::is_win_path;
-  const std::string test_dir_path = TEMP_DIR + "/win_tests";
-  const std::string test_file_path = TEMP_DIR + "/win_tests/tiledb_test_file";
+  const std::string test_dir_path = temp_dir_.path() + "/win_tests";
+  const std::string test_file_path =
+      temp_dir_.path() + "/win_tests/tiledb_test_file";
   URI test_dir(test_dir_path);
   URI test_file(test_file_path);
   Status st;
@@ -143,9 +139,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
       Win::abs_path("path1\\path2\\..\\path3") ==
       Win::current_dir() + "\\path1\\path3");
 
-  CHECK(!win_.is_dir(TEMP_DIR));
-  st = win_.create_dir(TEMP_DIR);
-  CHECK(st.ok());
+  CHECK(win_.is_dir(temp_dir_.path()));
   CHECK(!win_.is_dir(test_dir.to_path()));
   st = win_.create_dir(test_dir.to_path());
   CHECK(st.ok());
@@ -246,11 +240,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
 TEST_CASE_METHOD(
     WinFx, "Test writing large files", "[.nightly_only][windows][large-file]") {
   const uint64_t five_gigabytes = static_cast<uint64_t>(5) << 30;
-
-  REQUIRE(win_.create_dir(TEMP_DIR).ok());
-
-  std::string file = TEMP_DIR + "\\large-file";
-
+  std::string file = temp_dir_.path() + "\\large-file";
   std::vector<uint8_t> buffer(five_gigabytes);
 
   // We use a prime period to catch errors where the 4GB buffer chunks are

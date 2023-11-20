@@ -112,6 +112,10 @@
         {
             "name": "abseil",
             "version": "20230802.1"
+        },
+        {
+            "name": "curl",
+            "version": "8.4.0"
         }
     ]
 }

@@ -56,7 +56,7 @@ typedef struct tiledb_group_handle_t tiledb_group_t;
  * @param group_uri The group URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_DEPRECATED_EXPORT capi_return_t
+TILEDB_EXPORT capi_return_t
 tiledb_group_create(tiledb_ctx_t* ctx, const char* group_uri) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus

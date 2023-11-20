@@ -34,7 +34,6 @@ include(TileDBCommon)
 
 if (TILEDB_VCPKG AND TILEDB_SERIALIZATION)
   find_package(CapnProto REQUIRED)
-  install_all_target_libs("CapnProto::capnp;CapnProto::capnp-json;CapnProto::kj")
   return()
 endif()
 
@@ -114,13 +113,7 @@ else()
 endif()
 
 
-if(WIN32)
-  if(TILEDB_CAPNP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-    install_target_libs(CapnProto::capnp)
-    install_target_libs(CapnProto::kj)
-    install_target_libs(CapnProto::capnp-json)
-  endif()
-elseif(CAPNP_FOUND AND NOT WIN32)
+if(CAPNP_FOUND AND NOT WIN32)
   # We handle the found case first because ubuntu's install of capnproto is missing libcapnp-json
   # so we must first make sure the found case has all the appropriate libs, else we will build from source
   # List of all required Capnp libraries.
@@ -130,11 +123,6 @@ elseif(CAPNP_FOUND AND NOT WIN32)
       message(FATAL_ERROR "Required target CapnProto::${LIB} not defined")
     elseif (TARGET CapnProto::${LIB})
       message(STATUS "Found CapnProto lib: ${LIB}")
-      # If we built a static EP, install it if required.
-      if (TILEDB_CAPNP_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-        message(STATUS "Adding CapnProto lib: ${LIB} to install target")
-        install_target_libs(CapnProto::${LIB})
-      endif()
     elseif (NOT TARGET CapnProto::${LIB})
       message(STATUS "NOT Found Target for CapnProto lib: ${LIB}")
       set(SHOULD_CAPNP_LIBRARIES 1)

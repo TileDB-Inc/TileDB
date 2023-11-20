@@ -72,6 +72,9 @@ class IAggregator {
   /** Returns if the aggregation is nullable or not. */
   virtual bool aggregation_nullable() = 0;
 
+  /** Returns if the aggregation is for validity only data. */
+  virtual bool aggregation_validity_only() = 0;
+
   /**
    * Validate the result buffer.
    *

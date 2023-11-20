@@ -34,6 +34,7 @@
 #define TILEDB_VFS_HELPERS_H
 
 #include <test/support/tdb_catch_prng.h>
+#include <filesystem>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -692,6 +693,41 @@ struct TemporaryDirectoryFixture {
  private:
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
+};
+
+/**
+ * Denies write access to a local filesystem path.
+ *
+ * Not supported on Windows. The permissions function there sets the
+ * readonly bit on the path, which is not supported on directories.
+ *
+ * To support it on Windows we would have to add and remove Access Control
+ * Lists, which is a nontrivial thing to do.
+ */
+class DenyWriteAccess {
+ public:
+  DenyWriteAccess() = delete;
+
+  DenyWriteAccess(const std::string& path)
+      : path_(path)
+      , previous_perms_(std::filesystem::status(path).permissions()) {
+    std::filesystem::permissions(
+        path_,
+        std::filesystem::perms::owner_write,
+        std::filesystem::perm_options::remove);
+  }
+
+  ~DenyWriteAccess() {
+    std::filesystem::permissions(
+        path_, previous_perms_, std::filesystem::perm_options::replace);
+  }
+
+ private:
+  /** The path. */
+  const std::string path_;
+
+  /** The previous permissions of the path. */
+  const std::filesystem::perms previous_perms_;
 };
 
 /**

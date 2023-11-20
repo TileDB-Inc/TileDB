@@ -35,8 +35,6 @@ include(TileDBCommon)
 
 if (TILEDB_VCPKG)
   find_package(OpenSSL REQUIRED)
-  target_link_libraries(OpenSSL::SSL)
-  install_all_target_libs(OpenSSL::SSL)
   return()
 endif()
 
@@ -154,10 +152,4 @@ if (OPENSSL_FOUND)
       INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
       )
   endif()
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_OPENSSL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(OpenSSL::SSL)
-  install_target_libs(OpenSSL::Crypto)
 endif()

@@ -61,18 +61,20 @@ std::mutex catch2_macro_mutex;
 namespace tiledb {
 namespace test {
 
-const std::string& get_temp_path() {
-  // Ensure the path has a trailing delimiter.
-  static std::string temp_path =
-      (std::filesystem::temp_directory_path() /
-       ("tiledb_test_" + std::to_string(getpid())) / "")
-          .string();
-
-  return temp_path;
-}
-
 // Command line arguments.
 std::string g_vfs;
+
+void throw_if_setup_failed(capi_return_t rc) {
+  if (rc != TILEDB_OK) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
+
+void throw_if_setup_failed(bool condition) {
+  if (!condition) {
+    throw std::runtime_error("Test setup failed.");
+  }
+}
 
 void check_tiledb_error_with(
     tiledb_ctx_t* ctx, int rc, const std::string& expected_msg, bool contains) {
@@ -790,54 +792,43 @@ void create_ctx_and_vfs(
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
+  throw_if_setup_failed(error == nullptr);
   if (s3_supported) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config, "vfs.s3.use_virtual_addressing", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-        TILEDB_OK);
-    REQUIRE(error == nullptr);
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.s3.endpoint_override", "localhost:9999", &error));
+    throw_if_setup_failed(
+        tiledb_config_set(config, "vfs.s3.scheme", "https", &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.s3.use_virtual_addressing", "false", &error));
+    throw_if_setup_failed(
+        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error));
+    throw_if_setup_failed(error == nullptr);
 #endif
   }
   if (azure_supported) {
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_name",
-            "devstoreaccount1",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.storage_account_key",
-            "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-            "K1SZFPTOtr/KBHBeksoGMGw==",
-            &error) == TILEDB_OK);
-    REQUIRE(
-        tiledb_config_set(
-            config,
-            "vfs.azure.blob_endpoint",
-            "http://127.0.0.1:10000/devstoreaccount1",
-            &error) == TILEDB_OK);
+    throw_if_setup_failed(tiledb_config_set(
+        config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config,
+        "vfs.azure.storage_account_key",
+        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
+        "K1SZFPTOtr/KBHBeksoGMGw==",
+        &error));
+    throw_if_setup_failed(tiledb_config_set(
+        config,
+        "vfs.azure.blob_endpoint",
+        "http://127.0.0.1:10000/devstoreaccount1",
+        &error));
   }
-  REQUIRE(tiledb_ctx_alloc(config, ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+  throw_if_setup_failed(tiledb_ctx_alloc(config, ctx));
+  throw_if_setup_failed(ctx != nullptr);
 
   // Create VFS
   *vfs = nullptr;
-  REQUIRE(tiledb_vfs_alloc(*ctx, config, vfs) == TILEDB_OK);
+  throw_if_setup_failed(tiledb_vfs_alloc(*ctx, config, vfs));
+  throw_if_setup_failed(vfs != nullptr);
   tiledb_config_free(&config);
 }
 

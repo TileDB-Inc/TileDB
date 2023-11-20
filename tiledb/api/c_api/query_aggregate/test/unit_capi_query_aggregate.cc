@@ -48,12 +48,6 @@ struct QueryAggregateFx : TemporaryDirectoryFixture {
 
   QueryAggregateFx()
       : array_name_(temp_dir_ + "queryaggregate_array") {
-    CHECK(
-        ctx->resources()
-            .config()
-            .set("sm.allow_aggregates_experimental", "true")
-            .ok() == true);
-
     rm_array();
     create_sparse_array();
     write_sparse_array();

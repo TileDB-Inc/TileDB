@@ -25,7 +25,6 @@ examples/bin/*
 examples/obj/*
 scripts/deps-staging/*
 .idea
-*temp*
 *.DS_Store
 doc/venv
 doc/source/__pycache__

@@ -773,12 +773,31 @@ TILEDB_EXPORT capi_return_t tiledb_handle_load_array_schema_request(
  *
  * @param ctx The TileDB context.
  * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
  * @param request A buffer containing the LoadEnumerationsRequest Capnp message.
  * @param response An allocated buffer that will contain the
  *        LoadEnumerationsResponse Capnp message.
  * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
  */
 TILEDB_EXPORT capi_return_t tiledb_handle_load_enumerations_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
+/**
+ * Process a query plan request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the QueryPlanRequest Capnp message.
+ * @param response An allocated buffer that will contain the QueryPlanResponse
+ * Capnp message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_query_plan_request(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,

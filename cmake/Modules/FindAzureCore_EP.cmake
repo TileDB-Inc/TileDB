@@ -146,8 +146,3 @@ if (AZURECORE_FOUND AND NOT TARGET Azure::azure-core)
           INTERFACE_INCLUDE_DIRECTORIES "${AZURECORE_INCLUDE_DIR}"
           )
 endif()
-
-# If we built a static EP, install it if required.
-if (AZURECORE_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Azure::azure-core)
-endif()

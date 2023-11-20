@@ -131,7 +131,8 @@ jobs:
       - name: Prevent vcpkg from building debug variants
         run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
 
-      - name: core tiledb windows build
+      - name: Configure TileDB
+        shell: pwsh
         run: |
           $ErrorView = "NormalView"
 
@@ -147,9 +148,6 @@ jobs:
           }
           if ($env:TILEDB_AZURE -eq "ON") {
             $bootstrapOptions = "-EnableAzure " + $bootstrapOptions
-
-            # to be removed when build of crc32 is to be used by gcs
-            $bootstrapOptions = $bootstrapOptions + " -_EnableCrc32"
           }
           if ($env:TILEDB_GCS -eq "ON") {
             $bootstrapOptions = "-EnableGcs " + $bootstrapOptions
@@ -202,8 +200,12 @@ jobs:
             Write-Host "Bootstrap failed."
             exit $LastExitCode
           }
+      - name: Build TileDB
+        shell: pwsh
+        run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j $env:NUMBER_OF_PROCESSORS 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
@@ -216,14 +218,11 @@ jobs:
             Write-Host "Installation failed."
             $host.SetShouldExit($LastExitCode)
           }
-        shell: powershell
 
       - name: 'Test'
         id: test
-        shell: powershell
+        shell: pwsh
         run: |
-          write-host "begin run: 'Test'"
-
           $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           # Clone backwards compatibility test arrays
@@ -245,9 +244,9 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j $env:NUMBER_OF_PROCESSORS --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -304,7 +303,11 @@ jobs:
                $host.SetShouldExit($LastExitCode)
             }
           }
-          # Build the examples
+      - name: Build examples
+        shell: pwsh
+        run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
+
           cmake --build $env:BUILD_BUILDDIRECTORY --target examples --config $CMakeBuildType -v
 
           if ($LastExitCode -ne 0) {
@@ -380,15 +383,19 @@ jobs:
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
-          # Build examples
+      - name: Build CMake project example
+        shell: pwsh
+        run: |
           cd $env:BUILD_SOURCESDIRECTORY\examples\cmake_project
+
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
 
           mkdir build
 
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILD_DIRECTORY\vcpkg_installed\x64-windows-mod" ..
+          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
 
           cmake --build . --config $CMakeBuildType -v
 
@@ -402,11 +409,13 @@ jobs:
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
-          # Packaging test
+      - name: Packaging test
+        shell: pwsh
+        run: |
           cd $env:BUILD_SOURCESDIRECTORY\test\packaging
           mkdir build
           cd build
-          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist" ..
+          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
           # The testing is in the test/packaging/CMakeLists.txt file, just invoked,
           # there is no other code to be built in the produced projects.
 

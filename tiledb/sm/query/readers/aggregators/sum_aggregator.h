@@ -86,6 +86,11 @@ class SumWithCountAggregator : public InputFieldValidator,
     return field_info_.is_nullable_;
   }
 
+  /** Returns if the aggregation is for validity only data. */
+  bool aggregation_validity_only() override {
+    return false;
+  }
+
   /** Returns if the aggregate needs to be recomputed on overflow. */
   bool need_recompute_on_overflow() override {
     return true;

@@ -41,14 +41,13 @@
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <numeric>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for ArrayDirectory status exceptions. */
 class ArrayDirectoryException : public StatusException {
@@ -266,7 +265,7 @@ const uint64_t& ArrayDirectory::timestamp_end() const {
 
 void ArrayDirectory::write_commit_ignore_file(
     const std::vector<URI>& commit_uris_to_ignore) {
-  auto name = compute_new_fragment_name(
+  auto name = storage_format::generate_consolidated_fragment_name(
       commit_uris_to_ignore.front(),
       commit_uris_to_ignore.back(),
       constants::format_version);
@@ -561,27 +560,6 @@ URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto temp_uri =
       uri_.join_path(constants::array_commits_dir_name).join_path(name);
   return URI(temp_uri.to_string() + constants::vacuum_file_suffix);
-}
-
-std::string ArrayDirectory::compute_new_fragment_name(
-    const URI& first, const URI& last, format_version_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  throw_if_not_ok(uuid::generate_uuid(&uuid, false));
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
-  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return ss.str();
 }
 
 bool ArrayDirectory::loaded() const {
@@ -1334,5 +1312,5 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
   Deserializer deserializer(tile.data(), tile.size());
   return Enumeration::deserialize(deserializer);
 }
-}  // namespace sm
-}  // namespace tiledb
+
+}  // namespace tiledb::sm
