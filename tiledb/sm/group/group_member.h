@@ -34,6 +34,7 @@
 #define TILEDB_GROUP_MEMBER_H
 
 #include <atomic>
+#include <iostream>
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -62,6 +63,18 @@ inline Status Status_GroupMemberError(const std::string& msg) {
 
 class GroupMember {
  public:
+  /**
+   * Constructor. The member is of the latest format version.
+   */
+  GroupMember(
+      const URI& uri,
+      const ObjectType& type,
+      const bool& relative,
+      const std::optional<std::string>& name,
+      const bool& deleted)
+      : GroupMember(uri, type, relative, version_latest_, name, deleted) {
+  }
+
   GroupMember(
       const URI& uri,
       const ObjectType& type,
@@ -71,7 +84,7 @@ class GroupMember {
       const bool& deleted);
 
   /** Destructor. */
-  virtual ~GroupMember() = default;
+  ~GroupMember() = default;
 
   /** Return URI. */
   const URI& uri() const;
@@ -103,7 +116,7 @@ class GroupMember {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  virtual void serialize(Serializer& serializer);
+  void serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -120,7 +133,7 @@ class GroupMember {
    */
   format_version_t version() const;
 
- protected:
+ private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -137,10 +150,13 @@ class GroupMember {
   bool relative_;
 
   /* Format version. */
-  const uint32_t version_;
+  format_version_t version_;
 
   /** Is group member deleted from group. */
   bool deleted_;
+
+  /** The latest format version. */
+  static constexpr format_version_t version_latest_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb
