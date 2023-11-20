@@ -127,17 +127,12 @@ int main(int argc, const char* argv[]) {
     // webp! left here anyway, in case libraries are ever de-dupped.
     const int dec_version = WebPGetDecoderVersion();
 
-    // webpdemux
-    const int demux_version = WebPGetDemuxVersion();
-    // webpmux
-    const int mux_version = WebPGetMuxVersion();
-
     // webp
     // in testing, even when WebP::webp was -not- added as link item, this
     // library was still being placed in link_webp_test project.
     auto enc_version = WebPGetEncoderVersion();
 
-    reference_a_value(dec_version + demux_version + mux_version + enc_version);
+    reference_a_value(dec_version + enc_version);
   }
 
   if (argc == 1) {
