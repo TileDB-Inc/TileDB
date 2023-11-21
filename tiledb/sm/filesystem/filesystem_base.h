@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILESYSTEMBASE_H
 #define TILEDB_FILESYSTEMBASE_H
 
+#include "ls_scanner.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "uri.h"
 
@@ -40,9 +41,16 @@
 
 namespace tiledb::sm {
 
-class VFS;
+class TempFilesystemBase {
+ public:
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI&, F, D = tiledb::sm::accept_all_dirs, bool = false) const {
+    return {};
+  }
+};
 
-class FilesystemBase {
+class FilesystemBase : TempFilesystemBase {
  public:
   FilesystemBase() = default;
 
@@ -58,7 +66,7 @@ class FilesystemBase {
    * @param uri The URI of the directory.
    * @return Status
    */
-  virtual Status create_dir(const URI& uri) const = 0;
+  virtual Status create_dir(const URI&) const = 0;
 
   /**
    * Creates an empty file.
@@ -66,7 +74,7 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @return Status
    */
-  virtual Status touch(const URI& uri) const = 0;
+  virtual Status touch(const URI&) const = 0;
 
   /**
    * Checks if a directory exists.
@@ -74,7 +82,7 @@ class FilesystemBase {
    * @param uri The URI to check for existence.
    * @return True if the directory exists, else False.
    */
-  virtual bool is_dir(const URI& uri) const = 0;
+  virtual bool is_dir(const URI&) const = 0;
 
   /**
    * Checks if a file exists.
@@ -82,7 +90,7 @@ class FilesystemBase {
    * @param uri The URI to check for existence.
    * @return True if the file exists, else False.
    */
-  virtual bool is_file(const URI& uri) const = 0;
+  virtual bool is_file(const URI&) const = 0;
 
   /**
    * Removes a given directory (recursive)
@@ -90,7 +98,7 @@ class FilesystemBase {
    * @param uri The uri of the directory to be removed
    * @return Status
    */
-  virtual Status remove_dir(const URI& uri) const = 0;
+  virtual Status remove_dir(const URI&) const = 0;
 
   /**
    * Deletes a file.
@@ -98,7 +106,7 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @return Status
    */
-  virtual Status remove_file(const URI& uri) const = 0;
+  virtual Status remove_file(const URI&) const = 0;
 
   /**
    * Retrieves the size of a file.
@@ -107,7 +115,7 @@ class FilesystemBase {
    * @param size The file size to be retrieved.
    * @return Status
    */
-  virtual Status file_size(const URI& uri, uint64_t* size) const = 0;
+  virtual Status file_size(const URI&, uint64_t*) const = 0;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -118,17 +126,18 @@ class FilesystemBase {
   virtual tuple<
       Status,
       optional<std::vector<common::filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const = 0;
+  ls_with_sizes(const URI&) const = 0;
 
   /**
    * Renames a file.
-   * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
+   * Both URI must be of the same backend type. (e.g. both s3://, file://,
+   * etc)
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status move_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status move_file(const URI&, const URI&) const = 0;
 
   /**
    * Copies a file.
@@ -138,7 +147,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status copy_file(const URI&, const URI&) const = 0;
 
   /**
    * Copies directory.
@@ -148,7 +157,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status copy_dir(const URI&, const URI&) const = 0;
 
   /**
    * Reads from a file.
@@ -160,12 +169,7 @@ class FilesystemBase {
    * @param use_read_ahead Whether to use the read-ahead cache.
    * @return Status
    */
-  virtual Status read(
-      const URI& uri,
-      uint64_t offset,
-      void* buffer,
-      uint64_t nbytes,
-      bool use_read_ahead = true) = 0;
+  virtual Status read(const URI&, uint64_t, void*, uint64_t, bool = true) = 0;
 
   /**
    * Syncs (flushes) a file. Note that for S3 this is a noop.
@@ -173,7 +177,7 @@ class FilesystemBase {
    * @param uri The URI of the file.
    * @return Status
    */
-  virtual Status sync(const URI& uri) = 0;
+  virtual Status sync(const URI&) = 0;
 
   /**
    * Writes the contents of a buffer into a file.
@@ -184,11 +188,7 @@ class FilesystemBase {
    * @param remote_global_order_write Remote global order write
    * @return Status
    */
-  virtual Status write(
-      const URI& uri,
-      const void* buffer,
-      uint64_t buffer_size,
-      bool remote_global_order_write = false) = 0;
+  virtual Status write(const URI&, const void*, uint64_t, bool = false) = 0;
 };
 
 }  // namespace tiledb::sm

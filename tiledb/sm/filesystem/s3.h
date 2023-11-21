@@ -35,6 +35,7 @@
 
 #ifdef HAVE_S3
 
+#include "filesystem_base.h"
 #include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -464,7 +465,7 @@ class S3Scanner : public LsScanner<F, D> {
       // If the request returned no results, we've reached the end of the scan.
       // We hit this case when the number of objects in the bucket is a multiple
       // of the current max_keys.
-      begin_ = end_;
+      return end_;
     }
 
     return begin_;
@@ -506,7 +507,7 @@ class S3Scanner : public LsScanner<F, D> {
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
  */
-class S3 {
+class S3 : public TempFilesystemBase {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
