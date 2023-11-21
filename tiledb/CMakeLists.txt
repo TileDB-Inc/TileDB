@@ -415,7 +415,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
-# List of libraries to be linked to TILEDB_CORE_OBJECTS and TILEDB_CORE_OBJECTS_STATIC.
+# List of libraries to be linked to TILEDB_CORE_OBJECTS.
 set(TILEDB_CORE_OBJECTS_LIBS
   baseline
 )
@@ -851,6 +851,8 @@ endif()
 # TileDB library targets
 ############################################################
 
+# CMake will determine the library's linkage from
+# the value of the BUILD_SHARED_LIBS variable.
 add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
