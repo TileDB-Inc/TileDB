@@ -92,10 +92,21 @@ class GroupDetails {
 
   /**
    * Get whether the group has been modified.
+   *
+   * This determines whether to write the group details on close.
    */
   bool is_modified() const {
-    std::lock_guard<std::mutex> lck(mtx_);
-    return !members_to_modify_.empty();
+    return is_modified_;
+  }
+
+  /**
+   * Marks the group as modified.
+   *
+   * Used only by serialization, to support writing the group details of a
+   * deserialized group.
+   */
+  void set_modified() {
+    is_modified_ = true;
   }
 
   /**
@@ -204,6 +215,9 @@ class GroupDetails {
 
   /** The group URI. */
   URI group_uri_;
+
+  /** Whether the group has been modified. */
+  bool is_modified_;
 
   /**
    * The mapping of all members of this group. This is the canonical store of

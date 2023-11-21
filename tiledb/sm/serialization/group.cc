@@ -197,6 +197,8 @@ Status group_details_from_capnp(
     group->set_metadata_loaded(true);
   }
 
+  group->group_details()->set_modified();
+
   return Status::Ok();
 }
 
