@@ -144,37 +144,15 @@ endif()
 # List of all core source files
 set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/memory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/stdx_string.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/interval/interval.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/common/types/dynamic_typed_datum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/platform/cert_file.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/array_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array/consistency.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/array_schema_evolution.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/attribute.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/dimension_label.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/domain.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/array_schema/enumeration.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/buffer/buffer_list.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/api_argument_validator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_dimension_label.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/c_api/tiledb_filestore.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/bzip_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dd_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/delta_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/dict_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/gzip_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/lz4_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/rle_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/util/gzip_wrappers.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/compressors/zstd_compressor.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/config/config_iter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidation_plan/consolidation_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/array_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/commits_consolidator.cc
@@ -182,69 +160,19 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/fragment_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/fragment_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/group_meta_consolidator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key_validation.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/curl/curl_init.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/azure.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/gcs.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/mem_filesystem.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/hdfs_filesystem.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/path_win.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/posix.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/filesystem_base.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bit_width_reduction_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bitshuffle_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/byteshuffle_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/checksum_md5_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/checksum_sha256_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/compression_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/encryption_aes256gcm_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_buffer.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_create.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_pipeline.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/filter_storage.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/float_scaling_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/xor_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/webp_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details_v1.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_details_v2.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_directory.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v1.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/group/group_member_v2.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/metadata/metadata.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/cancelable_tasks.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/mgc_dict.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/parse_argument.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_math.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/dimension_label/array_dimension_label_queries.cc
@@ -257,12 +185,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_condition.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/query_remote_buffer_storage.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/count_aggregator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/min_max_aggregator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/operation.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/output_buffer_validator.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/safe_sum.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/aggregators/sum_aggregator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/dense_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/ordered_dim_label_reader.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/readers/reader_base.cc
@@ -279,7 +201,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/writers/writer_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query_plan/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rest/rest_client.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/rtree/rtree.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/array_schema.cc
@@ -295,36 +216,20 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/stats.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/context_resources.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/storage_manager/storage_manager.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/range_subset.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/relevant_fragment_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_partitioner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/subarray_tile_overlap.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/subarray/tile_cell_slab_iter.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/generic_tile_io.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/tile_metadata_generator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/tile/writer_tile_tuple.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/generate_uri.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/storage_format/uri/parse_uri.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/type/range/range.cc
 )
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_COMMON_SOURCES})
 list(APPEND TILEDB_CORE_SOURCES ${TILEDB_API_SOURCES})
 
-
-
-#openssl3 md5 deprecation mitigation
-if(MSVC)
-  set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "/wd4996")
-else()
-  set_source_files_properties(${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc PROPERTIES COMPILE_OPTIONS "-Wno-deprecated-declarations")
-endif()
 
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_CORE_SOURCES
@@ -388,10 +293,6 @@ list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/bitshuffle"
   "${CMAKE_CURRENT_SOURCE_DIR}/../external/include/blosc"
 )
-list(APPEND TILEDB_EXTERNALS_SOURCES
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/iochain.cc
-  ${CMAKE_CURRENT_SOURCE_DIR}/../external/src/bitshuffle/bitshuffle_core.cc
-)
 
 #
 # Delegate configuration and detection of platform-specific code generation to
@@ -401,7 +302,6 @@ add_subdirectory(
   ${CMAKE_CURRENT_SOURCE_DIR}/../external/blosc
   ${CMAKE_CURRENT_BINARY_DIR}/../external/blosc)
 list(APPEND TILEDB_EXTERNALS_INCLUDE_DIRS ${TileDB_blosc_INCLUDE_DIRS})
-list(APPEND TILEDB_EXTERNALS_SOURCES ${TileDB_blosc_SOURCES})
 set_source_files_properties(
   ${TileDB_blosc_SOURCES}
   PROPERTIES COMPILE_OPTIONS "${TileDB_blosc_COMPILE_OPTIONS}")
@@ -418,6 +318,24 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
 set(TILEDB_CORE_OBJECTS_LIBS
   baseline
+  aggregators
+  array
+  array_schema
+  buffer
+  buffer_list
+  compressors
+  config
+  filter_pipeline
+  generic_tile_io
+  group
+  metadata
+  query_ast
+  range_subset
+  rtree
+  stats
+  tile
+  tiledb_crypto
+  vfs
 )
 
 list(TRANSFORM TILEDB_CORE_OBJECTS_LIBS PREPEND "$<TARGET_OBJECTS:" OUTPUT_VARIABLE TILEDB_CORE_OBJECTS_LIBS_SOURCES)

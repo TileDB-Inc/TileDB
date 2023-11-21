@@ -27,14 +27,11 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-list(APPEND SOURCES
-  prng.cc    
-  seeder.cc
-)
-gather_sources(${SOURCES})
-
 commence(object_library seedable_global_PRNG)
-  this_target_sources(${SOURCES})
+  this_target_sources(
+    prng.cc
+    seeder.cc
+  )
   this_target_link_libraries(export)
 conclude(object_library)
 

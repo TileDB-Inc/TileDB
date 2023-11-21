@@ -27,16 +27,13 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-list(APPEND SOURCES
-    thread_pool.cc
-)
-gather_sources(${SOURCES})
-
 #
 # `thread_pool` object library
 #
 commence(object_library thread_pool)
-    this_target_sources(${SOURCES})
+    this_target_sources(
+        thread_pool.cc
+    )
     this_target_object_libraries(baseline)
 conclude(object_library)
 
