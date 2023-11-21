@@ -71,7 +71,7 @@ class LsScanIterator {
  public:
   using value_type = U;
   using difference_type = ptrdiff_t;
-  using pointer = std::vector<U>::const_iterator;
+  using pointer = typename std::vector<U>::const_iterator;
   using reference = const U&;
   using iterator_category = std::input_iterator_tag;
 

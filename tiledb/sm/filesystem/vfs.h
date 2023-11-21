@@ -470,7 +470,10 @@ class VFS : private VFSBase, protected S3_within_VFS {
    *    pruning. This is currently unused, but is kept here for future support.
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  void ls_recursive(const URI& parent, F f, D d = accept_all_dirs) const {
+  void ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
     if (parent.is_s3()) {
 #ifdef HAVE_S3
       s3().ls_filtered(parent, f, d, true);

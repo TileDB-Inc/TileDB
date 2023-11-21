@@ -425,7 +425,7 @@ class S3Scanner : public LsScanner<F, D> {
    * @param ptr Reference to the current data iterator.
    * @sa LsScanIterator::operator++()
    */
-  void next(Iterator::pointer& ptr);
+  void next(typename Iterator::pointer& ptr);
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the
@@ -433,7 +433,7 @@ class S3Scanner : public LsScanner<F, D> {
    *
    * @return A pointer to the first result in the new batch.
    */
-  Iterator::pointer fetch_results() {
+  typename Iterator::pointer fetch_results() {
     // If this is our first request, GetIsTruncated() will be false.
     if (more_to_fetch()) {
       // If results are truncated on a subsequent request, we set the next
@@ -676,10 +676,13 @@ class S3 {
       bool recursive = false) const {
     throw_if_not_ok(init_client());
     S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    // Prepend each object key with the bucket URI.
+    auto prefix = parent.to_string();
+    prefix = prefix.substr(0, prefix.find('/', 5));
+
     LsObjects objects;
     for (auto object : s3_scanner.iterator()) {
-      objects.emplace_back(
-          parent.to_string() + "/" + object.GetKey(), object.GetSize());
+      objects.emplace_back(prefix + "/" + object.GetKey(), object.GetSize());
     }
     return objects;
   }
@@ -1499,7 +1502,7 @@ S3Scanner<F, D>::S3Scanner(
 }
 
 template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next(Iterator::pointer& ptr) {
+void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
   // Increment the iterator if we found a result on the last call.
   if (found_) {
     found_ = false;

@@ -395,16 +395,17 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
   S3Test s3_test({10, 50});
   bool recursive = GENERATE(true, false);
-  auto file_filter = [](const std::string_view& path, uint64_t) {
-    if (path.find("test_file_1") != std::string::npos) {
-      return true;
-    }
-    return false;
-  };
 
   DYNAMIC_SECTION(
       "S3ScanIterator with recursion: " << (recursive ? "true" : "false")) {
 #ifdef HAVE_S3
+    auto file_filter = [](const std::string_view& path, uint64_t) {
+      if (path.find("test_file_1") != std::string::npos) {
+        return true;
+      }
+      return false;
+    };
+
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path =
         recursive ? s3_test.temp_dir_ : s3_test.temp_dir_.join_path("subdir_1");
@@ -414,7 +415,6 @@ TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
     std::vector<Aws::S3::Model::Object> results_vector(
         iter.begin(), iter.end());
     for (const auto& result : results_vector) {
-      std::cout << result.GetKey() << std::endl;
       CHECK(file_filter(result.GetKey(), 0));
     }
     if (recursive) {
