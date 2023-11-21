@@ -47,8 +47,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GroupDetailsException : public StatusException {
  public:
@@ -301,9 +300,9 @@ class Group {
   /**
    * Function to generate a URL of a detail file
    *
-   * @return tuple of status and uri
+   * @return uri
    */
-  tuple<Status, optional<URI>> generate_detail_uri() const;
+  URI generate_detail_uri() const;
 
   /**
    * Have changes been applied to a group in write mode
@@ -453,15 +452,7 @@ class Group {
    * Load group metadata, handles remote groups vs non-remote groups
    */
   void load_metadata();
-
-  /**
-   * Generate new name in the form of timestmap_timestamp_uuid
-   *
-   * @return tuple of status and optional string
-   */
-  tuple<Status, optional<std::string>> generate_name() const;
 };
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_H
