@@ -38,7 +38,9 @@ using namespace tiledb::common;
 namespace tiledb::storage_format {
 
 std::string generate_timestamped_name(
-    uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version) {
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    std::optional<format_version_t> version) {
   std::string uuid;
   throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
 
@@ -49,8 +51,10 @@ std::string generate_timestamped_name(
   }
 
   std::stringstream ss;
-  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid << "_"
-     << version;
+  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid;
+
+  if (version != std::nullopt)
+    ss << "_" << version.value();
 
   return ss.str();
 }
@@ -70,7 +74,7 @@ std::string generate_consolidated_fragment_name(
   throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
 
   return generate_timestamped_name(
-      t_first.first, t_last.second, (uint64_t)format_version);
+      t_first.first, t_last.second, format_version);
 }
 
 }  // namespace tiledb::storage_format
