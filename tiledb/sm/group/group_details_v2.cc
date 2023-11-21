@@ -94,23 +94,19 @@ std::vector<std::shared_ptr<GroupMember>> GroupDetailsV2::members_to_serialize()
     const {
   std::lock_guard<std::mutex> lck(mtx_);
 
-  std::vector<std::shared_ptr<GroupMember>> members;
-  std::unordered_set<std::string> found_keys;
-  found_keys.reserve(members_to_modify_.size());
+  decltype(members_) members = members_;
 
-  // Iterate members_to_modify_ in reverse. If a member with the same name or
-  // URI has been modified multiple times, only the last modification will have
-  // effect.
-  for (auto it = members_to_modify_.rbegin(); it != members_to_modify_.rend();
-       ++it) {
-    if (found_keys.find((*it)->key()) != found_keys.end()) {
-      continue;
-    }
-    members.push_back(*it);
-    found_keys.insert((*it)->key());
+  // Add each member, overriding if the user adds/removes it multiple times.
+  for (auto it : members_to_modify_) {
+    members[it->key()] = it;
   }
 
-  return members;
+  std::vector<std::shared_ptr<GroupMember>> result;
+  result.reserve(members.size());
+  for (auto& it : members) {
+    result.emplace_back(it.second);
+  }
+  return result;
 }
 
 }  // namespace sm
