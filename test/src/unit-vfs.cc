@@ -404,15 +404,12 @@ TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
 
   DYNAMIC_SECTION(
       "S3ScanIterator with recursion: " << (recursive ? "true" : "false")) {
+#ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path =
         recursive ? s3_test.temp_dir_ : s3_test.temp_dir_.join_path("subdir_1");
     auto scan =
         s3_test.s3().scanner(path, file_filter, accept_all_dirs, recursive);
-    //  tiledb::sm::TileDBS3Client s3(
-    //      &tiledb::test::g_helper_stats, &s3_test.io_, s3_test.vfs_.config());
-    //  S3Scanner scanner(
-    //      s3, s3_test.temp_dir_, file_filter, accept_all_dirs, recursive);
     auto iter = scan.iterator();
     std::vector<Aws::S3::Model::Object> results_vector(
         iter.begin(), iter.end());
@@ -425,6 +422,7 @@ TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
     } else {
       CHECK(results_vector.size() == 2);
     }
+#endif
   }
 }
 

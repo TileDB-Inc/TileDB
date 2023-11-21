@@ -392,112 +392,6 @@ class TileDBS3Client : public Aws::S3::S3Client {
 };
 
 /**
- * S3ScanIterator iterates over the results of a ListObjectsV2 request wrapped
- * by S3Scanner.
- *
- * @tparam T The S3Scanner type that created this iterator.
- */
-template <class T>
-class S3ScanIterator {
- public:
-  using value_type = Aws::S3::Model::Object;
-  using difference_type = ptrdiff_t;
-  using pointer = std::vector<Aws::S3::Model::Object>::const_iterator;
-  using reference = const Aws::S3::Model::Object&;
-  using iterator_category = std::input_iterator_tag;
-
-  /** Default constructor. */
-  S3ScanIterator() = default;
-
-  /**
-   * Constructor.
-   *
-   * @param scanner The scanner that created this iterator.
-   */
-  explicit S3ScanIterator(T* scanner)
-      : scanner_(scanner)
-      , ptr_(scanner->begin_) {
-  }
-
-  /**
-   * Constructor.
-   *
-   * @param scanner The scanner that created this iterator.
-   */
-  explicit S3ScanIterator(T* scanner, pointer ptr)
-      : scanner_(scanner)
-      , ptr_(ptr) {
-  }
-
-  /** Copy constructor. */
-  S3ScanIterator(const S3ScanIterator& rhs) {
-    ptr_ = rhs.ptr_;
-    scanner_ = rhs.scanner_;
-  }
-
-  /** Copy assignment operator. */
-  S3ScanIterator& operator=(S3ScanIterator rhs) {
-    if (&rhs != this) {
-      std::swap(ptr_, rhs.ptr_);
-      std::swap(scanner_, rhs.scanner_);
-    }
-    return *this;
-  }
-
-  /**
-   * Dereference operator.
-   *
-   * @return The current S3 object from AWS ListObjects request.
-   */
-  reference operator*() {
-    return *ptr_;
-  }
-
-  /**
-   * Prefix increment operator.
-   * Calls the scanner's next() method to advance to the next object.
-   */
-  S3ScanIterator& operator++() {
-    scanner_->next(ptr_);
-    return *this;
-  }
-
-  /** Inequality operator. */
-  bool operator!=(const S3ScanIterator& rhs) const {
-    return ptr_ != rhs.ptr_;
-  }
-
-  /** Equality operator. */
-  bool operator==(const S3ScanIterator& rhs) const {
-    return ptr_ == rhs.ptr_;
-  }
-
-  /**
-   * @return Iterator to the beginning of the results being iterated on.
-   * Input iterators are single-pass, so we return a copy of this iterator at
-   * it's current position.
-   */
-  S3ScanIterator begin() {
-    return *this;
-  }
-
-  /**
-   * @return Iterator to the end of the results being iterated on.
-   */
-  S3ScanIterator end() {
-    // Constructs an iterator with ptr_ set to the end of the scanner's results.
-    return S3ScanIterator<T>(scanner_, scanner_->end_);
-  }
-
- private:
-  /** Pointer to the scanner that created this iterator. */
-  T* scanner_;
-
-  /** Pointer to the current S3 object. */
-  pointer ptr_;
-};
-
-/**
  * S3Scanner wraps the AWS ListObjectsV2 request and provides an iterator for
  * results. If we reach the end of the current batch of results and results are
  * truncated, we fetch the next batch of results from S3.
@@ -508,9 +402,10 @@ class S3ScanIterator {
 template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
 class S3Scanner : public LsScanner<F, D> {
  public:
-  /** Declare S3ScanIterator as a friend class for access to call next(). */
-  template <class T>
-  friend class S3ScanIterator;
+  /** Declare LsScanIterator as a friend class for access to call next(). */
+  template <class T, class U>
+  friend class LsScanIterator;
+  using Iterator = LsScanIterator<S3Scanner<F, D>, Aws::S3::Model::Object>;
 
   /** Constructor. */
   S3Scanner(
@@ -528,9 +423,9 @@ class S3Scanner : public LsScanner<F, D> {
    * done.
    *
    * @param ptr Reference to the current data iterator.
-   * @sa S3ScanIterator::operator++()
+   * @sa LsScanIterator::operator++()
    */
-  void next(S3ScanIterator<S3Scanner<F, D>>::pointer& ptr);
+  void next(Iterator::pointer& ptr);
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the
@@ -538,7 +433,7 @@ class S3Scanner : public LsScanner<F, D> {
    *
    * @return A pointer to the first result in the new batch.
    */
-  S3ScanIterator<S3Scanner<F, D>>::pointer fetch_results() {
+  Iterator::pointer fetch_results() {
     // If this is our first request, GetIsTruncated() will be false.
     if (more_to_fetch()) {
       // If results are truncated on a subsequent request, we set the next
@@ -582,8 +477,8 @@ class S3Scanner : public LsScanner<F, D> {
     return list_objects_outcome_.GetResult().GetIsTruncated();
   }
 
-  S3ScanIterator<S3Scanner<F, D>> iterator() {
-    return S3ScanIterator<S3Scanner<F, D>>(this);
+  Iterator iterator() {
+    return Iterator(this);
   }
 
  private:
@@ -1604,7 +1499,7 @@ S3Scanner<F, D>::S3Scanner(
 }
 
 template <FilePredicate F, DirectoryPredicate D>
-void S3Scanner<F, D>::next(S3ScanIterator<S3Scanner<F, D>>::pointer& ptr) {
+void S3Scanner<F, D>::next(Iterator::pointer& ptr) {
   // Increment the iterator if we found a result on the last call.
   if (found_) {
     found_ = false;

@@ -61,6 +61,112 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
 /**
+ * LsScanIterator iterates over the results of a ListObjectsV2 request wrapped
+ * by deriving classes of LsScanner. See S3Scanner as an example.
+ *
+ * @tparam T The S3Scanner type that created this iterator.
+ */
+template <class T, class U>
+class LsScanIterator {
+ public:
+  using value_type = U;
+  using difference_type = ptrdiff_t;
+  using pointer = std::vector<U>::const_iterator;
+  using reference = const U&;
+  using iterator_category = std::input_iterator_tag;
+
+  /** Default constructor. */
+  LsScanIterator() = default;
+
+  /**
+   * Constructor.
+   *
+   * @param scanner The scanner that created this iterator.
+   */
+  explicit LsScanIterator(T* scanner)
+      : scanner_(scanner)
+      , ptr_(scanner->begin_) {
+  }
+
+  /**
+   * Constructor.
+   *
+   * @param scanner The scanner that created this iterator.
+   */
+  LsScanIterator(T* scanner, pointer ptr)
+      : scanner_(scanner)
+      , ptr_(ptr) {
+  }
+
+  /** Copy constructor. */
+  LsScanIterator(const LsScanIterator& rhs) {
+    ptr_ = rhs.ptr_;
+    scanner_ = rhs.scanner_;
+  }
+
+  /** Copy assignment operator. */
+  LsScanIterator& operator=(LsScanIterator rhs) {
+    if (&rhs != this) {
+      std::swap(ptr_, rhs.ptr_);
+      std::swap(scanner_, rhs.scanner_);
+    }
+    return *this;
+  }
+
+  /**
+   * Dereference operator.
+   *
+   * @return The current S3 object from AWS ListObjects request.
+   */
+  reference operator*() {
+    return *ptr_;
+  }
+
+  /**
+   * Prefix increment operator.
+   * Calls the scanner's next() method to advance to the next object.
+   */
+  LsScanIterator& operator++() {
+    scanner_->next(ptr_);
+    return *this;
+  }
+
+  /** Inequality operator. */
+  bool operator!=(const LsScanIterator& rhs) const {
+    return ptr_ != rhs.ptr_;
+  }
+
+  /** Equality operator. */
+  bool operator==(const LsScanIterator& rhs) const {
+    return ptr_ == rhs.ptr_;
+  }
+
+  /**
+   * @return Iterator to the beginning of the results being iterated on.
+   * Input iterators are single-pass, so we return a copy of this iterator at
+   * it's current position.
+   */
+  LsScanIterator begin() {
+    return *this;
+  }
+
+  /**
+   * @return Iterator to the end of the results being iterated on.
+   */
+  LsScanIterator end() {
+    // Constructs an iterator with ptr_ set to the end of the scanner's results.
+    return LsScanIterator<T, U>(scanner_, scanner_->end_);
+  }
+
+ private:
+  /** Pointer to the scanner that created this iterator. */
+  T* scanner_;
+
+  /** Pointer to the current S3 object. */
+  pointer ptr_;
+};
+
+/**
  * LsScanner is a base class for scanning a filesystem for objects that match
  * the given file and directory predicates. This should be used as a common
  * base class for future filesystem scanner implementations, similar to
