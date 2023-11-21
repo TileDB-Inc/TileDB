@@ -866,7 +866,7 @@ set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
-if (WIN32)
+if (WIN32 AND BUILD_SHARED_LIBS)
   # WIN32 RC file creation (for VERSIONINFO)
   set(TDB_WIN32_FILEVERSION "${ver_major},${ver_minor},${ver_patch},0")
   set(TDB_WIN32_FILEVERSION_STR "\"${ver_major}.${ver_minor}.${ver_patch}\"")
