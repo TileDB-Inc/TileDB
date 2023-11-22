@@ -54,17 +54,19 @@ namespace tiledb::sm {
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
+/** Static DirectoryFilter used as default argument. */
 [[maybe_unused]] static bool accept_all_dirs(const std::string_view&) {
   return true;
 }
 
+/** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
 /**
  * LsScanIterator iterates over the results of a ListObjectsV2 request wrapped
  * by deriving classes of LsScanner. See S3Scanner as an example.
  *
- * @tparam T The S3Scanner type that created this iterator.
+ * @tparam T The LsScanner type that created this iterator.
  */
 template <class T, class U>
 class LsScanIterator {
@@ -116,7 +118,7 @@ class LsScanIterator {
   /**
    * Dereference operator.
    *
-   * @return The current S3 object from AWS ListObjects request.
+   * @return The current object being visited.
    */
   reference operator*() {
     return *ptr_;
@@ -162,7 +164,7 @@ class LsScanIterator {
   /** Pointer to the scanner that created this iterator. */
   T* scanner_;
 
-  /** Pointer to the current S3 object. */
+  /** Pointer to the current object. */
   pointer ptr_;
 };
 

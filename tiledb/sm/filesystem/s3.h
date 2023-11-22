@@ -482,13 +482,22 @@ class S3Scanner : public LsScanner<F, D> {
     return Iterator(this);
   }
 
+  /**
+   * Set the maximum number of keys to fetch for each S3 ListObjects request.
+   *
+   * @param max_keys The maximum number of keys to fetch per request.
+   */
+  inline void set_max_keys(int max_keys) {
+    list_objects_request_.SetMaxKeys(max_keys);
+  }
+
  private:
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
   /** Delimiter used for ListObjects request. */
   std::string delimiter_;
   /** Iterators for the current objects fetched from S3. */
-  std::vector<Aws::S3::Model::Object>::const_iterator begin_, end_;
+  typename Iterator::pointer begin_, end_;
 
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
@@ -507,7 +516,7 @@ class S3Scanner : public LsScanner<F, D> {
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
  */
-class S3 : public TempFilesystemBase {
+class S3 {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
@@ -688,6 +697,18 @@ class S3 : public TempFilesystemBase {
     return objects;
   }
 
+  /**
+   * Constructs a scanner for listing S3 objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   * @return Fully constructed S3Scanner object.
+   */
   template <FilePredicate F, DirectoryPredicate D>
   S3Scanner<F, D> scanner(
       const URI& parent,
@@ -1508,11 +1529,12 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
   if (found_) {
     found_ = false;
     ptr++;
-  }
 
-  // If results were truncated, fetch more when we reach the end of this batch.
-  if (more_to_fetch() && ptr == end_) {
-    ptr = fetch_results();
+    // If results were truncated, fetch more when we reach the end of this
+    // batch.
+    if (more_to_fetch() && ptr == end_) {
+      ptr = fetch_results();
+    }
   }
 
   while (ptr != end_) {
@@ -1520,16 +1542,19 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
     uint64_t size = object.GetSize();
     std::string path = "s3://" + list_objects_request_.GetBucket() +
                        S3::add_front_slash(object.GetKey());
-    if (!this->file_filter_(path, size)) {
-      ptr++;
-    } else {
+    if (this->file_filter_(path, size)) {
       // iterator is at the next object within results accepted by the filters.
       found_ = true;
       return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      ptr++;
+
+      if (more_to_fetch() && ptr == end_) {
+        ptr = fetch_results();
+      }
     }
-    if (more_to_fetch() && ptr == end_) {
-      ptr = fetch_results();
-    }
+
     // TODO: Add support for directory pruning.
   }
 }

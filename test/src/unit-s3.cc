@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/s3.h"
@@ -553,5 +554,69 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
   try_with_bucket_object_canned_acl("public_read", "public_read");
   try_with_bucket_object_canned_acl("public_read_write", "public_read_write");
   try_with_bucket_object_canned_acl("authenticated_read", "authenticated_read");
+}
+
+TEST_CASE(
+    "S3: S3Scanner iterator to populate vector", "[s3][ls-scan-iterator]") {
+  S3Test s3_test({10, 50});
+  bool recursive = true;
+  // 1000 is the default max_keys for S3. This is the same default used by
+  // S3Scanner. Testing with small max_keys validates the iterator handles batch
+  // collection and filtering appropriately.
+  int max_keys = GENERATE(1000, 10, 7);
+
+  DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
+    FileFilter file_filter;
+
+    SECTION("Reject all objects") {
+      file_filter = [](const std::string_view&, uint64_t) { return false; };
+    }
+
+    SECTION("Filter objects including 'test_file_1' in key") {
+      file_filter = [](const std::string_view& path, uint64_t) {
+        if (path.find("test_file_1") != std::string::npos) {
+          return true;
+        }
+        return false;
+      };
+    }
+
+    SECTION("Scan for a single object") {
+      file_filter = [](const std::string_view& path, uint64_t) {
+        if (path.find("test_file_50") != std::string::npos) {
+          return true;
+        }
+        return false;
+      };
+    }
+
+    // Filter expected results to apply file_filter.
+    LsObjects expected;
+    std::copy_if(
+        s3_test.expected_results_.begin(),
+        s3_test.expected_results_.end(),
+        std::back_inserter(expected),
+        [&file_filter](const auto& a) {
+          return file_filter(a.first, a.second);
+        });
+
+    auto scan = s3_test.get_s3().scanner(
+        s3_test.temp_dir_, file_filter, accept_all_dirs, recursive);
+    scan.set_max_keys(max_keys);
+    auto iter = scan.iterator();
+    std::vector<Aws::S3::Model::Object> results_vector(
+        iter.begin(), iter.end());
+    for (const auto& result : results_vector) {
+      CHECK(file_filter(result.GetKey(), result.GetSize()));
+    }
+
+    CHECK(results_vector.size() == expected.size());
+    for (size_t i = 0; i < expected.size(); i++) {
+      auto s3_object = results_vector[i];
+      auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
+      CHECK(full_uri == expected[i].first);
+      CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
+    }
+  }
 }
 #endif

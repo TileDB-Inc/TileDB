@@ -766,7 +766,8 @@ class VFSTestBase {
    */
   static tiledb::sm::Config create_test_config();
 
-  static bool no_file_filter(const std::string_view&, uint64_t) {
+  /** FilePredicate for passing to ls_filtered that accepts all files. */
+  static bool accept_all_files(const std::string_view&, uint64_t) {
     return true;
   }
 
@@ -798,7 +799,7 @@ class VFSTest : public VFSTestBase {
 };
 
 /** Test object for tiledb::sm::S3 functionality. */
-class S3Test : public VFSTestBase, public tiledb::sm::S3_within_VFS {
+class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
  public:
   explicit S3Test(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "s3://")
@@ -819,6 +820,18 @@ class S3Test : public VFSTestBase, public tiledb::sm::S3_within_VFS {
     }
 #endif
   }
+
+#ifdef HAVE_S3
+  /** Expose protected accessor from S3_within_VFS. */
+  tiledb::sm::S3& get_s3() {
+    return s3();
+  }
+
+  /** Expose protected const accessor from S3_within_VFS. */
+  const tiledb::sm::S3& get_s3() const {
+    return s3();
+  }
+#endif
 };
 
 /** Stub test object for tiledb::sm::Win and Posix functionality. */

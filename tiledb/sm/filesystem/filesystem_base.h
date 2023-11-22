@@ -41,16 +41,7 @@
 
 namespace tiledb::sm {
 
-class TempFilesystemBase {
- public:
-  template <FilePredicate F, DirectoryPredicate D>
-  LsObjects ls_filtered(
-      const URI&, F, D = tiledb::sm::accept_all_dirs, bool = false) const {
-    return {};
-  }
-};
-
-class FilesystemBase : TempFilesystemBase {
+class FilesystemBase {
  public:
   FilesystemBase() = default;
 

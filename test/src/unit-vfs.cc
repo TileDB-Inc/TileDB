@@ -353,31 +353,26 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   REQUIRE(vfs_ls.remove_dir(URI(path)).ok());
 }
 
-// Currently only S3 is supported for VFS::ls_cb.
+// Currently only S3 is supported for VFS::ls_recursive.
 using TestBackends = std::tuple<S3Test>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: Test internal ls_filtered recursion argument",
-    "[vfs][ls_filtered]",
+    "[vfs][ls_filtered][recursion]",
     TestBackends) {
   TestType fs({10, 50});
   if (!fs.is_supported()) {
     return;
   }
 
-  // TODO: Fails when recursive is false, because AWS prefix includes subdir_N/
   bool recursive = GENERATE(true, false);
   DYNAMIC_SECTION(
       fs.temp_dir_.backend_name()
       << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
-    /*
-     * Temporary stub while common base class is added. The s3 accessor won't be
-     * needed, and can be converted to a virtual function call.
-     */
 #ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    auto ls_objects = fs.s3().ls_filtered(
-        path, VFSTestBase::no_file_filter, accept_all_dirs, recursive);
+    auto ls_objects = fs.get_s3().ls_filtered(
+        path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
 
     if (!recursive) {
       // If non-recursive, all objects in the first directory should be
@@ -392,45 +387,10 @@ TEMPLATE_LIST_TEST_CASE(
   }
 }
 
-TEST_CASE("VFS: S3ScanIterator to populate vector", "[vfs][ls_filtered]") {
-  S3Test s3_test({10, 50});
-  bool recursive = GENERATE(true, false);
-
-  DYNAMIC_SECTION(
-      "S3ScanIterator with recursion: " << (recursive ? "true" : "false")) {
-#ifdef HAVE_S3
-    auto file_filter = [](const std::string_view& path, uint64_t) {
-      if (path.find("test_file_1") != std::string::npos) {
-        return true;
-      }
-      return false;
-    };
-
-    // If testing with recursion use the root directory, otherwise use a subdir.
-    auto path =
-        recursive ? s3_test.temp_dir_ : s3_test.temp_dir_.join_path("subdir_1");
-    auto scan =
-        s3_test.s3().scanner(path, file_filter, accept_all_dirs, recursive);
-    auto iter = scan.iterator();
-    std::vector<Aws::S3::Model::Object> results_vector(
-        iter.begin(), iter.end());
-    for (const auto& result : results_vector) {
-      CHECK(file_filter(result.GetKey(), 0));
-    }
-    if (recursive) {
-      CHECK(results_vector.size() == 13);
-    } else {
-      CHECK(results_vector.size() == 2);
-    }
-#endif
-  }
-}
-
 TEST_CASE(
     "VFS: ls_recursive throws for unsupported backends",
     "[vfs][ls_recursive]") {
-  // Local and mem fs tests are in
-  // tiledb/sm/filesystem/test/unit_ls_filtered.cc
+  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
   std::string prefix = GENERATE("s3://", "hdfs://", "azure://", "gcs://");
   VFSTest vfs_test({1}, prefix);
   if (!vfs_test.is_supported()) {
@@ -442,15 +402,38 @@ TEST_CASE(
   if (vfs_test.temp_dir_.is_s3()) {
     DYNAMIC_SECTION(backend << " supported backend should not throw") {
       CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-          vfs_test.temp_dir_, VFSTestBase::no_file_filter));
+          vfs_test.temp_dir_, VFSTestBase::accept_all_files));
     }
   } else {
     DYNAMIC_SECTION(backend << " unsupported backend should throw") {
       CHECK_THROWS_WITH(
           vfs_test.vfs_.ls_recursive(
-              vfs_test.temp_dir_, VFSTestBase::no_file_filter),
+              vfs_test.temp_dir_, VFSTestBase::accept_all_files),
           Catch::Matchers::ContainsSubstring(
               "storage backend is not supported"));
     }
+  }
+}
+
+TEST_CASE(
+    "VFS: Throwing FileFilter for ls_recursive",
+    "[vfs][ls_recursive][file-filter]") {
+  std::string prefix = "s3://";
+  VFSTest vfs_test({0}, prefix);
+  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing FileFilter");
+  };
+  SECTION("Throwing FileFilter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+        vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
+  }
+  SECTION("Throwing FileFilter with N objects should throw") {
+    vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
+    CHECK_THROWS_AS(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 }

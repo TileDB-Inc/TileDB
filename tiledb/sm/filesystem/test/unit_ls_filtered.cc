@@ -31,14 +31,12 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include <filesystem>
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
 class VFSTest {
  public:
-  /** Type definition for objects returned from ls_recursive */
-  using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
-
   /**
    * Requires derived class to create a temporary directory.
    *
@@ -70,6 +68,11 @@ class VFSTest {
     return is_supported_;
   }
 
+  /** FilePredicate for passing to ls_filtered that accepts all files. */
+  static bool accept_all_files(const std::string_view&, uint64_t) {
+    return true;
+  }
+
   /** Resources needed to construct VFS */
   tiledb::sm::stats::Stats stats_;
   ThreadPool io_, compute_;
@@ -78,7 +81,7 @@ class VFSTest {
   std::vector<size_t> test_tree_;
   std::string prefix_;
   tiledb::sm::URI temp_dir_;
-  LsObjects expected_results_;
+  tiledb::sm::LsObjects expected_results_;
 
  protected:
   bool is_supported_;
@@ -86,23 +89,25 @@ class VFSTest {
 
 // TODO: Disable shouldfail when file:// or mem:// support is added.
 TEST_CASE(
-    "VFS: Throwing callback ls_recursive", "[vfs][ls_recursive][!shouldfail]") {
+    "VFS: Throwing FileFilter ls_recursive",
+    "[vfs][ls_recursive][!shouldfail]") {
   std::string prefix = GENERATE("file://", "mem://");
-  size_t num_objects = GENERATE(0, 1);
-  VFSTest vfs_test({num_objects}, prefix);
-  auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t {
-    throw std::logic_error("Throwing callback");
+  VFSTest vfs_test({0}, prefix);
+  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing FileFilter");
   };
-  SECTION("Throwing callback with 0 objects should not throw") {
-    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb));
+  SECTION("Throwing FileFilter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+        vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
   }
-  SECTION("Throwing callback with N objects should throw") {
+  SECTION("Throwing FileFilter with N objects should throw") {
     vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
     CHECK_THROWS_AS(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb), std::logic_error);
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        std::logic_error);
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb),
-        Catch::Matchers::ContainsSubstring("Throwing callback"));
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 }
 
@@ -110,11 +115,7 @@ TEST_CASE(
     "VFS: ls_recursive throws for unsupported filesystems",
     "[vfs][ls_recursive]") {
   std::string prefix = GENERATE("file://", "mem://");
-#ifdef _WIN32
-  prefix += tiledb::sm::Win::current_dir() + "/";
-#else
-  prefix += tiledb::sm::Posix::current_dir() + "/";
-#endif
+  prefix += std::filesystem::current_path().string() + "/ls_filtered_test";
 
   VFSTest vfs_test({1}, prefix);
   if (!vfs_test.is_supported()) {
@@ -122,13 +123,11 @@ TEST_CASE(
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  auto cb = [](const char*, size_t, uint64_t, void*) { return 1; };
-  VFSTest::LsObjects data;
-  tiledb::sm::LsCallbackWrapperCAPI cb_wrapper(cb, &data);
   // Currently only S3 is supported for VFS::ls_recursive.
   DYNAMIC_SECTION(backend << " unsupported backend should throw") {
     CHECK_THROWS_WITH(
-        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, cb_wrapper),
+        vfs_test.vfs_.ls_recursive(
+            vfs_test.temp_dir_, VFSTest::accept_all_files),
         Catch::Matchers::ContainsSubstring("storage backend is not supported"));
   }
 }
