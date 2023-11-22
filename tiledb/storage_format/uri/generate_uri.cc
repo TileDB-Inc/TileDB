@@ -53,8 +53,9 @@ std::string generate_timestamped_name(
   std::stringstream ss;
   ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid;
 
-  if (version != std::nullopt)
+  if (version.has_value()) {
     ss << "_" << version.value();
+  }
 
   return ss.str();
 }
