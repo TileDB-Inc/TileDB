@@ -14,10 +14,7 @@ my_array                            # array folder
          |_ ...
 ```
 
-`<timestamped_name>` has format `__timestamp_timestamp_uuid`, where:
-* `timestamp` is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-
+Note: the `schema` [`<timestamped_name>`](./timestamped_name.md) does _not_ include the format version.
 
 The array schema folder can contain:
 

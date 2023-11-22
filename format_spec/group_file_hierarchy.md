@@ -17,4 +17,5 @@ File `__tiledb_group.tdb` is empty and it is merely used to indicate that `my_gr
 Inside the group folder, you can find the following:
 
 * [Group details](./group.md) folder `__group`.
+    * [Timestamped](./timestamped_name.md) group file detailing members.
 * [Group metadata](./metadata.md) folder `__meta`.
