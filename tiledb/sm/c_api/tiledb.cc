@@ -5083,10 +5083,7 @@ int32_t tiledb_consolidation_plan_dump_json_str(
     return TILEDB_ERR;
   }
 
-  consolidation_plan->consolidation_plan_->dump();
-
   std::string str = consolidation_plan->consolidation_plan_->dump();
-  ;
 
   *out = static_cast<char*>(std::malloc(str.size() + 1));
   if (*out == nullptr) {

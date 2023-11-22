@@ -110,6 +110,8 @@ CAPNP_DECLARE_SCHEMA(83f094010132ff21);
 CAPNP_DECLARE_SCHEMA(ebe17f59ac9a1df1);
 CAPNP_DECLARE_SCHEMA(e06f571aa93eb314);
 CAPNP_DECLARE_SCHEMA(9fd8fc2f462b2d06);
+CAPNP_DECLARE_SCHEMA(8965edf5597ce627);
+CAPNP_DECLARE_SCHEMA(aac8bf9b5211388b);
 CAPNP_DECLARE_SCHEMA(ca2d4d0bfe4ae5d9);
 CAPNP_DECLARE_SCHEMA(e193f1f45a9f102e);
 
@@ -1715,6 +1717,40 @@ struct QueryPlanResponse {
 
   struct _capnpPrivate {
     CAPNP_DECLARE_STRUCT_HEADER(9fd8fc2f462b2d06, 0, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ConsolidationPlanRequest {
+  ConsolidationPlanRequest() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(8965edf5597ce627, 0, 1)
+#if !CAPNP_LITE
+    static constexpr ::capnp::_::RawBrandedSchema const* brand() {
+      return &schema->defaultBrand;
+    }
+#endif  // !CAPNP_LITE
+  };
+};
+
+struct ConsolidationPlanResponse {
+  ConsolidationPlanResponse() = delete;
+
+  class Reader;
+  class Builder;
+  class Pipeline;
+
+  struct _capnpPrivate {
+    CAPNP_DECLARE_STRUCT_HEADER(aac8bf9b5211388b, 0, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -15166,6 +15202,227 @@ class QueryPlanResponse::Builder {
 class QueryPlanResponse::Pipeline {
  public:
   typedef QueryPlanResponse Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ConsolidationPlanRequest::Reader {
+ public:
+  typedef ConsolidationPlanRequest Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig() const;
+  inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ConsolidationPlanRequest::Builder {
+ public:
+  typedef ConsolidationPlanRequest Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasConfig();
+  inline ::tiledb::sm::serialization::capnp::Config::Builder getConfig();
+  inline void setConfig(
+      ::tiledb::sm::serialization::capnp::Config::Reader value);
+  inline ::tiledb::sm::serialization::capnp::Config::Builder initConfig();
+  inline void adoptConfig(
+      ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
+  inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+  disownConfig();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ConsolidationPlanRequest::Pipeline {
+ public:
+  typedef ConsolidationPlanRequest Pipelines;
+
+  inline Pipeline(decltype(nullptr))
+      : _typeless(nullptr) {
+  }
+  inline explicit Pipeline(::capnp::AnyPointer::Pipeline&& typeless)
+      : _typeless(kj::mv(typeless)) {
+  }
+
+  inline ::tiledb::sm::serialization::capnp::Config::Pipeline getConfig();
+
+ private:
+  ::capnp::AnyPointer::Pipeline _typeless;
+  friend class ::capnp::PipelineHook;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+};
+#endif  // !CAPNP_LITE
+
+class ConsolidationPlanResponse::Reader {
+ public:
+  typedef ConsolidationPlanResponse Reads;
+
+  Reader() = default;
+  inline explicit Reader(::capnp::_::StructReader base)
+      : _reader(base) {
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return _reader.totalSize().asPublic();
+  }
+
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return ::capnp::_::structString(_reader, *_capnpPrivate::brand());
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasFragmentUrisPerNode() const;
+  inline ::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>::Reader
+  getFragmentUrisPerNode() const;
+
+ private:
+  ::capnp::_::StructReader _reader;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::List;
+  friend class ::capnp::MessageBuilder;
+  friend class ::capnp::Orphanage;
+};
+
+class ConsolidationPlanResponse::Builder {
+ public:
+  typedef ConsolidationPlanResponse Builds;
+
+  Builder() = delete;  // Deleted to discourage incorrect usage.
+                       // You can explicitly initialize to nullptr instead.
+  inline Builder(decltype(nullptr)) {
+  }
+  inline explicit Builder(::capnp::_::StructBuilder base)
+      : _builder(base) {
+  }
+  inline operator Reader() const {
+    return Reader(_builder.asReader());
+  }
+  inline Reader asReader() const {
+    return *this;
+  }
+
+  inline ::capnp::MessageSize totalSize() const {
+    return asReader().totalSize();
+  }
+#if !CAPNP_LITE
+  inline ::kj::StringTree toString() const {
+    return asReader().toString();
+  }
+#endif  // !CAPNP_LITE
+
+  inline bool hasFragmentUrisPerNode();
+  inline ::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>::Builder
+  getFragmentUrisPerNode();
+  inline void setFragmentUrisPerNode(
+      ::capnp::List<
+          ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+          ::capnp::Kind::LIST>::Reader value);
+  inline void setFragmentUrisPerNode(
+      ::kj::ArrayPtr<
+          const ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader>
+          value);
+  inline ::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>::Builder
+  initFragmentUrisPerNode(unsigned int size);
+  inline void adoptFragmentUrisPerNode(
+      ::capnp::Orphan<::capnp::List<
+          ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+          ::capnp::Kind::LIST>>&& value);
+  inline ::capnp::Orphan<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>
+  disownFragmentUrisPerNode();
+
+ private:
+  ::capnp::_::StructBuilder _builder;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::ToDynamic_;
+  friend class ::capnp::Orphanage;
+  template <typename, ::capnp::Kind>
+  friend struct ::capnp::_::PointerHelpers;
+};
+
+#if !CAPNP_LITE
+class ConsolidationPlanResponse::Pipeline {
+ public:
+  typedef ConsolidationPlanResponse Pipelines;
 
   inline Pipeline(decltype(nullptr))
       : _typeless(nullptr) {
@@ -32448,6 +32705,142 @@ inline ::capnp::Orphan<::capnp::Text>
 QueryPlanResponse::Builder::disownQueryPlan() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ConsolidationPlanRequest::Reader::hasConfig() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ConsolidationPlanRequest::Builder::hasConfig() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::tiledb::sm::serialization::capnp::Config::Reader
+ConsolidationPlanRequest::Reader::getConfig() const {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ConsolidationPlanRequest::Builder::getConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::get(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+#if !CAPNP_LITE
+inline ::tiledb::sm::serialization::capnp::Config::Pipeline
+ConsolidationPlanRequest::Pipeline::getConfig() {
+  return ::tiledb::sm::serialization::capnp::Config::Pipeline(
+      _typeless.getPointerField(0));
+}
+#endif  // !CAPNP_LITE
+inline void ConsolidationPlanRequest::Builder::setConfig(
+    ::tiledb::sm::serialization::capnp::Config::Reader value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::set(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      value);
+}
+inline ::tiledb::sm::serialization::capnp::Config::Builder
+ConsolidationPlanRequest::Builder::initConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+inline void ConsolidationPlanRequest::Builder::adoptConfig(
+    ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value) {
+  ::capnp::_::PointerHelpers<::tiledb::sm::serialization::capnp::Config>::adopt(
+      _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
+ConsolidationPlanRequest::Builder::disownConfig() {
+  return ::capnp::_::
+      PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool ConsolidationPlanResponse::Reader::hasFragmentUrisPerNode() const {
+  return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool ConsolidationPlanResponse::Builder::hasFragmentUrisPerNode() {
+  return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+    ::capnp::Kind::LIST>::Reader
+ConsolidationPlanResponse::Reader::getFragmentUrisPerNode() const {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::get(_reader
+                                     .getPointerField(
+                                         ::capnp::bounded<0>() *
+                                         ::capnp::POINTERS));
+}
+inline ::capnp::List<
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+    ::capnp::Kind::LIST>::Builder
+ConsolidationPlanResponse::Builder::getFragmentUrisPerNode() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::get(_builder
+                                     .getPointerField(
+                                         ::capnp::bounded<0>() *
+                                         ::capnp::POINTERS));
+}
+inline void ConsolidationPlanResponse::Builder::setFragmentUrisPerNode(
+    ::capnp::List<
+        ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+        ::capnp::Kind::LIST>::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline void ConsolidationPlanResponse::Builder::setFragmentUrisPerNode(
+    ::kj::ArrayPtr<
+        const ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader>
+        value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::
+      set(_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+    ::capnp::Kind::LIST>::Builder
+ConsolidationPlanResponse::Builder::initFragmentUrisPerNode(unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::
+      init(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          size);
+}
+inline void ConsolidationPlanResponse::Builder::adoptFragmentUrisPerNode(
+    ::capnp::Orphan<::capnp::List<
+        ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+        ::capnp::Kind::LIST>>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::
+      adopt(
+          _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+    ::capnp::Kind::LIST>>
+ConsolidationPlanResponse::Builder::disownFragmentUrisPerNode() {
+  return ::capnp::_::PointerHelpers<::capnp::List<
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>,
+      ::capnp::Kind::LIST>>::disown(_builder
+                                        .getPointerField(
+                                            ::capnp::bounded<0>() *
+                                            ::capnp::POINTERS));
 }
 
 inline bool QueryChannel::Reader::getDefault() const {
