@@ -36,14 +36,6 @@ option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
-# If -DCMAKE_OSX_DEPLOYMENT_TARGET is passed, it gets added to the cache either way.
-# Otherwise, if the environment variable is defined, we let it have effect by not adding
-# the option to the cache. If neither is defined, we set a default value.
-if(NOT DEFINED ENV{MACOSX_DEPLOYMENT_TARGET})
-  # By default we target macOS 11 at minimum according to CRAN policy.
-  # See https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010078.html
-  option(CMAKE_OSX_DEPLOYMENT_TARGET "macOS minimum target version" 11)
-endif()
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
