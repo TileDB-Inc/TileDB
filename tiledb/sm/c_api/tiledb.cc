@@ -7276,6 +7276,17 @@ CAPI_INTERFACE(
       ctx, array, serialization_type, request, response);
 }
 
+CAPI_INTERFACE(
+    handle_consolidation_plan_request,
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  return api_entry<tiledb::api::tiledb_handle_consolidation_plan_request>(
+      ctx, array, serialization_type, request, response);
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */

@@ -31,8 +31,13 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
+#include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/serialization/consolidation.h"
 
 #include <test/support/tdb_catch.h>
 
@@ -46,6 +51,7 @@ struct CppConsolidationPlanFx {
   // TileDB context.
   Context ctx_;
   VFS vfs_;
+  Config cfg_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
@@ -67,15 +73,21 @@ struct CppConsolidationPlanFx {
   bool is_array(const std::string& array_name);
   void check_last_error(std::string expected);
   void validate_plan(
+      uint64_t fragment_size,
+      const Array& array,
       ConsolidationPlan& plan,
       std::vector<std::vector<std::string>> expected_plan);
+  tiledb::sm::ConsolidationPlan call_handler(
+      uint64_t fragment_size,
+      const Array& array,
+      tiledb::sm::SerializationType stype);
 };
 
 CppConsolidationPlanFx::CppConsolidationPlanFx()
     : vfs_(ctx_) {
-  Config config;
-  config.set("sm.consolidation.buffer_size", "1000");
-  ctx_ = Context(config);
+  Config cfg_;
+  cfg_.set("sm.consolidation.buffer_size", "1000");
+  ctx_ = Context(cfg_);
   vfs_ = VFS(ctx_);
 
   remove_sparse_array();
@@ -188,9 +200,44 @@ void CppConsolidationPlanFx::check_last_error(std::string expected) {
   CHECK(msg == expected);
 }
 
+tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
+    uint64_t fragment_size,
+    const Array& array,
+    tiledb::sm::SerializationType stype) {
+  auto req_buf = tiledb_buffer_handle_t::make_handle();
+  auto resp_buf = tiledb_buffer_handle_t::make_handle();
+
+  tiledb::sm::serialization::serialize_consolidation_plan_request(
+      fragment_size, cfg_.ptr()->config(), stype, req_buf->buffer());
+  auto rval = tiledb_handle_consolidation_plan_request(
+      ctx_.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval == TILEDB_OK);
+
+  auto fragments_per_node =
+      tiledb::sm::serialization::deserialize_consolidation_plan_response(
+          stype, resp_buf->buffer());
+  // construct consolidation plan from the members we got from serialization
+  return tiledb::sm::ConsolidationPlan(fragment_size, fragments_per_node);
+}
+
 void CppConsolidationPlanFx::validate_plan(
+    uint64_t fragment_size,
+    const Array& array,
     ConsolidationPlan& plan,
     std::vector<std::vector<std::string>> expected_plan) {
+#ifdef TILEDB_SERIALIZATION
+  auto stype = GENERATE(
+      tiledb::sm::SerializationType::JSON,
+      tiledb::sm::SerializationType::CAPNP);
+  auto deserialized_plan = call_handler(fragment_size, array, stype);
+  // Now the two plans should be exactly the same.
+  REQUIRE(plan.dump() == deserialized_plan.dump());
+#endif
+
   // Take all the nodes in the plan, make a string out of them, the string will
   // be the sorted fragment URIs.
   std::vector<std::string> string_plan(plan.num_nodes());
@@ -247,11 +294,11 @@ TEST_CASE_METHOD(
 
   CHECK_THROWS_WITH(
       consolidation_plan.num_fragments(0),
-      "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+      "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
 
   CHECK_THROWS_WITH(
       consolidation_plan.fragment_uri(0, 0),
-      "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+      "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
 }
 
 TEST_CASE_METHOD(
@@ -286,7 +333,7 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1, uri2}});
+  validate_plan(1, array, consolidation_plan, {{uri1, uri2}});
 }
 
 TEST_CASE_METHOD(
@@ -312,7 +359,7 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1, uri2}, {uri3, uri4}});
+  validate_plan(1, array, consolidation_plan, {{uri1, uri2}, {uri3, uri4}});
 }
 
 TEST_CASE_METHOD(
@@ -338,7 +385,7 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 1);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1, uri2, uri3}});
+  validate_plan(1, array, consolidation_plan, {{uri1, uri2, uri3}});
 }
 
 TEST_CASE_METHOD(
@@ -361,7 +408,7 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 10 * 1024);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1}});
+  validate_plan(10 * 1024, array, consolidation_plan, {{uri1}});
 }
 
 TEST_CASE_METHOD(
@@ -380,7 +427,7 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1, uri2}});
+  validate_plan(100 * 1024, array, consolidation_plan, {{uri1, uri2}});
 }
 
 TEST_CASE_METHOD(
@@ -409,7 +456,7 @@ TEST_CASE_METHOD(
 
   // Validate the plan, we should only have a node for the large fragment to be
   // split.
-  validate_plan(consolidation_plan, {{uri2}});
+  validate_plan(100 * 1024, array, consolidation_plan, {{uri2}});
 }
 
 TEST_CASE_METHOD(
@@ -438,7 +485,7 @@ TEST_CASE_METHOD(
 
   // Validate the plan, we should only have a node for the large fragment to be
   // split.
-  validate_plan(consolidation_plan, {{uri1, uri3}, {uri2}});
+  validate_plan(100 * 1024, array, consolidation_plan, {{uri1, uri3}, {uri2}});
 }
 
 TEST_CASE_METHOD(
@@ -486,5 +533,9 @@ TEST_CASE_METHOD(
   ConsolidationPlan consolidation_plan(ctx_, array, 100 * 1024);
 
   // Validate the plan.
-  validate_plan(consolidation_plan, {{uri1, uri2, uri3}, {uri6, uri7}, {uri5}});
+  validate_plan(
+      100 * 1024,
+      array,
+      consolidation_plan,
+      {{uri1, uri2, uri3}, {uri6, uri7}, {uri5}});
 }

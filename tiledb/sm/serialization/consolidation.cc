@@ -43,9 +43,9 @@
 // clang-format on
 
 #include "tiledb/common/logger_public.h"
-#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/consolidation.h"
 
 using namespace tiledb::common;
 
@@ -193,6 +193,7 @@ void consolidation_plan_request_to_capnp(
     uint64_t fragment_size) {
   auto config_builder = builder.initConfig();
   throw_if_not_ok(config_to_capnp(config, &config_builder));
+  builder.setFragmentSize(fragment_size);
 }
 
 uint64_t consolidation_plan_request_from_capnp(
