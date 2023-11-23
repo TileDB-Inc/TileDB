@@ -198,7 +198,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/temporary_local_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -293,6 +292,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_aggregates.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/stats/global_stats.cc
@@ -346,6 +346,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_aggregates.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++
@@ -368,6 +369,7 @@ if (TILEDB_SERIALIZATION)
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/group.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_aggregates.cc
+      ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/query_plan.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/consolidation.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/vacuum.cc
       ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp.c++

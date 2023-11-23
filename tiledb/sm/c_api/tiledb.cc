@@ -81,6 +81,7 @@
 #include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -4337,6 +4338,35 @@ capi_return_t tiledb_handle_load_enumerations_request(
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_handle_query_plan_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
+  api::ensure_buffer_is_valid(response);
+
+  tiledb::sm::Query query(ctx->storage_manager(), array->array_);
+  tiledb::sm::serialization::deserialize_query_plan_request(
+      static_cast<tiledb::sm::SerializationType>(serialization_type),
+      request->buffer(),
+      ctx->resources().compute_tp(),
+      query);
+  sm::QueryPlan plan(query);
+
+  tiledb::sm::serialization::serialize_query_plan_response(
+      plan.dump_json(),
+      static_cast<tiledb::sm::SerializationType>(serialization_type),
+      response->buffer());
+
+  return TILEDB_OK;
+}
+
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -7201,6 +7231,17 @@ CAPI_INTERFACE(
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
   return api_entry<tiledb::api::tiledb_handle_load_enumerations_request>(
+      ctx, array, serialization_type, request, response);
+}
+
+CAPI_INTERFACE(
+    handle_query_plan_request,
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  return api_entry<tiledb::api::tiledb_handle_query_plan_request>(
       ctx, array, serialization_type, request, response);
 }
 

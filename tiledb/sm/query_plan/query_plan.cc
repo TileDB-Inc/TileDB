@@ -75,6 +75,9 @@ QueryPlan::QueryPlan(Query& query) {
   if (query.is_dense()) {
     dimensions_ = query.array()->array_schema_latest().dim_names();
   }
+
+  std::sort(attributes_.begin(), attributes_.end());
+  std::sort(dimensions_.begin(), dimensions_.end());
 }
 
 /* ********************************* */

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -57,8 +57,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated exceptions. */
 class ArraySchemaEvolutionException : public StatusException {
@@ -142,11 +141,10 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
 
   // Set timestamp, if specified
   if (std::get<0>(timestamp_range_) != 0) {
-    throw_if_not_ok(schema.get()->set_timestamp_range(timestamp_range_));
-    throw_if_not_ok(schema->generate_uri(timestamp_range_));
+    schema->generate_uri(timestamp_range_);
   } else {
     // Generate new schema URI
-    throw_if_not_ok(schema->generate_uri());
+    schema->generate_uri();
   }
 
   return schema;
@@ -331,10 +329,10 @@ std::vector<std::string> ArraySchemaEvolution::enumeration_names_to_drop()
 void ArraySchemaEvolution::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
   if (timestamp_range.first != timestamp_range.second) {
-    throw std::runtime_error(std::string(
+    throw ArraySchemaEvolutionException(
         "Cannot set timestamp range; first element " +
         std::to_string(timestamp_range.first) + " and second element " +
-        std::to_string(timestamp_range.second) + " are not equal!"));
+        std::to_string(timestamp_range.second) + " are not equal!");
   }
   timestamp_range_ = timestamp_range;
 }
@@ -356,5 +354,4 @@ void ArraySchemaEvolution::clear() {
   timestamp_range_ = {0, 0};
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

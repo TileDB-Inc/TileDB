@@ -1,9 +1,9 @@
 #
-# tiledb/sm/vfs/CMakeLists.txt
+# tiledb/storage_format/uri/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021-2023 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -22,52 +22,10 @@
 # LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
-#
 
-include(common NO_POLICY_SCOPE)
-include(object_library)
+include(unit_test)
 
-#
-# `vfs` object library
-#
-commence(object_library vfs)
-    list(APPEND VFS_SOURCES
-        mem_filesystem.cc
-        path_win.cc
-        posix.cc
-        uri.cc
-        vfs.cc
-        vfs_file_handle.cc
-        win.cc
-        filesystem_base.cc
-        ../curl/curl_init.cc
-    )
-    if (TILEDB_S3)
-        target_include_directories(vfs
-                PRIVATE
-                "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/include"
-        )
-        list(APPEND VFS_SOURCES
-            s3.cc
-            s3_thread_pool_executor.cc
-        )
-    endif()
-    this_target_sources(${VFS_SOURCES})
-    this_target_object_libraries(
-        baseline
-        buffer
-        cancelable_tasks
-        cert_file
-        config
-        math
-        seedable_global_PRNG
-        stats
-        stringx
-        thread_pool
-    )
-    if(WIN32)
-        this_target_link_libraries(shlwapi)
-    endif()
-conclude(object_library)
-
-add_test_subdirectory()
+commence(unit_test uri_format)
+  this_target_sources(unit_uri_format.cc)
+  this_target_object_libraries(uri_format)
+conclude(unit_test)

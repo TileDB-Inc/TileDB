@@ -1261,6 +1261,19 @@ struct LoadArraySchemaResponse {
   # The loaded ArraySchema
 }
 
+struct QueryPlanRequest {
+  config @0 :Config;
+  # Config
+
+  query @1 : Query;
+  # the query for which we request the plan
+}
+
+struct QueryPlanResponse {
+  queryPlan @0 :Text;
+  # The returned query plan
+}
+
 struct QueryChannel {
   # structure representing a query channel, that is a stream of data within
   # a TileDB query. Such channels can be generated for the purpose of avoiding

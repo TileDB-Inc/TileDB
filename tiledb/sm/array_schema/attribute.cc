@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,6 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/misc/parse_argument.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -48,8 +47,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for locally generated status exceptions. */
 class AttributeStatusException : public StatusException {
@@ -496,5 +494,4 @@ std::string Attribute::fill_value_str() const {
   return ret;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
