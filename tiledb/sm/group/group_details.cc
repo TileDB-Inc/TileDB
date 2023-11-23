@@ -204,23 +204,6 @@ GroupDetails::members() const {
   return members_;
 }
 
-// ===== FORMAT =====
-// format_version (format_version_t)
-// group_member_num (uint64_t)
-//   group_member #1
-//   group_member #2
-//   ...
-void GroupDetails::serialize(
-    format_version_t format_version,
-    const std::vector<std::shared_ptr<GroupMember>>& members,
-    Serializer& serializer) {
-  serializer.write<format_version_t>(format_version);
-  serializer.write<uint64_t>(members.size());
-  for (auto& it : members) {
-    it->serialize(serializer);
-  }
-}
-
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   uint32_t version = 0;

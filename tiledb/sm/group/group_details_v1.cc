@@ -41,6 +41,22 @@ namespace sm {
 GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
     : GroupDetails(group_uri, GroupDetailsV1::format_version_){};
 
+// ===== FORMAT =====
+// format_version (format_version_t)
+// group_member_num (uint64_t)
+//   group_member #1
+//   group_member #2
+//   ...
+void GroupDetailsV1::serialize(
+    const std::vector<std::shared_ptr<GroupMember>>& members,
+    Serializer& serializer) const {
+  serializer.write<format_version_t>(GroupDetailsV1::format_version_);
+  serializer.write<uint64_t>(members.size());
+  for (auto& it : members) {
+    it->serialize(serializer);
+  }
+}
+
 shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
     Deserializer& deserializer, const URI& group_uri) {
   shared_ptr<GroupDetailsV1> group =

@@ -59,6 +59,10 @@ class GroupDetailsV2 : public GroupDetails {
   /** Destructor. */
   ~GroupDetailsV2() override = default;
 
+  void serialize(
+      const std::vector<std::shared_ptr<GroupMember>>& members,
+      Serializer& serializer) const override;
+
   /**
    * Returns a Group object from the data in the input binary buffer.
    *
