@@ -36,7 +36,6 @@ option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
-option(_TILEDB_CMAKE_INIT_GIT_SUBMODULES "Check submodules during build" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
