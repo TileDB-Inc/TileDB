@@ -77,6 +77,7 @@
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/array_schema_evolution.h"
 #include "tiledb/sm/serialization/config.h"
+#include "tiledb/sm/serialization/consolidation.h"
 #include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/serialization/fragment_info.h"
 #include "tiledb/sm/serialization/fragments.h"
@@ -4361,6 +4362,39 @@ capi_return_t tiledb_handle_query_plan_request(
 
   tiledb::sm::serialization::serialize_query_plan_response(
       plan.dump_json(),
+      static_cast<tiledb::sm::SerializationType>(serialization_type),
+      response->buffer());
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_handle_consolidation_plan_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw std::invalid_argument("Array paramter must be valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
+  api::ensure_buffer_is_valid(response);
+
+  // Error if array is not open
+  if (!array->array_->is_open()) {
+    throw std::logic_error(
+        "Cannot get consolidation plan. Input array is not open");
+  }
+
+  auto fragment_size =
+      tiledb::sm::serialization::deserialize_consolidation_plan_request(
+          static_cast<tiledb::sm::SerializationType>(serialization_type),
+          request->buffer());
+  sm::ConsolidationPlan plan(array->array_, fragment_size);
+
+  tiledb::sm::serialization::serialize_consolidation_plan_response(
+      plan,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 

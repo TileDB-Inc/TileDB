@@ -39,6 +39,7 @@
 
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 
 using namespace tiledb::common;
 
@@ -105,24 +106,37 @@ Status array_consolidation_request_deserialize(
 /**
  * Serialize a consolidation plan request via Cap'n Proto.
  *
+ * @param fragment_size maximum fragment size for the cosnolidateion plan.
  * @param config config object to serialize.
  * @param serialization_type format to serialize into Cap'n Proto or JSON.
  * @param request buffer to store serialized bytes in.
  */
 void serialize_consolidation_plan_request(
+    uint64_t fragment_size,
     const Config& config,
     SerializationType serialization_type,
     Buffer& request);
 
 /**
+ * Deserialize a consolidation plan request via Cap'n Proto.
+ *
+ * @param serialization_type format the data is serialized in: Cap'n Proto of
+ * JSON.
+ * @param response buffer to read serialized bytes from.
+ * @return the deserialized maximum fragment size
+ */
+uint64_t deserialize_consolidation_plan_request(
+    SerializationType serialization_type, const Buffer& response);
+
+/**
  * Serialize a consolidation plan response via Cap'n Proto.
  *
- * @param fragment_uris_per_node consolidation plan info to serialize.
+ * @param consolidation_plan consolidation plan to serialize.
  * @param serialization_type format to serialize into Cap'n Proto or JSON.
  * @param response buffer to store serialized bytes in.
  */
 void serialize_consolidation_plan_response(
-    const std::vector<std::vector<std::string>>& fragment_uris_per_node,
+    const ConsolidationPlan& consolidation_plan,
     SerializationType serialization_type,
     Buffer& response);
 

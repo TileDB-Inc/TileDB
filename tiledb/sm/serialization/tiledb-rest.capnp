@@ -1277,6 +1277,9 @@ struct QueryPlanResponse {
 struct ConsolidationPlanRequest {
   config @0 :Config;
   # Config
+
+  fragmentSize @1 :UInt64;
+  # Maximum fragment size
 }
 
 struct ConsolidationPlanResponse {

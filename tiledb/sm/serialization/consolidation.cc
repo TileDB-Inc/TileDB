@@ -43,6 +43,7 @@
 // clang-format on
 
 #include "tiledb/common/logger_public.h"
+#include "tiledb/sm/consolidation_plan/consolidation_plan.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/config.h"
 
@@ -187,22 +188,28 @@ Status array_consolidation_request_deserialize(
 }
 
 void consolidation_plan_request_to_capnp(
-    capnp::ConsolidationPlanRequest::Builder& builder, const Config& config) {
+    capnp::ConsolidationPlanRequest::Builder& builder,
+    const Config& config,
+    uint64_t fragment_size) {
   auto config_builder = builder.initConfig();
   throw_if_not_ok(config_to_capnp(config, &config_builder));
 }
 
+uint64_t consolidation_plan_request_from_capnp(
+    const capnp::ConsolidationPlanRequest::Reader& reader) {
+  return reader.getFragmentSize();
+}
+
 void consolidation_plan_response_to_capnp(
     capnp::ConsolidationPlanResponse::Builder& builder,
-    const std::vector<std::vector<std::string>>& fragment_uris_per_node) {
-  if (!fragment_uris_per_node.empty()) {
-    auto node_builder =
-        builder.initFragmentUrisPerNode(fragment_uris_per_node.size());
-    for (size_t i = 0; i < fragment_uris_per_node.size(); i++) {
-      auto fragment_builder =
-          node_builder.init(i, fragment_uris_per_node[i].size());
-      for (size_t j = 0; j < fragment_uris_per_node[i].size(); j++) {
-        fragment_builder.set(j, fragment_uris_per_node[i][j]);
+    const ConsolidationPlan& plan) {
+  auto node_size = plan.get_num_nodes();
+  if (node_size > 0) {
+    auto node_builder = builder.initFragmentUrisPerNode(node_size);
+    for (size_t i = 0; i < node_size; i++) {
+      auto fragment_builder = node_builder.init(i, plan.get_num_fragments(i));
+      for (size_t j = 0; j < plan.get_num_fragments(i); j++) {
+        fragment_builder.set(j, plan.get_fragment_uri(i, j));
       }
     }
   }
@@ -227,6 +234,7 @@ std::vector<std::vector<std::string>> consolidation_plan_response_from_capnp(
 }
 
 void serialize_consolidation_plan_request(
+    uint64_t fragment_size,
     const Config& config,
     SerializationType serialization_type,
     Buffer& request) {
@@ -234,7 +242,7 @@ void serialize_consolidation_plan_request(
     ::capnp::MallocMessageBuilder message;
     capnp::ConsolidationPlanRequest::Builder builder =
         message.initRoot<capnp::ConsolidationPlanRequest>();
-    consolidation_plan_request_to_capnp(builder, config);
+    consolidation_plan_request_to_capnp(builder, config, fragment_size);
 
     request.reset_size();
     request.reset_offset();
@@ -277,15 +285,55 @@ void serialize_consolidation_plan_request(
   }
 }
 
+uint64_t deserialize_consolidation_plan_request(
+    SerializationType serialization_type, const Buffer& request) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::ConsolidationPlanRequest::Builder builder =
+            message_builder.initRoot<capnp::ConsolidationPlanRequest>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(request.data())), builder);
+        capnp::ConsolidationPlanRequest::Reader reader = builder.asReader();
+        return consolidation_plan_request_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(request.data());
+        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            request.size() / sizeof(::capnp::word)));
+        capnp::ConsolidationPlanRequest::Reader reader =
+            array_reader.getRoot<capnp::ConsolidationPlanRequest>();
+        return consolidation_plan_request_from_capnp(reader);
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error deserializing consolidation plan request; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing consolidation plan request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing consolidation plan request; exception " +
+        std::string(e.what()));
+  }
+}
+
 void serialize_consolidation_plan_response(
-    const std::vector<std::vector<std::string>>& fragment_uris_per_node,
+    const ConsolidationPlan& plan,
     SerializationType serialization_type,
     Buffer& response) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::ConsolidationPlanResponse::Builder builder =
         message.initRoot<capnp::ConsolidationPlanResponse>();
-    consolidation_plan_response_to_capnp(builder, fragment_uris_per_node);
+    consolidation_plan_response_to_capnp(builder, plan);
 
     response.reset_size();
     response.reset_offset();
@@ -383,13 +431,18 @@ Status array_consolidation_request_deserialize(
 }
 
 void serialize_consolidation_plan_request(
-    const Config&, SerializationType, Buffer&) {
+    uint64_t, const Config&, SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
 
+uint64_t deserialize_consolidation_plan_request(SerializationType, Buffer&) {
+  throw Status_SerializationError(
+      "Cannot deserialize; serialization not enabled.");
+}
+
 void serialize_consolidation_plan_response(
-    const std::vector<std::vector<std::string>>&, SerializationType, Buffer&) {
+    const ConsolidationPlan&, SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
@@ -397,7 +450,7 @@ void serialize_consolidation_plan_response(
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
     SerializationType, const Buffer&) {
   throw Status_SerializationError(
-      "Cannot serialize; serialization not enabled.");
+      "Cannot deserialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

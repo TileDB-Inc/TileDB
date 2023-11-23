@@ -68,6 +68,14 @@ class ConsolidationPlan {
   ~ConsolidationPlan() {
   }
 
+  /** Get the C TileDB consolidation plan object.
+   *
+   * @return shared_ptr<tiledb_consolidation_plan_t>
+   */
+  std::shared_ptr<tiledb_consolidation_plan_t> ptr() const {
+    return consolidation_plan_;
+  }
+
   /**
    * Returns the number of nodes in the consolidation plan.
    */

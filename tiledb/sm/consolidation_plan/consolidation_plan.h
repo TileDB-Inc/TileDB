@@ -97,7 +97,7 @@ class ConsolidationPlan {
    * Get the fragment URI for a node/fragment index.
    *
    * @param node_idx Index of the node.
-   * @param node_idx Index of the fragment.
+   * @param fragment_idx Index of the fragment.
    * @return The null terminated string for the fragment URI.
    */
   inline const char* get_fragment_uri(

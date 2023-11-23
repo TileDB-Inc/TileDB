@@ -1733,7 +1733,7 @@ struct ConsolidationPlanRequest {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(8965edf5597ce627, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(8965edf5597ce627, 1, 1)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -15240,6 +15240,8 @@ class ConsolidationPlanRequest::Reader {
   inline bool hasConfig() const;
   inline ::tiledb::sm::serialization::capnp::Config::Reader getConfig() const;
 
+  inline ::uint64_t getFragmentSize() const;
+
  private:
   ::capnp::_::StructReader _reader;
   template <typename, ::capnp::Kind>
@@ -15288,6 +15290,9 @@ class ConsolidationPlanRequest::Builder {
       ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>&& value);
   inline ::capnp::Orphan<::tiledb::sm::serialization::capnp::Config>
   disownConfig();
+
+  inline ::uint64_t getFragmentSize();
+  inline void setFragmentSize(::uint64_t value);
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -32757,6 +32762,21 @@ ConsolidationPlanRequest::Builder::disownConfig() {
   return ::capnp::_::
       PointerHelpers<::tiledb::sm::serialization::capnp::Config>::disown(
           _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline ::uint64_t ConsolidationPlanRequest::Reader::getFragmentSize() const {
+  return _reader.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+
+inline ::uint64_t ConsolidationPlanRequest::Builder::getFragmentSize() {
+  return _builder.getDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS);
+}
+inline void ConsolidationPlanRequest::Builder::setFragmentSize(
+    ::uint64_t value) {
+  _builder.setDataField<::uint64_t>(
+      ::capnp::bounded<0>() * ::capnp::ELEMENTS, value);
 }
 
 inline bool ConsolidationPlanResponse::Reader::hasFragmentUrisPerNode() const {
