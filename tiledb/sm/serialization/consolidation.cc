@@ -186,6 +186,188 @@ Status array_consolidation_request_deserialize(
   return Status::Ok();
 }
 
+void consolidation_plan_request_to_capnp(
+    capnp::ConsolidationPlanRequest::Builder& builder, const Config& config) {
+  auto config_builder = builder.initConfig();
+  throw_if_not_ok(config_to_capnp(config, &config_builder));
+}
+
+void consolidation_plan_response_to_capnp(
+    capnp::ConsolidationPlanResponse::Builder& builder,
+    const std::vector<std::vector<std::string>>& fragment_uris_per_node) {
+  if (!fragment_uris_per_node.empty()) {
+    auto node_builder =
+        builder.initFragmentUrisPerNode(fragment_uris_per_node.size());
+    for (size_t i = 0; i < fragment_uris_per_node.size(); i++) {
+      auto fragment_builder =
+          node_builder.init(i, fragment_uris_per_node[i].size());
+      for (size_t j = 0; j < fragment_uris_per_node[i].size(); j++) {
+        fragment_builder.set(j, fragment_uris_per_node[i][j]);
+      }
+    }
+  }
+}
+
+std::vector<std::vector<std::string>> consolidation_plan_response_from_capnp(
+    const capnp::ConsolidationPlanResponse::Reader& reader) {
+  std::vector<std::vector<std::string>> fragment_uris_per_node;
+  if (reader.hasFragmentUrisPerNode()) {
+    auto node_reader = reader.getFragmentUrisPerNode();
+    fragment_uris_per_node.reserve(node_reader.size());
+    for (const auto& fragment_reader : node_reader) {
+      auto& node = fragment_uris_per_node.emplace_back();
+      node.reserve(fragment_reader.size());
+      for (const auto& fragment_uri : fragment_reader) {
+        node.emplace_back(fragment_uri);
+      }
+    }
+  }
+
+  return fragment_uris_per_node;
+}
+
+void serialize_consolidation_plan_request(
+    const Config& config,
+    SerializationType serialization_type,
+    Buffer& request) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::ConsolidationPlanRequest::Builder builder =
+        message.initRoot<capnp::ConsolidationPlanRequest>();
+    consolidation_plan_request_to_capnp(builder, config);
+
+    request.reset_size();
+    request.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(request.realloc(json_len + 1));
+        throw_if_not_ok(request.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(request.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(request.realloc(nbytes));
+        throw_if_not_ok(request.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error serializing consolidation plan request; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error serializing consolidation plan request; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error serializing consolidation plan request; exception " +
+        std::string(e.what()));
+  }
+}
+
+void serialize_consolidation_plan_response(
+    const std::vector<std::vector<std::string>>& fragment_uris_per_node,
+    SerializationType serialization_type,
+    Buffer& response) {
+  try {
+    ::capnp::MallocMessageBuilder message;
+    capnp::ConsolidationPlanResponse::Builder builder =
+        message.initRoot<capnp::ConsolidationPlanResponse>();
+    consolidation_plan_response_to_capnp(builder, fragment_uris_per_node);
+
+    response.reset_size();
+    response.reset_offset();
+
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        kj::String capnp_json = json.encode(builder);
+        const auto json_len = capnp_json.size();
+        const char nul = '\0';
+        // size does not include needed null terminator, so add +1
+        throw_if_not_ok(response.realloc(json_len + 1));
+        throw_if_not_ok(response.write(capnp_json.cStr(), json_len));
+        throw_if_not_ok(response.write(&nul, 1));
+        break;
+      }
+      case SerializationType::CAPNP: {
+        kj::Array<::capnp::word> protomessage = messageToFlatArray(message);
+        kj::ArrayPtr<const char> message_chars = protomessage.asChars();
+        const auto nbytes = message_chars.size();
+        throw_if_not_ok(response.realloc(nbytes));
+        throw_if_not_ok(response.write(message_chars.begin(), nbytes));
+        break;
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error serializing consolidation plan response; "
+            "Unknown serialization type passed");
+      }
+    }
+
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error serializing consolidation plan response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error serializing consolidation plan response; exception " +
+        std::string(e.what()));
+  }
+}
+
+std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
+    SerializationType serialization_type, const Buffer& response) {
+  try {
+    switch (serialization_type) {
+      case SerializationType::JSON: {
+        ::capnp::JsonCodec json;
+        ::capnp::MallocMessageBuilder message_builder;
+        capnp::ConsolidationPlanResponse::Builder builder =
+            message_builder.initRoot<capnp::ConsolidationPlanResponse>();
+        json.decode(
+            kj::StringPtr(static_cast<const char*>(response.data())), builder);
+        capnp::ConsolidationPlanResponse::Reader reader = builder.asReader();
+        return consolidation_plan_response_from_capnp(reader);
+      }
+      case SerializationType::CAPNP: {
+        const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
+        ::capnp::FlatArrayMessageReader array_reader(kj::arrayPtr(
+            reinterpret_cast<const ::capnp::word*>(mBytes),
+            response.size() / sizeof(::capnp::word)));
+        capnp::ConsolidationPlanResponse::Reader reader =
+            array_reader.getRoot<capnp::ConsolidationPlanResponse>();
+        return consolidation_plan_response_from_capnp(reader);
+      }
+      default: {
+        throw Status_SerializationError(
+            "Error deserializing consolidation plan response; "
+            "Unknown serialization type passed");
+      }
+    }
+  } catch (kj::Exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing consolidation plan response; kj::Exception: " +
+        std::string(e.getDescription().cStr()));
+  } catch (std::exception& e) {
+    throw Status_SerializationError(
+        "Error deserializing consolidation plan response; exception " +
+        std::string(e.what()));
+  }
+}
+
 #else
 
 Status array_consolidation_request_serialize(
@@ -198,6 +380,24 @@ Status array_consolidation_request_deserialize(
     Config**, SerializationType, const Buffer&) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
+}
+
+void serialize_consolidation_plan_request(
+    const Config&, SerializationType, Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
+}
+
+void serialize_consolidation_plan_response(
+    const std::vector<std::vector<std::string>>&, SerializationType, Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
+}
+
+std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
+    SerializationType, const Buffer&) {
+  throw Status_SerializationError(
+      "Cannot serialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

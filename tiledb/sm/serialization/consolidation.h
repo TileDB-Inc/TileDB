@@ -102,6 +102,41 @@ Status array_consolidation_request_deserialize(
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 
+/**
+ * Serialize a consolidation plan request via Cap'n Proto.
+ *
+ * @param config config object to serialize.
+ * @param serialization_type format to serialize into Cap'n Proto or JSON.
+ * @param request buffer to store serialized bytes in.
+ */
+void serialize_consolidation_plan_request(
+    const Config& config,
+    SerializationType serialization_type,
+    Buffer& request);
+
+/**
+ * Serialize a consolidation plan response via Cap'n Proto.
+ *
+ * @param fragment_uris_per_node consolidation plan info to serialize.
+ * @param serialization_type format to serialize into Cap'n Proto or JSON.
+ * @param response buffer to store serialized bytes in.
+ */
+void serialize_consolidation_plan_response(
+    const std::vector<std::vector<std::string>>& fragment_uris_per_node,
+    SerializationType serialization_type,
+    Buffer& response);
+
+/**
+ * Deserialize a consolidation plan response via Cap'n Proto.
+ *
+ * @param serialization_type format the data is serialized in: Cap'n Proto of
+ * JSON.
+ * @param response buffer to read serialized bytes from.
+ * @return the deserialized consolidation plan info
+ */
+std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
+    SerializationType serialization_type, const Buffer& response);
+
 }  // namespace serialization
 }  // namespace sm
 }  // namespace tiledb
