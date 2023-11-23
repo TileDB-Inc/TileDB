@@ -420,6 +420,10 @@ TEST_CASE(
     "[vfs][ls_recursive][file-filter]") {
   std::string prefix = "s3://";
   VFSTest vfs_test({0}, prefix);
+  if (!vfs_test.is_supported()) {
+    return;
+  }
+
   auto file_filter = [](const std::string_view&, uint64_t) -> bool {
     throw std::logic_error("Throwing FileFilter");
   };
