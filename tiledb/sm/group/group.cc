@@ -43,13 +43,12 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GroupStatusException : public StatusException {
  public:
@@ -600,14 +599,12 @@ const shared_ptr<GroupDirectory> Group::group_directory() const {
   return group_dir_;
 }
 
-tuple<Status, optional<URI>> Group::generate_detail_uri() const {
-  auto&& [st, name] = generate_name();
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+URI Group::generate_detail_uri() const {
+  auto ts_name = tiledb::storage_format::generate_timestamped_name(
+      timestamp_end_, group_details_->version());
 
-  URI uri = group_uri_.join_path(constants::group_detail_dir_name)
-                .join_path(name.value());
-
-  return {Status::Ok(), uri};
+  return group_uri_.join_path(constants::group_detail_dir_name)
+      .join_path(ts_name);
 }
 
 bool Group::changes_applied() const {
@@ -708,22 +705,6 @@ std::string Group::dump(
 /*         PROTECTED METHODS         */
 /* ********************************* */
 
-tuple<Status, optional<std::string>> Group::generate_name() const {
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
-
-  const auto& version = group_details_->version();
-  auto timestamp =
-      (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
-  std::stringstream ss;
-  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
-  if (version > 1) {
-    ss << "_" << version;
-  }
-
-  return {Status::Ok(), ss.str()};
-}
-
 void Group::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
@@ -740,5 +721,4 @@ void Group::load_metadata() {
   metadata_loaded_ = true;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

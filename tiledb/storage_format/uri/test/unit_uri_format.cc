@@ -55,20 +55,37 @@ TEST_CASE(
     // Check new fragment name's timestamp range
     auto name_timestamps{name.substr(0, 6)};
     CHECK(name_timestamps == "/__1_1");
+
+    // Check new fragment name's format version
+    auto name_version{name.substr(name.find_last_of("_"))};
+    CHECK(name_version == "_5");
   }
 
   SECTION("two timestamps") {
-    // Generate new fragment name
-    name = generate_timestamped_name(start, end, (uint32_t)format_version);
+    SECTION("with format version") {
+      // Generate new fragment name
+      name = generate_timestamped_name(start, end, format_version);
+
+      // Check new fragment name's format version
+      auto name_version{name.substr(name.find_last_of("_"))};
+      CHECK(name_version == "_5");
+    }
+
+    SECTION("without format version") {
+      // Generate new fragment name
+      name = generate_timestamped_name(start, end, std::nullopt);
+
+      // Ensure new fragment name has no format version (ends in uuid)
+      // Precautionary measure: Check that the length is greater than 10
+      // Note that format versions are currently no longer than 2 chars
+      auto name_end{name.substr(name.find_last_of("_"))};
+      CHECK(name_end.length() > 5);
+    }
 
     // Check new fragment name's timestamp range
     auto name_timestamps{name.substr(0, 6)};
     CHECK(name_timestamps == "/__1_2");
   }
-
-  // Check new fragment name's format version
-  auto name_version{name.substr(name.find_last_of("_"))};
-  CHECK(name_version == "_5");
 }
 
 TEST_CASE(

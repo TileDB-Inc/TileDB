@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,13 +43,11 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     : group_uri_(group_uri)
@@ -334,5 +332,4 @@ void GroupDetails::invalidate_lookups() {
   duplicated_uris_ = nullopt;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

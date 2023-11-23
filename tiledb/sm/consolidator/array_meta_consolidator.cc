@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -108,22 +108,8 @@ Status ArrayMetaConsolidator::consolidate(
   // Metadata uris to delete
   const auto to_vacuum = metadata_w->loaded_metadata_uris();
 
-  // Generate new name for consolidated metadata
-  st = metadata_w->generate_uri(array_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-
-  // Get the new URI name
-  URI new_uri;
-  st = metadata_w->get_uri(array_uri, &new_uri);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
+  // Get the new URI name for consolidated metadata
+  URI new_uri = metadata_w->get_uri(array_uri);
 
   // Close arrays
   RETURN_NOT_OK_ELSE(

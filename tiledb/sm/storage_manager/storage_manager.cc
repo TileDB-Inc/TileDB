@@ -63,7 +63,6 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/update_value.h"
@@ -153,11 +152,10 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   // Store any changes required
   if (group->changes_applied()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
-    auto&& [st, group_detail_uri] = group->generate_detail_uri();
-    RETURN_NOT_OK(st);
+    auto group_detail_uri = group->generate_detail_uri();
     RETURN_NOT_OK(store_group_detail(
         group_detail_folder_uri,
-        group_detail_uri.value(),
+        group_detail_uri,
         group->group_details(),
         *group->encryption_key()));
   }
@@ -535,7 +533,7 @@ Status StorageManagerCanonical::array_create(
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
-  RETURN_NOT_OK(array_schema->generate_uri());
+  array_schema->generate_uri();
   array_schema->check(config_);
 
   // Create array directory
@@ -720,14 +718,13 @@ Status StorageManagerCanonical::array_upgrade_version(
   auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
 
   if (array_schema->version() < constants::format_version) {
-    auto st = array_schema->generate_uri();
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    array_schema->generate_uri();
     array_schema->set_version(constants::format_version);
 
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    st = vfs()->create_dir(array_schema_dir_uri);
+    auto st = vfs()->create_dir(array_schema_dir_uri);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Store array schema
@@ -1639,8 +1636,7 @@ Status StorageManagerCanonical::store_metadata(
   stats()->add_counter("write_meta_size", serializer.size());
 
   // Create a metadata file name
-  URI metadata_uri;
-  RETURN_NOT_OK(metadata->get_uri(uri, &metadata_uri));
+  URI metadata_uri = metadata->get_uri(uri);
 
   RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,9 +45,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace uuid {
+namespace tiledb::sm::uuid {
 
 /** Mutex to guard UUID generation. */
 static std::mutex uuid_mtx;
@@ -173,6 +171,4 @@ Status generate_uuid(std::string* uuid, bool hyphenate) {
   return Status::Ok();
 }
 
-}  // namespace uuid
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::uuid
