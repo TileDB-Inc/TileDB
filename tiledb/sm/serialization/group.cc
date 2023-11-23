@@ -49,7 +49,7 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/group.h"
@@ -136,8 +136,8 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
     name = group_member_reader->getName().cStr();
   }
 
-  tdb_shared_ptr<GroupMember> group_member = tdb::make_shared<GroupMember>(
-      HERE(), URI(uri), type, relative, 1, name, false);
+  tdb_shared_ptr<GroupMember> group_member =
+      tdb::make_shared<GroupMemberV1>(HERE(), URI(uri), type, relative, name);
 
   return {Status::Ok(), group_member};
 }

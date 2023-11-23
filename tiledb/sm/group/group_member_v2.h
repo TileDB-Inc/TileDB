@@ -1,5 +1,5 @@
 /**
- * @file   group_member.h
+ * @file   group_member_v2.h
  *
  * @section LICENSE
  *
@@ -30,8 +30,8 @@
  * This file defines TileDB Group Member
  */
 
-#ifndef TILEDB_GROUP_MEMBER_H
-#define TILEDB_GROUP_MEMBER_H
+#ifndef TILEDB_GROUP_MEMBER_V2_H
+#define TILEDB_GROUP_MEMBER_V2_H
 
 #include <atomic>
 
@@ -39,6 +39,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/group/group.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
@@ -46,56 +47,16 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** Return a Status_GroupDirectoryError error class Status with a given
- * message **/
-inline Status Status_GroupDirectoryError(const std::string& msg) {
-  return {"[TileDB::GroupDirectory] Error", msg};
-}
-/** Return an Group error class Status with a given message **/
-inline Status Status_GroupError(const std::string& msg) {
-  return {"[TileDB::Group] Error", msg};
-}
-/** Return an GroupMember error class Status with a given message **/
-inline Status Status_GroupMemberError(const std::string& msg) {
-  return {"[TileDB::GroupMember] Error", msg};
-}
-
-class GroupMember {
+class GroupMemberV2 : public GroupMember {
  public:
-  GroupMember(
+  GroupMemberV2(
       const URI& uri,
       const ObjectType& type,
       const bool& relative,
-      uint32_t version,
       const std::optional<std::string>& name,
       const bool& deleted);
 
-  /** Destructor. */
-  virtual ~GroupMember() = default;
-
-  /** Return URI. */
-  const URI& uri() const;
-
-  /** Return object type. */
-  ObjectType type() const;
-
-  /** Return the Name. */
-  const std::optional<std::string> name() const;
-
-  /**
-   * Return the discriminating key of the member within a group. No
-   * multiple members with the same key may exist in a group.
-   *
-   * This method returns the member's name, or its URI if it does not exist.
-   */
-  const std::string key() const {
-    return name_ ? *name_ : uri_.to_string();
-  }
-
-  /** Return if object is relative. */
-  bool relative() const;
-
-  bool deleted() const;
+  ~GroupMemberV2() override = default;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -103,7 +64,7 @@ class GroupMember {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  virtual void serialize(Serializer& serializer);
+  void serialize(Serializer& serializer) override;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -114,37 +75,11 @@ class GroupMember {
    */
   static shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
 
-  /**
-   * Return format version
-   * @return format version
-   */
-  format_version_t version() const;
-
- protected:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-  /** The group member URI. */
-  URI uri_;
-
-  /** The group member type. */
-  ObjectType type_;
-
-  /** The group member optional name. */
-  std::optional<std::string> name_;
-
-  /** Is the URI relative to the group. */
-  bool relative_;
-
-  /* Format version. */
-  const uint32_t version_;
-
-  /** Is group member deleted from group. */
-  bool deleted_;
+ private:
+  /* Format version for class. */
+  inline static const format_version_t format_version_ = 2;
 };
 }  // namespace sm
 }  // namespace tiledb
 
-std::ostream& operator<<(
-    std::ostream& os, const tiledb::sm::GroupMember& group_member);
-#endif  // TILEDB_GROUP_MEMBER_H
+#endif  // TILEDB_GROUP_MEMBER_V2_H

@@ -39,7 +39,8 @@
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/group/group_details_v1.h"
 #include "tiledb/sm/group/group_details_v2.h"
-#include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/uuid.h"
@@ -100,7 +101,7 @@ void GroupDetails::mark_member_for_addition(
         ", type is INVALID. The member likely does not exist.");
   }
 
-  auto group_member = tdb::make_shared<GroupMember>(
+  auto group_member = tdb::make_shared<GroupMemberV2>(
       HERE(), group_member_uri, type, relative, name, false);
 
   if (!member_keys_to_add_.insert(group_member->key()).second) {
@@ -117,7 +118,7 @@ void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Try to find the member by key.
-  shared_ptr<GroupMember> member_to_delete = nullptr;
+  shared_ptr<GroupMemberV2> member_to_delete = nullptr;
   auto it = members_.find(name_or_uri);
   if (it == members_.end()) {
     // try URI to see if we need to convert the local file to file://
@@ -126,7 +127,7 @@ void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
 
   // We found the member by key, set the member to delete pointer.
   if (it != members_.end()) {
-    member_to_delete = make_shared<GroupMember>(
+    member_to_delete = make_shared<GroupMemberV2>(
         it->second->uri(),
         it->second->type(),
         it->second->relative(),
@@ -159,7 +160,7 @@ void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
 
     // The member was found, set the member to delete pointer.
     if (it_by_url != members_by_uri_->end()) {
-      member_to_delete = make_shared<GroupMember>(
+      member_to_delete = make_shared<GroupMemberV2>(
           it_by_url->second->uri(),
           it_by_url->second->type(),
           it_by_url->second->relative(),

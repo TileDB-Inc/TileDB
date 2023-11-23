@@ -31,6 +31,8 @@
  */
 
 #include "tiledb/sm/group/group_member.h"
+#include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 
 using namespace tiledb::common;
 
@@ -40,7 +42,7 @@ GroupMember::GroupMember(
     const URI& uri,
     const ObjectType& type,
     const bool& relative,
-    format_version_t version,
+    uint32_t version,
     const std::optional<std::string>& name,
     const bool& deleted)
     : uri_(uri)
@@ -75,94 +77,18 @@ format_version_t GroupMember::version() const {
   return version_;
 }
 
-// ===== FORMAT =====
-// format_version (uint32_t)
-// type (uint8_t)
-// relative (uint8_t)
-// uri_size (uint64_t)
-// uri (string)
-// deleted (uint8_t) (v2+)
-void GroupMember::serialize(Serializer& serializer) {
-  serializer.write<uint32_t>(version_);
-
-  // Write type
-  uint8_t type = static_cast<uint8_t>(type_);
-  serializer.write<uint8_t>(type);
-
-  // Write relative
-  serializer.write<uint8_t>(relative_);
-
-  // Write uri
-  uint64_t uri_size = uri_.to_string().size();
-  serializer.write<uint64_t>(uri_size);
-  serializer.write(uri_.c_str(), uri_size);
-
-  // Write name
-  auto name_set = static_cast<uint8_t>(name_.has_value());
-  serializer.write<uint8_t>(name_set);
-  if (name_.has_value()) {
-    uint64_t name_size = name_->size();
-    serializer.write<uint64_t>(name_size);
-    serializer.write(name_->data(), name_size);
-  }
-
-  // Write deleted
-  if (version_ >= 2) {
-    serializer.write<uint8_t>(deleted_);
-  }
-}
-
-shared_ptr<GroupMember> deserialize_group(
-    Deserializer& deserializer, uint32_t version) {
-  // We skip reading "version" because it is already read by
-  // GroupMember::deserialize to determine the version and class to call
-
-  uint8_t type_placeholder = deserializer.read<uint8_t>();
-  ObjectType type = static_cast<ObjectType>(type_placeholder);
-
-  uint8_t relative_int = deserializer.read<uint8_t>();
-  auto relative = static_cast<bool>(relative_int);
-
-  uint64_t uri_size = deserializer.read<uint64_t>();
-
-  std::string uri_string;
-  uri_string.resize(uri_size);
-  deserializer.read(&uri_string[0], uri_size);
-
-  uint8_t name_set_int;
-  std::optional<std::string> name;
-  name_set_int = deserializer.read<uint8_t>();
-  auto name_set = static_cast<bool>(name_set_int);
-  if (name_set) {
-    uint64_t name_size = 0;
-    name_size = deserializer.read<uint64_t>();
-
-    std::string name_string;
-    name_string.resize(name_size);
-    deserializer.read(&name_string[0], name_size);
-    name = name_string;
-  }
-
-  bool deleted = false;
-  if (version >= 2) {
-    deleted = static_cast<bool>(deserializer.read<uint8_t>());
-  }
-
-  return tdb::make_shared<GroupMember>(
-      HERE(),
-      URI(uri_string, !relative),
-      type,
-      relative,
-      version,
-      name,
-      deleted);
+void GroupMember::serialize(Serializer&) {
+  throw StatusException(
+      Status_GroupMemberError("Invalid call to GroupMember::serialize"));
 }
 
 shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
   uint32_t version = 0;
   version = deserializer.read<uint32_t>();
-  if (version >= 1 && version <= 2) {
-    return deserialize_group(deserializer, version);
+  if (version == 1) {
+    return GroupMemberV1::deserialize(deserializer);
+  } else if (version == 2) {
+    return GroupMemberV2::deserialize(deserializer);
   }
   throw StatusException(Status_GroupError(
       "Unsupported group member version " + std::to_string(version)));
