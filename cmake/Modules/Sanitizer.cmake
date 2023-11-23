@@ -63,46 +63,44 @@ if (NOT SANITIZER MATCHES "^address$")
     message(FATAL_ERROR "Unsupported sanitizer ${sanitizer}")
 endif()
 
-# For known compilers, check that the sanitizer is supported.
-# If we know it's not supported, we'll fail so that we avoid false confidence.
-# If we don't know, we'll warn that it might not work.
-if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-    if (SANITIZER STREQUAL "address")
-        # MSVC support for the address sanitizer began with Visual Studio 2019 Version 16.4
-        # and was announced as "fully supported" in version 16.9
-        if (MSVC_VERSION LESS 1924)
-            message(FATAL_ERROR "MSVC version ${MSVC_VERSION} too early to support address sanitizer." )
-        endif()
-        if (MSVC_VERSION LESS 1929)
-            message(WARNING "MSVC version ${MSVC_VERSION} may only partially support address sanitizer." )
-        endif()
-        # Catch has a conflict with ASAN on Windows. Disable the SEH handler in Catch to avoid the conflict.
-        add_compile_definitions(CATCH_CONFIG_NO_WINDOWS_SEH)
-    else()
-        # MSVC support only the address sanitizer
-        message(FATAL_ERROR "MSVC only supports sanitizer \"address\"")
-    endif()
-    # Certain compile options are incompatible with ASAN
-    # Microsoft suppresses /INCREMENTAL, but emits a warning, so silence it.
-    add_link_options(/INCREMENTAL:NO)
+# Catch has a conflict with ASAN on Windows. Disable the SEH handler in Catch to avoid the conflict.
+add_compile_definitions("$<$<CXX_COMPILER_ID:MSVC>:CATCH_CONFIG_NO_WINDOWS_SEH>")
+        # Microsoft suppresses /INCREMENTAL, but emits a warning, so silence it.
+add_link_options("$<$<CXX_COMPILER_ID:MSVC>:/INCREMENTAL:NO>")
 
-    # May also need to explicitly remove /RTC flags
-
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "Clang")  # also matches AppleClang, ARMClang, etc.
-    # Ordinary gcc behavior. Factor this out into a subroutine when we need more than twice.
-    add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls)
-
-    # Clang recommends a linker flag as well as a compiler flag
-    add_link_options(-fsanitize=${SANITIZER})
-    if (SANITIZER STREQUAL "address")
-        # There may be problems if clang tries to link the ASAN library statically
-        add_link_options(-shared-libasan)
-    endif()
-
-elseif (CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-    # Ordinary gcc behavior
-    add_compile_options(-g -fno-omit-frame-pointer -fno-optimize-sibling-calls)
-
-else()
-    message(WARN "Compiler \"${CMAKE_CXX_COMPILER_ID}\" not explicitly supported; behaving as if GNU")
+# Ordinary gcc/clang behavior.
+add_compile_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-g;-fno-omit-frame-pointer;-fno-optimize-sibling-calls>")
+# Clang recommends a linker flag as well as a compiler flag
+add_link_options("$<$<CXX_COMPILER_ID:Clang>:-fsanitize=${SANITIZER}>")
+if(SANITIZER STREQUAL "address")
+    # There may be problems if clang tries to link the ASAN library statically
+    add_link_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
 endif()
+
+# Validate sanitizer options.
+# This must be called after the project() command, where the compiler is known.
+macro(validate_sanitizer_options)
+    # For known compilers, check that the sanitizer is supported.
+    # If we know it's not supported, we'll fail so that we avoid false confidence.
+    # If we don't know, we'll warn that it might not work.
+    if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
+        if (SANITIZER STREQUAL "address")
+            # MSVC support for the address sanitizer began with Visual Studio 2019 Version 16.4
+            # and was announced as "fully supported" in version 16.9
+            if (MSVC_VERSION LESS 1924)
+                message(FATAL_ERROR "MSVC version ${MSVC_VERSION} too early to support address sanitizer." )
+            endif()
+            if (MSVC_VERSION LESS 1929)
+                message(WARNING "MSVC version ${MSVC_VERSION} may only partially support address sanitizer." )
+            endif()
+        else()
+            # MSVC support only the address sanitizer
+            message(FATAL_ERROR "MSVC only supports sanitizer \"address\"")
+        endif()
+
+        # May also need to explicitly remove /RTC flags
+
+    elseif (NOT (CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU"))
+        message(WARN "Compiler \"${CMAKE_CXX_COMPILER_ID}\" not explicitly supported; behaving as if GNU")
+    endif()
+endmacro()
