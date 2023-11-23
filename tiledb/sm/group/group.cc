@@ -67,8 +67,7 @@ Group::Group(const URI& group_uri, StorageManager* storage_manager)
     , query_type_(QueryType::READ)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
-    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
-    , changes_applied_(false) {
+    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE())) {
 }
 
 Status Group::open(
@@ -196,7 +195,6 @@ Status Group::open(
 
   query_type_ = query_type;
   is_open_ = true;
-  changes_applied_ = false;
 
   return Status::Ok();
 }
@@ -250,11 +248,6 @@ Status Group::close() {
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       try {
-        // If changes haven't been applied, apply them
-        if (!changes_applied_) {
-          group_details_->apply_pending_changes();
-          changes_applied_ = group_details_->changes_applied();
-        }
         throw_if_not_ok(storage_manager_->group_close_for_writes(this));
       } catch (StatusException& exc) {
         std::string msg = exc.what();
@@ -267,7 +260,8 @@ Status Group::close() {
   metadata_.clear();
   metadata_loaded_ = false;
   is_open_ = false;
-  return clear();
+  clear();
+  return Status::Ok();
 }
 
 bool Group::is_open() const {
@@ -519,9 +513,8 @@ void Group::set_config(Config config) {
   config_.inherit(config);
 }
 
-Status Group::clear() {
+void Group::clear() {
   group_details_->clear();
-  return Status::Ok();
 }
 
 void Group::add_member(const shared_ptr<GroupMember> group_member) {
@@ -605,14 +598,6 @@ URI Group::generate_detail_uri() const {
 
   return group_uri_.join_path(constants::group_detail_dir_name)
       .join_path(ts_name);
-}
-
-bool Group::changes_applied() const {
-  return changes_applied_;
-}
-
-void Group::set_changes_applied(const bool changes_applied) {
-  changes_applied_ = changes_applied;
 }
 
 uint64_t Group::member_count() const {

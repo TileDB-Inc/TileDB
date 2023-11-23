@@ -150,7 +150,7 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
       group->group_uri(), *group->encryption_key(), group->unsafe_metadata()));
 
   // Store any changes required
-  if (group->changes_applied()) {
+  if (group->group_details()->is_modified()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
     auto group_detail_uri = group->generate_detail_uri();
     RETURN_NOT_OK(store_group_detail(
@@ -1518,13 +1518,14 @@ Status StorageManagerCanonical::store_group_detail(
     tdb_shared_ptr<GroupDetails> group,
     const EncryptionKey& encryption_key) {
   // Serialize
+  auto members = group->members_to_serialize();
   SizeComputationSerializer size_computation_serializer;
-  group->serialize(size_computation_serializer);
+  group->serialize(members, size_computation_serializer);
 
   WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
 
   Serializer serializer(tile.data(), tile.size());
-  group->serialize(serializer);
+  group->serialize(members, serializer);
 
   stats()->add_counter("write_group_size", tile.size());
 

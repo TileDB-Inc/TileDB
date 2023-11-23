@@ -95,10 +95,8 @@ class Group {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
 
   /**
    * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
@@ -305,20 +303,6 @@ class Group {
   URI generate_detail_uri() const;
 
   /**
-   * Have changes been applied to a group in write mode
-   * @return changes_applied_
-   */
-  bool changes_applied() const;
-
-  /**
-   * Set changes applied, only used in serialization
-   * @param changes_applied should changes be considered to be applied? If so
-   * then this will enable writes from a deserialized group
-   *
-   */
-  void set_changes_applied(bool changes_applied);
-
-  /**
    * Get count of members
    *
    * @return member count
@@ -440,9 +424,6 @@ class Group {
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
-
-  /* Were changes applied and is a write is required */
-  bool changes_applied_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

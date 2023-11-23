@@ -47,12 +47,13 @@ GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupDetailsV1::serialize(Serializer& serializer) {
+void GroupDetailsV1::serialize(
+    const std::vector<std::shared_ptr<GroupMember>>& members,
+    Serializer& serializer) const {
   serializer.write<format_version_t>(GroupDetailsV1::format_version_);
-  uint64_t group_member_num = members_.size();
-  serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_) {
-    it.second->serialize(serializer);
+  serializer.write<uint64_t>(members.size());
+  for (auto& it : members) {
+    it->serialize(serializer);
   }
 }
 
@@ -70,14 +71,16 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
   return group;
 }
 
-void GroupDetailsV1::apply_pending_changes() {
+std::vector<std::shared_ptr<GroupMember>> GroupDetailsV1::members_to_serialize()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
+  decltype(members_) members = members_;
 
   // Remove members first
   for (const auto& member : members_to_modify_) {
     auto key = member->key();
     if (member->deleted()) {
-      members_.erase(key);
+      members.erase(key);
 
       // Check to remove relative URIs
       if (key.find(group_uri_.add_trailing_slash().to_string()) !=
@@ -85,16 +88,19 @@ void GroupDetailsV1::apply_pending_changes() {
         // Get the substring relative path
         auto relative_uri = key.substr(
             group_uri_.add_trailing_slash().to_string().size(), key.size());
-        members_.erase(relative_uri);
+        members.erase(relative_uri);
       }
     } else {
-      members_.emplace(member->key(), member);
+      members.emplace(member->uri().to_string(), member);
     }
   }
-  changes_applied_ = !members_to_modify_.empty();
-  members_to_modify_.clear();
 
-  invalidate_lookups();
+  std::vector<std::shared_ptr<GroupMember>> result;
+  result.reserve(members.size());
+  for (auto& it : members) {
+    result.emplace_back(it.second);
+  }
+  return result;
 }
 
 }  // namespace sm

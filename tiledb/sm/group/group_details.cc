@@ -51,8 +51,8 @@ namespace tiledb::sm {
 
 GroupDetails::GroupDetails(const URI& group_uri, uint32_t version)
     : group_uri_(group_uri)
-    , version_(version)
-    , changes_applied_(false) {
+    , is_modified_(false)
+    , version_(version) {
 }
 
 void GroupDetails::clear() {
@@ -61,6 +61,7 @@ void GroupDetails::clear() {
   members_to_modify_.clear();
   member_keys_to_add_.clear();
   member_keys_to_delete_.clear();
+  is_modified_ = false;
 }
 
 void GroupDetails::add_member(const shared_ptr<GroupMember> group_member) {
@@ -108,6 +109,7 @@ void GroupDetails::mark_member_for_addition(
   }
 
   members_to_modify_.emplace_back(group_member);
+  is_modified_ = true;
 }
 
 void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
@@ -180,6 +182,7 @@ void GroupDetails::mark_member_for_removal(const std::string& name_or_uri) {
     }
 
     members_to_modify_.emplace_back(member_to_delete);
+    is_modified_ = true;
   } else {
     throw GroupDetailsException(
         "Cannot remove group member " + name_or_uri +
@@ -197,10 +200,6 @@ const std::unordered_map<std::string, shared_ptr<GroupMember>>&
 GroupDetails::members() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return members_;
-}
-
-void GroupDetails::serialize(Serializer&) {
-  throw GroupDetailsException("Invalid call to Group::serialize");
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
@@ -226,10 +225,6 @@ std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
 
 const URI& GroupDetails::group_uri() const {
   return group_uri_;
-}
-
-bool GroupDetails::changes_applied() const {
-  return changes_applied_;
 }
 
 uint64_t GroupDetails::member_count() const {
