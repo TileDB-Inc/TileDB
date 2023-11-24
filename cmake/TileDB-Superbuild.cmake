@@ -220,37 +220,3 @@ if (${CLANG_FORMAT_FOUND})
 else()
   message(STATUS "was unable to find clang-format")
 endif()
-
-###########################################################
-# Doxygen documentation
-###########################################################
-
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  file(GLOB_RECURSE TILEDB_C_API_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/*_api_external.h")
-  list(APPEND TILEDB_C_API_HEADERS
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
-  )
-  file(GLOB TILEDB_CPP_API_HEADERS
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
-  )
-  set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
-  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-    COMMAND mkdir -p doxygen
-    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/mainpage.dox
-      ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-    COMMENT "Preparing for Doxygen documentation" VERBATIM
-  )
-  add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/Doxyfile.mk >
-      ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
-    COMMENT "Generating API documentation with Doxygen" VERBATIM
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-  )
-else(DOXYGEN_FOUND)
-  add_custom_target(doc
-    _______doc
-    COMMENT "!! Docs cannot be built. Please install Doxygen and re-run cmake. !!" VERBATIM
-  )
-endif(DOXYGEN_FOUND)
