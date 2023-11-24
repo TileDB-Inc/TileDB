@@ -126,7 +126,7 @@ void serialize_consolidation_plan_request(
  * @return the deserialized maximum fragment size
  */
 uint64_t deserialize_consolidation_plan_request(
-    SerializationType serialization_type, const Buffer& response);
+    SerializationType serialization_type, const Buffer& request);
 
 /**
  * Serialize a consolidation plan response via Cap'n Proto.

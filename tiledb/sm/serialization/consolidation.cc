@@ -437,7 +437,8 @@ void serialize_consolidation_plan_request(
       "Cannot serialize; serialization not enabled.");
 }
 
-uint64_t deserialize_consolidation_plan_request(SerializationType, Buffer&) {
+uint64_t deserialize_consolidation_plan_request(
+    SerializationType, const Buffer&) {
   throw Status_SerializationError(
       "Cannot deserialize; serialization not enabled.");
 }

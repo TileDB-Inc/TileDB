@@ -225,8 +225,8 @@ tiledb::sm::ConsolidationPlan CppConsolidationPlanFx::call_handler(
 }
 
 void CppConsolidationPlanFx::validate_plan(
-    uint64_t fragment_size,
-    const Array& array,
+    [[maybe_unused]] uint64_t fragment_size,
+    [[maybe_unused]] const Array& array,
     ConsolidationPlan& plan,
     std::vector<std::vector<std::string>> expected_plan) {
 #ifdef TILEDB_SERIALIZATION
