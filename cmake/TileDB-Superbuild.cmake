@@ -195,28 +195,3 @@ if (TILEDB_TESTS)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   )
 endif()
-
-############################################################
-# "make format" and "make check-format" targets
-############################################################
-
-set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
-
-find_package(ClangTools)
-if (NOT ${CLANG_FORMAT_FOUND})
-  find_program(CLANG_FORMAT_BIN NAMES clang-format-16)
-  if(CLANG_FORMAT_BIN)
-    set(CLANG_FORMAT_FOUND TRUE)
-  endif()
-endif()
-if (${CLANG_FORMAT_FOUND})
-  message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
-  # runs clang format and updates files in place.
-
-  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1)
-
-  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
-  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0)
-else()
-  message(STATUS "was unable to find clang-format")
-endif()

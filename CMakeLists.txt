@@ -248,8 +248,9 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
-# Documentation
+# Formatting and documentation
 include(Doxygen)
+include(Format)
 
 # HACK: Set the sanitizer configuration globally after the
 # superbuild has finished. We want to enable sanitization for
