@@ -46,7 +46,7 @@ if(DOXYGEN_FOUND)
     COMMENT "Preparing for Doxygen documentation" VERBATIM
   )
   add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/Doxyfile.mk >
+    Doxygen::doxygen ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/Doxyfile.mk >
       ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
     COMMENT "Generating API documentation with Doxygen" VERBATIM
     DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
