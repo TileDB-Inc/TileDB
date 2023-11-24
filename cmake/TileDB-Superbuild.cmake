@@ -1,4 +1,6 @@
 include (ExternalProject)
+include (Doxygen)
+include (Format)
 
 ############################################################
 # Common variables
