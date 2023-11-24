@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 
 #include <cassert>
 #include <filesystem>
@@ -42,7 +43,6 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
-#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/filesystem/win.h"
 
 #include <Windows.h>

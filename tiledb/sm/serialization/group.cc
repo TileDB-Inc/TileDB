@@ -197,7 +197,7 @@ Status group_details_from_capnp(
     group->set_metadata_loaded(true);
   }
 
-  group->set_changes_applied(true);
+  group->group_details()->set_modified();
 
   return Status::Ok();
 }
@@ -226,7 +226,7 @@ Status group_from_capnp(
   }
 
   if (group_reader.hasGroup()) {
-    throw_if_not_ok(group->clear());
+    group->clear();
     RETURN_NOT_OK(group_details_from_capnp(group_reader.getGroup(), group));
   }
 

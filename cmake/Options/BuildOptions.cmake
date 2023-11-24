@@ -22,7 +22,6 @@ option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
-cmake_dependent_option(TILEDB_INSTALL_FIND_DEPENDENCIES "Enables calls to find_dependency in the exported config file. Should be disabled only when building a shared library with all dependencies statically linked." ON "NOT TILEDB_STATIC" ON)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
@@ -36,7 +35,6 @@ option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests
 option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
-option(_TILEDB_CMAKE_INIT_GIT_SUBMODULES "Check submodules during build" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 

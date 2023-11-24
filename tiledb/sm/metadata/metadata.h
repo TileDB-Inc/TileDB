@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,8 +46,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Buffer;
 class ConstBuffer;
@@ -111,10 +110,10 @@ class Metadata {
   void clear();
 
   /** Retrieves the array metadata URI. */
-  Status get_uri(const URI& array_uri, URI* meta_uri);
+  URI get_uri(const URI& array_uri);
 
   /** Generates a new array metadata URI. */
-  Status generate_uri(const URI& array_uri);
+  void generate_uri(const URI& array_uri);
 
   /**
    * Deserializes the input metadata buffers. Note that the buffers are
@@ -272,7 +271,6 @@ class Metadata {
   void build_metadata_index();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_METADATA_H

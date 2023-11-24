@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,6 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -58,12 +57,11 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class UnorderWriterStatusException : public StatusException {
+class UnorderWriterException : public StatusException {
  public:
-  explicit UnorderWriterStatusException(const std::string& message)
+  explicit UnorderWriterException(const std::string& message)
       : StatusException("UnorderWriter", message) {
   }
 };
@@ -107,7 +105,7 @@ UnorderedWriter::UnorderedWriter(
     , is_coords_pass_(true) {
   // Check the layout is unordered.
   if (layout != Layout::UNORDERED) {
-    throw UnorderWriterStatusException(
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support layout " +
         layout_str(layout));
@@ -115,14 +113,14 @@ UnorderedWriter::UnorderedWriter(
 
   // Check the array is sparse.
   if (array_schema_.dense()) {
-    throw UnorderWriterStatusException(
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered "
         "writer does not support dense arrays.");
   }
 
   // Check no ordered attributes.
   if (array_schema_.has_ordered_attributes()) {
-    throw UnorderWriterStatusException(
+    throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support ordered attributes.");
   }
@@ -166,7 +164,7 @@ Status UnorderedWriter::finalize() {
 
   if (written_buffers_.size() <
       array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw UnorderWriterStatusException("Not all buffers already written");
+    throw UnorderWriterException("Not all buffers already written");
   }
 
   return Status::Ok();
@@ -643,15 +641,14 @@ Status UnorderedWriter::unordered_write() {
 
   if (written_buffers_.size() >=
       array_schema_.dim_num() + array_schema_.attribute_num()) {
-    throw UnorderWriterStatusException("All buffers already written");
+    throw UnorderWriterException("All buffers already written");
   }
 
   if (is_coords_pass_) {
     for (ArraySchema::dimension_size_type d = 0; d < array_schema_.dim_num();
          d++) {
       if (buffers_.count(array_schema_.dimension_ptr(d)->name()) == 0) {
-        throw UnorderWriterStatusException(
-            "All dimension buffers should be set");
+        throw UnorderWriterException("All dimension buffers should be set");
       }
     }
 
@@ -743,5 +740,4 @@ Status UnorderedWriter::unordered_write() {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

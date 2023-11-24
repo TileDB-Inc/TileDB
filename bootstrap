@@ -47,10 +47,6 @@ Configuration:
     --disable-avx2                  disables use of AVX2 instructions
     --disable-webp                  disables building of webp library and linkage test
     --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
-    --disable-install-find-dependencies
-                                    Disables calls to find_dependency in the exported config file.
-                                    Should be set to ON when building a shared library with all
-                                    dependencies statically linked.
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
@@ -116,7 +112,6 @@ tiledb_experimental_features="OFF"
 tiledb_build_webp="ON"
 tiledb_tests_enable_rest="OFF"
 tiledb_tests_aws_s3_config="OFF"
-tiledb_install_find_dependencies="ON"
 enable_multiple=""
 while test $# != 0; do
     case "$1" in
@@ -135,7 +130,6 @@ while test $# != 0; do
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --disable-webp) tiledb_build_webp="OFF";;
     --disable-vcpkg) tiledb_vcpkg="OFF";;
-    --disable-install-find-dependencies) tiledb_install_find_dependencies="OFF";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -248,7 +242,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
     -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
-    -DTILEDB_INSTALL_FIND_DEPENDENCIES=${tiledb_install_find_dependencies} \
     ${tiledb_disable_avx2} \
     "${source_dir}" || die "failed to configure the project"
 

@@ -36,6 +36,8 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/filesystem/uri.h"
 
+#include <optional>
+
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
@@ -44,19 +46,21 @@ namespace tiledb::storage_format {
 /**
  * Generate a new URI in the form `__t1_t2_uuid_v`, where `t1` is the starting
  * timestamp, `t2` is the ending timestamp,  and `v` is the current format
- * version. For instance,
+ * version, if provided. For instance,
  * `__1458759561320_1458759561480_6ba7b8129dad11d180b400c04fd430c8_3`.
  *
  * @param timestamp_start The staring timestamp. It is in ms since
  *     1970-01-01 00:00:00 +0000 (UTC).
  * @param timestamp_end The ending timestamp. It is in ms since
  *     1970-01-01 00:00:00 +0000 (UTC).
- * @param version Version number to append to the URI.
+ * @param version Optional version number to append to the URI.
  *
  * @return The new URI.
  */
 std::string generate_timestamped_name(
-    uint64_t timestamp_start, uint64_t timestamp_end, uint32_t version);
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    std::optional<format_version_t> version);
 
 /**
  * Generates a new fragment name.

@@ -42,7 +42,6 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
@@ -547,7 +546,7 @@ class ArraySchema {
   format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
-  Status set_timestamp_range(
+  void set_timestamp_range(
       const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /** Returns the timestamp range. */
@@ -565,11 +564,10 @@ class ArraySchema {
   /** Set the schema name. */
   void set_name(const std::string& name);
 
-  /** Generates a new array schema URI. */
-  Status generate_uri();
-
-  /** Generates a new array schema URI with specified timestamp range. */
-  Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
+  /** Generates a new array schema URI with optional timestamp range. */
+  void generate_uri(
+      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+          std::nullopt);
 
  private:
   /* ********************************* */

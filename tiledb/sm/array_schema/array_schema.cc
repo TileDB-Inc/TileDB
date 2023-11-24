@@ -84,19 +84,18 @@ ArraySchema::ArraySchema()
 }
 
 ArraySchema::ArraySchema(ArrayType array_type)
-    : array_type_(array_type) {
-  allows_dups_ = false;
-  array_uri_ = URI();
-  uri_ = URI();
-  name_ = "";
-  capacity_ = constants::capacity;
-  cell_order_ = Layout::ROW_MAJOR;
-  domain_ = nullptr;
-  tile_order_ = Layout::ROW_MAJOR;
-  version_ = constants::format_version;
-  auto timestamp = utils::time::timestamp_now_ms();
-  timestamp_range_ = std::make_pair(timestamp, timestamp);
-
+    : uri_(URI())
+    , array_uri_(URI())
+    , version_(constants::format_version)
+    , timestamp_range_(std::make_pair(
+          utils::time::timestamp_now_ms(), utils::time::timestamp_now_ms()))
+    , name_("")
+    , array_type_(array_type)
+    , allows_dups_(false)
+    , domain_(nullptr)
+    , cell_order_(Layout::ROW_MAJOR)
+    , tile_order_(Layout::ROW_MAJOR)
+    , capacity_(constants::capacity) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -112,7 +111,7 @@ ArraySchema::ArraySchema(ArrayType array_type)
       Datatype::UINT8));
 
   // Generate URI and name for ArraySchema
-  throw_if_not_ok(generate_uri());
+  generate_uri();
 }
 
 ArraySchema::ArraySchema(
@@ -1564,10 +1563,9 @@ format_version_t ArraySchema::version() const {
   return version_;
 }
 
-Status ArraySchema::set_timestamp_range(
+void ArraySchema::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
   timestamp_range_ = timestamp_range;
-  return Status::Ok();
 }
 
 std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
@@ -1696,36 +1694,19 @@ void ArraySchema::clear() {
   timestamp_range_ = std::make_pair(0, 0);
 }
 
-Status ArraySchema::generate_uri() {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
+void ArraySchema::generate_uri(
+    std::optional<std::pair<uint64_t, uint64_t>> timestamp_range) {
+  if (timestamp_range == std::nullopt) {
+    auto timestamp = utils::time::timestamp_now_ms();
+    timestamp_range_ = std::make_pair(timestamp, timestamp);
+  } else {
+    timestamp_range_ = timestamp_range.value();
+  }
 
-  auto timestamp = utils::time::timestamp_now_ms();
-  timestamp_range_ = std::make_pair(timestamp, timestamp);
-  std::stringstream ss;
-  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
-     << uuid;
-  name_ = ss.str();
+  name_ = tiledb::storage_format::generate_timestamped_name(
+      timestamp_range_.first, timestamp_range_.second, std::nullopt);
   uri_ =
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
-
-  return Status::Ok();
-}
-
-Status ArraySchema::generate_uri(
-    const std::pair<uint64_t, uint64_t>& timestamp_range) {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
-  timestamp_range_ = timestamp_range;
-  std::stringstream ss;
-  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
-     << uuid;
-  name_ = ss.str();
-  uri_ =
-      array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
-
-  return Status::Ok();
 }
 
 }  // namespace tiledb::sm
