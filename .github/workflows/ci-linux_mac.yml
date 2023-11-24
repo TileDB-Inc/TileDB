@@ -216,6 +216,10 @@ jobs:
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: ./scripts/ci/posix/dump-core-stacks.sh
 
+      - name: List files in build directory on failure
+        run: du --exclude _deps -h $GITHUB_WORKSPACE/build
+        if: ${{ failure() }}
+
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v3
