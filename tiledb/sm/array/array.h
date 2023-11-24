@@ -840,6 +840,11 @@ class Array {
   /** Load array directory for non-remote arrays */
   const ArrayDirectory& load_array_directory();
 
+  /* Get the REST client */
+  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+    return resources_.rest_client();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
