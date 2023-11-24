@@ -85,7 +85,6 @@ struct CppConsolidationPlanFx {
 
 CppConsolidationPlanFx::CppConsolidationPlanFx()
     : vfs_(ctx_) {
-  Config cfg_;
   cfg_.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(cfg_);
   vfs_ = VFS(ctx_);
