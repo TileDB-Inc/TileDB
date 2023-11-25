@@ -64,4 +64,4 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: doxygen-docs
-          path: $GITHUB_WORKSPACE/tiledb/doxygen/source/_build/html/
+          path: ${{ github.workspace }}/tiledb/doxygen/source/_build/html/
