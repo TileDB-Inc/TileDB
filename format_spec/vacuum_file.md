@@ -6,9 +6,9 @@ A vacuum file has name `[`<timestamped_name>`](./timestamped_name.md)`.vac` and 
 
 ```
 my_array                        # array folder
-   | ....
-   | __commits                 # array commit folder
-         |<timestamped_name>.vac   # vacuum file
+   |_ ....
+   |_ __commits                 # array commit folder
+         |_ <timestamped_name>.vac   # vacuum file
 ```
 
 or in the array metadata folder:

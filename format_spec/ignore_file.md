@@ -8,7 +8,7 @@ A ignore file has name [`<timestamped_name>`](./timestamped_name.md)`.ign` and i
 my_array                           # array folder
    |_ ....
    |_ __commits                    # array commit folder
-         |<timestamped_name>.ign      # ignore file
+         |_ <timestamped_name>.ign      # ignore file
 ```
 
 The ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.
