@@ -204,7 +204,6 @@ jobs:
 
           ###################################################
           # Build and run Examples
-          make -C $GITHUB_WORKSPACE/build -j3 examples
           source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           ###################################################
