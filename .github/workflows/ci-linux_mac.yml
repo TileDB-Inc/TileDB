@@ -204,7 +204,9 @@ jobs:
 
           ###################################################
           # Build and run Examples
-          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+          # The following script must not be sourced.
+          # It relies on finding its source directory.
+          $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           ###################################################
           # Build benchmark code
