@@ -1,3 +1,9 @@
+# TileDB v2.18.1 Release Notes
+
+## Build System Changes
+
+* Fix errors when building from a directory that is not a Git repository. [#4529](https://github.com/TileDB-Inc/TileDB/pull/4529)
+
 # TileDB v2.18.0 Release Notes
 
 ## Announcements
