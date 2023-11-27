@@ -16,8 +16,7 @@ my_array                            # array folder
 
 The array schema folder can contain:
 
-* Any number of [array schema files](#array-schema-file)
-* The schema file has name [`<timestamped_name>`](./timestamped_name.md). 
+* Any number of [array schema files](#array-schema-file) with name [`<timestamped_name>`](./timestamped_name.md). 
    * Note: the name does _not_ include the format version.
 
 ## Previous Array Schema Version
