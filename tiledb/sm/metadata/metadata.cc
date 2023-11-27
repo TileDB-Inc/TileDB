@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,16 +36,14 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
-#include "tiledb/storage_format/serialization/serializers.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <iostream>
 #include <sstream>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class MetadataException : public StatusException {
  public:
@@ -103,25 +101,18 @@ void Metadata::clear() {
   uri_ = URI();
 }
 
-Status Metadata::get_uri(const URI& array_uri, URI* meta_uri) {
+URI Metadata::get_uri(const URI& array_uri) {
   if (uri_.to_string().empty())
-    RETURN_NOT_OK(generate_uri(array_uri));
+    generate_uri(array_uri);
 
-  *meta_uri = uri_;
-  return Status::Ok();
+  return uri_;
 }
 
-Status Metadata::generate_uri(const URI& array_uri) {
-  std::string uuid;
-  RETURN_NOT_OK(uuid::generate_uuid(&uuid, false));
-
-  std::stringstream ss;
-  ss << "__" << timestamp_range_.first << "_" << timestamp_range_.second << "_"
-     << uuid;
+void Metadata::generate_uri(const URI& array_uri) {
+  auto ts_name = tiledb::storage_format::generate_timestamped_name(
+      timestamp_range_.first, timestamp_range_.second, std::nullopt);
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
-             .join_path(ss.str());
-
-  return Status::Ok();
+             .join_path(ts_name);
 }
 
 Metadata Metadata::deserialize(
@@ -365,5 +356,4 @@ void Metadata::build_metadata_index() {
     metadata_index_[i++] = std::make_pair(&(m.first), &(m.second));
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

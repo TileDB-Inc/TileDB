@@ -91,6 +91,25 @@ class GroupDetails {
   const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
+   * Get whether the group has been modified.
+   *
+   * This determines whether to write the group details on close.
+   */
+  bool is_modified() const {
+    return is_modified_;
+  }
+
+  /**
+   * Marks the group as modified.
+   *
+   * Used only by serialization, to support writing the group details of a
+   * deserialized group.
+   */
+  void set_modified() {
+    is_modified_ = true;
+  }
+
+  /**
    * Get the unordered map of members
    * @return members
    */
@@ -115,10 +134,13 @@ class GroupDetails {
   /**
    * Serializes the object members into a binary buffer.
    *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
+   * @param members The members to serialize. Should be retrieved from
+   * members_to_serialize().
+   * @param serializer The buffer to serialize the data into.
    */
-  virtual void serialize(Serializer& serializer);
+  virtual void serialize(
+      const std::vector<std::shared_ptr<GroupMember>>& members,
+      Serializer& serializer) const = 0;
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -144,12 +166,6 @@ class GroupDetails {
 
   /** Returns the group URI. */
   const URI& group_uri() const;
-
-  /**
-   * Have changes been applied to a group in write mode
-   * @return changes_applied_
-   */
-  bool changes_applied() const;
 
   /**
    * Get count of members
@@ -184,11 +200,11 @@ class GroupDetails {
   format_version_t version() const;
 
   /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_modify_
+   * Get the members to write to storage, after accounting for duplicate members
+   * and member removals.
    */
-  virtual void apply_pending_changes() = 0;
+  virtual std::vector<std::shared_ptr<GroupMember>> members_to_serialize()
+      const = 0;
 
  protected:
   /* ********************************* */
@@ -197,6 +213,9 @@ class GroupDetails {
 
   /** The group URI. */
   URI group_uri_;
+
+  /** Whether the group has been modified. */
+  bool is_modified_;
 
   /**
    * The mapping of all members of this group. This is the canonical store of
@@ -231,9 +250,6 @@ class GroupDetails {
 
   /** Format version. */
   const uint32_t version_;
-
-  /** Were changes applied and is a write is required */
-  bool changes_applied_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

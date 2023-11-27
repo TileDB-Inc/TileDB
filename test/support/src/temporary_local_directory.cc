@@ -30,7 +30,7 @@
  * This file defines class TemporaryLocalDirectory.
  */
 
-#include "tiledb/sm/filesystem/temporary_local_directory.h"
+#include "temporary_local_directory.h"
 #include "tiledb/common/random/prng.h"
 
 #include <filesystem>

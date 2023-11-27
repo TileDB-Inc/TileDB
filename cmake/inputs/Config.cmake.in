@@ -10,7 +10,7 @@
 
 @PACKAGE_INIT@
 
-if(@TILEDB_INSTALL_FIND_DEPENDENCIES@) # TILEDB_INSTALL_FIND_DEPENDENCIES
+if(@TILEDB_STATIC@) # TILEDB_STATIC
   include(CMakeFindDependencyMacro)
   find_dependency(Threads)
   find_dependency(BZip2)

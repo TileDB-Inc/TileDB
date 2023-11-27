@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,6 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -58,8 +57,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GlobalOrderWriterStatusException : public StatusException {
  public:
@@ -1438,7 +1436,7 @@ Status GlobalOrderWriter::start_new_fragment() {
   const auto write_version = array_->array_schema_latest().write_version();
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
-  auto new_fragment_str = storage_format::generate_uri(
+  auto new_fragment_str = storage_format::generate_timestamped_name(
       fragment_timestamp_range_.first,
       fragment_timestamp_range_.second,
       write_version);
@@ -1452,5 +1450,4 @@ Status GlobalOrderWriter::start_new_fragment() {
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
