@@ -31,6 +31,7 @@ die() {
 }
 
 install_apt_pkgs() {
+  sudo apt-get update || die "could not update apt-get"
   sudo apt-get -y install libnode-dev node-gyp libssl1.0 npm || die "could not install nodejs dependency"
 }
 
