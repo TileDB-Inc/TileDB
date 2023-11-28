@@ -58,8 +58,7 @@
 
 std::mutex catch2_macro_mutex;
 
-namespace tiledb {
-namespace test {
+namespace tiledb::test {
 
 // Command line arguments.
 std::string g_vfs;
@@ -923,10 +922,10 @@ void get_supported_fs(
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *s3_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
+  if constexpr (TILEDB_S3_ENABLED) {
+    *s3_supported = true;
+  }
+  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   *hdfs_supported = (bool)is_supported;
   rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
@@ -2375,6 +2374,4 @@ template void check_counts<int32_t>(
 template void check_counts<uint64_t>(
     span<uint64_t> vals, std::vector<uint64_t> expected);
 
-}  // End of namespace test
-
-}  // End of namespace tiledb
+}  // namespace tiledb::test

@@ -54,25 +54,39 @@
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
+static constexpr bool TILEDB_WIN_ENABLED = true;
 #else
 #include "tiledb/sm/filesystem/posix.h"
+static constexpr bool TILEDB_WIN_ENABLED = false;
 #endif
 
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
-#endif
+static constexpr bool TILEDB_GCS_ENABLED = true;
+#else
+static constexpr bool TILEDB_GCS_ENABLED = false;
+#endif  // HAVE_GCS
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
-#endif
+static constexpr bool TILEDB_S3_ENABLED = true;
+#else
+static constexpr bool TILEDB_S3_ENABLED = false;
+#endif  // HAVE_S3
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
+static constexpr bool TILEDB_HDFS_ENABLED = true;
+#else
+static constexpr bool TILEDB_HDFS_ENABLED = false;
+#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
-#endif
+static constexpr bool TILEDB_AZURE_ENABLED = true;
+#else
+static constexpr bool TILEDB_AZURE_ENABLED = false;
+#endif  // HAVE_AZURE
 
 using namespace tiledb::common;
 

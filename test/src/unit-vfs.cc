@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -153,7 +153,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
       &s3_supported, &hdfs_supported, &azure_supported, &gcs_supported);
 
   std::vector<std::pair<URI, Config>> root_pairs;
-  if (s3_supported) {
+  if constexpr (TILEDB_S3_ENABLED) {
     Config config;
     REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
     REQUIRE(config.set("vfs.s3.scheme", "https").ok());

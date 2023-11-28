@@ -53,6 +53,13 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& message)
+      : StatusException("VFS", message) {
+  }
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -85,9 +92,9 @@ VFS::VFS(
   }
 #endif
 
-#ifdef HAVE_S3
-  supported_fs_.insert(Filesystem::S3);
-#endif
+  if constexpr (TILEDB_S3_ENABLED) {
+    supported_fs_.insert(Filesystem::S3);
+  }
 
 #ifdef HAVE_AZURE
   supported_fs_.insert(Filesystem::AZURE);
@@ -175,12 +182,12 @@ Status VFS::create_dir(const URI& uri) const {
 #endif
   }
   if (uri.is_s3()) {
-#ifdef HAVE_S3
-    // It is a noop for S3
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
-#endif
+    if constexpr (TILEDB_S3_ENABLED) {
+      // It is a noop for S3
+      return Status::Ok();
+    } else {
+      throw VFSException("TileDB was built without S3 support");
+    }
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -256,7 +263,7 @@ Status VFS::touch(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.touch(uri);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -291,7 +298,7 @@ Status VFS::create_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.create_bucket(uri);
 #else
-    return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
+    throw VFSException("S3 is not supported");
 #endif
   }
   if (uri.is_azure()) {
@@ -318,7 +325,7 @@ Status VFS::remove_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.remove_bucket(uri);
 #else
-    return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
+    throw VFSException("S3 is not supported");
 #endif
   }
   if (uri.is_azure()) {
@@ -345,7 +352,7 @@ Status VFS::empty_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.empty_bucket(uri);
 #else
-    return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
+    throw VFSException("S3 is not supported");
 #endif
   }
   if (uri.is_azure()) {
@@ -373,7 +380,7 @@ Status VFS::is_empty_bucket(
 #ifdef HAVE_S3
     return s3_.is_empty_bucket(uri, is_empty);
 #else
-    return LOG_STATUS(Status_VFSError(std::string("S3 is not supported")));
+    throw VFSException("S3 is not supported");
 #endif
   }
   if (uri.is_azure()) {
@@ -412,7 +419,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.remove_dir(uri);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -466,7 +473,7 @@ Status VFS::remove_file(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.remove_object(uri);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -553,7 +560,7 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #ifdef HAVE_S3
     return s3_.object_size(uri, size);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -600,7 +607,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     return s3_.is_dir(uri, is_dir);
 #else
     *is_dir = false;
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -652,7 +659,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     return Status::Ok();
 #else
     *is_file = false;
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -687,7 +694,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
     return Status::Ok();
 #else
     *is_bucket = false;
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -755,8 +762,7 @@ tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
     Status st;
     std::tie(st, entries) = s3_.ls_with_sizes(parent);
 #else
-    auto st =
-        LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    auto st = Status_VFSError("TileDB was built without S3 support");
 #endif
     RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_azure()) {
@@ -846,10 +852,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.move_object(old_uri, new_uri);
 #else
-      return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+      throw VFSException("TileDB was built without S3 support");
 #endif
-    return LOG_STATUS(Status_VFSError(
-        "Moving files across filesystems is not supported yet"));
+    throw VFSException("Moving files across filesystems is not supported yet");
   }
 
   // Azure
@@ -926,10 +931,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.move_dir(old_uri, new_uri);
 #else
-      return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+      throw VFSException("TileDB was built without S3 support");
 #endif
-    return LOG_STATUS(Status_VFSError(
-        "Moving files across filesystems is not supported yet"));
+    throw VFSException("Moving files across filesystems is not supported yet");
   }
 
   // Azure
@@ -1014,10 +1018,9 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.copy_file(old_uri, new_uri);
 #else
-      return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+      throw VFSException("TileDB was built without S3 support");
 #endif
-    return LOG_STATUS(Status_VFSError(
-        "Copying files across filesystems is not supported yet"));
+    throw VFSException("Copying files across filesystems is not supported yet");
   }
 
   // Azure
@@ -1089,10 +1092,10 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.copy_dir(old_uri, new_uri);
 #else
-      return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+      throw VFSException("TileDB was built without S3 support");
 #endif
-    return LOG_STATUS(Status_VFSError(
-        "Copying directories across filesystems is not supported yet"));
+    throw VFSException(
+        "Copying directories across filesystems is not supported yet");
   }
 
   // Azure
@@ -1230,7 +1233,7 @@ Status VFS::read_impl(
     return read_ahead_impl(
         read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -1372,11 +1375,11 @@ Status VFS::sync(const URI& uri) {
 #endif
   }
   if (uri.is_s3()) {
-#ifdef HAVE_S3
-    return Status::Ok();
-#else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
-#endif
+    if constexpr (TILEDB_S3_ENABLED) {
+      return Status::Ok();
+    } else {
+      throw VFSException("TileDB was built without S3 support");
+    }
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -1417,14 +1420,14 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
       break;
     case VFSMode::VFS_APPEND:
       if (uri.is_s3()) {
-#ifdef HAVE_S3
-        return LOG_STATUS(Status_VFSError(
-            std::string("Cannot open file '") + uri.c_str() +
-            "'; S3 does not support append mode"));
-#else
-        return LOG_STATUS(Status_VFSError(
-            "Cannot open file; TileDB was built without S3 support"));
-#endif
+        if constexpr (TILEDB_S3_ENABLED) {
+          throw VFSException(
+              "Cannot open file '" + uri.to_string() +
+              "'; S3 does not support append mode");
+        } else {
+          throw VFSException(
+              "Cannot open file; TileDB was built without S3 support");
+        }
       }
       if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -1471,7 +1474,7 @@ Status VFS::close_file(const URI& uri) {
 #ifdef HAVE_S3
     return s3_.flush_object(uri);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -1502,8 +1505,7 @@ void VFS::finalize_and_close_file(const URI& uri) {
     s3_.finalize_and_flush_object(uri);
     return;
 #else
-    throw StatusException(
-        Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   throw_if_not_ok(close_file(uri));
@@ -1539,7 +1541,7 @@ Status VFS::write(
     }
     return s3_.write(uri, buffer, buffer_size);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
   if (uri.is_azure()) {
@@ -1595,9 +1597,7 @@ VFS::multipart_upload_state(const URI& uri) {
 
     return {Status::Ok(), state};
 #else
-    return {
-        LOG_STATUS(Status_VFSError("TileDB was built without S3 support")),
-        nullopt};
+    return {Status_VFSError("TileDB was built without S3 support"), nullopt};
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -1651,7 +1651,7 @@ Status VFS::set_multipart_upload_state(
 
     return s3_.set_multipart_upload_state(uri.to_string(), s3_state);
 #else
-    return LOG_STATUS(Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
@@ -1681,8 +1681,7 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
     buff->reset_size();
 
 #else
-    throw StatusException(
-        Status_VFSError("TileDB was built without S3 support"));
+    throw VFSException("TileDB was built without S3 support");
 #endif
   }
 
