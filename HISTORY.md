@@ -1,3 +1,8 @@
+# TileDB v2.17.5 Release Notes
+
+## Defects removed
+* Fix delta filter deserialization for format ver 19. [#4541](https://github.com/TileDB-Inc/TileDB/pull/4541)
+
 # TileDB v2.17.4 Release Notes
 
 ## Defects removed
