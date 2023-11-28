@@ -34,6 +34,8 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
+    --vcpkg-target-triplet=TRIPLET         vcpkg triplet to use for downloading and building dependencies
+                                    [auto-detected]
     --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
@@ -50,6 +52,7 @@ Configuration:
     --enable-static-tiledb          enables building TileDB as a static library
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
+                                    Must manually specify a vcpkg triplet.
     --enable-debug                  enable debug build
     --enable-assertions             enable assertions in compiled code
     --enable-release-symbols        enable create symbols for release build
@@ -88,6 +91,7 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
+vcpkg_target_triplet=""
 tiledb_vcpkg="ON"
 dependency_dir="${default_dependency}"
 sanitizer=""
@@ -121,6 +125,7 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
+    --vcpkg-target-triplet=*) vcpkg_target_triplet=`arg "$1"`;;
     --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
                     tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
@@ -228,6 +233,7 @@ fi
 # Configure
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
+    -DVCPKG_TARGET_TRIPLET=${vcpkg_target_triplet} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \

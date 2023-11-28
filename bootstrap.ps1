@@ -13,6 +13,10 @@ develop TileDB.
 .PARAMETER Prefix
 Installs files in tree rooted at PREFIX (defaults to TileDB\dist).
 
+.PARAMETER VcpkgTargetTriplet
+Optionally specify the vcpkg target triplet, e.g. "x64-windows-release".
+Defaults to automatically detecting it from the environment.
+
 .PARAMETER Dependency
 Semicolon separated list to binary dependencies.
 
@@ -118,6 +122,7 @@ https://github.com/TileDB-Inc/TileDB
 [CmdletBinding()]
 Param(
     [string]$Prefix,
+    [string]$VcpkgTargetTriplet,
     [string]$Dependency,
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
@@ -326,7 +331,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DTILEDB_VCPKG=$UseVcpkg -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DVCPKG_TARGET_TRIPLET=$VcpkgTargetTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DTILEDB_STATIC=$TileDBStatic -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"
