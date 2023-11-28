@@ -13,7 +13,7 @@ do
   cd ${TestAppDataDir}
   exampleexe=${example%.c}_c
   exampleexe=${exampleexe##*/}
-  cmake --build ${BaseDir} --target ${exampleexe}
+  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
   # Remove the executable after running it to prevent disk
@@ -44,7 +44,7 @@ do
   cd ${TestAppDataDir}
   exampleexe=${example%.cc}_cpp
   exampleexe=${exampleexe##*/}
-  cmake --build ${BaseDir} --target ${exampleexe}
+  cmake --build ${BaseDir}/tiledb --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
   rm $TestAppDir/$exampleexe
