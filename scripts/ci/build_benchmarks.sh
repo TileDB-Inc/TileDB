@@ -52,7 +52,7 @@ int main(int argc, char **argv) {
 EOF
 export TESTFILE_LDFLAGS="-ltiledb"
 export LD_LIBRARY_PATH=$GITHUB_WORKSPACE/build/dist/lib:/usr/local/lib:${LD_LIBRARY_PATH:-}
-$CXX -std=c++11 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/build/dist/include -L$GITHUB_WORKSPACE/build/dist/lib $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
+$CXX -std=c++17 -g -O0 -Wall -Werror -I$GITHUB_WORKSPACE/build/dist/include -L$GITHUB_WORKSPACE/build/dist/lib -L$GITHUB_WORKSPACE/build/vcpkg_installed/$VCPKG_TARGET_TRIPLET $testfile -o $testfile.exe $TESTFILE_LDFLAGS && \
 $testfile.exe && \
 rm -f $testfile $testfile.exe
 
