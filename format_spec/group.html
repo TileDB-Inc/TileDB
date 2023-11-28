@@ -263,13 +263,16 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="group" class="level1">
 <h1>Group</h1>
-<p>A group consists of <a href="../format_spec/metadata.html">metadata</a> and a file containing group members.</p>
-<p>The current group format version is <code>2</code>.</p>
+<p>The current group format version (<code>2</code>) is a folder called <code>__group</code> located here:</p>
 <pre><code>my_group                       # Group folder
-    |_ __tiledb_group.tdb      # Empty group file
+    |  ...
     |_ __group                 # Group folder
         |_ &lt;timestamped_name&gt;  # Timestamped group file detailing members
-    |_ __meta                  # group metadata folder</code></pre>
+    |_ ...</code></pre>
+<p>The group folder can contain:</p>
+<ul>
+<li>Any number of group files with name <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.</li>
+</ul>
 <section id="group-file" class="level2">
 <h2 class="anchored" data-anchor-id="group-file">Group File</h2>
 <table class="table">

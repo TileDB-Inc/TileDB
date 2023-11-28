@@ -292,22 +292,16 @@ ul.task-list li input[type="checkbox"] {
     |_ __meta                           # array metadata folder
     |_ __labels                         # dimension label folder
 </code></pre>
-<p>A <code>&lt;timestamped_name&gt;</code> above has format <code>__t1_t2_uuid_v</code>, where</p>
-<ul>
-<li><code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)</li>
-<li><code>uuid</code> is a unique identifier</li>
-<li><code>v</code> is the format version</li>
-</ul>
 <p>Inside the array folder, you can find the following:</p>
 <ul>
 <li><a href="../format_spec/array_schema.html">Array schema</a> folder <code>__schema</code>.</li>
-<li>Inside of a fragments folder, any number of <a href="../format_spec/fragment.html">fragment folders</a> <code>&lt;timestamped_name&gt;</code>.</li>
-<li>Inside of a commit folder, an empty file <code>&lt;timestamped_name&gt;.wrt</code> associated with every fragment folder <code>&lt;timestamped_name&gt;</code>, where <code>&lt;timestamped_name&gt;</code> is common for the folder and the WRT file. This is used to indicate that fragment <code>&lt;timestamped_name&gt;</code> has been <em>committed</em> (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/delete_commit_file.html">delete commit files</a> of the form <code>&lt;timestamped_name&gt;.del</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/update_commit_file.html">update commit files</a> of the form <code>&lt;timestamped_name&gt;.upd</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a> of the form <code>&lt;timestamped_name&gt;.con</code>.</li>
-<li>Inside the same commit folder, any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <code>&lt;timestamped_name&gt;.ign</code>.</li>
-<li>Inside of a fragment metadata folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <code>&lt;timestamped_name&gt;.meta</code>.</li>
+<li>Inside of a fragments folder, any number of <a href="../format_spec/fragment.html">fragment folders</a> <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.</li>
+<li>Inside of a commit folder, an empty file <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.wrt</code> associated with every fragment folder <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>, where <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a> is common for the folder and the WRT file. This is used to indicate that fragment <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a> has been <em>committed</em> (i.e., its write process finished successfully) and it is ready for use by TileDB. If the WRT file does not exist, the corresponding fragment folder is ignored by TileDB during the reads.</li>
+<li>Inside the same commit folder, any number of <a href="../format_spec/delete_commit_file.html">delete commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.del</code>.</li>
+<li>Inside the same commit folder, any number of <a href="../format_spec/update_commit_file.html">update commit files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.upd</code>.</li>
+<li>Inside the same commit folder, any number of <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.con</code>.</li>
+<li>Inside the same commit folder, any number of <a href="../format_spec/ignore_file.html">ignore files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.ign</code>.</li>
+<li>Inside of a fragment metadata folder, any number of <a href="../format_spec/consolidated_fragment_metadata_file.html">consolidated fragment metadata files</a> of the form <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.meta</code>.</li>
 <li><a href="../format_spec/metadata.html">Array metadata</a> folder <code>__meta</code>.</li>
 <li>Inside of a labels folder, additional TileDB arrays storing dimension label data.</li>
 </ul>

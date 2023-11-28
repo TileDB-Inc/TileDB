@@ -7,7 +7,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
 
-<title>Array Metadata</title>
+<title>Timestamped Name</title>
 <style>
 code{white-space: pre-wrap;}
 span.smallcaps{font-variant: small-caps;}
@@ -105,7 +105,7 @@ ul.task-list li input[type="checkbox"] {
       <button type="button" class="quarto-btn-toggle btn" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">
         <i class="bi bi-layout-text-sidebar-reverse"></i>
       </button>
-      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Array Metadata</li></ol></nav>
+      <nav class="quarto-page-breadcrumbs" aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item">Timestamped Name</li></ol></nav>
       <a class="flex-grow-1" role="button" data-bs-toggle="collapse" data-bs-target="#quarto-sidebar,#quarto-sidebar-glass" aria-controls="quarto-sidebar" aria-expanded="false" aria-label="Toggle sidebar navigation" onclick="if (window.quartoToggleHeadroom) { window.quartoToggleHeadroom(); }">      
       </a>
     </div>
@@ -248,8 +248,7 @@ ul.task-list li input[type="checkbox"] {
     <h2 id="toc-title">On this page</h2>
    
   <ul>
-  <li><a href="#main-structure" id="toc-main-structure" class="nav-link active" data-scroll-target="#main-structure">Main Structure</a></li>
-  <li><a href="#metadata-file" id="toc-metadata-file" class="nav-link" data-scroll-target="#metadata-file">Metadata File</a></li>
+  <li><a href="#format-history" id="toc-format-history" class="nav-link active" data-scroll-target="#format-history">Format History</a></li>
   </ul>
 </nav>
     </div>
@@ -258,7 +257,7 @@ ul.task-list li input[type="checkbox"] {
 
 <header id="title-block-header" class="quarto-title-block default">
 <div class="quarto-title">
-<h1 class="title">Array Metadata</h1>
+<h1 class="title">Timestamped Name</h1>
 </div>
 
 
@@ -273,67 +272,16 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<section id="main-structure" class="level2">
-<h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
-<p>The metadata is a folder called <code>__meta</code> located here:</p>
-<pre><code>my_array                            # array folder
-   |  ...
-   |_ __meta                        # metadata folder
-         |_ &lt;timestamped_name&gt;      # metadata file
-         |_ ...
-         |_ &lt;timestamped_name&gt;.vac  # vacuum file
-         |_ ...</code></pre>
-<p>The metadata folder can contain any number of <a href="../format_spec/timestamped_name.html">timestamped</a>: * <a href="#array-metadata-file">metadata files</a> * <a href="../format_spec/vacuum_file.html">vacuum files</a> * Note: the timestamped names do <em>not</em> include the format version.</p>
-</section>
-<section id="metadata-file" class="level2">
-<h2 class="anchored" data-anchor-id="metadata-file">Metadata File</h2>
-<p>The metadata file consists of a single <a href="../format_spec/generic_tile.html">generic tile</a>, containing multiple entries with the following data:</p>
-<table class="table">
-<colgroup>
-<col style="width: 33%">
-<col style="width: 33%">
-<col style="width: 33%">
-</colgroup>
-<thead>
-<tr class="header">
-<th style="text-align: left;"><strong>Field</strong></th>
-<th style="text-align: left;"><strong>Type</strong></th>
-<th style="text-align: left;"><strong>Description</strong></th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td style="text-align: left;">Key length</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The length of the key.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Key</td>
-<td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The key.</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Deletion</td>
-<td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;"><code>1</code>/<code>0</code> if it is a deletion/insertion.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Value type</td>
-<td style="text-align: left;"><code>uint8_t</code></td>
-<td style="text-align: left;">The value data type. Present only if <code>del</code> is <code>0</code>.</td>
-</tr>
-<tr class="odd">
-<td style="text-align: left;">Number of values</td>
-<td style="text-align: left;"><code>uint32_t</code></td>
-<td style="text-align: left;">The number of values. Present only if <code>del</code> is <code>0</code>.</td>
-</tr>
-<tr class="even">
-<td style="text-align: left;">Value</td>
-<td style="text-align: left;"><code>uint8_t[]</code></td>
-<td style="text-align: left;">The value. Present only if <code>del</code> is <code>0</code>.</td>
-</tr>
-</tbody>
-</table>
+<p>A TileDB object may contain files with format <code>&lt;timestamped_name&gt;.ext</code>, as seen in <a href="../format_spec/array_file_hierarchy.html">array_file_hierarchy.md</a>, for example.</p>
+<p>A <code>&lt;timestamped_name&gt;</code> has format <code>__t1_t2_uuid[_v]</code>, where:</p>
+<ul>
+<li><code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)</li>
+<li><code>uuid</code> is a unique identifier</li>
+<li><code>v</code> is the <em>optional</em> format version, as indicated by <code>[]</code></li>
+</ul>
+<section id="format-history" class="level2">
+<h2 class="anchored" data-anchor-id="format-history">Format History</h2>
+<p><em>Note</em>: The presence of <code>[]</code> is indicative of an optional parameter. | Format version | TileDB version | Timestamped name format | | :-: | :-: | :-: | | 1 - 2 | 1.4 - 1.5 | <code>__uuid_t1[_t2]</code> | | 3 - 4 | 1.6 - 1.7 | <code>__t1_t2_uuid</code> | | 5+ | 2.0+ | <code>__t1_t2_uuid_[v]</code> |</p>
 
 
 </section>

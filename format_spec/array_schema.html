@@ -288,10 +288,12 @@ ul.task-list li input[type="checkbox"] {
    |_ __schema                      # array schema folder
          |_ &lt;timestamped_name&gt;      # array schema file
          |_ ...</code></pre>
-<p><code>&lt;timestamped_name&gt;</code> has format <code>__timestamp_timestamp_uuid</code>, where: * <code>timestamp</code> is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * <code>uuid</code> is a unique identifier</p>
 <p>The array schema folder can contain:</p>
 <ul>
-<li>Any number of <a href="#array-schema-file">array schema files</a></li>
+<li>Any number of <a href="#array-schema-file">array schema files</a> with name <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>.
+<ul>
+<li>Note: the name does <em>not</em> include the format version.</li>
+</ul></li>
 </ul>
 </section>
 <section id="previous-array-schema-version" class="level2">

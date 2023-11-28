@@ -268,25 +268,19 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>A vacuum file has name <code>__t1_t2_uuid_v.vac</code> and can be located either in the array commit folder:</p>
+<p>A vacuum file has name <code>[</code><timestamped_name><code>](./timestamped_name.md)</code>.vac` and can be located either in the array commit folder:</timestamped_name></p>
 <pre><code>my_array                        # array folder
    |_ ....
    |_ __commits                 # array commit folder
-         |___t1_t2_uuid_v.vac   # vacuum file</code></pre>
+         |_ &lt;timestamped_name&gt;.vac   # vacuum file</code></pre>
 <p>or in the array metadata folder:</p>
 <pre><code>my_array                        # array folder
    |  ...            
-   |_ __meta                    # array metadata folder
-         |_ ...
-         |_ __t1_t2_uuid_v.vac  # vacuum file
-         |_ ...</code></pre>
-<p>When located in the commits folder, it will include the URI of fragments (in the __fragments folder) that can be vaccumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vaccumed.</p>
-<p>In the file name:</p>
-<ul>
-<li><code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)</li>
-<li><code>uuid</code> is a unique identifier</li>
-<li><code>v</code> is the format version</li>
-</ul>
+   | __meta                    # array metadata folder
+         | ...
+         | &lt;timestamped_name&gt;.vac  # vacuum file
+         | ...</code></pre>
+<p>When located in the commits folder, it will include the URI of fragments (in the <code>__fragments</code> folder) that can be vaccumed. When located in the array metadata folder, it will include the URI or array metadata files that can be vaccumed.</p>
 <p>The vacuum file is a simple text file where each line contains a URI string:</p>
 <table class="table">
 <colgroup>

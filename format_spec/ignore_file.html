@@ -266,18 +266,11 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>A ignore file has name <code>__t1_t2_uuid_v.ign</code> and is located in the array commit folder:</p>
+<p>A ignore file has name <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.ign</code> and is located in the array commit or metadata folder:</p>
 <pre><code>my_array                           # array folder
    |_ ....
    |_ __commits                    # array commit folder
-         |___t1_t2_uuid_v.ign      # ignore file</code></pre>
-<p>or in the array metadata folder:</p>
-<p>In the file name:</p>
-<ul>
-<li><code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)</li>
-<li><code>uuid</code> is a unique identifier</li>
-<li><code>v</code> is the format version</li>
-</ul>
+         |_ &lt;timestamped_name&gt;.ign      # ignore file</code></pre>
 <p>The ignore file is a simple text file where each line contains a URI string. The URI is the relative URI based on the top level array URI.</p>
 <p>Ignored files are used to specify commit files that should be ignored. The timestamps for the file is used to identify the timestamp range that is included inside of the file (with the smaller/bigger timestamp from contained elements). That way if an array is opened at a time that doesn’t intersect the timestamp range of the file, it can be omitted. All ignore files that intersect the array open start/end times will be loaded when the array is opened. There are a few situations where those files are required, all linked to <a href="../format_spec/consolidated_commits_file.html">consolidated commits files</a>. One of them is when fragments are vacuumed after consolidation. If any fragments were included a consolidated commits file, they now should be added to an ignore file so that the system doesn’t try to load that fragments. Another is when a fragment that is included in a consolidated commits file is deleted, it needs to be added to an ignore file so that the array can still be opened.</p>
 <p>Once a new consolidated commits file get generated, it will not include any of the fragments that were deleted or vacuumed. At that point, the ignore files and the other consolidated commits files can be vacuumed.</p>

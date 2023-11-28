@@ -274,18 +274,12 @@ ul.task-list li input[type="checkbox"] {
 
 </header>
 
-<p>A consolidated commits file has name <code>&lt;timestamped_name&gt;.con</code> and is located here:</p>
+<p>A consolidated commits file has name <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a><code>.con</code> and is located here:</p>
 <pre><code>my_array                              # array folder
    |_ ....
    |_ __commits                       # array commits folder
          |_ &lt;timestamped_name&gt;.con    # consolidated commits file
          |_ ...</code></pre>
-<p><code>&lt;timestamped_name&gt;</code> has format <code>__t1_t2_uuid_v</code>, where:</p>
-<ul>
-<li><code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)</li>
-<li><code>uuid</code> is a unique identifier</li>
-<li><code>v</code> is the format version</li>
-</ul>
 <p>There may be multiple such files in the array commits folder. Each consolidated commits file combines a list of fragments commits, delete or update commits that will be considered together when opening an array. They are timestamped (with the smaller/bigger timestamp from contained elements) so that they might be filtered if the array open start/end time don’t intersect anything inside of the file, but any file where there is any intersection will be loaded. There are two situations when these files are added. The first one is when a user decides to improve the open performance of their array (by reducing the listing size) through commits consolidation. The second one is when a user has specified a maximum fragment size for consolidation and multiple fragments needed to be committed at once, this file format will be used so that an atomic file system operation can be performed to do so.</p>
 <p>When fragments that are included inside of a consolidated file are removed, either through vacuuming or other fragment deletion, an <a href="../format_spec/ignore_file.html">ignore file</a> needs to be written so that those commits file can be ignored when opening an array and not cause unnecessary file system operations.</p>
 <p>There are three types of objects that can be in the file: commits, deletes or updates. For each of those, the first field is the URI of the object, which determines the subsequent serialized content of the data block: - a URI ending with <code>.ok</code> or <code>.wrt</code> is a commit object containing only the fragment URI - a URI ending with <code>.del</code> is a delete object containing the serialized delete condition - a URI ending with <code>.upd</code> is an update object containing the serialized update condition</p>

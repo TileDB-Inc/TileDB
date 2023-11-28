@@ -290,7 +290,7 @@ ul.task-list li input[type="checkbox"] {
 
 <section id="main-structure" class="level2">
 <h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
-<p>A fragment metadata folder is called <code>&lt;timestamped_name&gt;</code> and located here:</p>
+<p>A fragment metadata folder is called <a href="../format_spec/timestamped_name.html"><code>&lt;timestamped_name&gt;</code></a>` and located here:</p>
 <pre><code>my_array                                    # array folder
    |  ...
    |_ __fragments                           # array fragments folder
@@ -313,7 +313,6 @@ ul.task-list li input[type="checkbox"] {
          |      |_ dci.tdb                  # delete condition index attribute
          |      |_ ...  
         |_ ...  </code></pre>
-<p><code>&lt;timestamped_name&gt;</code> has format <code>__t1_t2_uuid_v</code>, where: * <code>t1</code> and <code>t2</code> are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC) * <code>uuid</code> is a unique identifier * <code>v</code> is the format version</p>
 <p>There can be any number of fragments in an array. The fragment folder contains:</p>
 <ul>
 <li>A single <a href="#fragment-metadata-file">fragment metadata file</a> named <code>__fragment_metadata.tdb</code>.</li>
@@ -458,17 +457,17 @@ ul.task-list li input[type="checkbox"] {
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Variable maxes for attribute/dimension N</td>
-<td style="text-align: left;">[<a href="#tile-null-count">Tile Null Count</a></td>
+<td style="text-align: left;"><a href="#tile-null-count">Tile Null Count</a></td>
 <td style="text-align: left;">The serialized null counts for attribute/dimension N</td>
 </tr>
 <tr class="even">
 <td style="text-align: left;">Fragment min, max, sum, null count</td>
-<td style="text-align: left;">[<a href="#tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</a></td>
+<td style="text-align: left;"><a href="#tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</a></td>
 <td style="text-align: left;">The serialized fragment min max sum null count</td>
 </tr>
 <tr class="odd">
 <td style="text-align: left;">Processed conditions</td>
-<td style="text-align: left;">[<a href="#tile-processed-conditions">Tile Processed Conditions</a></td>
+<td style="text-align: left;"><a href="#tile-processed-conditions">Tile Processed Conditions</a></td>
 <td style="text-align: left;">The serialized processed conditions</td>
 </tr>
 <tr class="even">
