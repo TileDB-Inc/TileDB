@@ -2,7 +2,7 @@
 title: Update Commit File
 ---
 
-A update commit file has name `<timestamped_name>.upd` and is located here:
+A update commit file has name [`<timestamped_name>`](./timestamped_name.md)`.upd` and is located here:
 
 ```
 my_array                              # array folder
@@ -11,12 +11,6 @@ my_array                              # array folder
          |_ <timestamped_name>.upd    # update commit file
          |_ ...
 ```
-
-`<timestamped_name>` has format `__t1_t2_uuid_v`, where:
-
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
 
 There may be multiple such files in the array commits folder. Each update commit file contains a [tile](./tile.md) with a serialized update condition, which is a tree of nodes followed by update values, which is a list of values. Each node for the condition can be a value node or expression node. Expression nodes have the following on disk format:
 
