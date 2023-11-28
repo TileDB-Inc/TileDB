@@ -1619,7 +1619,7 @@ Status Query::submit() {
   uint64_t sum = 0;
   uint64_t sum_size = 8;
   if (hardcoded_agg_sum_ == 1) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     default_channel_aggregates_.emplace(
         "agg_sum",
         std::make_shared<SumAggregator<uint64_t>>(tiledb::sm::FieldInfo(
@@ -1630,7 +1630,7 @@ Status Query::submit() {
   double mean = 0;
   uint64_t mean_size = 8;
   if (hardcoded_agg_mean_ > 0) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     std::string field = "c_birth_year";
     if (hardcoded_agg_mean_ == 1) {
       field = "c_current_cdemo_sk";
@@ -1646,7 +1646,7 @@ Status Query::submit() {
   uint64_t min = 0;
   uint64_t min_size = 8;
   if (hardcoded_agg_min_ == 1) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     default_channel_aggregates_.emplace(
         "agg_min",
         std::make_shared<MinAggregator<uint64_t>>(tiledb::sm::FieldInfo(
@@ -1657,7 +1657,7 @@ Status Query::submit() {
   uint64_t max = 0;
   uint64_t max_size = 8;
   if (hardcoded_agg_max_ == 1) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     default_channel_aggregates_.emplace(
         "agg_max",
         std::make_shared<MaxAggregator<uint64_t>>(tiledb::sm::FieldInfo(
@@ -1668,7 +1668,7 @@ Status Query::submit() {
   uint64_t count = 0;
   uint64_t count_size = 8;
   if (hardcoded_agg_count_ == 1) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     default_channel_aggregates_.emplace(
         "agg_count", std::make_shared<CountAggregator>());
     throw_if_not_ok(
@@ -1678,7 +1678,7 @@ Status Query::submit() {
   uint64_t nullcount = 0;
   uint64_t nullcount_size = 8;
   if (hardcoded_agg_nullcount_ == 1) {
-    buffers_.clear();
+    buffers_.erase("c_current_cdemo_sk");
     default_channel_aggregates_.emplace(
         "agg_nullcount",
         std::make_shared<NullCountAggregator>(tiledb::sm::FieldInfo(
