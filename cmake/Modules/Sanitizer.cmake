@@ -70,8 +70,7 @@ add_link_options("$<$<CXX_COMPILER_ID:MSVC>:/INCREMENTAL:NO>")
 
 # Ordinary gcc/clang behavior.
 add_compile_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-g;-fno-omit-frame-pointer;-fno-optimize-sibling-calls>")
-# Clang recommends a linker flag as well as a compiler flag
-add_link_options("$<$<CXX_COMPILER_ID:Clang>:-fsanitize=${SANITIZER}>")
+add_link_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fsanitize=${SANITIZER}>")
 if(SANITIZER STREQUAL "address")
     # There may be problems if clang tries to link the ASAN library statically
     add_link_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
