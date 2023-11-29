@@ -765,6 +765,13 @@ class ArrayDirectory {
       const std::vector<URI>& array_schema_dir_uris);
 
   /**
+   * Select the URI to use for the latest array schema.
+   *
+   * @return URI The latest array schema URI to use.
+   */
+  URI select_latest_array_schema_uri();
+
+  /**
    * Checks if a fragment overlaps with the array directory timestamp
    * range. Overlap is partial or full depending on the consolidation
    * type (with timestamps or not).
