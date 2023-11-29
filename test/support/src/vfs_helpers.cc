@@ -50,19 +50,19 @@ namespace tiledb::test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
-  if constexpr (TILEDB_S3_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::s3_enabled) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
 
-  if constexpr (TILEDB_HDFS_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
     fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
-  if constexpr (TILEDB_AZURE_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::azure_enabled) {
     fs_vec.emplace_back(std::make_unique<SupportedFsAzure>());
   }
 
-  if constexpr (TILEDB_GCS_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
   }

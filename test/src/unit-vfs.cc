@@ -146,7 +146,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   ThreadPool io_tp(4);
   std::vector<std::pair<URI, Config>> root_pairs;
 
-  if constexpr (TILEDB_S3_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::s3_enabled) {
     Config config;
     REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
     REQUIRE(config.set("vfs.s3.scheme", "https").ok());
@@ -157,13 +157,13 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
         URI("s3://" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if constexpr (TILEDB_HDFS_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
     Config config;
     root_pairs.emplace_back(
         URI("hdfs:///" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if constexpr (TILEDB_AZURE_ENABLED) {
+  if constexpr (tiledb::sm::filesystem::azure_enabled) {
     Config config;
     REQUIRE(
         config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());

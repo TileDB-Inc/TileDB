@@ -49,37 +49,9 @@
 #include <unordered_map>
 
 using namespace tiledb::common;
-using tiledb::common::filesystem::directory_entry;
+using namespace tiledb::sm::filesystem;
 
 namespace tiledb::sm {
-
-class VFSException : public StatusException {
- public:
-  explicit VFSException(const std::string& message)
-      : StatusException("VFS", message) {
-  }
-};
-
-class BuiltWithoutException : public VFSException {
- public:
-  explicit BuiltWithoutException(const std::string& filesystem)
-      : VFSException("TileDB was built without " + filesystem + "support") {
-  }
-};
-
-class UnsupportedOperationException : public VFSException {
- public:
-  explicit UnsupportedOperationException(const std::string& operation)
-      : VFSException(operation + " across filesystems is not supported yet") {
-  }
-};
-
-class UnsupportedURIException : public VFSException {
- public:
-  explicit UnsupportedURIException(const std::string& uri)
-      : VFSException("Unsupported URI scheme: " + uri) {
-  }
-};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -113,7 +85,7 @@ VFS::VFS(
   }
 #endif
 
-  if constexpr (TILEDB_S3_ENABLED) {
+  if constexpr (s3_enabled) {
     supported_fs_.insert(Filesystem::S3);
   }
 
@@ -199,37 +171,37 @@ Status VFS::create_dir(const URI& uri) const {
 #ifdef HAVE_HDFS
     return hdfs_->create_dir(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
-    if constexpr (TILEDB_S3_ENABLED) {
+    if constexpr (s3_enabled) {
       // It is a noop for S3
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
     }
   }
   if (uri.is_azure()) {
-    if constexpr (TILEDB_AZURE_ENABLED) {
+    if constexpr (azure_enabled) {
       // It is a noop for Azure
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("Azure");
+      throw BuiltWithout("Azure");
     }
   }
   if (uri.is_gcs()) {
-    if constexpr (TILEDB_GCS_ENABLED) {
+    if constexpr (gcs_enabled) {
       // It is a noop for GCS
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("GCS");
+      throw BuiltWithout("GCS");
     }
   }
   if (uri.is_memfs()) {
     return memfs_.create_dir(uri.to_path());
   }
-  throw BuiltWithoutException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
@@ -275,34 +247,34 @@ Status VFS::touch(const URI& uri) const {
 #ifdef HAVE_HDFS
     return hdfs_->touch(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.touch(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.touch(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.touch(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return memfs_.touch(uri.to_path());
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::cancel_all_tasks() {
@@ -315,24 +287,24 @@ Status VFS::create_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.create_bucket(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.create_container(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.create_bucket(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::remove_bucket(const URI& uri) const {
@@ -340,24 +312,24 @@ Status VFS::remove_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.remove_bucket(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.remove_container(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_bucket(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::empty_bucket(const URI& uri) const {
@@ -365,24 +337,24 @@ Status VFS::empty_bucket(const URI& uri) const {
 #ifdef HAVE_S3
     return s3_.empty_bucket(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.empty_container(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.empty_bucket(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::is_empty_bucket(
@@ -391,24 +363,24 @@ Status VFS::is_empty_bucket(
 #ifdef HAVE_S3
     return s3_.is_empty_bucket(uri, is_empty);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.is_empty_container(uri, is_empty);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.is_empty_bucket(uri, is_empty);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::remove_dir(const URI& uri) const {
@@ -422,30 +394,30 @@ Status VFS::remove_dir(const URI& uri) const {
 #ifdef HAVE_HDFS
     return hdfs_->remove_dir(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.remove_dir(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   } else if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.remove_dir(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   } else if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_dir(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   } else if (uri.is_memfs()) {
     return memfs_.remove(uri.to_path(), true);
   } else {
-    throw UnsupportedURIException(uri.to_string());
+    throw UnsupportedURI(uri.to_string());
   }
 }
 
@@ -473,34 +445,34 @@ Status VFS::remove_file(const URI& uri) const {
 #ifdef HAVE_HDFS
     return hdfs_->remove_file(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.remove_object(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.remove_blob(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.remove_object(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return memfs_.remove(uri.to_path(), false);
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 void VFS::remove_files(
@@ -558,34 +530,34 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #ifdef HAVE_HDFS
     return hdfs_->file_size(uri, size);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.object_size(uri, size);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.blob_size(uri, size);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.object_size(uri, size);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return memfs_.file_size(uri.to_path(), size);
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::is_dir(const URI& uri, bool* is_dir) const {
@@ -602,7 +574,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     return hdfs_->is_dir(uri, is_dir);
 #else
     *is_dir = false;
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -610,7 +582,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     return s3_.is_dir(uri, is_dir);
 #else
     *is_dir = false;
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
@@ -618,7 +590,7 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     return azure_.is_dir(uri, is_dir);
 #else
     *is_dir = false;
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
@@ -626,14 +598,14 @@ Status VFS::is_dir(const URI& uri, bool* is_dir) const {
     return gcs_.is_dir(uri, is_dir);
 #else
     *is_dir = false;
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     *is_dir = memfs_.is_dir(uri.to_path());
     return Status::Ok();
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::is_file(const URI& uri, bool* is_file) const {
@@ -651,7 +623,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     return hdfs_->is_file(uri, is_file);
 #else
     *is_file = false;
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -660,7 +632,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     return Status::Ok();
 #else
     *is_file = false;
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
@@ -668,7 +640,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     return azure_.is_blob(uri, is_file);
 #else
     *is_file = false;
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
@@ -676,14 +648,14 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
     return gcs_.is_object(uri, is_file);
 #else
     *is_file = false;
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     *is_file = memfs_.is_file(uri.to_path());
     return Status::Ok();
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
@@ -693,7 +665,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
     return Status::Ok();
 #else
     *is_bucket = false;
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
@@ -702,7 +674,7 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
     return Status::Ok();
 #else
     *is_bucket = false;
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
@@ -711,11 +683,11 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
     return Status::Ok();
 #else
     *is_bucket = false;
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
 
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
@@ -822,7 +794,7 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
       return posix_.move_file(old_uri, new_uri);
 #endif
     }
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // HDFS
@@ -831,9 +803,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_HDFS
       return hdfs_->move_path(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("HDFS");
+      throw BuiltWithout("HDFS");
 #endif
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // S3
@@ -842,9 +814,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.move_object(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
 #endif
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // Azure
@@ -853,9 +825,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_AZURE
       return azure_.move_object(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("Azure");
+      throw BuiltWithout("Azure");
 #endif
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // GCS
@@ -864,9 +836,9 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_GCS
       return gcs_.move_object(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("GCS");
+      throw BuiltWithout("GCS");
 #endif
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // In-memory filesystem
@@ -874,12 +846,11 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_memfs()) {
       return memfs_.move(old_uri.to_path(), new_uri.to_path());
     }
-    throw UnsupportedOperationException("Moving files");
+    throw UnsupportedOperation("Moving files");
   }
 
   // Unsupported filesystem
-  throw UnsupportedURIException(
-      old_uri.to_string() + ", " + new_uri.to_string());
+  throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
 Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
@@ -892,7 +863,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
       return posix_.move_file(old_uri, new_uri);
 #endif
     }
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // HDFS
@@ -901,9 +872,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_HDFS
       return hdfs_->move_path(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("HDFS");
+      throw BuiltWithout("HDFS");
 #endif
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // S3
@@ -912,9 +883,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.move_dir(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
 #endif
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // Azure
@@ -923,9 +894,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_AZURE
       return azure_.move_dir(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("Azure");
+      throw BuiltWithout("Azure");
 #endif
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // GCS
@@ -934,9 +905,9 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_GCS
       return gcs_.move_dir(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("GCS");
+      throw BuiltWithout("GCS");
 #endif
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // In-memory filesystem
@@ -944,12 +915,11 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
     if (new_uri.is_memfs()) {
       return memfs_.move(old_uri.to_path(), new_uri.to_path());
     }
-    throw UnsupportedOperationException("Moving directories");
+    throw UnsupportedOperation("Moving directories");
   }
 
   // Unsupported filesystem
-  throw UnsupportedURIException(
-      old_uri.to_string() + ", " + new_uri.to_string());
+  throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
 Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
@@ -968,19 +938,19 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
       return posix_.copy_file(old_uri, new_uri);
 #endif
     }
-    throw UnsupportedOperationException("Copying files");
+    throw UnsupportedOperation("Copying files");
   }
 
   // HDFS
   if (old_uri.is_hdfs()) {
     if (new_uri.is_hdfs()) {
-      if constexpr (TILEDB_HDFS_ENABLED) {
+      if constexpr (hdfs_enabled) {
         throw VFSException("Copying files on HDFS is not yet supported.");
       } else {
-        throw BuiltWithoutException("HDFS");
+        throw BuiltWithout("HDFS");
       }
     }
-    throw UnsupportedOperationException("Copying files");
+    throw UnsupportedOperation("Copying files");
   }
 
   // S3
@@ -989,38 +959,37 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.copy_file(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
 #endif
-    throw UnsupportedOperationException("Copying files");
+    throw UnsupportedOperation("Copying files");
   }
 
   // Azure
   if (old_uri.is_azure()) {
     if (new_uri.is_azure()) {
-      if constexpr (TILEDB_AZURE_ENABLED) {
+      if constexpr (azure_enabled) {
         throw VFSException("Copying files on Azure is not yet supported.");
       } else {
-        throw BuiltWithoutException("Azure");
+        throw BuiltWithout("Azure");
       }
     }
-    throw UnsupportedOperationException("Copying files");
+    throw UnsupportedOperation("Copying files");
   }
 
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs()) {
-      if constexpr (TILEDB_GCS_ENABLED) {
+      if constexpr (gcs_enabled) {
         throw VFSException("Copying files on GCS is not yet supported.");
       } else {
-        throw BuiltWithoutException("GCS");
+        throw BuiltWithout("GCS");
       }
     }
-    throw UnsupportedOperationException("Copying files");
+    throw UnsupportedOperation("Copying files");
   }
 
   // Unsupported filesystem
-  throw UnsupportedURIException(
-      old_uri.to_string() + ", " + new_uri.to_string());
+  throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
 Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
@@ -1034,19 +1003,19 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
       return posix_.copy_dir(old_uri, new_uri);
 #endif
     }
-    throw UnsupportedOperationException("Copying directories");
+    throw UnsupportedOperation("Copying directories");
   }
 
   // HDFS
   if (old_uri.is_hdfs()) {
     if (new_uri.is_hdfs()) {
-      if constexpr (TILEDB_HDFS_ENABLED) {
+      if constexpr (hdfs_enabled) {
         throw VFSException("Copying directories on HDFS is not yet supported.");
       } else {
-        throw BuiltWithoutException("HDFS");
+        throw BuiltWithout("HDFS");
       }
     }
-    throw UnsupportedOperationException("Copying directories");
+    throw UnsupportedOperation("Copying directories");
   }
 
   // S3
@@ -1055,39 +1024,38 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef HAVE_S3
       return s3_.copy_dir(old_uri, new_uri);
 #else
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
 #endif
-    throw UnsupportedOperationException("Copying directories");
+    throw UnsupportedOperation("Copying directories");
   }
 
   // Azure
   if (old_uri.is_azure()) {
     if (new_uri.is_azure()) {
-      if constexpr (TILEDB_AZURE_ENABLED) {
+      if constexpr (azure_enabled) {
         throw VFSException(
             "Copying directories on Azure is not yet supported.");
       } else {
-        throw BuiltWithoutException("Azure");
+        throw BuiltWithout("Azure");
       }
     }
-    throw UnsupportedOperationException("Copying directories");
+    throw UnsupportedOperation("Copying directories");
   }
 
   // GCS
   if (old_uri.is_gcs()) {
     if (new_uri.is_gcs()) {
-      if constexpr (TILEDB_GCS_ENABLED) {
+      if constexpr (gcs_enabled) {
         throw VFSException("Copying directories on GCS is not yet supported.");
       } else {
-        throw BuiltWithoutException("GCS");
+        throw BuiltWithout("GCS");
       }
     }
-    throw UnsupportedOperationException("Copying directories");
+    throw UnsupportedOperation("Copying directories");
   }
 
   // Unsupported filesystem
-  throw UnsupportedURIException(
-      old_uri.to_string() + ", " + new_uri.to_string());
+  throw UnsupportedURI(old_uri.to_string() + ", " + new_uri.to_string());
 }
 
 Status VFS::read(
@@ -1174,7 +1142,7 @@ Status VFS::read_impl(
 #ifdef HAVE_HDFS
     return hdfs_->read(uri, offset, buffer, nbytes);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -1191,7 +1159,7 @@ Status VFS::read_impl(
     return read_ahead_impl(
         read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
@@ -1208,7 +1176,7 @@ Status VFS::read_impl(
     return read_ahead_impl(
         read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
@@ -1225,14 +1193,14 @@ Status VFS::read_impl(
     return read_ahead_impl(
         read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return memfs_.read(uri.to_path(), offset, buffer, nbytes);
   }
 
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::read_ahead_impl(
@@ -1327,34 +1295,34 @@ Status VFS::sync(const URI& uri) {
 #ifdef HAVE_HDFS
     return hdfs_->sync(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
-    if constexpr (TILEDB_S3_ENABLED) {
+    if constexpr (s3_enabled) {
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("S3");
+      throw BuiltWithout("S3");
     }
   }
   if (uri.is_azure()) {
-    if constexpr (TILEDB_AZURE_ENABLED) {
+    if constexpr (azure_enabled) {
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("Azure");
+      throw BuiltWithout("Azure");
     }
   }
   if (uri.is_gcs()) {
-    if constexpr (TILEDB_GCS_ENABLED) {
+    if constexpr (gcs_enabled) {
       return Status::Ok();
     } else {
-      throw BuiltWithoutException("GCS");
+      throw BuiltWithout("GCS");
     }
   }
   if (uri.is_memfs()) {
     return Status::Ok();
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::open_file(const URI& uri, VFSMode mode) {
@@ -1373,30 +1341,30 @@ Status VFS::open_file(const URI& uri, VFSMode mode) {
       break;
     case VFSMode::VFS_APPEND:
       if (uri.is_s3()) {
-        if constexpr (TILEDB_S3_ENABLED) {
+        if constexpr (s3_enabled) {
           throw VFSException(
               "Cannot open file '" + uri.to_string() +
               "'; S3 does not support append mode");
         } else {
-          throw BuiltWithoutException("S3");
+          throw BuiltWithout("S3");
         }
       }
       if (uri.is_azure()) {
-        if constexpr (TILEDB_AZURE_ENABLED) {
+        if constexpr (azure_enabled) {
           throw VFSException(
               "Cannot open file '" + uri.to_string() +
               "'; Azure does not support append mode");
         } else {
-          throw BuiltWithoutException("Azure");
+          throw BuiltWithout("Azure");
         }
       }
       if (uri.is_gcs()) {
-        if constexpr (TILEDB_GCS_ENABLED) {
+        if constexpr (gcs_enabled) {
           throw VFSException(
               "Cannot open file '" + uri.to_string() +
               "'; GCS does not support append mode");
         } else {
-          throw BuiltWithoutException("GCS");
+          throw BuiltWithout("GCS");
         }
       }
       break;
@@ -1417,34 +1385,34 @@ Status VFS::close_file(const URI& uri) {
 #ifdef HAVE_HDFS
     return hdfs_->sync(uri);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     return s3_.flush_object(uri);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.flush_blob(uri);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.flush_object(uri);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return Status::Ok();
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 void VFS::finalize_and_close_file(const URI& uri) {
@@ -1453,7 +1421,7 @@ void VFS::finalize_and_close_file(const URI& uri) {
     s3_.finalize_and_flush_object(uri);
     return;
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   throw_if_not_ok(close_file(uri));
@@ -1478,7 +1446,7 @@ Status VFS::write(
 #ifdef HAVE_HDFS
     return hdfs_->write(uri, buffer, buffer_size);
 #else
-    throw BuiltWithoutException("HDFS");
+    throw BuiltWithout("HDFS");
 #endif
   }
   if (uri.is_s3()) {
@@ -1489,27 +1457,27 @@ Status VFS::write(
     }
     return s3_.write(uri, buffer, buffer_size);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
   if (uri.is_azure()) {
 #ifdef HAVE_AZURE
     return azure_.write(uri, buffer, buffer_size);
 #else
-    throw BuiltWithoutException("Azure");
+    throw BuiltWithout("Azure");
 #endif
   }
   if (uri.is_gcs()) {
 #ifdef HAVE_GCS
     return gcs_.write(uri, buffer, buffer_size);
 #else
-    throw BuiltWithoutException("GCS");
+    throw BuiltWithout("GCS");
 #endif
   }
   if (uri.is_memfs()) {
     return memfs_.write(uri.to_path(), buffer, buffer_size);
   }
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 std::pair<Status, std::optional<VFS::MultiPartUploadState>>
@@ -1546,14 +1514,14 @@ VFS::multipart_upload_state(const URI& uri) {
     return {Status_VFSError("TileDB was built without S3 support"), nullopt};
 #endif
   } else if (uri.is_azure()) {
-    if constexpr (TILEDB_AZURE_ENABLED) {
+    if constexpr (azure_enabled) {
       return {Status_VFSError("Not yet supported for Azure"), nullopt};
     } else {
       return {
           Status_VFSError("TileDB was built without Azure support"), nullopt};
     }
   } else if (uri.is_gcs()) {
-    if constexpr (TILEDB_GCS_ENABLED) {
+    if constexpr (gcs_enabled) {
       return {Status_VFSError("Not yet supported for GCS"), nullopt};
     } else {
       return {Status_VFSError("TileDB was built without GCS support"), nullopt};
@@ -1591,23 +1559,23 @@ Status VFS::set_multipart_upload_state(
 
     return s3_.set_multipart_upload_state(uri.to_string(), s3_state);
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   } else if (uri.is_azure()) {
-    if constexpr (TILEDB_AZURE_ENABLED) {
+    if constexpr (azure_enabled) {
       throw VFSException("Not yet supported for Azure");
     } else {
-      throw BuiltWithoutException("Azure");
+      throw BuiltWithout("Azure");
     }
   } else if (uri.is_gcs()) {
-    if constexpr (TILEDB_GCS_ENABLED) {
+    if constexpr (gcs_enabled) {
       throw VFSException("Not yet supported for GCS");
     } else {
-      throw BuiltWithoutException("GCS");
+      throw BuiltWithout("GCS");
     }
   }
 
-  throw UnsupportedURIException(uri.to_string());
+  throw UnsupportedURI(uri.to_string());
 }
 
 Status VFS::flush_multipart_file_buffer(const URI& uri) {
@@ -1619,7 +1587,7 @@ Status VFS::flush_multipart_file_buffer(const URI& uri) {
     buff->reset_size();
 
 #else
-    throw BuiltWithoutException("S3");
+    throw BuiltWithout("S3");
 #endif
   }
 

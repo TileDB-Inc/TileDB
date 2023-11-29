@@ -398,7 +398,6 @@ void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
 /**
  * Helper method that creates an S3 bucket (if it does not already exist).
- * #TODO Remove (dead code)
  *
  * @param bucket_name The name of the bucket to be created.
  * @param s3_supported The bucket will be created only if this is `true`.
@@ -413,7 +412,6 @@ void create_s3_bucket(
 
 /**
  * Helper method that creates an Azure container (if it does not already exist).
- * #TODO Remove (dead code)
  *
  * @param container_name The name of the container to be created.
  * @param azure_supported The container will be created only if this is `true`.
@@ -484,12 +482,25 @@ void create_subarray(
 
 /**
  * Helper method that creates a TileDB context and a VFS object.
- * #TODO Remove (dead code)
  *
  * @param ctx The TileDB context to be created.
  * @param vfs The VFS object to be created.
  */
 void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
+
+/**
+ * Helper function to get the supported filesystems.
+ *
+ * @param s3_supported Set to `true` if S3 is supported.
+ * @param hdfs_supported Set to `true` if HDFS is supported.
+ * @param azure_supported Set to `true` if Azure is supported.
+ * @param gcs_supported Set to `true` if GCS is supported.
+ */
+void get_supported_fs(
+    bool* s3_supported,
+    bool* hdfs_supported,
+    bool* azure_supported,
+    bool* gcs_supported);
 
 /**
  * Opens an array.
@@ -503,7 +514,6 @@ void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
 /**
  * Returns a random bucket name, with `prefix` as prefix and using
  * the thread id as a "random" suffix.
- * #TODO Use PRNG & remove in-test definitions of random_name
  *
  * @param prefix The prefix of the bucket name.
  * @return A random bucket name.
