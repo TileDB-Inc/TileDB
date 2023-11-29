@@ -101,7 +101,7 @@ jobs:
       matrix_compiler_cc: 'gcc-10'
       matrix_compiler_cxx: 'g++-10'
       timeout: 120
-      bootstrap_args: '--enable-serialization'
+      bootstrap_args: '--enable-serialization --vcpkg-target-triplet=x64-linux-asan'
       asan: true
 
   ci10:
