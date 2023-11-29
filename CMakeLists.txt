@@ -40,6 +40,8 @@ include(CIConfig)
 include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
 include(TileDBToolchain)
+include(Doxygen)
+include(Format)
 
 ############################################################
 # Parse version file
@@ -247,10 +249,6 @@ CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
-
-# Formatting and documentation
-include(Doxygen)
-include(Format)
 
 # HACK: Set the sanitizer configuration globally after the
 # superbuild has finished. We want to enable sanitization for
