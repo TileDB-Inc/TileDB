@@ -69,7 +69,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
     fs_vec.emplace_back(std::make_unique<SupportedFsAzure>());
   }
 
-  if (supports_gcs) {
+  if constexpr (TILEDB_GCS_ENABLED) {
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
   }

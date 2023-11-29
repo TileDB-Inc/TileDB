@@ -931,9 +931,10 @@ void get_supported_fs(
   rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   *azure_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_GCS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *gcs_supported = (bool)is_supported;
+
+  if constexpr (TILEDB_GCS_ENABLED) {
+    *gcs_supported = true;
+  }
 
   // Override VFS support if the user used the '--vfs' command line argument.
   if (!g_vfs.empty()) {
