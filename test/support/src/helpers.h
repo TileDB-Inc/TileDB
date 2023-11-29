@@ -67,13 +67,11 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
-namespace tiledb {
-
-namespace sm {
+namespace tiledb::sm {
 class SubarrayPartitioner;
 }
 
-namespace test {
+namespace tiledb::test {
 
 // A dummy `Stats` instance. This is useful for constructing
 // objects that require a parent `Stats` object. These stats are
@@ -400,6 +398,7 @@ void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
 /**
  * Helper method that creates an S3 bucket (if it does not already exist).
+ * #TODO Remove (dead code)
  *
  * @param bucket_name The name of the bucket to be created.
  * @param s3_supported The bucket will be created only if this is `true`.
@@ -414,6 +413,7 @@ void create_s3_bucket(
 
 /**
  * Helper method that creates an Azure container (if it does not already exist).
+ * #TODO Remove (dead code)
  *
  * @param container_name The name of the container to be created.
  * @param azure_supported The container will be created only if this is `true`.
@@ -484,31 +484,20 @@ void create_subarray(
 
 /**
  * Helper method that creates a TileDB context and a VFS object.
+ * #TODO Remove (dead code)
  *
- * @param s3_supported Indicates whether S3 is supported or not.
- * @param azure_supported Indicates whether Azure is supported or not.
  * @param ctx The TileDB context to be created.
  * @param vfs The VFS object to be created.
  */
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs);
+void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
 
 /**
  * Helper function to get the supported filesystems.
+ * #TODO Remove (dead code)
  *
- * @param s3_supported Set to `true` if S3 is supported.
  * @param hdfs_supported Set to `true` if HDFS is supported.
- * @param azure_supported Set to `true` if Azure is supported.
- * @param gcs_supported Set to `true` if GCS is supported.
  */
-void get_supported_fs(
-    bool* s3_supported,
-    bool* hdfs_supported,
-    bool* azure_supported,
-    bool* gcs_supported);
+void get_supported_fs(bool* hdfs_supported);
 
 /**
  * Opens an array.
@@ -1015,8 +1004,6 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers);
 
-}  // End of namespace test
-
-}  // End of namespace tiledb
+}  // namespace tiledb::test
 
 #endif

@@ -51,12 +51,8 @@ namespace tiledb::test {
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
 
-  bool supports_s3 = false;
   bool supports_hdfs = false;
-  bool supports_azure = false;
-  bool supports_gcs = false;
-  get_supported_fs(
-      &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
+  get_supported_fs(&supports_hdfs);
   if constexpr (TILEDB_S3_ENABLED) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
@@ -65,7 +61,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
     fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
-  if (supports_azure) {
+  if constexpr (TILEDB_AZURE_ENABLED) {
     fs_vec.emplace_back(std::make_unique<SupportedFsAzure>());
   }
 

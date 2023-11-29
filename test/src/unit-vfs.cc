@@ -145,12 +145,8 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
 
-  bool s3_supported = false;
   bool hdfs_supported = false;
-  bool azure_supported = false;
-  bool gcs_supported = false;
-  tiledb::test::get_supported_fs(
-      &s3_supported, &hdfs_supported, &azure_supported, &gcs_supported);
+  tiledb::test::get_supported_fs(&hdfs_supported);
 
   std::vector<std::pair<URI, Config>> root_pairs;
   if constexpr (TILEDB_S3_ENABLED) {
@@ -170,7 +166,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
         URI("hdfs:///" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if (azure_supported) {
+  if constexpr (TILEDB_AZURE_ENABLED) {
     Config config;
     REQUIRE(
         config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());

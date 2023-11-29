@@ -74,9 +74,7 @@ struct VFSFx {
   tiledb_vfs_t* vfs_;
 
   // Supported filesystems
-  bool supports_s3_;
   bool supports_hdfs_;
-  bool supports_azure_;
 
   // Functions
   VFSFx();
@@ -93,11 +91,9 @@ struct VFSFx {
 
 VFSFx::VFSFx() {
   // Supported filesystem vector
-  bool supports_gcs;  // unused
-  get_supported_fs(
-      &supports_s3_, &supports_hdfs_, &supports_azure_, &supports_gcs);
+  get_supported_fs(&supports_hdfs_);
 
-  create_ctx_and_vfs(supports_s3_, supports_azure_, &ctx_, &vfs_);
+  create_ctx_and_vfs(&ctx_, &vfs_);
 }
 
 VFSFx::~VFSFx() {

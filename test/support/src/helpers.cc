@@ -783,17 +783,13 @@ void create_azure_container(
   }
 }
 
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs) {
+void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   throw_if_setup_failed(tiledb_config_alloc(&config, &error));
   throw_if_setup_failed(error == nullptr);
-  if (s3_supported) {
+  if constexpr (TILEDB_S3_ENABLED) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
     throw_if_setup_failed(tiledb_config_set(
         config, "vfs.s3.endpoint_override", "localhost:9999", &error));
@@ -806,7 +802,7 @@ void create_ctx_and_vfs(
     throw_if_setup_failed(error == nullptr);
 #endif
   }
-  if (azure_supported) {
+  if constexpr (TILEDB_AZURE_ENABLED) {
     throw_if_setup_failed(tiledb_config_set(
         config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
     throw_if_setup_failed(tiledb_config_set(
@@ -913,28 +909,14 @@ void create_subarray(
   *returned_subarray = psubarray;
 }
 
-void get_supported_fs(
-    bool* s3_supported,
-    bool* hdfs_supported,
-    bool* azure_supported,
-    bool* gcs_supported) {
+void get_supported_fs(bool* hdfs_supported) {
   tiledb_ctx_t* ctx = nullptr;
   REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
 
   int is_supported = 0;
-  if constexpr (TILEDB_S3_ENABLED) {
-    *s3_supported = true;
-  }
   int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
   REQUIRE(rc == TILEDB_OK);
   *hdfs_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *azure_supported = (bool)is_supported;
-
-  if constexpr (TILEDB_GCS_ENABLED) {
-    *gcs_supported = true;
-  }
 
   // Override VFS support if the user used the '--vfs' command line argument.
   if (!g_vfs.empty()) {
@@ -943,38 +925,23 @@ void get_supported_fs(
          g_vfs == "azure" || g_vfs == "gcs"));
 
     if (g_vfs == "native") {
-      *s3_supported = false;
       *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
     }
 
     if (g_vfs == "s3") {
-      *s3_supported = true;
       *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
     }
 
     if (g_vfs == "hdfs") {
-      *s3_supported = false;
       *hdfs_supported = true;
-      *azure_supported = false;
-      *gcs_supported = false;
     }
 
     if (g_vfs == "azure") {
-      *s3_supported = false;
       *hdfs_supported = false;
-      *azure_supported = true;
-      *gcs_supported = false;
     }
 
     if (g_vfs == "gcs") {
-      *s3_supported = false;
       *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = true;
     }
   }
 
