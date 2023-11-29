@@ -59,7 +59,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
 endif()
 
 if(SANITIZER STREQUAL "address")
-    if(NOT DEFINED VCPKG_TARGET_TRIPLET)
+    if(NOT VCPKG_TARGET_TRIPLET)
         message(FATAL_ERROR "VCPKG_TARGET_TRIPLET must be defined when building with ASAN.")
     elseif(NOT VCPKG_TARGET_TRIPLET MATCHES "-asan$")
         if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/../../ports/triplets/${VCPKG_TARGET_TRIPLET}-asan.cmake")

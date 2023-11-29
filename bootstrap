@@ -125,7 +125,8 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
-    --vcpkg-target-triplet=*) vcpkg_target_triplet=`arg "$1"`;;
+    --vcpkg-target-triplet=*)   vcpkg_target_triplet=`arg "$1"`
+                                vcpkg_target_triplet="-DVCPKG_TARGET_TRIPLET=${vcpkg_target_triplet}";;
     --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
                     tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
@@ -233,7 +234,6 @@ fi
 # Configure
 ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_INSTALL_PREFIX="${prefix_dirs}" \
-    -DVCPKG_TARGET_TRIPLET=${vcpkg_target_triplet} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
@@ -262,6 +262,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
     ${tiledb_disable_avx2} \
+    ${vcpkg_target_triplet} \
     "${source_dir}" || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'
