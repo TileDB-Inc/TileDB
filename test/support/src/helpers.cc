@@ -909,45 +909,6 @@ void create_subarray(
   *returned_subarray = psubarray;
 }
 
-void get_supported_fs(bool* hdfs_supported) {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *hdfs_supported = (bool)is_supported;
-
-  // Override VFS support if the user used the '--vfs' command line argument.
-  if (!g_vfs.empty()) {
-    REQUIRE(
-        (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-         g_vfs == "azure" || g_vfs == "gcs"));
-
-    if (g_vfs == "native") {
-      *hdfs_supported = false;
-    }
-
-    if (g_vfs == "s3") {
-      *hdfs_supported = false;
-    }
-
-    if (g_vfs == "hdfs") {
-      *hdfs_supported = true;
-    }
-
-    if (g_vfs == "azure") {
-      *hdfs_supported = false;
-    }
-
-    if (g_vfs == "gcs") {
-      *hdfs_supported = false;
-    }
-  }
-
-  tiledb_ctx_free(&ctx);
-}
-
 void open_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   int rc = tiledb_array_open(ctx, array, query_type);

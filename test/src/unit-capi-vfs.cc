@@ -73,9 +73,6 @@ struct VFSFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Supported filesystems
-  bool supports_hdfs_;
-
   // Functions
   VFSFx();
   ~VFSFx();
@@ -90,9 +87,6 @@ struct VFSFx {
 };
 
 VFSFx::VFSFx() {
-  // Supported filesystem vector
-  get_supported_fs(&supports_hdfs_);
-
   create_ctx_and_vfs(&ctx_, &vfs_);
 }
 
@@ -389,8 +383,9 @@ void VFSFx::check_move(const std::string& path) {
 #ifndef _WIN32
 void VFSFx::check_copy(const std::string& path) {
   // Do not support HDFS
-  if (supports_hdfs_)
+  if constexpr (TILEDB_HDFS_ENABLED) {
     return;
+  }
 
   // Copy file
   auto file = path + "file";
@@ -815,7 +810,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
 
   if constexpr (TILEDB_S3_ENABLED) {
     check_vfs(S3_TEMP_DIR);
-  } else if (supports_hdfs_) {
+  } else if constexpr (TILEDB_HDFS_ENABLED) {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);
@@ -894,7 +889,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test VFS parallel I/O", "[capi][vfs]") {
 
   if constexpr (TILEDB_S3_ENABLED) {
     check_vfs(S3_TEMP_DIR);
-  } else if (supports_hdfs_) {
+  } else if constexpr (TILEDB_HDFS_ENABLED) {
     check_vfs(HDFS_TEMP_DIR);
   } else {
     check_vfs(FILE_TEMP_DIR);

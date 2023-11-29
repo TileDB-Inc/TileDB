@@ -144,11 +144,8 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
 TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-
-  bool hdfs_supported = false;
-  tiledb::test::get_supported_fs(&hdfs_supported);
-
   std::vector<std::pair<URI, Config>> root_pairs;
+
   if constexpr (TILEDB_S3_ENABLED) {
     Config config;
     REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
@@ -160,7 +157,7 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
         URI("s3://" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if (hdfs_supported) {
+  if constexpr (TILEDB_HDFS_ENABLED) {
     Config config;
     root_pairs.emplace_back(
         URI("hdfs:///" + tiledb::test::random_name("vfs") + "/"),

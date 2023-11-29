@@ -492,14 +492,6 @@ void create_subarray(
 void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
 
 /**
- * Helper function to get the supported filesystems.
- * #TODO Remove (dead code)
- *
- * @param hdfs_supported Set to `true` if HDFS is supported.
- */
-void get_supported_fs(bool* hdfs_supported);
-
-/**
  * Opens an array.
  *
  * @param ctx The TileDB context.
@@ -511,6 +503,7 @@ void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
 /**
  * Returns a random bucket name, with `prefix` as prefix and using
  * the thread id as a "random" suffix.
+ * #TODO Use PRNG & remove in-test definitions of random_name
  *
  * @param prefix The prefix of the bucket name.
  * @return A random bucket name.

@@ -50,14 +50,11 @@ namespace tiledb::test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
-
-  bool supports_hdfs = false;
-  get_supported_fs(&supports_hdfs);
   if constexpr (TILEDB_S3_ENABLED) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
 
-  if (supports_hdfs) {
+  if constexpr (TILEDB_HDFS_ENABLED) {
     fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
