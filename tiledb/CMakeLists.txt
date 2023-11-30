@@ -661,19 +661,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     libmagic
 )
 
-if(TILEDB_CRC32)
-  find_package(crc32c_EP REQUIRED)
-  find_package(crc32c CONFIG REQUIRED
-    HINTS
-      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
-    )
-
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    Crc32c::crc32c
-  )
-endif()
-
 if(TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
