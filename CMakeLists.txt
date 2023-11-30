@@ -40,6 +40,8 @@ include(CIConfig)
 include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
 include(TileDBToolchain)
+include(Doxygen)
+include(Format)
 
 ############################################################
 # Parse version file
