@@ -832,30 +832,18 @@ void get_supported_fs(
     bool* hdfs_supported,
     bool* azure_supported,
     bool* gcs_supported) {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    *s3_supported = true;
-  }
-
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
-    *hdfs_supported = true;
-  }
-
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    *azure_supported = true;
-  }
-
-  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
-    *gcs_supported = true;
-  }
-
   // Override VFS support if the user used the '--vfs' command line argument.
-  if (!g_vfs.empty()) {
-    REQUIRE(
-        (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-         g_vfs == "azure" || g_vfs == "gcs"));
+  if (g_vfs.empty()) {
+    *s3_supported = tiledb::sm::filesystem::s3_enabled;
+    *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
+    *azure_supported = tiledb::sm::filesystem::azure_enabled;
+    *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
+  } else {
+    if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
+          g_vfs == "azure" || g_vfs == "gcs")) {
+      throw std::logic_error(
+          "Failed to get supported fs. Invalid --vfs command line argument.");
+    }
 
     if (g_vfs == "native") {
       *s3_supported = false;
@@ -892,8 +880,6 @@ void get_supported_fs(
       *gcs_supported = true;
     }
   }
-
-  tiledb_ctx_free(&ctx);
 }
 
 void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {

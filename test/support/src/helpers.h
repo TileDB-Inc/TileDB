@@ -490,6 +490,7 @@ void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
 
 /**
  * Helper function to get the supported filesystems.
+ * Supports VFS override via "--vfs" command line argument.
  *
  * @param s3_supported Set to `true` if S3 is supported.
  * @param hdfs_supported Set to `true` if HDFS is supported.
