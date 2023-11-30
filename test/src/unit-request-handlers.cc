@@ -88,6 +88,23 @@ struct HandleQueryPlanRequestFx : RequestHandlerFx {
   std::string call_handler(SerializationType stype, Query& query);
 };
 
+struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
+  HandleConsolidationPlanRequestFx()
+      : RequestHandlerFx("consolidation_plan_handler") {
+  }
+
+  virtual shared_ptr<ArraySchema> create_schema() override {
+    auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+    auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+    int range[2] = {0, 1000};
+    throw_if_not_ok(dim->set_domain(range));
+    auto dom = make_shared<Domain>(HERE());
+    throw_if_not_ok(dom->add_dimension(dim));
+    throw_if_not_ok(schema->set_domain(dom));
+    return schema;
+  };
+};
+
 /* ********************************* */
 /*   Testing Array Schema Loading    */
 /* ********************************* */
@@ -258,6 +275,51 @@ TEST_CASE_METHOD(
   REQUIRE(rval != TILEDB_OK);
 
   rval = tiledb_handle_query_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      nullptr);
+  REQUIRE(rval != TILEDB_OK);
+}
+
+TEST_CASE_METHOD(
+    HandleConsolidationPlanRequestFx,
+    "tiledb_handle_consolidation_plan_request - error checks",
+    "[request_handler][consolidation-plan][errors]") {
+  create_array();
+
+  auto ctx = tiledb::Context();
+  auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
+  auto stype = TILEDB_CAPNP;
+  auto req_buf = tiledb_buffer_handle_t::make_handle();
+  auto resp_buf = tiledb_buffer_handle_t::make_handle();
+
+  auto rval = tiledb_handle_consolidation_plan_request(
+      nullptr,
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_consolidation_plan_request(
+      ctx.ptr().get(),
+      nullptr,
+      static_cast<tiledb_serialization_type_t>(stype),
+      req_buf,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_consolidation_plan_request(
+      ctx.ptr().get(),
+      array.ptr().get(),
+      static_cast<tiledb_serialization_type_t>(stype),
+      nullptr,
+      resp_buf);
+  REQUIRE(rval != TILEDB_OK);
+
+  rval = tiledb_handle_consolidation_plan_request(
       ctx.ptr().get(),
       array.ptr().get(),
       static_cast<tiledb_serialization_type_t>(stype),
