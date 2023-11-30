@@ -30,6 +30,7 @@
  * Tests the ConsolidationPlan API
  */
 
+#include <test/support/src/vfs_helpers.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -42,17 +43,13 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
+#ifndef TILEDB_TESTS_ENABLE_REST
+constexpr bool rest_tests = false;
+#else
+constexpr bool rest_tests = true;
+#endif
+
 struct ConsolidationPlanFx {
-  // Constants.
-  const char* SPARSE_ARRAY_NAME = "test_deletes_array";
-
-  // TileDB context.
-  Context ctx_;
-  VFS vfs_;
-
-  std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
-
   // Constructors/destructors.
   ConsolidationPlanFx();
   ~ConsolidationPlanFx();
@@ -69,20 +66,37 @@ struct ConsolidationPlanFx {
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
   void check_last_error(std::string expected);
+
+  // TileDB context.
+  Context ctx_;
+  // Full URI initialized using fs_vec_ random temp directory.
+  std::string array_name_;
+  // Vector of supported filsystems
+  tiledb_vfs_handle_t* vfs_c_{nullptr};
+  tiledb_ctx_handle_t* ctx_c_{nullptr};
+  const std::vector<std::unique_ptr<test::SupportedFs>> fs_vec_;
+
+  std::string key_ = "0123456789abcdeF0123456789abcdeF";
+  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 };
 
 ConsolidationPlanFx::ConsolidationPlanFx()
-    : vfs_(ctx_) {
+    : fs_vec_(test::vfs_test_get_fs_vec()) {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   ctx_ = Context(config);
-  vfs_ = VFS(ctx_);
-
-  remove_sparse_array();
+  REQUIRE(test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_).ok());
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  if constexpr (rest_tests) {
+    array_name_ = "tiledb://unit/";
+  }
+  array_name_ += temp_dir + "test_consolidation_plan_array";
+  test::vfs_test_create_temp_dir(ctx_c_, vfs_c_, temp_dir);
 }
 
 ConsolidationPlanFx::~ConsolidationPlanFx() {
-  remove_sparse_array();
+  Array::delete_array(ctx_, array_name_);
+  REQUIRE(test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok());
 }
 
 void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {
@@ -115,9 +129,9 @@ void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {
   schema.set_coords_filter_list(filter_list);
 
   if (encrypt) {
-    Array::create(SPARSE_ARRAY_NAME, schema, enc_type_, key_);
+    Array::create(array_name_, schema, enc_type_, key_);
   } else {
-    Array::create(SPARSE_ARRAY_NAME, schema);
+    Array::create(array_name_, schema);
   }
 }
 
@@ -132,16 +146,13 @@ void ConsolidationPlanFx::write_sparse(
   if (encrypt) {
     array = std::make_unique<Array>(
         ctx_,
-        SPARSE_ARRAY_NAME,
+        array_name_,
         TILEDB_WRITE,
         TemporalPolicy(TimeTravel, timestamp),
         EncryptionAlgorithm(AESGCM, key_.c_str()));
   } else {
     array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp));
+        ctx_, array_name_, TILEDB_WRITE, TemporalPolicy(TimeTravel, timestamp));
   }
 
   // Create query.
@@ -157,21 +168,6 @@ void ConsolidationPlanFx::write_sparse(
 
   // Close array.
   array->close();
-}
-
-void ConsolidationPlanFx::remove_array(const std::string& array_name) {
-  if (!is_array(array_name))
-    return;
-
-  vfs_.remove_dir(array_name);
-}
-
-void ConsolidationPlanFx::remove_sparse_array() {
-  remove_array(SPARSE_ARRAY_NAME);
-}
-
-bool ConsolidationPlanFx::is_array(const std::string& array_name) {
-  return vfs_.is_dir(array_name);
 }
 
 void ConsolidationPlanFx::check_last_error(std::string expected) {
@@ -192,7 +188,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
-  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  Array array{ctx_, array_name_, TILEDB_READ};
 
   tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
@@ -235,7 +231,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
-  Array array{ctx_, SPARSE_ARRAY_NAME, TILEDB_READ};
+  Array array{ctx_, array_name_, TILEDB_READ};
 
   tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
