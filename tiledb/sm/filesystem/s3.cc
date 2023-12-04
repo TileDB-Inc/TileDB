@@ -304,7 +304,8 @@ Status S3::init(
   // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
   // SIGPIPE may be raised from the socket library when the peer disconnects
   // unexpectedly.
-  options_.httpOptions.installSigPipeHandler = true;
+  // 2024-12-04 disabled (set to false) for testing - Seth
+  options_.httpOptions.installSigPipeHandler = false;
 
   bool skip_init;
   RETURN_NOT_OK(config.get<bool>("vfs.s3.skip_init", &skip_init, &found));
