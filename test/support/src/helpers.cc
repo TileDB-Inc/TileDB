@@ -58,8 +58,7 @@
 
 std::mutex catch2_macro_mutex;
 
-namespace tiledb {
-namespace test {
+namespace tiledb::test {
 
 // Command line arguments.
 std::string g_vfs;
@@ -784,17 +783,13 @@ void create_azure_container(
   }
 }
 
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs) {
+void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
   // Create TileDB context
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
   throw_if_setup_failed(tiledb_config_alloc(&config, &error));
   throw_if_setup_failed(error == nullptr);
-  if (s3_supported) {
+  if constexpr (tiledb::sm::filesystem::s3_enabled) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
     throw_if_setup_failed(tiledb_config_set(
         config, "vfs.s3.endpoint_override", "localhost:9999", &error));
@@ -807,7 +802,7 @@ void create_ctx_and_vfs(
     throw_if_setup_failed(error == nullptr);
 #endif
   }
-  if (azure_supported) {
+  if constexpr (tiledb::sm::filesystem::azure_enabled) {
     throw_if_setup_failed(tiledb_config_set(
         config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
     throw_if_setup_failed(tiledb_config_set(
@@ -830,6 +825,61 @@ void create_ctx_and_vfs(
   throw_if_setup_failed(tiledb_vfs_alloc(*ctx, config, vfs));
   throw_if_setup_failed(vfs != nullptr);
   tiledb_config_free(&config);
+}
+
+void get_supported_fs(
+    bool* s3_supported,
+    bool* hdfs_supported,
+    bool* azure_supported,
+    bool* gcs_supported) {
+  // Override VFS support if the user used the '--vfs' command line argument.
+  if (g_vfs.empty()) {
+    *s3_supported = tiledb::sm::filesystem::s3_enabled;
+    *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
+    *azure_supported = tiledb::sm::filesystem::azure_enabled;
+    *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
+  } else {
+    if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
+          g_vfs == "azure" || g_vfs == "gcs")) {
+      throw std::runtime_error(
+          "Failed to get supported fs. Invalid --vfs command line argument.");
+    }
+
+    if (g_vfs == "native") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = false;
+      *gcs_supported = false;
+    }
+
+    if (g_vfs == "s3") {
+      *s3_supported = true;
+      *hdfs_supported = false;
+      *azure_supported = false;
+      *gcs_supported = false;
+    }
+
+    if (g_vfs == "hdfs") {
+      *s3_supported = false;
+      *hdfs_supported = true;
+      *azure_supported = false;
+      *gcs_supported = false;
+    }
+
+    if (g_vfs == "azure") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = true;
+      *gcs_supported = false;
+    }
+
+    if (g_vfs == "gcs") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = false;
+      *gcs_supported = true;
+    }
+  }
 }
 
 void create_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
@@ -912,73 +962,6 @@ void create_subarray(
     }
   }
   *returned_subarray = psubarray;
-}
-
-void get_supported_fs(
-    bool* s3_supported,
-    bool* hdfs_supported,
-    bool* azure_supported,
-    bool* gcs_supported) {
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
-  int is_supported = 0;
-  int rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_S3, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *s3_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_HDFS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *hdfs_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_AZURE, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *azure_supported = (bool)is_supported;
-  rc = tiledb_ctx_is_supported_fs(ctx, TILEDB_GCS, &is_supported);
-  REQUIRE(rc == TILEDB_OK);
-  *gcs_supported = (bool)is_supported;
-
-  // Override VFS support if the user used the '--vfs' command line argument.
-  if (!g_vfs.empty()) {
-    REQUIRE(
-        (g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-         g_vfs == "azure" || g_vfs == "gcs"));
-
-    if (g_vfs == "native") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "s3") {
-      *s3_supported = true;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "hdfs") {
-      *s3_supported = false;
-      *hdfs_supported = true;
-      *azure_supported = false;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "azure") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = true;
-      *gcs_supported = false;
-    }
-
-    if (g_vfs == "gcs") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = true;
-    }
-  }
-
-  tiledb_ctx_free(&ctx);
 }
 
 void open_array(
@@ -2375,6 +2358,4 @@ template void check_counts<int32_t>(
 template void check_counts<uint64_t>(
     span<uint64_t> vals, std::vector<uint64_t> expected);
 
-}  // End of namespace test
-
-}  // End of namespace tiledb
+}  // namespace tiledb::test
