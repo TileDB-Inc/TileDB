@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,6 +62,15 @@ format_version_t get_fragment_version(const std::string& name);
  * the API is checking for working tree intersection.
  */
 bool is_element_of(const URI uri, const URI intersecting_uri);
+
+/**
+ * Returns the backend name of the given file path.
+ * backend_name(hdfs:///tiledb_test/) will return "hdfs"
+ *
+ * @param path The path whose backend name is to be retrieved.
+ * @return The path's backend name.
+ */
+std::string backend_name(const std::string& path);
 
 }  // namespace tiledb::sm::utils::parse
 
