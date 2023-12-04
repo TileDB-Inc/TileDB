@@ -512,14 +512,13 @@ void get_supported_fs(
  */
 void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
 
-/**
- * Returns a random bucket name, with `prefix` as prefix and using
- * the thread id as a "random" suffix.
+/** Returns a random file name, with `prefix` as prefix and a random number as
+ * suffix.
  *
- * @param prefix The prefix of the bucket name.
- * @return A random bucket name.
+ * @param prefix The prefix of the file name.
+ * @return A random file name.
  */
-std::string random_name(const std::string& prefix);
+std::string random_name(std::string prefix);
 
 /**
  * Helper method that removes a directory.
