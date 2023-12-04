@@ -71,6 +71,7 @@ struct ConsolidationPlanFx {
   Context ctx_;
   // Full URI initialized using fs_vec_ random temp directory.
   std::string array_name_;
+
   // Vector of supported filsystems
   tiledb_vfs_handle_t* vfs_c_{nullptr};
   tiledb_ctx_handle_t* ctx_c_{nullptr};
@@ -84,8 +85,9 @@ ConsolidationPlanFx::ConsolidationPlanFx()
     : fs_vec_(test::vfs_test_get_fs_vec()) {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
-  ctx_ = Context(config);
-  REQUIRE(test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_).ok());
+  REQUIRE(
+      test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_, config.ptr().get()).ok());
+  ctx_ = Context(ctx_c_);
   std::string temp_dir = fs_vec_[0]->temp_dir();
   if constexpr (rest_tests) {
     array_name_ = "tiledb://unit/";
@@ -163,8 +165,7 @@ void ConsolidationPlanFx::write_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  query.submit_and_finalize();
 
   // Close array.
   array->close();
@@ -184,7 +185,7 @@ void ConsolidationPlanFx::check_last_error(std::string expected) {
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan",
-    "[capi][consolidation-plan]") {
+    "[capi][consolidation-plan][rest]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -227,7 +228,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationPlanFx,
     "CAPI: Consolidation plan dump",
-    "[capi][consolidation-plan][dump]") {
+    "[capi][consolidation-plan][dump][rest]") {
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
