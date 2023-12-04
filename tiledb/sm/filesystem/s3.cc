@@ -329,7 +329,8 @@ S3::S3(
   // the AWS SDK to set its own signal handler to ignore SIGPIPE signals. A
   // SIGPIPE may be raised from the socket library when the peer disconnects
   // unexpectedly.
-  options_.httpOptions.installSigPipeHandler = true;
+  // PJD: Mirrored commit: 6e64f4c5fd1b594561176fcd61f895f526465b90
+  options_.httpOptions.installSigPipeHandler = false;
 
   // Initialize the library once per process.
   if (!s3_params_.skip_init_)
