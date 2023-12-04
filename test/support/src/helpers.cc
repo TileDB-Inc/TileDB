@@ -841,7 +841,7 @@ void get_supported_fs(
   } else {
     if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
           g_vfs == "azure" || g_vfs == "gcs")) {
-      throw std::logic_error(
+      throw std::runtime_error(
           "Failed to get supported fs. Invalid --vfs command line argument.");
     }
 
