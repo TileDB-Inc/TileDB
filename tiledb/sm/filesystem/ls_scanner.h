@@ -63,29 +63,30 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
 /**
- * LsScanIterator iterates over the results of a ListObjectsV2 request wrapped
- * by deriving classes of LsScanner. See S3Scanner as an example.
+ * LsScanIterator iterates over the results of ls requests wrapped by classes
+ * deriving from LsScanner. See S3Scanner as an example.
  *
  * @tparam T The LsScanner type that created this iterator.
+ * @tparam U The data type stored by this iterator.
  */
 template <class T, class U>
 class LsScanIterator {
  public:
   using value_type = U;
   using difference_type = ptrdiff_t;
-  using pointer = typename std::vector<U>::const_iterator;
+  using pointer = const U*;
   using reference = const U&;
   using iterator_category = std::input_iterator_tag;
 
   /** Default constructor. */
-  LsScanIterator() = default;
+  LsScanIterator() noexcept = default;
 
   /**
    * Constructor.
    *
    * @param scanner The scanner that created this iterator.
    */
-  explicit LsScanIterator(T* scanner)
+  explicit LsScanIterator(T* scanner) noexcept
       : scanner_(scanner)
       , ptr_(scanner->begin_) {
   }
@@ -94,20 +95,21 @@ class LsScanIterator {
    * Constructor.
    *
    * @param scanner The scanner that created this iterator.
+   * @param ptr Pointer to set as the current object.
    */
-  LsScanIterator(T* scanner, pointer ptr)
+  LsScanIterator(T* scanner, pointer ptr) noexcept
       : scanner_(scanner)
       , ptr_(ptr) {
   }
 
   /** Copy constructor. */
-  LsScanIterator(const LsScanIterator& rhs) {
+  LsScanIterator(const LsScanIterator& rhs) noexcept {
     ptr_ = rhs.ptr_;
     scanner_ = rhs.scanner_;
   }
 
   /** Copy assignment operator. */
-  LsScanIterator& operator=(LsScanIterator rhs) {
+  LsScanIterator& operator=(LsScanIterator rhs) noexcept {
     if (&rhs != this) {
       std::swap(ptr_, rhs.ptr_);
       std::swap(scanner_, rhs.scanner_);
@@ -120,8 +122,17 @@ class LsScanIterator {
    *
    * @return The current object being visited.
    */
-  reference operator*() {
+  constexpr reference operator*() const noexcept {
     return *ptr_;
+  }
+
+  /**
+   * Dereference operator.
+   *
+   * @return The current object being visited.
+   */
+  constexpr pointer operator->() const noexcept {
+    return ptr_;
   }
 
   /**
@@ -133,31 +144,43 @@ class LsScanIterator {
     return *this;
   }
 
-  /** Inequality operator. */
-  bool operator!=(const LsScanIterator& rhs) const {
-    return ptr_ != rhs.ptr_;
-  }
-
-  /** Equality operator. */
-  bool operator==(const LsScanIterator& rhs) const {
-    return ptr_ == rhs.ptr_;
+  /**
+   * Postfix increment operator.
+   * Calls next() method to advance to the next object via prefix operator.
+   */
+  LsScanIterator operator++(int) {
+    LsScanIterator tmp(*this);
+    operator++();
+    return tmp;
   }
 
   /**
    * @return Iterator to the beginning of the results being iterated on.
-   * Input iterators are single-pass, so we return a copy of this iterator at
-   * it's current position.
+   *    Input iterators are single-pass, so we return a copy of this iterator at
+   *    it's current position.
    */
   LsScanIterator begin() {
     return *this;
   }
 
   /**
-   * @return Iterator to the end of the results being iterated on.
+   * @return Default constructed iterator, which marks the end of results using
+   *    nullptr.
    */
   LsScanIterator end() {
-    // Constructs an iterator with ptr_ set to the end of the scanner's results.
-    return LsScanIterator<T, U>(scanner_, scanner_->end_);
+    return LsScanIterator<T, U>();
+  }
+
+  /** Inequality operator. */
+  friend constexpr bool operator!=(
+      const LsScanIterator& lhs, const LsScanIterator& rhs) noexcept {
+    return !(lhs.ptr_ == rhs.ptr_);
+  }
+
+  /** Equality operator. */
+  friend constexpr bool operator==(
+      const LsScanIterator& lhs, const LsScanIterator& rhs) noexcept {
+    return lhs.ptr_ == rhs.ptr_;
   }
 
  private:

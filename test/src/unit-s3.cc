@@ -558,7 +558,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
 
 TEST_CASE(
     "S3: S3Scanner iterator to populate vector", "[s3][ls-scan-iterator]") {
-  S3Test s3_test({10, 50});
+  S3Test s3_test({10, 50, 1, 5, 7});
   bool recursive = true;
   // 1000 is the default max_keys for S3. This is the same default used by
   // S3Scanner. Testing with small max_keys validates the iterator handles batch
@@ -601,8 +601,7 @@ TEST_CASE(
         });
 
     auto scan = s3_test.get_s3().scanner(
-        s3_test.temp_dir_, file_filter, accept_all_dirs, recursive);
-    scan.set_max_keys(max_keys);
+        s3_test.temp_dir_, file_filter, accept_all_dirs, recursive, max_keys);
     auto iter = scan.iterator();
     std::vector<Aws::S3::Model::Object> results_vector(
         iter.begin(), iter.end());

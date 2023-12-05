@@ -414,7 +414,8 @@ class S3Scanner : public LsScanner<F, D> {
       const URI& prefix,
       F file_filter,
       D dir_filter = accept_all_dirs,
-      bool recursive = false);
+      bool recursive = false,
+      int max_keys = 1000);
 
   /**
    * Advance to the next object accepted by the filters for this scan.
@@ -432,7 +433,10 @@ class S3Scanner : public LsScanner<F, D> {
    * Fetch the next batch of results from S3. This also handles setting the
    * continuation token for the next request, if the results were truncated.
    *
-   * @return A pointer to the first result in the new batch.
+   * @return A pointer to the first result in the new batch. The return value
+   *    is used to update the pointer managed by the iterator during traversal.
+   * @sa LsScanIterator::operator++()
+   * @sa S3Scanner::next(typename Iterator::pointer&)
    */
   typename Iterator::pointer fetch_results() {
     // If this is our first request, GetIsTruncated() will be false.
@@ -448,24 +452,22 @@ class S3Scanner : public LsScanner<F, D> {
       }
       list_objects_request_.SetContinuationToken(std::move(next_marker));
     }
-    auto outcome = client_->ListObjectsV2(list_objects_request_);
-    if (!outcome.IsSuccess()) {
+    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+    if (!list_objects_outcome_.IsSuccess()) {
       throw S3Exception(
           std::string("Error while listing with prefix '") +
           this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
-          delimiter_ + "'" + outcome_error_message(outcome));
+          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
     }
+    // Update pointers to the newly fetched results.
+    begin_ = &list_objects_outcome_.GetResult().GetContents().front();
+    end_ = &list_objects_outcome_.GetResult().GetContents().back() + 1;
 
-    if (!outcome.GetResult().GetContents().empty()) {
-      // Update the iterators respective to the newly fetched results.
-      list_objects_outcome_ = outcome;
-      begin_ = list_objects_outcome_.GetResult().GetContents().begin();
-      end_ = list_objects_outcome_.GetResult().GetContents().end();
-    } else {
+    if (list_objects_outcome_.GetResult().GetContents().empty()) {
       // If the request returned no results, we've reached the end of the scan.
       // We hit this case when the number of objects in the bucket is a multiple
       // of the current max_keys.
-      return end_;
+      return nullptr;
     }
 
     return begin_;
@@ -480,15 +482,6 @@ class S3Scanner : public LsScanner<F, D> {
 
   Iterator iterator() {
     return Iterator(this);
-  }
-
-  /**
-   * Set the maximum number of keys to fetch for each S3 ListObjects request.
-   *
-   * @param max_keys The maximum number of keys to fetch per request.
-   */
-  inline void set_max_keys(int max_keys) {
-    list_objects_request_.SetMaxKeys(max_keys);
   }
 
  private:
@@ -714,9 +707,10 @@ class S3 {
       const URI& parent,
       F f,
       D d = tiledb::sm::accept_all_dirs,
-      bool recursive = false) const {
+      bool recursive = false,
+      int max_keys = 1000) const {
     throw_if_not_ok(init_client());
-    return S3Scanner<F, D>(client_, parent, f, d, recursive);
+    return S3Scanner<F, D>(client_, parent, f, d, recursive, max_keys);
   }
 
   /**
@@ -1496,7 +1490,8 @@ S3Scanner<F, D>::S3Scanner(
     const URI& prefix,
     F file_filter,
     D dir_filter,
-    bool recursive)
+    bool recursive,
+    int max_keys)
     : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
     , client_(client)
     , delimiter_(this->is_recursive_ ? "" : "/")
@@ -1509,11 +1504,12 @@ S3Scanner<F, D>::S3Scanner(
   }
 
   list_objects_request_.SetBucket(aws_uri.GetAuthority());
-  std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
+  const std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
   list_objects_request_.SetPrefix(aws_uri_str.c_str());
   // Empty delimiter returns recursive results from S3.
   list_objects_request_.SetDelimiter(delimiter_.c_str());
   // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
 
   if (client_->requester_pays()) {
     list_objects_request_.SetRequestPayer(
@@ -1525,38 +1521,48 @@ S3Scanner<F, D>::S3Scanner(
 
 template <FilePredicate F, DirectoryPredicate D>
 void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
-  // Increment the iterator if we found a result on the last call.
-  if (found_) {
-    found_ = false;
-    ptr++;
-
-    // If results were truncated, fetch more when we reach the end of this
-    // batch.
-    if (more_to_fetch() && ptr == end_) {
-      ptr = fetch_results();
+  do {
+    // Increment the iterator if we found a result on the last call.
+    if (found_) {
+      found_ = false;
+      ++ptr;
     }
-  }
 
-  while (ptr != end_) {
+    if (ptr == end_) {
+      if (more_to_fetch()) {
+        // Fetch results and reset the iterator.
+        ptr = fetch_results();
+      } else {
+        // Set the pointer to nullptr to indicate the end of results.
+        ptr = nullptr;
+        return;
+      }
+    }
+
     auto object = *ptr;
     uint64_t size = object.GetSize();
     std::string path = "s3://" + list_objects_request_.GetBucket() +
                        S3::add_front_slash(object.GetKey());
+
+    // TODO: Add support for directory pruning.
     if (this->file_filter_(path, size)) {
-      // iterator is at the next object within results accepted by the filters.
+      // Iterator is at the next object within results accepted by the filters.
       found_ = true;
       return;
     } else {
       // Object was rejected by the FilePredicate, do not include it in results.
-      ptr++;
+      ++ptr;
 
-      if (more_to_fetch() && ptr == end_) {
-        ptr = fetch_results();
+      if (ptr == end_) {
+        if (more_to_fetch()) {
+          ptr = fetch_results();
+        } else {
+          ptr = nullptr;
+          return;
+        }
       }
     }
-
-    // TODO: Add support for directory pruning.
-  }
+  } while (ptr != end_);
 }
 
 }  // namespace tiledb::sm
