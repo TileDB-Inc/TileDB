@@ -608,3 +608,16 @@ add_custom_target(
    COMMAND rmdir "${CMAKE_INSTALL_PREFIX}/include/tiledb"
    COMMAND echo "TileDB uninstalled"
 )
+
+###########################################################
+# Run the optional extra cmake include
+###########################################################
+
+if(TILEDB_EXTRA_CMAKE_INCLUDE)
+  get_filename_component(
+    EXTRA_INCLUDE_ABSPATH
+    "${TILEDB_EXTRA_CMAKE_INCLUDE}"
+    ABSOLUTE
+  )
+  include("${EXTRA_INCLUDE_ABSPATH}")
+endif()
