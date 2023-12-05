@@ -61,43 +61,94 @@
 
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
-#endif
+#endif  // HAVE_GCS
 
 #ifdef HAVE_S3
-namespace tiledb::sm {
-constexpr bool have_s3 = true;
-}
 #include "tiledb/sm/filesystem/s3.h"
-#else
-namespace tiledb::sm {
-constexpr bool have_s3 = false;
-}
-#endif
+#endif  // HAVE_S3
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
+#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
-#endif
+#endif  // HAVE_AZURE
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
+
+namespace filesystem {
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& message)
+      : StatusException("VFS", message) {
+  }
+};
+
+class BuiltWithout : public VFSException {
+ public:
+  explicit BuiltWithout(const std::string& filesystem)
+      : VFSException("TileDB was built without " + filesystem + "support") {
+  }
+};
+
+class UnsupportedOperation : public VFSException {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : VFSException(operation + " across filesystems is not supported yet") {
+  }
+};
+
+class UnsupportedURI : public VFSException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : VFSException("Unsupported URI scheme: " + uri) {
+  }
+};
+
+// Local filesystem is always enabled
+static constexpr bool local_enabled = true;
+
+#ifdef _WIN32
+static constexpr bool windows_enabled = true;
+static constexpr bool posix_enabled = false;
+#else
+static constexpr bool windows_enabled = false;
+static constexpr bool posix_enabled = true;
+#endif
+
+#ifdef HAVE_GCS
+static constexpr bool gcs_enabled = true;
+#else
+static constexpr bool gcs_enabled = false;
+#endif  // HAVE_GCS
+
+#ifdef HAVE_S3
+static constexpr bool s3_enabled = true;
+#else
+static constexpr bool s3_enabled = false;
+#endif  // HAVE_S3
+
+#ifdef HAVE_HDFS
+static constexpr bool hdfs_enabled = true;
+#else
+static constexpr bool hdfs_enabled = false;
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_AZURE
+static constexpr bool azure_enabled = true;
+#else
+static constexpr bool azure_enabled = false;
+#endif  // HAVE_AZURE
+}  // namespace filesystem
 
 class Tile;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
-
-/** Class for VFS status exceptions. */
-class VFSException : public StatusException {
- public:
-  explicit VFSException(const std::string& msg)
-      : StatusException("VFS", msg) {
-  }
-};
 
 /** The VFS configuration parameters. */
 struct VFSParameters {
@@ -455,8 +506,8 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const;
+  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
+      const URI& parent) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -484,7 +535,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
       throw VFSException("TileDB was built without S3 support");
 #endif
     } else {
-      throw VFSException(
+      throw filesystem::VFSException(
           "Recursive ls over " + parent.backend_name() +
           " storage backend is not supported.");
     }

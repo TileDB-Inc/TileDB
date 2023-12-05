@@ -30,7 +30,6 @@ jobs:
       ${{ matrix.os }} - Sanitizer: ${{ matrix.sanitizer || 'none' }} | Experimental: ${{ matrix.experimental || 'OFF' }} | ${{ matrix.config || 'Release' }}
 
     env:
-      MACOSX_DEPLOYMENT_TARGET: 10.15
       TILEDB_NIGHTLY_BUILD: 1
 
     steps:

@@ -269,6 +269,9 @@ class Config {
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
 
+  /** The total buffer size for all attributes during consolidation. */
+  static const std::string SM_CONSOLIDATION_TOTAL_BUFFER_SIZE;
+
   /** The maximum fragment size used in consolidation. */
   static const std::string SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
 

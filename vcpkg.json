@@ -4,7 +4,6 @@
     "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
     "dependencies": [
         "bzip2",
-        "liblzma",
         "libmagic",
         "lz4",
         {
@@ -16,15 +15,6 @@
         "zstd"
     ],
     "features": {
-        "abseil": {
-            "description": "Enables building of abseil library and linkage test",
-            "dependencies": [
-                {
-                    "name": "abseil",
-                    "version>=": "20211102.0"
-                }
-            ]
-        },
         "azure": {
             "description": "Support Azure Blob Storage",
             "dependencies": [

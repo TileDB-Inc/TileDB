@@ -593,7 +593,14 @@ FragmentConsolidator::create_buffers(
 
   // Use the old buffer size setting to see how much memory we would use.
   auto buffer_num = buffer_weights.size();
-  uint64_t total_budget = config.buffer_size_ * buffer_num;
+  uint64_t total_budget = config.total_buffer_size_;
+
+  // If a user set the per-attribute buffer size configuration, we override
+  // the use of the total_budget_size config setting for backwards
+  // compatible behavior.
+  if (config.buffer_size_ != 0) {
+    total_budget = config.buffer_size_ * buffer_num;
+  }
 
   // Create buffers.
   std::vector<ByteVec> buffers(buffer_num);
@@ -896,8 +903,22 @@ Status FragmentConsolidator::set_config(const Config& config) {
       "sm.consolidation.steps", &config_.steps_, &found));
   assert(found);
   config_.buffer_size_ = 0;
+  // Only set the buffer_size_ if the user specified a value. Otherwise, we use
+  // the new sm.consolidation.total_buffer_size instead.
+  if (merged_config.set_params().count("sm.consolidation.buffer_size") > 0) {
+    logger_->warn(
+        "The `sm.consolidation.buffer_size configuration setting has been "
+        "deprecated. Set consolidation buffer sizes using the newer "
+        "`sm.consolidation.total_buffer_size` setting.");
+    RETURN_NOT_OK(merged_config.get<uint64_t>(
+        "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
+    assert(found);
+  }
+  config_.total_buffer_size_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
+      "sm.consolidation.total_buffer_size",
+      &config_.total_buffer_size_,
+      &found));
   assert(found);
   config_.max_fragment_size_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(

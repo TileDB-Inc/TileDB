@@ -291,18 +291,6 @@ jobs:
              Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
              $host.SetShouldExit($LastExitCode)
           }
-
-
-          if ($env:TILEDB_WEBP -eq "ON") {
-            $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\compressors\$CMakeBuildType\unit_link_webp.exe"
-            Write-Host "cmds: '$cmds'"
-            Invoke-Expression $cmds
-
-            if ($LastExitCode -ne 0) {
-               Write-Host "unit_link_webp failed. CMake exit status: " $LastExitCocde
-               $host.SetShouldExit($LastExitCode)
-            }
-          }
       - name: Build examples
         shell: pwsh
         run: |

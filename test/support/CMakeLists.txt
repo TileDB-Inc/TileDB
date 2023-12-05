@@ -42,6 +42,7 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers.cc
   src/helpers-dimension.h
   src/serialization_wrappers.cc
+  src/temporary_local_directory.cc
   src/vfs_helpers.cc
   )
 

@@ -198,7 +198,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3_thread_pool_executor.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/s3/STSProfileWithWebIdentityCredentialsProvider.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ssl_config.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/temporary_local_directory.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
@@ -662,19 +661,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     ${ZSTD_TARGET}
     libmagic
 )
-
-if(TILEDB_CRC32)
-  find_package(crc32c_EP REQUIRED)
-  find_package(crc32c CONFIG REQUIRED
-    HINTS
-      ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
-    )
-
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-    Crc32c::crc32c
-  )
-endif()
 
 if(TILEDB_WEBP)
   find_package(Webp_EP REQUIRED)

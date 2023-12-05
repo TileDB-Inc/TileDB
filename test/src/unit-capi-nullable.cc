@@ -32,10 +32,10 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/array_type.h"
-#include "tiledb/sm/filesystem/temporary_local_directory.h"
 #include "tiledb/sm/misc/utils.h"
 
 #include <iostream>

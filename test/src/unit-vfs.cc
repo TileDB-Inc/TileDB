@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -145,16 +145,9 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
 TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
-
-  bool s3_supported = false;
-  bool hdfs_supported = false;
-  bool azure_supported = false;
-  bool gcs_supported = false;
-  tiledb::test::get_supported_fs(
-      &s3_supported, &hdfs_supported, &azure_supported, &gcs_supported);
-
   std::vector<std::pair<URI, Config>> root_pairs;
-  if (s3_supported) {
+
+  if constexpr (tiledb::sm::filesystem::s3_enabled) {
     Config config;
     REQUIRE(config.set("vfs.s3.endpoint_override", "localhost:9999").ok());
     REQUIRE(config.set("vfs.s3.scheme", "https").ok());
@@ -165,13 +158,13 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
         URI("s3://" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if (hdfs_supported) {
+  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
     Config config;
     root_pairs.emplace_back(
         URI("hdfs:///" + tiledb::test::random_name("vfs") + "/"),
         std::move(config));
   }
-  if (azure_supported) {
+  if constexpr (tiledb::sm::filesystem::azure_enabled) {
     Config config;
     REQUIRE(
         config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
