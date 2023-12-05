@@ -273,7 +273,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Dimension: Test map_to_uint64, float32",
-    "[dimension][map_to_uint64][float32") {
+    "[dimension][map_to_uint64][float32]") {
   // Create dimensions
   Dimension d1("d1", Datatype::FLOAT32);
   float dom1[] = {0.0f, 1.0f};
