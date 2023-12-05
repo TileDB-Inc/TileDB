@@ -532,7 +532,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #ifdef HAVE_S3
       return s3().ls_filtered(parent, f, d, true);
 #else
-      throw VFSException("TileDB was built without S3 support");
+      throw filesystem::VFSException("TileDB was built without S3 support");
 #endif
     } else {
       throw filesystem::VFSException(
