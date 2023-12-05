@@ -92,6 +92,7 @@ tiledb_vcpkg="ON"
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
+tiledb_extra_cmake_include=""
 tiledb_verbose="OFF"
 tiledb_hdfs="OFF"
 tiledb_s3="OFF"
@@ -125,6 +126,8 @@ while test $# != 0; do
                     tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
+    --extra-cmake-include=*) file=`arg "$1"`
+                tiledb_extra_cmake_include="$file";;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
@@ -232,6 +235,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
     -DTILEDB_VCPKG=${tiledb_vcpkg} \
+    -DTILEDB_EXTRA_CMAKE_INCLUDE=${tiledb_extra_cmake_include} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \

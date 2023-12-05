@@ -2,6 +2,7 @@
 *.sw?
 build/*
 dist/*
+internal/
 cmake-build-*/*
 core/bin/*
 core/obj/*
