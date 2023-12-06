@@ -393,8 +393,7 @@ Status ArrayDirectory::load() {
           "Cannot open array; Array does not exist."));
     }
 
-    // Set the latest array schema URI
-    latest_array_schema_uri_ = array_schema_uris_.back();
+    latest_array_schema_uri_ = select_latest_array_schema_uri();
     assert(!latest_array_schema_uri_.is_invalid());
   }
 
@@ -1212,6 +1211,44 @@ Status ArrayDirectory::compute_array_schema_uris(
   }
 
   return Status::Ok();
+}
+
+URI ArrayDirectory::select_latest_array_schema_uri() {
+  // Set the latest array schema URI. When in READ mode, the latest array
+  // schema URI is the schema with the largest timestamp less than or equal
+  // to the current timestamp_end_. If no schema meets this definition, we
+  // use the first schema available.
+  //
+  // The reason for choosing the oldest array schema URI even when time
+  // traveling before it existed is to first, not break any arrays that have
+  // fragments written before the first schema existed. The second reason is
+  // to not break old arrays that only have the old `__array_schema.tdb`
+  // URI which does not have timestamps.
+  if (mode_ != ArrayDirectoryMode::READ) {
+    return array_schema_uris_.back();
+  }
+
+  optional<URI> latest_uri = nullopt;
+  uint64_t latest_ts = 0;
+
+  for (auto& uri : array_schema_uris_) {
+    auto name = uri.remove_trailing_slash().last_path_part();
+
+    // Skip the old schema URI name since it doesn't have timestamps
+    if (name == constants::array_schema_filename) {
+      continue;
+    }
+
+    std::pair<uint64_t, uint64_t> ts_range;
+    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &ts_range));
+
+    if (ts_range.second > latest_ts && ts_range.second <= timestamp_end_) {
+      latest_uri = uri;
+      latest_ts = ts_range.second;
+    }
+  }
+
+  return latest_uri.value_or(array_schema_uris_.front());
 }
 
 bool ArrayDirectory::is_vacuum_file(const URI& uri) const {

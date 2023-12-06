@@ -1,10 +1,9 @@
 #
-# test/external/CMakeLists.txt
-#
+# Format.cmake
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,20 +24,27 @@
 # THE SOFTWARE.
 #
 
-if(NOT TILEDB_CRC32)
-  message("skipping target unit_link_crc32, found NOT TILEDB_CRC32")
+############################################################
+# "make format" and "make check-format" targets
+############################################################
+
+set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
+
+find_package(ClangTools)
+if (NOT ${CLANG_FORMAT_FOUND})
+  find_program(CLANG_FORMAT_BIN NAMES clang-format-16)
+  if(CLANG_FORMAT_BIN)
+    set(CLANG_FORMAT_FOUND TRUE)
+  endif()
+endif()
+if (${CLANG_FORMAT_FOUND})
+  message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
+  # runs clang format and updates files in place.
+
+  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1)
+
+  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
+  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0)
 else()
-  message("adding target unit_link_absl, have TILEDB_ABSEIL")
-
-  add_executable(unit_link_crc32 EXCLUDE_FROM_ALL src/crc32_link_test.cc)
-
-  find_package(Crc32c CONFIG REQUIRED
-    PATHS
-        ${TILEDB_EP_INSTALL_PREFIX}/lib/cmake
-    ${TILEDB_DEPS_NO_DEFAULT_PATH}
-    )
-
-  target_link_libraries(unit_link_crc32 PRIVATE Crc32c::crc32c)
-
-  target_include_directories(unit_link_crc32 PRIVATE ${TILEDB_EP_INSTALL_PREFIX} ${TILEDB_EP_INSTALL_PREFIX}/include )
+  message(STATUS "was unable to find clang-format")
 endif()

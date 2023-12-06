@@ -215,7 +215,7 @@ TEST_CASE_METHOD(
           ctx_.ptr().get(), consolidation_plan, 0, &num_fragments));
   CHECK(num_fragments == 11);
   check_last_error(
-      "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+      "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
 
   const char* frag_uri = nullptr;
   CHECK(
@@ -223,7 +223,7 @@ TEST_CASE_METHOD(
                         ctx_.ptr().get(), consolidation_plan, 0, 0, &frag_uri));
   CHECK(frag_uri == nullptr);
   check_last_error(
-      "Error: ConsolidationPlan: Trying to access a node that doesn't exists");
+      "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
 
   tiledb_consolidation_plan_free(&consolidation_plan);
 }

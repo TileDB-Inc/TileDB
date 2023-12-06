@@ -52,7 +52,6 @@ set(INHERITED_CMAKE_ARGS
   -DTILEDB_TOOLS=${TILEDB_TOOLS}
   -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION}
   -DTILEDB_ARROW_TESTS=${TILEDB_ARROW_TESTS}
-  -DTILEDB_CRC32=${TILEDB_CRC32}
   -DTILEDB_WEBP=${TILEDB_WEBP}
   -DTILEDB_INSTALL_LIBDIR=${TILEDB_INSTALL_LIBDIR}
   -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
@@ -105,10 +104,6 @@ include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindSpdlog_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZlib_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindZstd_EP.cmake)
 include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindMagic_EP.cmake)
-
-if(TILEDB_CRC32)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindCrc32c_EP.cmake)
-endif()
 
 if(TILEDB_WEBP)
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindWebp_EP.cmake)
@@ -195,62 +190,3 @@ if (TILEDB_TESTS)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   )
 endif()
-
-############################################################
-# "make format" and "make check-format" targets
-############################################################
-
-set(SCRIPTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/scripts")
-
-find_package(ClangTools)
-if (NOT ${CLANG_FORMAT_FOUND})
-  find_program(CLANG_FORMAT_BIN NAMES clang-format-16)
-  if(CLANG_FORMAT_BIN)
-    set(CLANG_FORMAT_FOUND TRUE)
-  endif()
-endif()
-if (${CLANG_FORMAT_FOUND})
-  message(STATUS "clang hunt, found ${CLANG_FORMAT_BIN}")
-  # runs clang format and updates files in place.
-
-  add_custom_target(format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 1)
-
-  # runs clang format and exits with a non-zero exit code if any files need to be reformatted
-  add_custom_target(check-format ${SCRIPTS_DIR}/run-clang-format.sh ${CMAKE_CURRENT_SOURCE_DIR} ${CLANG_FORMAT_BIN} 0)
-else()
-  message(STATUS "was unable to find clang-format")
-endif()
-
-###########################################################
-# Doxygen documentation
-###########################################################
-
-find_package(Doxygen)
-if(DOXYGEN_FOUND)
-  file(GLOB_RECURSE TILEDB_C_API_HEADERS "${CMAKE_SOURCE_DIR}/tiledb/*_api_external.h")
-  list(APPEND TILEDB_C_API_HEADERS
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
-  )
-  file(GLOB TILEDB_CPP_API_HEADERS
-      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"
-  )
-  set(TILEDB_API_HEADERS ${TILEDB_C_API_HEADERS} ${TILEDB_CPP_API_HEADERS})
-  add_custom_command(OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-    COMMAND mkdir -p doxygen
-    COMMAND echo INPUT = ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/mainpage.dox
-      ${TILEDB_API_HEADERS} > ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-    COMMENT "Preparing for Doxygen documentation" VERBATIM
-  )
-  add_custom_target(doc
-    ${DOXYGEN_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tiledb/doxygen/Doxyfile.mk >
-      ${CMAKE_CURRENT_BINARY_DIR}/Doxyfile.log 2>&1
-    COMMENT "Generating API documentation with Doxygen" VERBATIM
-    DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/doxyfile.in
-  )
-else(DOXYGEN_FOUND)
-  add_custom_target(doc
-    _______doc
-    COMMENT "!! Docs cannot be built. Please install Doxygen and re-run cmake. !!" VERBATIM
-  )
-endif(DOXYGEN_FOUND)

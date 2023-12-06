@@ -1274,6 +1274,19 @@ struct QueryPlanResponse {
   # The returned query plan
 }
 
+struct ConsolidationPlanRequest {
+  config @0 :Config;
+  # Config
+
+  fragmentSize @1 :UInt64;
+  # Maximum fragment size
+}
+
+struct ConsolidationPlanResponse {
+  fragmentUrisPerNode @0 :List(List(Text));
+  # The uris for each node of the consolidation plan
+}
+
 struct QueryChannel {
   # structure representing a query channel, that is a stream of data within
   # a TileDB query. Such channels can be generated for the purpose of avoiding

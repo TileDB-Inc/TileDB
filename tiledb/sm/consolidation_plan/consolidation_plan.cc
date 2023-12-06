@@ -47,6 +47,14 @@ ConsolidationPlan::ConsolidationPlan(
   generate(array);
 }
 
+ConsolidationPlan::ConsolidationPlan(
+    uint64_t fragment_size,
+    std::vector<std::vector<std::string>> fragment_uris_per_node)
+    : num_nodes_{fragment_uris_per_node.size()}
+    , fragment_uris_per_node_{fragment_uris_per_node}
+    , desired_fragment_size_{fragment_size} {
+}
+
 ConsolidationPlan::~ConsolidationPlan() = default;
 
 /* ********************************* */
