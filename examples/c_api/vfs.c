@@ -36,7 +36,7 @@
 #include <string.h>
 #include <tiledb/tiledb.h>
 
-static void dirs_files() {
+static void do_dirs_files() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -92,8 +92,7 @@ static void dirs_files() {
   tiledb_ctx_free(&ctx);
 }
 
-// Should be static to avoid collision with the write syscall.
-static void write() {
+static void do_write() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -133,8 +132,7 @@ static void write() {
   tiledb_ctx_free(&ctx);
 }
 
-// Should be static to avoid collision with the read syscall.
-static void read() {
+static void do_read() {
   // Create TileDB context
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(NULL, &ctx);
@@ -160,7 +158,7 @@ static void read() {
 }
 
 int main() {
-  dirs_files();
-  write();
-  read();
+  do_dirs_files();
+  do_write();
+  do_read();
 }

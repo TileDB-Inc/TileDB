@@ -16,10 +16,10 @@ do
   cmake --build ${BaseDir}/tiledb --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
+  status=$?
   # Remove the executable after running it to prevent disk
   # space exhaustion when statically linking to tiledb.
   rm $TestAppDir/$exampleexe
-  status=$?
   if (($status != 0)); then
     echo "FAILED: $exampleexe exited with $status"
     echo "TILEDB_CI_SUCCESS=0" >> $GITHUB_OUTPUT
@@ -47,8 +47,8 @@ do
   cmake --build ${BaseDir}/tiledb --target ${exampleexe}
   echo $TestAppDir/$exampleexe
   $TestAppDir/$exampleexe;
-  rm $TestAppDir/$exampleexe
   status=$?
+  rm $TestAppDir/$exampleexe
   if (($status != 0)); then
     echo "FAILED: $exampleexe exited with $status"
     echo "TILEDB_CI_SUCCESS=0" >> $GITHUB_OUTPUT

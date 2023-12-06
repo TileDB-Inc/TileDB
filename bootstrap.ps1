@@ -16,6 +16,10 @@ Installs files in tree rooted at PREFIX (defaults to TileDB\dist).
 .PARAMETER Dependency
 Semicolon separated list to binary dependencies.
 
+.PARAMETER Linkage
+Specify the linkage type to build TileDB with. Valid values are
+"static" and "shared". Default is "static".
+
 .PARAMETER CMakeGenerator
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
 2017". Check 'cmake --help' for a list of supported generators.
@@ -58,10 +62,7 @@ Enables building with serialization support.
 
 .PARAMETER EnableStaticTileDB
 Enables building TileDB as a static library.
-Deprecated, this is now the default behavior.
-
-.PARAMETER EnableSharedTileDB
-Enables building TileDB as a shared library.
+Deprecated, use -Linkage static instead.
 
 .PARAMETER EnableBuildDeps
 Enables building TileDB dependencies from source (superbuild)
@@ -117,6 +118,7 @@ https://github.com/TileDB-Inc/TileDB
 Param(
     [string]$Prefix,
     [string]$Dependency,
+    [string]$Linkage = "static",
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
@@ -130,7 +132,6 @@ Param(
     [switch]$EnableGcs,
     [switch]$EnableSerialization,
     [switch]$EnableStaticTileDB,
-    [switch]$EnableSharedTileDB,
     [switch]$EnableTools,
     [switch]$EnableExperimentalFeatures,
     [switch]$EnableBuildDeps,
@@ -246,11 +247,20 @@ if ($DisableWebP.IsPresent) {
 }
 
 $BuildSharedLibs = "OFF";
-if ($EnableStaticTileDB.IsPresent) {
-    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. TileDB is now built as a static library by default. Use -EnableSharedTileDB to build a shared library."
-}
-elseif ($EnableSharedTileDB.IsPresent) {
+if ($Linkage -eq "shared") {
     $BuildSharedLibs = "ON"
+}
+elseif ($Linkage -ne "static") {
+    Write-Error "Invalid linkage type: $Linkage. Valid values are 'static' and 'shared'."
+    exit 1
+}
+
+if ($EnableStaticTileDB.IsPresent) {
+    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. TileDB is now built as a static library by default. Use -Linkage shared to build a shared library."
+    if ($Linkage -eq "shared") {
+        Write-Error "Cannot specify -EnableStaticTileDB alongside -Linkage shared."
+        exit 1
+    }
 }
 
 $TileDBTools = "OFF";

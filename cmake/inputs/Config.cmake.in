@@ -1,7 +1,7 @@
 #
 # This file attempts to locate the TileDB library. If found, the following
 # imported targets are created:
-#   - TileDB::tiledb
+#   - TileDB::tiledb (points to either a static or shared library)
 #   - TileDB::tiledb_shared (if TileDB is built as a shared library)
 #   - TileDB::tiledb_static (if TileDB is built as a static library)
 # And the following variables are defined:
