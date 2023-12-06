@@ -61,12 +61,6 @@ struct VFSFx {
   // Functions
   VFSFx();
   ~VFSFx();
-  void check_write(const std::string& path);
-  void check_move(const std::string& path);
-  void check_copy(const std::string& path);
-  void check_read(const std::string& path);
-  void check_append(const std::string& path);
-  void check_ls(const std::string& path);
 
   inline void require_tiledb_ok(capi_return_t rc) const {
     tiledb::test::require_tiledb_ok(ctx_, (int)rc);
@@ -82,443 +76,10 @@ VFSFx::~VFSFx() {
   tiledb_ctx_free(&ctx_);
 }
 
-void VFSFx::check_move(const std::string& path) {
-  auto backend_name = tiledb::sm::utils::parse::backend_name(path);
-  // Move and remove file
-  auto file = path + "file";
-  auto file2 = path + "file2";
-  int is_file = 0;
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(
-      tiledb_vfs_move_file(ctx_, vfs_, file.c_str(), file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(!is_file);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(!is_file);
-
-  // Move directory with subdirectories and files
-  auto dir = path + "dir/";
-  auto dir2 = path + "dir2/";
-  auto subdir = path + "dir/subdir/";
-  auto subdir2 = path + "dir2/subdir/";
-  file = dir + "file";
-  file2 = subdir + "file2";
-  auto new_file = dir2 + "file";
-  auto new_file2 = subdir2 + "file2";
-  int is_dir = 0;
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir));
-  if (backend_name == "s3")
-    REQUIRE(!is_dir);  // No empty dirs exist in S3
-  else
-    REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-  if (backend_name == "s3")
-    REQUIRE(!is_dir);  // No empty dirs exist in S3
-  else
-    REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_move_dir(ctx_, vfs_, dir.c_str(), dir2.c_str()));
-
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir));
-  REQUIRE(!is_dir);
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-  REQUIRE(!is_dir);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(!is_file);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(!is_file);
-
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir));
-  REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
-  REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, new_file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(
-      tiledb_vfs_is_file(ctx_, vfs_, new_file2.c_str(), &is_file));
-  REQUIRE(is_file);
-
-  // Move from one bucket to another (only for S3)
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    if (backend_name == "s3") {
-      std::string bucket2 = "s3://" + random_name("tiledb") + "/";
-      std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
-      std::string file3 = subdir3 + "file2";
-      int is_bucket = 0;
-
-      require_tiledb_ok(
-          tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket));
-      if (is_bucket) {
-        require_tiledb_ok(
-            tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
-      }
-
-      require_tiledb_ok(tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str()));
-
-      require_tiledb_ok(
-          tiledb_vfs_move_dir(ctx_, vfs_, subdir2.c_str(), subdir3.c_str()));
-      require_tiledb_ok(
-          tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file));
-      REQUIRE(is_file);
-
-      require_tiledb_ok(tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
-    }
-  }
-}
-
-#ifndef _WIN32
-void VFSFx::check_copy(const std::string& path) {
-  auto backend_name = tiledb::sm::utils::parse::backend_name(path);
-  // Do not support HDFS
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
-    return;
-  }
-
-  // Copy file
-  auto file = path + "file";
-  auto file2 = path + "file2";
-  int is_file = 0;
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(
-      tiledb_vfs_copy_file(ctx_, vfs_, file.c_str(), file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(is_file);
-
-  // Move directory with subdirectories and files
-  auto dir = path + "dir/";
-  auto dir2 = path + "dir2/";
-  auto subdir = path + "dir/subdir/";
-  auto subdir2 = path + "dir2/subdir/";
-  file = dir + "file";
-  file2 = subdir + "file2";
-  auto new_file = dir2 + "file";
-  auto new_file2 = subdir2 + "file2";
-  int is_dir = 0;
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir));
-  if (backend_name == "s3")
-    REQUIRE(!is_dir);  // No empty dirs exist in S3
-  else
-    REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-  if (backend_name == "s3")
-    REQUIRE(!is_dir);  // No empty dirs exist in S3
-  else
-    REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(is_file);
-
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir));
-  if (is_dir) {
-    require_tiledb_ok(tiledb_vfs_remove_dir(ctx_, vfs_, dir2.c_str()));
-  }
-  require_tiledb_ok(tiledb_vfs_copy_dir(ctx_, vfs_, dir.c_str(), dir2.c_str()));
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir));
-  REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
-  REQUIRE(is_dir);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, new_file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(
-      tiledb_vfs_is_file(ctx_, vfs_, new_file2.c_str(), &is_file));
-  REQUIRE(is_file);
-
-  // Copy from one bucket to another (only for S3)
-  if (tiledb::sm::utils::parse::backend_name(path) == "s3") {
-    std::string bucket2 = "s3://" + random_name("tiledb") + "/";
-    std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
-    std::string file3 = subdir3 + "file2";
-    int is_bucket = 0;
-
-    require_tiledb_ok(
-        tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket));
-    if (is_bucket) {
-      require_tiledb_ok(tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
-    }
-
-    require_tiledb_ok(tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str()));
-
-    require_tiledb_ok(
-        tiledb_vfs_copy_dir(ctx_, vfs_, subdir2.c_str(), subdir3.c_str()));
-    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file));
-    REQUIRE(is_file);
-
-    require_tiledb_ok(tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
-  }
-}
-#endif
-
-void VFSFx::check_write(const std::string& path) {
-  // File write and file size
-  int is_file = 0;
-  auto file = path + "file";
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  if (is_file) {
-    require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file.c_str()));
-  }
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(!is_file);
-  std::string to_write = "This will be written to the file";
-  tiledb_vfs_fh_t* fh;
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
-  int is_closed = 0;
-  require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed));
-  REQUIRE(is_closed == 0);
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_sync(ctx_, fh));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-
-  // Only for S3, sync still does not create the file
-  uint64_t file_size = 0;
-  if (path.find("s3://") == 0) {
-    REQUIRE(!is_file);
-  } else {
-    REQUIRE(is_file);
-    require_tiledb_ok(
-        tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
-    REQUIRE(file_size == to_write.size());
-  }
-
-  // Close file
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed));
-  REQUIRE(is_closed == 1);
-  tiledb_vfs_fh_free(&fh);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);  // It is a file even for S3
-  require_tiledb_ok(tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
-  REQUIRE(file_size == to_write.size());
-
-  // Write a second file
-  auto file2 = path + "file2";
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  if (is_file) {
-    require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str()));
-  }
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(!is_file);
-  tiledb_vfs_fh_t* fh2;
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file2.c_str(), TILEDB_VFS_WRITE, &fh2));
-  require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh2, &is_closed));
-  REQUIRE(is_closed == 0);
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh2, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh2));
-  require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh2, &is_closed));
-  REQUIRE(is_closed == 1);
-  tiledb_vfs_fh_free(&fh2);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(
-      tiledb_vfs_file_size(ctx_, vfs_, file2.c_str(), &file_size));
-  REQUIRE(file_size == to_write.size());
-
-  // Directory size
-  uint64_t dir_size;
-  require_tiledb_ok(tiledb_vfs_dir_size(ctx_, vfs_, path.c_str(), &dir_size));
-  CHECK(dir_size == 2 * to_write.size());
-
-  // Write another file in a subdir
-  std::string subdir = path + "subdir";
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-  auto file3 = subdir + "file3";
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file3.c_str(), &is_file));
-  if (is_file) {
-    require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file3.c_str()));
-  }
-  tiledb_vfs_fh_t* fh3;
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file3.c_str(), TILEDB_VFS_WRITE, &fh3));
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh3, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh3));
-  tiledb_vfs_fh_free(&fh3);
-
-  require_tiledb_ok(tiledb_vfs_dir_size(ctx_, vfs_, path.c_str(), &dir_size));
-  CHECK(dir_size == 3 * to_write.size());
-
-  // Check correctness with read
-  std::string to_read;
-  to_read.resize(to_write.size());
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
-  require_tiledb_ok(tiledb_vfs_read(ctx_, fh, 0, &to_read[0], file_size));
-  CHECK_THAT(to_read, Catch::Matchers::Equals(to_write));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-
-  // Open in WRITE mode again - previous file will be removed
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-  require_tiledb_ok(tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
-  REQUIRE(file_size == to_write.size());  // Not 2*to_write.size()
-
-  // Opening and closing the file without writing, first deletes previous
-  // file, and then creates an empty file
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-  require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
-  REQUIRE(is_file);
-  require_tiledb_ok(tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
-  REQUIRE(file_size == 0);  // Not 2*to_write.size()
-}
-
-void VFSFx::check_append(const std::string& path) {
-  // File write and file size
-  auto file = path + "file";
-  tiledb_vfs_fh_t* fh;
-
-  // First write
-  std::string to_write = "This will be written to the file";
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-
-  // Second write - append
-  std::string to_write_2 = "This will be appended to the end of the file";
-  int rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_APPEND, &fh);
-  if (path.find("s3://") == 0) {  // S3 does not support append
-    REQUIRE(rc == TILEDB_ERR);
-    REQUIRE(fh == nullptr);
-  } else {
-    REQUIRE(rc == TILEDB_OK);
-    require_tiledb_ok(
-        tiledb_vfs_write(ctx_, fh, to_write_2.c_str(), to_write_2.size()));
-    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-    tiledb_vfs_fh_free(&fh);
-    uint64_t file_size = 0;
-    require_tiledb_ok(
-        tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
-    uint64_t total_size = to_write.size() + to_write_2.size();
-    CHECK(file_size == total_size);
-
-    // Check correctness with read
-    std::string to_read;
-    to_read.resize(total_size);
-    require_tiledb_ok(
-        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
-    require_tiledb_ok(tiledb_vfs_read(ctx_, fh, 0, &to_read[0], total_size));
-    CHECK_THAT(to_read, Catch::Matchers::Equals(to_write + to_write_2));
-    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-    tiledb_vfs_fh_free(&fh);
-  }
-
-  // Remove file
-  require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file.c_str()));
-}
-
-void VFSFx::check_read(const std::string& path) {
-  auto file = path + "file";
-  std::string to_write = "This will be written to the file";
-  tiledb_vfs_fh_t* fh;
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
-  require_tiledb_ok(
-      tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-
-  // Read only the "will be written" portion of the file
-  std::string to_check = "will be written";
-  std::string to_read;
-  to_read.resize(to_check.size());
-  uint64_t offset = 5;
-  require_tiledb_ok(
-      tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
-  require_tiledb_ok(
-      tiledb_vfs_read(ctx_, fh, offset, &to_read[0], to_check.size()));
-  CHECK_THAT(to_read, Catch::Matchers::Equals(to_check));
-  require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
-  tiledb_vfs_fh_free(&fh);
-
-  // Remove file
-  require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file.c_str()));
-}
-
 int ls_getter(const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
   vec->emplace_back(path);
   return 1;
-}
-
-void VFSFx::check_ls(const std::string& path) {
-  std::string dir = path + "ls_dir";
-  std::string file = dir + "/file";
-  std::string file2 = dir + "/file2";
-  std::string subdir = dir + "/subdir";
-  std::string subdir2 = dir + "/subdir2";
-  std::string subdir_file = subdir + "/file";
-  std::string subdir_file2 = subdir2 + "/file2";
-
-  // Create directories and files
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str()));
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-  require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir2.c_str()));
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file2.c_str()));
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, subdir_file.c_str()));
-  require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, subdir_file2.c_str()));
-
-  // List
-  std::vector<std::string> children;
-  require_tiledb_ok(
-      tiledb_vfs_ls(ctx_, vfs_, (dir + "/").c_str(), ls_getter, &children));
-
-  // Normalization
-  for (auto& child : children) {
-    if (child.back() == '/')
-      child.pop_back();
-  }
-
-#ifdef _WIN32
-  // Normalization only for Windows
-  file = tiledb::sm::path_win::uri_from_path(file);
-  file2 = tiledb::sm::path_win::uri_from_path(file2);
-  subdir = tiledb::sm::path_win::uri_from_path(subdir);
-  subdir2 = tiledb::sm::path_win::uri_from_path(subdir2);
-#endif
-
-  // Check results
-  std::sort(children.begin(), children.end());
-  REQUIRE(children.size() == 4);
-  CHECK(children[0] == file);
-  CHECK(children[1] == file2);
-  CHECK(children[2] == subdir);
-  CHECK(children[3] == subdir2);
 }
 
 TEST_CASE_METHOD(
@@ -639,7 +200,7 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
   if (!path.empty()) {
     auto backend_name = tiledb::sm::utils::parse::backend_name(path);
 
-    // Create directory, is directory, remove directory
+    // Create directory
     int is_dir = 0;
     require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir));
     if (is_dir) {
@@ -656,40 +217,16 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     // Second time succeeds as well
     require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()));
 
-    // Remove directory recursively
+    // Create a subdirectory
     auto subdir = path + "subdir/";
     require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-    if (backend_name == "s3")
-      REQUIRE(!is_dir);  // No empty dirs exist in S3
-    else
-      REQUIRE(is_dir);
-    require_tiledb_ok(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()));
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir));
-    REQUIRE(!is_dir);
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-    REQUIRE(!is_dir);
 
-    // Move
-    require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()));
-    require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, subdir.c_str()));
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-    if (backend_name == "s3")
-      REQUIRE(!is_dir);  // No empty dirs exist in S3
-    else
-      REQUIRE(is_dir);
+    // Touch
+    auto file = path + "file";
     int is_file = 0;
-    std::string some_file = subdir + "some_file";
-    require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, some_file.c_str()));
-    require_tiledb_ok(
-        tiledb_vfs_is_file(ctx_, vfs_, some_file.c_str(), &is_file));
-    auto subdir2 = path + "subdir2/";
-    require_tiledb_ok(
-        tiledb_vfs_move_dir(ctx_, vfs_, subdir.c_str(), subdir2.c_str()));
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
-    REQUIRE(!is_dir);
-    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
-    REQUIRE(is_dir);
+    require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+    REQUIRE(is_file);
 
     // Invalid file
     std::string foo_file = path + "foo";
@@ -702,59 +239,304 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     REQUIRE(rc == TILEDB_ERR);
     REQUIRE(fh == nullptr);
 
-    // Touch file
-    require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, foo_file.c_str()));
+    // Check ls
+    std::vector<std::string> children;
     require_tiledb_ok(
-        tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file));
-    REQUIRE(is_file);
-    require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, foo_file.c_str()));
-    require_tiledb_ok(
-        tiledb_vfs_is_file(ctx_, vfs_, foo_file.c_str(), &is_file));
+        tiledb_vfs_ls(ctx_, vfs_, (path).c_str(), ls_getter, &children));
+    std::sort(children.begin(), children.end());
+    CHECK(children[0] == file);
+    if (backend_name != "s3") {
+      CHECK(children[1] + "/" == subdir);
+    }
+
+    // Check write
+    // File write and file size
+    require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file.c_str()));
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
     REQUIRE(!is_file);
+    std::string to_write = "This will be written to the file";
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
+    int is_closed = 0;
+    require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed));
+    REQUIRE(is_closed == 0);
+    require_tiledb_ok(
+        tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
+    require_tiledb_ok(tiledb_vfs_sync(ctx_, fh));
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
 
-    // Check write and append
-    check_write(path);
-    check_append(path);
+    // Only for S3, sync still does not create the file
+    uint64_t file_size = 0;
+    if (backend_name == "s3") {
+      REQUIRE(!is_file);
+    } else {
+      REQUIRE(is_file);
+      require_tiledb_ok(
+          tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
+      REQUIRE(file_size == to_write.size());
+    }
 
-    // Read file
-    check_read(path);
+    // Close file
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+    require_tiledb_ok(tiledb_vfs_fh_is_closed(ctx_, fh, &is_closed));
+    REQUIRE(is_closed == 1);
+    tiledb_vfs_fh_free(&fh);
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+    REQUIRE(is_file);  // It is a file even for S3
+    require_tiledb_ok(
+        tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
+    REQUIRE(file_size == to_write.size());
 
-    // Move
-    check_move(path);
+    // Write another file in a subdir
+    auto file2 = subdir + "file2";
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+    if (is_file) {
+      require_tiledb_ok(tiledb_vfs_remove_file(ctx_, vfs_, file2.c_str()));
+    }
+    tiledb_vfs_fh_t* fh2;
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file2.c_str(), TILEDB_VFS_WRITE, &fh2));
+    require_tiledb_ok(
+        tiledb_vfs_write(ctx_, fh2, to_write.c_str(), to_write.size()));
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh2));
+    tiledb_vfs_fh_free(&fh2);
 
-    // Copy (not yet supported for memfs)
+    // Directory size
+    uint64_t dir_size;
+    require_tiledb_ok(tiledb_vfs_dir_size(ctx_, vfs_, path.c_str(), &dir_size));
+    CHECK(dir_size == 2 * to_write.size());
+
+    // Check correctness with read
+    std::string to_read;
+    to_read.resize(to_write.size());
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
+    require_tiledb_ok(tiledb_vfs_read(ctx_, fh, 0, &to_read[0], file_size));
+    CHECK_THAT(to_read, Catch::Matchers::Equals(to_write));
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+    tiledb_vfs_fh_free(&fh);
+
+    // Read only the "will be written" portion of the file
+    std::string to_check = "will be written";
+    to_read.resize(to_check.size());
+    uint64_t offset = 5;
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
+    require_tiledb_ok(
+        tiledb_vfs_read(ctx_, fh, offset, &to_read[0], to_check.size()));
+    CHECK_THAT(to_read, Catch::Matchers::Equals(to_check));
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+    tiledb_vfs_fh_free(&fh);
+
+    // Check append
+    std::string to_write_2 = "This will be appended to the end of the file";
+    rc = tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_APPEND, &fh);
+    if (backend_name == "s3") {  // S3 does not support append
+      REQUIRE(rc == TILEDB_ERR);
+      REQUIRE(fh == nullptr);
+    } else {
+      REQUIRE(rc == TILEDB_OK);
+      require_tiledb_ok(
+          tiledb_vfs_write(ctx_, fh, to_write_2.c_str(), to_write_2.size()));
+      require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+      tiledb_vfs_fh_free(&fh);
+      uint64_t file_size = 0;
+      require_tiledb_ok(
+          tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
+      uint64_t total_size = to_write.size() + to_write_2.size();
+      CHECK(file_size == total_size);
+
+      // Check correctness with read
+      std::string to_read;
+      to_read.resize(total_size);
+      require_tiledb_ok(
+          tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_READ, &fh));
+      require_tiledb_ok(tiledb_vfs_read(ctx_, fh, 0, &to_read[0], total_size));
+      CHECK_THAT(to_read, Catch::Matchers::Equals(to_write + to_write_2));
+      require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+      tiledb_vfs_fh_free(&fh);
+    }
+
+    // Open in WRITE mode again - previous file will be removed
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
+    require_tiledb_ok(
+        tiledb_vfs_write(ctx_, fh, to_write.c_str(), to_write.size()));
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+    tiledb_vfs_fh_free(&fh);
+    require_tiledb_ok(
+        tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
+    REQUIRE(file_size == to_write.size());  // Not 2*to_write.size()
+
+    // Opening and closing the file without writing, first deletes previous
+    // file, and then creates an empty file
+    require_tiledb_ok(
+        tiledb_vfs_open(ctx_, vfs_, file.c_str(), TILEDB_VFS_WRITE, &fh));
+    require_tiledb_ok(tiledb_vfs_close(ctx_, fh));
+    tiledb_vfs_fh_free(&fh);
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+    REQUIRE(is_file);
+    require_tiledb_ok(
+        tiledb_vfs_file_size(ctx_, vfs_, file.c_str(), &file_size));
+    REQUIRE(file_size == 0);  // Not 2*to_write.size()
+
+    // Move file
+    file2 = subdir + "file";
+    require_tiledb_ok(
+        tiledb_vfs_move_file(ctx_, vfs_, file.c_str(), file2.c_str()));
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+    REQUIRE(!is_file);
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+    REQUIRE(is_file);
+
+    // Move directory
+    auto subdir2 = path + "subdir2/";
+    require_tiledb_ok(
+        tiledb_vfs_move_dir(ctx_, vfs_, subdir.c_str(), subdir2.c_str()));
+    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir.c_str(), &is_dir));
+    REQUIRE(!is_dir);
+    require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
+    file2 = subdir2 + "file";
+    require_tiledb_ok(tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+    REQUIRE(is_file);
+
+    // Move from one bucket to another (only for S3)
+    if (backend_name == "s3") {
+      std::string bucket2 = "s3://" + random_name("tiledb") + "/";
+      std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
+
+      // Remove and recreate bucket if already exists
+      int is_bucket = 0;
+      require_tiledb_ok(
+          tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket));
+      if (is_bucket) {
+        require_tiledb_ok(
+            tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
+      }
+      require_tiledb_ok(tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str()));
+
+      // Move bucket
+      require_tiledb_ok(
+          tiledb_vfs_move_dir(ctx_, vfs_, subdir2.c_str(), subdir3.c_str()));
+      require_tiledb_ok(
+          tiledb_vfs_is_dir(ctx_, vfs_, subdir3.c_str(), &is_dir));
+      REQUIRE(is_dir);
+      file2 = subdir3 + "file";
+      require_tiledb_ok(
+          tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+      REQUIRE(is_file);
+
+      // Move back
+      require_tiledb_ok(
+          tiledb_vfs_move_dir(ctx_, vfs_, subdir3.c_str(), subdir2.c_str()));
+      require_tiledb_ok(
+          tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
+      REQUIRE(is_dir);
+
+      // Remove bucket
+      require_tiledb_ok(tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
+    }
+
+    // Check copy (not yet supported for MemFS or HDFS)
     if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      if (backend_name != "mem") {
-        check_copy(path);
+      if (backend_name != "mem" && backend_name != "hdfs") {
+        auto dir = path + "dir/";
+        auto file = dir + "file";
+        int is_file = 0;
+        require_tiledb_ok(tiledb_vfs_create_dir(ctx_, vfs_, dir.c_str()));
+        require_tiledb_ok(tiledb_vfs_touch(ctx_, vfs_, file.c_str()));
+        int is_dir = 0;
+        require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir.c_str(), &is_dir));
+        REQUIRE(is_dir);
+        require_tiledb_ok(
+            tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+        REQUIRE(is_file);
+
+        // Copy file
+        auto file2 = dir + "file2";
+        require_tiledb_ok(
+            tiledb_vfs_copy_file(ctx_, vfs_, file.c_str(), file2.c_str()));
+        require_tiledb_ok(
+            tiledb_vfs_is_file(ctx_, vfs_, file.c_str(), &is_file));
+        REQUIRE(is_file);
+        require_tiledb_ok(
+            tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+        REQUIRE(is_file);
+
+        // Copy directory
+        auto dir2 = path + "dir2/";
+        file2 = dir2 + "file2";
+        require_tiledb_ok(
+            tiledb_vfs_copy_dir(ctx_, vfs_, dir.c_str(), dir2.c_str()));
+        require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, dir2.c_str(), &is_dir));
+        REQUIRE(is_dir);
+        require_tiledb_ok(
+            tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+        REQUIRE(is_file);
+
+        // Copy from one bucket to another (only for S3)
+        if (tiledb::sm::utils::parse::backend_name(path) == "s3") {
+          std::string bucket2 = "s3://" + random_name("tiledb") + "/";
+          std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
+
+          // Remove and recreate bucket if already exists
+          int is_bucket = 0;
+          require_tiledb_ok(
+              tiledb_vfs_is_bucket(ctx_, vfs_, bucket2.c_str(), &is_bucket));
+          if (is_bucket) {
+            require_tiledb_ok(
+                tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
+          }
+          require_tiledb_ok(
+              tiledb_vfs_create_bucket(ctx_, vfs_, bucket2.c_str()));
+
+          // Copy bucket
+          require_tiledb_ok(
+              tiledb_vfs_copy_dir(ctx_, vfs_, dir2.c_str(), subdir3.c_str()));
+          require_tiledb_ok(
+              tiledb_vfs_is_dir(ctx_, vfs_, subdir3.c_str(), &is_dir));
+          REQUIRE(is_dir);
+          file2 = subdir3 + "file";
+          require_tiledb_ok(
+              tiledb_vfs_is_file(ctx_, vfs_, file2.c_str(), &is_file));
+          REQUIRE(is_file);
+
+          // Remove bucket
+          require_tiledb_ok(
+              tiledb_vfs_remove_bucket(ctx_, vfs_, bucket2.c_str()));
+        }
       }
     }
 
-    // Ls
-    check_ls(path);
-
+    // Clean up
     if (backend_name == "s3") {
+      // Empty s3 bucket
       int is_empty;
       require_tiledb_ok(
           tiledb_vfs_is_empty_bucket(ctx_, vfs_, s3_bucket.c_str(), &is_empty));
       REQUIRE(!(bool)is_empty);
-    }
 
-    if constexpr (!tiledb::sm::filesystem::s3_enabled) {
-      if (backend_name != "windows" && backend_name != "posix") {
-        require_tiledb_ok(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()));
-      }
-    }
-
-    if (backend_name == "s3") {
       require_tiledb_ok(tiledb_vfs_empty_bucket(ctx_, vfs_, s3_bucket.c_str()));
 
-      int is_empty;
       require_tiledb_ok(
           tiledb_vfs_is_empty_bucket(ctx_, vfs_, s3_bucket.c_str(), &is_empty));
       REQUIRE((bool)is_empty);
 
       require_tiledb_ok(
           tiledb_vfs_remove_bucket(ctx_, vfs_, s3_bucket.c_str()));
+    } else {
+      // Remove directory recursively
+      require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir));
+      REQUIRE(is_dir);
+      require_tiledb_ok(
+          tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
+      REQUIRE(is_dir);
+      require_tiledb_ok(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()));
+      require_tiledb_ok(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir));
+      REQUIRE(!is_dir);
+      require_tiledb_ok(
+          tiledb_vfs_is_dir(ctx_, vfs_, subdir2.c_str(), &is_dir));
+      REQUIRE(!is_dir);
     }
   }
 }
