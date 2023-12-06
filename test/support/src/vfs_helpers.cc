@@ -459,7 +459,7 @@ VFSTest::VFSTest(
     return;
   }
 
-  if (temp_dir_.is_file() || temp_dir_.is_memfs()) {
+  if (temp_dir_.is_file() || temp_dir_.is_memfs() || temp_dir_.is_hdfs()) {
     vfs_.create_dir(temp_dir_).ok();
   } else {
     vfs_.create_bucket(temp_dir_).ok();

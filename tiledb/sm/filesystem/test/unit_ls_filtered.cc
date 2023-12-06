@@ -92,6 +92,8 @@ TEST_CASE(
     "VFS: Throwing FileFilter ls_recursive",
     "[vfs][ls_recursive][!shouldfail]") {
   std::string prefix = GENERATE("file://", "mem://");
+  prefix += std::filesystem::current_path().string() + "/ls_filtered_test";
+
   VFSTest vfs_test({0}, prefix);
   auto file_filter = [](const std::string_view&, uint64_t) -> bool {
     throw std::logic_error("Throwing FileFilter");
