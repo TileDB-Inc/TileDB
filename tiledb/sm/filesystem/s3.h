@@ -419,15 +419,35 @@ class S3Scanner : public LsScanner<F, D> {
 
   /**
    * Advance to the next object accepted by the filters for this scan.
-   * If results from S3 are truncated and we've reached the end of the current
-   * batch, this will fetch the next batch of results from S3. If the results
-   * are not truncated and we reach the end of the current batch, the scan is
-   * done.
    *
-   * @param ptr Reference to the current data iterator.
+   * @param ptr Reference to the current data pointer.
    * @sa LsScanIterator::operator++()
    */
   void next(typename Iterator::pointer& ptr);
+
+  /**
+   * Advance the iterator to the next object in the current batch of results.
+   * If the iterator is at the end of the current batch, this will fetch the
+   * next batch of results from S3. This does not check if the results are
+   * accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data pointer.
+   * @return True if there are more results to scan, else false.
+   */
+  bool advance(typename Iterator::pointer& ptr) {
+    ++ptr;
+    if (ptr == end_) {
+      if (more_to_fetch()) {
+        // Fetch results and reset the iterator.
+        ptr = fetch_results();
+      } else {
+        // Set the pointer to nullptr to indicate the end of results.
+        ptr = nullptr;
+        return false;
+      }
+    }
+    return true;
+  }
 
   /**
    * Fetch the next batch of results from S3. This also handles setting the
@@ -700,6 +720,7 @@ class S3 {
    * @param d The DirectoryPredicate to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
    * @return Fully constructed S3Scanner object.
    */
   template <FilePredicate F, DirectoryPredicate D>
@@ -1525,16 +1546,8 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
     // Increment the iterator if we found a result on the last call.
     if (found_) {
       found_ = false;
-      ++ptr;
-    }
-
-    if (ptr == end_) {
-      if (more_to_fetch()) {
-        // Fetch results and reset the iterator.
-        ptr = fetch_results();
-      } else {
-        // Set the pointer to nullptr to indicate the end of results.
-        ptr = nullptr;
+      if (!advance(ptr)) {
+        // We've reached the end of the final batch of results.
         return;
       }
     }
@@ -1551,15 +1564,8 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
       return;
     } else {
       // Object was rejected by the FilePredicate, do not include it in results.
-      ++ptr;
-
-      if (ptr == end_) {
-        if (more_to_fetch()) {
-          ptr = fetch_results();
-        } else {
-          ptr = nullptr;
-          return;
-        }
+      if (!advance(ptr)) {
+        return;
       }
     }
   } while (ptr != end_);

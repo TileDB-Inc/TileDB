@@ -618,4 +618,59 @@ TEST_CASE(
     }
   }
 }
+
+TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
+  S3Test s3_test({10, 50, 7});
+  bool recursive = true;
+  int max_keys = GENERATE(1000, 11);
+
+  std::vector<Aws::S3::Model::Object> results_vector;
+  DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
+    auto scan = s3_test.get_s3().scanner(
+        s3_test.temp_dir_,
+        VFSTest::accept_all_files,
+        accept_all_dirs,
+        recursive,
+        max_keys);
+    auto iter = scan.iterator();
+
+    SECTION("for loop") {
+      SECTION("range based for") {
+        for (const auto& result : iter) {
+          results_vector.push_back(result);
+        }
+      }
+      SECTION("prefix operator") {
+        for (auto it = iter.begin(); it != iter.end(); ++it) {
+          results_vector.push_back(*it);
+        }
+      }
+      SECTION("postfix operator") {
+        for (auto it = iter.begin(); it != iter.end(); it++) {
+          results_vector.push_back(*it);
+        }
+      }
+    }
+
+    SECTION("vector::assign") {
+      results_vector.assign(iter.begin(), iter.end());
+    }
+
+    SECTION("std::move") {
+      std::move(iter.begin(), iter.end(), std::back_inserter(results_vector));
+    }
+  }
+
+  std::sort(s3_test.expected_results_.begin(), s3_test.expected_results_.end());
+  CHECK(results_vector.size() == s3_test.expected_results_.size());
+  for (size_t i = 0; i < s3_test.expected_results_.size(); i++) {
+    auto s3_object = results_vector[i];
+    auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
+    CHECK(full_uri == s3_test.expected_results_[i].first);
+    CHECK(
+        static_cast<uint64_t>(s3_object.GetSize()) ==
+        s3_test.expected_results_[i].second);
+  }
+}
+
 #endif
