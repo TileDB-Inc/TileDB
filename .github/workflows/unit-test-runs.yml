@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v3
 
       - name: 'Homebrew setup'
-        run: brew install pkg-config
+        run: brew install automake pkg-config
         if: ${{ startsWith(matrix.os, 'macos-') == true }}
 
       # Configure required environment variables for vcpkg to use
