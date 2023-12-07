@@ -120,8 +120,7 @@ class FilesystemBase {
 
   /**
    * Renames a file.
-   * Both URI must be of the same backend type. (e.g. both s3://, file://,
-   * etc)
+   * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.

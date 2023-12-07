@@ -150,7 +150,7 @@ class LsScanIterator {
    * Postfix increment operator.
    * Calls next() method to advance to the next object via prefix operator.
    *
-   * @return Reference to this iterator prior to advancing to the next object.
+   * @return Copy of this iterator prior to advancing to the next object.
    */
   LsScanIterator operator++(int) {
     LsScanIterator tmp(*this);

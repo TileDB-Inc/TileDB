@@ -449,9 +449,8 @@ class S3Scanner : public LsScanner<F, D> {
    * accepted by the filters for this scan.
    *
    * @param ptr Reference to the current data pointer.
-   * @return True if there are more results to scan, else false.
    */
-  bool advance(typename Iterator::pointer& ptr) {
+  void advance(typename Iterator::pointer& ptr) {
     ++ptr;
     if (ptr == end_) {
       if (more_to_fetch()) {
@@ -459,10 +458,9 @@ class S3Scanner : public LsScanner<F, D> {
         ptr = fetch_results();
       } else {
         // Set the pointer to nullptr to indicate the end of results.
-        ptr = nullptr;
+        end_ = ptr = nullptr;
       }
     }
-    return ptr != nullptr;
   }
 
   /**
@@ -1548,16 +1546,13 @@ S3Scanner<F, D>::S3Scanner(
 
 template <FilePredicate F, DirectoryPredicate D>
 void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
-  do {
-    // Increment the iterator if we found a result on the last call.
-    if (found_) {
-      found_ = false;
-      if (!advance(ptr)) {
-        // We've reached the end of the final batch of results.
-        return;
-      }
-    }
+  // Increment the iterator if we found a result on the last call.
+  if (found_) {
+    found_ = false;
+    advance(ptr);
+  }
 
+  while (ptr != end_) {
     auto object = *ptr;
     uint64_t size = object.GetSize();
     std::string path = "s3://" + list_objects_request_.GetBucket() +
@@ -1570,11 +1565,9 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
       return;
     } else {
       // Object was rejected by the FilePredicate, do not include it in results.
-      if (!advance(ptr)) {
-        return;
-      }
+      advance(ptr);
     }
-  } while (ptr != end_);
+  }
 }
 
 }  // namespace tiledb::sm
