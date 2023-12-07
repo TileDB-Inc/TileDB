@@ -244,6 +244,11 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     require_tiledb_ok(
         tiledb_vfs_ls(ctx_, vfs_, (path).c_str(), ls_getter, &children));
     std::sort(children.begin(), children.end());
+#ifdef _WIN32
+    // Normalization only for Windows
+    file = tiledb::sm::path_win::uri_from_path(file);
+    subdir = tiledb::sm::path_win::uri_from_path(subdir);
+#endif
     CHECK(children[0] == file);
     if (backend_name != "s3") {
       CHECK(children[1] + "/" == subdir);
