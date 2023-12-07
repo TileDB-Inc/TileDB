@@ -1242,6 +1242,10 @@ URI ArrayDirectory::select_latest_array_schema_uri() {
     std::pair<uint64_t, uint64_t> ts_range;
     throw_if_not_ok(utils::parse::get_timestamp_range(uri, &ts_range));
 
+    std::stringstream ss;
+    ss << "URI: " << ts_range.second << " Latest: " << latest_ts << " End: " << timestamp_end_;
+    LOG_ERROR(ss.str());
+
     if (ts_range.second > latest_ts && ts_range.second <= timestamp_end_) {
       latest_uri = uri;
       latest_ts = ts_range.second;
