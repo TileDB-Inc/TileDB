@@ -418,6 +418,23 @@ class S3Scanner : public LsScanner<F, D> {
       int max_keys = 1000);
 
   /**
+   * Returns true if there are more results to fetch from S3.
+   */
+  [[nodiscard]] inline bool more_to_fetch() const {
+    return list_objects_outcome_.GetResult().GetIsTruncated();
+  }
+
+  /**
+   * Constructs an iterator to the beginning of the results for this scan.
+   *
+   * @return Iterator to the beginning of the results for this scan.
+   */
+  Iterator iterator() {
+    return Iterator(this);
+  }
+
+ private:
+  /**
    * Advance to the next object accepted by the filters for this scan.
    *
    * @param ptr Reference to the current data pointer.
@@ -443,10 +460,9 @@ class S3Scanner : public LsScanner<F, D> {
       } else {
         // Set the pointer to nullptr to indicate the end of results.
         ptr = nullptr;
-        return false;
       }
     }
-    return true;
+    return ptr != nullptr;
   }
 
   /**
@@ -455,6 +471,8 @@ class S3Scanner : public LsScanner<F, D> {
    *
    * @return A pointer to the first result in the new batch. The return value
    *    is used to update the pointer managed by the iterator during traversal.
+   *    If the request returned no results, this will return nullptr to mark the
+   *    end of the scan.
    * @sa LsScanIterator::operator++()
    * @sa S3Scanner::next(typename Iterator::pointer&)
    */
@@ -493,23 +511,11 @@ class S3Scanner : public LsScanner<F, D> {
     return begin_;
   }
 
-  /**
-   * Returns true if there are more results to fetch from S3.
-   */
-  [[nodiscard]] inline bool more_to_fetch() const {
-    return list_objects_outcome_.GetResult().GetIsTruncated();
-  }
-
-  Iterator iterator() {
-    return Iterator(this);
-  }
-
- private:
   /** Pointer to the S3 client initialized by VFS. */
   shared_ptr<TileDBS3Client> client_;
   /** Delimiter used for ListObjects request. */
   std::string delimiter_;
-  /** Iterators for the current objects fetched from S3. */
+  /** Pointers for the current objects fetched from S3. */
   typename Iterator::pointer begin_, end_;
 
   /** The current request being scanned. */

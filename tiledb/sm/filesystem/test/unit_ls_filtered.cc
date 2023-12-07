@@ -52,8 +52,7 @@ class VFSTest {
       , vfs_(&stats_, &io_, &compute_, tiledb::sm::Config())
       , test_tree_(test_tree)
       , prefix_(prefix)
-      , temp_dir_(prefix_)
-      , is_supported_(vfs_.supports_uri_scheme(temp_dir_)) {
+      , temp_dir_(prefix_) {
   }
 
   virtual ~VFSTest() {
@@ -62,10 +61,6 @@ class VFSTest {
     if (is_dir) {
       vfs_.remove_dir(temp_dir_).ok();
     }
-  }
-
-  inline bool is_supported() const {
-    return is_supported_;
   }
 
   /** FilePredicate for passing to ls_filtered that accepts all files. */
@@ -82,9 +77,6 @@ class VFSTest {
   std::string prefix_;
   tiledb::sm::URI temp_dir_;
   tiledb::sm::LsObjects expected_results_;
-
- protected:
-  bool is_supported_;
 };
 
 // TODO: Disable shouldfail when file:// or mem:// support is added.
@@ -120,11 +112,7 @@ TEST_CASE(
   prefix += std::filesystem::current_path().string() + "/ls_filtered_test";
 
   VFSTest vfs_test({1}, prefix);
-  if (!vfs_test.is_supported()) {
-    return;
-  }
   std::string backend = vfs_test.temp_dir_.backend_name();
-
   DYNAMIC_SECTION(backend << " unsupported backend should throw") {
     CHECK_THROWS_WITH(
         vfs_test.vfs_.ls_recursive(

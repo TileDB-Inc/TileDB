@@ -391,7 +391,6 @@ TEST_CASE(
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  // Currently only S3 is supported for VFS::ls_recursive.
   if (vfs_test.temp_dir_.is_s3()) {
     DYNAMIC_SECTION(backend << " supported backend should not throw") {
       CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(

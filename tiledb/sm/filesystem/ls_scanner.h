@@ -138,6 +138,8 @@ class LsScanIterator {
   /**
    * Prefix increment operator.
    * Calls the scanner's next() method to advance to the next object.
+   *
+   * @return Reference to this iterator after advancing to the next object.
    */
   LsScanIterator& operator++() {
     scanner_->next(ptr_);
@@ -147,6 +149,8 @@ class LsScanIterator {
   /**
    * Postfix increment operator.
    * Calls next() method to advance to the next object via prefix operator.
+   *
+   * @return Reference to this iterator prior to advancing to the next object.
    */
   LsScanIterator operator++(int) {
     LsScanIterator tmp(*this);
