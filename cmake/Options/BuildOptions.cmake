@@ -21,7 +21,7 @@ option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
 option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
-option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
+option(BUILD_SHARED_LIBS "Enables building TileDB as a shared library." OFF)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
 option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
 option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)

@@ -31,14 +31,18 @@ else()
   find_package(Clipp_EP REQUIRED)
 endif()
 
-add_executable(tiledb EXCLUDE_FROM_ALL
+add_executable(tiledb-cli EXCLUDE_FROM_ALL
   src/commands/help_command.cc
   src/commands/info_command.cc
   src/main/tiledb.cc
 )
 
+set_target_properties(tiledb-cli PROPERTIES
+  OUTPUT_NAME tiledb
+)
+
 # List of all tool targets
-set(TILEDB_TOOLS tiledb)
+set(TILEDB_TOOLS tiledb-cli)
 
 # Set up link and include directories for all tools
 foreach(TOOL ${TILEDB_TOOLS})

@@ -72,5 +72,5 @@ foreach(NAME IN LISTS BENCHMARKS)
     "${NAME}.cc"
     $<TARGET_OBJECTS:benchmark_core>
   )
-  target_link_libraries(${NAME} TileDB::tiledb_shared pthread)
+  target_link_libraries(${NAME} TileDB::tiledb pthread)
 endforeach()

@@ -86,7 +86,7 @@ target_link_libraries(tiledb_explore_msys_handle_leakage
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"

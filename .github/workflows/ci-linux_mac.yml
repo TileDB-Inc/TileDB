@@ -204,8 +204,9 @@ jobs:
 
           ###################################################
           # Build and run Examples
-          make -C $GITHUB_WORKSPACE/build -j3 examples
-          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+          # The following script must not be sourced.
+          # It relies on finding its source directory.
+          $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           ###################################################
           # Build benchmark code
@@ -215,6 +216,10 @@ jobs:
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: ./scripts/ci/posix/dump-core-stacks.sh
+
+      - name: List files in build directory on failure
+        run: du --exclude _deps -h $GITHUB_WORKSPACE/build
+        if: ${{ failure() }}
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed

@@ -1,8 +1,9 @@
 #
 # This file attempts to locate the TileDB library. If found, the following
 # imported targets are created:
-#   - TileDB::tiledb_shared
-#   - TileDB::tiledb_static
+#   - TileDB::tiledb (points to either a static or shared library)
+#   - TileDB::tiledb_shared (if TileDB is built as a shared library)
+#   - TileDB::tiledb_static (if TileDB is built as a static library)
 # And the following variables are defined:
 #   - TILEDB_FOUND
 #   - TileDB_FOUND
@@ -10,7 +11,7 @@
 
 @PACKAGE_INIT@
 
-if(@TILEDB_STATIC@) # TILEDB_STATIC
+if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
   include(CMakeFindDependencyMacro)
   find_dependency(Threads)
   find_dependency(BZip2)
@@ -43,9 +44,15 @@ endif()
 include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 check_required_components("@PROJECT_NAME@")
 
+if(@BUILD_SHARED_LIBS@ AND NOT TARGET TileDB::tiledb_shared) # BUILD_SHARED_LIBS AND NOT TARGET TileDB::tiledb_shared
+  add_library(TileDB::tiledb_shared ALIAS TileDB::tiledb)
+elseif(NOT TARGET TileDB::tiledb_static)
+  add_library(TileDB::tiledb_static ALIAS TileDB::tiledb)
+endif()
+
 # Define a convenience all-caps variable
 if (NOT DEFINED TILEDB_FOUND)
-  if (TARGET TileDB::tiledb_shared)
+  if (TARGET TileDB::tiledb)
     set(TILEDB_FOUND TRUE)
   else()
     set(TILEDB_FOUND FALSE)

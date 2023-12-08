@@ -9,9 +9,8 @@ env:
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
-  TILEDB_STATIC: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -EnableStaticTileDB'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
 
 jobs:
   build:
@@ -155,10 +154,6 @@ jobs:
           if ($env:TILEDB_SERIALIZATION -eq "ON") {
             $bootstrapOptions = "-EnableSerialization " + $bootstrapOptions
           }
-          # static already added above as initial default
-          # if ($env:TILEDB_STATIC -eq "ON") {
-          #  $bootstrapOptions = $bootstrapOptions + " -EnableStaticTileDB"
-          # }
           # if ($env:TILEDB_HDFS -eq "ON") {
           #  $bootstrapOptions = $bootstrapOptions + " -EnableHDFS"
           #}
@@ -389,11 +384,6 @@ jobs:
 
           #.\$CMakeBuildType\ExampleExe.exe
           $cmd = ".\$CMakeBuildType\ExampleExe.exe"
-          Write-Host "cmd: '$cmd'"
-          Invoke-Expression $cmd
-
-          #.\$CMakeBuildType\ExampleExe_static.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
