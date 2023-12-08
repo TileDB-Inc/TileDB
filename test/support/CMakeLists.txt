@@ -50,7 +50,7 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
+add_library(tiledb_test_support_lib STATIC EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SUPPORT_SOURCES}
 )
