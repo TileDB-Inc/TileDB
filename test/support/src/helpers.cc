@@ -45,7 +45,6 @@
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
-#include "tiledb/common/random/prng.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -971,18 +970,11 @@ void open_array(
   CHECK(rc == TILEDB_OK);
 }
 
-std::string random_name(std::string prefix) {
-  // Generate random number using global PRNG
-  PRNG& prng = PRNG::get();
-  auto rand = prng();
-
-  // Ensure prefix ends with "-"
-  if (!prefix.ends_with("-")) {
-    prefix = prefix + "-";
-  }
-
-  // Generate random path
-  return prefix + std::to_string(rand);
+std::string random_name(const std::string& prefix) {
+  std::stringstream ss;
+  ss << prefix << "-" << std::this_thread::get_id() << "-"
+     << TILEDB_TIMESTAMP_NOW_MS;
+  return ss.str();
 }
 
 void remove_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
