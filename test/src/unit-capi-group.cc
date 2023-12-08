@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -84,7 +84,6 @@ struct GroupFx {
   void remove_temp_dir(const std::string& path) const;
   std::string get_golden_walk(const std::string& path);
   std::string get_golden_ls(const std::string& path);
-  static std::string random_name(const std::string& prefix);
   std::vector<std::pair<tiledb::sm::URI, tiledb_object_t>> read_group(
       tiledb_group_t* group, bool use_get_member_by_index_v2 = true) const;
   void set_group_timestamp(
@@ -357,13 +356,6 @@ std::string GroupFx::get_golden_ls(const std::string& path) {
   golden += path + "sparse_arrays GROUP\n";
 
   return golden;
-}
-
-std::string GroupFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 TEST_CASE_METHOD(

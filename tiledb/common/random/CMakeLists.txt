@@ -28,6 +28,7 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 list(APPEND SOURCES
+  helpers.cc  
   prng.cc    
   seeder.cc
 )
