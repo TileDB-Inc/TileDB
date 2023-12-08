@@ -177,12 +177,12 @@ TEST_CASE_METHOD(VFSFx, "C API: Test virtual filesystem", "[capi][vfs]") {
     }
   }
 
-  // Note: Azure not currently tested...?
+  /** Note: Azure testing not currently enabled.
   if constexpr (tiledb::sm::filesystem::azure_enabled) {
     SECTION("Filesystem: Azure") {
       path = "azure://" + random_name("tiledb") + "/tiledb_test/";
     }
-  }
+  } */
 
   std::string local_prefix = "";
   SECTION("Filesystem: Local") {
