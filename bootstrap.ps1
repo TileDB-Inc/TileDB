@@ -18,7 +18,7 @@ Semicolon separated list to binary dependencies.
 
 .PARAMETER Linkage
 Specify the linkage type to build TileDB with. Valid values are
-"static" and "shared". Default is "static".
+"static" and "shared". Default is "shared".
 
 .PARAMETER CMakeGenerator
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
@@ -118,7 +118,7 @@ https://github.com/TileDB-Inc/TileDB
 Param(
     [string]$Prefix,
     [string]$Dependency,
-    [string]$Linkage = "static",
+    [string]$Linkage = "shared",
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
@@ -246,17 +246,18 @@ if ($DisableWebP.IsPresent) {
   $BuildWebP="OFF"
 }
 
-$BuildSharedLibs = "OFF";
-if ($Linkage -eq "shared") {
-    $BuildSharedLibs = "ON"
+$BuildSharedLibs = "ON";
+if ($Linkage -eq "static") {
+    $BuildSharedLibs = "OFF"
 }
-elseif ($Linkage -ne "static") {
+elseif ($Linkage -ne "shared") {
     Write-Error "Invalid linkage type: $Linkage. Valid values are 'static' and 'shared'."
     exit 1
 }
 
 if ($EnableStaticTileDB.IsPresent) {
-    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. TileDB is now built as a static library by default. Use -Linkage shared to build a shared library."
+    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. Use -Linkage static instead."
+    $BuildSharedLibs = "OFF"
     if ($Linkage -eq "shared") {
         Write-Error "Cannot specify -EnableStaticTileDB alongside -Linkage shared."
         exit 1
