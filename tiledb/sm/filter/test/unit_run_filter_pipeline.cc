@@ -197,13 +197,13 @@ class Add1InPlace : public tiledb::sm::Filter {
   }
 
   Add1InPlace* clone_impl() const override {
-    return new Add1InPlace(filter_data_type_);
+    return tdb_new(Add1InPlace, filter_data_type_);
   }
 };
 
 /**
  * Simple filter that increments every element of the input stream, writing the
- * output to a new buffer. Does not modify the input stream.
+ * output to another buffer. Does not modify the input stream.
  */
 class Add1OutOfPlace : public tiledb::sm::Filter {
  public:
@@ -226,7 +226,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
-    // Add a new output buffer.
+    // Add another output buffer.
     RETURN_NOT_OK(output->prepend_buffer(input_size));
     output->reset_offset();
 
@@ -264,7 +264,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
     auto input_size = input->size();
     auto nelts = input->size() / sizeof(uint64_t);
 
-    // Add a new output buffer.
+    // Add another output buffer.
     RETURN_NOT_OK(output->prepend_buffer(input->size()));
     output->reset_offset();
 
@@ -289,7 +289,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   }
 
   Add1OutOfPlace* clone_impl() const override {
-    return new Add1OutOfPlace(filter_data_type_);
+    return tdb_new(Add1OutOfPlace, filter_data_type_);
   }
 };
 
@@ -368,7 +368,7 @@ class AddNInPlace : public tiledb::sm::Filter {
   }
 
   AddNInPlace* clone_impl() const override {
-    auto clone = new AddNInPlace(filter_data_type_);
+    auto clone = tdb_new(AddNInPlace, filter_data_type_);
     clone->increment_ = increment_;
     return clone;
   }
@@ -463,14 +463,14 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   }
 
   PseudoChecksumFilter* clone_impl() const override {
-    return new PseudoChecksumFilter(filter_data_type_);
+    return tdb_new(PseudoChecksumFilter, filter_data_type_);
   }
 };
 
 /**
  * Simple filter that increments every element of the input stream, writing the
- * output to a new buffer. The input metadata is treated as a part of the input
- * data.
+ * output to another buffer. The input metadata is treated as a part of the
+ * input data.
  */
 class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
@@ -495,7 +495,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
     auto nelts = input_size / sizeof(uint64_t),
          md_nelts = input_md_size / sizeof(uint64_t);
 
-    // Add a new output buffer.
+    // Add another output buffer.
     RETURN_NOT_OK(output->prepend_buffer(input_size + input_md_size));
     output->reset_offset();
 
@@ -555,9 +555,9 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
     RETURN_NOT_OK(input_metadata->read(&orig_input_size, sizeof(uint32_t)));
     RETURN_NOT_OK(input_metadata->read(&orig_md_size, sizeof(uint32_t)));
 
-    // Add a new output buffer.
+    // Add another output buffer.
     RETURN_NOT_OK(output->prepend_buffer(orig_input_size));
-    // Add a new output metadata buffer.
+    // Add another output metadata buffer.
     RETURN_NOT_OK(output_metadata->prepend_buffer(orig_md_size));
 
     // Restore original data
@@ -594,7 +594,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   }
 
   Add1IncludingMetadataFilter* clone_impl() const override {
-    return new Add1IncludingMetadataFilter(filter_data_type_);
+    return tdb_new(Add1IncludingMetadataFilter, filter_data_type_);
   }
 };
 
@@ -609,7 +609,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   ThreadPool tp(4);
   CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-  // Check new size and number of chunks
+  // Check size and number of chunks
   CHECK(tile.size() == 0);
 
   CHECK(
@@ -664,9 +664,9 @@ TEST_CASE(
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -694,7 +694,7 @@ TEST_CASE(
   WriterTile::set_max_tile_chunk_size(80);
   CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check new size and number of chunks
+  // Check size and number of chunks
   CHECK(tile.size() == 0);
   CHECK(
       tile.filtered_buffer().size() ==
@@ -754,7 +754,7 @@ TEST_CASE(
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -800,7 +800,7 @@ TEST_CASE(
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -855,9 +855,9 @@ TEST_CASE(
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -888,7 +888,7 @@ TEST_CASE(
     WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -939,7 +939,7 @@ TEST_CASE(
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1002,7 +1002,7 @@ TEST_CASE(
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1048,7 +1048,7 @@ TEST_CASE(
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1103,9 +1103,9 @@ TEST_CASE(
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -1136,7 +1136,7 @@ TEST_CASE(
     WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1187,7 +1187,7 @@ TEST_CASE(
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1304,9 +1304,9 @@ TEST_CASE(
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -1338,7 +1338,7 @@ TEST_CASE(
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check new size and number of chunks
+  // Check size and number of chunks
   CHECK(tile.size() == 0);
   CHECK(
       tile.filtered_buffer().size() ==
@@ -1399,7 +1399,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   SECTION("- Single stage") {
     CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1457,7 +1457,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
     for (uint64_t i = 0; i < nelts; i++)
       expected_checksum_2 += i + 2;
 
-    // Check new size and number of chunks.
+    // Check size and number of chunks.
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1524,9 +1524,9 @@ TEST_CASE(
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -1560,7 +1560,7 @@ TEST_CASE(
     WriterTile::set_max_tile_chunk_size(80);
     CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1621,7 +1621,7 @@ TEST_CASE(
     std::vector<uint64_t> expected_checksums2{
         119, 111, 297, 252, 445, 545, 1390, 845, 1146};
 
-    // Check new size and number of chunks
+    // Check size and number of chunks
     CHECK(tile.size() == 0);
     CHECK(
         tile.filtered_buffer().size() ==
@@ -1753,9 +1753,9 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
       32,   // Chunk0: 4 cells.
       80,   // 10 cells, still makes it into this chunk as current size < 50%.
       48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, new size > 50% and > than 10 cells.
+      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
       56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, new size > 50%.
+      72,   // Chunk4: 9 cells, size > 50%.
       8,    // Chunk4: 10 cell, full.
       80,   // Chunk5: 10 cells.
       160,  // Chunk6: 20 cells.
@@ -1796,7 +1796,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   WriterTile::set_max_tile_chunk_size(80);
   CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check new size and number of chunks
+  // Check size and number of chunks
   CHECK(tile.size() == 0);
   CHECK(
       tile.filtered_buffer().size() ==
@@ -1934,28 +1934,32 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
   // List of potential filters to use. All of these filters can occur anywhere
   // in the pipeline.
   std::vector<std::function<tiledb::sm::Filter*(void)>> constructors = {
-      []() { return new Add1InPlace(Datatype::UINT64); },
-      []() { return new Add1OutOfPlace(Datatype::UINT64); },
-      []() { return new Add1IncludingMetadataFilter(Datatype::UINT64); },
-      []() { return new BitWidthReductionFilter(Datatype::UINT64); },
-      []() { return new BitshuffleFilter(Datatype::UINT64); },
-      []() { return new ByteshuffleFilter(Datatype::UINT64); },
+      []() { return tdb_new(Add1InPlace, Datatype::UINT64); },
+      []() { return tdb_new(Add1OutOfPlace, Datatype::UINT64); },
+      []() { return tdb_new(Add1IncludingMetadataFilter, Datatype::UINT64); },
+      []() { return tdb_new(BitWidthReductionFilter, Datatype::UINT64); },
+      []() { return tdb_new(BitshuffleFilter, Datatype::UINT64); },
+      []() { return tdb_new(ByteshuffleFilter, Datatype::UINT64); },
       []() {
-        return new CompressionFilter(
-            tiledb::sm::Compressor::BZIP2, -1, Datatype::UINT64);
+        return tdb_new(
+            CompressionFilter,
+            tiledb::sm::Compressor::BZIP2,
+            -1,
+            Datatype::UINT64);
       },
-      []() { return new PseudoChecksumFilter(Datatype::UINT64); },
-      []() { return new ChecksumMD5Filter(Datatype::UINT64); },
-      []() { return new ChecksumSHA256Filter(Datatype::UINT64); },
+      []() { return tdb_new(PseudoChecksumFilter, Datatype::UINT64); },
+      []() { return tdb_new(ChecksumMD5Filter, Datatype::UINT64); },
+      []() { return tdb_new(ChecksumSHA256Filter, Datatype::UINT64); },
       [&encryption_key]() {
-        return new EncryptionAES256GCMFilter(encryption_key, Datatype::UINT64);
+        return tdb_new(
+            EncryptionAES256GCMFilter, encryption_key, Datatype::UINT64);
       },
   };
 
   // List of potential filters that must occur at the beginning of the pipeline.
   std::vector<std::function<tiledb::sm::Filter*(void)>> constructors_first = {
       // Pos-delta would (correctly) return error after e.g. compression.
-      []() { return new PositiveDeltaFilter(Datatype::UINT64); }};
+      []() { return tdb_new(PositiveDeltaFilter, Datatype::UINT64); }};
 
   ThreadPool tp(4);
   for (int i = 0; i < 100; i++) {
@@ -1979,12 +1983,12 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
         auto idx = (unsigned)rng_constructors_first(gen);
         tiledb::sm::Filter* filter = constructors_first[idx]();
         pipeline.add_filter(*filter);
-        delete filter;
+        tdb_delete(filter);
       } else {
         auto idx = (unsigned)rng_constructors(gen);
         tiledb::sm::Filter* filter = constructors[idx]();
         pipeline.add_filter(*filter);
-        delete filter;
+        tdb_delete(filter);
       }
     }
 
