@@ -19,10 +19,6 @@
                 "azure-storage-blobs-cpp",
                 {
                     "name": "libxml2",
-                    "features": [
-                        "lzma",
-                        "zlib"
-                    ],
                     "default-features": false,
                     "platform": "!windows"
                 }
