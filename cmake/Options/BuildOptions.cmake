@@ -39,7 +39,7 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
 if (NOT TILEDB_VCPKG)
-  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
 endif()
 
 # enable assertions by default for debug builds
