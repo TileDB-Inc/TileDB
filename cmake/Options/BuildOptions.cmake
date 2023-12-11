@@ -18,7 +18,6 @@ option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings"
 option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
 option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release, on for debug build)." OFF)
 option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
-option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
 option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
 option(BUILD_SHARED_LIBS "Enables building TileDB as a shared library." ON)
 option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)

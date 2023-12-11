@@ -124,14 +124,6 @@ else()
   set(TILEDB_DEPS_NO_DEFAULT_PATH)
 endif()
 
-# If this is an in-IDE build, we need to disable the superbuild and explicitly
-# set the EP base dir. The normal 'cmake && make' process won't need this step,
-# it is for better CLion support of this superbuild architecture.
-if (TILEDB_CMAKE_IDE)
-  set(TILEDB_SUPERBUILD OFF)
-  set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
-endif()
-
 # Set main TileDB Source
 set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
