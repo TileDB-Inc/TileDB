@@ -52,6 +52,7 @@
 #include "add_1_including_metadata_filter.h"
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
+#include "filter_test_support.h"
 #include "pseudo_checksum_filter.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -143,6 +144,10 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
+  OffsetChunkChecker<uint64_t> filtered_chunk_checker{
+      nelts * sizeof(uint64_t), nelts, 0, 1};
+  GridTileChecker<uint64_t> unfiltered_tile_checker{nelts, 0, 1};
+
   CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
   // Check size and number of chunks
@@ -152,38 +157,17 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
       tile.filtered_buffer().size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
 
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      0);  // First chunk metadata size
-  offset += sizeof(uint32_t);
+  // Check the number of chunks.
+  auto nchunks = tile.filtered_buffer().value_at_as<uint64_t>(0);
+  CHECK(nchunks == 1);
 
-  // Check all elements unchanged.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == i);
-    offset += sizeof(uint64_t);
-  }
+  // Check the chunks.
+  uint64_t chunk_offset = sizeof(uint64_t);
+  filtered_chunk_checker.check(tile.filtered_buffer(), chunk_offset);
 
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
   run_reverse(config, tp, unfiltered_tile, pipeline);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
+  unfiltered_tile_checker.check(unfiltered_tile);
 }
 
 TEST_CASE(
