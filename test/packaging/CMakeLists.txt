@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-# Expects invocation wtih -DCMAKE_PREFIX_PATH=<directory-of-tiledb-installation>
+# Expects invocation with -DCMAKE_PREFIX_PATH=<directory-of-tiledb-installation>
 
 cmake_minimum_required(VERSION 3.21)
 
