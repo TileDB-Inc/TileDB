@@ -951,3 +951,8 @@ install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
 include(${CMAKE_SOURCE_DIR}/cmake/package.cmake)
+
+# Add alias for compatibility with earlier TileDB versions.
+add_custom_target(install-tiledb
+  COMMENT "The install-tiledb target is deprecated. Use install instead.")
+add_dependencies(install-tiledb install)

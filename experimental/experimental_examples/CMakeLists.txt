@@ -41,3 +41,7 @@ if (TILEDB_CPP_API)
   add_subdirectory(cpp_api)
   add_dependencies(experimental_examples experimental_examples_cpp)
 endif()
+
+# Add alias for compatibility.
+add_custom_target(experimental-examples)
+add_dependencies(experimental-examples experimental_examples)
