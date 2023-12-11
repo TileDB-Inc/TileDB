@@ -458,12 +458,12 @@ add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 add_custom_target(
   update-embedded-magic-data
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${unofficial-libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
   # need to work in 'local' directory with no prefix paths so no paths are included in archive
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
   COMMAND ${CMAKE_COMMAND} -E copy "magic_mgc_gzipped.bin.tar.bz2" "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}"
+  DEPENDS "${unofficial-libmagic_DICTIONARY}"
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
@@ -505,10 +505,6 @@ endif()
 if (TILEDB_SERIALIZATION)
   add_definitions(-DTILEDB_SERIALIZATION)
   message(STATUS "The TileDB library is compiled with query serialization enabled.")
-
-  if(MSVC AND TILEDB_CURL_EP_BUILT)
-    target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DCURL_STATICLIB=1)
-  endif()
 endif()
 
 ############################################################
@@ -528,14 +524,15 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE ${TileDB_blosc_LINK_OPT
 
 # Find OpenSSL first in case it's needed for S3 or Azure
 if (NOT WIN32)
-  find_package(OpenSSL_EP REQUIRED)
+  find_package(OpenSSL REQUIRED)
 endif()
 
 # S3 dependencies
 if (TILEDB_S3)
   message(STATUS "The TileDB library is compiled with S3 support.")
 
-  find_package(AWSSDK_EP REQUIRED)
+  set(AWS_SERVICES identity-management sts s3)
+  find_package(AWSSDK REQUIRED QUIET COMPONENTS ${AWS_SERVICES})
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       ${AWSSDK_LINK_LIBRARIES}
@@ -564,7 +561,7 @@ endif()
 
 # Libcurl
 if (TILEDB_SERIALIZATION)
-  find_package(Curl_EP REQUIRED)
+  find_package(Curl REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       CURL::libcurl
@@ -603,12 +600,12 @@ endif()
 # Required dependencies. These come last as any prior dependencies relying on
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
-find_package(Bzip2_EP REQUIRED)
-find_package(LZ4_EP REQUIRED)
-find_package(Spdlog_EP REQUIRED)
-find_package(Zlib_EP REQUIRED)
-find_package(Zstd_EP REQUIRED)
-find_package(Magic_EP REQUIRED)
+find_package(BZip2 REQUIRED)
+find_package(LZ4 REQUIRED)
+find_package(Spdlog REQUIRED)
+find_package(ZLIB REQUIRED)
+find_package(Zstd REQUIRED)
+find_package(unofficial-libmagic REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
@@ -616,11 +613,11 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     ZLIB::ZLIB
     ${ZSTD_TARGET}
-    libmagic
+    unofficial::libmagic::libmagic
 )
 
 if(TILEDB_WEBP)
-  find_package(Webp_EP REQUIRED)
+  find_package(Webp REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
@@ -763,7 +760,7 @@ endif()
 
 # Serialization
 if(TILEDB_SERIALIZATION)
-  find_package(Capnp_EP REQUIRED)
+  find_package(CapnProto REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
           INTERFACE
           CapnProto::capnp
@@ -790,14 +787,8 @@ if(TILEDB_SERIALIZATION)
   #       the capnp driver needs to be able to find the plugin executables (eg capnpc-c++).
   #       For system installed capnp binaries we rely on the user to have their PATH
   #       include the directory with CapNProto plugin binaries.
-  if(TILEDB_CAPNP_EP_BUILT)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${TILEDB_EP_BASE}/install/bin" "${CAPNP_EXECUTABLE}" compile -I "${TILEDB_EP_BASE}/install/include")
-  elseif(TILEDB_VCPKG)
-    set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
-    list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
-  else()
-    list(APPEND CAPNP_COMPILE_COMMAND "${CAPNP_EXECUTABLE}" compile)
-  endif()
+  set(CAPNP_PLUGIN_DIR $<TARGET_FILE_DIR:CapnProto::capnp_tool>)
+  list(APPEND CAPNP_COMPILE_COMMAND "${CMAKE_COMMAND}" -E env PATH="${CAPNP_PLUGIN_DIR}" "${CAPNP_EXECUTABLE}" compile "-I${CAPNP_INCLUDE_DIRECTORY}")
 
   # Add the rest of the capnp compile command
   list(APPEND CAPNP_COMPILE_COMMAND -oc++:"${TILEDB_SERIALIZATION_GENERATED_DIR}" "${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp" --src-prefix="${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization")
@@ -808,8 +799,6 @@ if(TILEDB_SERIALIZATION)
     COMMAND
       "${CAPNP_COMPILE_COMMAND}"
     DEPENDS ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/serialization/tiledb-rest.capnp
-    WORKING_DIRECTORY
-      ${TILEDB_EP_BASE}/..
     COMMAND_EXPAND_LISTS
     COMMENT "Re-generate tiledb-rest.capnp.<h,c++> files for serialization support"
     )

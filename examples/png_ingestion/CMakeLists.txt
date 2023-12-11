@@ -53,7 +53,7 @@ add_executable(tiledb_png "src/main.cc")
 target_link_libraries(tiledb_png TileDB::tiledb)
 
 # Find and link with libpng.
-find_package(Zlib_EP REQUIRED)
+find_package(ZLIB REQUIRED)
 find_package(PNG REQUIRED)
 target_link_libraries(tiledb_png "${PNG_LIBRARIES}")
 target_include_directories(tiledb_png PRIVATE "${PNG_INCLUDE_DIRS}")
