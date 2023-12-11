@@ -34,7 +34,6 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
-    --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
     --linkage                       specify the linkage of tiledb. Defaults to static.
@@ -48,7 +47,6 @@ Configuration:
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
     --disable-webp                  disables building of webp library
-    --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
     --enable-static-tiledb          enables building TileDB as a static library (deprecated, use --linkage=static)
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
@@ -88,7 +86,6 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
-tiledb_vcpkg="ON"
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
@@ -119,8 +116,6 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
-    --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
-                    tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --linkage=*) linkage=`arg "$1"`;;
@@ -132,7 +127,6 @@ while test $# != 0; do
     --disable-stats) tiledb_stats="OFF";;
     --disable-avx2) tiledb_disable_avx2="-DCOMPILER_SUPPORTS_AVX2=FALSE";;
     --disable-webp) tiledb_build_webp="OFF";;
-    --disable-vcpkg) tiledb_vcpkg="OFF";;
     --enable-assertions) tiledb_assertions="ON";;
     --enable-debug) build_type="Debug";;
     --enable-release-symbols) build_type="RelWithDebInfo";;
@@ -165,8 +159,6 @@ done
 IFS=',' read -ra enables <<< "$enable_multiple"
 for en in "${enables[@]}"; do
   case "$en" in
-    vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
-           tiledb_vcpkg="ON";;
     assertions) tiledb_assertions="ON";;
     debug) build_type="Debug";;
     release-symbols) build_type="RelWithDebInfo";;
@@ -238,7 +230,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
     -DBUILD_SHARED_LIBS=${build_shared_libs} \
-    -DTILEDB_VCPKG=${tiledb_vcpkg} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
     -DTILEDB_HDFS=${tiledb_hdfs} \
