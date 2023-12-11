@@ -33,7 +33,10 @@ project(Test_TileDBConfigVersion_h)
 
 # Parse version numbers out of tiledb_version.h file
 
-find_file(tiledb_version_h tiledb_version.h PATH_SUFFIXES "include/TileDB" REQUIRED)
+find_file(
+        tiledb_version_h tiledb_version.h
+        PATH_SUFFIXES "include/TileDB" "include/tiledb" REQUIRED
+)
 file(READ ${tiledb_version_h} ver)
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
