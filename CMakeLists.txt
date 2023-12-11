@@ -137,31 +137,9 @@ set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
 set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 
-# Perform superbuild config and exit.
-if (TILEDB_SUPERBUILD)
-  project(TileDB-Superbuild)
-
-  # Override default install prefix if not set
-  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
-    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
-  endif()
-
-  message(STATUS "Starting TileDB superbuild.")
-  include("cmake/TileDB-Superbuild.cmake")
-  message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
-  # The superbuild file incorporates this file as an external project with the
-  # superbuild off. Thus we stop processing this file here, knowing that we'll
-  # come back later.
-  return()
-endif()
-
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
-# Paths to locate the installed external projects.
-set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
-set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 
 ############################################################
 # Compile options/definitions for all targets
@@ -529,9 +507,6 @@ add_subdirectory(experimental/experimental_examples)
 
 # Build tools
 if (TILEDB_TOOLS)
-  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
-    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
-  endif()
   add_subdirectory(tools)
 endif()
 

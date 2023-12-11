@@ -7,9 +7,6 @@
 
 include(CMakeDependentOption)
 
-option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
-option(TILEDB_VCPKG "If true, use vcpkg to download and build dependencies." ON)
-cmake_dependent_option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF "NOT TILEDB_VCPKG" OFF)
 option(TILEDB_SANITIZER "Sets the sanitizers to use. Only address is currently supported." "")
 option(TILEDB_VCPKG_BASE_TRIPLET "Sets the base vcpkg triplet when building with sanitizers." "")
 option(TILEDB_REMOVE_DEPRECATIONS "If true, do not build deprecated APIs." OFF)
@@ -46,10 +43,6 @@ if (DEFINED TILEDB_STATIC)
   else()
     set(BUILD_SHARED_LIBS ON)
   endif()
-endif()
-
-if (NOT TILEDB_VCPKG)
-  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
 endif()
 
 # enable assertions by default for debug builds

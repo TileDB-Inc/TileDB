@@ -27,15 +27,6 @@
 # TileDB Toolchain Setup
 ############################################################
 
-if (NOT TILEDB_VCPKG)
-    return()
-endif()
-
-# We've already run vcpkg by the time the super build is finished
-if (NOT TILEDB_SUPERBUILD)
-    return()
-endif()
-
 if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     if(DEFINED ENV{VCPKG_ROOT})
         set(CMAKE_TOOLCHAIN_FILE
