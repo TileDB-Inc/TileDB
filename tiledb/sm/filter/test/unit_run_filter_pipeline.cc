@@ -53,14 +53,12 @@
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
 #include "pseudo_checksum_filter.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
-#include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::sm;
