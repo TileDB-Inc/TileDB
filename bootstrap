@@ -37,7 +37,7 @@ Configuration:
     --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
-    --linkage                       specify the linkage of tiledb. Defaults to static.
+    --linkage                       specify the linkage of tiledb. Defaults to shared.
                                     [static|shared]
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
@@ -143,7 +143,7 @@ while test $# != 0; do
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
-    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default and linkage is controlled with the --linkage option."
+    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                             enable_static_tiledb="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
@@ -180,7 +180,7 @@ for en in "${enables[@]}"; do
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
     hdfs) tiledb_hdfs="ON";;
-    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default and linkage is controlled with the --linkage option."
+    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                     enable_static_tiledb="ON";;
     experimental-features) tiledb_experimental_features="ON";;
     rest-tests) tiledb_tests_enable_rest="ON";;
@@ -193,16 +193,16 @@ if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
 fi
 
-if [ "${linkage}" = "static" ] || [ "${linkage}" = "" ]; then
-    build_shared_libs="OFF"
-elif [ "${linkage}" = "shared" ]; then
+if [ "${linkage}" = "shared" ] || [ "${linkage}" = "" ]; then
     build_shared_libs="ON"
+elif [ "${linkage}" = "static" ] || [ "${enable_static_tiledb}" = "ON" ]; then
+    build_shared_libs="OFF"
 else
     die "unknown linkage: ${linkage}"
 fi
 
 # Fail if both --linkage=shared and --enable-static-tiledb are specified
-if [ "${build_shared_libs}" = "ON" ] && [ "${enable_static_tiledb}" = "ON" ]; then
+if [ "${linkage}" = "shared" ] && [ "${enable_static_tiledb}" = "ON" ]; then
     die "cannot specify both --linkage=shared and --enable-static-tiledb"
 fi
 
