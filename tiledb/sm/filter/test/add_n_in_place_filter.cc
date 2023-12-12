@@ -104,7 +104,7 @@ void AddNInPlace::set_increment(uint64_t increment) {
 }
 
 AddNInPlace* AddNInPlace::clone_impl() const {
-  auto clone = new AddNInPlace(filter_data_type_);
+  auto clone = tdb_new(AddNInPlace, filter_data_type_);
   clone->increment_ = increment_;
   return clone;
 }
