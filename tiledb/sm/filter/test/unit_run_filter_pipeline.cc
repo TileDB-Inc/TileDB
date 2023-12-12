@@ -34,6 +34,7 @@
  * forward.
  */
 
+#include <algorithm>
 #include <random>
 
 #include <test/support/tdb_catch.h>
@@ -144,7 +145,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  OffsetChunkChecker<uint64_t> filtered_chunk_checker{
+  GridChunkChecker<uint64_t> filtered_chunk_checker{
       nelts * sizeof(uint64_t), nelts, 0, 1};
   GridTileChecker<uint64_t> unfiltered_tile_checker{nelts, 0, 1};
 
@@ -158,8 +159,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
 
   // Check the number of chunks.
-  auto nchunks = tile.filtered_buffer().value_at_as<uint64_t>(0);
-  CHECK(nchunks == 1);
+  auto nchunks_actual = tile.filtered_buffer().value_at_as<uint64_t>(0);
+  CHECK(nchunks_actual == 1);
 
   // Check the chunks.
   uint64_t chunk_offset = sizeof(uint64_t);
@@ -177,6 +178,31 @@ TEST_CASE(
   // Set up test data
   const uint64_t nelts = 100;
   auto tile = make_increasing_tile(nelts);
+
+  // TODO: HERE
+  // Move all the checking for the chunks into this chunk checker array.
+  std::array<tdb_unique_ptr<ChunkCheckerBase>, 9> chunk_checkers;
+  chunk_checkers[0] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 14 * sizeof(uint64_t), 14, 0, 1));
+  chunk_checkers[1] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 6 * sizeof(uint64_t), 6, 0, 1));
+  chunk_checkers[2] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 11 * sizeof(uint64_t), 11, 0, 1));
+  chunk_checkers[3] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 7 * sizeof(uint64_t), 7, 0, 1));
+  chunk_checkers[4] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+  chunk_checkers[5] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+  chunk_checkers[6] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 20 * sizeof(uint64_t), 20, 0, 1));
+  chunk_checkers[7] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+  chunk_checkers[8] = tdb_unique_ptr<ChunkCheckerBase>(
+      tdb_new(GridChunkChecker<uint64_t>, 12 * sizeof(uint64_t), 12, 0, 1));
+
+  // CHECK(chunk_checkers[0] != nullptr);
+  // CHECK(goo != nullptr);
 
   // Set up test data
   std::vector<uint64_t> sizes{
@@ -212,21 +238,48 @@ TEST_CASE(
   FilterPipeline pipeline;
   ThreadPool tp(4);
   WriterTile::set_max_tile_chunk_size(80);
+
   CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check size and number of chunks
+  // Check all data is stored in filtered buffer.
   CHECK(tile.size() == 0);
+
+  // Check the total size.
   CHECK(
       tile.filtered_buffer().size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
 
-  offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      9);  // Number of chunks
-  offset += sizeof(uint64_t);
+  // Check the number of tiles.
+  uint64_t nchunks_expected = 9;
+  auto nchunks_actual = tile.filtered_buffer().value_at_as<uint64_t>(0);
+  CHECK(nchunks_actual == nchunks_expected);  // Number of chunks
+  auto nchunks_to_check = std::min(nchunks_expected, nchunks_actual);
+
+  // TODO: Get the chunk offset.
+  auto filtered_buffer = tile.filtered_buffer();
+  std::vector<uint64_t> chunk_offsets(nchunks_to_check);
+  chunk_offsets[0] = sizeof(uint64_t);
+
+  for (uint64_t chunk_index = 0; chunk_index < nchunks_to_check - 1;
+       ++chunk_index) {
+    auto actual_chunk_size =
+        chunk_checkers[chunk_index]->actual_total_chunk_size(
+            filtered_buffer, chunk_offsets[chunk_index]);
+    auto expected_chunk_size =
+        chunk_checkers[chunk_index]->expected_total_chunk_size();
+    CHECK(actual_chunk_size == expected_chunk_size);
+
+    chunk_offsets[chunk_index + 1] = expected_chunk_size;
+  }
+  /*
+  for (uint64_t chunk_index = 0; chunk_index < 9; ++chunk_index) {
+    chunk_checkers[chunk_index]->check(
+        filtered_buffer, chunk_offset_values[chunk_index]);
+  }
+  */
 
   uint64_t el = 0;
+  offset = sizeof(uint64_t);
   for (uint64_t i = 0; i < 9; i++) {
     CHECK(
         tile.filtered_buffer().value_at_as<uint32_t>(offset) ==

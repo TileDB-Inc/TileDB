@@ -36,6 +36,19 @@ class ChunkCheckerBase {
   virtual void check_metadata(
       const FilteredBuffer& buffer, uint64_t chunk_offset) const = 0;
 
+  uint64_t expected_total_chunk_size() const {
+    return 3 * sizeof(uint32_t) + expected_original_chunk_length() +
+           expected_filtered_chunk_length() + expected_metadata_length();
+  }
+
+  uint64_t actual_total_chunk_size(
+      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
+    return 3 * sizeof(uint32_t) +
+           actual_original_chunk_length(buffer, chunk_offset) +
+           actual_filtered_chunk_length(buffer, chunk_offset) +
+           actual_metadata_length(buffer, chunk_offset);
+  }
+
  protected:
   inline uint32_t actual_original_chunk_length(
       const FilteredBuffer& buffer, uint64_t chunk_offset) const {
@@ -70,9 +83,9 @@ class ChunkCheckerBase {
 };
 
 template <typename T>
-class OffsetChunkChecker : public ChunkCheckerBase {
+class GridChunkChecker : public ChunkCheckerBase {
  public:
-  OffsetChunkChecker(
+  GridChunkChecker(
       uint32_t original_chunk_length,
       uint32_t num_elements,
       T starting_value,
@@ -82,10 +95,6 @@ class OffsetChunkChecker : public ChunkCheckerBase {
       , starting_value_{starting_value}
       , spacing_{spacing} {
   }
-
-  OffsetChunkChecker() = delete;
-
-  virtual ~OffsetChunkChecker() = default;
 
   void check_filtered_data(
       const FilteredBuffer& buffer, uint64_t chunk_offset) const override {
