@@ -180,7 +180,6 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   unfiltered_tile_checker.check(unfiltered_tile);
 }
 
-/*
 TEST_CASE(
     "Filter: Test empty pipeline var sized", "[filter][empty-pipeline][var]") {
   tiledb::sm::Config config;
@@ -195,21 +194,21 @@ TEST_CASE(
   chunk_checkers[0] = tdb_unique_ptr<ChunkCheckerBase>(
       tdb_new(GridChunkChecker<uint64_t>, 14 * sizeof(uint64_t), 14, 0, 1));
   chunk_checkers[1] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 6 * sizeof(uint64_t), 6, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 6 * sizeof(uint64_t), 6, 14, 1));
   chunk_checkers[2] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 11 * sizeof(uint64_t), 11, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 11 * sizeof(uint64_t), 11, 20, 1));
   chunk_checkers[3] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 7 * sizeof(uint64_t), 7, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 7 * sizeof(uint64_t), 7, 31, 1));
   chunk_checkers[4] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 38, 1));
   chunk_checkers[5] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 48, 1));
   chunk_checkers[6] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 20 * sizeof(uint64_t), 20, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 20 * sizeof(uint64_t), 20, 58, 1));
   chunk_checkers[7] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 78, 1));
   chunk_checkers[8] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 12 * sizeof(uint64_t), 12, 0, 1));
+      tdb_new(GridChunkChecker<uint64_t>, 12 * sizeof(uint64_t), 12, 88, 1));
 
   // CHECK(chunk_checkers[0] != nullptr);
   // CHECK(goo != nullptr);
@@ -259,27 +258,28 @@ TEST_CASE(
       tile.filtered_buffer().size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
 
-  // Check the number of tiles.
   uint64_t nchunks_expected = 9;
   auto nchunks_actual = tile.filtered_buffer().value_at_as<uint64_t>(0);
   CHECK(nchunks_actual == nchunks_expected);  // Number of chunks
-  auto nchunks_to_check = std::min(nchunks_expected, nchunks_actual);
 
   // TODO: Get the chunk offset.
   auto filtered_buffer = tile.filtered_buffer();
-  std::vector<uint64_t> chunk_offsets(nchunks_to_check);
-  chunk_offsets[0] = sizeof(uint64_t);
+  FilteredBufferChunkInfo buffer_chunk_info{filtered_buffer};
 
-  for (uint64_t chunk_index = 0; chunk_index < nchunks_to_check - 1;
-       ++chunk_index) {
-    auto actual_chunk_size =
-        chunk_checkers[chunk_index]->actual_total_chunk_size(
-            filtered_buffer, chunk_offsets[chunk_index]);
-    auto expected_chunk_size =
-        chunk_checkers[chunk_index]->expected_total_chunk_size();
-    CHECK(actual_chunk_size == expected_chunk_size);
+  CHECK(filtered_buffer.size() == buffer_chunk_info.size());
+  CHECK(
+      buffer_chunk_info.size() ==
+      sizeof(uint64_t) + 9 * 3 * sizeof(uint32_t) + nelts * sizeof(uint64_t));
 
-    chunk_offsets[chunk_index + 1] = expected_chunk_size;
+  // Check the number of tiles.
+  CHECK(buffer_chunk_info.nchunks() == 9);
+
+  // TODO: Prevent out-of-bounds-error if chunk sizes don't match
+  // auto nchunks_to_check = std::min(nchunks_expected, nchunks_actual);
+
+  for (uint64_t chunk_index = 0; chunk_index < 9; ++chunk_index) {
+    chunk_checkers[chunk_index]->check(
+        filtered_buffer, buffer_chunk_info, chunk_index);
   }
 
   uint64_t el = 0;
@@ -316,7 +316,6 @@ TEST_CASE(
 
   WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
-*/
 
 TEST_CASE(
     "Filter: Test simple in-place pipeline", "[filter][simple-in-place]") {
