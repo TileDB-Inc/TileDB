@@ -35,7 +35,7 @@ project(Test_TileDBConfigVersion_h)
 
 find_file(
         tiledb_version_h tiledb_version.h
-        PATH_SUFFIXES "include/TileDB" "include/tiledb" REQUIRED
+        PATH_SUFFIXES "include/tiledb" REQUIRED
 )
 file(READ ${tiledb_version_h} ver)
 
