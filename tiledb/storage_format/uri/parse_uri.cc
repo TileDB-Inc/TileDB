@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -137,19 +137,6 @@ bool is_element_of(const URI uri, const URI intersecting_uri) {
           (intersecting_uri.last_path_part()).size());
 
   return (prefix == intersecting_prefix);
-}
-
-std::string backend_name(const std::string& path) {
-  if (path.substr(0, 1) == "/") {
-    return "posix";
-  }
-
-  auto backend = path.substr(0, path.find_first_of(':'));
-  if (backend == "file") {
-    return "windows";
-  } else {
-    return backend;
-  }
 }
 
 }  // namespace tiledb::sm::utils::parse
