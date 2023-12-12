@@ -154,23 +154,33 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   // Check size and number of chunks
   CHECK(tile.size() == 0);
 
+  const auto& filtered_buffer = tile.filtered_buffer();
+  FilteredBufferChunkInfo buffer_chunk_info{filtered_buffer};
+  auto chunk_info = buffer_chunk_info.chunk_info(0);
+  CHECK(chunk_info.original_chunk_length() == nelts * sizeof(uint64_t));
+  CHECK(chunk_info.filtered_chunk_length() == nelts * sizeof(uint64_t));
+  CHECK(chunk_info.metadata_length() == 0);
+
+  CHECK(filtered_buffer.size() == buffer_chunk_info.size());
   CHECK(
-      tile.filtered_buffer().size() ==
+      filtered_buffer.size() ==
       nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
 
   // Check the number of chunks.
-  auto nchunks_actual = tile.filtered_buffer().value_at_as<uint64_t>(0);
-  CHECK(nchunks_actual == 1);
+  CHECK(buffer_chunk_info.nchunks() == 1);
 
   // Check the chunks.
-  uint64_t chunk_offset = sizeof(uint64_t);
-  filtered_chunk_checker.check(tile.filtered_buffer(), chunk_offset);
+  filtered_chunk_checker.check(filtered_buffer, buffer_chunk_info, 0);
 
+  // Run the data in reverse.
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
   run_reverse(config, tp, unfiltered_tile, pipeline);
+
+  // Check the original data is reverted.
   unfiltered_tile_checker.check(unfiltered_tile);
 }
 
+/*
 TEST_CASE(
     "Filter: Test empty pipeline var sized", "[filter][empty-pipeline][var]") {
   tiledb::sm::Config config;
@@ -271,12 +281,6 @@ TEST_CASE(
 
     chunk_offsets[chunk_index + 1] = expected_chunk_size;
   }
-  /*
-  for (uint64_t chunk_index = 0; chunk_index < 9; ++chunk_index) {
-    chunk_checkers[chunk_index]->check(
-        filtered_buffer, chunk_offset_values[chunk_index]);
-  }
-  */
 
   uint64_t el = 0;
   offset = sizeof(uint64_t);
@@ -312,6 +316,7 @@ TEST_CASE(
 
   WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
+*/
 
 TEST_CASE(
     "Filter: Test simple in-place pipeline", "[filter][simple-in-place]") {

@@ -1,3 +1,34 @@
+/**
+ * @file filter_test_support.h
+ *
+ * @section LICENSE
+ *
+ * The MIT License
+ *
+ * @copyright Copyright (c) 2023 TileDB, Inc.
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy
+ * of this software and associated documentation files (the "Software"), to deal
+ * in the Software without restriction, including without limitation the rights
+ * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ * copies of the Software, and to permit persons to whom the Software is
+ * furnished to do so, subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in
+ * all copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+ * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ * TODO: Add description before merging.
+ */
+
 #ifndef TILEDB_FILTER_TEST_SUPPORT_H
 #define TILEDB_FILTER_TEST_SUPPORT_H
 
@@ -8,6 +39,78 @@
 
 using namespace tiledb::sm;
 
+namespace tiledb::sm {
+
+class ChunkInfo {
+ public:
+  ChunkInfo() = default;
+
+  ChunkInfo(
+      uint32_t original_chunk_length,
+      uint32_t filtered_chunk_length,
+      uint32_t metadata_length);
+
+  ChunkInfo(const FilteredBuffer& buffer, uint32_t chunk_offset);
+
+  inline uint32_t original_chunk_length() const {
+    return original_chunk_length_;
+  }
+
+  inline uint32_t filtered_chunk_length() const {
+    return filtered_chunk_length_;
+  }
+
+  inline uint64_t filtered_chunk_offset() const {
+    return 3 * sizeof(uint32_t) + static_cast<uint64_t>(metadata_length_);
+  }
+
+  inline uint32_t metadata_length() const {
+    return metadata_length_;
+  }
+
+  inline uint64_t metadata_offset() const {
+    return 3 * sizeof(uint32_t);
+  }
+
+  inline uint64_t size() const {
+    return 3 * sizeof(uint32_t) +
+           static_cast<uint64_t>(filtered_chunk_length_) +
+           static_cast<uint64_t>(metadata_length_);
+  }
+
+ private:
+  uint32_t original_chunk_length_{};
+  uint32_t filtered_chunk_length_{};
+  uint32_t metadata_length_{};
+};
+
+class FilteredBufferChunkInfo {
+ public:
+  FilteredBufferChunkInfo(const FilteredBuffer& buffer);
+
+  inline const ChunkInfo& chunk_info(uint64_t index) const {
+    return chunk_info_[index];
+  }
+
+  inline uint64_t chunk_offset(uint64_t index) const {
+    return offsets_[index];
+  }
+
+  inline uint64_t nchunks() const {
+    return nchunks_;
+  }
+
+  inline uint64_t size() const {
+    return size_;
+  }
+
+ private:
+  uint64_t nchunks_{};
+  std::vector<ChunkInfo> chunk_info_;
+  std::vector<uint64_t> offsets_{};
+  uint64_t size_{};
+};
+
 /**
  * Helper for checking chunk data.
  *
@@ -17,69 +120,22 @@ class ChunkCheckerBase {
  public:
   virtual ~ChunkCheckerBase() = default;
 
-  void check(const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    // Check the value of the original chunk length.
-    CHECK(
-        actual_original_chunk_length(buffer, chunk_offset) ==
-        expected_original_chunk_length());
-
-    // Check the metadata.
-    check_metadata(buffer, chunk_offset);
-
-    // Check the filtered chunk data.
-    check_filtered_data(buffer, chunk_offset);
-  }
+  void check(
+      const FilteredBuffer& buffer,
+      const FilteredBufferChunkInfo& buffer_info,
+      uint64_t chunk_index) const;
 
   virtual void check_filtered_data(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const = 0;
+      const FilteredBuffer& buffer,
+      const ChunkInfo& chunk_info,
+      uint64_t chunk_offset) const = 0;
 
   virtual void check_metadata(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const = 0;
+      const FilteredBuffer& buffer,
+      const ChunkInfo& chunk_info,
+      uint64_t chunk_offset) const = 0;
 
-  uint64_t expected_total_chunk_size() const {
-    return 3 * sizeof(uint32_t) + expected_original_chunk_length() +
-           expected_filtered_chunk_length() + expected_metadata_length();
-  }
-
-  uint64_t actual_total_chunk_size(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    return 3 * sizeof(uint32_t) +
-           actual_original_chunk_length(buffer, chunk_offset) +
-           actual_filtered_chunk_length(buffer, chunk_offset) +
-           actual_metadata_length(buffer, chunk_offset);
-  }
-
- protected:
-  inline uint32_t actual_original_chunk_length(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    return buffer.value_at_as<uint32_t>(chunk_offset);
-  }
-
-  inline uint32_t actual_filtered_chunk_length(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    return buffer.value_at_as<uint32_t>(chunk_offset + sizeof(uint32_t));
-  }
-
-  inline uint32_t actual_metadata_length(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    return buffer.value_at_as<uint32_t>(chunk_offset + 2 * sizeof(uint32_t));
-  }
-
-  inline uint64_t data_offset(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const {
-    return metadata_offset(chunk_offset) +
-           static_cast<uint64_t>(actual_metadata_length(buffer, chunk_offset));
-  }
-
-  virtual uint32_t expected_original_chunk_length() const = 0;
-
-  virtual uint32_t expected_filtered_chunk_length() const = 0;
-
-  virtual uint32_t expected_metadata_length() const = 0;
-
-  inline uint64_t metadata_offset(uint64_t chunk_offset) const {
-    return chunk_offset + 3 * sizeof(uint32_t);
-  }
+  virtual const ChunkInfo& expected_chunk_info() const = 0;
 };
 
 template <typename T>
@@ -87,26 +143,29 @@ class GridChunkChecker : public ChunkCheckerBase {
  public:
   GridChunkChecker(
       uint32_t original_chunk_length,
-      uint32_t num_elements,
+      uint32_t num_filtered_elements,
       T starting_value,
       T spacing)
-      : original_chunk_length_{original_chunk_length}
-      , num_elements_{num_elements}
+      : expected_chunk_info_{original_chunk_length, static_cast<uint32_t>(num_filtered_elements * sizeof(T)), 0}
+      , num_filtered_elements_{num_filtered_elements}
       , starting_value_{starting_value}
       , spacing_{spacing} {
   }
 
   void check_filtered_data(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const override {
+      const FilteredBuffer& buffer,
+      const ChunkInfo& chunk_info,
+      uint64_t chunk_offset) const override {
     // Check the size of the filtered data. If it does not match the expected
     // size, then end the test as a failure.
-    auto data_size = actual_filtered_chunk_length(buffer, chunk_offset);
-    REQUIRE(data_size == expected_filtered_chunk_length());
+    REQUIRE(
+        chunk_info.filtered_chunk_length() ==
+        expected_chunk_info_.filtered_chunk_length());
 
     // Check the data.
-    auto data_offset_value = data_offset(buffer, chunk_offset);
-    for (uint32_t index = 0; index < num_elements_; ++index) {
-      auto offset = data_offset_value + index * sizeof(T);
+    const auto data_offset = chunk_info.filtered_chunk_offset() + chunk_offset;
+    for (uint32_t index = 0; index < num_filtered_elements_; ++index) {
+      auto offset = data_offset + index * sizeof(T);
       T expected_value = starting_value_ + index * spacing_;
       T actual_value = buffer.value_at_as<uint64_t>(offset);
       CHECK(actual_value == expected_value);
@@ -114,26 +173,19 @@ class GridChunkChecker : public ChunkCheckerBase {
   }
 
   void check_metadata(
-      const FilteredBuffer& buffer, uint64_t chunk_offset) const override {
-    CHECK(actual_metadata_length(buffer, chunk_offset) == 0);
+      const FilteredBuffer&,
+      const ChunkInfo& chunk_info,
+      uint64_t) const override {
+    CHECK(chunk_info.metadata_length() == 0);
   }
 
- protected:
-  uint32_t expected_original_chunk_length() const override {
-    return original_chunk_length_;
-  }
-
-  uint32_t expected_filtered_chunk_length() const override {
-    return num_elements_ * sizeof(T);
-  }
-
-  uint32_t expected_metadata_length() const override {
-    return 0;
+  const ChunkInfo& expected_chunk_info() const override {
+    return expected_chunk_info_;
   }
 
  private:
-  uint32_t original_chunk_length_{};
-  uint32_t num_elements_{};
+  ChunkInfo expected_chunk_info_{};
+  uint32_t num_filtered_elements_{};
   T starting_value_{};
   T spacing_{};
 };
@@ -161,5 +213,7 @@ class GridTileChecker {
   T starting_value_{};
   T spacing_{};
 };
+
+}  // namespace tiledb::sm
 
 #endif
