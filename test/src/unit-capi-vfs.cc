@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_vfs.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -68,60 +69,6 @@ int ls_getter(const char* path, void* data) {
   auto vec = static_cast<std::vector<std::string>*>(data);
   vec->emplace_back(path);
   return 1;
-}
-
-/**
- * Conditionally allocates and sets filesystem-specific parameters on a config.
- *
- * @return tiledb_config_t* A potentially nullptr config.
- */
-tiledb_config_t* conditionally_initialized_config() {
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-
-  // Conditionally set s3 config parameters
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    require_tiledb_ok(tiledb_config_alloc(&config, &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(tiledb_config_set(
-        config, "vfs.s3.endpoint_override", "localhost:9999", &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(tiledb_config_set(
-        config, "vfs.s3.use_virtual_addressing", "false", &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error));
-    REQUIRE(error == nullptr);
-  }
-#endif
-
-  // Conditionally set azure config parameters
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    require_tiledb_ok(tiledb_config_alloc(&config, &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(tiledb_config_set(
-        config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(tiledb_config_set(
-        config,
-        "vfs.azure.storage_account_key",
-        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-        "K1SZFPTOtr/KBHBeksoGMGw==",
-        &error));
-    REQUIRE(error == nullptr);
-    require_tiledb_ok(tiledb_config_set(
-        config,
-        "vfs.azure.blob_endpoint",
-        "http://127.0.0.1:10000/devstoreaccount1",
-        &error));
-    REQUIRE(error == nullptr);
-  }
-
-  return config;
 }
 
 TEST_CASE(
@@ -163,16 +110,11 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
   tiledb_stats_enable();
   tiledb_stats_reset();
 
-  tiledb_config_t* config = conditionally_initialized_config();
+  vfs_config v;
+  auto config = v.config;
   tiledb_error_t* error = nullptr;
 
   SECTION("Parallel I/O with 4 threads") {
-    // Allocate config if needed
-    if (config == nullptr) {
-      require_tiledb_ok(tiledb_config_alloc(&config, &error));
-      REQUIRE(error == nullptr);
-    }
-
     // Set number of threads to 4.
     require_tiledb_ok(tiledb_config_set(
         config, "vfs.s3.max_parallel_ops", std::to_string(4).c_str(), &error));
