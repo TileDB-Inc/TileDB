@@ -215,7 +215,7 @@ jobs:
           ###################################################
           # Perform package test
 
-          source $GITHUB_WORKSPACE/scripts/ci/test_packaging.sh
+          make -C $GITHUB_WORKSPACE/build/tiledb check-package
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed

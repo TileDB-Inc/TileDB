@@ -406,3 +406,11 @@ add_subdirectory(ci)
 if(WIN32)
   add_subdirectory(performance)
 endif()
+
+add_custom_target(
+  check-package
+  COMMAND ${CMAKE_COMMAND}
+    -DCMAKE_PREFIX_PATH="${CMAKE_BINARY_DIR}/../dist"
+    -B ${CMAKE_CURRENT_BINARY_DIR}/check-package-build
+    ${CMAKE_CURRENT_SOURCE_DIR}/packaging
+)
