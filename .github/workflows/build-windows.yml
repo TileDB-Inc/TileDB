@@ -400,7 +400,7 @@ jobs:
       - name: Packaging test
         shell: pwsh
         run: |
-          make -C $env:BUILD_BUILDDIRECTORY\tiledb check-package
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check-package
 
       - name: 'process crashdumps'
         shell: cmd
