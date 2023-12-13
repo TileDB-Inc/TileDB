@@ -323,6 +323,7 @@ void check_save_to_file() {
   ss << "vfs.s3.connect_max_tries 5\n";
   ss << "vfs.s3.connect_scale_factor 25\n";
   ss << "vfs.s3.connect_timeout_ms 10800\n";
+  ss << "vfs.s3.install_sigpipe_handler true\n";
   ss << "vfs.s3.logging_level Off\n";
   ss << "vfs.s3.max_parallel_ops " << std::thread::hardware_concurrency()
      << "\n";
@@ -739,6 +740,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.proxy_username"] = "";
   all_param_values["vfs.s3.verify_ssl"] = "true";
   all_param_values["vfs.s3.no_sign_request"] = "false";
+  all_param_values["vfs.s3.install_sigpipe_handler"] = "true";
   all_param_values["vfs.hdfs.username"] = "stavros";
   all_param_values["vfs.hdfs.kerb_ticket_cache_path"] = "";
   all_param_values["vfs.hdfs.name_node_uri"] = "";
@@ -811,6 +813,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.bucket_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.object_canned_acl"] = "NOT_SET";
   vfs_param_values["s3.config_source"] = "auto";
+  vfs_param_values["s3.install_sigpipe_handler"] = "true";
   vfs_param_values["hdfs.username"] = "stavros";
   vfs_param_values["hdfs.kerb_ticket_cache_path"] = "";
   vfs_param_values["hdfs.name_node_uri"] = "";
@@ -875,6 +878,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["bucket_canned_acl"] = "NOT_SET";
   s3_param_values["object_canned_acl"] = "NOT_SET";
   s3_param_values["config_source"] = "auto";
+  s3_param_values["install_sigpipe_handler"] = "true";
 
   // Create an iterator and iterate over all parameters
   tiledb_config_iter_t* config_iter = nullptr;
