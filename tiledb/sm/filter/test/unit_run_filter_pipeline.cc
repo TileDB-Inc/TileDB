@@ -145,32 +145,21 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  GridChunkChecker<uint64_t> filtered_chunk_checker{
-      nelts * sizeof(uint64_t), nelts, 0, 1};
+
+  FilteredBufferChecker filtered_buffer_checker{};
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      nelts * sizeof(uint64_t), nelts, 0, 1);
+
   GridTileChecker<uint64_t> unfiltered_tile_checker{nelts, 0, 1};
 
   CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-  // Check size and number of chunks
+  // Check the original unfiltered data was removed.
   CHECK(tile.size() == 0);
 
+  // Check the filtered buffer has the expected data.
   const auto& filtered_buffer = tile.filtered_buffer();
-  FilteredBufferChunkInfo buffer_chunk_info{filtered_buffer};
-  auto chunk_info = buffer_chunk_info.chunk_info(0);
-  CHECK(chunk_info.original_chunk_length() == nelts * sizeof(uint64_t));
-  CHECK(chunk_info.filtered_chunk_length() == nelts * sizeof(uint64_t));
-  CHECK(chunk_info.metadata_length() == 0);
-
-  CHECK(filtered_buffer.size() == buffer_chunk_info.size());
-  CHECK(
-      filtered_buffer.size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
-
-  // Check the number of chunks.
-  CHECK(buffer_chunk_info.nchunks() == 1);
-
-  // Check the chunks.
-  filtered_chunk_checker.check(filtered_buffer, buffer_chunk_info, 0);
+  filtered_buffer_checker.check(filtered_buffer);
 
   // Run the data in reverse.
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
@@ -187,32 +176,6 @@ TEST_CASE(
   // Set up test data
   const uint64_t nelts = 100;
   auto tile = make_increasing_tile(nelts);
-
-  // TODO: HERE
-  // Move all the checking for the chunks into this chunk checker array.
-  std::array<tdb_unique_ptr<ChunkCheckerBase>, 9> chunk_checkers;
-  chunk_checkers[0] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 14 * sizeof(uint64_t), 14, 0, 1));
-  chunk_checkers[1] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 6 * sizeof(uint64_t), 6, 14, 1));
-  chunk_checkers[2] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 11 * sizeof(uint64_t), 11, 20, 1));
-  chunk_checkers[3] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 7 * sizeof(uint64_t), 7, 31, 1));
-  chunk_checkers[4] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 38, 1));
-  chunk_checkers[5] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 48, 1));
-  chunk_checkers[6] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 20 * sizeof(uint64_t), 20, 58, 1));
-  chunk_checkers[7] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 10 * sizeof(uint64_t), 10, 78, 1));
-  chunk_checkers[8] = tdb_unique_ptr<ChunkCheckerBase>(
-      tdb_new(GridChunkChecker<uint64_t>, 12 * sizeof(uint64_t), 12, 88, 1));
-
-  // CHECK(chunk_checkers[0] != nullptr);
-  // CHECK(goo != nullptr);
-
   // Set up test data
   std::vector<uint64_t> sizes{
       0,
@@ -233,7 +196,6 @@ TEST_CASE(
   };        // Chunk8: 12 cells.
 
   std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
   std::vector<uint64_t> offsets(sizes.size());
   uint64_t offset = 0;
   for (uint64_t i = 0; i < offsets.size() - 1; i++) {
@@ -244,8 +206,30 @@ TEST_CASE(
 
   auto offsets_tile = make_offsets_tile(offsets);
 
+  // Create filtered buffer checker with expected chunk datda.
+  FilteredBufferChecker filtered_buffer_checker{};
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      14 * sizeof(uint64_t), 14, 0);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      6 * sizeof(uint64_t), 6, 14);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      11 * sizeof(uint64_t), 11, 20);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      7 * sizeof(uint64_t), 7, 31);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      10 * sizeof(uint64_t), 10, 38);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      10 * sizeof(uint64_t), 10, 48);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      20 * sizeof(uint64_t), 20, 58);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      10 * sizeof(uint64_t), 10, 78);
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      12 * sizeof(uint64_t), 12, 88, 1);
+
   FilterPipeline pipeline;
   ThreadPool tp(4);
+
   WriterTile::set_max_tile_chunk_size(80);
 
   CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
@@ -253,37 +237,14 @@ TEST_CASE(
   // Check all data is stored in filtered buffer.
   CHECK(tile.size() == 0);
 
-  // Check the total size.
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
-
-  uint64_t nchunks_expected = 9;
-  auto nchunks_actual = tile.filtered_buffer().value_at_as<uint64_t>(0);
-  CHECK(nchunks_actual == nchunks_expected);  // Number of chunks
-
-  // TODO: Get the chunk offset.
+  // Check the filtered buffer has the expected data.
   auto filtered_buffer = tile.filtered_buffer();
-  FilteredBufferChunkInfo buffer_chunk_info{filtered_buffer};
 
-  CHECK(filtered_buffer.size() == buffer_chunk_info.size());
-  CHECK(
-      buffer_chunk_info.size() ==
-      sizeof(uint64_t) + 9 * 3 * sizeof(uint32_t) + nelts * sizeof(uint64_t));
-
-  // Check the number of tiles.
-  CHECK(buffer_chunk_info.nchunks() == 9);
-
-  // TODO: Prevent out-of-bounds-error if chunk sizes don't match
-  // auto nchunks_to_check = std::min(nchunks_expected, nchunks_actual);
-
-  for (uint64_t chunk_index = 0; chunk_index < 9; ++chunk_index) {
-    chunk_checkers[chunk_index]->check(
-        filtered_buffer, buffer_chunk_info, chunk_index);
-  }
-
+  // Run the data in reverse.
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
   run_reverse(config, tp, unfiltered_tile, pipeline);
+
+  // Check the original data.
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t elt = 0;
     CHECK_NOTHROW(
