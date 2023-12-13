@@ -1,9 +1,17 @@
+# TileDB v2.18.3 Release Notes
+
+## New features
+
+* Add setting to disable install_sigpipe_handler on S3. [#4573](https://github.com/TileDB-Inc/TileDB/pull/4573)
+
 # TileDB v2.18.2 Release Notes
 
 ## Defects removed
+
 * Fix delta filter deserialization for format ver 19. [#4541](https://github.com/TileDB-Inc/TileDB/pull/4541)
 
 ## Build System Changes
+
 * Remove the `externals/vcpkg` submodule. Vcpkg is always downloaded by CMake. [#4543](https://github.com/TileDB-Inc/TileDB/pull/4543)
 
 # TileDB v2.18.1 Release Notes
