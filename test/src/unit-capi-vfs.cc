@@ -36,6 +36,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_vfs.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/utils.h"
@@ -440,7 +441,7 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
     }
 
     // Check copy (not yet supported for MemFS or HDFS)
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
+    if constexpr (!tiledb::platform::is_os_windows) {
       if (!tiledb::sm::URI::is_memfs(path) && !tiledb::sm::URI::is_hdfs(path)) {
         auto dir = path + "dir/";
         auto file = dir + "file";

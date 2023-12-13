@@ -585,6 +585,18 @@ struct vfs_config {
     }
   }
 
+  /** Copy constructor is deleted. */
+  vfs_config(const vfs_config&) = delete;
+
+  /** Move constructor is deleted. */
+  vfs_config(vfs_config&&) = delete;
+
+  /** Copy assignment is deleted. */
+  vfs_config& operator=(const vfs_config&) = delete;
+
+  /** Move assignment is deleted. */
+  vfs_config& operator=(vfs_config&&) = delete;
+
   /** Destructor. */
   ~vfs_config() {
     tiledb_config_free(&config);
