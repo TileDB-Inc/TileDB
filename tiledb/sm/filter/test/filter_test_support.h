@@ -33,7 +33,7 @@
 #define TILEDB_FILTER_TEST_SUPPORT_H
 
 #include <test/support/tdb_catch.h>
-
+#include <vector>
 #include "tiledb/sm/tile/filtered_buffer.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -156,8 +156,8 @@ class GridChunkChecker : public ChunkCheckerBase {
       const FilteredBuffer& buffer,
       const ChunkInfo& chunk_info,
       uint64_t chunk_offset) const override {
-    // Check the size of the filtered data. If it does not match the expected
-    // size, then end the test as a failure.
+    // Check the size of the filtered data. If it does not match the
+    // expected size, then end the test as a failure.
     REQUIRE(
         chunk_info.filtered_chunk_length() ==
         expected_chunk_info_.filtered_chunk_length());
@@ -188,6 +188,30 @@ class GridChunkChecker : public ChunkCheckerBase {
   uint32_t num_filtered_elements_{};
   T starting_value_{};
   T spacing_{};
+};
+
+class FilteredBufferChecker {
+ public:
+  FilteredBufferChecker() = default;
+
+  template <typename T>
+  void add_grid_chunk_checker(
+      uint32_t original_chunk_length,
+      uint32_t num_filtered_elements,
+      T starting_value,
+      T spacing = 1) {
+    chunk_checkers_.emplace_back(tdb_new(
+        GridChunkChecker<T>,
+        original_chunk_length,
+        num_filtered_elements,
+        starting_value,
+        spacing));
+  }
+
+  void check(const FilteredBuffer& buffer) const;
+
+ private:
+  std::vector<tdb_unique_ptr<ChunkCheckerBase>> chunk_checkers_;
 };
 
 template <typename T>

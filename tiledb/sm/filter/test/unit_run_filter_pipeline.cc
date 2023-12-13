@@ -282,29 +282,6 @@ TEST_CASE(
         filtered_buffer, buffer_chunk_info, chunk_index);
   }
 
-  uint64_t el = 0;
-  offset = sizeof(uint64_t);
-  for (uint64_t i = 0; i < 9; i++) {
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // Chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements unchanged.
-    for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == el++);
-      offset += sizeof(uint64_t);
-    }
-  }
-
   auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
   run_reverse(config, tp, unfiltered_tile, pipeline);
   for (uint64_t i = 0; i < nelts; i++) {

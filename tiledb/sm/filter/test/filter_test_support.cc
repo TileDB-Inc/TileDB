@@ -28,6 +28,7 @@
  */
 
 #include "filter_test_support.h"
+#include <algorithm>
 
 using namespace tiledb::common;
 
@@ -82,6 +83,26 @@ void ChunkCheckerBase::check(
 
   // Check the filtered chunk data.
   check_filtered_data(buffer, chunk_info, chunk_offset);
+}
+
+void FilteredBufferChecker::check(const FilteredBuffer& buffer) const {
+  FilteredBufferChunkInfo buffer_chunk_info{buffer};
+
+  // Check the size of the filtered buffer matches the expected total size.
+  CHECK(buffer.size() == buffer_chunk_info.size());
+
+  // Check the number of chunks.
+  auto nchunks_actual = buffer.value_at_as<uint64_t>(0);
+  auto nchunks_expected = chunk_checkers_.size();
+  CHECK(nchunks_actual == nchunks_expected);
+
+  // Prevent out-of-bounds error if chunk sizes don't match.
+  auto nchunks_check = std::min(nchunks_actual, nchunks_expected);
+
+  for (uint64_t chunk_index = 0; chunk_index < nchunks_check; ++chunk_index) {
+    INFO("Chunk number: " << chunk_index);
+    chunk_checkers_[chunk_index]->check(buffer, buffer_chunk_info, chunk_index);
+  }
 }
 
 }  // namespace tiledb::sm
