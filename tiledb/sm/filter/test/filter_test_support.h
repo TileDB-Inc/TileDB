@@ -116,9 +116,9 @@ class FilteredBufferChunkInfo {
  *
  * @tparam Type of the filtered data.
  */
-class ChunkCheckerBase {
+class ChunkChecker {
  public:
-  virtual ~ChunkCheckerBase() = default;
+  virtual ~ChunkChecker() = default;
 
   void check(
       const FilteredBuffer& buffer,
@@ -139,7 +139,7 @@ class ChunkCheckerBase {
 };
 
 template <typename T>
-class GridChunkChecker : public ChunkCheckerBase {
+class GridChunkChecker : public ChunkChecker {
  public:
   GridChunkChecker(
       uint32_t original_chunk_length,
@@ -211,31 +211,7 @@ class FilteredBufferChecker {
   void check(const FilteredBuffer& buffer) const;
 
  private:
-  std::vector<tdb_unique_ptr<ChunkCheckerBase>> chunk_checkers_;
-};
-
-template <typename T>
-class GridTileChecker {
- public:
-  GridTileChecker(uint64_t num_elements, T starting_value, T spacing)
-      : num_elements_{num_elements}
-      , starting_value_{starting_value}
-      , spacing_{spacing} {
-  }
-
-  void check(const Tile& tile) {
-    for (uint64_t index = 0; index < num_elements_; ++index) {
-      T expected_value = starting_value_ + index * spacing_;
-      T actual_value{};
-      CHECK_NOTHROW(tile.read(&actual_value, index * sizeof(T), sizeof(T)));
-      CHECK(actual_value == expected_value);
-    }
-  }
-
- private:
-  uint64_t num_elements_{};
-  T starting_value_{};
-  T spacing_{};
+  std::vector<tdb_unique_ptr<ChunkChecker>> chunk_checkers_;
 };
 
 }  // namespace tiledb::sm

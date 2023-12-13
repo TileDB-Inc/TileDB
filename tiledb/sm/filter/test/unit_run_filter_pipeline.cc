@@ -54,6 +54,7 @@
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
 #include "filter_test_support.h"
+#include "input_tile_test_data.h"
 #include "pseudo_checksum_filter.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -141,17 +142,19 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   // Set up test data
   const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
+
+  IncreasingInputTileTestData<uint64_t> input_data(nelts);
+
+  auto tile = input_data.create_tile();
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
 
   FilteredBufferChecker filtered_buffer_checker{};
   filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
-      nelts * sizeof(uint64_t), nelts, 0, 1);
+      input_data.tile_size(), nelts, 0, 1);
 
-  GridTileChecker<uint64_t> unfiltered_tile_checker{nelts, 0, 1};
-
+  // Run the pipeline forward.
   CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
   // Check the original unfiltered data was removed.
@@ -166,7 +169,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   run_reverse(config, tp, unfiltered_tile, pipeline);
 
   // Check the original data is reverted.
-  unfiltered_tile_checker.check(unfiltered_tile);
+  input_data.check_tile_data(unfiltered_tile);
 }
 
 TEST_CASE(

@@ -66,7 +66,7 @@ FilteredBufferChunkInfo::FilteredBufferChunkInfo(const FilteredBuffer& buffer)
   size_ = current_offset;
 }
 
-void ChunkCheckerBase::check(
+void ChunkChecker::check(
     const FilteredBuffer& buffer,
     const FilteredBufferChunkInfo& buffer_info,
     uint64_t chunk_index) const {
