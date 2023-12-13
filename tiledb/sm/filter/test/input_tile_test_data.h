@@ -39,20 +39,68 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class InputTileTestData {
+class TileDataGenerator {
  public:
-  virtual ~InputTileTestData() = default;
+  virtual ~TileDataGenerator() = default;
+
   virtual uint64_t cell_size() const = 0;
+  /**
+   * Checks if the provide tile has the same data as a writer tile created
+   * by this class.
+   */
   virtual void check_tile_data(const Tile& tile) const = 0;
-  virtual WriterTile create_tile() const = 0;
-  virtual uint64_t tile_size() const = 0;
+
+  virtual Datatype datatype() const = 0;
+
+  /**
+   * Returns an empty writer tile with enough room for the input data.
+   */
+  WriterTile create_empty_writer_tile() const {
+    return WriterTile(
+        constants::format_version,
+        datatype(),
+        cell_size(),
+        original_tile_size());
+  }
+
+  /**
+   * Returns a writer tile with the input test data.
+   */
+  virtual WriterTile create_writer_tile() const = 0;
+
+  /**
+   * Returns a tile with the data from the filtered buffer and enough room
+   * for the original tile data.
+   **/
+  Tile create_filtered_buffer_tile(FilteredBuffer& filtered_buffer) const {
+    return Tile(
+        constants::format_version,
+        datatype(),
+        cell_size(),
+        0,
+        original_tile_size(),
+        filtered_buffer.data(),
+        filtered_buffer.size());
+  }
+
+  virtual uint64_t original_tile_size() const = 0;
 };
 
-template <typename T>
-class IncreasingInputTileTestData : public InputTileTestData {
+/**
+ * This class creates and owns a tile with Datatype::UINT64 data. The data
+ * increases by one for each element.
+ */
+class SimpleFixedTileData : public TileDataGenerator {
  public:
-  IncreasingInputTileTestData(uint64_t num_elements)
-      : num_elements_{num_elements} {
+  SimpleFixedTileData(uint64_t num_elements)
+      : num_elements_{num_elements}
+      , cell_size_{sizeof(uint64_t)}
+      , datatype_{Datatype::UINT64}
+      , original_tile_size_{num_elements_ * sizeof(uint64_t)} {
+  }
+
+  uint64_t cell_size() const override {
+    return cell_size_;
   }
 
   void check_tile_data(const Tile& tile) const override {
@@ -65,33 +113,29 @@ class IncreasingInputTileTestData : public InputTileTestData {
     }
   }
 
-  uint64_t cell_size() const override {
-    return num_elements_ * sizeof(T);
+  WriterTile create_writer_tile() const override {
+    auto tile = create_empty_writer_tile();
+    for (uint64_t index = 0; index < num_elements_; ++index) {
+      CHECK_NOTHROW(
+          tile.write(&index, index * sizeof(uint64_t), sizeof(uint64_t)));
+    }
+    return tile;
   }
 
-  uint64_t tile_size() const override {
-    return num_elements_ * sizeof(T);
+  Datatype datatype() const override {
+    return datatype_;
   }
 
-  WriterTile create_tile() const override;
+  uint64_t original_tile_size() const override {
+    return original_tile_size_;
+  }
 
  private:
   uint64_t num_elements_;
+  uint64_t cell_size_;
+  Datatype datatype_;
+  uint64_t original_tile_size_;
 };
-
-template <>
-WriterTile IncreasingInputTileTestData<uint64_t>::create_tile() const {
-  const uint64_t tile_size = num_elements_ * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
-  WriterTile tile(
-      constants::format_version, Datatype::UINT64, cell_size, tile_size);
-  for (uint64_t index = 0; index < num_elements_; ++index) {
-    CHECK_NOTHROW(
-        tile.write(&index, index * sizeof(uint64_t), sizeof(uint64_t)));
-  }
-
-  return tile;
-}
 
 }  // namespace tiledb::sm
 
