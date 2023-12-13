@@ -137,25 +137,18 @@ void run_reverse(
                      .ok());
 }
 
-TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
+void check_pipeline_roundtrip(
+    WriterTile& tile,
+    WriterTile* offsets_tile_ptr,
+    ThreadPool& tp,
+    FilterPipeline& pipeline,
+    TileDataGenerator* test_data,
+    const FilteredBufferChecker& filtered_buffer_checker) {
+  // Initialize config object for testing.
   tiledb::sm::Config config;
 
-  // Set up test data
-  const uint64_t nelts = 100;
-
-  SimpleFixedTileData test_data(nelts);
-
-  auto tile = test_data.create_writer_tile();
-
-  FilterPipeline pipeline;
-  ThreadPool tp(4);
-
-  FilteredBufferChecker filtered_buffer_checker{};
-  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
-      test_data.original_tile_size(), nelts, 0, 1);
-
   // Run the pipeline forward.
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+  CHECK(pipeline.run_forward(&dummy_stats, &tile, offsets_tile_ptr, &tp).ok());
 
   // Check the original unfiltered data was removed.
   CHECK(tile.size() == 0);
@@ -165,11 +158,30 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   filtered_buffer_checker.check(filtered_buffer);
 
   // Run the data in reverse.
-  auto unfiltered_tile = test_data.create_filtered_buffer_tile(filtered_buffer);
+  auto unfiltered_tile =
+      test_data->create_filtered_buffer_tile(filtered_buffer);
   run_reverse(config, tp, unfiltered_tile, pipeline);
 
   // Check the original data is reverted.
-  test_data.check_tile_data(unfiltered_tile);
+  test_data->check_tile_data(unfiltered_tile);
+}
+
+TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
+  // Set up test data
+  const uint64_t nelts = 100;
+  SimpleFixedTileData test_data(nelts);
+  auto tile = test_data.create_writer_tile();
+
+  FilterPipeline pipeline;
+  ThreadPool tp(4);
+
+  FilteredBufferChecker filtered_buffer_checker{};
+  filtered_buffer_checker.add_grid_chunk_checker<uint64_t>(
+      test_data.original_tile_size(), nelts, 0);
+
+  // Run the round-trip test.
+  check_pipeline_roundtrip(
+      tile, nullptr, tp, pipeline, &test_data, filtered_buffer_checker);
 }
 
 TEST_CASE(
