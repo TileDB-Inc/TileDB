@@ -215,7 +215,7 @@ jobs:
           ###################################################
           # Perform package test
 
-          make -C $GITHUB_WORKSPACE/build/tiledb check-package
+          cmake --build $GITHUB_WORKSPACE/build/tiledb --target check-package
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
