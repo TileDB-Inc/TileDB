@@ -10,7 +10,7 @@
 
 ## New features
 
-* Allow aggregates pipeline the processing of full tiles. [#4465](https://github.com/TileDB-Inc/TileDB/pull/4465)
+* Allow aggregates to pipeline the processing of full tiles. [#4465](https://github.com/TileDB-Inc/TileDB/pull/4465)
 * Add class TemporaryDirectory to generate a PRNG-seeded unique directory. [#4498](https://github.com/TileDB-Inc/TileDB/pull/4498)
 * Add sm.consolidation.total_buffer_size setting. [#4550](https://github.com/TileDB-Inc/TileDB/pull/4550)
 * Use tile metadata in aggregates. [#4468](https://github.com/TileDB-Inc/TileDB/pull/4468)
@@ -21,7 +21,7 @@
 
 * Refactor the fragment info loading code to reduce coupling. [#4453](https://github.com/TileDB-Inc/TileDB/pull/4453)
 * Fragment metadata: adding get_tile_metadata. [#4466](https://github.com/TileDB-Inc/TileDB/pull/4466)
-* Improve experience when performing too large GCS direct uploads. [#4047](https://github.com/TileDB-Inc/TileDB/pull/4047)
+* Improve error reporting when performing too large GCS direct uploads. [#4047](https://github.com/TileDB-Inc/TileDB/pull/4047)
 * Refactor filestore API so that it uses internal TileDB library calls. [#3763](https://github.com/TileDB-Inc/TileDB/pull/3763)
 * Encode Win32 error messages in UTF-8. [#3987](https://github.com/TileDB-Inc/TileDB/pull/3987)
 * Remove unused compression defines. [#4480](https://github.com/TileDB-Inc/TileDB/pull/4480)
@@ -36,6 +36,7 @@
 * Use constexpr to check for filesystem support. [#4548](https://github.com/TileDB-Inc/TileDB/pull/4548)
 * Add vfs.gcs.max_direct_upload_size config option. [#4047](https://github.com/TileDB-Inc/TileDB/pull/4047)
 * Migrate fragment_name parsing into StorageFormat. [#4520](https://github.com/TileDB-Inc/TileDB/pull/4520)
+* Add setting to disable install_sigpipe_handler on S3. [#4573](https://github.com/TileDB-Inc/TileDB/pull/4573)
 
 ## Defects removed
 
@@ -54,7 +55,7 @@
 
 ### C API
 
-* Add new C API functions to get group members and deprecate the existing ones. [#4019](https://github.com/TileDB-Inc/TileDB/pull/4019)
+* Add tiledb_group_get_member_by{index|name}_v2 (and deprecate tiledb_group_get_member_by_{index|name}). [#4019](https://github.com/TileDB-Inc/TileDB/pull/4019)
 * `tiledb_group_create` is no longer marked as deprecated. [#4522](https://github.com/TileDB-Inc/TileDB/pull/4522)
 
 ### C++ API
@@ -72,6 +73,7 @@
 * Remove bundling our static library dependencies; they are now found from the CMake config file. [#4505](https://github.com/TileDB-Inc/TileDB/pull/4505)
 * Remove the CMake and bootstrap script options related to abseil and crc32c linkage tests. [#4527](https://github.com/TileDB-Inc/TileDB/pull/4527)
 * Move documentation generation and source formatting into dedicated CMake modules. [#4538](https://github.com/TileDB-Inc/TileDB/pull/4538)
+* Fix regression when libraries were sometimes installed in the `lib64` directory. [#4572](https://github.com/TileDB-Inc/TileDB/pull/4572)
 
 ## Test only changes
 
