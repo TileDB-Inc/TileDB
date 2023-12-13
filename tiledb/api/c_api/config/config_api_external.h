@@ -556,6 +556,10 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * from config files with support for web tokens, commonly used by EKS/ECS).
  *    **Default**: auto
  *    <br>
+ * - `vfs.s3.install_sigpipe_handler` <br>
+ *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+ *    signals.
+ *    **Default**: "true"
  * - `vfs.hdfs.name_node_uri"` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
