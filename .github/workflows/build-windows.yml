@@ -392,12 +392,7 @@ jobs:
       - name: Packaging test
         shell: pwsh
         run: |
-          cd $env:BUILD_SOURCESDIRECTORY\test\packaging
-          mkdir build
-          cd build
-          cmake -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
-          # The testing is in the test/packaging/CMakeLists.txt file, just invoked,
-          # there is no other code to be built in the produced projects.
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check-package
 
       - name: 'process crashdumps'
         shell: cmd
