@@ -41,12 +41,12 @@ namespace tiledb::api::test_support {
 struct ordinary_vfs {
   tiledb_ctx_handle_t* ctx{nullptr};
   tiledb_vfs_handle_t* vfs{nullptr};
-  ordinary_vfs() {
+  ordinary_vfs(tiledb_config_t* config = nullptr) {
     auto rc = tiledb_ctx_alloc(nullptr, &ctx);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test context");
     }
-    rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+    rc = tiledb_vfs_alloc(ctx, config, &vfs);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test vfs");
     }
