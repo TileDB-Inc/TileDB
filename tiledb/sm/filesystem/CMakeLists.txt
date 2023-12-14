@@ -53,6 +53,9 @@ commence(object_library vfs)
         )
     endif()
     this_target_sources(${VFS_SOURCES})
+    this_target_link_libraries(
+        object_store_definitions
+    )
     this_target_object_libraries(
         baseline
         buffer
