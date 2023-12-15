@@ -28,5 +28,5 @@ include(unit_test)
 
 commence(unit_test readers)
     this_target_sources(main.cc unit_reader_base.cc)
-    this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+    this_target_object_libraries(baseline)
 conclude(unit_test)
