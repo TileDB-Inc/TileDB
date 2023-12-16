@@ -74,7 +74,7 @@ cmake .. -DCMAKE_BUILD_TYPE=Release -GNinja -DTILEDB_S3=ON
 
 ### Configuration options
 
-The following configuration options are available:
+The following are the most common configuration options:
 
 |macOS/Linux flag|Windows flag|CMake variable|Description|
 |----------------|------------|--------------|-----------|
@@ -96,6 +96,9 @@ The following configuration options are available:
 |`--disable-cpp-api`|`-DisableCppApi`|`TILEDB_CPP_API=OFF`|Disables building the TileDB C++ API|
 |`--disable-stats`|`-DisableStats`|`TILEDB_STATS=OFF`|Disables internal TileDB statistics|
 |`--disable-tests`|`-DisableTests`|`TILEDB_TESTS=OFF`|Disables building the TileDB test suite|
+
+> [!TIP]
+> You can see all TileDB-specific CMake variables in [BuildOptions.cmake](../../cmake/Options/BuildOptions.cmake).
 
 ## Building and installing
 
