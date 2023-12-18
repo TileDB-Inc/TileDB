@@ -10,7 +10,8 @@ title: Building TileDB from source
         * MSVC from Visual Studio 2019 16.11
         * GCC 10.3 on Linux and Windows via MinGW
         * Apple Clang 14
-* Git
+* Git (required by vcpkg)
+* curl (required by vcpkg on non-Windows)
 
 ### Dependency management with vcpkg
 
