@@ -123,7 +123,7 @@ while test $# != 0; do
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
     --vcpkg-base-triplet=*)   vcpkg_base_triplet=`arg "$1"`
-                                vcpkg_base_triplet="-DVCPKG_BASE_TRIPLET=${vcpkg_base_triplet}";;
+                                vcpkg_base_triplet="-DTILEDB_VCPKG_BASE_TRIPLET=${vcpkg_base_triplet}";;
     --enable-vcpkg) echo "Argument '--enable-vcpkg' is obsolete and will be removed in a future version. Vcpkg is now enabled by default."
                     tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
