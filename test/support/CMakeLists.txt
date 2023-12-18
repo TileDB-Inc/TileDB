@@ -50,7 +50,7 @@ if (TILEDB_VERBOSE)
   add_definitions(-DTILEDB_VERBOSE)
 endif()
 
-add_library(tiledb_test_support_lib EXCLUDE_FROM_ALL
+add_library(tiledb_test_support_lib STATIC EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_TEST_SUPPORT_SOURCES}
 )
@@ -87,7 +87,7 @@ if (TILEDB_SERIALIZATION)
   target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_SERIALIZATION)
 endif()
 
-target_compile_definitions(tiledb_test_support_lib PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_test_support_lib PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_test_support_lib PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/../inputs"

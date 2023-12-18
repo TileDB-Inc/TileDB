@@ -37,6 +37,8 @@ Configuration:
     --enable-vcpkg                  use vcpkg for downloading and building dependencies
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
+    --linkage                       specify the linkage of tiledb. Defaults to shared.
+                                    [static|shared]
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
     --remove-deprecations           build TileDB without any deprecated APIs
@@ -45,9 +47,9 @@ Configuration:
     --disable-tests                 disables building the TileDB tests
     --disable-stats                 disables internal TileDB statistics
     --disable-avx2                  disables use of AVX2 instructions
-    --disable-webp                  disables building of webp library and linkage test
+    --disable-webp                  disables building of webp library
     --disable-vcpkg                 disables use of vcpkg for downloading and building dependencies
-    --enable-static-tiledb          enables building TileDB as a static library
+    --enable-static-tiledb          enables building TileDB as a static library (deprecated, use --linkage=static)
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
     --enable-debug                  enable debug build
@@ -101,7 +103,7 @@ tiledb_cpp_api="ON"
 tiledb_force_all_deps="OFF"
 tiledb_remove_deprecations="OFF"
 tiledb_stats="ON"
-tiledb_static="OFF"
+build_shared_libs="OFF"
 tiledb_disable_avx2=""
 tiledb_assertions="OFF"
 tiledb_serialization="OFF"
@@ -121,6 +123,7 @@ while test $# != 0; do
                     tiledb_vcpkg="ON";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
+    --linkage=*) linkage=`arg "$1"`;;
     --force-build-all-deps) tiledb_force_all_deps="ON";;
     --remove-deprecations) tiledb_remove_deprecations="ON";;
     --disable-werror) tiledb_werror="OFF";;
@@ -140,7 +143,8 @@ while test $# != 0; do
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
-    --enable-static-tiledb) tiledb_static="ON";;
+    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
+                            enable_static_tiledb="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
     --enable-tools) tiledb_tools="ON";;
@@ -176,7 +180,8 @@ for en in "${enables[@]}"; do
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
     hdfs) tiledb_hdfs="ON";;
-    static-tiledb) tiledb_static="ON";;
+    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
+                    enable_static_tiledb="ON";;
     experimental-features) tiledb_experimental_features="ON";;
     rest-tests) tiledb_tests_enable_rest="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
@@ -186,6 +191,19 @@ done
 
 if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
+fi
+
+if [ "${linkage}" = "shared" ] || [ "${linkage}" = "" ]; then
+    build_shared_libs="ON"
+elif [ "${linkage}" = "static" ] || [ "${enable_static_tiledb}" = "ON" ]; then
+    build_shared_libs="OFF"
+else
+    die "unknown linkage: ${linkage}"
+fi
+
+# Fail if both --linkage=shared and --enable-static-tiledb are specified
+if [ "${linkage}" = "shared" ] && [ "${enable_static_tiledb}" = "ON" ]; then
+    die "cannot specify both --linkage=shared and --enable-static-tiledb"
 fi
 
 # Check clang compiler
@@ -219,6 +237,7 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DCMAKE_C_COMPILER="${c_compiler}" \
     -DCMAKE_CXX_COMPILER="${cxx_compiler}" \
     -DCMAKE_PREFIX_PATH="${dependency_dir}" \
+    -DBUILD_SHARED_LIBS=${build_shared_libs} \
     -DTILEDB_VCPKG=${tiledb_vcpkg} \
     -DTILEDB_ASSERTIONS=${tiledb_assertions} \
     -DTILEDB_VERBOSE=${tiledb_verbose} \
@@ -231,7 +250,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WERROR=${tiledb_werror} \
     -DTILEDB_CPP_API=${tiledb_cpp_api} \
     -DTILEDB_STATS=${tiledb_stats} \
-    -DTILEDB_STATIC=${tiledb_static} \
     -DTILEDB_TESTS=${tiledb_tests} \
     -DTILEDB_CCACHE=${tiledb_ccache} \
     -DTILEDB_ARROW_TESTS=${tiledb_arrow_tests} \

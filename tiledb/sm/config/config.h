@@ -568,6 +568,12 @@ class Config {
   /** Force making an unsigned request to s3 (false). */
   static const std::string VFS_S3_NO_SIGN_REQUEST;
 
+  /**
+   * When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+   * signals.
+   */
+  static const std::string VFS_S3_INSTALL_SIGPIPE_HANDLER;
+
   /** HDFS default kerb ticket cache path. */
   static const std::string VFS_HDFS_KERB_TICKET_CACHE_PATH;
 
