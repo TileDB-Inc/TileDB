@@ -79,6 +79,9 @@ cd TileDB && mkdir build-asan && cd build-asan
 make && make check
 ```
 
+> [!IMPORTANT]
+> To avoid errors, building with sanitizers must be done in a separate build directory.
+
 ### Pull Requests:
 
 - `dev` is the development branch, all PR’s should be rebased on top of the latest `dev` commit.
