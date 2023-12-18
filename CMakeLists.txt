@@ -251,7 +251,7 @@ if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
 endif()
 
-if(SANITIZER)
+if(TILEDB_SANITIZER)
   validate_sanitizer_options()
 endif()
 

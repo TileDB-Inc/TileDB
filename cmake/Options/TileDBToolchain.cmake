@@ -58,7 +58,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
     endif()
 endif()
 
-if(SANITIZER STREQUAL "address")
+if(TILEDB_SANITIZER STREQUAL "address")
     if(NOT VCPKG_TARGET_TRIPLET)
         message(FATAL_ERROR "VCPKG_TARGET_TRIPLET must be defined when building with ASAN.")
     elseif(NOT VCPKG_TARGET_TRIPLET MATCHES "-asan$")

@@ -44,22 +44,22 @@
 #   https://devblogs.microsoft.com/cppblog/addresssanitizer-asan-for-windows-with-msvc/
 #   https://devblogs.microsoft.com/cppblog/address-sanitizer-for-msvc-now-generally-available/
 
-if(NOT SANITIZER)
+if(NOT TILEDB_SANITIZER)
     return()
 endif()
 
 # The basic sanitizer option is standard across compilers
-add_compile_options(-fsanitize=${SANITIZER})
+add_compile_options(-fsanitize=${TILEDB_SANITIZER})
 
 # Check that the sanitizer name is well-formed
-if (NOT SANITIZER MATCHES "^[-A-Za-z]*$")
+if (NOT TILEDB_SANITIZER MATCHES "^[-A-Za-z]*$")
     message(FATAL_ERROR "Bad sanitizer specification \"${sanitizer}\";"
             " permissible characters are only alphabetic and hyphen")
 endif()
 
 # Verify that the sanitizer is one that some compiler supports
-string(TOLOWER ${SANITIZER} SANITIZER)
-if (NOT SANITIZER MATCHES "^address$")
+string(TOLOWER ${TILEDB_SANITIZER} TILEDB_SANITIZER)
+if (NOT TILEDB_SANITIZER MATCHES "^address$")
     message(FATAL_ERROR "Unsupported sanitizer ${sanitizer}")
 endif()
 
@@ -70,8 +70,8 @@ add_link_options("$<$<CXX_COMPILER_ID:MSVC>:/INCREMENTAL:NO>")
 
 # Ordinary gcc/clang behavior.
 add_compile_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-g;-fno-omit-frame-pointer;-fno-optimize-sibling-calls>")
-add_link_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fsanitize=${SANITIZER}>")
-if(SANITIZER STREQUAL "address")
+add_link_options("$<$<NOT:$<CXX_COMPILER_ID:MSVC>>:-fsanitize=${TILEDB_SANITIZER}>")
+if(TILEDB_SANITIZER STREQUAL "address")
     # There may be problems if clang tries to link the ASAN library statically
     add_link_options("$<$<CXX_COMPILER_ID:Clang>:-shared-libasan>")
 endif()
@@ -83,7 +83,7 @@ macro(validate_sanitizer_options)
     # If we know it's not supported, we'll fail so that we avoid false confidence.
     # If we don't know, we'll warn that it might not work.
     if (CMAKE_CXX_COMPILER_ID MATCHES "MSVC")
-        if (SANITIZER STREQUAL "address")
+        if (TILEDB_SANITIZER STREQUAL "address")
             # MSVC support for the address sanitizer began with Visual Studio 2019 Version 16.4
             # and was announced as "fully supported" in version 16.9
             if (MSVC_VERSION LESS 1924)

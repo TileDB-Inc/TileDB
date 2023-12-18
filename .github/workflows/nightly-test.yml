@@ -46,7 +46,7 @@ jobs:
           EXPERIMENTAL: ${{ matrix.experimental || 'OFF' }}
         working-directory: ${{ matrix.working_directory || github.workspace }}
         run: |
-          cmake -B build ${{ matrix.config != 'Debug' && '-DTILEDB_VCPKG=OFF' }} -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DSANITIZER=$SANITIZER_ARG
+          cmake -B build ${{ matrix.config != 'Debug' && '-DTILEDB_VCPKG=OFF' }} -DTILEDB_WERROR=ON -DTILEDB_SERIALIZATION=ON -DTILEDB_EXPERIMENTAL_FEATURES=$EXPERIMENTAL -DCMAKE_BUILD_TYPE=${{ matrix.config || 'Release' }} -DTILEDB_SANITIZER=$SANITIZER_ARG
 
       - name: Configure TileDB CMake (Windows)
         if: contains(matrix.os, 'windows')
