@@ -479,7 +479,7 @@ TEST_CASE(
       tiledb_ctx_is_supported_fs(ctx.ptr().get(), TILEDB_S3, &s3) == TILEDB_OK);
   if (s3) {
     tiledb::VFS vfs(ctx);
-    std::string bucket_name = "s3://" + random_label("tiledb") + "/";
+    std::string bucket_name = "s3://" + random_label("tiledb-") + "/";
     if (vfs.is_bucket(bucket_name)) {
       REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
     }

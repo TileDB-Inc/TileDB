@@ -1,5 +1,5 @@
 /**
- * @file   helpers.cc
+ * @file   random_label.h
  *
  * @section LICENSE
  *
@@ -27,26 +27,31 @@
  *
  * @section DESCRIPTION
  *
- * This file defines some random helper functions.
+ * This file declares a random label generator.
  */
 
-#include "tiledb/common/random/helpers.h"
-#include "tiledb/common/random/prng.h"
+#ifndef TILEDB_HELPERS_H
+#define TILEDB_HELPERS_H
+
+#include <string>
 
 namespace tiledb::common {
 
-std::string random_label(std::string prefix) {
-  // Generate random number using global PRNG
-  PRNG& prng = PRNG::get();
-  auto rand = prng();
-
-  // Ensure prefix ends with "-"
-  if (!prefix.ends_with("-")) {
-    prefix = prefix + "-";
-  }
-
-  // Generate random label
-  return prefix + std::to_string(rand);
-}
+/**
+ * Returns a PRNG-generated random label with the optionally-provided prefix.
+ *
+ * Given prefix "tiledb-", this function will return a label with syntax
+ * tiledb-<32-bit hexadecimal random number>.
+ * (Ex. tiledb-f258d22d4db9139204eef2b4b5d860cc).
+ *
+ * Note: the random number is actually the combination of two 16-bit numbers.
+ * The values are 0-padded to ensure exactly a 32-bit length.
+ *
+ * @param prefix The optional prefix of the label.
+ * @return A random label.
+ */
+std::string random_label(std::string prefix = "");
 
 }  // namespace tiledb::common
+
+#endif  // TILEDB_HELPERS_H

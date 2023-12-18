@@ -37,7 +37,7 @@
 #include "test/support/src/coords_workaround.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
-#include "tiledb/common/random/helpers.h"
+#include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"

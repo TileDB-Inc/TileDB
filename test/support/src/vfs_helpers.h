@@ -148,7 +148,7 @@ class SupportedFsS3 : public SupportedFs {
  public:
   SupportedFsS3()
       : s3_prefix_("s3://")
-      , s3_bucket_(s3_prefix_ + random_label("tiledb") + "/")
+      , s3_bucket_(s3_prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(s3_bucket_ + "tiledb_test/") {
   }
 
@@ -275,7 +275,7 @@ class SupportedFsAzure : public SupportedFs {
  public:
   SupportedFsAzure()
       : azure_prefix_("azure://")
-      , container_(azure_prefix_ + random_label("tiledb") + "/")
+      , container_(azure_prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(container_ + "tiledb_test/") {
   }
 
@@ -342,7 +342,7 @@ class SupportedFsGCS : public SupportedFs {
  public:
   SupportedFsGCS(std::string prefix = "gcs://")
       : prefix_(prefix)
-      , bucket_(prefix_ + random_label("tiledb") + "/")
+      , bucket_(prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(bucket_ + "tiledb_test/") {
   }
 

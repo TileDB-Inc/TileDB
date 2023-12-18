@@ -1,5 +1,5 @@
 /**
- * @file   helpers.h
+ * @file   random_label.cc
  *
  * @section LICENSE
  *
@@ -27,24 +27,37 @@
  *
  * @section DESCRIPTION
  *
- * This file declares some random helper functions.
+ * This file defines a random label generator.
  */
 
-#ifndef TILEDB_HELPERS_H
-#define TILEDB_HELPERS_H
+#include "tiledb/common/random/random_label.h"
+#include "tiledb/common/random/prng.h"
 
-#include <string>
+#include <iomanip>
+#include <sstream>
 
 namespace tiledb::common {
 
 /**
- * Returns a random label, with given prefix and a random number as suffix.
+ * Legacy code provides randomness using UUIDs, which are always 128 bits,
+ * represented as a 32-digit hexadecimal value.
  *
- * @param prefix The prefix of the label.
- * @return A random label.
+ * To ensure backward compatibility, this function formats the PRNG-generated
+ * values to be precisely a 32-digit hexadecimal value. Each value is padded
+ * with 0s such that it makes up one 16-digit half of the full 32-digit number.
  */
-std::string random_label(std::string prefix);
+std::string random_label(std::string prefix) {
+  PRNG& prng = PRNG::get();
+  std::stringstream ss;
+
+  // Generate and format a 128-bit, 32-digit hexadecimal random number
+  auto rand1 = prng();
+  ss << std::hex << std::setw(16) << std::setfill('0') << rand1;
+  auto rand2 = prng();
+  ss << std::hex << std::setw(16) << std::setfill('0') << rand2;
+
+  // Return label string
+  return prefix + ss.str();
+}
 
 }  // namespace tiledb::common
-
-#endif  // TILEDB_HELPERS_H

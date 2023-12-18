@@ -28,8 +28,8 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 list(APPEND SOURCES
-  helpers.cc  
-  prng.cc    
+  prng.cc
+  random_label.cc
   seeder.cc
 )
 gather_sources(${SOURCES})
