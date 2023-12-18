@@ -67,13 +67,11 @@ extern std::mutex catch2_macro_mutex;
     REQUIRE(a);                                           \
   }
 
-namespace tiledb {
-
-namespace sm {
+namespace tiledb::sm {
 class SubarrayPartitioner;
 }
 
-namespace test {
+namespace tiledb::test {
 
 // A dummy `Stats` instance. This is useful for constructing
 // objects that require a parent `Stats` object. These stats are
@@ -483,21 +481,8 @@ void create_subarray(
     bool coalesce_ranges = false);
 
 /**
- * Helper method that creates a TileDB context and a VFS object.
- *
- * @param s3_supported Indicates whether S3 is supported or not.
- * @param azure_supported Indicates whether Azure is supported or not.
- * @param ctx The TileDB context to be created.
- * @param vfs The VFS object to be created.
- */
-void create_ctx_and_vfs(
-    bool s3_supported,
-    bool azure_supported,
-    tiledb_ctx_t** ctx,
-    tiledb_vfs_t** vfs);
-
-/**
  * Helper function to get the supported filesystems.
+ * Supports VFS override via "--vfs" command line argument.
  *
  * @param s3_supported Set to `true` if S3 is supported.
  * @param hdfs_supported Set to `true` if HDFS is supported.
@@ -1015,8 +1000,6 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers);
 
-}  // End of namespace test
-
-}  // End of namespace tiledb
+}  // namespace tiledb::test
 
 #endif

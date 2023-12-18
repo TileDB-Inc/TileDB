@@ -340,9 +340,14 @@ class Config {
    *    (since the resulting fragments is dense). <br>
    *    **Default**: 1.0
    * - `sm.consolidation.buffer_size` <br>
+   *    Deprecated. Prefer `sm.consolidation.total_buffer_size` instead.
    *    The size (in bytes) of the attribute buffers used during
    *    consolidation. <br>
    *    **Default**: 50,000,000
+   * - `sm.consolidation.total_buffer_size` <br>
+   *    The size (in bytes) of all attribute buffers used during
+   *    consolidation. <br>
+   *    **Default**: 2,147,483,648
    * - `sm.consolidation.max_fragment_size` <br>
    *    **Experimental** <br>
    *    The size (in bytes) of the maximum on-disk fragment size that will be
@@ -734,6 +739,10 @@ class Config {
    * from config files with support for web tokens, commonly used by EKS/ECS).
    *    **Default**: auto
    *    <br>
+   * - `vfs.s3.install_sigpipe_handler` <br>
+   *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+   *    signals.
+   *    **Default**: "true"
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""

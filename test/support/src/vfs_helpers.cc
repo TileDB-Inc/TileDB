@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -46,8 +46,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 
-namespace tiledb {
-namespace test {
+namespace tiledb::test {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
@@ -58,6 +57,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   bool supports_gcs = false;
   get_supported_fs(
       &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
+
   if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
@@ -76,7 +76,6 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   }
 
   fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
-
   fs_vec.emplace_back(std::make_unique<SupportedFsMem>());
 
   return fs_vec;
@@ -415,5 +414,4 @@ std::string TemporaryDirectoryFixture::create_temporary_array(
   return array_uri;
 }
 
-}  // End of namespace test
-}  // End of namespace tiledb
+}  // namespace tiledb::test

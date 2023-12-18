@@ -1,3 +1,20 @@
+# TileDB v2.18.2 Release Notes
+
+## Defects removed
+
+* Fix delta filter deserialization for format ver 19. [#4541](https://github.com/TileDB-Inc/TileDB/pull/4541)
+
+## Build System Changes
+
+* Remove the `externals/vcpkg` submodule. Vcpkg is always downloaded by CMake. [#4543](https://github.com/TileDB-Inc/TileDB/pull/4543)
+
+# TileDB v2.18.1 Release Notes
+
+## Build System Changes
+
+* Fix errors when building from a directory that is not a Git repository. [#4529](https://github.com/TileDB-Inc/TileDB/pull/4529)
+
+
 # TileDB v2.18.0 Release Notes
 
 ## Announcements
@@ -121,6 +138,11 @@
 
 * Add support for basic mimo node to TileDB task graph. [#3977](https://github.com/TileDB-Inc/TileDB/pull/3977)
 * Verify that dependency-only edges using `std::monostate` work with nodes and edges. [#3939](https://github.com/TileDB-Inc/TileDB/pull/3939)
+
+# TileDB v2.17.5 Release Notes
+
+## Defects removed
+* Fix delta filter deserialization for format ver 19. [#4541](https://github.com/TileDB-Inc/TileDB/pull/4541)
 
 # TileDB v2.17.4 Release Notes
 

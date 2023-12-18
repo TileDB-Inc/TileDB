@@ -360,7 +360,7 @@ endif()
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_unit PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_unit PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
@@ -407,5 +407,10 @@ if(WIN32)
   add_subdirectory(performance)
 endif()
 
-#add tests related to external items
-add_subdirectory(external)
+add_custom_target(
+  check-package
+  COMMAND ${CMAKE_COMMAND}
+    -DCMAKE_PREFIX_PATH="${CMAKE_INSTALL_PREFIX}$<SEMICOLON>${VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}"
+    -B ${CMAKE_CURRENT_BINARY_DIR}/check-package-build
+    ${CMAKE_CURRENT_SOURCE_DIR}/packaging
+)

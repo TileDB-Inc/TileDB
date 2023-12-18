@@ -9,7 +9,6 @@ env:
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: ON
-  TILEDB_STATIC: ON
   TILEDB_TOOLS: ON
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
@@ -59,8 +58,7 @@ jobs:
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \
             -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
-            -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS} \
-            -DTILEDB_STATIC=${TILEDB_STATIC}
+            -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
           make -j4
           # Build all unit tests
           make -C tiledb tests -j4

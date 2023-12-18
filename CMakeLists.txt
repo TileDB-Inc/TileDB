@@ -41,6 +41,8 @@ include(BuildOptions)
 include(global-policies NO_POLICY_SCOPE)
 include(Sanitizer)
 include(TileDBToolchain)
+include(Doxygen)
+include(Format)
 
 ############################################################
 # Parse version file
@@ -562,14 +564,6 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
-
-  if (TILEDB_CRC32)
-    add_dependencies(tests unit_link_crc32)
-  endif()
-
-  if (TILEDB_WEBP)
-    add_dependencies(tests unit_link_webp)
-  endif()
 
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
