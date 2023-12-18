@@ -63,14 +63,19 @@ Formatting conventions:
 
 ### Building with sanitizers
 
-TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as specify a vcpkg triplet compatible with ASAN (that ends with `-asan`). You can view the list of supported triplets [here](https://github.com/TileDB-Inc/TileDB/tree/dev/ports/triplets).
+TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as the vcpkg base triplet corresponding to your platform. The following platforms support sanitizers:
+
+* `arm64-osx`
+* `x64-linux`
+* `x64-osx`
+* `x64-windows`
 
 > [!NOTE]
 > Currently only the `address` sanitizer is supported.
 
 ```bash
 cd TileDB && mkdir build-asan && cd build-asan
-../bootstrap --enable-sanitizer=address --vcpkg-target-triplet=x64-linux-asan
+../bootstrap --enable-sanitizer=address --vcpkg-base-triplet=x64-linux
 make && make check
 ```
 
