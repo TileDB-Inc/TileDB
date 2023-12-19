@@ -124,4 +124,3 @@ The following are the most important targets:
 |`install-tiledb`|Installs the TileDB library and headers.|
 |`check`|Builds and runs all TileDB tests.|
 |`examples`|Builds all TileDB examples.|
-|`experimental-examples`|Builds all TileDB experimental examples.|
