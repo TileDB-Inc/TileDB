@@ -451,15 +451,14 @@ class S3Scanner : public LsScanner<F, D> {
   void next(typename Iterator::pointer& ptr);
 
   /**
-   * Advance the iterator to the next object in the current batch of results.
    * If the iterator is at the end of the current batch, this will fetch the
    * next batch of results from S3. This does not check if the results are
    * accepted by the filters for this scan.
    *
-   * @param ptr Reference to the current data pointer.
+   * @param ptr Reference to the current data iterator.
    */
   void advance(typename Iterator::pointer& ptr) {
-    ++ptr;
+    ptr++;
     if (ptr == end_) {
       if (more_to_fetch()) {
         // Fetch results and reset the iterator.
@@ -495,7 +494,13 @@ class S3Scanner : public LsScanner<F, D> {
             "request.");
       }
       list_objects_request_.SetContinuationToken(std::move(next_marker));
+    } else if (list_objects_outcome_.IsSuccess()) {
+      // If we have previously submitted a successful request and there are no
+      // more results, we've reached the end of the scan.
+      begin_ = end_ = typename Iterator::pointer();
+      return end_;
     }
+
     list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
     if (!list_objects_outcome_.IsSuccess()) {
       throw S3Exception(
@@ -528,13 +533,6 @@ class S3Scanner : public LsScanner<F, D> {
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
   /** The current request outcome being scanned. */
   Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
-
-  /**
-   * Boolean marker used to signal a valid result was found in a previous call
-   * to next(). If a valid result was found, we should advance to the iterator
-   * before we begin scanning for the next result.
-   */
-  bool found_;
 };
 
 /**
@@ -1526,8 +1524,7 @@ S3Scanner<F, D>::S3Scanner(
     int max_keys)
     : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
     , client_(client)
-    , delimiter_(this->is_recursive_ ? "" : "/")
-    , found_(false) {
+    , delimiter_(this->is_recursive_ ? "" : "/") {
   const auto prefix_dir = prefix.add_trailing_slash();
   auto prefix_str = prefix_dir.to_string();
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -1553,10 +1550,8 @@ S3Scanner<F, D>::S3Scanner(
 
 template <FilePredicate F, DirectoryPredicate D>
 void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
-  // Increment the iterator if we found a result on the last call.
-  if (found_) {
-    found_ = false;
-    advance(ptr);
+  if (ptr == end_) {
+    ptr = fetch_results();
   }
 
   while (ptr != end_) {
@@ -1568,7 +1563,6 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
     // TODO: Add support for directory pruning.
     if (this->file_filter_(path, size)) {
       // Iterator is at the next object within results accepted by the filters.
-      found_ = true;
       return;
     } else {
       // Object was rejected by the FilePredicate, do not include it in results.

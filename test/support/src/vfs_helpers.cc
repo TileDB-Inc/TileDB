@@ -455,7 +455,7 @@ tiledb::sm::Config VFSTestBase::create_test_config() {
 VFSTest::VFSTest(
     const std::vector<size_t>& test_tree, const std::string& prefix)
     : VFSTestBase(test_tree, prefix) {
-  if (!is_supported_) {
+  if (!is_supported()) {
     return;
   }
 

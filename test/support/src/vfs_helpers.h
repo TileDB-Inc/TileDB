@@ -779,7 +779,7 @@ class VFSTestBase {
 
   LsObjects expected_results_;
 
- protected:
+ private:
   bool is_supported_;
 };
 

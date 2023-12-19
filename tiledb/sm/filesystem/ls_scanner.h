@@ -33,6 +33,7 @@
 #ifndef TILEDB_LS_SCANNER_H
 #define TILEDB_LS_SCANNER_H
 
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/sm/filesystem/uri.h"
 
 #include <cstdint>
@@ -51,6 +52,13 @@ template <class F>
 concept DirectoryPredicate = true;
 
 namespace tiledb::sm {
+class LsScanException : public StatusException {
+ public:
+  explicit LsScanException(const std::string& message)
+      : StatusException("LsScan", message) {
+  }
+};
+
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
@@ -66,19 +74,30 @@ using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
  * LsScanIterator iterates over the results of ls requests wrapped by classes
  * deriving from LsScanner. See S3Scanner as an example.
  *
- * @tparam T The LsScanner type that created this iterator.
- * @tparam U The data type stored by this iterator.
+ * The iterator is implemented as an input iterator, where the end() iterator
+ * is default constructed, resulting in an LsScanIterator::ptr_ that is a
+ * non-dereferencable iterator.
+ *
+ *
+ * @tparam scanner_type The LsScanner type that created this iterator.
+ * @tparam T The data type stored by this iterator.
+ * TODO: Discuss using T for iterator type instead of underlying data type.
  */
-template <class T, class U>
+template <class scanner_type, class T>
 class LsScanIterator {
  public:
-  using value_type = U;
+  using value_type = T;
   using difference_type = ptrdiff_t;
-  using pointer = typename std::vector<U>::const_iterator;
-  using reference = const U&;
+  using pointer = typename std::vector<T>::const_iterator;
+  using reference = const T&;
   using iterator_category = std::input_iterator_tag;
 
-  /** Default constructor. */
+  /**
+   * Default constructor.
+   *
+   * This constructor is used to construct the end() iterator, where ptr_ is
+   * default constructed as a non-de-referencable iterator.
+   */
   LsScanIterator() noexcept = default;
 
   /**
@@ -86,7 +105,7 @@ class LsScanIterator {
    *
    * @param scanner The scanner that created this iterator.
    */
-  explicit LsScanIterator(T* scanner) noexcept
+  explicit LsScanIterator(scanner_type* scanner) noexcept
       : scanner_(scanner)
       , ptr_(scanner->begin_) {
   }
@@ -97,7 +116,7 @@ class LsScanIterator {
    * @param scanner The scanner that created this iterator.
    * @param ptr Pointer to set as the current object.
    */
-  LsScanIterator(T* scanner, pointer ptr) noexcept
+  LsScanIterator(scanner_type* scanner, pointer ptr) noexcept
       : scanner_(scanner)
       , ptr_(ptr) {
   }
@@ -122,7 +141,10 @@ class LsScanIterator {
    *
    * @return The current object being visited.
    */
-  constexpr reference operator*() const noexcept {
+  constexpr reference operator*() const {
+    if (ptr_ == pointer()) {
+      throw LsScanException("Failed to dereference invalid iterator.");
+    }
     return *ptr_;
   }
 
@@ -131,7 +153,10 @@ class LsScanIterator {
    *
    * @return The current object being visited.
    */
-  constexpr pointer operator->() const noexcept {
+  constexpr pointer operator->() const {
+    if (ptr_ == pointer()) {
+      throw LsScanException("Failed to dereference invalid iterator.");
+    }
     return ptr_;
   }
 
@@ -142,7 +167,9 @@ class LsScanIterator {
    * @return Reference to this iterator after advancing to the next object.
    */
   LsScanIterator& operator++() {
-    scanner_->next(ptr_);
+    if (++ptr_ != pointer()) {
+      scanner_->next(ptr_);
+    }
     return *this;
   }
 
@@ -172,7 +199,7 @@ class LsScanIterator {
 
  private:
   /** Pointer to the scanner that created this iterator. */
-  T* scanner_;
+  scanner_type* scanner_;
 
   /** Pointer to the current object. */
   pointer ptr_;
@@ -201,13 +228,13 @@ class LsScanner {
 
  protected:
   /** URI prefix being scanned and filtered for results. */
-  URI prefix_;
+  const URI prefix_;
   /** File predicate used to filter file or object results. */
-  F file_filter_;
+  const F file_filter_;
   /** Directory predicate used to prune directory or prefix results. */
-  D dir_filter_;
+  const D dir_filter_;
   /** Whether or not to recursively scan the prefix. */
-  bool is_recursive_;
+  const bool is_recursive_;
 };
 
 }  // namespace tiledb::sm
