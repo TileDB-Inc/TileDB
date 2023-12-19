@@ -13,20 +13,6 @@ title: Building TileDB from source
 * Git (required by vcpkg)
 * curl (required by vcpkg on non-Windows)
 
-### Dependency management with vcpkg
-
-TileDB uses [vcpkg](https://vcpkg.io) to download and build its dependencies. By default, the vcpkg repository will be cloned automatically when configuring the build tree. To avoid repeatedly cloning the repository, and take full advantage of vcpkg's [binary caching](https://learn.microsoft.com/en-us/vcpkg/users/binarycaching) feature, you are recommended to clone the vcpkg repository manually and set the `VCPKG_ROOT` environment variable on your machine to the path of the repository.
-
-> [!NOTE]
-> If you have set `VCPKG_ROOT` on your machine and encountered errors like `error: no version database entry for <port> at <version>` it means that your vcpkg repository is out of date. You can update it by running `git pull` in the repository directory.
-
-Vcpkg will not be automatically downloaded if:
-
-* The `TILEDB_DISABLE_AUTO_VCPKG` environment variable has been defined.
-* The build tree has been configured by directly calling CMake and the `CMAKE_TOOLCHAIN_FILE` variable has been set by the user.
-
-In these cases no dependencies CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package) command. The user is responsible for providing them.
-
 ## Downloading the source code
 
 Begin by downloading a release tarball or by cloning the TileDB GitHub repo and checking out a release tag. In the following script `<version>` is the version you wish to use (e.g., `2.18.0`)
@@ -124,3 +110,19 @@ The following are the most important targets:
 |`install-tiledb`|Installs the TileDB library and headers.|
 |`check`|Builds and runs all TileDB tests.|
 |`examples`|Builds all TileDB examples.|
+
+## Advanced
+
+### Dependency management with vcpkg
+
+TileDB uses [vcpkg](https://vcpkg.io) to download and build its dependencies. By default, the vcpkg repository will be cloned automatically when configuring the build tree. To avoid repeatedly cloning the repository, and take full advantage of vcpkg's [binary caching](https://learn.microsoft.com/en-us/vcpkg/users/binarycaching) feature, you are recommended to clone the vcpkg repository manually and set the `VCPKG_ROOT` environment variable on your machine to the path of the repository.
+
+> [!NOTE]
+> If you have set `VCPKG_ROOT` on your machine and encountered errors like `error: no version database entry for <port> at <version>` it means that your vcpkg repository is out of date. You can update it by running `git pull` in the repository directory.
+
+Vcpkg will not be automatically downloaded if:
+
+* The `TILEDB_DISABLE_AUTO_VCPKG` environment variable has been defined.
+* The build tree has been configured by directly calling CMake and the `CMAKE_TOOLCHAIN_FILE` variable has been set by the user.
+
+In these cases no dependencies CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package) command. The user is responsible for providing them.
