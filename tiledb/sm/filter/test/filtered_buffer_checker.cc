@@ -122,7 +122,7 @@ void FilteredBufferChecker::check(const FilteredBuffer& buffer) const {
   CHECK(nchunks_actual == nchunks_expected);
 
   // Prevent out-of-bounds error if chunk sizes don't match.
-  auto nchunks_check = std::min(nchunks_actual, nchunks_expected);
+  auto nchunks_check = std::min<uint64_t>(nchunks_actual, nchunks_expected);
 
   for (uint64_t chunk_index = 0; chunk_index < nchunks_check; ++chunk_index) {
     INFO("Chunk number: " << chunk_index);
