@@ -74,7 +74,7 @@ class LsScanIterator {
  public:
   using value_type = U;
   using difference_type = ptrdiff_t;
-  using pointer = const U*;
+  using pointer = typename std::vector<U>::const_iterator;
   using reference = const U&;
   using iterator_category = std::input_iterator_tag;
 
@@ -156,23 +156,6 @@ class LsScanIterator {
     LsScanIterator tmp(*this);
     operator++();
     return tmp;
-  }
-
-  /**
-   * @return Iterator to the beginning of the results being iterated on.
-   *    Input iterators are single-pass, so we return a copy of this iterator at
-   *    it's current position.
-   */
-  LsScanIterator begin() {
-    return *this;
-  }
-
-  /**
-   * @return Default constructed iterator, which marks the end of results using
-   *    nullptr.
-   */
-  LsScanIterator end() {
-    return LsScanIterator<T, U>();
   }
 
   /** Inequality operator. */

@@ -425,12 +425,20 @@ class S3Scanner : public LsScanner<F, D> {
   }
 
   /**
-   * Constructs an iterator to the beginning of the results for this scan.
-   *
-   * @return Iterator to the beginning of the results for this scan.
+   * @return Iterator to the beginning of the results being iterated on.
+   *    Input iterators are single-pass, so we return a copy of this iterator at
+   *    it's current position.
    */
-  Iterator iterator() {
+  Iterator begin() {
     return Iterator(this);
+  }
+
+  /**
+   * @return Default constructed iterator, which marks the end of results using
+   *    nullptr.
+   */
+  Iterator end() {
+    return Iterator();
   }
 
  private:
@@ -458,7 +466,7 @@ class S3Scanner : public LsScanner<F, D> {
         ptr = fetch_results();
       } else {
         // Set the pointer to nullptr to indicate the end of results.
-        end_ = ptr = nullptr;
+        end_ = ptr = typename Iterator::pointer();
       }
     }
   }
@@ -496,14 +504,14 @@ class S3Scanner : public LsScanner<F, D> {
           delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
     }
     // Update pointers to the newly fetched results.
-    begin_ = &list_objects_outcome_.GetResult().GetContents().front();
-    end_ = &list_objects_outcome_.GetResult().GetContents().back() + 1;
+    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+    end_ = list_objects_outcome_.GetResult().GetContents().end();
 
     if (list_objects_outcome_.GetResult().GetContents().empty()) {
       // If the request returned no results, we've reached the end of the scan.
       // We hit this case when the number of objects in the bucket is a multiple
       // of the current max_keys.
-      return nullptr;
+      return end_;
     }
 
     return begin_;
@@ -513,8 +521,8 @@ class S3Scanner : public LsScanner<F, D> {
   shared_ptr<TileDBS3Client> client_;
   /** Delimiter used for ListObjects request. */
   std::string delimiter_;
-  /** Pointers for the current objects fetched from S3. */
-  typename Iterator::pointer begin_, end_;
+  /** Iterators for the current objects fetched from S3. */
+  Iterator::pointer begin_, end_;
 
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
@@ -678,8 +686,7 @@ class S3 {
    * @param max_paths The maximum number of paths to be retrieved.
    * @return Status tuple where second is a list of directory_entry objects.
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
+  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
@@ -699,7 +706,7 @@ class S3 {
   LsObjects ls_filtered(
       const URI& parent,
       F f,
-      D d = tiledb::sm::accept_all_dirs,
+      D d = accept_all_dirs,
       bool recursive = false) const {
     throw_if_not_ok(init_client());
     S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
@@ -708,7 +715,7 @@ class S3 {
     prefix = prefix.substr(0, prefix.find('/', 5));
 
     LsObjects objects;
-    for (auto object : s3_scanner.iterator()) {
+    for (auto object : s3_scanner) {
       objects.emplace_back(prefix + "/" + object.GetKey(), object.GetSize());
     }
     return objects;
@@ -731,7 +738,7 @@ class S3 {
   S3Scanner<F, D> scanner(
       const URI& parent,
       F f,
-      D d = tiledb::sm::accept_all_dirs,
+      D d = accept_all_dirs,
       bool recursive = false,
       int max_keys = 1000) const {
     throw_if_not_ok(init_client());

@@ -608,9 +608,7 @@ TEST_CASE(
 
     auto scan = s3_test.get_s3().scanner(
         s3_test.temp_dir_, file_filter, accept_all_dirs, recursive, max_keys);
-    auto iter = scan.iterator();
-    std::vector<Aws::S3::Model::Object> results_vector(
-        iter.begin(), iter.end());
+    std::vector results_vector(scan.begin(), scan.end());
 
     CHECK(results_vector.size() == expected.size());
     for (size_t i = 0; i < expected.size(); i++) {
@@ -636,32 +634,31 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
         accept_all_dirs,
         recursive,
         max_keys);
-    auto iter = scan.iterator();
 
     SECTION("for loop") {
       SECTION("range based for") {
-        for (const auto& result : iter) {
+        for (const auto& result : scan) {
           results_vector.push_back(result);
         }
       }
       SECTION("prefix operator") {
-        for (auto it = iter.begin(); it != iter.end(); ++it) {
+        for (auto it = scan.begin(); it != scan.end(); ++it) {
           results_vector.push_back(*it);
         }
       }
       SECTION("postfix operator") {
-        for (auto it = iter.begin(); it != iter.end(); it++) {
+        for (auto it = scan.begin(); it != scan.end(); it++) {
           results_vector.push_back(*it);
         }
       }
     }
 
     SECTION("vector::assign") {
-      results_vector.assign(iter.begin(), iter.end());
+      results_vector.assign(scan.begin(), scan.end());
     }
 
     SECTION("std::move") {
-      std::move(iter.begin(), iter.end(), std::back_inserter(results_vector));
+      std::move(scan.begin(), scan.end(), std::back_inserter(results_vector));
     }
   }
 
