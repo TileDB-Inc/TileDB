@@ -416,7 +416,7 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
     ${TILEDB_EXTERNALS_SOURCES}
 )
 
-# List of libraries to be linked to TILEDB_CORE_OBJECTS and TILEDB_CORE_OBJECTS_STATIC.
+# List of libraries to be linked to TILEDB_CORE_OBJECTS.
 set(TILEDB_CORE_OBJECTS_LIBS
   baseline
 )
@@ -474,31 +474,6 @@ target_include_directories(TILEDB_CORE_OBJECTS
 	# to pickup <build_dir>/tiledb for capnp gen'd files
     "${CMAKE_CURRENT_BINARY_DIR}/.."
 )
-
-# Build a separate copy of the object library for use with static TileDB
-# on Windows. See https://github.com/TileDB-Inc/TileDB/issues/673
-if (WIN32 AND TILEDB_STATIC)
-  add_library(TILEDB_CORE_OBJECTS_STATIC OBJECT
-    ${TILEDB_CORE_SOURCES}
-    ${TILEDB_EXTERNALS_SOURCES}
-  )
-  add_dependencies(TILEDB_CORE_OBJECTS_STATIC gen_mgc_unarch)
-
-  target_sources(TILEDB_CORE_OBJECTS_STATIC
-    PUBLIC
-      ${TILEDB_CORE_OBJECTS_LIBS_SOURCES}
-  )
-
-  target_link_libraries(TILEDB_CORE_OBJECTS_STATIC
-    PUBLIC
-      ${TILEDB_CORE_OBJECTS_LIBS}
-  )
-
-  target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
-    PRIVATE
-      -DTILEDB_STATIC_DEFINE
-  )
-endif()
 
 if (TILEDB_CPP_API)
   target_include_directories(TILEDB_CORE_OBJECTS
@@ -817,11 +792,6 @@ if(TILEDB_SERIALIZATION)
   target_sources(TILEDB_CORE_OBJECTS PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
   )
-  if (WIN32 AND TILEDB_STATIC)
-    target_sources(TILEDB_CORE_OBJECTS_STATIC PRIVATE
-      ${CMAKE_CURRENT_SOURCE_DIR}/sm/serialization/tiledb-rest.capnp.c++
-    )
-  endif()
 
   ###################################
   # capnproto file generation target
@@ -866,10 +836,12 @@ endif()
 
 
 ############################################################
-# TileDB static and shared library targets
+# TileDB library targets
 ############################################################
 
-add_library(tiledb_shared SHARED $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+# CMake will determine the library's linkage from
+# the value of the BUILD_SHARED_LIBS variable.
+add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
@@ -884,7 +856,7 @@ set(ver_patch ${CMAKE_MATCH_1})
 
 set(VERSION "${ver_major}.${ver_minor}.${ver_patch}")
 
-if (WIN32)
+if (WIN32 AND BUILD_SHARED_LIBS)
   # WIN32 RC file creation (for VERSIONINFO)
   set(TDB_WIN32_FILEVERSION "${ver_major},${ver_minor},${ver_patch},0")
   set(TDB_WIN32_FILEVERSION_STR "\"${ver_major}.${ver_minor}.${ver_patch}\"")
@@ -895,80 +867,32 @@ if (WIN32)
   )
 
   # The .rc file will be created elsewhere (currently below) via configure_file()
-  target_sources(tiledb_shared PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc)
-  target_include_directories(tiledb_shared
+  target_sources(tiledb PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/tiledb_win32_verinfo.rc)
+  target_include_directories(tiledb
     PRIVATE
       "${TILEDB_CORE_INCLUDE_DIR}"
     )
 endif()
 
-# Target properties
-set_target_properties(tiledb_shared
-  PROPERTIES
-    OUTPUT_NAME "tiledb"
-)
-
 if (TILEDB_VERSION AND CMAKE_SYSTEM_NAME MATCHES "Linux")
-  set_target_properties(tiledb_shared
+  set_target_properties(tiledb
     PROPERTIES
       SOVERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}")
 endif()
 
 # Link the dependencies specified earlier
-target_link_libraries(tiledb_shared
+target_link_libraries(tiledb
   PRIVATE
     $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
-    TILEDB_CORE_OBJECTS
+    $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
 )
 
-if (TILEDB_STATIC)
-  if (WIN32)
-    # Copy over all include directories, compile options, etc, from the regular
-    # core objects.
-    target_compile_definitions(TILEDB_CORE_OBJECTS_STATIC
-      PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,COMPILE_DEFINITIONS>
-    )
-    target_compile_options(TILEDB_CORE_OBJECTS_STATIC
-      PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,COMPILE_OPTIONS>
-    )
-    target_include_directories(TILEDB_CORE_OBJECTS_STATIC
-      PRIVATE
-        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
-    )
-    # Create the target
-    add_library(tiledb_static STATIC
-      $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS_STATIC>)
-    target_link_libraries(tiledb_static
-      PRIVATE
-        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS_STATIC>
-    )
-    target_compile_definitions(tiledb_static
-      INTERFACE
-        -DTILEDB_STATIC_DEFINE
-    )
-    # On Windows we must name the static library something else to avoid
-    # name clash with the DLL's "import library" .lib file.
-    set_target_properties(tiledb_static
-      PROPERTIES
-        OUTPUT_NAME "tiledbstatic"
-    )
-  else()
-    add_library(tiledb_static STATIC $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
-    target_link_libraries(tiledb_static
-      PRIVATE
-        $<BUILD_INTERFACE:TILEDB_CORE_OBJECTS>
-    )
-    set_target_properties(tiledb_static
-      PROPERTIES
-        OUTPUT_NAME "tiledb"
-    )
-  endif()
-
-  target_link_libraries(tiledb_static
-    PRIVATE
-      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS_ILIB,INTERFACE_LINK_LIBRARIES>
+if (WIN32 AND NOT BUILD_SHARED_LIBS)
+  # On Windows we must name the static library something else to avoid
+  # name clash with the DLL's "import library" .lib file.
+  set_target_properties(tiledb
+    PROPERTIES
+      OUTPUT_NAME "tiledbstatic"
   )
 endif()
 
@@ -980,13 +904,13 @@ endif()
 
 # Generates the file 'tiledb_export.h' suitable for the current compiler.
 include(GenerateExportHeader)
-generate_export_header(TILEDB_CORE_OBJECTS
+generate_export_header(tiledb
   BASE_NAME tiledb
 )
 # Install locally
 configure_file(${TILEDB_EXPORT_HEADER} ${TILEDB_LOCALINSTALL_INCLUDE}/${TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH} COPYONLY)
 
-target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(TILEDB_CORE_OBJECTS PRIVATE -Dtiledb_EXPORTS)
 target_include_directories(TILEDB_CORE_OBJECTS PRIVATE ${TILEDB_EXPORT_HEADER_DIR})
 
 # Add the generated header to the public headers list
@@ -995,23 +919,17 @@ list(APPEND TILEDB_PUBLIC_HEADERS
 )
 
 # Set the public headers, which are the ones that get installed.
-set_target_properties(tiledb_shared
+set_target_properties(tiledb
   PROPERTIES
     PUBLIC_HEADER "${TILEDB_PUBLIC_HEADERS}"
 )
-if (TILEDB_STATIC)
-  set_target_properties(tiledb_static
-    PROPERTIES
-      PUBLIC_HEADER "${TILEDB_PUBLIC_HEADERS}"
-  )
-endif()
 
 # Don't re-export symbols from static (archive) libraries
 #   Prevents conflicts with other versions of (e.g.) OpenSSL
 #   loaded in the same process namespace, which can cause
 #   crashes if the versions are not compatible.
 if (CMAKE_SYSTEM_NAME MATCHES "Linux")
-  set_target_properties(tiledb_shared
+  set_target_properties(tiledb
     PROPERTIES
       LINK_FLAGS "-Wl,--exclude-libs=ALL")
 endif()
@@ -1026,8 +944,8 @@ include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 # Set rpath so the TileDB dynamic dependencies can be located.
-if (NOT WIN32)
-  set_target_properties(tiledb_shared
+if (BUILD_SHARED_LIBS AND NOT WIN32)
+  set_target_properties(tiledb
     PROPERTIES
       INSTALL_RPATH "${CMAKE_INSTALL_PREFIX}/${CMAKE_INSTALL_LIBDIR}"
   )
@@ -1040,11 +958,10 @@ endif()
 
 # List of targets to install.
 set(TILEDB_INSTALL_TARGETS
-  tiledb_shared
+  tiledb
 )
-if (TILEDB_STATIC)
+if (NOT BUILD_SHARED_LIBS)
   list(APPEND TILEDB_INSTALL_TARGETS
-    tiledb_static
     TILEDB_CORE_OBJECTS_ILIB
     object_store_definitions
   )

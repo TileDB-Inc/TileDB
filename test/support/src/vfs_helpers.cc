@@ -53,25 +53,32 @@ tiledb::sm::URI test_dir(const std::string& prefix) {
 
 std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
+
+  bool supports_s3 = false;
+  bool supports_hdfs = false;
+  bool supports_azure = false;
+  bool supports_gcs = false;
+  get_supported_fs(
+      &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
+
+  if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
   }
 
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
+  if (supports_hdfs) {
     fs_vec.emplace_back(std::make_unique<SupportedFsHDFS>());
   }
 
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
+  if (supports_azure) {
     fs_vec.emplace_back(std::make_unique<SupportedFsAzure>());
   }
 
-  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
+  if (supports_gcs) {
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
   }
 
   fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
-
   fs_vec.emplace_back(std::make_unique<SupportedFsMem>());
 
   return fs_vec;

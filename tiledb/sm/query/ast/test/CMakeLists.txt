@@ -36,7 +36,7 @@ set(AST_TEST_SUPPORT_SOURCES
     ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.h
     ${CMAKE_SOURCE_DIR}/test/support/src/ast_helpers.cc
     )
-add_library(ast_test_support_lib EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOURCES})
+add_library(ast_test_support_lib STATIC EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOURCES})
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)

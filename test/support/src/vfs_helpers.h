@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,8 +39,7 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 
-namespace tiledb {
-namespace test {
+namespace tiledb::test {
 
 // Forward declaration
 class SupportedFs;
@@ -561,6 +560,61 @@ class SupportedFsMem : public SupportedFs {
 };
 
 /**
+ * Struct which allocates a config and conditionally sets filesystem-specific
+ * parameters on it.
+ */
+struct vfs_config {
+  /** Config handle. */
+  tiledb_config_handle_t* config{nullptr};
+
+  /** Constructor. */
+  vfs_config() {
+    tiledb_error_t* error = nullptr;
+    auto rc = tiledb_config_alloc(&config, &error);
+    if (rc != TILEDB_OK) {
+      throw std::runtime_error("error creating config handle");
+    }
+    if (error != nullptr) {
+      throw std::logic_error(
+          "tiledb_config_alloc returned OK but with non-null error");
+    }
+
+    if constexpr (tiledb::sm::filesystem::s3_enabled) {
+      SupportedFsS3 fs_s3;
+      auto st = fs_s3.prepare_config(config, error);
+      if (!st.ok()) {
+        throw std::runtime_error("error preparing S3 config");
+      }
+    }
+
+    if constexpr (tiledb::sm::filesystem::azure_enabled) {
+      SupportedFsAzure fs_azure;
+      auto st = fs_azure.prepare_config(config, error);
+      if (!st.ok()) {
+        throw std::runtime_error("error preparing Azure config");
+      }
+    }
+  }
+
+  /** Copy constructor is deleted. */
+  vfs_config(const vfs_config&) = delete;
+
+  /** Move constructor is deleted. */
+  vfs_config(vfs_config&&) = delete;
+
+  /** Copy assignment is deleted. */
+  vfs_config& operator=(const vfs_config&) = delete;
+
+  /** Move assignment is deleted. */
+  vfs_config& operator=(vfs_config&&) = delete;
+
+  /** Destructor. */
+  ~vfs_config() {
+    tiledb_config_free(&config);
+  }
+};
+
+/**
  * Fixture for creating a temporary directory for a test case. This fixture
  * also manages the context and virtual file system for the test case.
  */
@@ -871,7 +925,6 @@ class MemFsTest : public VFSTestBase {
       : VFSTestBase(test_tree, "mem://") {
   }
 };
-}  // End of namespace test
-}  // End of namespace tiledb
+}  // namespace tiledb::test
 
 #endif

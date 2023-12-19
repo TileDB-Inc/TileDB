@@ -481,14 +481,6 @@ void create_subarray(
     bool coalesce_ranges = false);
 
 /**
- * Helper method that creates a TileDB context and a VFS object.
- *
- * @param ctx The TileDB context to be created.
- * @param vfs The VFS object to be created.
- */
-void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
-
-/**
  * Helper function to get the supported filesystems.
  * Supports VFS override via "--vfs" command line argument.
  *
