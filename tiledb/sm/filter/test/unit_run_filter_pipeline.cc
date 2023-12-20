@@ -43,24 +43,18 @@
  * Define the following when adding a value of variable length data:
  *
  * * "current size": the size of the current chunk before adding the data
- * * "total size": the size of the current chunk if the new data is added to it
+ * * "new size": the size of the current chunk if the new data is added to it
  * * "target size": the target size for chunks
  * * "min size": 50% the target size for chunks
  * * "max size": 150% the target size for chunks
  *
- * Add the new value to the chunk if:
- *  Condition 1. total size <= target size
- *  Condition 2. (current size <= min size) and (total size <= max size)
+ * A new chunk is created if the total size > target size.
  *
- * This means a new chunk will be created if:
+ * When a new chunk is created, if either of the following are met, then add
+ * the current component to the existing chunk:
  *
- *  Reason 1. current size >= target size
- *  Reason 2. (min size <= current size < max size) and (total size > target
- * size)
- *  Reason 3. (current size < min size) and (total size > max size)
- *
- * Note that if a variable length is greater than the max size, it will always
- * be add to its own chunk.
+ *  Condition 1. current size < min size
+ *  Condition 2. new size < max size
  *
  */
 
@@ -84,7 +78,7 @@
 #include "add_1_including_metadata_filter.h"
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
-#include "filtered_buffer_checker.h"
+#include "filtered_tile_checker.h"
 #include "pseudo_checksum_filter.h"
 #include "tile_data_generator.h"
 #include "tiledb/sm/crypto/encryption_key.h"
@@ -108,23 +102,27 @@ class SimpleTestData {};
  * For this test target size is 10 cells per chunk. Below is a list of value
  * cell lengths, the cell they are added to, and the rational.
  *
- * | Index | # Cells | Chunk # | Chunk rational        |
- * |:-----:|:-------:|:-------:|:----------------------|
- * |  1    |  4      |  0      | -- initial chunk --   |
- * |  2    |  10     |  0      | satisfies condition 1 |
- * |  3    |  6      |  1      | new chunk - reason 1  |
- * |  4    |  11     |  2      | new chunk - reason 2  |
- * |  5    |  7      |  3      | new chunk - reason 1  |
- * |  6    |  9      |  4      | new chunk - reason 2  |
- * |  7    |  1      |  4      | satifies condition 1  |
- * |  8    |  10     |  5      | new chunk - reason 1  |
- * |  9    |  20     |  6      | new chunk - reason 1 (var > max size) |
- * |  10   |  2      |  7      | new chunk - reason 1  |
- * |  11   |  2      |  7      | satisfies condition 1 |
- * |  12   |  2      |  7      | satisfies condition 1 |
- * |  13   |  2      |  7      | satisfied condition 1 |
- * |  14   |  2      |  7      | satisfies condition 1 |
- * |  15   |  12     |  8      | new chunk - reason 1  |
+ * target = 8 cells
+ * min = 4 cells
+ * max = 12 cells
+ *
+ * | # Cells | Previous/New # Cell in Chunk | Notes                            |
+ * |:-------:|:--------|:------------------------------------------------------|
+ * |  4      |  0 / 4  | chunk 0: initial chunk                                |
+ * |  10     |  4 / 14 | chunk 0: new > max, prev. <= min (next new)           |
+ * |  6      |  0 / 6  | chunk 1: new <= target                                |
+ * |  11     |  6 / 11 | chunk 2: target < new <= max, prev. > min  (next new) |
+ * |  7      |  0 / 7  | chunk 3: new <= target                                |
+ * |  9      |  7 / 16 | chunk 4: new > max, prev. > min (this new)            |
+ * |  1      |  9 / 10 | chunk 4: new <= target                                |
+ * |  10     | 10 / 20 | chunk 5: new > max, prev. > min (this new)            |
+ * |  20     |  0 / 20 | chunk 6: new > max, prev. < min (next new)            |
+ * |  2      |  0 / 2  | chunk 7: new <= target                                |
+ * |  2      |  2 / 4  | chunk 7: new <= target                                |
+ * |  2      |  4 / 6  | chunk 7: new <= target                                |
+ * |  2      |  6 / 8  | chunk 7: new <= target                                |
+ * |  2      |  8 / 10 | chunk 7: new <= target                                |
+ * |  12     | 10 / 24 | chunk 8: new > max, prev. > min (this new)            |
  *
  */
 class SimpleVariableTestData {
@@ -171,7 +169,7 @@ void check_run_pipeline_full(
     std::optional<WriterTile>& offsets_tile,
     FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
-    const FilteredBufferChecker& filtered_buffer_checker) {
+    const FilteredTileChecker& filtered_buffer_checker) {
   // Run the pipeline forward.
   CHECK(pipeline
             .run_forward(
@@ -272,7 +270,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
 
   // Create  expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 0, 1);
 
   // Run the pipeline tests.
@@ -303,7 +301,7 @@ TEST_CASE(
 
   // Create  expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint16_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint16_t>(
           elements_per_chunk, 0, 1);
 
   // Run the pipeline tests.
@@ -332,7 +330,7 @@ TEST_CASE(
   // Create pipeline to test and expected filtered data checker.
   FilterPipeline pipeline;
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 0, 1);
 
   // Run the round-trip test.
@@ -364,7 +362,7 @@ TEST_CASE(
   SECTION("- Single stage") {
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 1, 1);
 
     // Run the pipeline tests.
@@ -385,7 +383,7 @@ TEST_CASE(
 
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 3, 1);
 
     // Run the pipeline tests.
@@ -419,7 +417,7 @@ TEST_CASE(
   SECTION("- Single stage") {
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 1, 1);
 
     // Run the pipeline tests.
@@ -441,7 +439,7 @@ TEST_CASE(
 
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 3, 1);
 
     // Run the pipeline tests.
@@ -475,7 +473,7 @@ TEST_CASE(
 
   SECTION("- Single stage") {
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 1, 1);
 
     // Run the pipeline tests.
@@ -495,7 +493,7 @@ TEST_CASE(
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 3, 1);
 
     // Run the pipeline tests.
@@ -529,7 +527,7 @@ TEST_CASE(
   SECTION("- Single stage") {
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 1, 1);
 
     // run the pipeline tests.
@@ -549,7 +547,7 @@ TEST_CASE(
 
     // Create expected filtered data checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, 3, 1);
 
     // run the pipeline tests.
@@ -586,7 +584,7 @@ TEST_CASE(
 
   // Create expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 4, 1);
 
   // Run the pipeline tests.
@@ -621,7 +619,7 @@ TEST_CASE(
 
   // Create expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 4, 1);
 
   // Run the pipeline tests.
@@ -654,7 +652,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   SECTION("- Single stage") {
     // Create filtered buffer checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, {{expected_checksum}}, 0, 1);
 
     // Run the pipeline tests.
@@ -681,7 +679,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
 
     // Create filtered buffer checker.
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk,
             {{expected_checksum_2, expected_checksum}},
             2,
@@ -720,7 +718,7 @@ TEST_CASE(
     std::vector<std::vector<uint64_t>> expected_checksums{
         {91}, {99}, {275}, {238}, {425}, {525}, {1350}, {825}, {1122}};
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, expected_checksums, 0, 1);
 
     // Run the pipeline tests.
@@ -752,7 +750,7 @@ TEST_CASE(
         {845, 825},
         {1146, 1122}};
     auto filtered_buffer_checker =
-        FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
             elements_per_chunk, expected_checksums, 2, 1);
 
     // Run the pipeline tests.
@@ -795,7 +793,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
 
   // Create pipeline to test and expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 4, 1);
 
   // Run the pipeline tests.
@@ -836,7 +834,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
 
   // Create expected filtered data checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 4, 1);
 
   // Run the pipeline tests.
@@ -885,7 +883,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
 
   // Create filtered buffer checker.
   auto filtered_buffer_checker =
-      FilteredBufferChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, {{expected_checksum}}, 4, 1);
 
   // Run the pipeline tests.

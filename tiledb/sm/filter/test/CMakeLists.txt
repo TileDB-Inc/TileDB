@@ -44,7 +44,7 @@ commence(unit_test run_filter_pipeline)
         add_1_including_metadata_filter.cc
         add_1_out_of_place_filter.cc
         add_n_in_place_filter.cc
-        filtered_buffer_checker.cc
+        filtered_tile_checker.cc
         pseudo_checksum_filter.cc
         unit_run_filter_pipeline.cc
     )
