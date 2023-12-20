@@ -136,15 +136,19 @@ class LsScanIterator {
     return *this;
   }
 
+  inline void ensure_dereferenceable() const {
+    if (ptr_ == pointer()) {
+      throw LsScanException("Failed to dereference invalid iterator.");
+    }
+  }
+
   /**
    * Dereference operator.
    *
    * @return The current object being visited.
    */
   constexpr reference operator*() const {
-    if (ptr_ == pointer()) {
-      throw LsScanException("Failed to dereference invalid iterator.");
-    }
+    ensure_dereferenceable();
     return *ptr_;
   }
 
@@ -154,9 +158,7 @@ class LsScanIterator {
    * @return The current object being visited.
    */
   constexpr pointer operator->() const {
-    if (ptr_ == pointer()) {
-      throw LsScanException("Failed to dereference invalid iterator.");
-    }
+    ensure_dereferenceable();
     return ptr_;
   }
 
