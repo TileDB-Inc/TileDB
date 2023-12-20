@@ -887,7 +887,6 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
           elements_per_chunk, {{expected_checksum}}, 4, 1);
 
   // Run the pipeline tests.
-  // Run the pipeline tests.
   check_run_pipeline_full(
       config,
       tp,
