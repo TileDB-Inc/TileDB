@@ -41,11 +41,11 @@ namespace tiledb::common {
  * Returns a PRNG-generated random label with the optionally-provided prefix.
  *
  * Given prefix "tiledb-", this function will return a label with syntax
- * tiledb-<32-bit hexadecimal random number>.
+ * tiledb-<32-digit hexadecimal random number>.
  * (Ex. tiledb-f258d22d4db9139204eef2b4b5d860cc).
  *
- * Note: the random number is actually the combination of two 16-bit numbers.
- * The values are 0-padded to ensure exactly a 32-bit length.
+ * Note: the random number is actually the combination of two 16-digit numbers.
+ * The values are 0-padded to ensure exactly a 128-bit, 32-digit length.
  *
  * @param prefix The optional prefix of the label.
  * @return A random label.
