@@ -268,7 +268,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   // Create pipeline.
   FilterPipeline pipeline;
 
-  // Create  expected filtered data checker.
+  // Create expected filtered data checker.
   auto filtered_buffer_checker =
       FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 0, 1);
