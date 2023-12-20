@@ -1270,6 +1270,11 @@ TEST_CASE(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
+  rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
   rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
@@ -1630,9 +1635,22 @@ TEST_CASE(
       buffers,
       &written_frag_uri_3);
 
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx, array_name.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Create fragment info object
   tiledb_fragment_info_t* fragment_info = nullptr;

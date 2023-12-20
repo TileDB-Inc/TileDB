@@ -2284,6 +2284,9 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(
       config, "sm.consolidation.mode", "fragment_meta", &error);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  CHECK(rc == TILEDB_OK);
 
   // Consolidate fragment metadata
   rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
@@ -2328,8 +2331,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "fragments", &error);
+  CHECK(rc == TILEDB_OK);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_vacuum(ctx_, array_name.c_str(), nullptr);
   CHECK(rc == TILEDB_OK);
