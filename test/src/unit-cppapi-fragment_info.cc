@@ -879,6 +879,7 @@ TEST_CASE(
     // Consolidate fragments
     Config config;
     config["sm.consolidation.mode"] = "fragments";
+    config["sm.consolidation.total_buffer_size"] = "1048576";
     Array::consolidate(ctx, array_name, &config);
 
     // Load fragment info
