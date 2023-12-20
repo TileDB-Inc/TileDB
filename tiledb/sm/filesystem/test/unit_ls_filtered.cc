@@ -76,6 +76,8 @@ class VFSTest {
   std::vector<size_t> test_tree_;
   std::string prefix_;
   tiledb::sm::URI temp_dir_;
+
+ private:
   tiledb::sm::LsObjects expected_results_;
 };
 

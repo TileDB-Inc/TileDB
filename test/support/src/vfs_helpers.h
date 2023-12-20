@@ -813,6 +813,10 @@ class VFSTestBase {
     return is_supported_;
   }
 
+  inline LsObjects& expected_results() {
+    return expected_results_;
+  }
+
   /**
    * Creates a config for testing VFS storage backends over local emulators.
    *
@@ -831,9 +835,8 @@ class VFSTestBase {
   std::string prefix_;
   tiledb::sm::URI temp_dir_;
 
-  LsObjects expected_results_;
-
  private:
+  LsObjects expected_results_;
   bool is_supported_;
 };
 
@@ -869,9 +872,10 @@ class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
         std::string data(j * 10, 'a');
         s3().write(object_uri, data.data(), data.size()).ok();
         s3().flush_object(object_uri).ok();
-        expected_results_.emplace_back(object_uri.to_string(), data.size());
+        expected_results().emplace_back(object_uri.to_string(), data.size());
       }
     }
+    std::sort(expected_results().begin(), expected_results().end());
 #endif
   }
 

@@ -367,15 +367,17 @@ TEMPLATE_LIST_TEST_CASE(
     auto ls_objects = fs.get_s3().ls_filtered(
         path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
 
+    auto expected = fs.expected_results();
     if (!recursive) {
       // If non-recursive, all objects in the first directory should be
       // returned.
-      fs.expected_results_.resize(fs.test_tree_[0]);
+      std::erase_if(expected, [](const auto& p) {
+        return p.first.find("subdir_1") == std::string::npos;
+      });
     }
-    std::sort(fs.expected_results_.begin(), fs.expected_results_.end());
 
-    CHECK(ls_objects.size() == fs.expected_results_.size());
-    CHECK(ls_objects == fs.expected_results_);
+    CHECK(ls_objects.size() == expected.size());
+    CHECK(ls_objects == expected);
 #endif
   }
 }

@@ -482,9 +482,10 @@ VFSTest::VFSTest(
       vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
       vfs_.write(object_uri, data.data(), data.size()).ok();
       vfs_.close_file(object_uri).ok();
-      expected_results_.emplace_back(object_uri.to_string(), data.size());
+      expected_results().emplace_back(object_uri.to_string(), data.size());
     }
   }
+  std::sort(expected_results().begin(), expected_results().end());
 }
 
 LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)

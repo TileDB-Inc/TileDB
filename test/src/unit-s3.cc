@@ -567,11 +567,11 @@ TEST_CASE(
 
   DYNAMIC_SECTION("Testing with " << max_keys << " max keys from S3") {
     FileFilter file_filter;
+    auto expected = s3_test.expected_results();
 
     SECTION("Accept all objects") {
       file_filter = [](const std::string_view&, uint64_t) { return true; };
-      std::sort(
-          s3_test.expected_results_.begin(), s3_test.expected_results_.end());
+      std::sort(expected.begin(), expected.end());
     }
 
     SECTION("Reject all objects") {
@@ -597,14 +597,9 @@ TEST_CASE(
     }
 
     // Filter expected results to apply file_filter.
-    LsObjects expected;
-    std::copy_if(
-        s3_test.expected_results_.begin(),
-        s3_test.expected_results_.end(),
-        std::back_inserter(expected),
-        [&file_filter](const auto& a) {
-          return file_filter(a.first, a.second);
-        });
+    std::erase_if(expected, [&file_filter](const auto& a) {
+      return !file_filter(a.first, a.second);
+    });
 
     auto scan = s3_test.get_s3().scanner(
         s3_test.temp_dir_, file_filter, accept_all_dirs, recursive, max_keys);
@@ -662,15 +657,13 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
     }
   }
 
-  std::sort(s3_test.expected_results_.begin(), s3_test.expected_results_.end());
-  CHECK(results_vector.size() == s3_test.expected_results_.size());
-  for (size_t i = 0; i < s3_test.expected_results_.size(); i++) {
+  auto expected = s3_test.expected_results();
+  CHECK(results_vector.size() == expected.size());
+  for (size_t i = 0; i < expected.size(); i++) {
     auto s3_object = results_vector[i];
     auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
-    CHECK(full_uri == s3_test.expected_results_[i].first);
-    CHECK(
-        static_cast<uint64_t>(s3_object.GetSize()) ==
-        s3_test.expected_results_[i].second);
+    CHECK(full_uri == expected[i].first);
+    CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
   }
 }
 

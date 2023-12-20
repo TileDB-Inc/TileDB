@@ -397,6 +397,20 @@ class TileDBS3Client : public Aws::S3::S3Client {
  * results. If we reach the end of the current batch of results and results are
  * truncated, we fetch the next batch of results from S3.
  *
+ * For each batch of results collected by fetch_results(), the begin_ and end_
+ * members are initialized to the first and last elements of the batch. The scan
+ * steps through each result in the range [begin_, end_), using next() to
+ * advance to the next object accepted by the filters for this scan.
+ *
+ * @section Known Defect
+ *      The iterators of S3Scanner are initialized by the AWS ListObjectsV2
+ *      results and there is no way to determine if they are different from
+ *      iterators returned by a previous request. To be able to detect this, we
+ *      can track the batch number and compare it to the batch number associated
+ *      with the iterator returned by the previous request. Batch number can be
+ *      tracked by the total number of times we submit a ListObjectsV2 request
+ *      within fetch_results().
+ *
  * @tparam F The FilePredicate type used to filter object results.
  * @tparam D The DirectoryPredicate type used to prune prefix results.
  */
@@ -404,7 +418,7 @@ template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
 class S3Scanner : public LsScanner<F, D> {
  public:
   /** Declare LsScanIterator as a friend class for access to call next(). */
-  template <class T, class U>
+  template <class scanner_type, class T>
   friend class LsScanIterator;
   using Iterator = LsScanIterator<S3Scanner<F, D>, Aws::S3::Model::Object>;
 
@@ -527,7 +541,7 @@ class S3Scanner : public LsScanner<F, D> {
   /** Delimiter used for ListObjects request. */
   std::string delimiter_;
   /** Iterators for the current objects fetched from S3. */
-  Iterator::pointer begin_, end_;
+  typename Iterator::pointer begin_, end_;
 
   /** The current request being scanned. */
   Aws::S3::Model::ListObjectsV2Request list_objects_request_;
