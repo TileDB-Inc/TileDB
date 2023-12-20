@@ -65,7 +65,7 @@ endif()
 
 # Catch has a conflict with ASAN on Windows. Disable the SEH handler in Catch to avoid the conflict.
 add_compile_definitions("$<$<CXX_COMPILER_ID:MSVC>:CATCH_CONFIG_NO_WINDOWS_SEH>")
-        # Microsoft suppresses /INCREMENTAL, but emits a warning, so silence it.
+# Microsoft suppresses /INCREMENTAL, but emits a warning, so silence it.
 add_link_options("$<$<CXX_COMPILER_ID:MSVC>:/INCREMENTAL:NO>")
 
 # Ordinary gcc/clang behavior.
