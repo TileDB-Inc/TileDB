@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -118,7 +118,6 @@ struct SparseHeterFx {
       const std::vector<int64_t>& buff_d1,
       const std::vector<float>& buff_d2,
       const std::vector<int32_t>& buff_a);
-  static std::string random_name(const std::string& prefix);
   int tiledb_array_get_non_empty_domain_from_index_wrapper(
       tiledb_ctx_t* ctx,
       tiledb_array_t* array,
@@ -320,13 +319,6 @@ void SparseHeterFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string SparseHeterFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void SparseHeterFx::check_non_empty_domain_float_int64(

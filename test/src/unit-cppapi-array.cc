@@ -1883,7 +1883,7 @@ TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
 TEST_CASE(
     "C++ API: Array on s3 with empty subfolders",
     "[cppapi][s3][empty_subfolders]") {
-  const std::string array_bucket = "s3://" + random_name("tiledb") + "/";
+  const std::string array_bucket = "s3://" + random_label("tiledb-") + "/";
   const std::string array_name = array_bucket + "cpp_unit_array/";
 
   tiledb::Config cfg;

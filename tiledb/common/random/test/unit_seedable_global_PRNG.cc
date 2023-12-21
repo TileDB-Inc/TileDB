@@ -30,9 +30,8 @@
 
 #include <test/support/tdb_catch.h>
 #include "../prng.h"
+#include "../random_label.h"
 #include "../seeder.h"
-
-#include <iostream>
 
 using namespace tiledb::common;
 
@@ -96,7 +95,7 @@ TEST_CASE(
 TEST_CASE(
     "SeedableGlobalPRNG: operator",
     "[SeedableGlobalPRNG][operator][multiple]") {
-  PRNG prng;
+  PRNG& prng = PRNG::get();
   auto rand_num1 = prng();
   CHECK(rand_num1 != 0);
 
@@ -127,4 +126,13 @@ TEST_CASE(
         seeder_.seed(),
         Catch::Matchers::ContainsSubstring("Seed can only be used once"));
   }
+}
+
+TEST_CASE("random_label", "[random_label]") {
+  auto rand_label1 = random_label();
+  CHECK(rand_label1.length() == 32);
+
+  auto rand_label2 = random_label();
+  CHECK(rand_label2.length() == 32);
+  CHECK(rand_label1 != rand_label2);
 }

@@ -51,11 +51,10 @@ struct S3Fx {
   S3Fx();
   ~S3Fx();
   static Config set_config_params();
-  static std::string random_name(const std::string& prefix);
 
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
-      tiledb::sm::URI(S3_PREFIX + random_name("tiledb") + "/");
+      tiledb::sm::URI(S3_PREFIX + random_label("tiledb-") + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   ThreadPool thread_pool_{2};
   tiledb::sm::S3 s3_{&g_helper_stats, &thread_pool_, set_config_params()};
@@ -103,13 +102,6 @@ Config S3Fx::set_config_params() {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   return config;
-}
-
-std::string S3Fx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << tiledb::sm::utils::time::timestamp_now_ms();
-  return ss.str();
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {

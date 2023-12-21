@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -479,8 +479,7 @@ TEST_CASE(
       tiledb_ctx_is_supported_fs(ctx.ptr().get(), TILEDB_S3, &s3) == TILEDB_OK);
   if (s3) {
     tiledb::VFS vfs(ctx);
-    std::string bucket_name =
-        "s3://" + tiledb::test::random_name("tiledb") + "/";
+    std::string bucket_name = "s3://" + random_label("tiledb-") + "/";
     if (vfs.is_bucket(bucket_name)) {
       REQUIRE_NOTHROW(vfs.remove_bucket(bucket_name));
     }
