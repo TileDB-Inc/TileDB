@@ -27,25 +27,24 @@
  *
  * @section DESCRIPTION
  *
- * This file contains helper classes for checking the data in a FilteredBuffer
+ * This file contains helper classes for checking the data in a filtered tile
  * is as expected after running a filter pipeline forward.
  *
  * The main class here is the FilteredTileChecker. It checks all chunks in the
- * FitleredBuffer class. It uses the additional helper classes.
+ * filtered tile with the use of additional helper classes.
  *
- * * Summary of lengths and data offsets.
+ * - Summary of lengths and data offsets.
  *
- *   * ChunkInfo: Info for chunk component lengths and offsets.
+ *   - ChunkInfo: Info for chunk component lengths and offsets.
  *
- *   * FilteredBufferChunkInfo: Summary of info for all chunks in a
- *     FilteredBuffer.
+ *   - FilteredTileChunkInfo: Summary of info for all chunks in a tile.
  *
- * * Checking individual chunks:
+ * - Checking individual chunks:
  *
- *   * ChunkChecker: Abstract base class for testing the data in a chunk is as
+ *   - ChunkChecker: Abstract base class for testing the data in a chunk is as
  *     expected.
  *
- *   * GridChunkChecker: ChunkChecker for fixed grid data with checksum
+ *   - GridChunkChecker: ChunkChecker for fixed grid data with checksum
  *     metadata.
  *
  */
@@ -63,9 +62,9 @@ using namespace tiledb::sm;
 namespace tiledb::sm {
 
 /**
- * Summary of chunk information for all chunks in a filtered buffer.
+ * Summary of chunk information for all chunks in a filtered tile.
  */
-class FilteredBufferChunkInfo;
+class FilteredTileChunkInfo;
 
 /**
  * Stores the lengths and offsets for data in a chunk.
@@ -88,10 +87,20 @@ class ChunkInfo {
   ChunkInfo(
       uint32_t original_chunk_length,
       uint32_t filtered_chunk_length,
-      uint32_t metadata_length);
+      uint32_t metadata_length)
+      : original_chunk_length_{original_chunk_length}
+      , filtered_chunk_length_{filtered_chunk_length}
+      , metadata_length_{metadata_length} {
+  }
 
   /** Constructor from filtered buffer and chunk offset. */
-  ChunkInfo(const FilteredBuffer& buffer, uint32_t chunk_offset);
+  ChunkInfo(const FilteredBuffer& buffer, uint32_t chunk_offset)
+      : original_chunk_length_{buffer.value_at_as<uint32_t>(chunk_offset)}
+      , filtered_chunk_length_{buffer.value_at_as<uint32_t>(
+            chunk_offset + sizeof(uint32_t))}
+      , metadata_length_{
+            buffer.value_at_as<uint32_t>(chunk_offset + 2 * sizeof(uint32_t))} {
+  }
 
   /** Returns the length of the original, unfiltered data. */
   inline uint32_t original_chunk_length() const {
@@ -118,8 +127,10 @@ class ChunkInfo {
     return 3 * sizeof(uint32_t);
   }
 
-  /** Returns the totol size of the data in the chunk including size
-   * information. */
+  /**
+   * Returns the totol size of the data in the chunk including size
+   * information.
+   */
   inline uint64_t size() const {
     return 3 * sizeof(uint32_t) +
            static_cast<uint64_t>(filtered_chunk_length_) +
@@ -141,28 +152,26 @@ class ChunkChecker {
   virtual ~ChunkChecker() = default;
 
   /**
-   * Uses Catch2 macros to check the data in a chunk stored in a FilteredBuffer
-   * is as expected.
+   * Uses Catch2 macros to check the data in a chunk is as expected.
    *
-   * @param tile The filtered buffer to check chunk data on.
+   * @param tile The tile to check chunk data on.
    * @param tile_info The summary chunk info for all chunks in the filtered
    *     buffer.
    * @param chunk_index The index of which chunk to check.
    */
   void check(
       const FilteredBuffer& tile,
-      const FilteredBufferChunkInfo& tile_info,
+      const FilteredTileChunkInfo& tile_info,
       uint64_t chunk_index) const;
 
   /**
-   * Uses Catch2 macros to check the data in a chunk stored in a FilteredBuffer
-   * is as expected.
+   * Uses Catch2 macros to check the data in a chunk is as expected.
    *
-   * @param tile The filtered buffer to check chunk data on.
+   * @param tile The tile to check chunk data on.
    * @param chunk_info Summary of the chunk parameters for the chunk being
    *     checked.
-   * @param chunk_offset The offset from the start of the filtered buffer to the
-   *     chunk being checked.
+   * @param chunk_offset The offset from the start of the tile to the chunk
+   * being checked.
    */
   virtual void check_filtered_data(
       const FilteredBuffer& tile,
@@ -170,14 +179,13 @@ class ChunkChecker {
       uint64_t chunk_offset) const = 0;
 
   /**
-   * Uses Catch2 macros to check the metadata in a chunk stored in a
-   * FilteredBuffer is as expected.
+   * Uses Catch2 macros to check the metadata in a chunk is as expected.
    *
-   * @param tile The filtered buffer to check chunk data on.
+   * @param tile The tile to check chunk data on.
    * @param chunk_info Summary of the chunk parameters for the chunk being
    *     checked.
-   * @param chunk_offset The offset from the start of the filtered buffer to the
-   *     chunk being checked.
+   * @param chunk_offset The offset from the start of the tile to the chunk
+   * being checked.
    */
   virtual void check_metadata(
       const FilteredBuffer& buffer,
@@ -246,13 +254,12 @@ class GridChunkChecker : public ChunkChecker {
   }
 
   /**
-   * Uses Catch2 macros to check the data in a chunk stored in a FilteredBuffer
-   * is as expected.
+   * Uses Catch2 macros to check the data in a chunk stored is as expected.
    *
-   * @param tile The filtered buffer to check chunk data on.
-   * @param tile_info The summary chunk info for all chunks in the filtered
+   * @param tile The tile to check chunk data on.
+   * @param chunk_info The summary chunk info for all chunks in the filtered
    *     buffer.
-   * @param chunk_index The index of which chunk to check.
+   * @param chunk_offset The index of which chunk to check.
    */
   void check_filtered_data(
       const FilteredBuffer& tile,
@@ -275,14 +282,13 @@ class GridChunkChecker : public ChunkChecker {
   }
 
   /**
-   * Uses Catch2 macros to check the metadata in a chunk stored in a
-   * FilteredBuffer is as expected.
+   * Uses Catch2 macros to check the metadata in a chunk is as expected.
    *
-   * @param tile The filtered buffer to check chunk data on.
+   * @param tile The tile to check chunk data on.
    * @param chunk_info Summary of the chunk parameters for the chunk being
    *     checked.
-   * @param chunk_offset The offset from the start of the filtered buffer to the
-   *     chunk being checked.
+   * @param chunk_offset The offset from the start of the tile to the chunk
+   * being checked.
    */
   void check_metadata(
       const FilteredBuffer& tile,
@@ -318,7 +324,59 @@ class GridChunkChecker : public ChunkChecker {
 };
 
 /**
- * Class for checking all data stored in a filtered buffer using Catch2 macros.
+ * Summary of chunk information for all chunks in a filtered tile.
+ */
+class FilteredTileChunkInfo {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param buffer The FilteredBuffer to create the summary for.
+   */
+  FilteredTileChunkInfo(const FilteredBuffer& buffer)
+      : nchunks_{buffer.value_at_as<uint64_t>(0)}
+      , chunk_info_{}
+      , offsets_{} {
+    chunk_info_.reserve(nchunks_);
+    offsets_.reserve(nchunks_);
+    uint64_t current_offset = sizeof(uint64_t);
+    for (uint64_t index = 0; index < nchunks_; ++index) {
+      chunk_info_.emplace_back(buffer, current_offset);
+      offsets_.push_back(current_offset);
+      current_offset += chunk_info_[index].size();
+    }
+    size_ = current_offset;
+  }
+
+  /** Returns the chunk info for the requested chunk. */
+  inline const ChunkInfo& chunk_info(uint64_t index) const {
+    return chunk_info_[index];
+  }
+
+  /** Returns the offset for accessing the requested chunk. */
+  inline uint64_t chunk_offset(uint64_t index) const {
+    return offsets_[index];
+  }
+
+  /** Returns the total number of chunks. */
+  inline uint64_t nchunks() const {
+    return nchunks_;
+  }
+
+  /** Returns the total size of the chunk. */
+  inline uint64_t size() const {
+    return size_;
+  }
+
+ private:
+  uint64_t nchunks_{};
+  std::vector<ChunkInfo> chunk_info_;
+  std::vector<uint64_t> offsets_{};
+  uint64_t size_{};
+};
+
+/**
+ * Class for checking all filtered data using Catch2 macros.
  */
 class FilteredTileChecker {
  public:
@@ -370,7 +428,7 @@ class FilteredTileChecker {
     T start{starting_value};
     if (elements_per_chunk.size() != checksum_per_chunk.size()) {
       throw std::runtime_error(
-          "Mismatched test parameters for filtered buffer checker.");
+          "Mismatched test parameters for filtered tile checker.");
     }
     for (uint64_t chunk_index = 0; chunk_index < elements_per_chunk.size();
          ++chunk_index) {
@@ -431,7 +489,7 @@ class FilteredTileChecker {
    * Use Catch2 macros to check all chunks have the expected data stored in
    * them.
    *
-   * @param tile The filtered buffer to check.
+   * @param tile The tile to check.
    */
   void check(const FilteredBuffer& tile) const;
 
