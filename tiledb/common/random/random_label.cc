@@ -46,7 +46,7 @@ namespace tiledb::common {
  * values to be precisely a 32-digit hexadecimal value. Each value is padded
  * with 0s such that it makes up one 16-digit half of the full 32-digit number.
  */
-std::string random_label(std::string prefix) {
+std::string random_label() {
   PRNG& prng = PRNG::get();
   std::stringstream ss;
 
@@ -57,7 +57,7 @@ std::string random_label(std::string prefix) {
   ss << std::hex << std::setw(16) << std::setfill('0') << rand2;
 
   // Return label string
-  return prefix + ss.str();
+  return ss.str();
 }
 
 }  // namespace tiledb::common
