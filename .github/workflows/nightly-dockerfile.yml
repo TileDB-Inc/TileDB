@@ -1,0 +1,19 @@
+name: Nightly-Dockerfile
+
+on:
+  schedule:
+    # runs every day at 2:50 UTC
+    - cron: "50 02 * * *"
+  workflow_call:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+          fetch-depth: 0
+      - name: Build the Dockerfile
+        run: docker build -f examples/Dockerfile/centos.dockerfile -t tiledb:dev .
