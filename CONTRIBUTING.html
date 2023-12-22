@@ -20,6 +20,40 @@ ul.task-list li input[type="checkbox"] {
   margin: 0 0.8em 0.2em -1em; /* quarto-specific, see https://github.com/quarto-dev/quarto-cli/issues/4556 */ 
   vertical-align: middle;
 }
+/* CSS for syntax highlighting */
+pre > code.sourceCode { white-space: pre; position: relative; }
+pre > code.sourceCode > span { display: inline-block; line-height: 1.25; }
+pre > code.sourceCode > span:empty { height: 1.2em; }
+.sourceCode { overflow: visible; }
+code.sourceCode > span { color: inherit; text-decoration: inherit; }
+div.sourceCode { margin: 1em 0; }
+pre.sourceCode { margin: 0; }
+@media screen {
+div.sourceCode { overflow: auto; }
+}
+@media print {
+pre > code.sourceCode { white-space: pre-wrap; }
+pre > code.sourceCode > span { text-indent: -5em; padding-left: 5em; }
+}
+pre.numberSource code
+  { counter-reset: source-line 0; }
+pre.numberSource code > span
+  { position: relative; left: -4em; counter-increment: source-line; }
+pre.numberSource code > span > a:first-child::before
+  { content: counter(source-line);
+    position: relative; left: -1em; text-align: right; vertical-align: baseline;
+    border: none; display: inline-block;
+    -webkit-touch-callout: none; -webkit-user-select: none;
+    -khtml-user-select: none; -moz-user-select: none;
+    -ms-user-select: none; user-select: none;
+    padding: 0 4px; width: 4em;
+  }
+pre.numberSource { margin-left: 3em;  padding-left: 4px; }
+div.sourceCode
+  {   }
+@media screen {
+pre > code.sourceCode > span > a:first-child::before { text-decoration: underline; }
+}
 </style>
 
 
@@ -255,6 +289,7 @@ ul.task-list li input[type="checkbox"] {
   <li><a href="#contributing-code" id="toc-contributing-code" class="nav-link" data-scroll-target="#contributing-code">Contributing Code</a>
   <ul class="collapse">
   <li><a href="#quickstart-workflow" id="toc-quickstart-workflow" class="nav-link" data-scroll-target="#quickstart-workflow">Quickstart Workflow:</a></li>
+  <li><a href="#building-with-sanitizers" id="toc-building-with-sanitizers" class="nav-link" data-scroll-target="#building-with-sanitizers">Building with sanitizers</a></li>
   <li><a href="#pull-requests" id="toc-pull-requests" class="nav-link" data-scroll-target="#pull-requests">Pull Requests:</a></li>
   <li><a href="#documentation-pull-requests" id="toc-documentation-pull-requests" class="nav-link" data-scroll-target="#documentation-pull-requests">Documentation Pull Requests:</a></li>
   <li><a href="#resources" id="toc-resources" class="nav-link" data-scroll-target="#resources">Resources</a></li>
@@ -316,6 +351,25 @@ git push --set-upstream origin &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;</cod
 <p>Branch conventions: - <code>dev</code> is the development branch of TileDB, all PR’s are merged into <code>dev</code>. - <code>master</code> tracks the latest stable / released version of TileDB. - <code>release-x.y.z</code> are major / bugfix release branches of TileDB.</p>
 <p>Formatting conventions: - 2 spaces per indentation level not tabs - class names use CamelCase - member functions, variables use lowercase with underscores - class member variables use a trailing underscore <code>foo_</code> - comments are good, TileDB uses <a href="http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html">doxygen</a> for class doc strings. - format code using <a href="https://clang.llvm.org/docs/ClangFormat.html">clang-format</a></p>
 </section>
+<section id="building-with-sanitizers" class="level3">
+<h3 class="anchored" data-anchor-id="building-with-sanitizers">Building with sanitizers</h3>
+<p>TileDB can be built with <a href="https://clang.llvm.org/docs/AddressSanitizer.html">clang sanitizers</a> enabled. To enable them, you have to bootstrap with the <code>--enable-sanitizer</code> flag, as well as the vcpkg base triplet corresponding to your platform. The following platforms support sanitizers:</p>
+<ul>
+<li><code>arm64-osx</code></li>
+<li><code>x64-linux</code></li>
+<li><code>x64-osx</code></li>
+<li><code>x64-windows</code></li>
+</ul>
+<blockquote class="blockquote">
+<p>[!NOTE] Currently only the <code>address</code> sanitizer is supported.</p>
+</blockquote>
+<div class="sourceCode" id="cb2"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> TileDB <span class="kw">&amp;&amp;</span> <span class="fu">mkdir</span> build-asan <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> build-asan</span>
+<span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="ex">../bootstrap</span> <span class="at">--enable-sanitizer</span><span class="op">=</span>address <span class="at">--vcpkg-base-triplet</span><span class="op">=</span>x64-linux</span>
+<span id="cb2-3"><a href="#cb2-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> check</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<blockquote class="blockquote">
+<p>[!IMPORTANT] To avoid errors, building with sanitizers must be done in a separate build directory.</p>
+</blockquote>
+</section>
 <section id="pull-requests" class="level3">
 <h3 class="anchored" data-anchor-id="pull-requests">Pull Requests:</h3>
 <ul>
@@ -326,7 +380,7 @@ git push --set-upstream origin &lt;my_initials&gt;/&lt;my_bugfix_branch&gt;</cod
 <li><p>Run the limiting / code format tooling (<code>make format</code>) before submitting a final PR. Make sure that your contribution generally follows the format and naming conventions used by surrounding code.</p></li>
 <li><p>If the PR changes/adds/removes user-facing API or system behavior (such as API changes), add a note to the <code>TileDB/HISTORY.md</code> file.</p></li>
 <li><p>Submit a PR, writing a descriptive message. If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write <code>closes #10</code>)</p></li>
-<li><p>Make sure CI (continuous integration) is passing for your PR – click <code>Show all checks</code> in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:</p>
+<li><p>Make sure CI (continuous integration) is passing for your PR – click <code>Show all checks</code> in the pull request status box at the bottom of each PR page. The continuous integration project pages will also list all recently-built PRs:</p>
 <ul>
 <li><a href="https://dev.azure.com/TileDB-Inc/CI/_build">Azure Pipelines</a></li>
 </ul></li>
@@ -357,10 +411,10 @@ $ ../bootstrap &lt;flags&gt;</code></pre>
 <li><a href="https://forum.tiledb.io/">Forum</a></li>
 <li><a href="https://github.com/TileDB-Inc/">Organization</a></li>
 </ul></li>
-<li>Github / Git
+<li>GitHub / Git
 <ul>
 <li><a href="https://services.github.com/on-demand/downloads/github-git-cheat-sheet/">Git cheatsheet</a></li>
-<li><a href="https://help.github.com/">Github Documentation</a></li>
+<li><a href="https://help.github.com/">GitHub Documentation</a></li>
 <li><a href="https://help.github.com/articles/fork-a-repo/">Forking a Repo</a></li>
 <li><a href="https://help.github.com/articles/git-and-github-learning-resources/">More Learning Resources</a></li>
 </ul></li>
