@@ -162,67 +162,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-namespace {
-
-/**
- * Return the exception name and error message from the given outcome object.
- *
- * @tparam R AWS result type
- * @tparam E AWS error type
- * @param outcome Outcome to retrieve error message from
- * @return Error message string
- */
-template <typename R, typename E>
-std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
-  if (outcome.IsSuccess()) {
-    return "Success";
-  }
-
-  auto err = outcome.GetError();
-  Aws::StringStream ss;
-
-  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
-     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
-     << "]";
-
-  if (!err.GetExceptionName().empty()) {
-    ss << " [Exception: " << err.GetExceptionName() << "]";
-  }
-
-  // For some reason, these symbols are not exposed when building with MINGW
-  // so for now we just disable adding the tags on Windows.
-  if constexpr (!platform::is_os_windows) {
-    if (!err.GetRemoteHostIpAddress().empty()) {
-      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
-    }
-
-    if (!err.GetRequestId().empty()) {
-      ss << " [Request ID: " << err.GetRequestId() << "]";
-    }
-  }
-
-  if (err.GetResponseHeaders().size() > 0) {
-    ss << " [Headers:";
-    for (auto&& h : err.GetResponseHeaders()) {
-      ss << " '" << h.first << "' = '" << h.second << "'";
-    }
-    ss << "]";
-  }
-
-  ss << " : " << err.GetMessage();
-
-  return ss.str();
-}
-
-}  // namespace
-
-class S3Exception : public StatusException {
- public:
-  explicit S3Exception(const std::string& message)
-      : StatusException("S3", message) {
-  }
-};
-
 S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   Headers ret;
   auto iter = ConfigIter(cfg, constants::s3_header_prefix);
@@ -235,58 +174,6 @@ S3Parameters::Headers S3Parameters::load_headers(const Config& cfg) {
   }
   return ret;
 }
-
-/**
- * Helper class which overrides Aws::S3::S3Client to set headers from
- * vfs.s3.custom_headers.*
- *
- * @note The AWS SDK does not have a common base class, so there's no
- * straightforward way to add a header to a unique request before submitting
- * it. This class exists solely to override the S3Client, adding custom headers
- * upon building the Http Request.
- */
-class TileDBS3Client : public Aws::S3::S3Client {
- public:
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
-      , params_(s3_params) {
-  }
-
-  TileDBS3Client(
-      const S3Parameters& s3_params,
-      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
-      const Aws::Client::ClientConfiguration& client_config,
-      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
-      bool use_virtual_addressing)
-      : Aws::S3::S3Client(
-            creds, client_config, sign_payloads, use_virtual_addressing)
-      , params_(s3_params) {
-  }
-
-  virtual void BuildHttpRequest(
-      const Aws::AmazonWebServiceRequest& request,
-      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
-      const override {
-    S3Client::BuildHttpRequest(request, httpRequest);
-
-    // Set header from S3Parameters custom headers
-    for (auto& [key, val] : params_.custom_headers_) {
-      httpRequest->SetHeaderValue(key, val);
-    }
-  }
-
- protected:
-  /**
-   * A reference to the S3 configuration parameters, which stores the header.
-   *
-   * @note Until the removal of init_client(), this must be const-qualified.
-   */
-  const S3Parameters& params_;
-};
 
 /* ********************************* */
 /*          GLOBAL VARIABLES         */
@@ -1626,17 +1513,17 @@ Status S3::fill_file_buffer(
   return Status::Ok();
 }
 
-std::string S3::add_front_slash(const std::string& path) const {
+std::string S3::add_front_slash(const std::string& path) {
   return (path.front() != '/') ? (std::string("/") + path) : path;
 }
 
-std::string S3::remove_front_slash(const std::string& path) const {
+std::string S3::remove_front_slash(const std::string& path) {
   if (path.front() == '/')
     return path.substr(1, path.length());
   return path;
 }
 
-std::string S3::remove_trailing_slash(const std::string& path) const {
+std::string S3::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
     return path.substr(0, path.length() - 1);
   }

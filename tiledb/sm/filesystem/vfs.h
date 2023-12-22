@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -227,15 +228,29 @@ struct VFSBase {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
-struct S3_within_VFS {
+class S3_within_VFS {
+  /** Private member variable */
   S3 s3_;
+
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&... args)
       : s3_(std::forward<Args>(args)...) {
   }
+
+  /** Protected accessor for the S3 object. */
+  inline tiledb::sm::S3& s3() {
+    return s3_;
+  }
+
+  /** Protected accessor for the const S3 object. */
+  inline const tiledb::sm::S3& s3() const {
+    return s3_;
+  }
 };
 #else
-struct S3_within_VFS {
+class S3_within_VFS {
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&...) {
   }  // empty constructor
@@ -246,7 +261,7 @@ struct S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, S3_within_VFS {
+class VFS : private VFSBase, protected S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -493,6 +508,38 @@ class VFS : private VFSBase, S3_within_VFS {
    */
   tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
       const URI& parent) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * Currently only S3 is supported for ls_recursive.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
+    if (parent.is_s3()) {
+#ifdef HAVE_S3
+      return s3().ls_filtered(parent, f, d, true);
+#else
+      throw filesystem::VFSException("TileDB was built without S3 support");
+#endif
+    } else {
+      throw filesystem::VFSException(
+          "Recursive ls over " + parent.backend_name() +
+          " storage backend is not supported.");
+    }
+  }
 
   /**
    * Renames a file.
