@@ -598,10 +598,10 @@ if (TILEDB_HDFS)
 endif()
 
 # Sanitizer linker flags
-if (SANITIZER)
+if (TILEDB_SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      -fsanitize=${SANITIZER}
+      -fsanitize=${TILEDB_SANITIZER}
   )
 endif()
 
