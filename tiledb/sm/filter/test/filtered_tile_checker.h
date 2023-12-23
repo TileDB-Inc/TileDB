@@ -400,8 +400,8 @@ class FilteredTileChecker {
     for (auto nelements_chunk : elements_per_chunk) {
       uint32_t data_size{static_cast<uint32_t>(nelements_chunk * sizeof(T))};
       checker.add_grid_chunk_checker<T>(
-          data_size, nelements_chunk, start, spacing);
-      start += nelements_chunk * spacing;
+          data_size, static_cast<uint32_t>(nelements_chunk), start, spacing);
+      start += static_cast<T>(nelements_chunk) * spacing;
     }
     return checker;
   }
