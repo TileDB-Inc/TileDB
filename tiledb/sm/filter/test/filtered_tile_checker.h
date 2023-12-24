@@ -436,8 +436,12 @@ class FilteredTileChecker {
       auto checksum = checksum_per_chunk[chunk_index];
       uint32_t data_size{static_cast<uint32_t>(nelements * sizeof(T))};
       checker.add_grid_chunk_checker<T>(
-          data_size, nelements, start, spacing, checksum);
-      start += nelements * spacing;
+          data_size,
+          static_cast<uint32_t>(nelements),
+          start,
+          spacing,
+          checksum);
+      start += static_cast<T>(nelements) * spacing;
     }
     return checker;
   }
