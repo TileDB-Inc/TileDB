@@ -68,9 +68,11 @@ std::string generate_timestamped_name(
 std::string generate_consolidated_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) {
   // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
-  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
+  utils::parse::FragmentURI fragment_uri_first{first};
+  auto t_first{fragment_uri_first.timestamp_range()};
+
+  utils::parse::FragmentURI fragment_uri_last{last};
+  auto t_last{fragment_uri_last.timestamp_range()};
 
   return generate_timestamped_name(
       t_first.first, t_last.second, format_version);

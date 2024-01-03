@@ -1128,16 +1128,12 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       single_fragment_info_vec_.back().meta()->array_schema();
 
   // Get timestamp range
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      nullopt);
-  auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
+  utils::parse::FragmentURI fragment_uri{new_fragment_uri};
+  auto timestamp_range{fragment_uri.timestamp_range()};
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (fragment_version <= 2) {
+  if (fragment_uri.version() <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);

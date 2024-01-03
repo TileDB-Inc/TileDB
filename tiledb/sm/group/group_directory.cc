@@ -243,12 +243,8 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uris[i], &timestamp_range),
-        nullopt,
-        nullopt);
-
+    utils::parse::FragmentURI fragment_uri{uris[i]};
+    auto timestamp_range{fragment_uri.timestamp_range()};
     if (is_vacuum_file(uris[i])) {
       if (timestamp_range.first >= timestamp_start_ &&
           timestamp_range.second <= timestamp_end_)
@@ -337,9 +333,8 @@ GroupDirectory::compute_filtered_uris(
     // Add only URIs whose first timestamp is greater than or equal to the
     // timestamp_start and whose second timestamp is smaller than or equal to
     // the timestamp_end
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &timestamp_range), nullopt);
+    utils::parse::FragmentURI fragment_uri{uri};
+    auto timestamp_range{fragment_uri.timestamp_range()};
     auto t1 = timestamp_range.first;
     auto t2 = timestamp_range.second;
     if (t1 >= timestamp_start_ && t2 <= timestamp_end_)

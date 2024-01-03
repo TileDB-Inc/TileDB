@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,20 +38,16 @@
 
 namespace tiledb::sm::utils::parse {
 
-/**
- * Retrieves the timestamp range from the input
- * URI. For format version <= 2, only the range start is valid
- * (the range end is ignored).
- */
-Status get_timestamp_range(
-    const URI& uri, std::pair<uint64_t, uint64_t>* timestamp_range);
+using timestamp_range_type = std::pair<uint64_t, uint64_t>;
 
 /**
- * Retrieves the fragment version. This will work only for
- * name versions > 2, otherwise the function sets `version`
- * to UINT32_MAX.
+ * The possible fragment name versions.
+ *
+ * ONE: __uuid_t1{_t2}
+ * TWO: __t1_t2_uuid
+ * THREE: __t1_t2_uuid_version
  */
-format_version_t get_fragment_version(const std::string& name);
+enum class FragmentNameVersion { ONE, TWO, THREE };
 
 /**
  * Returns true if the given URIs have the same "prefix" and could
@@ -62,6 +58,49 @@ format_version_t get_fragment_version(const std::string& name);
  * the API is checking for working tree intersection.
  */
 bool is_element_of(const URI uri, const URI intersecting_uri);
+
+/** Validate, parse and handle the different components of a fragment uri. */
+class FragmentURI {
+ private:
+  /** The original fragment uri. */
+  const URI& uri_;
+
+  /** The fragment name. */
+  std::string name_;
+
+  /** The timestamp range. */
+  timestamp_range_type timestamp_range_;
+
+  /** The fragment name version. */
+  FragmentNameVersion name_version_;
+
+  /** The fragment version. */
+  format_version_t version_;
+
+ public:
+  /** Constructor. */
+  FragmentURI(const URI& uri);
+
+  /** Destructor. */
+  ~FragmentURI() = default;
+
+  /** Accessors. */
+  const URI& uri();
+  const std::string& name();
+
+  /**
+   * Accessor to the timestamp range.
+   * For format version <= 2, only the range start is valid
+   * (the range end is ignored).
+   */
+  timestamp_range_type timestamp_range();
+
+  /**
+   * Accessor to the fragment version.
+   * Returns UINT32_MAX for name versions <= 2.
+   */
+  format_version_t version();
+};
 
 }  // namespace tiledb::sm::utils::parse
 

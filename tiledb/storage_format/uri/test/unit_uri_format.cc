@@ -154,7 +154,8 @@ TEST_CASE(
       }
 
       // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
+      FragmentURI fragment_uri{frag};
+      range = fragment_uri.timestamp_range();
       CHECK(range.first == 2);
       CHECK(range.second == 2);
     }
@@ -166,7 +167,8 @@ TEST_CASE(
           "__44318efd44f546b18db13edc8d10805b_2_1");
 
       // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
+      FragmentURI fragment_uri{frag};
+      range = fragment_uri.timestamp_range();
       CHECK(range.first == 1);
       CHECK(range.second == 1);
     }
@@ -180,7 +182,8 @@ TEST_CASE(
           "__1_2_44318efd44f546b18db13edc8d10805b");
 
       // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
+      FragmentURI fragment_uri{frag};
+      range = fragment_uri.timestamp_range();
       CHECK(range.first == 1);
       CHECK(range.second == 2);
     }
@@ -191,9 +194,9 @@ TEST_CASE(
           "file:///array_name/__fragments/"
           "__2_1_44318efd44f546b18db13edc8d10805b");
 
-      // Try to get timestamp range
+      // FragmentURI creation will fail on timestamp range fetching
       REQUIRE_THROWS_WITH(
-          get_timestamp_range(frag, &range),
+          FragmentURI(frag),
           Catch::Matchers::ContainsSubstring(
               "start timestamp cannot be after end timestamp"));
     }
@@ -207,7 +210,8 @@ TEST_CASE(
           "__1_2_44318efd44f546b18db13edc8d10805b_5");
 
       // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
+      FragmentURI fragment_uri{frag};
+      range = fragment_uri.timestamp_range();
       CHECK(range.first == 1);
       CHECK(range.second == 2);
     }
@@ -218,9 +222,9 @@ TEST_CASE(
           "file:///array_name/__fragments/"
           "__2_1_44318efd44f546b18db13edc8d10805b_5");
 
-      // Try to get timestamp range
+      // FragmentURI creation will fail on timestamp range fetching
       REQUIRE_THROWS_WITH(
-          get_timestamp_range(frag, &range),
+          FragmentURI(frag),
           Catch::Matchers::ContainsSubstring(
               "start timestamp cannot be after end timestamp"));
     }

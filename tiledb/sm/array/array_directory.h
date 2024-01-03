@@ -221,12 +221,8 @@ class ArrayDirectory {
         : uri_(uri)
         , condition_marker_(condition_marker)
         , offset_(offset) {
-      std::pair<uint64_t, uint64_t> timestamps;
-      if (!utils::parse::get_timestamp_range(URI(condition_marker), &timestamps)
-               .ok()) {
-        throw std::logic_error("Error parsing uri.");
-      }
-
+      utils::parse::FragmentURI fragment_uri{URI(condition_marker)};
+      auto timestamps{fragment_uri.timestamp_range()};
       timestamp_ = timestamps.first;
     }
 

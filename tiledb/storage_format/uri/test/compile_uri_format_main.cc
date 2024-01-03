@@ -38,10 +38,13 @@ int main() {
   (void)generate_consolidated_fragment_name(
       tiledb::sm::URI{}, tiledb::sm::URI{}, 1);
 
-  std::pair<uint64_t, uint64_t> x;
-  (void)get_timestamp_range(tiledb::sm::URI{}, &x);
-  (void)get_fragment_version("");
   (void)is_element_of(tiledb::sm::URI{}, tiledb::sm::URI{});
+
+  FragmentURI x(tiledb::sm::URI{});
+  (void)x.uri();
+  (void)x.name();
+  (void)x.timestamp_range();
+  (void)x.version();
 
   return 0;
 }

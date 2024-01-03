@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,8 +51,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 QueryCondition::QueryCondition() {
 }
@@ -210,12 +209,8 @@ uint64_t QueryCondition::condition_timestamp() const {
     return 0;
   }
 
-  std::pair<uint64_t, uint64_t> timestamps;
-  if (!utils::parse::get_timestamp_range(URI(condition_marker_), &timestamps)
-           .ok()) {
-    throw std::logic_error("Error parsing condition marker.");
-  }
-
+  utils::parse::FragmentURI fragment_uri{URI(condition_marker_)};
+  auto timestamps{fragment_uri.timestamp_range()};
   return timestamps.first;
 }
 
@@ -2767,5 +2762,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

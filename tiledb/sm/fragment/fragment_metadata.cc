@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,8 +64,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FragmentMetadataStatusException : public StatusException {
  public:
@@ -793,18 +792,15 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
   auto status =
       parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
         const auto& sf = fragments_to_load[f];
-
         URI coords_uri =
             sf.uri_.join_path(constants::coords + constants::file_suffix);
-
-        auto name = sf.uri_.remove_trailing_slash().last_path_part();
-        auto format_version = utils::parse::get_fragment_version(name);
 
         // Note that the fragment metadata version is >= the array schema
         // version. Therefore, the check below is defensive and will always
         // ensure backwards compatibility.
         shared_ptr<FragmentMetadata> metadata;
-        if (format_version <= 2) {
+        utils::parse::FragmentURI fragment_uri{sf.uri_};
+        if (fragment_uri.version() <= 2) {
           bool sparse;
           RETURN_NOT_OK(resources.vfs().is_file(coords_uri, &sparse));
           metadata = make_shared<FragmentMetadata>(
@@ -833,7 +829,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
 
         auto it = offsets.end();
         if (metadata->format_version() >= 9) {
-          it = offsets.find(name);
+          it = offsets.find(fragment_uri.name());
         } else {
           it = offsets.find(sf.uri_.to_string());
         }
@@ -868,10 +864,8 @@ void FragmentMetadata::load(
   }
 
   // Get fragment name version
-  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  auto format_version = utils::parse::get_fragment_version(name);
-
-  if (format_version <= 2) {
+  utils::parse::FragmentURI fragment_uri{fragment_uri_};
+  if (fragment_uri.version() <= 2) {
     return load_v1_v2(encryption_key, array_schemas);
   } else {
     return load_v3_or_higher(
@@ -2203,8 +2197,8 @@ uint64_t FragmentMetadata::footer_size() const {
 
 void FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  auto fragment_format_version = utils::parse::get_fragment_version(name);
+  utils::parse::FragmentURI fragment_uri{fragment_uri_};
+  auto fragment_format_version{fragment_uri.version()};
   auto all_fixed = array_schema_->domain().all_dims_fixed();
   if (all_fixed && fragment_format_version < 5) {
     *size = footer_size_v3_v4();
@@ -4801,5 +4795,4 @@ template std::byte FragmentMetadata::get_tile_max_as<std::byte>(
 template char FragmentMetadata::get_tile_max_as<char>(
     const std::string& name, uint64_t tile_idx) const;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

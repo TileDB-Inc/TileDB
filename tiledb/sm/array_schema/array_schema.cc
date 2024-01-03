@@ -1386,8 +1386,8 @@ ArraySchema ArraySchema::deserialize(
   }
 
   // Populate timestamp range
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  throw_if_not_ok(utils::parse::get_timestamp_range(uri, &timestamp_range));
+  utils::parse::FragmentURI fragment_uri{uri};
+  auto timestamp_range{fragment_uri.timestamp_range()};
 
   // Set schema name
   std::string name = uri.last_path_part();

@@ -142,13 +142,11 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
 
 int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   auto data_vec = (std::vector<uint64_t>*)data;
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::write_file_suffix)) {
-    auto uri = tiledb::sm::URI(path);
-    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
-            .ok())
-      data_vec->push_back(timestamp_range.first);
+  if (utils::parse::ends_with(path, constants::write_file_suffix)) {
+    auto uri = URI(path);
+    utils::parse::FragmentURI fragment_uri{uri};
+    auto timestamp_range{fragment_uri.timestamp_range()};
+    data_vec->push_back(timestamp_range.first);
   }
 
   return 1;

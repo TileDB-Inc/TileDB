@@ -518,9 +518,8 @@ Status FragmentConsolidator::consolidate_internal(
   if (!config_.purge_deleted_cells_ &&
       array_schema.write_version() >= constants::deletes_min_version) {
     // Get the first fragment first timestamp.
-    std::pair<uint64_t, uint64_t> timestamps;
-    RETURN_NOT_OK(
-        utils::parse::get_timestamp_range(to_consolidate[0].uri_, &timestamps));
+    utils::parse::FragmentURI fragment_uri{to_consolidate[0].uri_};
+    auto timestamps{fragment_uri.timestamp_range()};
 
     for (auto& delete_and_update_tile_location :
          array_for_reads->array_directory()

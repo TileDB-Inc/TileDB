@@ -101,10 +101,8 @@ Status FragmentMetaConsolidator::consolidate(
   uri = URI(frag_md_uri.to_string() + name + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
-  auto meta_name = uri.remove_trailing_slash().last_path_part();
-  auto pos = meta_name.find_last_of('.');
-  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  auto meta_version = utils::parse::get_fragment_version(meta_name);
+  utils::parse::FragmentURI fragment_uri{uri};
+  auto meta_version = fragment_uri.version();
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
@@ -197,8 +195,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   // Get the latest timestamp
   uint64_t t_latest = 0;
   for (const auto& uri : fragment_meta_uris) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    utils::parse::FragmentURI fragment_uri{uri};
+    auto timestamp_range{fragment_uri.timestamp_range()};
     if (timestamp_range.second > t_latest) {
       t_latest = timestamp_range.second;
     }
@@ -211,8 +209,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   throw_if_not_ok(
       parallel_for(compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
         auto& uri = fragment_meta_uris[i];
-        std::pair<uint64_t, uint64_t> timestamp_range;
-        RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+        utils::parse::FragmentURI fragment_uri{uri};
+        auto timestamp_range{fragment_uri.timestamp_range()};
         if (timestamp_range.second != t_latest)
           RETURN_NOT_OK(vfs->remove_file(uri));
         return Status::Ok();

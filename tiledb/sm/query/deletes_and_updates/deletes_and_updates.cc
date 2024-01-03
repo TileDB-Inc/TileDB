@@ -129,12 +129,10 @@ Status DeletesAndUpdates::dowork() {
   // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
-    auto name = uri.remove_trailing_slash().last_path_part();
-    auto format_version = utils::parse::get_fragment_version(name);
-    if (format_version < constants::consolidation_with_timestamps_min_version) {
-      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-      RETURN_NOT_OK(
-          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+    utils::parse::FragmentURI fragment_uri{uri};
+    if (fragment_uri.version() <
+        constants::consolidation_with_timestamps_min_version) {
+      auto fragment_timestamp_range{fragment_uri.timestamp_range()};
       if (timestamp >= fragment_timestamp_range.first &&
           timestamp <= fragment_timestamp_range.second) {
         throw DeleteAndUpdateStatusException(

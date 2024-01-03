@@ -213,8 +213,8 @@ WriterBase::WriterBase(
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
-  throw_if_not_ok(utils::parse::get_timestamp_range(
-      fragment_uri_, &fragment_timestamp_range_));
+  utils::parse::FragmentURI fragment_uri{fragment_uri_};
+  fragment_timestamp_range_ = fragment_uri.timestamp_range();
 }
 
 WriterBase::~WriterBase() {
