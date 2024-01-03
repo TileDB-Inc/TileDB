@@ -186,8 +186,9 @@ inline void throw_if_not_ok(const Status& st) {
 }
 
 /**
- * An exception that refuses to start an operation because the estimate of resources
- * to complete the operation exceeds the available budget for those resources.
+ * An exception that refuses to start an operation because the estimate of
+ * resources to complete the operation exceeds the available budget for those
+ * resources.
  *
  * This exception should only be thrown _before_ an operation commences. Once an
  * operation starts, if (for whatever reason) the budget estimate was wrong, the
@@ -229,7 +230,6 @@ class BudgetExceeded : public StatusException {
       : StatusException(origin, message) {
   }
 };
-
 
 }  // namespace tiledb::common
 
