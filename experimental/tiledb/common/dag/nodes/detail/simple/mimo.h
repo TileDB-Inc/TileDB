@@ -494,6 +494,7 @@ class GeneralFunctionNode<
       case NodeState::init:
 
         instruction_counter_ = NodeState::input;
+        [[fallthrough]];
       case NodeState::input:
         /*
          * Here begins pull-check-extract-drain (aka `input`)
@@ -529,6 +530,7 @@ class GeneralFunctionNode<
         drain_all();
 
         instruction_counter_ = NodeState::compute;
+        [[fallthrough]];
       case NodeState::compute:
 
         /*
@@ -549,6 +551,7 @@ class GeneralFunctionNode<
         }
 
         instruction_counter_ = NodeState::output;
+        [[fallthrough]];
       case NodeState::output:
         if constexpr (!is_consumer_) {
           /*
@@ -566,7 +569,7 @@ class GeneralFunctionNode<
           push_all();
         }
         instruction_counter_ = NodeState::done;
-
+        [[fallthrough]];
       case NodeState::done:
         break;
 

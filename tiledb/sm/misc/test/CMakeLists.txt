@@ -30,6 +30,9 @@ commence(unit_test misc)
     this_target_link_libraries(tiledb_test_support_lib)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
+    target_include_directories(unit_misc PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
+
     this_target_sources(
         main.cc
         unit_bytevecvalue.cc

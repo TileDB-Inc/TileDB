@@ -35,4 +35,6 @@ commence(unit_test consistency)
     this_target_sources(main.cc unit_consistency.cc)
     this_target_link_libraries(TILEDB_CORE_OBJECTS)
     this_target_link_libraries(TILEDB_CORE_OBJECTS_ILIB)
+    target_include_directories(unit_consistency PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
 conclude(unit_test)

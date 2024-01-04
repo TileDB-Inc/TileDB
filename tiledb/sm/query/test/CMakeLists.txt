@@ -30,6 +30,8 @@ commence(unit_test query)
     this_target_sources(main.cc unit_validity_vector.cc unit_query_condition.cc)
     # Not actually testing a unit yet, but some things that ought to be units
     this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+    target_include_directories(unit_query PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
     this_target_link_libraries(ast_test_support_lib)
 
     # We want tests to continue as normal even as the API is changing,

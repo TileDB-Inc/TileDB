@@ -192,6 +192,12 @@ jobs:
           ./tiledb/test/ci/test_assert -d yes
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
+          # Run unit tests only if experimental features are disabled.
+          if [[ "${{ inputs.bootstrap_args }}" != *"experimental-features"* ]]; then
+            make -C tiledb -j 4 tests
+            make -C tiledb test ARGS="-R '^unit_'" -R "test_assert"
+          fi
+
           ###################################################
           # Stop helper processes, if applicable
 

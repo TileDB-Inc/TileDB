@@ -286,6 +286,24 @@ jobs:
              Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
              $host.SetShouldExit($LastExitCode)
           }
+
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tests --config $CMakeBuildType -- /verbosity:minimal
+          Get-ChildItem "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\" -Recurse -Filter unit_*.exe |
+          Foreach-Object {
+            write-host "Executing $($_.FullName)"
+            & $_.FullName
+            $status = $?
+            if (-not $status) {
+              Write-Host "FAILED: Error running $($_.FullName)"
+              echo "TILEDB_CI_SUCCESS=0" >> $env:GITHUB_OUTPUT
+              $host.SetShouldExit(1)
+            }  elseif ($LastExitCode -ne 0) {
+              Write-Host "FAILED: Unit test run failed $LastExitCode,  $($_.FullName)"
+              echo "TILEDB_CI_SUCCESS=0" >> $env:GITHUB_OUTPUT
+              $host.SetShouldExit($LastExitCode)
+            }
+          }
+
       - name: Build examples
         shell: pwsh
         run: |

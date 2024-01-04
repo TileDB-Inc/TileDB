@@ -336,8 +336,6 @@ Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   return Status::Ok();
 }
 
-#ifdef _WIN32
-// Windows local filesystem
 std::string SupportedFsLocal::temp_dir() {
   return temp_dir_;
 }
@@ -345,18 +343,6 @@ std::string SupportedFsLocal::temp_dir() {
 std::string SupportedFsLocal::file_prefix() {
   return file_prefix_;
 }
-
-#else
-std::string SupportedFsLocal::temp_dir() {
-  return temp_dir_;
-}
-
-// Posix local filesystem
-std::string SupportedFsLocal::file_prefix() {
-  return file_prefix_;
-}
-
-#endif
 
 Status SupportedFsMem::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {

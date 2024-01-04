@@ -477,21 +477,26 @@ void basic_aggregation_test(std::vector<double> expected_results) {
           10);
     }
 
+    uint64_t min_size = sizeof(T);
+    uint64_t max_size = sizeof(T);
+    if constexpr (std::is_same<std::string, T>::value) {
+      min_size = max_size = sizeof(char);
+    }
     auto tile_metadata_all_null = TileMetadata(
         10,
         10,
         &fixed_data[0],
-        sizeof(T),
+        min_size,
         &fixed_data[0],
-        sizeof(T),
+        max_size,
         zero.data());
     auto tile_metadata = TileMetadata(
         10,
         5,
         &fixed_data[0],
-        sizeof(T),
+        min_size,
         &fixed_data[0],
-        sizeof(T),
+        max_size,
         full_tile_sum.data());
     if (aggregator.has_value()) {
       // Regular attribute.

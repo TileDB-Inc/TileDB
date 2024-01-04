@@ -39,6 +39,11 @@ target_link_libraries(unit_capi_array
     TILEDB_CORE_OBJECTS_ILIB
     TILEDB_CORE_OBJECTS
 )
+target_include_directories(unit_capi_array
+    PRIVATE
+      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
+)
+
 
 # Sources for tests
 target_sources(unit_capi_array PUBLIC  

@@ -30,4 +30,6 @@ commence(unit_test consolidator)
 
   # Not actually testing a unit yet, but some things that ought to be units
   this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+  target_include_directories(unit_consolidator PRIVATE
+      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
 conclude(unit_test)

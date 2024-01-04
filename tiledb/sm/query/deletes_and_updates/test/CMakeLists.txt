@@ -31,4 +31,7 @@ commence(unit_test delete_update_condition)
     # The dependencies can't yet be factored into separate object libraries
     target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS)
     target_link_libraries(unit_delete_update_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
+    target_include_directories(unit_delete_update_condition PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
+
 conclude(unit_test)

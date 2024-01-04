@@ -483,20 +483,11 @@ class SupportedFsLocal : public SupportedFs {
   /*           ATTRIBUTES              */
   /* ********************************* */
 
-#ifdef _WIN32
-  /** The directory name of the Windows filesystem. */
+  /** The directory name of the local filesystem. */
   std::string temp_dir_;
 
-  /** The file prefix name of the Windows filesystem. */
+  /** The file prefix name of the local filesystem. */
   std::string file_prefix_;
-
-#else
-  /** The directory name of the Posix filesystem. */
-  std::string temp_dir_;
-
-  /** The file prefix name of the Posix filesystem. */
-  std::string file_prefix_;
-#endif
 };
 
 /**
@@ -627,13 +618,8 @@ struct TemporaryDirectoryFixture {
     REQUIRE(vfs_test_init(supported_filesystems_, &ctx, &vfs_).ok());
 
     // Create temporary directory based on the supported filesystem
-#ifdef _WIN32
-    SupportedFsLocal windows_fs;
-    temp_dir_ = windows_fs.file_prefix() + windows_fs.temp_dir();
-#else
-    SupportedFsLocal posix_fs;
-    temp_dir_ = posix_fs.file_prefix() + posix_fs.temp_dir();
-#endif
+    SupportedFsLocal local_fs;
+    temp_dir_ = local_fs.file_prefix() + local_fs.temp_dir();
     create_dir(temp_dir_, ctx, vfs_);
   }
 

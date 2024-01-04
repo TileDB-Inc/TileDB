@@ -311,7 +311,9 @@ TEST_CASE("ErrorTreeTest - single node", "[error_tree_test]") {
 }
 
 TEST_CASE("ErrorTreeTest - two wide", "[error_tree_test]") {
-  ErrorTreeTest x{{{Error{"a", "b"}, {}}, {Error{"c", "d"}, {}}}};
+  ErrorTreeTest x{
+      {{Error{"a", "b"}, std::vector<ETTElement<Error>>{}},
+       {Error{"c", "d"}, std::vector<ETTElement<Error>>{}}}};
   SkeletonVisitor<Error> v{};
   x.visit(v);
   CHECK(v.value() == "x,x");

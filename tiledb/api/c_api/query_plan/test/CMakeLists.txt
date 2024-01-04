@@ -33,4 +33,6 @@ commence(unit_test capi_query_plan)
       target_compile_options(unit_capi_query_plan PRIVATE -Wno-deprecated-declarations)
   endif()
   this_target_link_libraries(tiledb_test_support_lib)
+  target_include_directories(unit_capi_query_plan PRIVATE
+      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
 conclude(unit_test)

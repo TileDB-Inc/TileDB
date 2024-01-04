@@ -33,7 +33,8 @@ commence(unit_test capi_query_aggregate)
     target_compile_options(unit_capi_query_aggregate PRIVATE -Wno-deprecated-declarations)
   endif()
   this_target_link_libraries(tiledb_test_support_lib)
-  
+  target_include_directories(unit_capi_query_aggregate PRIVATE
+      $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
   if (TILEDB_SERIALIZATION)
     add_definitions(-DTILEDB_SERIALIZATION)
   endif()

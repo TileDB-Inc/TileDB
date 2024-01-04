@@ -76,11 +76,10 @@ TEST_CASE(
     "[capi_string][freed_handle]") {
   const std::string test_string = "hello";
   tiledb_string_t* handle = tiledb_string_t::make_handle(test_string);
-  tiledb_string_t* handle_copy = handle;
   std::ignore = convert_to_string(&handle);
   const char* chars = nullptr;
   size_t length = 0;
-  REQUIRE(tiledb_string_view(handle_copy, &chars, &length) == TILEDB_ERR);
+  REQUIRE(tiledb_string_view(handle, &chars, &length) == TILEDB_ERR);
 }
 
 TEST_CASE(

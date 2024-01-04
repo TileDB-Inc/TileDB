@@ -261,7 +261,8 @@ TEST_CASE_METHOD(
     QueryPlanFx,
     "C API: Query plan basic bahaviour",
     "[capi][query_plan][basic1]") {
-  std::string array_name = temp_dir_ + "queryplan_array";
+  std::string array_name =
+      tiledb::sm::URI(temp_dir_ + "queryplan_array").to_string();
   create_dense_array(array_name);
 
   tiledb_array_t* array;
@@ -319,7 +320,8 @@ TEST_CASE_METHOD(
     QueryPlanFx,
     "C API: Query plan basic bahaviour 2",
     "[capi][query_plan][basic2]") {
-  std::string array_name = temp_dir_ + "queryplan_array";
+  std::string array_name =
+      tiledb::sm::URI(temp_dir_ + "queryplan_array").to_string();
   create_sparse_array(array_name);
 
   tiledb_array_t* array;

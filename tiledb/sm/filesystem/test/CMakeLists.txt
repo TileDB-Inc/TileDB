@@ -29,6 +29,8 @@ commence(unit_test vfs)
     this_target_sources(main.cc unit_uri.cc unit_ls_filtered.cc)
     # Object store definitions and libraries needed for cloud backends.
     this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
+    target_include_directories(unit_vfs PRIVATE
+        $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>)
 conclude(unit_test)
 
 commence(unit_test vfs_read_log_modes)
