@@ -5,6 +5,7 @@ on:
     # runs every day at 2:50 UTC
     - cron: "50 02 * * *"
   workflow_call:
+  workflow_dispatch:
 
 jobs:
   build:
@@ -14,6 +15,7 @@ jobs:
         dockerfile:
           - centos.dockerfile
           - rocky.dockerfile
+    name: ${{ matrix.dockerfile }}
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
