@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
@@ -70,7 +71,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   /** Constructor. */
-  FragmentMetadata();
+  //FragmentMetadata();
 
   /**
    * Constructor.
@@ -295,7 +296,7 @@ class FragmentMetadata {
   }
 
   /** Returns the sizes of each attribute file. */
-  inline const std::vector<uint64_t>& file_sizes() const {
+  inline const tdb::pmr::vector<uint64_t>& file_sizes() const {
     return file_sizes_;
   }
 
@@ -1061,7 +1062,7 @@ class FragmentMetadata {
   const shared_ptr<const ArraySchema>& array_schema() const;
 
   /** File sizes accessor */
-  std::vector<uint64_t>& file_sizes() {
+  tdb::pmr::vector<uint64_t>& file_sizes() {
     return file_sizes_;
   }
 
@@ -1296,7 +1297,7 @@ class FragmentMetadata {
   NDRange domain_;
 
   /** Stores the size of each attribute file. */
-  std::vector<uint64_t> file_sizes_;
+  tdb::pmr::vector<uint64_t> file_sizes_;
 
   /** Stores the size of each variable attribute file. */
   std::vector<uint64_t> file_var_sizes_;

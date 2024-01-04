@@ -42,9 +42,12 @@
 #include <optional>
 #include <vector>
 
-using namespace std;
 using namespace tiledb::sm;
 using namespace tiledb::test;
+
+using string = std::string;
+template <typename Tp>
+using vector = std::vector<Tp>;
 
 class NullableArrayFx {
  public:

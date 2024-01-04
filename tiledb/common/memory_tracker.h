@@ -34,7 +34,10 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+
+namespace tdb = tiledb::common;
 
 namespace tiledb {
 namespace sm {
@@ -105,6 +108,11 @@ class MemoryTracker {
     return true;
   }
 
+  /*** Get the memory resources instance */
+  tdb::pmr::tracking_resource* memory_resource() {
+    return &memory_resource_;
+  }
+
   /**
    * Get the memory usage.
    */
@@ -142,6 +150,9 @@ class MemoryTracker {
  private:
   /** Protects all member variables. */
   std::mutex mutex_;
+
+  /** Our pmr memory resources. */
+  tdb::pmr::tracking_resource memory_resource_;
 
   /** Memory usage for tracked structures. */
   uint64_t memory_usage_;

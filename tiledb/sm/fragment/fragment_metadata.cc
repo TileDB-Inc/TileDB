@@ -78,8 +78,16 @@ class FragmentMetadataStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-FragmentMetadata::FragmentMetadata() {
+cpp17::pmr::memory_resource* get_tracker_resource(MemoryTracker* tracker) {
+  if (tracker == nullptr) {
+    return cpp17::pmr::get_default_resource();
+  } else {
+    return tracker->memory_resource();
+  }
 }
+
+// FragmentMetadata::FragmentMetadata() {
+// }
 
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
@@ -94,6 +102,7 @@ FragmentMetadata::FragmentMetadata(
     , memory_tracker_(memory_tracker)
     , array_schema_(array_schema)
     , dense_(dense)
+    , file_sizes_(get_tracker_resource(memory_tracker))
     , footer_size_(0)
     , footer_offset_(0)
     , fragment_uri_(fragment_uri)

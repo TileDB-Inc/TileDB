@@ -44,7 +44,14 @@
 #include <optional>
 #include <vector>
 
-using namespace std;
+using string = std::string;
+template <typename Tp>
+using vector = std::vector<Tp>;
+template <typename Tp1, typename Tp2>
+using pair = std::pair<Tp1, Tp2>;
+template <typename Tp1, typename Tp2>
+using unordered_map = std::unordered_map<Tp1, Tp2>;
+
 using namespace tiledb::sm;
 using namespace tiledb::test;
 
