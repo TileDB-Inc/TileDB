@@ -116,7 +116,7 @@ struct RemoteGlobalOrderWriteFx {
     array.close();
   }
 
-  void write_array() {
+  void write_array(bool check_finalize_fails = false) {
     Array array(ctx_, array_uri_, TILEDB_WRITE);
     Query query(ctx_, array);
     query.set_layout(TILEDB_GLOBAL_ORDER);
@@ -182,6 +182,13 @@ struct RemoteGlobalOrderWriteFx {
       if (i + submit_cell_count_ < total_cell_count_) {
         query.submit();
       } else {
+        if constexpr (rest_tests) {
+          if (check_finalize_fails) {
+            CHECK_THROWS_WITH(
+                query.finalize(),
+                Catch::Matchers::ContainsSubstring("submit_and_finalize"));
+          }
+        }
         // IMPORTANT: Submit final write query and close the array.
         // We must do this within loop; Else our buffers will be out of scope.
         query.submit_and_finalize();
@@ -479,4 +486,10 @@ TEMPLATE_LIST_TEST_CASE("Global order remote writes", "[rest]", TestTypes) {
     RemoteGlobalOrderWriteFx<T> fx(cells, extent, chunk_size, var, nullable);
     fx.run_test();
   }
+}
+
+TEST_CASE("Remote global order writes finalize errors", "[rest][finalize]") {
+  RemoteGlobalOrderWriteFx<uint64_t> fx(20, 10, 3, true, true);
+  fx.create_array();
+  fx.write_array(true);
 }

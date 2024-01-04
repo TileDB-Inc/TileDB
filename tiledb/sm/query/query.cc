@@ -475,7 +475,7 @@ QueryBuffer Query::buffer(const std::string& name) const {
 
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED ||
-      status_ == QueryStatus::INITIALIZED) {
+      (status_ == QueryStatus::INITIALIZED && !array_->is_remote())) {
     return Status::Ok();
   }
 
