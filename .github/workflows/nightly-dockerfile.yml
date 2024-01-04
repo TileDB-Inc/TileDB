@@ -9,6 +9,11 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dockerfile:
+          - centos.dockerfile
+          - rocky.dockerfile
     steps:
       - name: Check out the repository
         uses: actions/checkout@v3
@@ -16,4 +21,4 @@ jobs:
           submodules: true
           fetch-depth: 0
       - name: Build the Dockerfile
-        run: docker build -f examples/Dockerfile/centos.dockerfile -t tiledb:dev .
+        run: docker build -f examples/Dockerfile/${{ matrix.dockerfile }} -t tiledb:dev .
