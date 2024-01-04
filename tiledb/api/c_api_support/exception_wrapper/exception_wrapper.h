@@ -605,6 +605,11 @@ class CAPIFunction<f, H, A> {
       if constexpr (!std::same_as<R, void>) {
         return TILEDB_INVALID_CONTEXT;
       }
+    } catch (const BudgetUnavailable& e) {
+      h.action(e);
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_BUDGET_UNAVAILABLE;
+      }
     } catch (const detail::InvalidErrorException& e) {
       h.action(e);
       if constexpr (!std::same_as<R, void>) {
