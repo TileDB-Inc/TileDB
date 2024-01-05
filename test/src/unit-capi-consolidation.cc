@@ -7218,3 +7218,29 @@ TEST_CASE_METHOD(
 
   remove_sparse_string_array();
 }
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test consolidation, fragments/commits out of order",
+    "[capi][consolidation][fragments-commits][out-of-order]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
+  remove_sparse_array();
+  create_sparse_array();
+
+  write_sparse_full();
+  write_sparse_unordered();
+  consolidate_sparse("fragments");
+  consolidate_sparse("commits");
+  vacuum_sparse("fragments");
+  vacuum_sparse("commits");
+  read_sparse_full_unordered();
+  check_commits_dir_sparse(1, 0, 1);
+
+  remove_sparse_array();
+}
