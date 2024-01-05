@@ -484,14 +484,10 @@ Status serialize_non_empty_domain_rv(
  */
 template <typename CapnpT>
 Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  auto&& [st, nonEmptyDomain_opt] = array->non_empty_domain();
-  RETURN_NOT_OK(st);
-  if (nonEmptyDomain_opt.has_value()) {
-    return serialize_non_empty_domain_rv(
-        builder,
-        nonEmptyDomain_opt.value(),
-        array->array_schema_latest().dim_num());
-  }
+  return serialize_non_empty_domain_rv(
+      builder,
+      array->non_empty_domain(),
+      array->array_schema_latest().dim_num());
 
   return Status::Ok();
 }

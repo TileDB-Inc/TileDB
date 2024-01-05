@@ -495,9 +495,9 @@ int32_t tiledb_array_schema_load(
     auto storage_manager{ctx->storage_manager()};
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+    optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(
+      array_dir.emplace(
           storage_manager->resources(),
           uri,
           0,
@@ -512,7 +512,7 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -586,9 +586,9 @@ int32_t tiledb_array_schema_load_with_key(
     auto storage_manager{ctx->storage_manager()};
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+    optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(
+      array_dir.emplace(
           storage_manager->resources(),
           uri,
           0,
@@ -603,7 +603,7 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -1719,7 +1719,8 @@ int32_t tiledb_subarray_set_config(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  subarray->subarray_->set_config(config->config());
+  subarray->subarray_->set_config(
+      tiledb::sm::QueryType::READ, config->config());
   return TILEDB_OK;
 }
 
@@ -2929,9 +2930,9 @@ int32_t tiledb_array_encryption_type(
   auto uri = tiledb::sm::URI(array_uri);
 
   // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+  optional<tiledb::sm::ArrayDirectory> array_dir;
   try {
-    array_dir = tiledb::sm::ArrayDirectory(
+    array_dir.emplace(
         storage_manager->resources(),
         uri,
         0,
@@ -2947,7 +2948,7 @@ int32_t tiledb_array_encryption_type(
   // Get encryption type
   tiledb::sm::EncryptionType enc;
   throw_if_not_ok(
-      ctx->storage_manager()->array_get_encryption(array_dir, &enc));
+      ctx->storage_manager()->array_get_encryption(array_dir.value(), &enc));
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 

@@ -286,7 +286,7 @@ class ArrayDirectory {
   /* ********************************* */
 
   /**
-   * Constructor.
+   * Constructor. Needed for serialization.
    *
    * @param resources A reference to a ContextResources instance
    * @param uri The URI of the array directory

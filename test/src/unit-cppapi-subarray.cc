@@ -415,32 +415,6 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
     // default expected to err.
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
     tiledb::Config config;
-    // The config option should be ignored but we set anyway.
-    config.set("sm.read_range_oob", "error");
-    subarray.set_config(config);
-    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
-  }
-
-  SECTION("- set_subarray Write ranges oob warn - Subarray-query") {
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Query query(ctx, array);
-    // default (dense) WRITE should always err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    query.set_config(config);
-    // (dense) WRITE should ignore sm.read_range_oob config option
-    // and err/throw on oob
-    REQUIRE_THROWS(query.set_subarray({1, 4, -1, 3}));
-  }
-
-  SECTION("- set_subarray Write ranges oob warn - Subarray-cppapi") {
-    tiledb::Array array(ctx, array_name, TILEDB_WRITE);
-    tiledb::Subarray subarray(ctx, array);
-    REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
-    tiledb::Config config;
-    config.set("sm.read_range_oob", "warn");
-    subarray.set_config(config);
     REQUIRE_THROWS(subarray.set_subarray({1, 4, -1, 3}));
   }
 

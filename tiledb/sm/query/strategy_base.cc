@@ -56,7 +56,7 @@ StrategyBase::StrategyBase(
     Layout layout)
     : stats_(stats)
     , logger_(logger)
-    , array_(array)
+    , array_(array->opened_array())
     , array_schema_(array->array_schema_latest())
     , config_(config)
     , buffers_(buffers)

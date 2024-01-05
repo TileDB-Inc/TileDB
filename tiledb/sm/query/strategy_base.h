@@ -44,6 +44,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class OpenedArray;
 class ArraySchema;
 enum class Layout : uint8_t;
 class Subarray;
@@ -106,8 +107,11 @@ class StrategyBase {
   /** The class logger. */
   shared_ptr<Logger> logger_;
 
-  /** The array. */
-  const Array* array_;
+  /**
+   * A shared pointer to the opened array which ensures that the query can
+   * still access it even after the array is closed.
+   */
+  shared_ptr<OpenedArray> array_;
 
   /** The array schema. */
   const ArraySchema& array_schema_;

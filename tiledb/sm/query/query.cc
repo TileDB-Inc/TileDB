@@ -129,7 +129,7 @@ Query::Query(
     config_ = storage_manager->config();
 
   // Set initial subarray configuration
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 }
@@ -983,7 +983,7 @@ void Query::set_config(const Config& config) {
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 }
 
 Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
