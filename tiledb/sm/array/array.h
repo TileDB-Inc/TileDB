@@ -626,6 +626,9 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Memory tracker for the array. */
+  MemoryTracker memory_tracker_;
+
   /** The latest array schema. */
   shared_ptr<ArraySchema> array_schema_latest_;
 
@@ -738,9 +741,6 @@ class Array {
 
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
-
-  /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;

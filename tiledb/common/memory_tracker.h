@@ -34,6 +34,7 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
+#include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
@@ -42,55 +43,52 @@ namespace tdb = tiledb::common;
 namespace tiledb {
 namespace sm {
 
+enum class MemoryType : uint8_t {
+  RTREE,
+  FOOTER,
+  TILE_OFFSETS,
+  MIN_MAX_SUM_NULL_COUNTS,
+  ENUMERATION
+};
+
+class MemoryTracker;
+
+class MemoryTrackingResource : public tdb::pmr::memory_resource {
+ public:
+  explicit MemoryTrackingResource(MemoryTracker& tracker, MemoryType type)
+      : tracker_(tracker)
+      , type_(type) {
+  }
+
+  ~MemoryTrackingResource() = default;
+
+ protected:
+  void* do_allocate(size_t bytes, size_t alignment) override;
+  void do_deallocate(void* p, size_t bytes, size_t alignment) override;
+  bool do_is_equal(
+      const tdb::pmr::memory_resource& other) const noexcept override;
+
+ private:
+  MemoryTracker& tracker_;
+  MemoryType type_;
+};
+
 class MemoryTracker {
  public:
-  enum class MemoryType {
-    RTREE,
-    FOOTER,
-    TILE_OFFSETS,
-    MIN_MAX_SUM_NULL_COUNT,
-    ENUMERATION
-  };
+  friend class MemoryTrackingResource;
 
   /** Constructor. */
-  MemoryTracker() {
-    memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint64_t>::max();
-  };
+  MemoryTracker(tdb::pmr::memory_resource* = nullptr);
 
   /** Destructor. */
-  ~MemoryTracker() = default;
+  ~MemoryTracker();
 
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
-  /**
-   * Take memory from the budget.
-   *
-   * @param size The memory size.
-   * @return true if the memory is available, false otherwise.
-   */
-  bool take_memory(uint64_t size, MemoryType mem_type) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + size <= memory_budget_) {
-      memory_usage_ += size;
-      memory_usage_by_type_[mem_type] += size;
-      return true;
-    }
+  tdb::pmr::memory_resource* get_resource(MemoryType type);
 
-    return false;
-  }
-
-  /**
-   * Release memory from the budget.
-   *
-   * @param size The memory size.
-   */
-  void release_memory(uint64_t size, MemoryType mem_type) {
-    std::lock_guard<std::mutex> lg(mutex_);
-    memory_usage_ -= size;
-    memory_usage_by_type_[mem_type] -= size;
-  }
+  void leak_memory(MemoryType type, size_t bytes);
 
   /**
    * Set the memory budget.
@@ -100,17 +98,12 @@ class MemoryTracker {
    */
   bool set_budget(uint64_t size) {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ > size) {
+    if (usage_ > size) {
       return false;
     }
 
-    memory_budget_ = size;
+    budget_ = size;
     return true;
-  }
-
-  /*** Get the memory resources instance */
-  tdb::pmr::tracking_resource* memory_resource() {
-    return &memory_resource_;
   }
 
   /**
@@ -118,15 +111,15 @@ class MemoryTracker {
    */
   uint64_t get_memory_usage() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_;
+    return usage_;
   }
 
   /**
    * Get the memory usage by type.
    */
-  uint64_t get_memory_usage(MemoryType mem_type) {
+  uint64_t get_memory_usage(MemoryType type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_by_type_[mem_type];
+    return usage_by_type_[type];
   }
 
   /**
@@ -135,7 +128,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_available() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_ - memory_usage_;
+    return budget_ - usage_;
   }
 
   /**
@@ -144,24 +137,36 @@ class MemoryTracker {
    */
   uint64_t get_memory_budget() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_;
+    return budget_;
   }
 
+ protected:
+  void* allocate(MemoryType type, size_t bytes, size_t alignment);
+  void deallocate(MemoryType type, void* p, size_t bytes, size_t alignment);
+
  private:
+  void check_budget(MemoryType type, size_t bytes);
+
   /** Protects all member variables. */
   std::mutex mutex_;
 
-  /** Our pmr memory resources. */
-  tdb::pmr::tracking_resource memory_resource_;
+  /** The pmr memory resource. */
+  tdb::pmr::memory_resource* upstream_;
 
-  /** Memory usage for tracked structures. */
-  uint64_t memory_usage_;
+  /** Child trackers. */
+  std::unordered_map<MemoryType, shared_ptr<MemoryTrackingResource>> trackers_;
 
   /** Memory budget. */
-  uint64_t memory_budget_;
+  uint64_t budget_;
+
+  /** Memory usage for tracked structures. */
+  uint64_t usage_;
+
+  /** Memory usage high water mark. */
+  uint64_t usage_hwm_;
 
   /** Memory usage by type. */
-  std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+  std::unordered_map<MemoryType, uint64_t> usage_by_type_;
 };
 
 }  // namespace sm

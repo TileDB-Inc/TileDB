@@ -53,15 +53,24 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RTree::RTree() {
-  domain_ = nullptr;
-  fanout_ = 0;
-  deserialized_buffer_size_ = 0;
+tdb::pmr::memory_resource* get_resource(MemoryTracker* tracker) {
+  if (tracker == nullptr) {
+    return cpp17::pmr::get_default_resource();
+  }
+
+  return tracker->get_resource(MemoryType::RTREE);
 }
 
-RTree::RTree(const Domain* domain, unsigned fanout)
+RTree::RTree(MemoryTracker* tracker)
+  : domain_(nullptr)
+  , fanout_(0)
+  , levels_(get_resource(tracker)) {
+}
+
+RTree::RTree(const Domain* domain, unsigned fanout, MemoryTracker* tracker)
     : domain_(domain)
-    , fanout_(fanout) {
+    , fanout_(fanout)
+    , levels_(get_resource(tracker)) {
 }
 
 RTree::~RTree() = default;
@@ -118,11 +127,8 @@ void RTree::build_tree() {
   std::reverse(std::begin(levels_), std::end(levels_));
 }
 
-uint64_t RTree::free_memory() {
-  auto ret = deserialized_buffer_size_;
+void RTree::free_memory() {
   levels_.clear();
-  deserialized_buffer_size_ = 0;
-  return ret;
 }
 
 unsigned RTree::dim_num() const {
@@ -240,7 +246,7 @@ const NDRange& RTree::leaf(uint64_t leaf_idx) const {
   return levels_.back()[leaf_idx];
 }
 
-const std::vector<NDRange>& RTree::leaves() const {
+const tdb::pmr::vector<NDRange>& RTree::leaves() const {
   assert(!levels_.empty());
   return levels_.back();
 }
@@ -297,7 +303,7 @@ Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   return Status::Ok();
 }
 
-Status RTree::set_leaves(const std::vector<NDRange>& mbrs) {
+Status RTree::set_leaves(const tdb::pmr::vector<NDRange>& mbrs) {
   levels_.clear();
   levels_.resize(1);
   levels_[0] = mbrs;
@@ -358,7 +364,6 @@ RTree RTree::clone() const {
 
 void RTree::deserialize_v1_v4(
     Deserializer& deserializer, const Domain* domain) {
-  deserialized_buffer_size_ = deserializer.size();
 
   // For backwards compatibility, ignored
   (void)deserializer.read<unsigned>();
@@ -389,8 +394,6 @@ void RTree::deserialize_v1_v4(
 }
 
 void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
-  deserialized_buffer_size_ = deserializer.size();
-
   fanout_ = deserializer.read<unsigned>();
   auto level_num = deserializer.read<unsigned>();
 

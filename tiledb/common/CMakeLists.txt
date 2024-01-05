@@ -62,7 +62,7 @@ commence(object_library baseline)
         heap_memory.cc
         heap_profiler.cc
         logger.cc
-        pmr.cc
+        memory_tracker.cc
         "${CMAKE_CURRENT_SOURCE_DIR}/../../external/memory_resource/polymorphic_allocator.cpp"
     )
     find_package(Spdlog_EP REQUIRED)

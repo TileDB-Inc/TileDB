@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
@@ -64,10 +65,10 @@ class RTree {
   /* ********************************* */
 
   /** Constructor. */
-  RTree();
+  RTree(MemoryTracker* tracker = nullptr);
 
   /** Constructor. */
-  RTree(const Domain* domain, unsigned fanout);
+  RTree(const Domain* domain, unsigned fanout, MemoryTracker* tracker = nullptr);
 
   /** Destructor. */
   ~RTree();
@@ -92,7 +93,7 @@ class RTree {
   void build_tree();
 
   /** Frees the memory associated with the rtree. */
-  uint64_t free_memory();
+  void free_memory();
 
   /** The number of dimensions of the R-tree. */
   unsigned dim_num() const;
@@ -125,7 +126,7 @@ class RTree {
   const NDRange& leaf(uint64_t leaf_idx) const;
 
   /** Returns the leaves of the tree. */
-  const std::vector<NDRange>& leaves() const;
+  const tdb::pmr::vector<NDRange>& leaves() const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
@@ -158,7 +159,7 @@ class RTree {
    * Sets the input MBRs as leaves. This will destroy the existing
    * RTree.
    */
-  Status set_leaves(const std::vector<NDRange>& mbrs);
+  Status set_leaves(const tdb::pmr::vector<NDRange>& mbrs);
 
   /**
    * Resizes the leaf level. It destroys the upper levels
@@ -203,7 +204,7 @@ class RTree {
    * `levels_`, where the first level is the root. This is how
    * we can infer which tree level each `Level` object corresponds to.
    */
-  typedef std::vector<NDRange> Level;
+  typedef tdb::pmr::vector<NDRange> Level;
 
   /**
    * Defines an R-Tree level entry, which corresponds to a node
@@ -237,13 +238,7 @@ class RTree {
    * The tree levels. The first level is the root. Note that the root
    * always consists of a single MBR.
    */
-  std::vector<Level> levels_;
-
-  /**
-   * Stores the size of the buffer used to deserialize the data, used for
-   * memory tracking pusposes on reads.
-   */
-  uint64_t deserialized_buffer_size_;
+  tdb::pmr::vector<Level> levels_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

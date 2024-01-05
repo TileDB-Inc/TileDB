@@ -1336,14 +1336,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
   auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
   resources_.get().stats().add_counter("read_enumeration_size", tile.size());
 
-  if (!memory_tracker.take_memory(
-          tile.size(), MemoryTracker::MemoryType::ENUMERATION)) {
-    throw ArrayDirectoryException(
-        "Error loading enumeration; Insufficient memory budget; Needed " +
-        std::to_string(tile.size()) + " but only had " +
-        std::to_string(memory_tracker.get_memory_available()) +
-        " from budget " + std::to_string(memory_tracker.get_memory_budget()));
-  }
+  memory_tracker.leak_memory(MemoryType::ENUMERATION, tile.size());
 
   Deserializer deserializer(tile.data(), tile.size());
   return Enumeration::deserialize(deserializer);

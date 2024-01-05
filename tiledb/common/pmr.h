@@ -34,8 +34,9 @@
 #ifndef TILEDB_COMMON_PMR_H
 #define TILEDB_COMMON_PMR_H
 
-// TODO: PJD - Le sigh
+// TODO: PJD - Le sigh relative includes
 #include "../../external/memory_resource/pmr_vector.h"
+#include "../../external/memory_resource/polymorphic_allocator.h"
 
 namespace tiledb::common::pmr {
 
@@ -43,27 +44,6 @@ using memory_resource = cpp17::pmr::memory_resource;
 
 template <class Tp>
 using vector = cpp17::pmr::vector<Tp>;
-
-class tracking_resource : public cpp17::pmr::memory_resource {
- public:
-  explicit tracking_resource(
-      cpp17::pmr::memory_resource* upstream =
-          cpp17::pmr::get_default_resource());
-  ~tracking_resource();
-
-  cpp17::pmr::memory_resource* upstream() const {
-    return upstream_;
-  }
-
- protected:
-  void* do_allocate(size_t bytes, size_t alignment) override;
-  void do_deallocate(void* p, size_t bytes, size_t alignment) override;
-  bool do_is_equal(
-      const cpp17::pmr::memory_resource& other) const noexcept override;
-
- private:
-  cpp17::pmr::memory_resource* upstream_;
-};
 
 }  // namespace tiledb::common::pmr
 
