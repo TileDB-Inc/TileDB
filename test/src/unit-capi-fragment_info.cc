@@ -1279,6 +1279,8 @@ TEST_CASE(
   rc = tiledb_array_consolidate(ctx, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
 
+  tiledb_config_free(&config);
+
   // Load fragment info
   rc = tiledb_fragment_info_load(ctx, fragment_info);
   CHECK(rc == TILEDB_OK);

@@ -27,6 +27,7 @@
 include(unit_test)
 
 commence(unit_test array)
+    this_target_compile_definitions(-DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/")
     this_target_sources(main.cc unit_array_directory.cc)
     this_target_link_libraries(array context_resources)
 conclude(unit_test)

@@ -2337,7 +2337,7 @@ TEST_CASE_METHOD(
 
   // Check the retrieved non empty domain
   auto non_empty_domain = new_array->array_->loaded_non_empty_domain();
-  CHECK(non_empty_domain->empty() == false);
+  CHECK(non_empty_domain.empty() == false);
 
   // Check the retrieved metadata
   Datatype type;

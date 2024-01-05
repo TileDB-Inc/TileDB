@@ -99,7 +99,7 @@ Subarray::Subarray(
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : Subarray(
-          array,
+          array->opened_array(),
           Layout::UNORDERED,
           parent_stats,
           logger,
@@ -114,17 +114,33 @@ Subarray::Subarray(
     shared_ptr<Logger> logger,
     const bool coalesce_ranges,
     StorageManager* storage_manager)
+    : Subarray(
+          array->opened_array(),
+          layout,
+          parent_stats,
+          logger,
+          coalesce_ranges,
+          storage_manager) {
+}
+
+Subarray::Subarray(
+    const shared_ptr<OpenedArray> opened_array,
+    const Layout layout,
+    Stats* const parent_stats,
+    shared_ptr<Logger> logger,
+    const bool coalesce_ranges,
+    StorageManager* storage_manager)
     : stats_(
           parent_stats ? parent_stats->create_child("Subarray") :
           storage_manager ?
                          storage_manager->stats()->create_child("subSubarray") :
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
-    , array_(array)
+    , array_(opened_array)
     , layout_(layout)
-    , cell_order_(array_->array_schema_latest().cell_order())
+    , cell_order_(opened_array->array_schema_latest().cell_order())
     , est_result_size_computed_(false)
-    , relevant_fragments_(array->fragment_metadata().size())
+    , relevant_fragments_(opened_array->fragment_metadata().size())
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
   if (!parent_stats && !storage_manager) {
@@ -734,7 +750,7 @@ Status Subarray::get_range_var_from_name(
 
   return get_range_var(dim_idx, range_idx, start, end);
 }
-const Array* Subarray::array() const {
+const shared_ptr<OpenedArray> Subarray::array() const {
   return array_;
 }
 
@@ -1097,12 +1113,9 @@ void Subarray::set_layout(Layout layout) {
   layout_ = layout;
 }
 
-void Subarray::set_config(const Config& config) {
+void Subarray::set_config(const QueryType query_type, const Config& config) {
   config_.inherit(config);
-
-  QueryType array_query_type{array_->get_query_type()};
-
-  if (array_query_type == QueryType::READ) {
+  if (query_type == QueryType::READ) {
     bool found = false;
     std::string read_range_oob_str = config.get("sm.read_range_oob", &found);
     assert(found);
@@ -2586,7 +2599,7 @@ Status Subarray::precompute_tile_overlap(
   // each successive loop. The intent is to minimize the number of loops
   // at the risk of exceeding our target maximum memory usage for the
   // tile overlap data.
-  RelevantFragmentGenerator relevant_fragment_generator(*array_, *this, stats_);
+  RelevantFragmentGenerator relevant_fragment_generator(array_, *this, stats_);
   ComputeRelevantTileOverlapCtx tile_overlap_ctx;
   SubarrayTileOverlap tile_overlap(
       fragment_num, tile_overlap_start, tmp_tile_overlap_end);
@@ -2642,7 +2655,7 @@ Status Subarray::precompute_all_ranges_tile_overlap(
 
   // Compute relevant fragments and load rtrees.
   ComputeRelevantTileOverlapCtx tile_overlap_ctx;
-  RelevantFragmentGenerator relevant_fragment_generator(*array_, *this, stats_);
+  RelevantFragmentGenerator relevant_fragment_generator(array_, *this, stats_);
   relevant_fragment_generator.update_range_coords(nullptr);
   relevant_fragments_ =
       relevant_fragment_generator.compute_relevant_fragments(compute_tp);
