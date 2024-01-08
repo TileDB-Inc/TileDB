@@ -113,9 +113,7 @@ class FilesystemBase {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  virtual tuple<
-      Status,
-      optional<std::vector<common::filesystem::directory_entry>>>
+  virtual tuple<Status, optional<std::vector<filesystem::directory_entry>>>
   ls_with_sizes(const URI& parent) const = 0;
 
   /**
@@ -126,7 +124,17 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status move_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status move_file(const URI& old_uri, const URI& new_uri) = 0;
+
+  /**
+   * Renames a directory.
+   * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  virtual Status move_dir(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Copies a file.
@@ -136,7 +144,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_file(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status copy_file(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Copies directory.
@@ -146,7 +154,7 @@ class FilesystemBase {
    * @param new_uri The new URI.
    * @return Status
    */
-  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
+  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Reads from a file.
@@ -163,7 +171,7 @@ class FilesystemBase {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) = 0;
+      bool use_read_ahead = true) const = 0;
 
   /**
    * Syncs (flushes) a file. Note that for S3 this is a noop.
@@ -186,7 +194,49 @@ class FilesystemBase {
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
-      bool remote_global_order_write = false) = 0;
+      bool remote_global_order_write) = 0;
+
+  /**
+   * Checks if an object store bucket exists.
+   *
+   * @param uri The name of the object store bucket.
+   * @param is_bucket Set to `true` if the bucket exists and `false` otherwise.
+   * @return Status
+   */
+  virtual Status is_bucket(const URI& uri, bool* is_bucket) const = 0;
+
+  /**
+   * Checks if an object-store bucket is empty.
+   *
+   * @param uri The name of the object store bucket.
+   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
+   * @return Status
+   */
+  virtual Status is_empty_bucket(const URI& uri, bool* is_empty) const = 0;
+
+  /**
+   * Creates an object store bucket.
+   *
+   * @param uri The name of the bucket to be created.
+   * @return Status
+   */
+  virtual Status create_bucket(const URI& uri) const = 0;
+
+  /**
+   * Deletes an object store bucket.
+   *
+   * @param uri The name of the bucket to be deleted.
+   * @return Status
+   */
+  virtual Status remove_bucket(const URI& uri) const = 0;
+
+  /**
+   * Deletes the contents of an object store bucket.
+   *
+   * @param uri The name of the bucket to be emptied.
+   * @return Status
+   */
+  virtual Status empty_bucket(const URI& uri) const = 0;
 };
 
 }  // namespace tiledb::sm

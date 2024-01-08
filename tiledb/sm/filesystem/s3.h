@@ -553,7 +553,7 @@ class S3Scanner : public LsScanner<F, D> {
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
  */
-class S3 {
+class S3 : FilesystemBase {
  private:
   /** Forward declaration */
   struct MultiPartUploadState;
@@ -588,7 +588,7 @@ class S3 {
    * @param bucket The name of the bucket to be created.
    * @return Status
    */
-  Status create_bucket(const URI& bucket) const;
+  Status create_bucket(const URI& bucket) const override;
 
   /**
    * Disconnects a S3 client.
@@ -598,7 +598,7 @@ class S3 {
   Status disconnect();
 
   /** Removes the contents of an S3 bucket. */
-  Status empty_bucket(const URI& bucket) const;
+  Status empty_bucket(const URI& bucket) const override;
 
   /**
    * Flushes an object to S3, finalizing the multipart upload.
@@ -617,7 +617,7 @@ class S3 {
   void finalize_and_flush_object(const URI& uri);
 
   /** Checks if a bucket is empty. */
-  Status is_empty_bucket(const URI& bucket, bool* is_empty) const;
+  Status is_empty_bucket(const URI& bucket, bool* is_empty) const override;
 
   /**
    * Check if a bucket exists.
@@ -627,7 +627,7 @@ class S3 {
    *   and `false` otherwise.
    * @return Status
    */
-  Status is_bucket(const URI& uri, bool* exists) const;
+  Status is_bucket(const URI& uri, bool* exists) const override;
 
   /**
    * Checks if there is an object with prefix `uri/`. For instance, suppose
@@ -699,9 +699,7 @@ class S3 {
    * @return Status tuple where second is a list of directory_entry objects.
    */
   tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
-      const URI& prefix,
-      const std::string& delimiter = "/",
-      int max_paths = -1) const;
+      const URI& prefix, const std::string& delimiter, int max_paths) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -776,7 +774,7 @@ class S3 {
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri);
+  Status move_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies a file.
@@ -785,7 +783,7 @@ class S3 {
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri);
+  Status copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies a directory. All subdirectories and files are copied.
@@ -794,7 +792,7 @@ class S3 {
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri);
+  Status copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -804,6 +802,23 @@ class S3 {
    * @return Status
    */
   Status object_size(const URI& uri, uint64_t* nbytes) const;
+
+  /**
+   * Reads from a file.
+   *
+   * @param uri The URI of the file.
+   * @param offset The offset where the read begins.
+   * @param buffer The buffer to read into.
+   * @param nbytes Number of bytes to read.
+   * @param use_read_ahead Whether to use the read-ahead cache.
+   * @return Status
+   */
+  Status read(
+      const URI& uri,
+      uint64_t offset,
+      void* buffer,
+      uint64_t nbytes,
+      bool use_read_ahead = true) const override;
 
   /**
    * Reads data from an object into a buffer.
@@ -816,7 +831,7 @@ class S3 {
    * @param length_returned Returns the total length read into `buffer`.
    * @return Status
    */
-  Status read(
+  Status read_impl(
       const URI& uri,
       off_t offset,
       void* buffer,
@@ -830,7 +845,7 @@ class S3 {
    * @param bucket The name of the bucket to be deleted.
    * @return Status
    */
-  Status remove_bucket(const URI& bucket) const;
+  Status remove_bucket(const URI& bucket) const override;
 
   /**
    * Deletes an object with a given URI.
@@ -861,10 +876,10 @@ class S3 {
    * the function internally appends `/` to the end of the URI, and therefore
    * there is not object with prefix "s3://some_bucket/foo2/" in this example.
    *
-   * @param uri The prefix of the objects to be deleted.
+   * @param prefix The prefix of the objects to be deleted.
    * @return Status
    */
-  Status remove_dir(const URI& prefix) const;
+  Status remove_dir(const URI& prefix) const override;
 
   /**
    * Creates an empty object.
@@ -872,7 +887,7 @@ class S3 {
    * @param uri The URI of the object to be created.
    * @return Status
    */
-  Status touch(const URI& uri) const;
+  Status touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an S3 object. Note that this is essentially
@@ -881,9 +896,14 @@ class S3 {
    * @param uri The URI of the object to be written to.
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
+   * @param remote_global_order_write
    * @return Status
    */
-  Status write(const URI& uri, const void* buffer, uint64_t length);
+  Status write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t length,
+      bool remote_global_order_write = false) override;
 
   /**
    * Writes the input buffer to an S3 object. This function buffers in memory
@@ -930,6 +950,96 @@ class S3 {
    * from the end if it exists.
    */
   static std::string remove_trailing_slash(const std::string& path);
+
+  /**
+   * Creates a directory.
+   *
+   * - On S3, this is a noop.
+   * - On all other backends, if the directory exists, the function
+   *   just succeeds without doing anything.
+   *
+   * @param uri The URI of the directory.
+   * @return Status
+   */
+  Status create_dir(const URI&) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Checks if a file exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the file exists, else False.
+   */
+  bool is_file(const URI& uri) const override {
+    bool object = false;
+    throw_if_not_ok(is_object(uri, &object));
+    return object;
+  }
+
+  /**
+   * Deletes a file.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
+  Status remove_file(const URI& uri) const override {
+    return remove_object(uri);
+  }
+
+  /**
+   * Retrieves the size of a file.
+   *
+   * @param uri The URI of the file.
+   * @param size The file size to be retrieved.
+   * @return Status
+   */
+  Status file_size(const URI& uri, uint64_t* size) const override {
+    return object_size(uri, size);
+  }
+
+  /**
+   * Renames a file.
+   * Both URI must be of the same backend type. (e.g. both s3://, file://, etc)
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  Status move_file(const URI& old_uri, const URI& new_uri) override {
+    return move_object(old_uri, new_uri);
+  }
+
+  /**
+   * Syncs (flushes) a file. Note that for S3 this is a noop.
+   *
+   * @param uri The URI of the file.
+   * @return Status
+   */
+  Status sync(const URI&) override {
+    return Status::Ok();
+  }
+
+  /**
+   * Checks if a directory exists.
+   *
+   * @param uri The URI to check for existence.
+   * @return True if the directory exists, else False.
+   */
+  bool is_dir(const URI& uri) const override {
+    bool dir = false;
+    throw_if_not_ok(is_dir(uri, &dir));
+    return dir;
+  }
+
+  /**
+   * Retrieves all the entries contained in the parent.
+   *
+   * @param parent The target directory to list.
+   * @return All entries that are contained in the parent
+   */
+  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
+      const URI& parent) const override;
 
  private:
   /* ********************************* */

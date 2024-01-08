@@ -518,7 +518,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
     throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
           uint64_t length_returned;
-          throw_if_not_ok(read(
+          throw_if_not_ok(read_impl(
               URI(intermediate_chunks[i].uri),
               0,
               merged.data() + offsets[i],
@@ -896,6 +896,16 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
 
 Status S3::read(
     const URI& uri,
+    uint64_t offset,
+    void* buffer,
+    uint64_t nbytes,
+    bool) const {
+  uint64_t nbytes_read = 0;
+  return read_impl(uri, offset, buffer, nbytes, 0, &nbytes_read);
+}
+
+Status S3::read_impl(
+    const URI& uri,
     const off_t offset,
     void* const buffer,
     const uint64_t length,
@@ -1037,12 +1047,21 @@ Status S3::touch(const URI& uri) const {
   return Status::Ok();
 }
 
-Status S3::write(const URI& uri, const void* buffer, uint64_t length) {
+Status S3::write(
+    const URI& uri,
+    const void* buffer,
+    uint64_t length,
+    bool remote_global_order_write) {
   RETURN_NOT_OK(init_client());
 
   if (!uri.is_s3()) {
     return LOG_STATUS(Status_S3Error(
         std::string("URI is not an S3 URI: " + uri.to_string())));
+  }
+
+  if (remote_global_order_write) {
+    global_order_write_buffered(uri, buffer, length);
+    return Status::Ok();
   }
 
   // This write is never considered the last part of an object. The last part is
@@ -1197,7 +1216,7 @@ void S3::global_order_write(
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
         uint64_t length_returned;
-        throw_if_not_ok(read(
+        throw_if_not_ok(read_impl(
             URI(intermediate_chunks[i].uri),
             0,
             merged.data() + offsets[i],
@@ -1529,6 +1548,11 @@ std::string S3::remove_trailing_slash(const std::string& path) {
   }
 
   return path;
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+    const URI& parent) const {
+  return ls_with_sizes(parent, "/", -1);
 }
 
 Status S3::flush_file_buffer(const URI& uri, Buffer* buff, bool last_part) {

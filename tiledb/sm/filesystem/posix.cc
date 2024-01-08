@@ -54,10 +54,9 @@
 #include <sstream>
 
 using namespace tiledb::common;
-using tiledb::common::filesystem::directory_entry;
+using filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 Posix::Posix(const Config& config) {
   // Initialize member variables with posix config parameters.
@@ -69,41 +68,6 @@ Posix::Posix(const Config& config) {
   permissions = config.get<std::string>(
       "vfs.file.posix_directory_permissions", Config::must_find);
   directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
-}
-
-bool Posix::both_slashes(char a, char b) {
-  return a == '/' && b == '/';
-}
-
-Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
-  auto bytes = reinterpret_cast<char*>(buffer);
-  uint64_t nread = 0;
-  do {
-    ssize_t actual_read =
-        ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
-    if (actual_read < 0) {
-      return LOG_STATUS(
-          Status_IOError(std::string("POSIX read error: ") + strerror(errno)));
-    } else if (actual_read == 0) {
-      break;
-    }
-    nread += actual_read;
-  } while (nread < nbytes);
-
-  if (nread != nbytes) {
-    return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
-  }
-  return Status::Ok();
-}
-
-void Posix::adjacent_slashes_dedup(std::string* path) {
-  assert(utils::parse::starts_with(*path, "file://"));
-  path->erase(
-      std::unique(
-          path->begin() + std::string("file://").size(),
-          path->end(),
-          both_slashes),
-      path->end());
 }
 
 std::string Posix::abs_path(const std::string& path) {
@@ -121,41 +85,6 @@ std::string Posix::abs_path(const std::string& path) {
   }
 
   return resolved_path;
-}
-
-std::string Posix::abs_path_internal(const std::string& path) {
-  // Initialize current, home and root
-  std::string current = current_dir();
-  auto env_home_ptr = getenv("HOME");
-  std::string home = env_home_ptr != nullptr ? env_home_ptr : current;
-  std::string root = "/";
-  std::string posix_prefix = "file://";
-
-  // Easy cases
-  if (path.empty() || path == "." || path == "./")
-    return posix_prefix + current;
-  if (path == "~")
-    return posix_prefix + home;
-  if (path == "/")
-    return posix_prefix + root;
-
-  // Other cases
-  std::string ret_dir;
-  if (utils::parse::starts_with(path, posix_prefix))
-    return path;
-  else if (utils::parse::starts_with(path, "/"))
-    ret_dir = posix_prefix + path;
-  else if (utils::parse::starts_with(path, "~/"))
-    ret_dir = posix_prefix + home + path.substr(1, path.size() - 1);
-  else if (utils::parse::starts_with(path, "./"))
-    ret_dir = posix_prefix + current + path.substr(1, path.size() - 1);
-  else
-    ret_dir = posix_prefix + current + "/" + path;
-
-  adjacent_slashes_dedup(&ret_dir);
-  purge_dots_from_path(&ret_dir);
-
-  return ret_dir;
 }
 
 Status Posix::create_dir(const URI& uri) const {
@@ -193,15 +122,6 @@ std::string Posix::current_dir() {
   static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
   std::string dir = cwd_.get();
   return dir;
-}
-
-// TODO: it maybe better to use unlinkat for deeply nested recursive directories
-// but the path name length limit in TileDB may make this unnecessary
-int Posix::unlink_cb(const char* fpath, const struct stat*, int, struct FTW*) {
-  int rc = remove(fpath);
-  if (rc)
-    perror(fpath);
-  return rc;
 }
 
 Status Posix::remove_dir(const URI& uri) const {
@@ -301,7 +221,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   return {Status::Ok(), entries};
 }
 
-Status Posix::move_file(const URI& old_path, const URI& new_path) const {
+Status Posix::move_file(const URI& old_path, const URI& new_path) {
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     return LOG_STATUS(
         Status_IOError(std::string("Cannot move path: ") + strerror(errno)));
@@ -309,14 +229,18 @@ Status Posix::move_file(const URI& old_path, const URI& new_path) const {
   return Status::Ok();
 }
 
-Status Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
+Status Posix::move_dir(const URI& old_uri, const URI& new_uri) {
+  return move_file(old_uri, new_uri);
+}
+
+Status Posix::copy_file(const URI& old_uri, const URI& new_uri) {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   std::ofstream dst(new_uri.to_path(), std::ios::binary);
   dst << src.rdbuf();
   return Status::Ok();
 }
 
-Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
+Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto old_path = old_uri.to_path();
   auto new_path = new_uri.to_path();
   RETURN_NOT_OK(create_dir(new_uri));
@@ -348,66 +272,12 @@ Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
   return Status::Ok();
 }
 
-void Posix::purge_dots_from_path(std::string* path) {
-  // Trivial case
-  if (path == nullptr)
-    return;
-
-  // Trivial case
-  uint64_t path_size = path->size();
-  if (path_size == 0 || *path == "file:///")
-    return;
-
-  assert(utils::parse::starts_with(*path, "file:///"));
-
-  // Tokenize
-  const char* token_c_str = path->c_str() + 8;
-  std::vector<std::string> tokens, final_tokens;
-  std::string token;
-
-  for (uint64_t i = 8; i < path_size; ++i) {
-    if ((*path)[i] == '/') {
-      (*path)[i] = '\0';
-      token = token_c_str;
-      if (!token.empty())
-        tokens.push_back(token);
-      token_c_str = path->c_str() + i + 1;
-    }
-  }
-  token = token_c_str;
-  if (!token.empty())
-    tokens.push_back(token);
-
-  // Purge dots
-  for (auto& t : tokens) {
-    if (t == ".")  // Skip single dots
-      continue;
-
-    if (t == "..") {
-      if (final_tokens.empty()) {
-        // Invalid path
-        *path = "";
-        return;
-      }
-
-      final_tokens.pop_back();
-    } else {
-      final_tokens.push_back(t);
-    }
-  }
-
-  // Assemble final path
-  *path = "file://";
-  for (auto& t : final_tokens)
-    *path += std::string("/") + t;
-}
-
 Status Posix::read(
     const URI& uri,
     uint64_t offset,
     void* buffer,
     uint64_t nbytes,
-    [[maybe_unused]] bool use_read_ahead) {
+    [[maybe_unused]] bool use_read_ahead) const {
   // Checks
   auto path = uri.to_path();
   uint64_t file_size;
@@ -530,6 +400,139 @@ Status Posix::write(
   return st;
 }
 
+void Posix::adjacent_slashes_dedup(std::string* path) {
+  assert(utils::parse::starts_with(*path, "file://"));
+  path->erase(
+      std::unique(
+          path->begin() + std::string("file://").size(),
+          path->end(),
+          both_slashes),
+      path->end());
+}
+
+bool Posix::both_slashes(char a, char b) {
+  return a == '/' && b == '/';
+}
+
+std::string Posix::abs_path_internal(const std::string& path) {
+  // Initialize current, home and root
+  std::string current = current_dir();
+  auto env_home_ptr = getenv("HOME");
+  std::string home = env_home_ptr != nullptr ? env_home_ptr : current;
+  std::string root = "/";
+  std::string posix_prefix = "file://";
+
+  // Easy cases
+  if (path.empty() || path == "." || path == "./")
+    return posix_prefix + current;
+  if (path == "~")
+    return posix_prefix + home;
+  if (path == "/")
+    return posix_prefix + root;
+
+  // Other cases
+  std::string ret_dir;
+  if (utils::parse::starts_with(path, posix_prefix))
+    return path;
+  else if (utils::parse::starts_with(path, "/"))
+    ret_dir = posix_prefix + path;
+  else if (utils::parse::starts_with(path, "~/"))
+    ret_dir = posix_prefix + home + path.substr(1, path.size() - 1);
+  else if (utils::parse::starts_with(path, "./"))
+    ret_dir = posix_prefix + current + path.substr(1, path.size() - 1);
+  else
+    ret_dir = posix_prefix + current + "/" + path;
+
+  adjacent_slashes_dedup(&ret_dir);
+  purge_dots_from_path(&ret_dir);
+
+  return ret_dir;
+}
+
+void Posix::purge_dots_from_path(std::string* path) {
+  // Trivial case
+  if (path == nullptr)
+    return;
+
+  // Trivial case
+  uint64_t path_size = path->size();
+  if (path_size == 0 || *path == "file:///")
+    return;
+
+  assert(utils::parse::starts_with(*path, "file:///"));
+
+  // Tokenize
+  const char* token_c_str = path->c_str() + 8;
+  std::vector<std::string> tokens, final_tokens;
+  std::string token;
+
+  for (uint64_t i = 8; i < path_size; ++i) {
+    if ((*path)[i] == '/') {
+      (*path)[i] = '\0';
+      token = token_c_str;
+      if (!token.empty())
+        tokens.push_back(token);
+      token_c_str = path->c_str() + i + 1;
+    }
+  }
+  token = token_c_str;
+  if (!token.empty())
+    tokens.push_back(token);
+
+  // Purge dots
+  for (auto& t : tokens) {
+    if (t == ".")  // Skip single dots
+      continue;
+
+    if (t == "..") {
+      if (final_tokens.empty()) {
+        // Invalid path
+        *path = "";
+        return;
+      }
+
+      final_tokens.pop_back();
+    } else {
+      final_tokens.push_back(t);
+    }
+  }
+
+  // Assemble final path
+  *path = "file://";
+  for (auto& t : final_tokens)
+    *path += std::string("/") + t;
+}
+
+Status Posix::read_all(int fd, void* buffer, uint64_t nbytes, uint64_t offset) {
+  auto bytes = reinterpret_cast<char*>(buffer);
+  uint64_t nread = 0;
+  do {
+    ssize_t actual_read =
+        ::pread(fd, bytes + nread, nbytes - nread, offset + nread);
+    if (actual_read < 0) {
+      return LOG_STATUS(
+          Status_IOError(std::string("POSIX read error: ") + strerror(errno)));
+    } else if (actual_read == 0) {
+      break;
+    }
+    nread += actual_read;
+  } while (nread < nbytes);
+
+  if (nread != nbytes) {
+    return LOG_STATUS(Status_IOError("POSIX incomplete read: EOF reached"));
+  }
+  return Status::Ok();
+}
+
+// TODO: it maybe better to use unlinkat for deeply nested recursive directories
+// but the path name length limit in TileDB may make this unnecessary
+int Posix::unlink_cb(const char* fpath, const struct stat*, int, struct FTW*) {
+  int rc = remove(fpath);
+  if (rc)
+    perror(fpath);
+  return rc;
+}
+
 Status Posix::write_at(
     int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size) {
   const char* buffer_bytes_ptr = static_cast<const char*>(buffer);
@@ -547,7 +550,6 @@ Status Posix::write_at(
   return Status::Ok();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // !_WIN32

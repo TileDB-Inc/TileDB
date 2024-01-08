@@ -239,12 +239,12 @@ class S3_within_VFS {
   }
 
   /** Protected accessor for the S3 object. */
-  inline tiledb::sm::S3& s3() {
+  inline S3& s3() {
     return s3_;
   }
 
   /** Protected accessor for the const S3 object. */
-  inline const tiledb::sm::S3& s3() const {
+  inline const S3& s3() const {
     return s3_;
   }
 };
@@ -336,7 +336,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 
   /**
    * Return a config object containing the VFS parameters. All other non-VFS
-   * parameters will are set to default values.
+   * parameters are set to default values.
    */
   Config config() const;
 

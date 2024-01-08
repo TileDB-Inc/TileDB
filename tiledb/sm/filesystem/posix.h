@@ -75,12 +75,6 @@ class Posix : public FilesystemBase {
   ~Posix() override = default;
 
   /**
-   * Returns the absolute posix (string) path of the input in the
-   * form "file://<absolute path>"
-   */
-  static std::string abs_path(const std::string& path);
-
-  /**
    * Creates a new directory.
    *
    * @param dir The name of the directory to be created.
@@ -97,13 +91,20 @@ class Posix : public FilesystemBase {
   Status touch(const URI& uri) const override;
 
   /**
-   * Returns the directory where the program is executed.
+   * Checks if the input is an existing directory.
    *
-   * @return The directory path where the program is executed. If the program
-   * cannot retrieve the current working directory, the empty string is
-   * returned.
+   * @param dir The directory to be checked.
+   * @return *True* if *dir* is an existing directory, and *False* otherwise.
    */
-  static std::string current_dir();
+  bool is_dir(const URI& uri) const override;
+
+  /**
+   * Checks if the input is an existing file.
+   *
+   * @param file The file to be checked.
+   * @return *True* if *file* is an existing file, and *false* otherwise.
+   */
+  bool is_file(const URI& uri) const override;
 
   /**
    * Removes a given directory recursively.
@@ -131,32 +132,6 @@ class Posix : public FilesystemBase {
   Status file_size(const URI& path, uint64_t* size) const override;
 
   /**
-   * Checks if the input is an existing directory.
-   *
-   * @param dir The directory to be checked.
-   * @return *True* if *dir* is an existing directory, and *False* otherwise.
-   */
-  bool is_dir(const URI& uri) const override;
-
-  /**
-   * Checks if the input is an existing file.
-   *
-   * @param file The file to be checked.
-   * @return *True* if *file* is an existing file, and *false* otherwise.
-   */
-  bool is_file(const URI& uri) const override;
-
-  /**
-   *
-   * Lists files one level deep under a given path.
-   *
-   * @param path  The parent path to list sub-paths.
-   * @param paths Pointer to a vector of strings to store the retrieved paths.
-   * @return Status
-   */
-  Status ls(const std::string& path, std::vector<std::string>* paths) const;
-
-  /**
    *
    * Lists files and file information one level deep under a given path.
    *
@@ -170,31 +145,41 @@ class Posix : public FilesystemBase {
    * Move a given filesystem path.
    * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    * @return Status
    */
-  Status move_file(const URI& old_path, const URI& new_path) const override;
+  Status move_file(const URI& old_uri, const URI& new_uri) override;
+
+  /**
+   * Renames a directory.
+   * Both URI must be of the same file:// backend type.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   * @return Status
+   */
+  Status move_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copy a given filesystem file.
    * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri) const override;
+  Status copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copy a given filesystem directory.
    * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    * @return Status
    */
-  Status copy_dir(const URI& old_path, const URI& new_path) const override;
+  Status copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads data from a file into a buffer.
@@ -210,7 +195,7 @@ class Posix : public FilesystemBase {
       uint64_t offset,
       void* buffer,
       uint64_t nbytes,
-      bool use_read_ahead = true) override;
+      bool use_read_ahead = true) const override;
 
   /**
    * Syncs a file or directory.
@@ -236,6 +221,82 @@ class Posix : public FilesystemBase {
       const void* buffer,
       uint64_t buffer_size,
       bool remote_global_order_write = false) override;
+
+  /**
+   * Checks if an object store bucket exists.
+   *
+   * @param uri The name of the object store bucket.
+   * @param is_bucket Set to `true` if the bucket exists and `false` otherwise.
+   * @return Status
+   */
+  Status is_bucket(const URI&, bool*) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Checks if an object-store bucket is empty.
+   *
+   * @param uri The name of the object store bucket.
+   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
+   * @return Status
+   */
+  Status is_empty_bucket(const URI&, bool*) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Creates an object store bucket.
+   *
+   * @param uri The name of the bucket to be created.
+   * @return Status
+   */
+  Status create_bucket(const URI&) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Deletes an object store bucket.
+   *
+   * @param uri The name of the bucket to be deleted.
+   * @return Status
+   */
+  Status remove_bucket(const URI&) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Deletes the contents of an object store bucket.
+   *
+   * @param uri The name of the bucket to be emptied.
+   * @return Status
+   */
+  Status empty_bucket(const URI&) const override {
+    return Status::Ok();
+  }
+
+  /**
+   * Lists files one level deep under a given path.
+   *
+   * @param path  The parent path to list sub-paths.
+   * @param paths Pointer to a vector of strings to store the retrieved paths.
+   * @return Status
+   */
+  Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  /**
+   * Returns the absolute posix (string) path of the input in the
+   * form "file://<absolute path>"
+   */
+  static std::string abs_path(const std::string& path);
+
+  /**
+   * Returns the directory where the program is executed.
+   *
+   * @return The directory path where the program is executed. If the program
+   * cannot retrieve the current working directory, the empty string is
+   * returned.
+   */
+  static std::string current_dir();
 
  private:
   static void adjacent_slashes_dedup(std::string* path);

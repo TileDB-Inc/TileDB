@@ -860,7 +860,7 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       return win_.move_path(old_uri.to_path(), new_uri.to_path());
 #else
-      return posix_.move_file(old_uri, new_uri);
+      return posix_.move_dir(old_uri, new_uri);
 #endif
     }
     throw UnsupportedOperation("Moving directories");
@@ -1148,7 +1148,7 @@ Status VFS::read_impl(
   if (uri.is_s3()) {
 #ifdef HAVE_S3
     const auto read_fn = std::bind(
-        &S3::read,
+        &S3::read_impl,
         &s3(),
         std::placeholders::_1,
         std::placeholders::_2,
@@ -1451,11 +1451,7 @@ Status VFS::write(
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    if (remote_global_order_write) {
-      s3().global_order_write_buffered(uri, buffer, buffer_size);
-      return Status::Ok();
-    }
-    return s3().write(uri, buffer, buffer_size);
+    return s3().write(uri, buffer, buffer_size, remote_global_order_write);
 #else
     throw BuiltWithout("S3");
 #endif
