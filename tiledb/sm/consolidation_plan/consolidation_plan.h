@@ -198,8 +198,10 @@ class ConsolidationPlan {
       std::vector<std::string> ret;
       ret.reserve(fragment_indexes_.size());
       for (auto& idx : fragment_indexes_) {
-        ret.emplace_back(
-            array_->fragment_metadata()[idx]->fragment_uri().c_str());
+        ret.emplace_back(array_->fragment_metadata()[idx]
+                             ->fragment_uri()
+                             .last_path_part()
+                             .c_str());
       }
 
       return ret;
