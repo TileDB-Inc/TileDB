@@ -232,13 +232,14 @@ TEST_CASE(
   }
 
   // Create buffers.
-  FragmentConsolidationWorkspace cw{WhiteboxFragmentConsolidator::create_buffers(
-      &statistics,
-      with_timestamps,
-      with_delete_meta,
-      1000,
-      *schema,
-      avg_cell_sizes)};
+  FragmentConsolidationWorkspace cw{
+      WhiteboxFragmentConsolidator::create_buffers(
+          &statistics,
+          with_timestamps,
+          with_delete_meta,
+          1000,
+          *schema,
+          avg_cell_sizes)};
   std::vector<ByteVec>& buffers{cw.buffers()};
   std::vector<uint64_t>& buffer_sizes{cw.sizes()};
 

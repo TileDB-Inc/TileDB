@@ -419,7 +419,8 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  FragmentConsolidationWorkspace cw{create_buffers(stats_, config_, array_schema, average_var_cell_sizes)};
+  FragmentConsolidationWorkspace cw{
+      create_buffers(stats_, config_, array_schema, average_var_cell_sizes)};
 
   // Create queries
   auto query_r = (Query*)nullptr;
