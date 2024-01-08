@@ -1404,6 +1404,7 @@ TEST_CASE_METHOD(
   // fully removed for overlapping ranges, this test case can be deleted.
   tiledb::Config cfg;
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
   ctx_ = Context(cfg);
   sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -71,7 +71,6 @@ struct QueryFx {
   void test_get_buffer_write_decoupled(const std::string& path);
   void test_get_buffer_read(const std::string& path);
   void test_get_buffer_read_decoupled(const std::string& path);
-  static std::string random_name(const std::string& prefix);
 };
 
 QueryFx::QueryFx()
@@ -85,13 +84,6 @@ QueryFx::~QueryFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-std::string QueryFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void QueryFx::create_temp_dir(const std::string& path) {

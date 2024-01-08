@@ -224,6 +224,10 @@ void Attribute::dump(FILE* out) const {
     fprintf(out, "\n");
     fprintf(out, "- Data ordering: %s", data_order_str(order_).c_str());
   }
+  if (enumeration_name_.has_value()) {
+    fprintf(out, "\n");
+    fprintf(out, "- Enumeration name: %s", enumeration_name_.value().c_str());
+  }
   fprintf(out, "\n");
 }
 

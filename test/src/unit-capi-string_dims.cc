@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -80,7 +80,6 @@ struct StringDimsFx {
   ~StringDimsFx();
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  std::string random_name(const std::string& prefix);
   int array_create_wrapper(
       const std::string& path, tiledb_array_schema_t* array_schema);
   int array_schema_load_wrapper(
@@ -199,13 +198,6 @@ void StringDimsFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string StringDimsFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 int StringDimsFx::get_dir_num(const char* path, void* data) {
@@ -2284,6 +2276,9 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(
       config, "sm.consolidation.mode", "fragment_meta", &error);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  CHECK(rc == TILEDB_OK);
 
   // Consolidate fragment metadata
   rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
@@ -2328,8 +2323,11 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
 
+  rc = tiledb_config_set(config, "sm.consolidation.mode", "fragments", &error);
+  CHECK(rc == TILEDB_OK);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_vacuum(ctx_, array_name.c_str(), nullptr);
   CHECK(rc == TILEDB_OK);
