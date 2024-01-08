@@ -53,6 +53,106 @@ class Config;
 class Query;
 class URI;
 
+/* ********************************* */
+/*           TYPE DEFINITIONS        */
+/* ********************************* */
+
+/** Consolidation configuration parameters. */
+struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
+  /**
+     * Include timestamps in the consolidated fragment or not.
+   */
+  bool with_timestamps_;
+  /**
+     * Include delete metadata in the consolidated fragment or not.
+   */
+  bool with_delete_meta_;
+  /**
+     * The factor by which the size of the dense fragment resulting
+     * from consolidating a set of fragments (containing at least one
+     * dense fragment) can be amplified. This is important when
+     * the union of the non-empty domains of the fragments to be
+     * consolidated have a lot of empty cells, which the consolidated
+     * fragment will have to fill with the special fill value
+     * (since the resulting fragments is dense).
+   */
+  float amplification_;
+  /** Attribute buffer size. */
+  uint64_t buffer_size_;
+  /** Total buffer size for all attributes. */
+  uint64_t total_buffer_size_;
+  /** Max fragment size. */
+  uint64_t max_fragment_size_;
+  /**
+     * Number of consolidation steps performed in a single
+     * consolidation invocation.
+   */
+  uint32_t steps_;
+  /** Minimum number of fragments to consolidate in a single step. */
+  uint32_t min_frags_;
+  /** Maximum number of fragments to consolidate in a single step. */
+  uint32_t max_frags_;
+  /**
+     * Minimum size ratio for two fragments to be considered for
+     * consolidation.
+   */
+  float size_ratio_;
+  /** Is the refactored reader in use or not */
+  bool use_refactored_reader_;
+  /** Purge deleted cells or not. */
+  bool purge_deleted_cells_;
+};
+
+/**
+ * Consolidation workspace holds the large buffers used by the operation.
+ */
+class FragmentConsolidationWorkspace {
+  std::vector<ByteVec> buffers_;
+  std::vector<uint64_t> sizes_;
+
+ public:
+  FragmentConsolidationWorkspace() = delete;
+  explicit FragmentConsolidationWorkspace(size_t n)
+      : buffers_(n)
+      , sizes_(n) {
+  }
+  /**
+   * Copy constructor is deleted to avoid copying large amounts of memory
+   */
+  FragmentConsolidationWorkspace(const FragmentConsolidationWorkspace&) = delete;
+
+  /**
+   * Move constructor
+   */
+  FragmentConsolidationWorkspace(FragmentConsolidationWorkspace&&) = default;
+
+  /**
+   * Copy assignment is deleted to avoid copying large amounts of memory
+   */
+  const FragmentConsolidationWorkspace& operator=(const FragmentConsolidationWorkspace&) =
+      delete;
+
+  /**
+   * Move assignment is deleted for convenience
+   */
+  const FragmentConsolidationWorkspace& operator=(
+      FragmentConsolidationWorkspace&&) = delete;
+
+  /**
+   * Accessor for buffers
+   */
+  std::vector<ByteVec>& buffers() {
+    return buffers_;
+  }
+
+  /**
+   * Access for sizes
+   */
+  std::vector<uint64_t>& sizes() {
+    return sizes_;
+  };
+};
+
 /** Handles fragment consolidation. */
 class FragmentConsolidator : public Consolidator {
   friend class WhiteboxFragmentConsolidator;
@@ -129,56 +229,6 @@ class FragmentConsolidator : public Consolidator {
 
  private:
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfig : Consolidator::ConsolidationConfigBase {
-    /**
-     * Include timestamps in the consolidated fragment or not.
-     */
-    bool with_timestamps_;
-    /**
-     * Include delete metadata in the consolidated fragment or not.
-     */
-    bool with_delete_meta_;
-    /**
-     * The factor by which the size of the dense fragment resulting
-     * from consolidating a set of fragments (containing at least one
-     * dense fragment) can be amplified. This is important when
-     * the union of the non-empty domains of the fragments to be
-     * consolidated have a lot of empty cells, which the consolidated
-     * fragment will have to fill with the special fill value
-     * (since the resulting fragments is dense).
-     */
-    float amplification_;
-    /** Attribute buffer size. */
-    uint64_t buffer_size_;
-    /** Total buffer size for all attributes. */
-    uint64_t total_buffer_size_;
-    /** Max fragment size. */
-    uint64_t max_fragment_size_;
-    /**
-     * Number of consolidation steps performed in a single
-     * consolidation invocation.
-     */
-    uint32_t steps_;
-    /** Minimum number of fragments to consolidate in a single step. */
-    uint32_t min_frags_;
-    /** Maximum number of fragments to consolidate in a single step. */
-    uint32_t max_frags_;
-    /**
-     * Minimum size ratio for two fragments to be considered for
-     * consolidation.
-     */
-    float size_ratio_;
-    /** Is the refactored reader in use or not */
-    bool use_refactored_reader_;
-    /** Purge deleted cells or not. */
-    bool purge_deleted_cells_;
-  };
-
-  /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
@@ -239,13 +289,9 @@ class FragmentConsolidator : public Consolidator {
    *
    * @param query_r The read query.
    * @param query_w The write query.
-   * @return Status
+   * @param cw A workspace containing buffers for the queries
    */
-  Status copy_array(
-      Query* query_r,
-      Query* query_w,
-      std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes);
+  void copy_array(Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
 
   /**
    * Creates the buffers that will be used upon reading the input fragments and
@@ -256,11 +302,11 @@ class FragmentConsolidator : public Consolidator {
    * @param config The consolidation config.
    * @param array_schema The array schema.
    * @param avg_cell_sizes The average cell sizes.
-   * @return Buffers, Buffer sizes.
+   * @return a consolidation workspace containing the buffers
    */
-  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
+  static FragmentConsolidationWorkspace&& create_buffers(
       stats::Stats* stats,
-      const ConsolidationConfig& config,
+      const FragmentConsolidationConfig& config,
       const ArraySchema& array_schema,
       std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
@@ -315,13 +361,10 @@ class FragmentConsolidator : public Consolidator {
    * if the array is sparse in the end.
    *
    * @param query The query to set the buffers to.
-   * @param The buffers to set.
-   * @param buffer_sizes The buffer sizes.
+   * @param cw Consolidation workspace containing the buffers
    */
-  Status set_query_buffers(
-      Query* query,
-      std::vector<ByteVec>* buffers,
-      std::vector<uint64_t>* buffer_sizes) const;
+  void set_query_buffers(
+      Query* query, FragmentConsolidationWorkspace& cw) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */
@@ -336,7 +379,7 @@ class FragmentConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  ConsolidationConfig config_;
+  FragmentConsolidationConfig config_;
 };
 
 }  // namespace tiledb::sm

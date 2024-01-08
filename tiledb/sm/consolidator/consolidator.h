@@ -125,6 +125,18 @@ class Consolidator {
    */
   virtual void vacuum(const char* array_name);
 
+  /* ********************************* */
+  /*           TYPE DEFINITIONS        */
+  /* ********************************* */
+
+  /** Consolidation configuration parameters. */
+  struct ConsolidationConfigBase {
+    /** Start time for consolidation. */
+    uint64_t timestamp_start_;
+    /** End time for consolidation. */
+    uint64_t timestamp_end_;
+  };
+
  protected:
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -143,18 +155,6 @@ class Consolidator {
    * @param array_name Name of the array to check.
    */
   void check_array_uri(const char* array_name);
-
-  /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfigBase {
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
-  };
 
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
