@@ -565,7 +565,7 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  shared_ptr<MemoryTracker> memory_tracker();
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
@@ -627,7 +627,7 @@ class Array {
   /* ********************************* */
 
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The latest array schema. */
   shared_ptr<ArraySchema> array_schema_latest_;

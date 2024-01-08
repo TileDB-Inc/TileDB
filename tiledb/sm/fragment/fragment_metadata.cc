@@ -78,8 +78,8 @@ class FragmentMetadataStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-tdb::pmr::memory_resource* get_resource(MemoryTracker* tracker, MemoryType type) {
-  if (tracker == nullptr) {
+tdb::pmr::memory_resource* get_resource(shared_ptr<MemoryTracker> tracker, MemoryType type) {
+  if (!tracker) {
     return cpp17::pmr::get_default_resource();
   }
 
@@ -91,7 +91,7 @@ FragmentMetadata::FragmentMetadata() {
 
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
-    MemoryTracker* tracker,
+    shared_ptr<MemoryTracker> tracker,
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -794,7 +794,7 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
 
 std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     ContextResources& resources,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema> array_schema_latest,
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,

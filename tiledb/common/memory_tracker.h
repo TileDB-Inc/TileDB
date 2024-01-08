@@ -55,7 +55,7 @@ class MemoryTracker;
 
 class MemoryTrackingResource : public tdb::pmr::memory_resource {
  public:
-  explicit MemoryTrackingResource(MemoryTracker& tracker, MemoryType type)
+  explicit MemoryTrackingResource(shared_ptr<MemoryTracker> tracker, MemoryType type)
       : tracker_(tracker)
       , type_(type) {
   }
@@ -69,11 +69,11 @@ class MemoryTrackingResource : public tdb::pmr::memory_resource {
       const tdb::pmr::memory_resource& other) const noexcept override;
 
  private:
-  MemoryTracker& tracker_;
+  shared_ptr<MemoryTracker> tracker_;
   MemoryType type_;
 };
 
-class MemoryTracker {
+class MemoryTracker : public std::enable_shared_from_this<MemoryTracker> {
  public:
   friend class MemoryTrackingResource;
 

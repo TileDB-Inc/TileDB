@@ -84,7 +84,8 @@ Array::Array(
     const URI& array_uri,
     StorageManager* storage_manager,
     ConsistencyController& cc)
-    : array_schema_latest_(nullptr)
+    : memory_tracker_(make_shared<MemoryTracker>(HERE()))
+    , array_schema_latest_(nullptr)
     , array_uri_(array_uri)
     , array_dir_(storage_manager->resources(), array_uri)
     , array_uri_serialized_(array_uri)
@@ -1097,8 +1098,8 @@ void Array::set_non_empty_domain(const NDRange& non_empty_domain) {
   non_empty_domain_ = non_empty_domain;
 }
 
-MemoryTracker* Array::memory_tracker() {
-  return &memory_tracker_;
+shared_ptr<MemoryTracker> Array::memory_tracker() {
+  return memory_tracker_;
 }
 
 bool Array::serialize_non_empty_domain() const {

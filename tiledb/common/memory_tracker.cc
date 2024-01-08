@@ -65,12 +65,12 @@ std::string memory_type_to_str(MemoryType type) {
 }
 
 void* MemoryTrackingResource::do_allocate(size_t bytes, size_t alignment) {
-  return tracker_.allocate(type_, bytes, alignment);
+  return tracker_->allocate(type_, bytes, alignment);
 }
 
 void MemoryTrackingResource::do_deallocate(
     void* ptr, size_t bytes, size_t alignment) {
-  tracker_.deallocate(type_, ptr, bytes, alignment);
+  tracker_->deallocate(type_, ptr, bytes, alignment);
 }
 
 bool MemoryTrackingResource::do_is_equal(
@@ -81,7 +81,7 @@ bool MemoryTrackingResource::do_is_equal(
     return false;
   }
 
-  return &tracker_ == &rhs->tracker_ && type_ == rhs->type_;
+  return tracker_.get() == rhs->tracker_.get() && type_ == rhs->type_;
 }
 
 MemoryTracker::MemoryTracker(tdb::pmr::memory_resource* upstream)
@@ -104,7 +104,7 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
   std::lock_guard<std::mutex> lg(mutex_);
   auto iter = trackers_.find(type);
   if (iter == trackers_.end()) {
-    auto ret = make_shared<MemoryTrackingResource>(HERE(), *this, type);
+    auto ret = make_shared<MemoryTrackingResource>(HERE(), shared_from_this(), type);
     trackers_[type] = ret;
     return ret.get();
   } else {

@@ -66,7 +66,7 @@ Status fragment_metadata_from_capnp(
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta,
     ContextResources* resources = nullptr,
-    MemoryTracker* memory_tracker = nullptr);
+    shared_ptr<MemoryTracker> memory_tracker = nullptr);
 
 /**
  * Serialize Fragment Metadata sizes and offsets

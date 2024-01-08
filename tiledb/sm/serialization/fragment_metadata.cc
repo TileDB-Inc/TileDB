@@ -121,7 +121,7 @@ Status fragment_metadata_from_capnp(
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta,
     ContextResources* resources,
-    MemoryTracker* memory_tracker) {
+    shared_ptr<MemoryTracker> memory_tracker) {
   // TODO: consider a new constructor for fragment meta or using the
   // existing one
   if (resources) {

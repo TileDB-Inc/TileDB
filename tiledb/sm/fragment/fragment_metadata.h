@@ -90,7 +90,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       ContextResources* resources,
-      MemoryTracker* tracker,
+      shared_ptr<MemoryTracker> tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -483,7 +483,7 @@ class FragmentMetadata {
    */
   static std::vector<shared_ptr<FragmentMetadata>> load(
       ContextResources& resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema> array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
@@ -1222,7 +1222,7 @@ class FragmentMetadata {
   }
 
   /** set the memory tracker pointer during deserialization*/
-  void set_memory_tracker(MemoryTracker* memory_tracker) {
+  void set_memory_tracker(shared_ptr<MemoryTracker> memory_tracker) {
     memory_tracker_ = memory_tracker;
   }
 
@@ -1267,7 +1267,7 @@ class FragmentMetadata {
   /**
    * The memory tracker of the array this fragment metadata corresponds to.
    */
-  MemoryTracker* memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The array schema */
   shared_ptr<const ArraySchema> array_schema_;
