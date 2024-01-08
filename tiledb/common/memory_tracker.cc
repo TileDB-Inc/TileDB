@@ -143,6 +143,17 @@ void MemoryTracker::deallocate(MemoryType type, void* ptr, size_t bytes, size_t 
   usage_by_type_[type] -= bytes;
 }
 
+std::string MemoryTracker::to_string() const {
+  std::stringstream ss;
+  ss << "[Budget: " << budget_ << "]";
+  ss << " [Usage: " << usage_ << "]";
+  ss << " [Usage HWM: " << usage_hwm_ << "]";
+  for (auto& [type, count] : usage_by_type_) {
+    ss << " [" << memory_type_to_str(type) << ": " << count << "]";
+  }
+  return ss.str();
+}
+
 void MemoryTracker::check_budget(MemoryType type, size_t bytes) {
   if (usage_ + bytes > budget_) {
     std::string type_str = memory_type_to_str(type);

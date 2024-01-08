@@ -151,9 +151,12 @@ void DenseReader::refresh_config() {
   assert(found);
 
   // Set the memory budget for the array
+  std::stringstream ss;
+  ss << "Budget too small to open array: ";
+  ss << "[New Budget: " << memory_budget_ << "] ";
+  ss << array_memory_tracker_->to_string();
   if (!array_memory_tracker_->set_budget(memory_budget_)) {
-    throw DenseReaderStatusException(
-        "Memory budget is too small to open array");
+    throw DenseReaderStatusException(ss.str());
   }
 }
 
@@ -834,10 +837,20 @@ uint64_t DenseReader::compute_space_tiles_end(
   if (t_end == t_start + 1) {
     const auto available_memory =
         memory_budget_ - array_memory_tracker_->get_memory_usage();
+    std::stringstream ss;
+    ss << "XKCD Budget: " << memory_budget_
+        << " : Available: " << available_memory << " "
+        << array_memory_tracker_->to_string()
+        << std::endl;
+    std::cerr << ss.str();
     for (auto mem : required_memory) {
       if (mem > available_memory) {
-        throw DenseReaderStatusException(
-            "Cannot process a single tile, increase memory budget");
+        std::stringstream ss;
+        ss << "Cannot process a single tile, increase memory budget."
+          << " Required " << mem << " bytes exceeds " << available_memory
+          << " bytes available: ";
+        ss << array_memory_tracker_->to_string();
+        throw DenseReaderStatusException(ss.str());
       }
     }
 

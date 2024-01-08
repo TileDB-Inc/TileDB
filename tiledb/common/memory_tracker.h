@@ -140,6 +140,8 @@ class MemoryTracker : public std::enable_shared_from_this<MemoryTracker> {
     return budget_;
   }
 
+  std::string to_string() const;
+
  protected:
   void* allocate(MemoryType type, size_t bytes, size_t alignment);
   void deallocate(MemoryType type, void* p, size_t bytes, size_t alignment);
