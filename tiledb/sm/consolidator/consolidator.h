@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/resource/resource.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -77,6 +78,7 @@ class Consolidator {
    * @return New Consolidator instance or nullptr on error.
    */
   static shared_ptr<Consolidator> create(
+      tdb::RM& rm,
       const ConsolidationMode mode,
       const Config& config,
       StorageManager* storage_manager);

@@ -67,6 +67,14 @@ struct tiledb_ctx_handle_t
     return ctx_.storage_manager();
   }
 
+  inline tiledb::common::RM& resource_manager() {
+    return ctx_.resource_manager();
+  }
+
+  inline const tiledb::common::RM& resource_manager() const {
+    return ctx_.resource_manager();
+  }
+
   inline optional<std::string> last_error() {
     return ctx_.last_error();
   }

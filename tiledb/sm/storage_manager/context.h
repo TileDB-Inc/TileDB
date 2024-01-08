@@ -35,6 +35,7 @@
 
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/resource/resource.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -114,6 +115,13 @@ class Context {
     return &(resources_.io_tp());
   }
 
+  tdb::RM& resource_manager() {
+    return resource_manager_;
+  }
+  const tdb::RM& resource_manager() const {
+    return resource_manager_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -149,6 +157,14 @@ class Context {
    * The storage manager.
    */
   StorageManager storage_manager_;
+
+  /**
+   * The resource manager.
+   *
+   * At present this is something of a stub. It creates an unbudgeted instance,
+   * so it doesn't really manage its resources yet.
+   */
+  tdb::RM resource_manager_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

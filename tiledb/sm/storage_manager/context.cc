@@ -63,7 +63,8 @@ Context::Context(const Config& config)
           // We're sticking with `Context.StorageManager` here because
           // it is part of the public facing API.
           "Context.StorageManager")
-    , storage_manager_{resources_, logger_, config} {
+    , storage_manager_{resources_, logger_, config}
+    , resource_manager_(tiledb::common::resource_manager::Unbudgeted) {
   /*
    * Logger class is not yet C.41-compliant
    */
