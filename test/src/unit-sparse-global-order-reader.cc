@@ -811,6 +811,7 @@ TEST_CASE_METHOD(
   REQUIRE(counters != nullptr);
   auto loop_num =
       counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+  REQUIRE(loop_num != counters->end());
   CHECK(5 == loop_num->second);
 
   // Check incomplete query status.
