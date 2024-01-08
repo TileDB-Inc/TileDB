@@ -1,5 +1,5 @@
 #
-# tiledb/common/CMakeLists.txt
+# tiledb/common/resource/CMakeLists.txt
 #
 # The MIT License
 #
@@ -23,52 +23,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-
 include(common-root)
 include(common)
 include(object_library)
 
-#
-# Project-wide definitions and compiler options
-#
-add_library(common INTERFACE)
-if (TILEDB_EXPERIMENTAL_FEATURES)
-  target_compile_definitions(common INTERFACE TILEDB_EXPERIMENTAL_FEATURES)
-endif()
-
-#
-# Subdirectories
-#
-add_subdirectory(dynamic_memory)
-add_subdirectory(exception)
-add_subdirectory(governor)
-add_subdirectory(interval)
-add_subdirectory(random)
-add_subdirectory(resource)
-add_subdirectory(thread_pool)
-add_subdirectory(types)
-
-get_gathered(COMMON_SOURCES)
-set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
-
-#
-# `baseline` object library
-#
-commence(object_library baseline)
-    this_target_sources(logger.cc governor/governor.cc
-        dynamic_memory/dynamic_memory.cc heap_profiler.cc heap_memory.cc
-        exception/exception.cc exception/status.cc)
-    find_package(Spdlog_EP REQUIRED)
-    target_link_libraries(baseline PUBLIC spdlog::spdlog)
-    target_link_libraries(baseline PUBLIC common)
-    this_target_object_libraries(resource)
+commence(object_library resource)
+  this_target_sources(resource.cc)
 conclude(object_library)
 
-#
-# `stringx` object library
-#
-commence(object_library stringx)
-    this_target_sources(stdx_string.cc)
-conclude(object_library)
-
+add_subdirectory(memory)
 add_test_subdirectory()

@@ -69,7 +69,7 @@ class FragmentConsolidator : public Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit FragmentConsolidator(
-      const Config& config, StorageManager* storage_manager);
+      tdb::RM& rm, const Config& config, StorageManager* storage_manager);
 
   /** Destructor. */
   ~FragmentConsolidator() = default;
@@ -337,6 +337,11 @@ class FragmentConsolidator : public Consolidator {
 
   /** Consolidation configuration parameters. */
   ConsolidationConfig config_;
+
+  /**
+   * Resource manager
+   */
+  tdb::RM& rm_;
 };
 
 }  // namespace tiledb::sm

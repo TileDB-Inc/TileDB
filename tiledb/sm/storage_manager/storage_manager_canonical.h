@@ -48,6 +48,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/resource/resource.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -249,6 +250,7 @@ class StorageManagerCanonical {
   /**
    * Consolidates the fragments of an array into a single one.
    *
+   * @param rm Resource manager
    * @param array_name The name of the array to be consolidated.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
@@ -260,6 +262,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status array_consolidate(
+      tdb::RM& rm,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -269,6 +272,7 @@ class StorageManagerCanonical {
   /**
    * Consolidates the fragments of an array into a single one.
    *
+   * @param rm Resource manager
    * @param array_name The name of the array to be consolidated.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
@@ -281,6 +285,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status fragments_consolidate(
+      tdb::RM& rm,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -329,14 +334,16 @@ class StorageManagerCanonical {
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).
    *
+   * @param rm Resource manager
    * @param array_name The name of the array to be vacuumed.
    * @param config Configuration parameters for vacuuming.
    */
-  void array_vacuum(const char* array_name, const Config& config);
+  void array_vacuum(tdb::RM& rm, const char* array_name, const Config& config);
 
   /**
    * Consolidates the metadata of an array into a single file.
    *
+   * @param rm Resource manager
    * @param array_name The name of the array whose metadata will be
    *     consolidated.
    * @param encryption_type The encryption type of the array
@@ -349,6 +356,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status array_metadata_consolidate(
+      tdb::RM& rm,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -772,6 +780,7 @@ class StorageManagerCanonical {
   /**
    * Consolidates the metadata of a group into a single file.
    *
+   * @param rm Resource manager
    * @param group_name The name of the group whose metadata will be
    *     consolidated.
    * @param config Configuration parameters for the consolidation
@@ -780,18 +789,21 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status group_metadata_consolidate(
-      const char* group_name, const Config& config);
+      tdb::RM& rm, const char* group_name, const Config& config);
 
   /**
    * Vacuums the consolidated metadata files of a group.
    *
+   *
+   * @param rm Resource manager
    * @param group_name The name of the group whose metadata will be
    *     vacuumed.
    * @param config Configuration parameters for vacuuming
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
    */
-  void group_metadata_vacuum(const char* group_name, const Config& config);
+  void group_metadata_vacuum(
+      tdb::RM& rm, const char* group_name, const Config& config);
 
  private:
   /* ********************************* */

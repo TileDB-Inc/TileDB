@@ -49,6 +49,7 @@ namespace tiledb::sm {
 
 /** Factory function to create the consolidator depending on mode. */
 shared_ptr<Consolidator> Consolidator::create(
+    tdb::RM& rm,
     const ConsolidationMode mode,
     const Config& config,
     StorageManager* storage_manager) {
@@ -56,7 +57,8 @@ shared_ptr<Consolidator> Consolidator::create(
     case ConsolidationMode::FRAGMENT_META:
       return make_shared<FragmentMetaConsolidator>(HERE(), storage_manager);
     case ConsolidationMode::FRAGMENT:
-      return make_shared<FragmentConsolidator>(HERE(), config, storage_manager);
+      return make_shared<FragmentConsolidator>(
+          HERE(), rm, config, storage_manager);
     case ConsolidationMode::ARRAY_META:
       return make_shared<ArrayMetaConsolidator>(
           HERE(), config, storage_manager);
