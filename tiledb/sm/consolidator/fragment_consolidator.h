@@ -306,7 +306,7 @@ class FragmentConsolidator : public Consolidator {
    * @param avg_cell_sizes The average cell sizes.
    * @return a consolidation workspace containing the buffers
    */
-  static FragmentConsolidationWorkspace&& create_buffers(
+  static FragmentConsolidationWorkspace create_buffers(
       stats::Stats* stats,
       const FragmentConsolidationConfig& config,
       const ArraySchema& array_schema,

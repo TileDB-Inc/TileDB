@@ -528,7 +528,7 @@ void FragmentConsolidator::copy_array(
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 }
 
-FragmentConsolidationWorkspace&& FragmentConsolidator::create_buffers(
+FragmentConsolidationWorkspace FragmentConsolidator::create_buffers(
     stats::Stats* stats,
     const FragmentConsolidationConfig& config,
     const ArraySchema& array_schema,
@@ -620,7 +620,7 @@ FragmentConsolidationWorkspace&& FragmentConsolidator::create_buffers(
   }
 
   // Success
-  return std::move(cw);
+  return cw;
 }
 
 Status FragmentConsolidator::create_queries(
