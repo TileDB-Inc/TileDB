@@ -37,6 +37,7 @@
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -154,14 +155,12 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 
     root_pairs.emplace_back(
-        URI("s3://" + tiledb::test::random_name("vfs") + "/"),
-        std::move(config));
+        URI("s3://" + random_label("vfs-") + "/"), std::move(config));
   }
   if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
     Config config;
     root_pairs.emplace_back(
-        URI("hdfs:///" + tiledb::test::random_name("vfs") + "/"),
-        std::move(config));
+        URI("hdfs:///" + random_label("vfs-") + "/"), std::move(config));
   }
   if constexpr (tiledb::sm::filesystem::azure_enabled) {
     Config config;
@@ -181,19 +180,17 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
                 .ok());
 
     root_pairs.emplace_back(
-        URI("azure://" + tiledb::test::random_name("vfs") + "/"),
-        std::move(config));
+        URI("azure://" + random_label("vfs-") + "/"), std::move(config));
   }
 
   Config config;
 #ifdef _WIN32
   root_pairs.emplace_back(
-      URI(tiledb::sm::Win::current_dir() + "\\" +
-          tiledb::test::random_name("vfs") + "\\"),
+      URI(tiledb::sm::Win::current_dir() + "\\" + random_label("vfs-") + "\\"),
       std::move(config));
 #else
   root_pairs.emplace_back(
-      URI(Posix::current_dir() + "/" + tiledb::test::random_name("vfs") + "/"),
+      URI(Posix::current_dir() + "/" + random_label("vfs-") + "/"),
       std::move(config));
 #endif
 
@@ -343,4 +340,94 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
 
   // Clean up
   REQUIRE(vfs_ls.remove_dir(URI(path)).ok());
+}
+
+// Currently only S3 is supported for VFS::ls_recursive.
+using TestBackends = std::tuple<S3Test>;
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: Test internal ls_filtered recursion argument",
+    "[vfs][ls_filtered][recursion]",
+    TestBackends) {
+  TestType fs({10, 50});
+  if (!fs.is_supported()) {
+    return;
+  }
+
+  bool recursive = GENERATE(true, false);
+  DYNAMIC_SECTION(
+      fs.temp_dir_.backend_name()
+      << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
+#ifdef HAVE_S3
+    // If testing with recursion use the root directory, otherwise use a subdir.
+    auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
+    auto ls_objects = fs.get_s3().ls_filtered(
+        path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
+
+    auto expected = fs.expected_results();
+    if (!recursive) {
+      // If non-recursive, all objects in the first directory should be
+      // returned.
+      std::erase_if(expected, [](const auto& p) {
+        return p.first.find("subdir_1") == std::string::npos;
+      });
+    }
+
+    CHECK(ls_objects.size() == expected.size());
+    CHECK(ls_objects == expected);
+#endif
+  }
+}
+
+TEST_CASE(
+    "VFS: ls_recursive throws for unsupported backends",
+    "[vfs][ls_recursive]") {
+  // Local and mem fs tests are in tiledb/sm/filesystem/test/unit_ls_filtered.cc
+  std::string prefix = GENERATE("s3://", "hdfs://", "azure://", "gcs://");
+  VFSTest vfs_test({1}, prefix);
+  if (!vfs_test.is_supported()) {
+    return;
+  }
+  std::string backend = vfs_test.temp_dir_.backend_name();
+
+  if (vfs_test.temp_dir_.is_s3()) {
+    DYNAMIC_SECTION(backend << " supported backend should not throw") {
+      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+          vfs_test.temp_dir_, VFSTestBase::accept_all_files));
+    }
+  } else {
+    DYNAMIC_SECTION(backend << " unsupported backend should throw") {
+      CHECK_THROWS_WITH(
+          vfs_test.vfs_.ls_recursive(
+              vfs_test.temp_dir_, VFSTestBase::accept_all_files),
+          Catch::Matchers::ContainsSubstring(
+              "storage backend is not supported"));
+    }
+  }
+}
+
+TEST_CASE(
+    "VFS: Throwing FileFilter for ls_recursive",
+    "[vfs][ls_recursive][file-filter]") {
+  std::string prefix = "s3://";
+  VFSTest vfs_test({0}, prefix);
+  if (!vfs_test.is_supported()) {
+    return;
+  }
+
+  auto file_filter = [](const std::string_view&, uint64_t) -> bool {
+    throw std::logic_error("Throwing FileFilter");
+  };
+  SECTION("Throwing FileFilter with 0 objects should not throw") {
+    CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+        vfs_test.temp_dir_, file_filter, tiledb::sm::accept_all_dirs));
+  }
+  SECTION("Throwing FileFilter with N objects should throw") {
+    vfs_test.vfs_.touch(vfs_test.temp_dir_.join_path("file")).ok();
+    CHECK_THROWS_AS(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        std::logic_error);
+    CHECK_THROWS_WITH(
+        vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_, file_filter),
+        Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
+  }
 }

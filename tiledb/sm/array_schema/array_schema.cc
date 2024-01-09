@@ -679,7 +679,15 @@ void ArraySchema::dump(FILE* out) const {
 
   for (auto& enmr_iter : enumeration_map_) {
     fprintf(out, "\n");
-    enmr_iter.second->dump(out);
+    if (enmr_iter.second != nullptr) {
+      enmr_iter.second->dump(out);
+    } else {
+      std::stringstream ss;
+      ss << "### Enumeration ###" << std::endl;
+      ss << "- Name: " << enmr_iter.first << std::endl;
+      ss << "- Loaded: false" << std::endl;
+      fprintf(out, "%s", ss.str().c_str());
+    }
   }
 
   for (auto& label : dimension_labels_) {

@@ -783,50 +783,6 @@ void create_azure_container(
   }
 }
 
-void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs) {
-  // Create TileDB context
-  tiledb_config_t* config = nullptr;
-  tiledb_error_t* error = nullptr;
-  throw_if_setup_failed(tiledb_config_alloc(&config, &error));
-  throw_if_setup_failed(error == nullptr);
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-#ifndef TILEDB_TESTS_AWS_S3_CONFIG
-    throw_if_setup_failed(tiledb_config_set(
-        config, "vfs.s3.endpoint_override", "localhost:9999", &error));
-    throw_if_setup_failed(
-        tiledb_config_set(config, "vfs.s3.scheme", "https", &error));
-    throw_if_setup_failed(tiledb_config_set(
-        config, "vfs.s3.use_virtual_addressing", "false", &error));
-    throw_if_setup_failed(
-        tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error));
-    throw_if_setup_failed(error == nullptr);
-#endif
-  }
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    throw_if_setup_failed(tiledb_config_set(
-        config, "vfs.azure.storage_account_name", "devstoreaccount1", &error));
-    throw_if_setup_failed(tiledb_config_set(
-        config,
-        "vfs.azure.storage_account_key",
-        "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
-        "K1SZFPTOtr/KBHBeksoGMGw==",
-        &error));
-    throw_if_setup_failed(tiledb_config_set(
-        config,
-        "vfs.azure.blob_endpoint",
-        "http://127.0.0.1:10000/devstoreaccount1",
-        &error));
-  }
-  throw_if_setup_failed(tiledb_ctx_alloc(config, ctx));
-  throw_if_setup_failed(ctx != nullptr);
-
-  // Create VFS
-  *vfs = nullptr;
-  throw_if_setup_failed(tiledb_vfs_alloc(*ctx, config, vfs));
-  throw_if_setup_failed(vfs != nullptr);
-  tiledb_config_free(&config);
-}
-
 void get_supported_fs(
     bool* s3_supported,
     bool* hdfs_supported,
@@ -968,13 +924,6 @@ void open_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t query_type) {
   int rc = tiledb_array_open(ctx, array, query_type);
   CHECK(rc == TILEDB_OK);
-}
-
-std::string random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void remove_dir(const std::string& path, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {

@@ -243,6 +243,7 @@ struct CPPMaxFragmentSizeFx {
       uint64_t max_fragment_size = std::numeric_limits<uint64_t>::max()) {
     auto config = ctx_.config();
     config["sm.consolidation.max_fragment_size"] = max_fragment_size;
+    config["sm.consolidation.total_buffer_size"] = "1048576";
     Array::consolidate(ctx_, array_name, &config);
   }
 

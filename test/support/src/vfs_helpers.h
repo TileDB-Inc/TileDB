@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,21 +33,31 @@
 #ifndef TILEDB_VFS_HELPERS_H
 #define TILEDB_VFS_HELPERS_H
 
+#include <test/support/tdb_catch_prng.h>
 #include <filesystem>
 #include "test/support/src/helpers.h"
-#include "test/support/tdb_catch.h"
+#include "tiledb/sm/enums/vfs_mode.h"
+#include "tiledb/sm/filesystem/vfs.h"
 
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
-
-namespace tiledb {
-namespace test {
+namespace tiledb::test {
 
 // Forward declaration
 class SupportedFs;
+
+#ifdef TILEDB_TESTS_AWS_CONFIG
+constexpr bool aws_s3_config = true;
+#else
+constexpr bool aws_s3_config = false;
+#endif
+
+/**
+ * Generates a random temp directory URI for use in VFS tests.
+ *
+ * @param prefix A prefix to use for the temp directory name. Should include
+ *    `s3://`, `mem://` or other URI prefix for the backend.
+ * @return URI which the caller can use to create a temp directory.
+ */
+tiledb::sm::URI test_dir(const std::string& prefix);
 
 /**
  * Create the vector of supported filesystems.
@@ -149,7 +159,7 @@ class SupportedFsS3 : public SupportedFs {
  public:
   SupportedFsS3()
       : s3_prefix_("s3://")
-      , s3_bucket_(s3_prefix_ + random_name("tiledb") + "/")
+      , s3_bucket_(s3_prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(s3_bucket_ + "tiledb_test/") {
   }
 
@@ -276,7 +286,7 @@ class SupportedFsAzure : public SupportedFs {
  public:
   SupportedFsAzure()
       : azure_prefix_("azure://")
-      , container_(azure_prefix_ + random_name("tiledb") + "/")
+      , container_(azure_prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(container_ + "tiledb_test/") {
   }
 
@@ -343,7 +353,7 @@ class SupportedFsGCS : public SupportedFs {
  public:
   SupportedFsGCS(std::string prefix = "gcs://")
       : prefix_(prefix)
-      , bucket_(prefix_ + random_name("tiledb") + "/")
+      , bucket_(prefix_ + random_label("tiledb-") + "/")
       , temp_dir_(bucket_ + "tiledb_test/") {
   }
 
@@ -550,6 +560,61 @@ class SupportedFsMem : public SupportedFs {
 };
 
 /**
+ * Struct which allocates a config and conditionally sets filesystem-specific
+ * parameters on it.
+ */
+struct vfs_config {
+  /** Config handle. */
+  tiledb_config_handle_t* config{nullptr};
+
+  /** Constructor. */
+  vfs_config() {
+    tiledb_error_t* error = nullptr;
+    auto rc = tiledb_config_alloc(&config, &error);
+    if (rc != TILEDB_OK) {
+      throw std::runtime_error("error creating config handle");
+    }
+    if (error != nullptr) {
+      throw std::logic_error(
+          "tiledb_config_alloc returned OK but with non-null error");
+    }
+
+    if constexpr (tiledb::sm::filesystem::s3_enabled) {
+      SupportedFsS3 fs_s3;
+      auto st = fs_s3.prepare_config(config, error);
+      if (!st.ok()) {
+        throw std::runtime_error("error preparing S3 config");
+      }
+    }
+
+    if constexpr (tiledb::sm::filesystem::azure_enabled) {
+      SupportedFsAzure fs_azure;
+      auto st = fs_azure.prepare_config(config, error);
+      if (!st.ok()) {
+        throw std::runtime_error("error preparing Azure config");
+      }
+    }
+  }
+
+  /** Copy constructor is deleted. */
+  vfs_config(const vfs_config&) = delete;
+
+  /** Move constructor is deleted. */
+  vfs_config(vfs_config&&) = delete;
+
+  /** Copy assignment is deleted. */
+  vfs_config& operator=(const vfs_config&) = delete;
+
+  /** Move assignment is deleted. */
+  vfs_config& operator=(vfs_config&&) = delete;
+
+  /** Destructor. */
+  ~vfs_config() {
+    tiledb_config_free(&config);
+  }
+};
+
+/**
  * Fixture for creating a temporary directory for a test case. This fixture
  * also manages the context and virtual file system for the test case.
  */
@@ -719,7 +784,151 @@ class DenyWriteAccess {
   const std::filesystem::perms previous_perms_;
 };
 
-}  // End of namespace test
-}  // End of namespace tiledb
+/**
+ * Base class use for VFS and file system test objects. Deriving classes are
+ * responsible for creating a temporary directory and populating it with test
+ * objects for the related file system.
+ */
+class VFSTestBase {
+ protected:
+  /**
+   * Requires derived class to create a temporary directory.
+   *
+   * @param test_tree Vector used to build test directory and objects.
+   *    For each element we create a nested directory with N objects.
+   * @param prefix The URI prefix to use for the test directory.
+   */
+  VFSTestBase(const std::vector<size_t>& test_tree, const std::string& prefix);
+
+ public:
+  /** Type definition for objects returned from ls_recursive */
+  using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
+
+  virtual ~VFSTestBase();
+
+  /**
+   * @return True if the URI prefix is supported by the build, else false.
+   */
+  inline bool is_supported() const {
+    return is_supported_;
+  }
+
+  inline LsObjects& expected_results() {
+    return expected_results_;
+  }
+
+  /**
+   * Creates a config for testing VFS storage backends over local emulators.
+   *
+   * @return Fully initialized configuration for testing VFS storage backends.
+   */
+  static tiledb::sm::Config create_test_config();
+
+  /** FilePredicate for passing to ls_filtered that accepts all files. */
+  static bool accept_all_files(const std::string_view&, uint64_t) {
+    return true;
+  }
+
+  std::vector<size_t> test_tree_;
+  ThreadPool compute_, io_;
+  tiledb::sm::VFS vfs_;
+  std::string prefix_;
+  tiledb::sm::URI temp_dir_;
+
+ private:
+  LsObjects expected_results_;
+  bool is_supported_;
+};
+
+/**
+ * Test object for tiledb::sm::VFS functionality. When constructed, this test
+ * object creates a temporary directory and populates it using the test_tree
+ * vector passed to the constructor. For each element in the vector, we create a
+ * nested directory with N objects. The constructor also writes `10 * N` bytes
+ * of data to each object created for testing returned object sizes are correct.
+ *
+ * This test object can be used for any valid VFS URI prefix, and is not
+ * specific to any one backend.
+ */
+class VFSTest : public VFSTestBase {
+ public:
+  VFSTest(const std::vector<size_t>& test_tree, const std::string& prefix);
+};
+
+/** Test object for tiledb::sm::S3 functionality. */
+class S3Test : public VFSTestBase, protected tiledb::sm::S3_within_VFS {
+ public:
+  explicit S3Test(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "s3://")
+      , S3_within_VFS(&tiledb::test::g_helper_stats, &io_, vfs_.config()) {
+#ifdef HAVE_S3
+    s3().create_bucket(temp_dir_).ok();
+    for (size_t i = 1; i <= test_tree_.size(); i++) {
+      sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+      // VFS::create_dir is a no-op for S3; Just create objects.
+      for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+        auto object_uri = path.join_path("test_file_" + std::to_string(j));
+        s3().touch(object_uri).ok();
+        std::string data(j * 10, 'a');
+        s3().write(object_uri, data.data(), data.size()).ok();
+        s3().flush_object(object_uri).ok();
+        expected_results().emplace_back(object_uri.to_string(), data.size());
+      }
+    }
+    std::sort(expected_results().begin(), expected_results().end());
+#endif
+  }
+
+#ifdef HAVE_S3
+  /** Expose protected accessor from S3_within_VFS. */
+  tiledb::sm::S3& get_s3() {
+    return s3();
+  }
+
+  /** Expose protected const accessor from S3_within_VFS. */
+  const tiledb::sm::S3& get_s3() const {
+    return s3();
+  }
+#endif
+};
+
+/** Stub test object for tiledb::sm::Win and Posix functionality. */
+class LocalFsTest : public VFSTestBase {
+ public:
+  explicit LocalFsTest(const std::vector<size_t>& test_tree);
+};
+
+/** Stub test object for tiledb::sm::Azure functionality. */
+class AzureTest : public VFSTestBase {
+ public:
+  explicit AzureTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "azure://") {
+  }
+};
+
+/** Stub test object for tiledb::sm::GCS functionality. */
+class GCSTest : public VFSTestBase {
+ public:
+  explicit GCSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "gcs://") {
+  }
+};
+
+/** Stub test object for tiledb::sm::HDFS functionality. */
+class HDFSTest : public VFSTestBase {
+ public:
+  explicit HDFSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "hdfs://") {
+  }
+};
+
+/** Stub test object for tiledb::sm::MemFilesystem functionality. */
+class MemFsTest : public VFSTestBase {
+ public:
+  explicit MemFsTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "mem://") {
+  }
+};
+}  // namespace tiledb::test
 
 #endif

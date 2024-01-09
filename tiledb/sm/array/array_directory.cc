@@ -805,11 +805,17 @@ ArrayDirectory::load_consolidated_commit_uris(
     for (auto& meta_file : meta_files) {
       std::stringstream ss(meta_file.second);
       uint64_t count = 0;
+      bool all_in_set = true;
       for (std::string uri_str; std::getline(ss, uri_str);) {
-        count += uris_set.count(uri_.to_string() + uri_str);
+        if (uris_set.count(uri_.to_string() + uri_str) > 0) {
+          count++;
+        } else {
+          all_in_set = false;
+          break;
+        }
       }
 
-      if (count == uris_set.size()) {
+      if (all_in_set && count == uris_set.size()) {
         for (auto& uri : commits_dir_uris) {
           if (stdx::string::ends_with(
                   uri.to_string(), constants::con_commits_file_suffix)) {

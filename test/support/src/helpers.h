@@ -37,6 +37,7 @@
 #include "test/support/src/coords_workaround.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/layout.h"
@@ -481,14 +482,6 @@ void create_subarray(
     bool coalesce_ranges = false);
 
 /**
- * Helper method that creates a TileDB context and a VFS object.
- *
- * @param ctx The TileDB context to be created.
- * @param vfs The VFS object to be created.
- */
-void create_ctx_and_vfs(tiledb_ctx_t** ctx, tiledb_vfs_t** vfs);
-
-/**
  * Helper function to get the supported filesystems.
  * Supports VFS override via "--vfs" command line argument.
  *
@@ -511,15 +504,6 @@ void get_supported_fs(
  * @param query_type The query type.
  */
 void open_array(tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_query_type_t);
-
-/**
- * Returns a random bucket name, with `prefix` as prefix and using
- * the thread id as a "random" suffix.
- *
- * @param prefix The prefix of the bucket name.
- * @return A random bucket name.
- */
-std::string random_name(const std::string& prefix);
 
 /**
  * Helper method that removes a directory.

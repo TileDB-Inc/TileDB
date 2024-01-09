@@ -39,9 +39,7 @@ jobs:
             manylinux: true
           - platform: macos-x86_64
             os: macos-12
-            # By default we have to target macOS 10.14 at minimum according to CRAN policy.
-            # See https://stat.ethz.ch/pipermail/r-package-devel/2023q4/010078.html
-            MACOSX_DEPLOYMENT_TARGET: 10.14
+            MACOSX_DEPLOYMENT_TARGET: 11
             triplet: x64-osx-release
           - platform: macos-arm64
             os: macos-12
@@ -84,6 +82,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
             -DCMAKE_INSTALL_PREFIX=./dist \
+            -DTILEDB_INSTALL_LIBDIR=lib \
             -DTILEDB_S3=ON \
             -DTILEDB_AZURE=ON \
             -DTILEDB_GCS=ON \

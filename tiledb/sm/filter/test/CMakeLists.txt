@@ -36,6 +36,20 @@ commence(unit_test filter_pipeline)
     this_target_sources(main.cc unit_filter_pipeline.cc)
 conclude(unit_test)
 
+commence(unit_test run_filter_pipeline)
+    this_target_object_libraries(filter_pipeline)
+    this_target_sources(
+        main.cc
+        add_1_in_place_filter.cc
+        add_1_including_metadata_filter.cc
+        add_1_out_of_place_filter.cc
+        add_n_in_place_filter.cc
+        filtered_tile_checker.cc
+        pseudo_checksum_filter.cc
+        unit_run_filter_pipeline.cc
+    )
+conclude(unit_test)
+
 commence(unit_test float_scale_input_val)
     this_target_object_libraries(float_scaling_filter)
     this_target_sources(main.cc unit_float_scale_input_validation.cc)

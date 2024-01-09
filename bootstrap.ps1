@@ -13,12 +13,16 @@ develop TileDB.
 .PARAMETER Prefix
 Installs files in tree rooted at PREFIX (defaults to TileDB\dist).
 
+.PARAMETER VcpkgBaseTriplet
+Optionally specify the vcpkg target triplet, e.g. "x64-windows-release".
+Defaults to automatically detecting it from the environment.
+
 .PARAMETER Dependency
 Semicolon separated list to binary dependencies.
 
 .PARAMETER Linkage
 Specify the linkage type to build TileDB with. Valid values are
-"static" and "shared". Default is "static".
+"static" and "shared". Default is "shared".
 
 .PARAMETER CMakeGenerator
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
@@ -110,8 +114,9 @@ https://github.com/TileDB-Inc/TileDB
 [CmdletBinding()]
 Param(
     [string]$Prefix,
+    [string]$VcpkgBaseTriplet,
     [string]$Dependency,
-    [string]$Linkage = "static",
+    [string]$Linkage = "shared",
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
@@ -153,6 +158,11 @@ $DefaultPrefix = Join-Path $BinaryDirectory "dist"
 
 # Choose the default dependency install prefix.
 $DefaultDependency = $DefaultPrefix
+
+# Set the vcpkg base triplet.
+if ($VcpkgBaseTriplet.IsPresent) {
+    $VcpkgBaseTriplet = "-DTILEDB_VCPKG_BASE_TRIPLET=$VcpkgBaseTriplet"
+}
 
 # Set assertion mode
 # No-op for a debug build.
@@ -228,17 +238,18 @@ if ($DisableWebP.IsPresent) {
   $BuildWebP="OFF"
 }
 
-$BuildSharedLibs = "OFF";
-if ($Linkage -eq "shared") {
-    $BuildSharedLibs = "ON"
+$BuildSharedLibs = "ON";
+if ($Linkage -eq "static") {
+    $BuildSharedLibs = "OFF"
 }
-elseif ($Linkage -ne "static") {
+elseif ($Linkage -ne "shared") {
     Write-Error "Invalid linkage type: $Linkage. Valid values are 'static' and 'shared'."
     exit 1
 }
 
 if ($EnableStaticTileDB.IsPresent) {
-    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. TileDB is now built as a static library by default. Use -Linkage shared to build a shared library."
+    Write-Warning "-EnableStaticTileDB is deprecated and will be removed in a future version. Use -Linkage static instead."
+    $BuildSharedLibs = "OFF"
     if ($Linkage -eq "shared") {
         Write-Error "Cannot specify -EnableStaticTileDB alongside -Linkage shared."
         exit 1
@@ -308,7 +319,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

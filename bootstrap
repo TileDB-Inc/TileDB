@@ -34,9 +34,10 @@ Configuration:
     --help                          print this message
     --prefix=PREFIX                 install files in tree rooted at PREFIX
                                     ['"${default_prefix}"']
+    --vcpkg-base-triplet=TRIPLET    vcpkg base triplet to use when building with sanitizers
     --dependency=DIRs               specify the dependencies at DIRs, separated by colon
                                     ['"${default_dependency}"']
-    --linkage                       specify the linkage of tiledb. Defaults to static.
+    --linkage                       specify the linkage of tiledb. Defaults to shared.
                                     [static|shared]
     --force-build-all-deps          force building of all dependencies, even those
                                     already installed at system-level
@@ -50,6 +51,7 @@ Configuration:
     --enable-static-tiledb          enables building TileDB as a static library (deprecated, use --linkage=static)
     --enable-sanitizer=SAN          enable sanitizer (clang only)
                                     (address|memory|leak|thread|undefined)
+                                    Must manually specify a vcpkg base triplet.
     --enable-debug                  enable debug build
     --enable-assertions             enable assertions in compiled code
     --enable-release-symbols        enable create symbols for release build
@@ -86,6 +88,7 @@ Example:
 
 # Parse arguments
 prefix_dirs="${default_prefix}"
+vcpkg_base_triplet=""
 dependency_dir="${default_dependency}"
 sanitizer=""
 build_type="Release"
@@ -116,6 +119,8 @@ while test $# != 0; do
     case "$1" in
     --prefix=*) dir=`arg "$1"`
                 prefix_dirs="$dir";;
+    --vcpkg-base-triplet=*)   vcpkg_base_triplet=`arg "$1"`
+                                vcpkg_base_triplet="-DTILEDB_VCPKG_BASE_TRIPLET=${vcpkg_base_triplet}";;
     --dependency=*) dir=`arg "$1"`
                 dependency_dir="$dir";;
     --linkage=*) linkage=`arg "$1"`;;
@@ -137,7 +142,7 @@ while test $# != 0; do
     --enable-azure) tiledb_azure="ON";;
     --enable-gcs) tiledb_gcs="ON";;
     --enable-serialization) tiledb_serialization="ON";;
-    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default and linkage is controlled with the --linkage option."
+    --enable-static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                             enable_static_tiledb="ON";;
     --enable-sanitizer=*) san=`arg "$1"`
                 sanitizer="$san";;
@@ -172,7 +177,7 @@ for en in "${enables[@]}"; do
     ccache) tiledb_ccache="ON";;
     arrow-tests) tiledb_arrow_tests="ON";;
     hdfs) tiledb_hdfs="ON";;
-    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. TileDB is now built as a static library by default and linkage is controlled with the --linkage option."
+    static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                     enable_static_tiledb="ON";;
     experimental-features) tiledb_experimental_features="ON";;
     rest-tests) tiledb_tests_enable_rest="ON";;
@@ -185,16 +190,16 @@ if [ "${source_dir}" = "${binary_dir}" ]; then
     die "cannot build the project in the source directory! Out-of-source build is enforced!"
 fi
 
-if [ "${linkage}" = "static" ] || [ "${linkage}" = "" ]; then
-    build_shared_libs="OFF"
-elif [ "${linkage}" = "shared" ]; then
+if [ "${linkage}" = "shared" ] || [ "${linkage}" = "" ]; then
     build_shared_libs="ON"
+elif [ "${linkage}" = "static" ] || [ "${enable_static_tiledb}" = "ON" ]; then
+    build_shared_libs="OFF"
 else
     die "unknown linkage: ${linkage}"
 fi
 
 # Fail if both --linkage=shared and --enable-static-tiledb are specified
-if [ "${build_shared_libs}" = "ON" ] && [ "${enable_static_tiledb}" = "ON" ]; then
+if [ "${linkage}" = "shared" ] && [ "${enable_static_tiledb}" = "ON" ]; then
     die "cannot specify both --linkage=shared and --enable-static-tiledb"
 fi
 
@@ -247,11 +252,12 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_WEBP=${tiledb_build_webp} \
     -DTILEDB_FORCE_ALL_DEPS=${tiledb_force_all_deps} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
-    -DSANITIZER="${sanitizer}" \
+    -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
     -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
     ${tiledb_disable_avx2} \
+    ${vcpkg_base_triplet} \
     "${source_dir}" || die "failed to configure the project"
 
 echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'

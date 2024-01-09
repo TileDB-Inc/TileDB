@@ -1,5 +1,5 @@
 /**
- * @file filesystem.h
+ * @file filesystem_base.h
  *
  * @section LICENSE
  *
@@ -39,8 +39,6 @@
 #include <vector>
 
 namespace tiledb::sm {
-
-class VFS;
 
 class FilesystemBase {
  public:
