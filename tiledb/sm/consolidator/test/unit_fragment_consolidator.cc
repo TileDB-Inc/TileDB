@@ -43,7 +43,7 @@ using namespace tiledb::sm;
 namespace tiledb::sm {
 class WhiteboxFragmentConsolidator {
  public:
-  static FragmentConsolidationWorkspace&& create_buffers(
+  static FragmentConsolidationWorkspace create_buffers(
       stats::Stats* stats,
       const bool with_timestamps,
       const bool with_delete_meta,
