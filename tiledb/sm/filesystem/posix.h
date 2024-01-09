@@ -132,16 +132,6 @@ class Posix : public FilesystemBase {
   Status file_size(const URI& path, uint64_t* size) const override;
 
   /**
-   *
-   * Lists files and file information one level deep under a given path.
-   *
-   * @param uri The parent path to list sub-paths.
-   * @return A list of directory_entry objects
-   */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& uri) const override;
-
-  /**
    * Move a given filesystem path.
    * Both URI must be of the same file:// backend type.
    *
@@ -273,6 +263,16 @@ class Posix : public FilesystemBase {
   Status empty_bucket(const URI&) const override {
     return Status::Ok();
   }
+
+  /**
+   *
+   * Lists files and file information one level deep under a given path.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @return A list of directory_entry objects
+   */
+  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
+  ls_with_sizes(const URI& uri) const override;
 
   /**
    * Lists files one level deep under a given path.

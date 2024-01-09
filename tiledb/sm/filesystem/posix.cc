@@ -70,23 +70,6 @@ Posix::Posix(const Config& config) {
   directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
-std::string Posix::abs_path(const std::string& path) {
-  std::string resolved_path = abs_path_internal(path);
-
-  // Ensure the returned has the same postfix slash as 'path'.
-  if (utils::parse::ends_with(path, "/")) {
-    if (!utils::parse::ends_with(resolved_path, "/")) {
-      resolved_path = resolved_path + "/";
-    }
-  } else {
-    if (utils::parse::ends_with(resolved_path, "/")) {
-      resolved_path = resolved_path.substr(0, resolved_path.length() - 1);
-    }
-  }
-
-  return resolved_path;
-}
-
 Status Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
   auto path = uri.to_path();
@@ -118,10 +101,16 @@ Status Posix::touch(const URI& uri) const {
   return Status::Ok();
 }
 
-std::string Posix::current_dir() {
-  static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
-  std::string dir = cwd_.get();
-  return dir;
+bool Posix::is_dir(const URI& uri) const {
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
+  return stat(uri.to_path().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
+}
+
+bool Posix::is_file(const URI& uri) const {
+  struct stat st;
+  memset(&st, 0, sizeof(struct stat));
+  return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
 Status Posix::remove_dir(const URI& uri) const {
@@ -157,68 +146,6 @@ Status Posix::file_size(const URI& uri, uint64_t* size) const {
 
   close(fd);
   return Status::Ok();
-}
-
-bool Posix::is_dir(const URI& uri) const {
-  struct stat st;
-  memset(&st, 0, sizeof(struct stat));
-  return stat(uri.to_path().c_str(), &st) == 0 && S_ISDIR(st.st_mode);
-}
-
-bool Posix::is_file(const URI& uri) const {
-  struct stat st;
-  memset(&st, 0, sizeof(struct stat));
-  return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
-}
-
-Status Posix::ls(
-    const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(URI(path));
-
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
-    paths->emplace_back(fs.path().native());
-  }
-
-  return Status::Ok();
-}
-
-tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
-    const URI& uri) const {
-  std::string path = uri.to_path();
-  struct dirent* next_path = nullptr;
-  DIR* dir = opendir(path.c_str());
-  if (dir == nullptr) {
-    return {Status::Ok(), nullopt};
-  }
-
-  std::vector<directory_entry> entries;
-
-  while ((next_path = readdir(dir)) != nullptr) {
-    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
-      continue;
-    std::string abspath = path + "/" + next_path->d_name;
-
-    // Getting the file size here incurs an additional system call
-    // via file_size() and ls() calls will feel this too.
-    // If this penalty becomes noticeable, we should just duplicate
-    // this implementation in ls() and don't get the size
-    if (next_path->d_type == DT_DIR) {
-      entries.emplace_back(abspath, 0, true);
-    } else {
-      uint64_t size;
-      RETURN_NOT_OK_TUPLE(file_size(URI(abspath), &size), nullopt);
-      entries.emplace_back(abspath, size, false);
-    }
-  }
-  // close parent directory
-  if (closedir(dir) != 0) {
-    auto st = LOG_STATUS(Status_IOError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-    return {st, nullopt};
-  }
-  return {Status::Ok(), entries};
 }
 
 Status Posix::move_file(const URI& old_path, const URI& new_path) {
@@ -398,6 +325,79 @@ Status Posix::write(
         std::string("Cannot close file '") + path + "'; " + strerror(errno)));
   }
   return st;
+}
+
+tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
+    const URI& uri) const {
+  std::string path = uri.to_path();
+  struct dirent* next_path = nullptr;
+  DIR* dir = opendir(path.c_str());
+  if (dir == nullptr) {
+    return {Status::Ok(), nullopt};
+  }
+
+  std::vector<directory_entry> entries;
+
+  while ((next_path = readdir(dir)) != nullptr) {
+    if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
+      continue;
+    std::string abspath = path + "/" + next_path->d_name;
+
+    // Getting the file size here incurs an additional system call
+    // via file_size() and ls() calls will feel this too.
+    // If this penalty becomes noticeable, we should just duplicate
+    // this implementation in ls() and don't get the size
+    if (next_path->d_type == DT_DIR) {
+      entries.emplace_back(abspath, 0, true);
+    } else {
+      uint64_t size;
+      RETURN_NOT_OK_TUPLE(file_size(URI(abspath), &size), nullopt);
+      entries.emplace_back(abspath, size, false);
+    }
+  }
+  // close parent directory
+  if (closedir(dir) != 0) {
+    auto st = LOG_STATUS(Status_IOError(
+        std::string("Cannot close parent directory; ") + strerror(errno)));
+    return {st, nullopt};
+  }
+  return {Status::Ok(), entries};
+}
+
+Status Posix::ls(
+    const std::string& path, std::vector<std::string>* paths) const {
+  auto&& [st, entries] = ls_with_sizes(URI(path));
+
+  RETURN_NOT_OK(st);
+
+  for (auto& fs : *entries) {
+    paths->emplace_back(fs.path().native());
+  }
+
+  return Status::Ok();
+}
+
+std::string Posix::abs_path(const std::string& path) {
+  std::string resolved_path = abs_path_internal(path);
+
+  // Ensure the returned has the same postfix slash as 'path'.
+  if (utils::parse::ends_with(path, "/")) {
+    if (!utils::parse::ends_with(resolved_path, "/")) {
+      resolved_path = resolved_path + "/";
+    }
+  } else {
+    if (utils::parse::ends_with(resolved_path, "/")) {
+      resolved_path = resolved_path.substr(0, resolved_path.length() - 1);
+    }
+  }
+
+  return resolved_path;
+}
+
+std::string Posix::current_dir() {
+  static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);
+  std::string dir = cwd_.get();
+  return dir;
 }
 
 void Posix::adjacent_slashes_dedup(std::string* path) {
