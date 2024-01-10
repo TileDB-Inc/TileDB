@@ -115,10 +115,21 @@ class Context {
     return &(resources_.io_tp());
   }
 
-  tdb::RM& resource_manager() {
+  /**
+   * The type of resource manager used for any resources subordinate to a context.
+   *
+   * The category of resources covered here is most, but not all, of the
+   * resources used. Resources that are overhead or involved in the creation of
+   * contexts are outside.
+   */
+  using resource_manager_type = tdb::resource_manager::ResourceManager<
+      tdb::resource_manager::RMPolicyProduction>;
+
+  resource_manager_type& resource_manager() {
     return resource_manager_;
   }
-  const tdb::RM& resource_manager() const {
+
+  const resource_manager_type& resource_manager() const {
     return resource_manager_;
   }
 
@@ -164,7 +175,7 @@ class Context {
    * At present this is something of a stub. It creates an unbudgeted instance,
    * so it doesn't really manage its resources yet.
    */
-  tdb::RM resource_manager_;
+  resource_manager_type resource_manager_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

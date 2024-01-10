@@ -41,6 +41,25 @@ concept ResourceManagementPolicy = requires {
   typename P::memory_management_policy;
 };
 
+/**
+ * A too-simple budget class
+ *
+ * @section Maturity
+ *
+ * This class is mostly a placeholder. It's used to exercise the construction
+ * chain with different policies. Unbudgeted policies don't need budget objects
+ * in the constructors of their managers; budget policies do.
+ */
+class Budget {
+  size_t total_{0};
+ public:
+  Budget() = default;
+
+  [[nodiscard]] size_t total() const {
+    return total_;
+  }
+};
+
 }  // namespace tiledb::common::resource_manager
 
 #endif

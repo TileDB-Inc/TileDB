@@ -175,12 +175,15 @@ template <ResourceManagementPolicy P>
 class ResourceManager;
 
 namespace detail {
+template <MemoryManagementPolicy P>
+class MemoryBase {};
+
 /**
  *
  * @tparam P Policy class for memory allocation
  */
 template <MemoryManagementPolicy P>
-class Memory {
+class Memory : public MemoryBase<P> {
   /**
    * Each memory manager contains an allocator that draws from its own budget.
    */

@@ -42,6 +42,24 @@ namespace sm {
 
 static common::Logger::Level get_log_level(const Config& config);
 
+/**
+ * Construct an initial budget.
+ *
+ * The production resource manager that `Context` defines requires a budget
+ * argument in its constructor.
+ *
+ * @section Maturity
+ *
+ * The initial budget is currently the only budget. There is no capability to
+ * alter budgets once initially established. This might change.
+ *
+ * @return
+ */
+tdb::resource_manager::AllResourcesBudget initial_budget(const Config&) {
+  // This function is a stub at present
+  return {};
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -64,7 +82,7 @@ Context::Context(const Config& config)
           // it is part of the public facing API.
           "Context.StorageManager")
     , storage_manager_{resources_, logger_, config}
-    , resource_manager_(tiledb::common::resource_manager::Unbudgeted) {
+    , resource_manager_(initial_budget(config)) {
   /*
    * Logger class is not yet C.41-compliant
    */

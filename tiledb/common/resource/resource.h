@@ -44,6 +44,21 @@ namespace tiledb::common {
 namespace resource_manager {
 
 /**
+ * The budget for the top-level resource manager.
+ *
+ * This contains a budget object for each managed resource.
+ *
+ * @section Maturity
+ *
+ * At present there's only a memory budget.
+ */
+class AllResourcesBudget {
+  Budget memory_budget_{};
+ public:
+  AllResourcesBudget() = default;
+};
+
+/**
  * The unbudgeted resource management policy.
  *
  * This policy creates all resource managers as unbudgeted.
@@ -54,7 +69,7 @@ struct RMPolicyUnbudgeted {
 static_assert(ResourceManagementPolicy<RMPolicyUnbudgeted>);
 
 /**
- * The unbudgeted resource management policy.
+ * The production resource management policy.
  *
  * @section Maturity
  *
@@ -66,7 +81,6 @@ struct RMPolicyProduction {
 };
 static_assert(ResourceManagementPolicy<RMPolicyProduction>);
 
-
 namespace test {
 /*
  * Forward declaration for `friend` in `class ResourceManager`.
@@ -74,6 +88,36 @@ namespace test {
 template <ResourceManagementPolicy P>
 class WhiteboxResourceManager;
 }  // namespace test
+
+namespace detail {
+/**
+ * Non-specialized implementation class for `ResourceManager`
+ *
+ * These are base classes from which different versions of `ResourceManager` derive.
+
+ */
+template <ResourceManagementPolicy P>
+class ResourceManagerInternal {
+ public:
+  ResourceManagerInternal() = delete;
+};
+
+template <>
+class ResourceManagerInternal<RMPolicyUnbudgeted> {
+ public:
+  ResourceManagerInternal() = default;
+};
+
+template <>
+class ResourceManagerInternal<RMPolicyProduction> {
+  AllResourcesBudget budget_;
+ public:
+  ResourceManagerInternal() = delete;
+  explicit ResourceManagerInternal(const AllResourcesBudget& b) : budget_{b} {
+  }
+};
+
+}
 
 /**
  * The aggregate resource manager contains an individual manager for each
@@ -87,7 +131,7 @@ class WhiteboxResourceManager;
  * @tparam P The total resource management policy
  */
 template <ResourceManagementPolicy P>
-class ResourceManager {
+class ResourceManager : public detail::ResourceManagerInternal<P> {
   /**
    * Friend declaration for the `class Context`.
    *
@@ -131,7 +175,7 @@ class ResourceManager {
    */
   template <class... Args>
   explicit ResourceManager(Args&&... args)
-      : ResourceManager(P::constructor_tag, std::forward<Args>(args)...) {
+      : detail::ResourceManagerInternal<P>(std::forward<Args>(args)...) {
   }
 
   /**

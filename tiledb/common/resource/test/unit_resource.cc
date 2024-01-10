@@ -35,14 +35,27 @@ namespace tdbrm = tiledb::common::resource_manager;
 
 namespace tiledb::common::resource_manager::test {
 /**
- *
- * @tparam P
+ * The whitebox ResourceManager is implemented with specializations. The
+ * non-specialized version is a stub.
  */
 template <ResourceManagementPolicy P>
-class WhiteboxResourceManager : public tdbrm::ResourceManager<P> {
+class WhiteboxResourceManager{
+ public:
+  WhiteboxResourceManager() = delete;
+};
+
+template <>
+class WhiteboxResourceManager<tdbrm::RMPolicyUnbudgeted> : public tdbrm::ResourceManager<tdbrm::RMPolicyUnbudgeted> {
  public:
   explicit WhiteboxResourceManager()
-      : tdbrm::ResourceManager<P>{} {};
+      : tdbrm::ResourceManager<tdbrm::RMPolicyUnbudgeted>{} {};
+};
+
+template <>
+class WhiteboxResourceManager<tdbrm::RMPolicyProduction> : public tdbrm::ResourceManager<tdbrm::RMPolicyProduction> {
+ public:
+  explicit WhiteboxResourceManager(const tdbrm::AllResourcesBudget& b)
+      : tdbrm::ResourceManager<tdbrm::RMPolicyProduction>{b} {};
 };
 
 }  // namespace tiledb::common::resource_manager::test
@@ -57,7 +70,7 @@ TEST_CASE("Resource - unbudgeted constructor", "") {
 }
 
 TEST_CASE("Resource - production constructor", "") {
-  WhbxRM<tdbrm::RMPolicyProduction> x{};
+  WhbxRM<tdbrm::RMPolicyProduction> x{tdbrm::AllResourcesBudget{}};
   auto& m{x.memory()};
   (void)m.allocator();
 }
