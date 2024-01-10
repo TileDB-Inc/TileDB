@@ -31,23 +31,58 @@
 #ifndef TILEDB_COMMON_RESOURCE_MEMORY_H
 #define TILEDB_COMMON_RESOURCE_MEMORY_H
 
-#include <memory>
-#include <memory_resource>
 #include "../resource-internal.h"
+#include <concepts>
+#include <memory>
+#include <utility>
+/*
+ * header inclusion needs to be outside any namespace
+ */
+#if __has_include(<memory_resource>)
+#include <memory_resource>
+#endif
+
 namespace tiledb::common {
 
-/**
- * The allocator type used for polymorphic allocation.
+/*
+ * Workaround for missing <memory_resource>
  *
- * The allocator is always an allocator for `std::byte`. The user must
- * convert this into an allocator of appropriate type.
+ * The C++17 header <memory_resource> is not available on all platforms at of
+ * this writing. A substitution for it is in the works, but a delay waiting for
+ * it lengthens the critical path. The immediate need is to specify allocators
+ * other than `std::allocator` in user code. It is not the necessary for the
+ * next stage to populate a single `pmr` allocator type with different
+ * allocation resources; eventually it will be.
  *
- * @section Maturity
+ * Thus we have the following hack:
+ * - In all cases we pass allocation through a interim class that specifies
+ *   allocator types and has factories for them.
+ * - For systems with <memory_resource>, we are using it.
+ * - For systems without <memory_resource>, we are using `std::allocator`.
  *
- * This class is currently an alias. It will be replaced with a class derived
- * from `std::pmr::polymorphic_allocator` which works with the budgeting system.
+ * The interim class will be removed once the substitution is available.
  */
-using pmr_allocator = std::pmr::polymorphic_allocator<std::byte>;
+#if __has_include(<memory_resource>)
+static constexpr bool using_memory_resources = true;
+#include <memory_resource>
+struct IterimAllocators {
+  /**
+   * The first version of the polymorphic allocator is the standard one. This
+   * will later be replaced with a subclass that ties in with the resource
+   * management system.
+   */
+  using pmr_allocator = ::std::pmr::polymorphic_allocator<::std::byte>;
+};
+#else
+static constexpr bool using_memory_resources = false;
+struct IterimAllocators {
+  /*
+   * The hack version is pretty much any allocator that's available, and that's
+   * `std::allocator`.
+   */
+  using pmr_allocator = ::std::allocator<::std::byte>;
+};
+#endif
 
 namespace resource_manager {
 /*
@@ -57,39 +92,62 @@ template <ResourceManagementPolicy P>
 class ResourceManager;
 
 namespace detail {
+/**
+ * The allocator type used for polymorphic allocation.
+ *
+ * The allocator is always an allocator for `std::byte`. The user must convert
+ * this into an allocator of appropriate type. This usually does not require any
+ * explicit syntax.
+ *
+ * This allocator is declared in a `detail` namespace to deter direct reference
+ * in user code. User code should always use the allocator type available
+ * through its resource manager class. While there is no plan at present to use
+ * anything but a single polymorphic allocator class everywhere in the code, we
+ * are avoiding doing so with a global declaration. This choice retains at
+ * option to manipulate this type in the future. It's unlikely that this will
+ * ever be needed for production code, but it may find utility in test,
+ * measurement, or experimental code.
+ *
+ * @section Maturity
+ *
+ * This class is using the iterim allocators at present.
+ */
+using pmr_allocator = IterimAllocators::pmr_allocator;
+}
 
-template <class T>
-concept MemoryManagementPolicy = true;
-
-struct UnbudgetedMemoryPolicy {
-  using allocator_type = pmr_allocator;
-
-  static allocator_type construct_allocator() {
-    return {std::pmr::new_delete_resource()};
-  }
+/**
+ * Memory management policy is a template argument for both managers and containers.
+ *
+ * @tparam P a potential policy class
+ */
+template <class P>
+concept MemoryManagementPolicy = requires() {
+  typename P::allocator_type;
+} && requires(P x) {
+  // At this time only checking for the symbol, not its type
+  x.construct_allocator;
 };
 
 /**
- * Traits for memory management policies.
+ * Unbudgeted memory management policy
  *
- * Specializations of this class select which memory management policy is used
- * with each resource management policy.
+ * @tparam UsingPMR temporary parameter
  */
-template <ResourceManagementPolicy P>
-struct MMPTraits {};
+template <bool UsingPMR = tiledb::common::using_memory_resources>
+struct MMPolicyUnbudgeted {
+  using allocator_type = detail::pmr_allocator;
 
-template <>
-struct MMPTraits<RMPolicyUnbudgeted> : public UnbudgetedMemoryPolicy {};
+  static allocator_type construct_allocator() {
+    if constexpr (UsingPMR) {
+      return {std::pmr::new_delete_resource()};
+    } else {
+      throw 0;
+    }
+  }
+};
+static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<>>);
 
-/**
- * Memory manager traits for production.
- *
- * Currently the production policy is unbudgeted. This is a transitional
- * policy which all the budgeting infrastructure is being built out.
- */
-template <>
-struct MMPTraits<RMPolicyProduction> : public UnbudgetedMemoryPolicy {};
-
+namespace detail {
 /**
  *
  * @tparam P Policy class for memory allocation
@@ -98,9 +156,6 @@ template <MemoryManagementPolicy P>
 class Memory {
   /**
    * Each memory manager contains an allocator that draws from its own budget.
-   *
-   * At present this allocator is pointer to the default pmr allocator in the
-   * standard library.
    */
   P::allocator_type allocator_;
 
@@ -118,10 +173,9 @@ class Memory {
   Memory(Memory&&) = delete;
 
   /**
-   * The allocator is always a byte allocator. The user is responsible for
-   * converting it into an allocator of another type.
+   * Access for the allocator of this manager
    */
-  pmr_allocator& allocator() {
+  P::allocator_type& allocator() {
     return allocator_;
   }
 };
@@ -129,7 +183,7 @@ class Memory {
 }  // namespace detail
 
 template <ResourceManagementPolicy P>
-class MemoryManager : public detail::Memory<detail::MMPTraits<P>> {
+class MemoryManager : public detail::Memory<typename P::memory_management_policy> {
   /**
    * Constructors only visible to top-level resource manager.
    */
@@ -137,7 +191,7 @@ class MemoryManager : public detail::Memory<detail::MMPTraits<P>> {
 
   template <class... Args>
   explicit MemoryManager(Args&&... args)
-      : detail::Memory<detail::MMPTraits<P>>(std::forward<Args>(args)...) {
+      : detail::Memory<typename P::memory_management_policy>(std::forward<Args>(args)...) {
   }
 
  public:
@@ -149,6 +203,10 @@ class MemoryManager : public detail::Memory<detail::MMPTraits<P>> {
 
 /**
  * Manageable `vector` with mandatory and polymorphic allocator.
+ */
+#if false
+/*
+ * pmr::vector not available on all platforms at present
  */
 template <class T>
 class vector : public std::pmr::vector<T> {
@@ -171,6 +229,7 @@ class vector : public std::pmr::vector<T> {
       : base(a) {
   }
 };
+#endif
 
 }  // namespace tiledb::common
 

@@ -43,6 +43,30 @@ class Context;
 namespace tiledb::common {
 namespace resource_manager {
 
+/**
+ * The unbudgeted resource management policy.
+ *
+ * This policy creates all resource managers as unbudgeted.
+ */
+struct RMPolicyUnbudgeted {
+  using memory_management_policy = MMPolicyUnbudgeted<>;
+};
+static_assert(ResourceManagementPolicy<RMPolicyUnbudgeted>);
+
+/**
+ * The unbudgeted resource management policy.
+ *
+ * @section Maturity
+ *
+ * This policy is a partially a stub, since <memory_resources> is not yet fully
+ * available.
+ */
+struct RMPolicyProduction {
+  using memory_management_policy = MMPolicyUnbudgeted<>;
+};
+static_assert(ResourceManagementPolicy<RMPolicyProduction>);
+
+
 namespace test {
 /*
  * Forward declaration for `friend` in `class ResourceManager`.
@@ -94,14 +118,9 @@ class ResourceManager {
    * This class is the nexus for resource budgeting. There are use cases for
    * unbudgeted use of resources, principally testing.
    */
-  explicit ResourceManager(const UnbudgetedT&)
+  explicit ResourceManager()
       : memory_() {
   }
-
-  explicit ResourceManager(const ProductionT&)
-      : memory_() {
-  }
-
  public:
   /**
    * Default constructor is deleted.

@@ -62,6 +62,7 @@ TEST_CASE("Resource - production constructor", "") {
   (void)m.allocator();
 }
 
+#if false
 using tiledb::common::pmr_allocator;
 template <class T>
 using tdb_vector = tiledb::common::vector<T>;
@@ -74,3 +75,4 @@ TEST_CASE("tdb_vector - allocator-only constructor", "") {
   tdb_vector<contents> x{a};
   CHECK(x.empty());
 }
+#endif

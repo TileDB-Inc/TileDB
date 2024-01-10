@@ -26,6 +26,9 @@
  * THE SOFTWARE.
  *
  * @section DESCRIPTION
+ *
+ * This header is for definitions needed for the declaration of managers of
+ * individual resources.
  */
 
 #ifndef TILEDB_COMMON_RESOURCE_INTERNAL_H
@@ -33,29 +36,9 @@
 
 namespace tiledb::common::resource_manager {
 
-/**
- * Marker class for unbudgeted use of resource managers.
- */
-struct UnbudgetedT {};
-static constexpr UnbudgetedT Unbudgeted{};
-
-struct ProductionT {};
-static constexpr ProductionT Production{};
-
-template <class T>
-concept ResourceManagementPolicy = true;
-
-/**
- * The unbudgeted resource management policy.
- *
- * This policy creates all resource managers as unbudgeted.
- */
-struct RMPolicyUnbudgeted {
-  static constexpr UnbudgetedT constructor_tag{};
-};
-
-struct RMPolicyProduction {
-  static constexpr ProductionT constructor_tag{};
+template <class P>
+concept ResourceManagementPolicy = requires {
+  typename P::memory_management_policy;
 };
 
 }  // namespace tiledb::common::resource_manager
