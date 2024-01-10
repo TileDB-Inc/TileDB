@@ -121,6 +121,7 @@ Subarray::Subarray(
                          nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
     , array_(array)
+    , usage_token_(array_->set_in_use())
     , layout_(layout)
     , cell_order_(array_->array_schema_latest().cell_order())
     , est_result_size_computed_(false)

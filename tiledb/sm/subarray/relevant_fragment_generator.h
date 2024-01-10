@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/common/usage_token.h"
 
 #include <vector>
 
@@ -146,6 +147,9 @@ class RelevantFragmentGenerator {
 
   /** Reference to the opened array. */
   const Array& array_;
+
+  /** As usage token for the opened array. */
+  tdb::UsageToken usage_token_;
 
   /** Reference to the subarray. */
   const Subarray& subarray_;

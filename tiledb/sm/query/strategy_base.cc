@@ -57,6 +57,7 @@ StrategyBase::StrategyBase(
     : stats_(stats)
     , logger_(logger)
     , array_(array)
+    , usage_token_(array_->set_in_use())
     , array_schema_(array->array_schema_latest())
     , config_(config)
     , buffers_(buffers)

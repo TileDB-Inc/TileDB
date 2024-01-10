@@ -103,7 +103,14 @@ Array::Array(
     , metadata_loaded_(false)
     , non_empty_domain_computed_(false)
     , consistency_controller_(cc)
-    , consistency_sentry_(nullopt) {
+    , consistency_sentry_(nullopt)
+    , usage_token_(make_shared<uint8_t>(HERE())) {
+}
+
+Array::~Array() {
+  if (usage_token_.use_count() > 1) {
+    LOG_ERROR("Array is being closed while still in use.");
+  }
 }
 
 /* ********************************* */
@@ -453,6 +460,10 @@ Status Array::close() {
     // If array is not open treat this as a no-op
     // This keeps existing behavior from TileDB 2.6 and older
     return Status::Ok();
+  }
+
+  if (usage_token_.use_count() != 1) {
+    throw ArrayException("Error closing array; it is still in use.");
   }
 
   non_empty_domain_.clear();
@@ -1194,6 +1205,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
     const {
   std::unordered_map<std::string, uint64_t> ret;
 
+  // Mark the array as in use.
+  auto usage_token = set_in_use();
+
   // Find the names of the var-sized dimensions or attributes.
   std::vector<std::string> var_names;
 
@@ -1408,6 +1422,10 @@ Status Array::compute_max_buffer_sizes(
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) const {
+
+  // Mark the array as in use.
+  auto usage_token = set_in_use();
+
   if (remote_) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
@@ -1582,6 +1600,9 @@ ArrayDirectory& Array::load_array_directory() {
 }
 
 Status Array::compute_non_empty_domain() {
+  // Mark the array as in use.
+  auto usage_token = set_in_use();
+
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
   } else if (!fragment_metadata_.empty()) {

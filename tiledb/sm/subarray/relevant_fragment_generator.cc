@@ -49,6 +49,7 @@ RelevantFragmentGenerator::RelevantFragmentGenerator(
     const Array& array, const Subarray& subarray, stats::Stats* stats)
     : stats_(stats)
     , array_(array)
+    , usage_token_(array_.set_in_use())
     , subarray_(subarray) {
   auto dim_num = array_.array_schema_latest().dim_num();
   auto fragment_num = array_.fragment_metadata().size();

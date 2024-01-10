@@ -38,6 +38,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/common/usage_token.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -1389,6 +1390,9 @@ class Subarray {
 
   /** The array the subarray object is associated with. */
   const Array* array_;
+
+  /** The usage token to keep the array alive. */
+  tdb::UsageToken usage_token_;
 
   /** Stores the estimated result size for each array attribute/dimension. */
   std::unordered_map<std::string, ResultSize> est_result_size_;

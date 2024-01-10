@@ -40,6 +40,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/usage_token.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -94,7 +95,7 @@ class Array {
       ConsistencyController& cc = controller());
 
   /** Destructor. */
-  ~Array() = default;
+  ~Array();
 
   DISABLE_COPY_AND_COPY_ASSIGN(Array);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Array);
@@ -207,6 +208,11 @@ class Array {
 
   /** Closes the array and frees all memory. */
   Status close();
+
+  /*** Mark this array as in use. */
+  tdb::UsageToken set_in_use() const {
+    return usage_token_;
+  }
 
   /**
    * Deletes the Array data with given URI.
@@ -753,6 +759,9 @@ class Array {
    * ConsistencySentry registration and the is_open_ flag.
    */
   std::mutex mtx_;
+
+  /*** A ref counter for tracking if the array is in use. */
+  tdb::UsageToken usage_token_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

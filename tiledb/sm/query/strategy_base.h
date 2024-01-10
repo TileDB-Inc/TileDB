@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/usage_token.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -108,6 +109,8 @@ class StrategyBase {
 
   /** The array. */
   const Array* array_;
+
+  tdb::UsageToken usage_token_;
 
   /** The array schema. */
   const ArraySchema& array_schema_;
