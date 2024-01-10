@@ -58,6 +58,8 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * on error. The callback is responsible for writing gathered entries into the
  * `data` buffer, for example using a pointer to a user-defined struct.
  *
+ * Currently only S3 is supported, and the `path` must be a valid S3 URI.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -69,7 +71,7 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * }
  * MyCbStruct* cb_data = allocate_cb_struct();
  *
- * tiledb_vfs_ls_recursive(ctx, vfs, "my_dir", my_callback, &cb_data);
+ * tiledb_vfs_ls_recursive(ctx, vfs, "s3://bucket/foo", my_callback, &cb_data);
  * @endcode
  *
  * @param[in] ctx The TileDB context.

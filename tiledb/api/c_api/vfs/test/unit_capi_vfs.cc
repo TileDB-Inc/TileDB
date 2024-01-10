@@ -728,3 +728,56 @@ TEST_CASE(
         TILEDB_ERR);
   }
 }
+
+TEST_CASE(
+    "C API: CallbackWrapper operator() validation",
+    "[ls-recursive][callback][wrapper]") {
+  tiledb::sm::LsObjects data;
+  auto cb = [](const char* path,
+               size_t path_len,
+               uint64_t object_size,
+               void* data) -> int32_t {
+    if (object_size > 100) {
+      // Throw if object size is greater than 100 bytes.
+      throw std::runtime_error("Throwing callback");
+    } else if (!std::string(path, path_len).ends_with(".txt")) {
+      // Reject non-txt files.
+      return 0;
+    }
+    auto* ls_data = static_cast<tiledb::sm::LsObjects*>(data);
+    ls_data->push_back({{path, path_len}, object_size});
+    return 1;
+  };
+  tiledb::sm::CallbackWrapper wrapper(cb, &data);
+
+  SECTION("Callback return 1 signals to continue traversal") {
+    CHECK(wrapper("file.txt", 10) == 1);
+    CHECK(data.size() == 1);
+  }
+  SECTION("Callback return 0 signals to stop traversal") {
+    CHECK_THROWS_AS(wrapper("some/dir/", 0) == 0, tiledb::sm::LsStopTraversal);
+  }
+  SECTION("Callback exception is propagated") {
+    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
+  }
+}
+
+TEST_CASE(
+    "C API: CallbackWrapper construction validation",
+    "[ls-recursive][callback][wrapper]") {
+  using tiledb::sm::CallbackWrapper;
+  tiledb::sm::LsObjects data;
+  auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t { return 1; };
+  SECTION("Null callback") {
+    CHECK_THROWS(CallbackWrapper(nullptr, &data));
+  }
+  SECTION("Null data") {
+    CHECK_THROWS(CallbackWrapper(cb, nullptr));
+  }
+  SECTION("Null callback and data") {
+    CHECK_THROWS(CallbackWrapper(nullptr, nullptr));
+  }
+  SECTION("Valid callback and data") {
+    CHECK_NOTHROW(CallbackWrapper(cb, &data));
+  }
+}

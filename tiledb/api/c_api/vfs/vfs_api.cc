@@ -325,18 +325,7 @@ capi_return_t tiledb_vfs_ls_recursive(
         "Invalid TileDB object: Callback function is null.");
   }
   ensure_output_pointer_is_valid(data);
-  auto objects = vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
-
-  int ret = 1;
-  for (const auto& obj : objects) {
-    ret = callback(obj.first.c_str(), obj.first.size(), obj.second, data);
-    if (ret != 1) {
-      break;
-    }
-  }
-  if (ret == -1) {
-    return TILEDB_ERR;
-  }
+  vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
   return TILEDB_OK;
 }
 

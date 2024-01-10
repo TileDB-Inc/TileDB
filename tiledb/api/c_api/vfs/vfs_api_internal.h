@@ -147,12 +147,12 @@ struct tiledb_vfs_handle_t
     return vfs_.touch(uri);
   }
 
-  tiledb::sm::LsObjects ls_recursive(
-      const tiledb::sm::URI& parent, tiledb_ls_callback_t, void*) const {
-    return vfs_.ls_recursive(
-        parent,
-        [](const std::string_view&, uint64_t) { return true; },
-        tiledb::sm::accept_all_dirs);
+  void ls_recursive(
+      const tiledb::sm::URI& parent,
+      tiledb_ls_callback_t cb,
+      void* data) const {
+    tiledb::sm::CallbackWrapper wrapper(cb, data);
+    vfs_.ls_recursive(parent, wrapper);
   }
 };
 
