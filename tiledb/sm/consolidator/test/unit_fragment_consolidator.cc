@@ -43,7 +43,7 @@ using namespace tiledb::sm;
 namespace tiledb::sm {
 class WhiteboxFragmentConsolidator {
  public:
-  static tuple<std::vector<ByteVec>, std::vector<uint64_t>> create_buffers(
+  static FragmentConsolidationWorkspace create_buffers(
       stats::Stats* stats,
       const bool with_timestamps,
       const bool with_delete_meta,
@@ -51,7 +51,7 @@ class WhiteboxFragmentConsolidator {
       const ArraySchema& schema,
       std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
     // Create config.
-    FragmentConsolidator::ConsolidationConfig cfg;
+    FragmentConsolidationConfig cfg;
     cfg.with_timestamps_ = with_timestamps;
     cfg.with_delete_meta_ = with_delete_meta;
     cfg.buffer_size_ = buffer_size;
@@ -232,13 +232,16 @@ TEST_CASE(
   }
 
   // Create buffers.
-  auto&& [buffers, buffer_sizes] = WhiteboxFragmentConsolidator::create_buffers(
-      &statistics,
-      with_timestamps,
-      with_delete_meta,
-      1000,
-      *schema,
-      avg_cell_sizes);
+  FragmentConsolidationWorkspace cw{
+      WhiteboxFragmentConsolidator::create_buffers(
+          &statistics,
+          with_timestamps,
+          with_delete_meta,
+          1000,
+          *schema,
+          avg_cell_sizes)};
+  std::vector<ByteVec>& buffers{cw.buffers()};
+  std::vector<uint64_t>& buffer_sizes{cw.sizes()};
 
   // Validate.
   CHECK(buffers.size() == expected_sizes.size());

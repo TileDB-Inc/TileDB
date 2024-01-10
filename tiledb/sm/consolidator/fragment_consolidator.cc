@@ -51,9 +51,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class FragmentConsolidatorStatusException : public StatusException {
+class FragmentConsolidatorException : public StatusException {
  public:
-  explicit FragmentConsolidatorStatusException(const std::string& message)
+  explicit FragmentConsolidatorException(const std::string& message)
       : StatusException("FragmentConsolidator", message) {
   }
 };
@@ -293,7 +293,7 @@ Status FragmentConsolidator::consolidate_fragments(
 
 void FragmentConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw FragmentConsolidatorException(
         "Cannot vacuum fragments; Array name cannot be null");
   }
 
@@ -348,7 +348,7 @@ bool FragmentConsolidator::are_consolidatable(
     size_t start,
     size_t end,
     const NDRange& union_non_empty_domains) const {
-  auto anterior_ndrange = fragment_info.anterior_ndrange();
+  const auto& anterior_ndrange = fragment_info.anterior_ndrange();
   if (anterior_ndrange.size() != 0 &&
       domain.overlap(union_non_empty_domains, anterior_ndrange))
     return false;
@@ -419,8 +419,8 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  auto&& [buffers, buffer_sizes] =
-      create_buffers(stats_, config_, array_schema, average_var_cell_sizes);
+  FragmentConsolidationWorkspace cw{
+      create_buffers(stats_, config_, array_schema, average_var_cell_sizes)};
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -451,12 +451,13 @@ Status FragmentConsolidator::consolidate_internal(
   }
 
   // Read from one array and write to the other
-  st = copy_array(query_r, query_w, &buffers, &buffer_sizes);
-  if (!st.ok()) {
+  try {
+    copy_array(query_r, query_w, cw);
+  } catch (...) {
     tdb_delete(query_r);
     tdb_delete(query_w);
-    return st;
-  }
+    throw;
+  };
 
   // Finalize write query
   st = query_w->finalize();
@@ -495,47 +496,41 @@ Status FragmentConsolidator::consolidate_internal(
   return st;
 }
 
-Status FragmentConsolidator::copy_array(
-    Query* query_r,
-    Query* query_w,
-    std::vector<ByteVec>* buffers,
-    std::vector<uint64_t>* buffer_sizes) {
+void FragmentConsolidator::copy_array(
+    Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw) {
   auto timer_se = stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
   // sizes, not the potentially smaller sizes of the results after
   // the query submission.
-  RETURN_NOT_OK(set_query_buffers(query_r, buffers, buffer_sizes));
+  set_query_buffers(query_r, cw);
 
   do {
     // READ
-    RETURN_NOT_OK(query_r->submit());
+    throw_if_not_ok(query_r->submit());
 
     // If Consolidation cannot make any progress, throw. The first buffer will
-    // always contain fixed size data, wether it is tile offsets for var size
+    // always contain fixed size data, whether it is tile offsets for var size
     // attribute/dimension or the actual fixed size data so we can use its size
     // to know if any cells were written or not.
-    if (buffer_sizes->at(0) == 0) {
-      throw FragmentConsolidatorStatusException(
+    if (cw.sizes().at(0) == 0) {
+      throw FragmentConsolidatorException(
           "Consolidation read 0 cells, no progress can be made");
     }
 
     // Set explicitly the write query buffers, as the sizes may have
     // been altered by the read query.
-    RETURN_NOT_OK(set_query_buffers(query_w, buffers, buffer_sizes));
+    set_query_buffers(query_w, cw);
 
     // WRITE
-    RETURN_NOT_OK(query_w->submit());
+    throw_if_not_ok(query_w->submit());
   } while (query_r->status() == QueryStatus::INCOMPLETE);
-
-  return Status::Ok();
 }
 
-tuple<std::vector<ByteVec>, std::vector<uint64_t>>
-FragmentConsolidator::create_buffers(
+FragmentConsolidationWorkspace FragmentConsolidator::create_buffers(
     stats::Stats* stats,
-    const ConsolidationConfig& config,
+    const FragmentConsolidationConfig& config,
     const ArraySchema& array_schema,
     std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
   auto timer_se = stats->start_timer("consolidate_create_buffers");
@@ -610,10 +605,11 @@ FragmentConsolidator::create_buffers(
   }
 
   // Create buffers.
-  std::vector<ByteVec> buffers(buffer_num);
-  std::vector<uint64_t> buffer_sizes(buffer_num);
-  auto total_weights =
-      std::accumulate(buffer_weights.begin(), buffer_weights.end(), 0);
+  FragmentConsolidationWorkspace cw{buffer_num};
+  std::vector<ByteVec>& buffers{cw.buffers()};
+  std::vector<uint64_t>& buffer_sizes{cw.sizes()};
+  auto total_weights = std::accumulate(
+      buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
 
   // Allocate space for each buffer.
   uint64_t adjusted_budget = total_budget / total_weights * total_weights;
@@ -624,7 +620,7 @@ FragmentConsolidator::create_buffers(
   }
 
   // Success
-  return {buffers, buffer_sizes};
+  return cw;
 }
 
 Status FragmentConsolidator::create_queries(
@@ -810,10 +806,11 @@ Status FragmentConsolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::set_query_buffers(
-    Query* query,
-    std::vector<ByteVec>* buffers,
-    std::vector<uint64_t>* buffer_sizes) const {
+void FragmentConsolidator::set_query_buffers(
+    Query* query, FragmentConsolidationWorkspace& cw) const {
+  std::vector<ByteVec>* buffers{&cw.buffers()};
+  std::vector<uint64_t>* buffer_sizes{&cw.sizes()};
+
   const auto& array_schema = query->array_schema();
   auto dim_num = array_schema.dim_num();
   auto dense = array_schema.dense();
@@ -892,8 +889,6 @@ Status FragmentConsolidator::set_query_buffers(
         &(*buffer_sizes)[bid]));
     ++bid;
   }
-
-  return Status::Ok();
 }
 
 Status FragmentConsolidator::set_config(const Config& config) {
