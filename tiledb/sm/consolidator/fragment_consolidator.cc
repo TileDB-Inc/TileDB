@@ -58,6 +58,111 @@ class FragmentConsolidatorException : public StatusException {
   }
 };
 
+void FragmentConsolidationWorkspace::resize_buffers(
+    stats::Stats* stats,
+    const FragmentConsolidationConfig& config,
+    const ArraySchema& array_schema,
+    std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
+  auto timer_se = stats->start_timer("resize_buffers");
+
+  // For easy reference
+  auto attribute_num = array_schema.attribute_num();
+  auto& domain{array_schema.domain()};
+  auto dim_num = array_schema.dim_num();
+  auto sparse = !array_schema.dense();
+
+  // Calculate buffer weights. We reserve the maximum possible number of buffers
+  // to make only one allocation. If an attribute is var size and nullable, it
+  // has 3 buffers, dimensions only have 2 as they cannot be nullable. Then one
+  // buffer for timestamps, and 2 for delete metadata.
+  std::vector<size_t> buffer_weights;
+  buffer_weights.reserve(attribute_num * 3 + dim_num * 2 + 3);
+  for (unsigned i = 0; i < attribute_num; ++i) {
+    const auto attr = array_schema.attributes()[i];
+    const auto var_size = attr->var_size();
+
+    // First buffer is either the var size offsets or the fixed size data.
+    buffer_weights.emplace_back(
+        var_size ? constants::cell_var_offset_size : attr->cell_size());
+
+    // For var size attributes, add the data buffer weight.
+    if (var_size) {
+      buffer_weights.emplace_back(avg_cell_sizes[attr->name()]);
+    }
+
+    // For nullable attributes, add the validity buffer weight.
+    if (attr->nullable()) {
+      buffer_weights.emplace_back(constants::cell_validity_size);
+    }
+  }
+
+  // Add weights for sparse dimensions.
+  if (sparse) {
+    for (unsigned i = 0; i < dim_num; ++i) {
+      const auto dim = domain.dimension_ptr(i);
+      const auto var_size = dim->var_size();
+
+      // First buffer is either the var size offsets or the fixed size data.
+      buffer_weights.emplace_back(
+          var_size ? constants::cell_var_offset_size : dim->coord_size());
+
+      // For var size attributes, add the data buffer weight.
+      if (var_size) {
+        buffer_weights.emplace_back(avg_cell_sizes[dim->name()]);
+      }
+    }
+  }
+
+  // Add weights for timestamp attribute.
+  if (config.with_timestamps_ && sparse) {
+    buffer_weights.emplace_back(constants::timestamp_size);
+  }
+
+  // Adding buffers for delete meta, one for timestamp and one for condition
+  // index.
+  if (config.with_delete_meta_) {
+    buffer_weights.emplace_back(constants::timestamp_size);
+    buffer_weights.emplace_back(sizeof(uint64_t));
+  }
+
+  // Use the old buffer size setting to see how much memory we would use.
+  auto buffer_num = buffer_weights.size();
+  uint64_t total_budget = config.total_buffer_size_;
+
+  // If a user set the per-attribute buffer size configuration, we override
+  // the use of the total_budget_size config setting for backwards
+  // compatible behavior.
+  if (config.buffer_size_ != 0) {
+    total_budget = config.buffer_size_ * buffer_num;
+  }
+
+  // Make sure the buffers and sizes vectors are large enough.
+  if (buffer_num > buffers_.size()) {
+    buffers_.resize(buffer_num);
+    sizes_.resize(buffer_num);
+  }
+
+  // Create buffers.
+  auto total_weights = std::accumulate(
+      buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
+
+  // Allocate space for each buffer.
+  uint64_t adjusted_budget = total_budget / total_weights * total_weights;
+
+  if (std::max<uint64_t>(1, adjusted_budget) > backing_buffer_.size()) {
+    backing_buffer_.resize(std::max<uint64_t>(1, adjusted_budget));
+  }
+
+  // Finally allocate spans for the buffers.
+  size_t offset = 0;
+  for (unsigned i = 0; i < buffer_num; ++i) {
+    sizes_[i] = std::max<uint64_t>(
+        1, adjusted_budget * buffer_weights[i] / total_weights);
+    buffers_[i] = span(&(backing_buffer_[offset]), sizes_[i]);
+    offset += sizes_[i];
+  }
+}
+
 /* ****************************** */
 /*          CONSTRUCTOR           */
 /* ****************************** */
@@ -122,6 +227,8 @@ Status FragmentConsolidator::consolidate(
     return st;
   }
 
+  FragmentConsolidationWorkspace cw;
+
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
   do {
@@ -154,7 +261,8 @@ Status FragmentConsolidator::consolidate(
         array_for_writes,
         to_consolidate,
         union_non_empty_domains,
-        &new_fragment_uri);
+        &new_fragment_uri,
+        cw);
     if (!st.ok()) {
       throw_if_not_ok(array_for_reads->close());
       throw_if_not_ok(array_for_writes->close());
@@ -260,6 +368,8 @@ Status FragmentConsolidator::consolidate_fragments(
         "Cannot consolidate; Not all fragments could be found"));
   }
 
+  FragmentConsolidationWorkspace cw;
+
   // Consolidate the selected fragments
   URI new_fragment_uri;
   st = consolidate_internal(
@@ -267,7 +377,8 @@ Status FragmentConsolidator::consolidate_fragments(
       array_for_writes,
       to_consolidate,
       union_non_empty_domains,
-      &new_fragment_uri);
+      &new_fragment_uri,
+      cw);
   if (!st.ok()) {
     throw_if_not_ok(array_for_reads->close());
     throw_if_not_ok(array_for_writes->close());
@@ -376,7 +487,8 @@ Status FragmentConsolidator::consolidate_internal(
     shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
-    URI* new_fragment_uri) {
+    URI* new_fragment_uri,
+    FragmentConsolidationWorkspace& cw) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
@@ -419,8 +531,7 @@ Status FragmentConsolidator::consolidate_internal(
 
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  FragmentConsolidationWorkspace cw{
-      create_buffers(stats_, config_, array_schema, average_var_cell_sizes)};
+  cw.resize_buffers(stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -526,101 +637,6 @@ void FragmentConsolidator::copy_array(
     // WRITE
     throw_if_not_ok(query_w->submit());
   } while (query_r->status() == QueryStatus::INCOMPLETE);
-}
-
-FragmentConsolidationWorkspace FragmentConsolidator::create_buffers(
-    stats::Stats* stats,
-    const FragmentConsolidationConfig& config,
-    const ArraySchema& array_schema,
-    std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
-  auto timer_se = stats->start_timer("consolidate_create_buffers");
-
-  // For easy reference
-  auto attribute_num = array_schema.attribute_num();
-  auto& domain{array_schema.domain()};
-  auto dim_num = array_schema.dim_num();
-  auto sparse = !array_schema.dense();
-
-  // Calculate buffer weights. We reserve the maximum possible number of buffers
-  // to make only one allocation. If an attribute is var size and nullable, it
-  // has 3 buffers, dimensions only have 2 as they cannot be nullable. Then one
-  // buffer for timestamps, and 2 for delete metadata.
-  std::vector<size_t> buffer_weights;
-  buffer_weights.reserve(attribute_num * 3 + dim_num * 2 + 3);
-  for (unsigned i = 0; i < attribute_num; ++i) {
-    const auto attr = array_schema.attributes()[i];
-    const auto var_size = attr->var_size();
-
-    // First buffer is either the var size offsets or the fixed size data.
-    buffer_weights.emplace_back(
-        var_size ? constants::cell_var_offset_size : attr->cell_size());
-
-    // For var size attributes, add the data buffer weight.
-    if (var_size) {
-      buffer_weights.emplace_back(avg_cell_sizes[attr->name()]);
-    }
-
-    // For nullable attributes, add the validity buffer weight.
-    if (attr->nullable()) {
-      buffer_weights.emplace_back(constants::cell_validity_size);
-    }
-  }
-
-  if (sparse) {
-    for (unsigned i = 0; i < dim_num; ++i) {
-      const auto dim = domain.dimension_ptr(i);
-      const auto var_size = dim->var_size();
-
-      // First buffer is either the var size offsets or the fixed size data.
-      buffer_weights.emplace_back(
-          var_size ? constants::cell_var_offset_size : dim->coord_size());
-
-      // For var size attributes, add the data buffer weight.
-      if (var_size) {
-        buffer_weights.emplace_back(avg_cell_sizes[dim->name()]);
-      }
-    }
-  }
-
-  if (config.with_timestamps_ && sparse) {
-    buffer_weights.emplace_back(constants::timestamp_size);
-  }
-
-  // Adding buffers for delete meta, one for timestamp and one for condition
-  // index.
-  if (config.with_delete_meta_) {
-    buffer_weights.emplace_back(constants::timestamp_size);
-    buffer_weights.emplace_back(sizeof(uint64_t));
-  }
-
-  // Use the old buffer size setting to see how much memory we would use.
-  auto buffer_num = buffer_weights.size();
-  uint64_t total_budget = config.total_buffer_size_;
-
-  // If a user set the per-attribute buffer size configuration, we override
-  // the use of the total_budget_size config setting for backwards
-  // compatible behavior.
-  if (config.buffer_size_ != 0) {
-    total_budget = config.buffer_size_ * buffer_num;
-  }
-
-  // Create buffers.
-  FragmentConsolidationWorkspace cw{buffer_num};
-  std::vector<ByteVec>& buffers{cw.buffers()};
-  std::vector<uint64_t>& buffer_sizes{cw.sizes()};
-  auto total_weights = std::accumulate(
-      buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
-
-  // Allocate space for each buffer.
-  uint64_t adjusted_budget = total_budget / total_weights * total_weights;
-  for (unsigned i = 0; i < buffer_num; ++i) {
-    buffer_sizes[i] = std::max<uint64_t>(
-        1, adjusted_budget * buffer_weights[i] / total_weights);
-    buffers[i].resize(buffer_sizes[i]);
-  }
-
-  // Success
-  return cw;
 }
 
 Status FragmentConsolidator::create_queries(
@@ -808,7 +824,7 @@ Status FragmentConsolidator::compute_next_to_consolidate(
 
 void FragmentConsolidator::set_query_buffers(
     Query* query, FragmentConsolidationWorkspace& cw) const {
-  std::vector<ByteVec>* buffers{&cw.buffers()};
+  std::vector<span<std::byte>>* buffers{&cw.buffers()};
   std::vector<uint64_t>* buffer_sizes{&cw.sizes()};
 
   const auto& array_schema = query->array_schema();
