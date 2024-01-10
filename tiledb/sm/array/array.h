@@ -758,6 +758,9 @@ class Array {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /*** Clear internal array state before opening the array. */
+  void clear_state();
+
   /**
    * Opens an array for reads at a timestamp. All the metadata of the
    * fragments created before or at the input timestamp are retrieved.

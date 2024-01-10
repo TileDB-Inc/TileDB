@@ -162,9 +162,7 @@ Status Array::open_without_fragments(
                           "remote arrays are not supported."));
   }
 
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
+  clear_state();
 
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
@@ -269,9 +267,7 @@ Status Array::open(
         Status_ArrayError("Cannot open array; Array already open."));
   }
 
-  metadata_.clear();
-  metadata_loaded_ = false;
-  non_empty_domain_computed_ = false;
+  clear_state();
   query_type_ = query_type;
 
   set_timestamps(
@@ -455,11 +451,6 @@ Status Array::close() {
     return Status::Ok();
   }
 
-  non_empty_domain_.clear();
-  non_empty_domain_computed_ = false;
-  clear_last_max_buffer_sizes();
-  fragment_metadata_.clear();
-
   try {
     set_array_closed();
 
@@ -483,11 +474,7 @@ Status Array::close() {
             array_dir_timestamp_end_,
             this));
       }
-
-      // Storage manager does not own the array schema for remote arrays.
-      array_schema_latest_.reset();
     } else {
-      array_schema_latest_.reset();
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->store_metadata(
@@ -501,10 +488,6 @@ Status Array::close() {
         throw std::logic_error("Error closing array; Unsupported query type.");
       }
     }
-
-    array_schemas_all_.clear();
-    metadata_.clear();
-    metadata_loaded_ = false;
   } catch (std::exception& e) {
     is_opening_or_closing_ = false;
     throw Status_ArrayError(e.what());
@@ -1269,6 +1252,19 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+void Array::clear_state() {
+  array_schema_latest_.reset();
+  array_schemas_all_.clear();
+  fragment_metadata_.clear();
+  metadata_.clear();
+  metadata_loaded_ = false;
+  non_empty_domain_.clear();
+  non_empty_domain_computed_ = false;
+
+  clear_last_max_buffer_sizes();
+}
+
 
 tuple<
     shared_ptr<ArraySchema>,
