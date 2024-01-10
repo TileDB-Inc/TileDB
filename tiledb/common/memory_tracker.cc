@@ -34,6 +34,7 @@
 #include <sstream>
 #include <string>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/exception/exception.h"
 
@@ -121,6 +122,12 @@ void MemoryTracker::leak_memory(MemoryType type, size_t bytes) {
 
 void* MemoryTracker::allocate(MemoryType type, size_t bytes, size_t alignment) {
   std::lock_guard<std::mutex> lg(mutex_);
+
+  std::stringstream ss;
+  ss << "[Allocate " << memory_type_to_str(type) << ": " << bytes << "] ";
+  ss << this->to_string();
+  LOG_ERROR(ss.str());
+
   check_budget(type, bytes);
   auto ret = upstream_->allocate(bytes, alignment);
 
@@ -138,6 +145,12 @@ void* MemoryTracker::allocate(MemoryType type, size_t bytes, size_t alignment) {
 
 void MemoryTracker::deallocate(MemoryType type, void* ptr, size_t bytes, size_t alignment) {
   std::lock_guard<std::mutex> lg(mutex_);
+
+  std::stringstream ss;
+  ss << "[Dellocate " << memory_type_to_str(type) << ": " << bytes << "] ";
+  ss << this->to_string();
+  LOG_ERROR(ss.str());
+
   upstream_->deallocate(ptr, bytes, alignment);
   usage_ -= bytes;
   usage_by_type_[type] -= bytes;
@@ -145,7 +158,8 @@ void MemoryTracker::deallocate(MemoryType type, void* ptr, size_t bytes, size_t 
 
 std::string MemoryTracker::to_string() const {
   std::stringstream ss;
-  ss << "[Budget: " << budget_ << "]";
+  ss << "[This: " << (void*) this << "]";
+  ss << " [Budget: " << budget_ << "]";
   ss << " [Usage: " << usage_ << "]";
   ss << " [Usage HWM: " << usage_hwm_ << "]";
   for (auto& [type, count] : usage_by_type_) {
