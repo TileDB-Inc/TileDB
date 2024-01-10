@@ -39,12 +39,19 @@
  * header inclusion needs to be outside any namespace
  */
 #if __has_include(<memory_resource>)
+namespace tiledb::common {
+static constexpr bool using_memory_resources = true;
+}
 #include <memory_resource>
+#else
+namespace tiledb::common {
+static constexpr bool using_memory_resources = false;
+}
 #endif
 
 namespace tiledb::common {
 
-/*
+/* -------------------------------------------------------
  * Workaround for missing <memory_resource>
  *
  * The C++17 header <memory_resource> is not available on all platforms at of
@@ -59,38 +66,52 @@ namespace tiledb::common {
  *   allocator types and has factories for them.
  * - For systems with <memory_resource>, we are using it.
  * - For systems without <memory_resource>, we are using `std::allocator`.
- *
- * The interim class will be removed once the substitution is available.
+ * -------------------------------------------------------
  */
+
+/**
+ * Template that specifies the common allocator type and how to use it. This
+ * class is for specialization only.
+ *
+ * This is an interim class will be removed once a substitution for
+ * <memory_resource> is available. The template argument `using_PMR` will be
+ * considered always true, which means that there will no effect of the
+ * compile-time polymorphics, and the definitions can all be inlined.
+ *
+ * @tparam using_PMR whether or not we have <memory_resources> available
+ */
+template <bool using_PMR>
+struct IterimAllocators;
+
 #if __has_include(<memory_resource>)
-static constexpr bool using_memory_resources = true;
 #include <memory_resource>
-struct IterimAllocators {
+/**
+ * Selection class when we have <memory_resources>
+ */
+template <>
+struct IterimAllocators<true> {
   /**
    * The first version of the polymorphic allocator is the standard one. This
    * will later be replaced with a subclass that ties in with the resource
    * management system.
    */
-  using pmr_allocator = ::std::pmr::polymorphic_allocator<::std::byte>;
+  using pmr_allocator = std::pmr::polymorphic_allocator<std::byte>;
 };
-#else
-static constexpr bool using_memory_resources = false;
-struct IterimAllocators {
+#endif
+
+/**
+ * Selection class when we don't have <memory_resource> is always compiled.
+ */
+template <>
+struct IterimAllocators<false> {
   /*
    * The hack version is pretty much any allocator that's available, and that's
    * `std::allocator`.
    */
-  using pmr_allocator = ::std::allocator<::std::byte>;
+  using pmr_allocator = std::allocator<std::byte>;
 };
-#endif
 
 namespace resource_manager {
-/*
- * forward declaration for friend of `class Memory`
- */
-template <ResourceManagementPolicy P>
-class ResourceManager;
-
 namespace detail {
 /**
  * The allocator type used for polymorphic allocation.
@@ -112,7 +133,7 @@ namespace detail {
  *
  * This class is using the iterim allocators at present.
  */
-using pmr_allocator = IterimAllocators::pmr_allocator;
+using pmr_allocator = IterimAllocators<tiledb::common::using_memory_resources>::pmr_allocator;
 }
 
 /**
@@ -141,11 +162,17 @@ struct MMPolicyUnbudgeted {
     if constexpr (UsingPMR) {
       return {std::pmr::new_delete_resource()};
     } else {
-      throw 0;
+      return {};
     }
   }
 };
 static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<>>);
+
+/*
+ * forward declaration for friend of `class Memory`
+ */
+template <ResourceManagementPolicy P>
+class ResourceManager;
 
 namespace detail {
 /**
@@ -200,6 +227,18 @@ class MemoryManager : public detail::Memory<typename P::memory_management_policy
 };
 
 }  // namespace resource_manager
+
+namespace detail {
+template <bool using_PMR>
+class vector_definition;
+
+template <>
+class vector_definition<true> {};
+
+template <>
+class vector_definition<false> {};
+
+}
 
 /**
  * Manageable `vector` with mandatory and polymorphic allocator.
