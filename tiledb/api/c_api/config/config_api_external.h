@@ -164,11 +164,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    (since the resulting fragment is dense). <br>
  *    **Default**: 1.0
  * - `sm.consolidation.buffer_size` <br>
- *    Deprecated. Prefer `sm.consolidation.total_buffer_size` instead.
+ *    **Deprecated**
  *    The size (in bytes) of the attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 50,000,000
  * - `sm.consolidation.total_buffer_size` <br>
+ *    **Deprecated**
  *    The size (in bytes) of all attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 2,147,483,648
