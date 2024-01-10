@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/vfs_mode.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filesystem/vfs_file_handle.h"
+#include "vfs_api_experimental.h"
 #include "vfs_api_external.h"
 
 /** Handle `struct` for API VFS objects. */
@@ -144,6 +145,14 @@ struct tiledb_vfs_handle_t
 
   Status touch(const tiledb::sm::URI& uri) const {
     return vfs_.touch(uri);
+  }
+
+  tiledb::sm::LsObjects ls_recursive(
+      const tiledb::sm::URI& parent, tiledb_ls_callback_t, void*) const {
+    return vfs_.ls_recursive(
+        parent,
+        [](const std::string_view&, uint64_t) { return true; },
+        tiledb::sm::accept_all_dirs);
   }
 };
 
