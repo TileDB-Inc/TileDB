@@ -334,7 +334,7 @@ capi_return_t tiledb_vfs_ls_recursive(
       break;
     }
   }
-  if (ret != 0) {
+  if (ret == -1) {
     return TILEDB_ERR;
   }
   return TILEDB_OK;
@@ -574,12 +574,13 @@ CAPI_INTERFACE(
   return api_entry_context<tiledb::api::tiledb_vfs_touch>(ctx, vfs, uri);
 }
 
-capi_return_t tiledb_vfs_ls_recursive(
+CAPI_INTERFACE(
+    vfs_ls_recursive,
     tiledb_ctx_t* ctx,
     tiledb_vfs_t* vfs,
     const char* path,
     tiledb_ls_callback_t callback,
-    void* data) noexcept {
+    void* data) {
   return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
       ctx, vfs, path, callback, data);
 }
