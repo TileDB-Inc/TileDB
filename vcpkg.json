@@ -1,7 +1,7 @@
 {
     "name": "tiledb",
     "version-string": "2.15.0",
-    "builtin-baseline": "f14984af3738e69f197bf0e647a8dca12de92996",
+    "builtin-baseline": "c0b1007fe7fc6ccc902e6c708fd6a670ddad8f9d",
     "dependencies": [
         "bzip2",
         "libmagic",
