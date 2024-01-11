@@ -80,6 +80,8 @@ class OpenedArray {
   /**
    * Construct a new Opened Array object.
    *
+   * @param resources The context resources to use.
+   * @param array_uri The URI of the array.
    * @param encryption_type Encryption type.
    * @param key_bytes Encryption key data.
    * @param key_length Encryption key length.
@@ -88,13 +90,16 @@ class OpenedArray {
    * @param is_remote Is the array remote?
    */
   OpenedArray(
+      ContextResources& resources,
+      const URI& array_uri,
       EncryptionType encryption_type,
       const void* key_bytes,
       uint32_t key_length,
       uint64_t timestamp_start,
       uint64_t timestamp_end_opened_at,
       bool is_remote)
-      : array_schema_latest_(nullptr)
+      : array_dir_(ArrayDirectory(resources, array_uri))
+      , array_schema_latest_(nullptr)
       , metadata_()
       , metadata_loaded_(false)
       , non_empty_domain_computed_(false)
