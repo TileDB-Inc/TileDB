@@ -6,6 +6,7 @@ vcpkg_from_github(
     HEAD_REF master
     PATCHES fix-cmake-target-path.patch
             remove-libcrypto-messages.patch
+            fix-find-library.patch
 )
 
 vcpkg_cmake_configure(

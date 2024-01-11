@@ -16,6 +16,7 @@ vcpkg_from_github(
         007-lock-curl-http-and-tls-settings.patch
         008-disable-werror.patch
         remove-checked-array-iterator.patch
+        fix-config.patch
 )
 
 string(COMPARE EQUAL "${VCPKG_CRT_LINKAGE}" "dynamic" FORCE_SHARED_CRT)

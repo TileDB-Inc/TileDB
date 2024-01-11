@@ -1,0 +1,43 @@
+diff --git a/cmake/modules/FindLibCrypto.cmake b/cmake/modules/FindLibCrypto.cmake
+index 564ba97..1e186af 100644
+--- a/cmake/modules/FindLibCrypto.cmake
++++ b/cmake/modules/FindLibCrypto.cmake
+@@ -32,8 +32,8 @@ else()
+             ${CMAKE_PREFIX_PATH}/include
+             ${CMAKE_INSTALL_PREFIX}/include
+         )
+-    find_library(LibCrypto_SHARED_LIBRARY
+-        NAMES libcrypto.so libcrypto.dylib
++    find_library(LibCrypto_LIBRARY
++        NAMES libcrypto.so libcrypto.dylib libcrypto.a
+         HINTS
+         ${CMAKE_PREFIX_PATH}/build/crypto
+         ${CMAKE_PREFIX_PATH}/build
+@@ -46,27 +46,6 @@ else()
+         ${CMAKE_INSTALL_PREFIX}/lib64
+         ${CMAKE_INSTALL_PREFIX}/lib
+         )
+-    find_library(LibCrypto_STATIC_LIBRARY
+-        NAMES libcrypto.a
+-        HINTS
+-        ${CMAKE_PREFIX_PATH}/build/crypto
+-        ${CMAKE_PREFIX_PATH}/build
+-        ${CMAKE_PREFIX_PATH}
+-        ${CMAKE_PREFIX_PATH}/lib64
+-        ${CMAKE_PREFIX_PATH}/lib
+-        ${CMAKE_INSTALL_PREFIX}/build/crypto
+-        ${CMAKE_INSTALL_PREFIX}/build
+-        ${CMAKE_INSTALL_PREFIX}
+-        ${CMAKE_INSTALL_PREFIX}/lib64
+-        ${CMAKE_INSTALL_PREFIX}/lib
+-        )
+-
+-    if (BUILD_SHARED_LIBS)
+-        set(LibCrypto_LIBRARY ${LibCrypto_SHARED_LIBRARY})
+-    else()
+-        set(LibCrypto_LIBRARY ${LibCrypto_STATIC_LIBRARY})
+-    endif()
+-
+ 
+     include(FindPackageHandleStandardArgs)
+     find_package_handle_standard_args(LibCrypto DEFAULT_MSG
