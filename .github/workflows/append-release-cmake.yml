@@ -24,6 +24,7 @@ jobs:
         id: release_data
         uses: KevinRohn/github-full-release-data@v2.0.4
         with:
+          repository: 'TileDB-Inc/TileDB'
           asset-file: '*.zip,*.tag.gz'
           version: ${{ inputs.ref }}
 
