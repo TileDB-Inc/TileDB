@@ -1,0 +1,16 @@
+diff --git a/aws-cpp-sdk-core/CMakeLists.txt b/aws-cpp-sdk-core/CMakeLists.txt
+index fa9f99326b..3cb60a9171 100644
+--- a/aws-cpp-sdk-core/CMakeLists.txt
++++ b/aws-cpp-sdk-core/CMakeLists.txt
+@@ -89,9 +89,10 @@ include(CheckCXXSourceRuns)
+ 
+ # http client implementations
+ if(ENABLE_CURL_CLIENT)
++    find_package(ZLIB REQUIRED)
+     file(GLOB HTTP_CURL_CLIENT_HEADERS "include/aws/core/http/curl/*.h")
+     file(GLOB HTTP_CURL_CLIENT_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/source/http/curl/*.cpp")
+-    set(CMAKE_REQUIRED_LIBRARIES ${CURL_LIBRARIES})
++    set(CMAKE_REQUIRED_LIBRARIES ${CURL_LIBRARIES} ZLIB::ZLIB)
+     check_c_source_runs("
+     #include <curl/curl.h>
+     int main() {

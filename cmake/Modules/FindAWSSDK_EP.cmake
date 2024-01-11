@@ -89,10 +89,10 @@ if (NOT AWSSDK_FOUND)
     message(STATUS "Adding AWSSDK as an external project")
 
     set(DEPENDS)
-    if (NOT WIN32 AND TARGET ep_curl)
+    if (TARGET ep_curl)
       list(APPEND DEPENDS ep_curl)
     endif()
-    if (NOT WIN32 AND TARGET ep_openssl)
+    if (TARGET ep_openssl)
       list(APPEND DEPENDS ep_openssl)
     endif()
     if (TARGET ep_zlib)
@@ -121,6 +121,16 @@ if (NOT AWSSDK_FOUND)
       set(CMAKE_GENERATOR_PLATFORM "")
     endif()
 
+    if (WIN32)
+      find_package(Git REQUIRED)
+      set(CONDITIONAL_PATCH cd ${CMAKE_SOURCE_DIR} && ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
+                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch &&
+                                                      ${GIT_EXECUTABLE} apply --ignore-whitespace -p1 --unsafe-paths --verbose --directory=${TILEDB_EP_SOURCE_DIR}/ep_awssdk < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/disable-werror.patch)
+    else()
+      set(CONDITIONAL_PATCH patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsccommon.patch &&
+                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/awsconfig_cmake_3.22.patch &&
+                            patch -N -p1 < ${TILEDB_CMAKE_INPUTS_DIR}/patches/ep_awssdk/disable-werror.patch)
+    endif()
     if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU" OR NOT WIN32)
       set(CONDITIONAL_CXX_FLAGS "-DCMAKE_CXX_FLAGS=-Wno-nonnull -Wno-error=deprecated-declarations")
     endif()
@@ -129,13 +139,13 @@ if (NOT AWSSDK_FOUND)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_awssdk.zip
-      # We download with git clone because the repository has submodules
-      GIT_REPOSITORY "https://github.com/aws/aws-sdk-cpp.git"
-      GIT_TAG "1.11.160"
+      URL "https://github.com/aws/aws-sdk-cpp/archive/1.8.84.zip"
+      URL_HASH SHA1=e32a53a01c75ca7fdfe9feed9c5bbcedd98708e3
+      PATCH_COMMAND
+        ${CONDITIONAL_PATCH}
       CMAKE_ARGS
         -DCMAKE_BUILD_TYPE=${AWS_CMAKE_BUILD_TYPE}
         -DENABLE_TESTING=OFF
-        -DAWS_SDK_WARNINGS_ARE_ERRORS=OFF
         -DBUILD_ONLY=s3\\$<SEMICOLON>core\\$<SEMICOLON>identity-management\\$<SEMICOLON>sts
         -DBUILD_SHARED_LIBS=OFF
         -DCMAKE_INSTALL_BINDIR=lib
