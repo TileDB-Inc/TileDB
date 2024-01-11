@@ -1,6 +1,6 @@
-diff --git "a/src/aws-cpp-sdk-core/include/aws/core/utils/Array.h" "b/src/aws-cpp-sdk-core/include/aws/core/utils/Array.h"
---- "a/src/aws-cpp-sdk-core/include/aws/core/utils/Array.h"
-+++ "b/src/aws-cpp-sdk-core/include/aws/core/utils/Array.h"	
+diff --git "a/aws-cpp-sdk-core/include/aws/core/utils/Array.h" "b/aws-cpp-sdk-core/include/aws/core/utils/Array.h"
+--- "a/aws-cpp-sdk-core/include/aws/core/utils/Array.h"
++++ "b/aws-cpp-sdk-core/include/aws/core/utils/Array.h"	
 @@ -54,11 +54,7 @@ namespace Aws
                  {
                      m_data.reset(Aws::NewArray<T>(m_size, ARRAY_ALLOCATION_TAG));
