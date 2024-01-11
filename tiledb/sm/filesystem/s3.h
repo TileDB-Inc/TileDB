@@ -886,7 +886,7 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable shared_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
   mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
