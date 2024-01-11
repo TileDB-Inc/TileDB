@@ -1,0 +1,33 @@
+name: Append Release CMake
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Ref to be used as release'
+        default: 'latest'
+        required: true
+        type: string
+  workflow_call:
+    inputs:
+      ref:
+        description: 'Ref to be used as release'
+        default: 'latest'
+        required: true
+        type: string
+
+jobs:
+  fetch_release_files:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Github release data
+        id: release_data
+        uses: KevinRohn/github-full-release-data@v2.0.4
+        with:
+          asset-file: '*.zip,*.tag.gz'
+          version: ${{ inputs.ref }}
+
+      - name: Print release data
+        run: |
+          echo '${{ fromJSON(steps.release_data.outputs.body) }}'
+          ls -lah
