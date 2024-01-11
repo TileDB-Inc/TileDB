@@ -136,6 +136,8 @@ Status Array::open_without_fragments(
 
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
+      resources_,
+      array_uri_,
       encryption_type,
       encryption_key,
       key_length,
@@ -306,6 +308,8 @@ Status Array::open(
 
     opened_array_ = make_shared<OpenedArray>(
         HERE(),
+        resources_,
+        array_uri_,
         encryption_type,
         encryption_key,
         key_length,
@@ -818,6 +822,8 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   auto key = opened_array_->encryption_key();
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
+      resources_,
+      array_uri_,
       key->encryption_type(),
       key->key().data(),
       key->key().size(),
@@ -1605,6 +1611,8 @@ void Array::set_serialized_array_open() {
 
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
+      resources_,
+      array_uri_,
       EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
