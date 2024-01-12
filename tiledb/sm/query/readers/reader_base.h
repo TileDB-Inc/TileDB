@@ -165,17 +165,7 @@ class ReaderBase : public StrategyBase {
 
   /** Constructor. */
   ReaderBase(
-      stats::Stats* stats,
-      shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates);
+      stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params);
 
   /** Destructor. */
   ~ReaderBase() = default;

@@ -70,31 +70,12 @@ class OrderedDimLabelReaderStatusException : public StatusException {
 OrderedDimLabelReader::OrderedDimLabelReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool increasing_labels,
-    bool skip_checks_serialization)
+    StrategyParams& params,
+    bool increasing_labels)
     : ReaderBase(
-          stats,
-          logger->clone("OrderedDimLabelReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates)
+          stats, logger->clone("OrderedDimLabelReader", ++logger_id_), params)
     , ranges_(
-          subarray.get_attribute_ranges(array_schema_.attributes()[0]->name()))
+          subarray_.get_attribute_ranges(array_schema_.attributes()[0]->name()))
     , label_name_(array_schema_.attributes()[0]->name())
     , label_type_(array_schema_.attributes()[0]->type())
     , label_var_size_(array_schema_.attributes()[0]->var_size())
@@ -107,17 +88,17 @@ OrderedDimLabelReader::OrderedDimLabelReader(
         "Cannot initialize ordered dim label reader; Storage manager not set");
   }
 
-  if (!default_channel_aggregates.empty()) {
+  if (!params.default_channel_aggregates().empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && buffers_.size() != 1) {
+  if (!params.skip_checks_serialization() && buffers_.size() != 1) {
     throw OrderedDimLabelReaderStatusException(
         "Cannot initialize ordered dim label reader with " +
         std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");

@@ -72,46 +72,28 @@ class ReaderBaseStatusException : public StatusException {
 /* ****************************** */
 
 ReaderBase::ReaderBase(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates)
-    : StrategyBase(
-          stats,
-          logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout)
-    , condition_(condition)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
+    : StrategyBase(stats, logger, params)
+    , condition_(params.condition())
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
     , initial_data_loaded_(false)
-    , max_batch_size_(config.get<uint64_t>("vfs.max_batch_size").value())
-    , min_batch_gap_(config.get<uint64_t>("vfs.min_batch_gap").value())
-    , min_batch_size_(config.get<uint64_t>("vfs.min_batch_size").value())
-    , aggregate_buffers_(aggregate_buffers) {
-  if (array != nullptr)
-    fragment_metadata_ = array->fragment_metadata();
+    , max_batch_size_(config_.get<uint64_t>("vfs.max_batch_size").value())
+    , min_batch_gap_(config_.get<uint64_t>("vfs.min_batch_gap").value())
+    , min_batch_size_(config_.get<uint64_t>("vfs.min_batch_size").value())
+    , aggregate_buffers_(params.aggregate_buffers()) {
+  if (params.array() != nullptr)
+    fragment_metadata_ = params.array()->fragment_metadata();
   timestamps_needed_for_deletes_and_updates_.resize(fragment_metadata_.size());
 
-  if (layout_ == Layout::GLOBAL_ORDER && subarray.range_num() > 1) {
+  if (layout_ == Layout::GLOBAL_ORDER && subarray_.range_num() > 1) {
     throw ReaderBaseStatusException(
         "Cannot initialize reader; Multi-range reads are not supported on a "
         "global order query.");
   }
 
   // Validate the aggregates and store the requested aggregates by field name.
-  for (auto& aggregate : default_channel_aggregates) {
+  for (auto& aggregate : params.default_channel_aggregates()) {
     aggregate.second->validate_output_buffer(
         aggregate.first, aggregate_buffers_);
     aggregates_[aggregate.second->field_name()].emplace_back(aggregate.second);

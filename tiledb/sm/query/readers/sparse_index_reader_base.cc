@@ -67,33 +67,13 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     std::string reader_string,
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool skip_checks_serialization,
+    StrategyParams& params,
     bool include_coords)
-    : ReaderBase(
-          stats,
-          logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates)
-    , tmp_read_state_(array->fragment_metadata().size())
-    , memory_budget_(config, reader_string)
+    : ReaderBase(stats, logger, params)
+    , tmp_read_state_(array_->fragment_metadata().size())
+    , memory_budget_(config_, reader_string)
     , include_coords_(include_coords)
-    , array_memory_tracker_(array->memory_tracker())
+    , array_memory_tracker_(params.array()->memory_tracker())
     , memory_used_for_coords_total_(0)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
@@ -104,7 +84,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
         "Cannot initialize reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty() &&
+  if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {
     throw SparseIndexReaderBaseStatusException(
         "Cannot initialize reader; Buffers not set");
