@@ -160,6 +160,13 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
       tiledb_array_schema_add_attribute(ctx, array_schema, c));
   throw_if_setup_failed(
       tiledb_array_schema_add_attribute(ctx, array_schema, d));
+  throw_if_setup_failed(tiledb_array_schema_add_dimension_label(
+      ctx,
+      array_schema,
+      0,
+      "d1_label",
+      TILEDB_INCREASING_DATA,
+      TILEDB_STRING_ASCII));
 
   // check array schema
   throw_if_setup_failed(tiledb_array_schema_check(ctx, array_schema));
@@ -360,6 +367,16 @@ TEST_CASE_METHOD(
   CHECK(origin == TILEDB_AGGREGATE_FIELD);
   REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
   CHECK(cell_val_num == 1);
+  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+
+  // Check field api works on dimension label field
+  REQUIRE(tiledb_query_get_field(ctx, query, "d1_label", &field) == TILEDB_OK);
+  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_STRING_ASCII);
+  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+  CHECK(origin == TILEDB_DIMENSION_LABEL_FIELD);
+  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+  CHECK(cell_val_num == TILEDB_VAR_NUM);
   CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
 
   // Clean up
