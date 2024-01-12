@@ -2130,8 +2130,10 @@ TEST_CASE(
   query.submit_async();
   array.close();
 
+  uint64_t i = 0;
   while (query.query_status() != Query::Status::COMPLETE) {
+    i++;
   }
 
-  std::cout << "done";
+  CHECK(i > 0);
 }

@@ -1158,14 +1158,15 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
   // Keep the current opened array alive for the duration of this call.
   auto opened_array = opened_array_;
-  auto fragment_metadata = opened_array->fragment_metadata();
+  auto& fragment_metadata = opened_array->fragment_metadata();
+  auto& array_schema_latest = opened_array->array_schema_latest();
 
   // Find the names of the var-sized dimensions or attributes.
   std::vector<std::string> var_names;
 
   // Start with dimensions.
-  for (unsigned d = 0; d < array_schema_latest().dim_num(); d++) {
-    auto dim = array_schema_latest().dimension_ptr(d);
+  for (unsigned d = 0; d < array_schema_latest.dim_num(); d++) {
+    auto dim = array_schema_latest.dimension_ptr(d);
     if (dim->var_size()) {
       var_names.emplace_back(dim->name());
       ret.emplace(dim->name(), 0);
@@ -1173,7 +1174,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
   }
 
   // Now attributes.
-  for (auto& attr : array_schema_latest().attributes()) {
+  for (auto& attr : array_schema_latest.attributes()) {
     if (attr->var_size()) {
       var_names.emplace_back(attr->name());
       ret.emplace(attr->name(), 0);
@@ -1387,7 +1388,8 @@ Status Array::compute_max_buffer_sizes(
 
   // Keep the current opened array alive for the duration of this call.
   auto opened_array = opened_array_;
-  auto fragment_metadata = opened_array->fragment_metadata();
+  auto& fragment_metadata = opened_array->fragment_metadata();
+  auto& array_schema_latest = opened_array->array_schema_latest();
 
   // Return if there are no metadata
   if (fragment_metadata.empty()) {
@@ -1402,48 +1404,47 @@ Status Array::compute_max_buffer_sizes(
   }
 
   // Prepare an NDRange for the subarray
-  auto dim_num = array_schema_latest().dim_num();
+  auto dim_num = array_schema_latest.dim_num();
   NDRange sub(dim_num);
   auto sub_ptr = (const unsigned char*)subarray;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {
-    auto r_size{2 * array_schema_latest().dimension_ptr(d)->coord_size()};
+    auto r_size{2 * array_schema_latest.dimension_ptr(d)->coord_size()};
     sub[d] = Range(&sub_ptr[offset], r_size);
     offset += r_size;
   }
 
   // Rectify bound for dense arrays
-  if (array_schema_latest().dense()) {
-    auto cell_num = array_schema_latest().domain().cell_num(sub);
+  if (array_schema_latest.dense()) {
+    auto cell_num = array_schema_latest.domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
-        if (array_schema_latest().var_size(it.first)) {
+        if (array_schema_latest.var_size(it.first)) {
           it.second.first = cell_num * constants::cell_var_offset_size;
           it.second.second +=
-              cell_num * datatype_size(array_schema_latest().type(it.first));
+              cell_num * datatype_size(array_schema_latest.type(it.first));
         } else {
-          it.second.first =
-              cell_num * array_schema_latest().cell_size(it.first);
+          it.second.first = cell_num * array_schema_latest.cell_size(it.first);
         }
       }
     }
   }
 
   // Rectify bound for sparse arrays with integer domain, without duplicates
-  if (!array_schema_latest().dense() && !array_schema_latest().allows_dups() &&
-      array_schema_latest().domain().all_dims_int()) {
-    auto cell_num = array_schema_latest().domain().cell_num(sub);
+  if (!array_schema_latest.dense() && !array_schema_latest.allows_dups() &&
+      array_schema_latest.domain().all_dims_int()) {
+    auto cell_num = array_schema_latest.domain().cell_num(sub);
     // `cell_num` becomes 0 when `subarray` is huge, leading to a
     // `uint64_t` overflow.
     if (cell_num != 0) {
       for (auto& it : *buffer_sizes) {
-        if (!array_schema_latest().var_size(it.first)) {
+        if (!array_schema_latest.var_size(it.first)) {
           // Check for overflow
           uint64_t new_size =
-              cell_num * array_schema_latest().cell_size(it.first);
-          if (new_size / array_schema_latest().cell_size((it.first)) !=
+              cell_num * array_schema_latest.cell_size(it.first);
+          if (new_size / array_schema_latest.cell_size((it.first)) !=
               cell_num) {
             continue;
           }
@@ -1555,13 +1556,15 @@ const ArrayDirectory& Array::load_array_directory() {
 Status Array::compute_non_empty_domain() {
   // Keep the current opened array alive for the duration of this call.
   auto opened_array = opened_array_;
-  auto fragment_metadata = opened_array->fragment_metadata();
+  auto& fragment_metadata = opened_array->fragment_metadata();
+  auto& array_schema_latest = opened_array->array_schema_latest();
+  auto& non_empty_domain = opened_array->non_empty_domain();
 
   if (remote_) {
     RETURN_NOT_OK(load_remote_non_empty_domain());
   } else if (!fragment_metadata.empty()) {
     const auto& frag0_dom = fragment_metadata[0]->non_empty_domain();
-    loaded_non_empty_domain().assign(frag0_dom.begin(), frag0_dom.end());
+    non_empty_domain.assign(frag0_dom.begin(), frag0_dom.end());
 
     auto metadata_num = fragment_metadata.size();
     for (size_t j = 1; j < metadata_num; ++j) {
@@ -1572,8 +1575,8 @@ Status Array::compute_non_empty_domain() {
       // corrupt for these cases we want to check to prevent any segfaults
       // later.
       if (!meta_dom.empty()) {
-        array_schema_latest().domain().expand_ndrange(
-            meta_dom, &loaded_non_empty_domain());
+        array_schema_latest.domain().expand_ndrange(
+            meta_dom, &non_empty_domain);
       } else {
         // If the fragment's non-empty domain is indeed empty, lets log it so
         // the user gets a message warning that this fragment might be corrupt
@@ -1584,7 +1587,7 @@ Status Array::compute_non_empty_domain() {
       }
     }
   }
-  set_non_empty_domain_computed(true);
+  opened_array->non_empty_domain_computed() = true;
   return Status::Ok();
 }
 
