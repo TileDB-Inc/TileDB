@@ -84,6 +84,7 @@ Query::Query(
     optional<std::string> fragment_name)
     : array_shared_(array)
     , array_(array_shared_.get())
+    , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
     , type_(array_->get_query_type())
     , layout_(
@@ -1791,7 +1792,7 @@ bool Query::is_aggregate(std::string output_field_name) const {
 Status Query::create_strategy(bool skip_checks_serialization) {
   auto params = StrategyParams(
       storage_manager_,
-      array_,
+      opened_array_,
       config_,
       buffers_,
       aggregate_buffers_,
@@ -1799,7 +1800,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       layout_,
       condition_,
       default_channel_aggregates_,
-      skip_checks_serialization);
+      skip_checks_serialization,
+      array_->memory_tracker());
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {

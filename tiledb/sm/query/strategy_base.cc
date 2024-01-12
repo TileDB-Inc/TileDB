@@ -49,7 +49,7 @@ StrategyBase::StrategyBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : stats_(stats)
     , logger_(logger)
-    , array_(params.array()->opened_array())
+    , array_(params.array())
     , array_schema_(params.array()->array_schema_latest())
     , config_(params.config())
     , buffers_(params.buffers())
