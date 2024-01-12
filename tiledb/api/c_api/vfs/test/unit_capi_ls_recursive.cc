@@ -46,21 +46,11 @@ TEST_CASE("C API: ls_recursive callback", "[vfs][ls-recursive]") {
   }
   auto expected = s3_test.expected_results();
 
-  tiledb_error_t* err = nullptr;
-  tiledb_config_t* config;
-  tiledb_config_alloc(&config, &err);
-  if constexpr (!tiledb::test::aws_s3_config) {
-    tiledb_config_set(
-        config, "vfs.s3.endpoint_override", "localhost:9999", &err);
-    tiledb_config_set(config, "vfs.s3.scheme", "https", &err);
-    tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "false", &err);
-    tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &err);
-  }
+  vfs_config vfs_config;
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(config, &ctx);
-
+  tiledb_ctx_alloc(vfs_config.config, &ctx);
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, config, &vfs);
+  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
 
   LsObjects data;
   tiledb_ls_callback_t cb = [](const char* path,
@@ -104,21 +94,11 @@ TEST_CASE("C API: ls_recursive throwing callback", "[vfs][ls-recursive]") {
   }
   auto expected = s3_test.expected_results();
 
-  tiledb_error_t* err = nullptr;
-  tiledb_config_t* config;
-  tiledb_config_alloc(&config, &err);
-  if constexpr (!tiledb::test::aws_s3_config) {
-    tiledb_config_set(
-        config, "vfs.s3.endpoint_override", "localhost:9999", &err);
-    tiledb_config_set(config, "vfs.s3.scheme", "https", &err);
-    tiledb_config_set(config, "vfs.s3.use_virtual_addressing", "false", &err);
-    tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &err);
-  }
+  vfs_config vfs_config;
   tiledb_ctx_t* ctx;
-  tiledb_ctx_alloc(config, &ctx);
-
+  tiledb_ctx_alloc(vfs_config.config, &ctx);
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, config, &vfs);
+  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
 
   LsObjects data;
   tiledb_ls_callback_t cb =

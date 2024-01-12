@@ -59,6 +59,12 @@ class LsScanException : public StatusException {
   }
 };
 
+/**
+ * Exception thrown when the user callback signals to stop traversal. This will
+ * not result in an error and is only used to stop traversal early.
+ *
+ * @sa VFS::ls_recursive
+ */
 class LsStopTraversal : public LsScanException {
  public:
   explicit LsStopTraversal()
@@ -263,6 +269,9 @@ class LsScanner {
  */
 class CallbackWrapper {
  public:
+  /** Default constructor is deleted */
+  CallbackWrapper() = delete;
+
   /** Constructor */
   CallbackWrapper(LsCallback cb, void* data)
       : cb_(cb)
