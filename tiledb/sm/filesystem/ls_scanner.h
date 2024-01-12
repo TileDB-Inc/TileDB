@@ -283,7 +283,7 @@ class CallbackWrapper {
    * @param size The size of the object in bytes.
    * @return True if the object should be included, False otherwise.
    */
-  bool operator()(const std::string_view& path, const uint64_t& size) const {
+  bool operator()(std::string_view path, const uint64_t& size) const {
     int ret = cb_(path.data(), path.size(), size, data_);
     if (ret == 0) {
       // Throw an exception to stop traversal, which will be caught by the C++
