@@ -1,3 +1,9 @@
+# TileDB v2.19.1 Release Notes
+
+## Defects removed
+
+* Fix HTTP requests for AWS assume role not honoring config options. [#4616](https://github.com/TileDB-Inc/TileDB/pull/4616)
+
 # TileDB v2.19.0 Release Notes
 
 ## Announcements
