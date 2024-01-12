@@ -59,6 +59,19 @@ class LsScanException : public StatusException {
   }
 };
 
+/**
+ * Exception thrown when the user callback signals to stop traversal. This will
+ * not result in an error and is only used to stop traversal early.
+ *
+ * @sa VFS::ls_recursive
+ */
+class LsStopTraversal : public LsScanException {
+ public:
+  explicit LsStopTraversal()
+      : LsScanException("Callback signaled to stop traversal") {
+  }
+};
+
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
@@ -66,6 +79,18 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
 [[maybe_unused]] static bool accept_all_dirs(const std::string_view&) {
   return true;
 }
+
+/**
+ * Typedef for ls C API callback as std::function for passing to C++
+ *
+ * @param path The path of a visited object for the relative filesystem.
+ * @param path_len The length of the path.
+ * @param object_size The size of the object at the current path.
+ * @param data Data passed to the callback used to store collected results.
+ * @return 1 if the callback should continue to the next object, 0 to stop
+ *      traversal, or -1 if an error occurred.
+ */
+typedef std::function<int32_t(const char*, size_t, uint64_t, void*)> LsCallback;
 
 /** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
@@ -237,6 +262,53 @@ class LsScanner {
   const D dir_filter_;
   /** Whether or not to recursively scan the prefix. */
   const bool is_recursive_;
+};
+
+/**
+ * Wrapper for the C API callback function to be passed to the C++ API.
+ */
+class CallbackWrapper {
+ public:
+  /** Default constructor is deleted */
+  CallbackWrapper() = delete;
+
+  /** Constructor */
+  CallbackWrapper(LsCallback cb, void* data)
+      : cb_(cb)
+      , data_(data) {
+    if (cb_ == nullptr) {
+      throw LsScanException("ls_recursive callback function cannot be null");
+    } else if (data_ == nullptr) {
+      throw LsScanException("ls_recursive data cannot be null");
+    }
+  }
+
+  /**
+   * Operator to wrap the FilePredicate used in the C++ API.
+   * This will throw a LsStopTraversal exception if the user callback returns 0,
+   * and will throw a LsScanException if the user callback returns -1.
+   *
+   * @param path The path of the object.
+   * @param size The size of the object in bytes.
+   * @return True if the object should be included, False otherwise.
+   */
+  bool operator()(std::string_view path, const uint64_t& size) const {
+    int ret = cb_(path.data(), path.size(), size, data_);
+    if (ret == 0) {
+      // Throw an exception to stop traversal, which will be caught by the C++
+      // internal ls_recursive implementation to stop traversal.
+      throw LsStopTraversal();
+    } else if (ret == -1) {
+      throw LsScanException("Error in user callback");
+    }
+    return ret;
+  }
+
+ private:
+  /** CAPI callback as function object */
+  LsCallback cb_;
+  /** User data for callback */
+  void* data_;
 };
 
 }  // namespace tiledb::sm

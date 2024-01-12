@@ -71,12 +71,9 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
       make_shared<tiledb::sm::ArraySchema>(HERE());
   CHECK(sp_as->set_domain(sp_dom).ok());
   CHECK(sp_as->add_attribute(sp_attrib).ok());
-  // sp_as->add_dimension();
   tiledb::sm::Config cfg;
   tiledb::sm::Context ctx(cfg);
   tiledb::sm::Array a(tiledb::sm::URI{"mem://junk"}, ctx.storage_manager());
-  a.set_array_schema_latest(sp_as);
-  // a.create();
   tiledb::sm::EncryptionKey ek;
   CHECK(ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
   CHECK(ctx.storage_manager()->array_create(a.array_uri(), sp_as, ek).ok());

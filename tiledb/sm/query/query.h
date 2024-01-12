@@ -784,9 +784,14 @@ class Query {
    * Ensures that the Array object exists as long as the Query object exists. */
   shared_ptr<Array> array_shared_;
 
-  /** The array the query is associated with.
-   * Cached copy of array_shared_.get(). */
+  /**
+   * The array the query is associated with.
+   * Cached copy of array_shared_.get().
+   */
   Array* array_;
+
+  /** Keeps a copy of the opened array object at construction. */
+  shared_ptr<OpenedArray> opened_array_;
 
   /** The array schema. */
   shared_ptr<const ArraySchema> array_schema_;

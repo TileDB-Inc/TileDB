@@ -773,12 +773,8 @@ Status StorageManagerCanonical::array_get_non_empty_domain(
     return logger_->status(Status_StorageManagerError(
         "Cannot get non-empty domain; Array not opened for reads"));
 
-  auto&& [st, domain_opt] = array->non_empty_domain();
-  RETURN_NOT_OK(st);
-  if (domain_opt.has_value()) {
-    *domain = domain_opt.value();
-    *is_empty = domain->empty();
-  }
+  *domain = array->non_empty_domain();
+  *is_empty = domain->empty();
 
   return Status::Ok();
 }
@@ -1259,8 +1255,10 @@ tuple<
     Status,
     optional<std::vector<QueryCondition>>,
     optional<std::vector<std::vector<UpdateValue>>>>
-StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
-  auto& locations = array.array_directory().delete_and_update_tiles_location();
+StorageManagerCanonical::load_delete_and_update_conditions(
+    const OpenedArray& opened_array) {
+  auto& locations =
+      opened_array.array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
 
@@ -1270,7 +1268,10 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
 
     // Read the condition from storage.
     auto&& tile = GenericTileIO::load(
-        resources_, uri, locations[i].offset(), *array.encryption_key());
+        resources_,
+        uri,
+        locations[i].offset(),
+        *(opened_array.encryption_key()));
 
     if (tiledb::sm::utils::parse::ends_with(
             locations[i].condition_marker(),
@@ -1290,7 +1291,7 @@ StorageManagerCanonical::load_delete_and_update_conditions(const Array& array) {
       throw Status_StorageManagerError("Unknown condition marker extension");
     }
 
-    throw_if_not_ok(conditions[i].check(array.array_schema_latest()));
+    throw_if_not_ok(conditions[i].check(opened_array.array_schema_latest()));
     return Status::Ok();
   });
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);

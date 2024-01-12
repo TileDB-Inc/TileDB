@@ -165,7 +165,7 @@ TEST_CASE_METHOD(
   DefaultChannelAggregates default_channel_aggregates;
   auto params = StrategyParams(
       context.storage_manager(),
-      &array,
+      array.opened_array(),
       config,
       buffers,
       aggregate_buffers,
@@ -173,7 +173,8 @@ TEST_CASE_METHOD(
       Layout::ROW_MAJOR,
       condition,
       default_channel_aggregates,
-      false);
+      false,
+      array.memory_tracker());
   Reader reader(&g_helper_stats, g_helper_logger(), params);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);

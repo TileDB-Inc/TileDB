@@ -155,12 +155,12 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
     REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 
     root_pairs.emplace_back(
-        URI("s3://" + random_label("vfs-") + "/"), std::move(config));
+        URI("s3://vfs-" + random_label() + "/"), std::move(config));
   }
   if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
     Config config;
     root_pairs.emplace_back(
-        URI("hdfs:///" + random_label("vfs-") + "/"), std::move(config));
+        URI("hdfs:///vfs-" + random_label() + "/"), std::move(config));
   }
   if constexpr (tiledb::sm::filesystem::azure_enabled) {
     Config config;
@@ -180,17 +180,17 @@ TEST_CASE("VFS: URI semantics", "[vfs][uri]") {
                 .ok());
 
     root_pairs.emplace_back(
-        URI("azure://" + random_label("vfs-") + "/"), std::move(config));
+        URI("azure://vfs-" + random_label() + "/"), std::move(config));
   }
 
   Config config;
 #ifdef _WIN32
   root_pairs.emplace_back(
-      URI(tiledb::sm::Win::current_dir() + "\\" + random_label("vfs-") + "\\"),
+      URI(tiledb::sm::Win::current_dir() + "\\vfs-" + random_label() + "\\"),
       std::move(config));
 #else
   root_pairs.emplace_back(
-      URI(Posix::current_dir() + "/" + random_label("vfs-") + "/"),
+      URI(Posix::current_dir() + "/vfs-" + random_label() + "/"),
       std::move(config));
 #endif
 
