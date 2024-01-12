@@ -1490,6 +1490,54 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 
+TEST_CASE_METHOD(GroupFx, "C API: Group, dump", "[capi][group][dump]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+
+  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+
+  tiledb::sm::URI group2_uri(temp_dir + "group2");
+  REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group1;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group1);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group1, 1);
+  rc = tiledb_group_open(ctx_, group1, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_add_member(ctx_, group1, group2_uri.c_str(), 0, "group2");
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_group_close(ctx_, group1);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Delete the subgroup to test that recursively dumping its parent will not
+  // fail.
+  rc = tiledb_object_remove(ctx_, group2_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  rc = tiledb_group_open(ctx_, group1, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  char* group_dump;
+  rc = tiledb_group_dump_str(ctx_, group1, &group_dump, 1);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(group_dump != nullptr);
+  REQUIRE(
+      std::string(group_dump) ==
+      "group1 GROUP\n|-- group2 GROUP (does not exist)\n");
+  free(group_dump);
+
+  rc = tiledb_group_close(ctx_, group1);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_group_free(&group1);
+  remove_temp_dir(temp_dir);
+}
+
 #ifdef TILEDB_SERIALIZATION
 TEST_CASE_METHOD(
     GroupFx,
