@@ -826,7 +826,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
       array_uri_,
       key->encryption_type(),
       key->key().data(),
-      key->key().size(),
+      static_cast<uint32_t>(key->key().size()),
       this->timestamp_start(),
       timestamp_end_opened_at(),
       is_remote());
