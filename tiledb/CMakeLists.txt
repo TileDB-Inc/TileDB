@@ -597,14 +597,6 @@ if (TILEDB_HDFS)
   endif()
 endif()
 
-# Sanitizer linker flags
-if (TILEDB_SANITIZER)
-  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-    INTERFACE
-      -fsanitize=${TILEDB_SANITIZER}
-  )
-endif()
-
 # Coverage linker flags
 # TODO: Use $<CONFIG:Coverage> after we remove the superbuild.
 if (CMAKE_BUILD_TYPE MATCHES "Coverage")
