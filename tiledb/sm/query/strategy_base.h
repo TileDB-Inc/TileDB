@@ -43,16 +43,17 @@
 namespace tiledb {
 namespace sm {
 
-class Array;
+class OpenedArray;
 class ArraySchema;
 class IAggregator;
 enum class Layout : uint8_t;
+class MemoryTracker;
 class Subarray;
 class QueryBuffer;
 class QueryCondition;
 
-typedef std::unordered_map<std::string, shared_ptr<IAggregator>>
-    DefaultChannelAggregates;
+using DefaultChannelAggregates =
+    std::unordered_map<std::string, shared_ptr<IAggregator>>;
 
 /**
  * Class used to pass in common parameters to strategies. This will make it
@@ -66,7 +67,7 @@ class StrategyParams {
 
   StrategyParams(
       StorageManager* storage_manager,
-      Array* array,
+      shared_ptr<OpenedArray> array,
       Config& config,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
@@ -74,7 +75,8 @@ class StrategyParams {
       Layout layout,
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization)
+      bool skip_checks_serialization,
+      MemoryTracker* memory_tracker)
       : storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
@@ -84,7 +86,8 @@ class StrategyParams {
       , layout_(layout)
       , condition_(condition)
       , default_channel_aggregates_(default_channel_aggregates)
-      , skip_checks_serialization_(skip_checks_serialization) {
+      , skip_checks_serialization_(skip_checks_serialization)
+      , memory_tracker_(memory_tracker) {
   }
 
   /* ********************************* */
@@ -97,7 +100,7 @@ class StrategyParams {
   };
 
   /** Return the array. */
-  inline Array* array() {
+  inline shared_ptr<OpenedArray> array() {
     return array_;
   };
 
@@ -141,6 +144,10 @@ class StrategyParams {
     return skip_checks_serialization_;
   }
 
+  inline MemoryTracker* memory_tracker() {
+    return memory_tracker_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -150,7 +157,7 @@ class StrategyParams {
   StorageManager* storage_manager_;
 
   /** Array. */
-  Array* array_;
+  shared_ptr<OpenedArray> array_;
 
   /** Config for query-level parameters only. */
   Config& config_;
@@ -175,6 +182,9 @@ class StrategyParams {
 
   /** Skip checks for serialization. */
   bool skip_checks_serialization_;
+
+  /** Memory tracker. */
+  MemoryTracker* memory_tracker_;
 };
 
 /** Processes read or write queries. */
@@ -227,8 +237,11 @@ class StrategyBase {
   /** The class logger. */
   shared_ptr<Logger> logger_;
 
-  /** The array. */
-  const Array* array_;
+  /**
+   * A shared pointer to the opened array which ensures that the query can
+   * still access it even after the array is closed.
+   */
+  shared_ptr<OpenedArray> array_;
 
   /** The array schema. */
   const ArraySchema& array_schema_;

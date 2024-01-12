@@ -246,9 +246,6 @@ Status array_from_capnp(
     QueryType query_type = QueryType::READ;
     RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
     array->set_query_type(query_type);
-    if (!array->is_open()) {
-      array->set_serialized_array_open();
-    }
 
     array->set_timestamps(
         array_reader.getStartTimestamp(),
@@ -260,6 +257,10 @@ Status array_from_capnp(
         array_reader.getEndTimestamp(),
         false);
   };
+
+  if (!array->is_open()) {
+    array->set_serialized_array_open();
+  }
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
@@ -275,7 +276,7 @@ Status array_from_capnp(
             make_shared<ArraySchema>(HERE(), schema);
       }
     }
-    array->set_array_schemas_all(all_schemas);
+    array->set_array_schemas_all(std::move(all_schemas));
   }
 
   if (array_reader.hasArraySchemaLatest()) {
@@ -294,13 +295,17 @@ Status array_from_capnp(
         array_directory_reader,
         storage_manager->resources(),
         array->array_uri());
-    array->set_array_directory(*array_dir);
+    array->set_array_directory(std::move(*array_dir));
+  } else {
+    array->set_array_directory(
+        ArrayDirectory(storage_manager->resources(), array->array_uri()));
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
-    array->fragment_metadata().clear();
+    auto fragment_metadata = array->fragment_metadata();
+    fragment_metadata.clear();
     auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
-    array->fragment_metadata().reserve(fragment_metadata_all_reader.size());
+    fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
       auto meta = make_shared<FragmentMetadata>(HERE());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
@@ -312,8 +317,9 @@ Status array_from_capnp(
       if (client_side) {
         meta->set_rtree_loaded();
       }
-      array->fragment_metadata().emplace_back(meta);
+      fragment_metadata.emplace_back(meta);
     }
+    array->set_fragment_metadata(std::move(fragment_metadata));
   }
 
   if (array_reader.hasNonEmptyDomain()) {

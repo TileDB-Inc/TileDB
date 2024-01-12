@@ -43,7 +43,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class Array;
+class OpenedArray;
 class RelevantFragments;
 class Subarray;
 class SubarrayTileOverlap;
@@ -72,7 +72,9 @@ class RelevantFragmentGenerator {
 
   /** Constructor a generator. */
   RelevantFragmentGenerator(
-      const Array& array, const Subarray& subarray, stats::Stats* stats);
+      const shared_ptr<OpenedArray> opened_array,
+      const Subarray& subarray,
+      stats::Stats* stats);
 
   /* ********************************* */
   /*                API                */
@@ -144,8 +146,8 @@ class RelevantFragmentGenerator {
   /** The class stats. */
   stats::Stats* stats_;
 
-  /** Reference to the opened array. */
-  const Array& array_;
+  /** Reference to the opened opened array. */
+  const shared_ptr<OpenedArray> array_;
 
   /** Reference to the subarray. */
   const Subarray& subarray_;
