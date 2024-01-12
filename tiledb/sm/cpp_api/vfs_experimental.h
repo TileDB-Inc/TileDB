@@ -55,6 +55,7 @@ class VFSExperimental {
    * propagated to the caller using std::throw_with_nested.
    *
    * @param path The path of a visited object for the relative filesystem.
+   * @param object_size The size of the object at the current path.
    * @return True if the walk should continue, else false.
    */
   using LsCallback = std::function<bool(std::string_view, uint64_t)>;
@@ -68,9 +69,10 @@ class VFSExperimental {
    * the error will be propagated.
    *
    * @param path The path of a visited object for the relative filesystem.
+   * @param object_size The size of the object at the current path.
    * @return True if the result should be included, else false.
    */
-  using LsInclude = std::function<bool(std::string_view)>;
+  using LsInclude = std::function<bool(std::string_view, uint64_t)>;
 
   /**
    * Default typedef for objects collected by recursive ls, storing a vector of
@@ -133,7 +135,8 @@ class VFSExperimental {
    * Currently only S3 is supported, and the `path` must be a valid S3 URI.
    *
    * @code{.c}
-   * VFSExperimental::LsInclude predicate = [](const std::string_view& path) {
+   * VFSExperimental::LsInclude predicate = [](std::string_view path,
+   *                                           uint64_t object_size) {
    *   return path.find(".txt") != std::string::npos;
    * }
    * // Include only files with '.txt' extension using a custom predicate.
@@ -160,7 +163,7 @@ class VFSExperimental {
     if (include.has_value()) {
       auto include_cb = include.value();
       ls_recursive(ctx, vfs, uri, [&](std::string_view path, uint64_t size) {
-        if (include_cb(path)) {
+        if (include_cb(path, size)) {
           ls_objects.emplace_back(path, size);
         }
         return true;
@@ -194,15 +197,7 @@ class VFSExperimental {
       const char* path, size_t path_len, uint64_t object_size, void* data) {
     tiledb::sm::CallbackWrapperCPP* cb =
         static_cast<tiledb::sm::CallbackWrapperCPP*>(data);
-    try {
-      if ((*cb)({path, path_len}, object_size)) {
-        return 1;
-      } else {
-        return 0;
-      }
-    } catch (...) {
-      std::throw_with_nested(TileDBError("Error in user callback"));
-    }
+    return (*cb)({path, path_len}, object_size);
   }
 };
 }  // namespace tiledb

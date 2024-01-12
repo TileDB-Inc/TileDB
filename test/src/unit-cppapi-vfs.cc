@@ -521,43 +521,46 @@ TEST_CASE("CPP API: VFS ls_recursive filter", "[cppapi][vfs][ls-recursive]") {
   // Callback to populate ls_objects vector using a filter.
   tiledb::VFSExperimental::LsCallback cb = [&](std::string_view path,
                                                uint64_t size) {
-    if (include(path)) {
+    if (include(path, size)) {
       ls_objects.emplace_back(path, size);
     }
     return true;
   };
 
   SECTION("Default filter (include all)") {
-    include = [](std::string_view) { return true; };
+    include = [](std::string_view, uint64_t) { return true; };
   }
   SECTION("Custom filter (include none)") {
-    include = [](std::string_view) { return false; };
+    include = [](std::string_view, uint64_t) { return false; };
   }
 
   bool include_result = true;
   SECTION("Custom filter (include half)") {
-    include = [&include_result](std::string_view) {
+    include = [&include_result](std::string_view, uint64_t) {
       include_result = !include_result;
       return include_result;
     };
   }
 
   SECTION("Custom filter (search for test_file_50)") {
-    include = [](std::string_view path) {
-      return path.find("test_file_50") != std::string::npos;
+    include = [](std::string_view object_name, uint64_t) {
+      return object_name.find("test_file_50") != std::string::npos;
     };
   }
   SECTION("Custom filter (search for test_file_1*)") {
-    include = [](std::string_view object_name) {
+    include = [](std::string_view object_name, uint64_t) {
       return object_name.find("test_file_1") != std::string::npos;
     };
+  }
+  SECTION("Custom filter (reject files over 50 bytes)") {
+    include = [](std::string_view, uint64_t size) { return size <= 50; };
   }
 
   // Test collecting results with LsInclude predicate.
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
       ctx, vfs, s3_test.temp_dir_.to_string(), include);
   std::erase_if(expected_results, [&include](const auto& object) {
-    return !include(object.first);
+    return !include(object.first, object.second);
   });
   CHECK(results.size() == expected_results.size());
   CHECK(expected_results == results);
@@ -610,23 +613,32 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
   tiledb::Context ctx(tiledb::Config(&cfg.config));
   tiledb::VFS vfs(ctx);
 
-  tiledb::VFSExperimental::LsInclude filter = [](std::string_view) -> bool {
+  tiledb::VFSExperimental::LsInclude filter = [](std::string_view,
+                                                 uint64_t) -> bool {
     throw std::runtime_error("Throwing filter");
   };
+  auto path = s3_test.temp_dir_.to_string();
+
   // If the test directory is empty the filter should not throw.
   SECTION("Throwing filter with 0 objects should not throw") {
-    CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive_filter(
-        ctx, vfs, s3_test.temp_dir_.to_string(), filter));
+    CHECK_NOTHROW(
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter));
+    CHECK_NOTHROW(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter));
   }
   SECTION("Throwing filter with N objects should throw") {
     vfs.touch(s3_test.temp_dir_.join_path("test_file").to_string());
     CHECK_THROWS_AS(
-        tiledb::VFSExperimental::ls_recursive_filter(
-            ctx, vfs, s3_test.temp_dir_.to_string(), filter),
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
         std::runtime_error);
     CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive_filter(
-            ctx, vfs, s3_test.temp_dir_.to_string(), filter),
+        tiledb::VFSExperimental::ls_recursive_filter(ctx, vfs, path, filter),
+        Catch::Matchers::ContainsSubstring("Throwing filter"));
+    CHECK_THROWS_AS(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
+        std::runtime_error);
+    CHECK_THROWS_WITH(
+        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, filter),
         Catch::Matchers::ContainsSubstring("Throwing filter"));
   }
 }
