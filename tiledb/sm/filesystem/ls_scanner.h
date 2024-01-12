@@ -90,7 +90,7 @@ using DirectoryFilter = std::function<bool(const std::string_view&)>;
  * @return 1 if the callback should continue to the next object, 0 to stop
  *      traversal, or -1 if an error occurred.
  */
-typedef std::function<int32_t(const char*, size_t, uint64_t, void*)> LsCallback;
+using LsCallback = std::function<int32_t(const char*, size_t, uint64_t, void*)>;
 
 /** Type defintion for objects returned from ls_recursive. */
 using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
@@ -267,13 +267,13 @@ class LsScanner {
 /**
  * Wrapper for the C API callback function to be passed to the C++ API.
  */
-class CallbackWrapper {
+class CallbackWrapperCAPI {
  public:
   /** Default constructor is deleted */
-  CallbackWrapper() = delete;
+  CallbackWrapperCAPI() = delete;
 
   /** Constructor */
-  CallbackWrapper(LsCallback cb, void* data)
+  CallbackWrapperCAPI(LsCallback cb, void* data)
       : cb_(cb)
       , data_(data) {
     if (cb_ == nullptr) {
@@ -309,6 +309,45 @@ class CallbackWrapper {
   LsCallback cb_;
   /** User data for callback */
   void* data_;
+};
+
+/** Class to wrap C++ FilePredicate for passing to the C API. */
+class CallbackWrapperCPP {
+ public:
+  /**
+   * Typedef for ls callback function used to check if a single
+   * result should be included in the final results returned from ls_recursive.
+   *
+   * @param path The path of a visited object for the relative filesystem.
+   * @param size The size of the current object in bytes.
+   * @return True if the result should be included, else false.
+   */
+  using LsCallback = std::function<bool(std::string_view, uint64_t)>;
+
+  /** Default constructor is deleted */
+  CallbackWrapperCPP() = delete;
+
+  /** Constructor */
+  CallbackWrapperCPP(LsCallback cb)
+      : cb_(cb) {
+    if (cb_ == nullptr) {
+      throw LsScanException("ls_recursive callback function cannot be null");
+    }
+  }
+
+  /**
+   * Operator to wrap the FilePredicate used in the C++ API.
+   *
+   * @param path The path of the object.
+   * @param size The size of the object in bytes.
+   * @return True if the object should be included, False otherwise.
+   */
+  bool operator()(std::string_view path, uint64_t size) {
+    return cb_(path, size);
+  }
+
+ private:
+  LsCallback cb_;
 };
 
 }  // namespace tiledb::sm
