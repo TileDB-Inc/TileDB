@@ -60,6 +60,11 @@ class FieldFromAggregate : public FieldOrigin {
   virtual tiledb_field_origin_t origin() override;
 };
 
+class FieldFromDimensionLabel : public FieldOrigin {
+ public:
+  virtual tiledb_field_origin_t origin() override;
+};
+
 struct tiledb_query_field_handle_t
     : public tiledb::api::CAPIHandle<tiledb_query_field_handle_t> {
   /**

@@ -48,7 +48,8 @@ typedef struct tiledb_query_field_handle_t tiledb_query_field_t;
 typedef enum {
   TILEDB_ATTRIBUTE_FIELD = 0,
   TILEDB_DIMENSION_FIELD,
-  TILEDB_AGGREGATE_FIELD
+  TILEDB_AGGREGATE_FIELD,
+  TILEDB_DIMENSION_LABEL_FIELD
 } tiledb_field_origin_t;
 
 /**

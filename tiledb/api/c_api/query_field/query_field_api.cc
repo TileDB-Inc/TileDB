@@ -35,6 +35,7 @@
 #include "tiledb/api/c_api/datatype/datatype_api_external.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/misc/constants.h"
 
 tiledb_field_origin_t FieldFromDimension::origin() {
@@ -47,6 +48,10 @@ tiledb_field_origin_t FieldFromAttribute::origin() {
 
 tiledb_field_origin_t FieldFromAggregate::origin() {
   return TILEDB_AGGREGATE_FIELD;
+}
+
+tiledb_field_origin_t FieldFromDimensionLabel::origin() {
+  return TILEDB_DIMENSION_LABEL_FIELD;
 }
 
 tiledb_query_field_handle_t::tiledb_query_field_handle_t(
@@ -71,6 +76,12 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     type_ = query_->array_schema().dimension_ptr(field_name_)->type();
     cell_val_num_ =
         query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
+  } else if (query_->array_schema().is_dim_label(field_name_)) {
+    field_origin_ = std::make_shared<FieldFromDimensionLabel>();
+    type_ = query_->array_schema().dimension_label(field_name_).label_type();
+    cell_val_num_ = query_->array_schema()
+                        .dimension_label(field_name_)
+                        .label_cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
     field_origin_ = std::make_shared<FieldFromAggregate>();
     auto aggregate = query_->get_aggregate(field_name_).value();
