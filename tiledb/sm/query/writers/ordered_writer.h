@@ -55,17 +55,11 @@ class OrderedWriter : public WriterBase {
   OrderedWriter(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
+      StrategyParams& params,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
       bool remote_query,
-      optional<std::string> fragment_name = nullopt,
-      bool skip_checks_serialization = false);
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~OrderedWriter();

@@ -73,42 +73,30 @@ class UnorderWriterException : public StatusException {
 UnorderedWriter::UnorderedWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     Query::CoordsInfo& coords_info,
     std::unordered_set<std::string>& written_buffers,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           false,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , frag_uri_(std::nullopt)
     , written_buffers_(written_buffers)
     , is_coords_pass_(true) {
   // Check the layout is unordered.
-  if (layout != Layout::UNORDERED) {
+  if (layout_ != Layout::UNORDERED) {
     throw UnorderWriterException(
         "Failed to initialize UnorderedWriter; The unordered writer does not "
         "support layout " +
-        layout_str(layout));
+        layout_str(layout_));
   }
 
   // Check the array is sparse.

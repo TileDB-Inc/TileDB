@@ -67,40 +67,16 @@ class SparseUnorderedWithDupsReaderStatusException : public StatusException {
 
 template <class BitmapType>
 SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool skip_checks_serialization)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : SparseIndexReaderBase(
-          "sparse_unordered_with_dups",
-          stats,
-          logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates,
-          skip_checks_serialization,
-          false)
+          "sparse_unordered_with_dups", stats, logger, params, false)
     , tile_offsets_min_frag_idx_(std::numeric_limits<unsigned>::max())
     , tile_offsets_max_frag_idx_(0) {
   // Initialize memory budget variables.
   refresh_config();
 
-  // Get the setting that allows to partially load tile offsets. This is done
-  // for this reader only for now.
+  // Get the setting that allows to partially load tile offsets. This is
+  // done for this reader only for now.
   bool found = false;
   if (!config_
            .get<bool>(
@@ -2050,31 +2026,9 @@ void SparseUnorderedWithDupsReader<BitmapType>::end_iteration(
 
 // Explicit template instantiations
 template SparseUnorderedWithDupsReader<uint8_t>::SparseUnorderedWithDupsReader(
-    stats::Stats*,
-    shared_ptr<Logger>,
-    StorageManager*,
-    Array*,
-    Config&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    Subarray&,
-    Layout,
-    std::optional<QueryCondition>&,
-    DefaultChannelAggregates&,
-    bool);
+    stats::Stats*, shared_ptr<Logger>, StrategyParams&);
 template SparseUnorderedWithDupsReader<uint64_t>::SparseUnorderedWithDupsReader(
-    stats::Stats*,
-    shared_ptr<Logger>,
-    StorageManager*,
-    Array*,
-    Config&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    Subarray&,
-    Layout,
-    std::optional<QueryCondition>&,
-    DefaultChannelAggregates&,
-    bool);
+    stats::Stats*, shared_ptr<Logger>, StrategyParams&);
 
 }  // namespace sm
 }  // namespace tiledb

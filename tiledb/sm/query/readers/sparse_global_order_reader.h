@@ -71,17 +71,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   SparseGlobalOrderReader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool consolidation_with_timestamps,
-      bool skip_checks_serialization = false);
+      StrategyParams& params,
+      bool consolidation_with_timestamps);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;

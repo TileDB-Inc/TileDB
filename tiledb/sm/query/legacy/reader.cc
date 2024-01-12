@@ -107,52 +107,32 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 Reader::Reader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool skip_checks_serialization,
+    StrategyParams& params,
     bool remote_query)
-    : ReaderBase(
-          stats,
-          logger->clone("Reader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates) {
+    : ReaderBase(stats, logger->clone("Reader", ++logger_id_), params) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(
         "Cannot initialize reader; Storage manager not set");
   }
 
-  if (!default_channel_aggregates.empty()) {
+  if (!params.default_channel_aggregates().empty()) {
     throw ReaderStatusException(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
     throw ReaderStatusException("Cannot initialize reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && array_schema_.dense() &&
+  if (!params.skip_checks_serialization() && array_schema_.dense() &&
       !subarray_.is_set()) {
     throw ReaderStatusException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
   // Check subarray
-  check_subarray(remote_query && array->array_schema_latest().dense());
+  check_subarray(remote_query && params.array()->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();

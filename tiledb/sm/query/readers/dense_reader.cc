@@ -71,30 +71,10 @@ class DenseReaderStatusException : public StatusException {
 DenseReader::DenseReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool skip_checks_serialization,
+    StrategyParams& params,
     bool remote_query)
-    : ReaderBase(
-          stats,
-          logger->clone("DenseReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates)
-    , array_memory_tracker_(array->memory_tracker()) {
+    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params)
+    , array_memory_tracker_(params.array()->memory_tracker()) {
   elements_mode_ = false;
 
   // Sanity checks.
@@ -103,13 +83,13 @@ DenseReader::DenseReader(
         "Cannot initialize dense reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty() &&
+  if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {
     throw DenseReaderStatusException(
         "Cannot initialize dense reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && !subarray_.is_set()) {
+  if (!params.skip_checks_serialization() && !subarray_.is_set()) {
     throw DenseReaderStatusException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
