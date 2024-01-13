@@ -62,10 +62,10 @@ The TileDB data format is open-source and can be found [here](format_spec/FORMAT
 ## Application-specific Packages
 
 * [TileDB-BioImaging](https://github.com/TileDB-Inc/TileDB-BioImaging): TileDB library for biomedical imaging, with support for image-optimized compression using WebP.
-* [TileDB-SOMA](https://github.com/single-cell-data/TileDB-SOMA): TileDB implementation of the [SOMA](https://github.com/single-cell-data/SOMA) specification for single-cell genomic data. ([documentation](https://github.com/single-cell-data/TileDB-SOMA#quick-start))
 * [TileDB Geospatial Tools](https://docs.tiledb.com/main/integrations-and-extensions/geospatial) (GDAL, PDAL, Rasterio)
-* [TileDB-Vector-Search](https://github.com/TileDB-Inc/TileDB-Vector-Search): open source, embeddable, and cloud-native vector similarity search database built on top of TileDB in high-performance C++, with an easy-to-use Python API.
+* [TileDB-SOMA](https://github.com/single-cell-data/TileDB-SOMA): TileDB implementation of the [SOMA](https://github.com/single-cell-data/SOMA) specification for single-cell genomic data. ([documentation](https://github.com/single-cell-data/TileDB-SOMA#quick-start))
 * [TileDB-VCF](https://github.com/TileDB-Inc/TileDB-VCF): TileDB library and query engine for genomic variant data. ([documentation](https://docs.tiledb.com/main/integrations-and-extensions/genomics/population-genomics)).
+* [TileDB-Vector-Search](https://github.com/TileDB-Inc/TileDB-Vector-Search): open source, embeddable, and cloud-native vector similarity search database built on top of TileDB in high-performance C++, with an easy-to-use Python API.
 
 ## APIs
 
