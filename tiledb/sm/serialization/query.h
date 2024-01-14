@@ -153,6 +153,7 @@ Status array_from_query_deserialize(
  *      or server perspective
  * @param serialized_buffer Buffer to store serialized query
  */
+template <class RM>
 Status query_serialize(
     Query* query,
     SerializationType serialize_type,
@@ -173,6 +174,7 @@ Status query_serialize(
  *      sizes are not modified but the entries in the map are.
  * @param query Query to deserialize into
  */
+template <class RM>
 Status query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,

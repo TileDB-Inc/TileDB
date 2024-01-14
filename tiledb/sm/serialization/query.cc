@@ -2376,6 +2376,7 @@ Status array_from_query_deserialize(
   return Status::Ok();
 }
 
+template <class RM>
 Status query_serialize(
     Query* query,
     SerializationType serialize_type,
@@ -2531,6 +2532,11 @@ Status query_serialize(
 
   return Status::Ok();
 }
+/*
+ * temporary explicit instantiation
+ */
+template
+Status query_serialize<StorageManager::resource_manager_type>(Query*, SerializationType, bool, BufferList*);
 
 Status do_query_deserialize(
     const Buffer& serialized_buffer,
@@ -2603,6 +2609,7 @@ Status do_query_deserialize(
   return Status::Ok();
 }
 
+template <class RM>
 Status query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
@@ -2614,7 +2621,7 @@ Status query_deserialize(
   // to if we are unable to deserialize 'serialized_buffer'.
   BufferList original_bufferlist;
   RETURN_NOT_OK(
-      query_serialize(query, serialize_type, clientside, &original_bufferlist));
+      query_serialize<RM>(query, serialize_type, clientside, &original_bufferlist));
 
   // The first buffer is always the serialized Query object.
   tiledb::sm::Buffer* original_buffer;
@@ -2663,6 +2670,12 @@ Status query_deserialize(
 
   return st;
 }
+/*
+ * temporary explicit instantiation
+ */
+template
+Status query_deserialize<context_bypass_RM>(
+    const Buffer&, SerializationType, bool, CopyState*, Query*, ThreadPool*);
 
 Status query_est_result_size_reader_to_capnp(
     Query& query,

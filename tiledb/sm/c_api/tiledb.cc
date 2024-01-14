@@ -2702,7 +2702,6 @@ int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
   throw_if_not_ok(ctx->storage_manager()->array_consolidate(
-      ctx->resource_manager(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -2722,7 +2721,6 @@ int32_t tiledb_array_consolidate_with_key(
   // Sanity checks
 
   throw_if_not_ok(ctx->storage_manager()->array_consolidate(
-      ctx->resource_manager(),
       array_uri,
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
@@ -2749,7 +2747,6 @@ int32_t tiledb_array_consolidate_fragments(
   }
 
   throw_if_not_ok(ctx->storage_manager()->fragments_consolidate(
-      ctx->resource_manager(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -2764,7 +2761,6 @@ int32_t tiledb_array_consolidate_fragments(
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   ctx->storage_manager()->array_vacuum(
-      ctx->resource_manager(),
       array_uri,
       (config == nullptr) ? ctx->storage_manager()->config() :
                             config->config());
@@ -3682,7 +3678,7 @@ int32_t tiledb_serialize_query(
 
   if (SAVE_ERROR_CATCH(
           ctx,
-          tiledb::sm::serialization::query_serialize(
+          tiledb::sm::serialization::query_serialize<tiledb_ctx_t::resource_manager_type>(
               query->query_,
               (tiledb::sm::SerializationType)serialize_type,
               client_side == 1,
@@ -3706,7 +3702,7 @@ int32_t tiledb_deserialize_query(
 
   api::ensure_buffer_is_valid(buffer);
 
-  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+  throw_if_not_ok(tiledb::sm::serialization::query_deserialize<tiledb_ctx_t::resource_manager_type>(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,
@@ -3797,7 +3793,7 @@ int32_t tiledb_deserialize_query_and_array(
     return TILEDB_OOM;
   }
 
-  throw_if_not_ok(tiledb::sm::serialization::query_deserialize(
+  throw_if_not_ok(tiledb::sm::serialization::query_deserialize<tiledb_ctx_t::resource_manager_type>(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       client_side == 1,

@@ -210,6 +210,31 @@ class ResourceManager : public detail::ResourceManagerInternal<P> {
 using RM =
     resource_manager::ResourceManager<resource_manager::RMPolicyUnbudgeted>;
 
+/*
+ * Temporary definition of a resource manager bypasses the definition in `class
+ * Context`, but it has to be the same as the one defined there.
+ *
+ * All uses of this class are both well-documented in place and listed below. If
+ * they aren't, it means the programmer isn't reading the documentation and the
+ * usage is very likely wrong.
+ *
+ * This class is used for explicit instantiation without the need to
+ * simultaneously move code into a header in order for it to instantiate
+ * properly. These are not listed individually, but as a category.
+  *
+ * There are a small number of locations where this definition is used for some
+ * other purpose. These are listed explicitly.
+ *
+ * - For explicit instantiations. These all take the same form:
+ *   ```
+ *   template
+ *   class X<context_bypass_RM>;
+ *   ```
+ * - In `class ContextResources`, this definition is propagated as a temporary
+ *   second source for a definition of `resource_manager_type`.
+ */
+using context_bypass_RM = resource_manager::ResourceManager<resource_manager::RMPolicyProduction>;
+
 }  // namespace tiledb::common
 
 #endif

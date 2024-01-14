@@ -72,12 +72,16 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm{
+
+template <class RM>
+std::atomic<uint64_t>
+RestClient<RM>::logger_id_ = 0;
 
 #ifdef TILEDB_SERIALIZATION
 
-RestClient::RestClient()
+template <class RM>
+RestClient<RM>::RestClient()
     : stats_(nullptr)
     , config_(nullptr)
     , compute_tp_(nullptr)
@@ -87,7 +91,8 @@ RestClient::RestClient()
   throw_if_not_ok(st);
 }
 
-Status RestClient::init(
+template <class RM>
+Status RestClient<RM>::init(
     stats::Stats* const parent_stats,
     const Config* config,
     ThreadPool* compute_tp,
@@ -129,13 +134,15 @@ Status RestClient::init(
   return Status::Ok();
 }
 
-Status RestClient::set_header(
+template <class RM>
+Status RestClient<RM>::set_header(
     const std::string& name, const std::string& value) {
   extra_headers_[name] = value;
   return Status::Ok();
 }
 
-tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
+template <class RM>
+tuple<Status, std::optional<bool>> RestClient<RM>::check_array_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -172,7 +179,8 @@ tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
   return {Status::Ok(), false};
 }
 
-tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
+template <class RM>
+tuple<Status, std::optional<bool>> RestClient<RM>::check_group_exists_from_rest(
     const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -209,8 +217,9 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
   return {Status::Ok(), false};
 }
 
+template <class RM>
 tuple<Status, optional<shared_ptr<ArraySchema>>>
-RestClient::get_array_schema_from_rest(const URI& uri) {
+RestClient<RM>::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -245,7 +254,8 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
               serialization_type_, returned_data))};
 }
 
-shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
+template <class RM>
+shared_ptr<ArraySchema> RestClient<RM>::post_array_schema_from_rest(
     const Config& config,
     const URI& uri,
     uint64_t timestamp_start,
@@ -295,7 +305,8 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
           serialization_type_, returned_data));
 }
 
-Status RestClient::post_array_schema_to_rest(
+template <class RM>
+Status RestClient<RM>::post_array_schema_to_rest(
     const URI& uri, const ArraySchema& array_schema) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
@@ -332,7 +343,8 @@ Status RestClient::post_array_schema_to_rest(
   return sc;
 }
 
-Status RestClient::post_array_from_rest(
+template <class RM>
+Status RestClient<RM>::post_array_from_rest(
     const URI& uri, StorageManager* storage_manager, Array* array) {
   if (array == nullptr) {
     return LOG_STATUS(Status_SerializationError(
@@ -379,7 +391,8 @@ Status RestClient::post_array_from_rest(
       array, serialization_type_, returned_data, storage_manager);
 }
 
-void RestClient::delete_array_from_rest(const URI& uri) {
+template <class RM>
+void RestClient<RM>::delete_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -395,7 +408,8 @@ void RestClient::delete_array_from_rest(const URI& uri) {
       stats_, url, serialization_type_, &returned_data, cache_key));
 }
 
-void RestClient::post_delete_fragments_to_rest(
+template <class RM>
+void RestClient<RM>::post_delete_fragments_to_rest(
     const URI& uri,
     Array* array,
     uint64_t timestamp_start,
@@ -432,7 +446,8 @@ void RestClient::post_delete_fragments_to_rest(
       cache_key));
 }
 
-void RestClient::post_delete_fragments_list_to_rest(
+template <class RM>
+void RestClient<RM>::post_delete_fragments_list_to_rest(
     const URI& uri, Array* array, const std::vector<URI>& fragment_uris) {
   Buffer buff;
   serialization::serialize_delete_fragments_list_request(
@@ -463,7 +478,8 @@ void RestClient::post_delete_fragments_list_to_rest(
       cache_key));
 }
 
-Status RestClient::deregister_array_from_rest(const URI& uri) {
+template <class RM>
+Status RestClient<RM>::deregister_array_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string array_ns, array_uri;
@@ -479,7 +495,8 @@ Status RestClient::deregister_array_from_rest(const URI& uri) {
       stats_, url, serialization_type_, &returned_data, cache_key);
 }
 
-Status RestClient::get_array_non_empty_domain(
+template <class RM>
+Status RestClient<RM>::get_array_non_empty_domain(
     Array* array, uint64_t timestamp_start, uint64_t timestamp_end) {
   if (array == nullptr)
     return LOG_STATUS(
@@ -519,7 +536,52 @@ Status RestClient::get_array_non_empty_domain(
       array, returned_data, serialization_type_);
 }
 
-Status RestClient::get_array_max_buffer_sizes(
+/**
+   * Returns a string representation of the given subarray. The format is:
+   *
+   *   "dim0min,dim0max,dim1min,dim1max,..."
+   *
+   * @param schema Array schema to use for domain information
+   * @param subarray Subarray to convert to string
+   * @param subarray_str Will be set to the CSV string
+   * @return Status
+ */
+Status subarray_to_string(
+    const ArraySchema& schema,
+    const void* subarray,
+    std::string* subarray_str) {
+  const auto coords_type{schema.dimension_ptr(0)->type()};
+  const auto dim_num = schema.dim_num();
+  const auto subarray_nelts = 2 * dim_num;
+
+  if (subarray == nullptr) {
+    *subarray_str = "";
+    return Status::Ok();
+  }
+
+  std::stringstream ss;
+  for (unsigned i = 0; i < subarray_nelts; i++) {
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+        ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
+      } else {
+        throw StatusException(Status_RestError(
+            "Error converting subarray to string; unhandled datatype."));
+      }
+    };
+    apply_with_type(g, coords_type);
+
+    if (i < subarray_nelts - 1)
+      ss << ",";
+  }
+
+  *subarray_str = ss.str();
+
+  return Status::Ok();
+}
+
+template <class RM>
+Status RestClient<RM>::get_array_max_buffer_sizes(
     const URI& uri,
     const ArraySchema& schema,
     const void* subarray,
@@ -527,7 +589,7 @@ Status RestClient::get_array_max_buffer_sizes(
         buffer_sizes) {
   // Convert subarray to string for query parameter
   std::string subarray_str;
-  RETURN_NOT_OK(subarray_to_str(schema, subarray, &subarray_str));
+  RETURN_NOT_OK(subarray_to_string(schema, subarray, &subarray_str));
   std::string subarray_query_param =
       subarray_str.empty() ? "" : ("?subarray=" + subarray_str);
 
@@ -560,7 +622,8 @@ Status RestClient::get_array_max_buffer_sizes(
       schema, returned_data, serialization_type_, buffer_sizes);
 }
 
-Status RestClient::get_array_metadata_from_rest(
+template <class RM>
+Status RestClient<RM>::get_array_metadata_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -596,7 +659,8 @@ Status RestClient::get_array_metadata_from_rest(
       array->unsafe_metadata(), serialization_type_, returned_data);
 }
 
-Status RestClient::post_array_metadata_to_rest(
+template <class RM>
+Status RestClient<RM>::post_array_metadata_to_rest(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -631,8 +695,9 @@ Status RestClient::post_array_metadata_to_rest(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
+template <class RM>
 std::vector<shared_ptr<const Enumeration>>
-RestClient::post_enumerations_from_rest(
+RestClient<RM>::post_enumerations_from_rest(
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -690,7 +755,8 @@ RestClient::post_enumerations_from_rest(
       serialization_type_, returned_data);
 }
 
-Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
+template <class RM>
+Status RestClient<RM>::submit_query_to_rest(const URI& uri, Query* query) {
   // Local state tracking for the current offsets into the user's query buffers.
   // This allows resubmission of incomplete queries while appending to the
   // same user buffers.
@@ -705,7 +771,8 @@ Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   return Status::Ok();
 }
 
-Status RestClient::post_query_submit(
+template <class RM>
+Status RestClient<RM>::post_query_submit(
     const URI& uri, Query* query, serialization::CopyState* copy_state) {
   // Get array
   const Array* array = query->array();
@@ -740,7 +807,7 @@ Status RestClient::post_query_submit(
 
   // Serialize query to send
   BufferList serialized;
-  RETURN_NOT_OK(serialization::query_serialize(
+  RETURN_NOT_OK(serialization::query_serialize<RM>(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
@@ -805,7 +872,8 @@ Status RestClient::post_query_submit(
   return st;
 }
 
-size_t RestClient::query_post_call_back(
+template <class RM>
+size_t RestClient<RM>::query_post_call_back(
     const bool reset,
     void* const contents,
     const size_t content_nbytes,
@@ -909,7 +977,7 @@ size_t RestClient::query_post_call_back(
       // data when deserializing read queries, this will return an
       // error status.
       aux.reset_offset();
-      st = serialization::query_deserialize(
+      st = serialization::query_deserialize<RM>(
           aux, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
@@ -920,7 +988,7 @@ size_t RestClient::query_post_call_back(
       // the user buffers are too small to accommodate the attribute
       // data when deserializing read queries, this will return an
       // error status.
-      st = serialization::query_deserialize(
+      st = serialization::query_deserialize<RM>(
           *scratch, serialization_type_, true, copy_state, query, compute_tp_);
       if (!st.ok()) {
         scratch->set_offset(scratch->offset() - 8);
@@ -963,10 +1031,11 @@ size_t RestClient::query_post_call_back(
   return return_wrapper(bytes_processed);
 }
 
-Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
+template <class RM>
+Status RestClient<RM>::finalize_query_to_rest(const URI& uri, Query* query) {
   // Serialize data to send
   BufferList serialized;
-  RETURN_NOT_OK(serialization::query_serialize(
+  RETURN_NOT_OK(serialization::query_serialize<RM>(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
@@ -1002,11 +1071,12 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
 
   // Deserialize data returned
   returned_data.reset_offset();
-  return serialization::query_deserialize(
+  return serialization::query_deserialize<RM>(
       returned_data, serialization_type_, true, nullptr, query, compute_tp_);
 }
 
-Status RestClient::submit_and_finalize_query_to_rest(
+template <class RM>
+Status RestClient<RM>::submit_and_finalize_query_to_rest(
     const URI& uri, Query* query) {
   serialization::CopyState copy_state;
 
@@ -1021,7 +1091,7 @@ Status RestClient::submit_and_finalize_query_to_rest(
 
   // Serialize query to send
   BufferList serialized;
-  RETURN_NOT_OK(serialization::query_serialize(
+  RETURN_NOT_OK(serialization::query_serialize<RM>(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
@@ -1073,41 +1143,8 @@ Status RestClient::submit_and_finalize_query_to_rest(
   return st;
 }
 
-Status RestClient::subarray_to_str(
-    const ArraySchema& schema,
-    const void* subarray,
-    std::string* subarray_str) {
-  const auto coords_type{schema.dimension_ptr(0)->type()};
-  const auto dim_num = schema.dim_num();
-  const auto subarray_nelts = 2 * dim_num;
-
-  if (subarray == nullptr) {
-    *subarray_str = "";
-    return Status::Ok();
-  }
-
-  std::stringstream ss;
-  for (unsigned i = 0; i < subarray_nelts; i++) {
-    auto g = [&](auto T) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        ss << reinterpret_cast<const decltype(T)*>(subarray)[i];
-      } else {
-        throw StatusException(Status_RestError(
-            "Error converting subarray to string; unhandled datatype."));
-      }
-    };
-    apply_with_type(g, coords_type);
-
-    if (i < subarray_nelts - 1)
-      ss << ",";
-  }
-
-  *subarray_str = ss.str();
-
-  return Status::Ok();
-}
-
-Status RestClient::update_attribute_buffer_sizes(
+template <class RM>
+Status RestClient<RM>::update_attribute_buffer_sizes(
     const serialization::CopyState& copy_state, Query* query) const {
   // Applicable only to reads
   if (query->type() != QueryType::READ) {
@@ -1133,7 +1170,8 @@ Status RestClient::update_attribute_buffer_sizes(
   return Status::Ok();
 }
 
-Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
+template <class RM>
+Status RestClient<RM>::get_query_est_result_sizes(const URI& uri, Query* query) {
   if (query == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error getting query estimated result size from REST; Query is null."));
@@ -1148,7 +1186,7 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
 
   // Serialize query to send
   BufferList serialized;
-  RETURN_NOT_OK(serialization::query_serialize(
+  RETURN_NOT_OK(serialization::query_serialize<RM>(
       query, serialization_type_, true, &serialized));
 
   // Init curl and form the URL
@@ -1189,7 +1227,8 @@ Status RestClient::get_query_est_result_sizes(const URI& uri, Query* query) {
       query, serialization_type_, true, returned_data);
 }
 
-std::string RestClient::redirect_uri(const std::string& cache_key) {
+template <class RM>
+std::string RestClient<RM>::redirect_uri(const std::string& cache_key) {
   std::unique_lock<std::mutex> rd_lck(redirect_mtx_);
   std::unordered_map<std::string, std::string>::const_iterator cache_it =
       redirect_meta_.find(cache_key);
@@ -1197,7 +1236,8 @@ std::string RestClient::redirect_uri(const std::string& cache_key) {
   return (cache_it == redirect_meta_.end()) ? rest_server_ : cache_it->second;
 }
 
-Status RestClient::post_array_schema_evolution_to_rest(
+template <class RM>
+Status RestClient<RM>::post_array_schema_evolution_to_rest(
     const URI& uri, ArraySchemaEvolution* array_schema_evolution) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_evolution_serialize(
@@ -1226,7 +1266,8 @@ Status RestClient::post_array_schema_evolution_to_rest(
   return sc;
 }
 
-Status RestClient::post_fragment_info_from_rest(
+template <class RM>
+Status RestClient<RM>::post_fragment_info_from_rest(
     const URI& uri, FragmentInfo* fragment_info) {
   if (fragment_info == nullptr)
     return LOG_STATUS(Status_RestError(
@@ -1268,7 +1309,8 @@ Status RestClient::post_fragment_info_from_rest(
       fragment_info, serialization_type_, uri, returned_data);
 }
 
-Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
+template <class RM>
+Status RestClient<RM>::post_group_metadata_from_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error posting group metadata from REST; group is null."));
@@ -1311,7 +1353,8 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
       group->unsafe_metadata(), serialization_type_, returned_data);
 }
 
-Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
+template <class RM>
+Status RestClient<RM>::put_group_metadata_to_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(Status_RestError(
         "Error posting group metadata to REST; group is null."));
@@ -1340,7 +1383,8 @@ Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
+template <class RM>
+Status RestClient<RM>::post_group_create_to_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error posting group to REST; group is null."));
@@ -1368,7 +1412,8 @@ Status RestClient::post_group_create_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
+template <class RM>
+Status RestClient<RM>::post_group_from_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error posting group to REST; group is null."));
@@ -1411,7 +1456,8 @@ Status RestClient::post_group_from_rest(const URI& uri, Group* group) {
       group, serialization_type_, returned_data);
 }
 
-Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
+template <class RM>
+Status RestClient<RM>::patch_group_to_rest(const URI& uri, Group* group) {
   if (group == nullptr) {
     return LOG_STATUS(
         Status_RestError("Error patching group to REST; group is null."));
@@ -1441,7 +1487,8 @@ Status RestClient::patch_group_to_rest(const URI& uri, Group* group) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-void RestClient::delete_group_from_rest(const URI& uri, bool recursive) {
+template <class RM>
+void RestClient<RM>::delete_group_from_rest(const URI& uri, bool recursive) {
   // Init curl and form the URL
   Curl curlc(logger_);
   std::string group_ns, group_uri;
@@ -1459,7 +1506,8 @@ void RestClient::delete_group_from_rest(const URI& uri, bool recursive) {
       stats_, url, serialization_type_, &returned_data, cache_key));
 }
 
-Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
+template <class RM>
+Status RestClient<RM>::ensure_json_null_delimited_string(Buffer* buffer) {
   if (serialization_type_ == SerializationType::JSON &&
       buffer->value<char>(buffer->size() - 1) != '\0') {
     RETURN_NOT_OK(buffer->write("\0", sizeof(char)));
@@ -1467,7 +1515,8 @@ Status RestClient::ensure_json_null_delimited_string(Buffer* buffer) {
   return Status::Ok();
 }
 
-Status RestClient::post_consolidation_to_rest(
+template <class RM>
+Status RestClient<RM>::post_consolidation_to_rest(
     const URI& uri, const Config& config) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_consolidation_request_serialize(
@@ -1492,7 +1541,8 @@ Status RestClient::post_consolidation_to_rest(
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
-Status RestClient::post_vacuum_to_rest(const URI& uri, const Config& config) {
+template <class RM>
+Status RestClient<RM>::post_vacuum_to_rest(const URI& uri, const Config& config) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_vacuum_request_serialize(
       config, serialization_type_, &buff));
@@ -1518,183 +1568,242 @@ Status RestClient::post_vacuum_to_rest(const URI& uri, const Config& config) {
 
 #else
 
-RestClient::RestClient() {
+class SerializationNotEnabled : public StatusException {
+ public:
+  SerializationNotEnabled()
+      : StatusException(
+            "[TileDB::REST] Error",
+            "Cannot use rest client; serialization not enabled.") {
+  }
+};
+
+template <class RM>
+RestClient<RM>::RestClient() {
   (void)config_;
   (void)rest_server_;
   (void)serialization_type_;
 }
 
-Status RestClient::init(
+template <class RM>
+Status RestClient<RM>::init(
     stats::Stats*, const Config*, ThreadPool*, const std::shared_ptr<Logger>&) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::set_header(const std::string&, const std::string&) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::set_header(const std::string&, const std::string&) {
+  throw SerializationNotEnabled{};
 }
 
+template <class RM>
+tuple<Status, std::optional<bool>> RestClient<RM>::check_array_exists_from_rest(
+    const URI&) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+tuple<Status, std::optional<bool>> RestClient<RM>::check_group_exists_from_rest(
+    const URI&) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
 tuple<Status, optional<shared_ptr<ArraySchema>>>
-RestClient::get_array_schema_from_rest(const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      nullopt};
+RestClient<RM>::get_array_schema_from_rest(const URI&) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+shared_ptr<ArraySchema> RestClient<RM>::post_array_schema_from_rest(
+    const Config&, const URI&, uint64_t, uint64_t, bool) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_array_from_rest(const URI&, StorageManager*, Array*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_array_schema_to_rest(
+    const URI&, const ArraySchema&) {
+  throw SerializationNotEnabled{};
 }
 
-void RestClient::delete_array_from_rest(const URI&) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_array_from_rest(
+    const URI& uri, StorageManager* storage_manager, Array* array) {
+  throw SerializationNotEnabled{};
 }
 
-void RestClient::post_delete_fragments_to_rest(
+template <class RM>
+void RestClient<RM>::delete_array_from_rest(const URI&) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+void RestClient<RM>::post_delete_fragments_to_rest(
     const URI&, Array*, uint64_t, uint64_t) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-void RestClient::post_delete_fragments_list_to_rest(
+template <class RM>
+void RestClient<RM>::post_delete_fragments_list_to_rest(
     const URI&, Array*, const std::vector<URI>&) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::deregister_array_from_rest(const URI&) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::deregister_array_from_rest(const URI&) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::get_array_max_buffer_sizes(
+template <class RM>
+Status RestClient<RM>::get_array_max_buffer_sizes(
     const URI&,
     const ArraySchema&,
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::get_array_metadata_from_rest(
+template <class RM>
+Status RestClient<RM>::get_array_metadata_from_rest(
     const URI&, uint64_t, uint64_t, Array*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_array_metadata_to_rest(
+template <class RM>
+Status RestClient<RM>::post_array_metadata_to_rest(
     const URI&, uint64_t, uint64_t, Array*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
+template <class RM>
 std::vector<shared_ptr<const Enumeration>>
-RestClient::post_enumerations_from_rest(
+RestClient<RM>::post_enumerations_from_rest(
     const URI&, uint64_t, uint64_t, Array*, const std::vector<std::string>&) {
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 
-Status RestClient::submit_query_to_rest(const URI&, Query*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::submit_query_to_rest(const URI&, Query*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::finalize_query_to_rest(const URI&, Query*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_query_submit(
+    const URI&, Query*, serialization::CopyState*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::submit_and_finalize_query_to_rest(const URI&, Query*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+size_t RestClient<RM>::query_post_call_back(
+    const bool,
+    void* const,
+    const size_t,
+    bool* const,
+    shared_ptr<Buffer>,
+    Query*,
+    serialization::CopyState* copy_state) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::get_query_est_result_sizes(const URI&, Query*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::finalize_query_to_rest(const URI&, Query*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_array_schema_evolution_to_rest(
+template <class RM>
+Status RestClient<RM>::submit_and_finalize_query_to_rest(const URI&, Query*) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+Status RestClient<RM>::update_attribute_buffer_sizes(
+    const serialization::CopyState&, Query*) const {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+Status RestClient<RM>::get_query_est_result_sizes(const URI&, Query*) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+std::string RestClient<RM>::redirect_uri(const std::string&) {
+  throw SerializationNotEnabled{};
+}
+
+template <class RM>
+Status RestClient<RM>::post_array_schema_evolution_to_rest(
     const URI&, ArraySchemaEvolution*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+  throw SerializationNotEnabled{};
 }
 
-tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
-    const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      std::nullopt};
+template <class RM>
+Status RestClient<RM>::post_fragment_info_from_rest(const URI&, FragmentInfo*) {
+  throw SerializationNotEnabled{};
 }
 
-tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
-    const URI&) {
-  return {
-      LOG_STATUS(Status_RestError(
-          "Cannot use rest client; serialization not enabled.")),
-      std::nullopt};
+template <class RM>
+Status RestClient<RM>::post_group_metadata_from_rest(const URI&, Group*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_group_metadata_from_rest(const URI&, Group*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::put_group_metadata_to_rest(const URI&, Group*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_fragment_info_from_rest(const URI&, FragmentInfo*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_group_create_to_rest(const URI&, Group*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::put_group_metadata_to_rest(const URI&, Group*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_group_from_rest(const URI&, Group*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_group_create_to_rest(const URI&, Group*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::patch_group_to_rest(const URI&, Group*) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_group_from_rest(const URI&, Group*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+void RestClient<RM>::delete_group_from_rest(const URI&, bool) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::patch_group_to_rest(const URI&, Group*) {
-  return LOG_STATUS(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::ensure_json_null_delimited_string(Buffer*) {
+  throw SerializationNotEnabled{};
 }
 
-void RestClient::delete_group_from_rest(const URI&, bool) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_consolidation_to_rest(const URI&, const Config&) {
+  throw SerializationNotEnabled{};
 }
 
-Status RestClient::post_consolidation_to_rest(const URI&, const Config&) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
-}
-
-Status RestClient::post_vacuum_to_rest(const URI&, const Config&) {
-  throw StatusException(
-      Status_RestError("Cannot use rest client; serialization not enabled."));
+template <class RM>
+Status RestClient<RM>::post_vacuum_to_rest(const URI&, const Config&) {
+  throw SerializationNotEnabled{};
 }
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace sm
-}  // namespace tiledb
+/*
+ * Temporary explicit instantiation.
+ *
+ * @section Maturity
+ *
+ * This definition instantiates the template to avoid linker errors. The
+ * template argument matches the type `Context::resource_manager`, which for the
+ * interim is the only argument used to instantiate `class RestClient`.
+ */
+template
+class RestClient<tiledb::common::context_bypass_RM>;
+
+
+}  // namespace tiledb::sm

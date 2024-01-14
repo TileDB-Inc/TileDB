@@ -168,7 +168,6 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
 }
 
 Status StorageManagerCanonical::array_consolidate(
-    tdb::RM& rm,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -223,13 +222,12 @@ Status StorageManagerCanonical::array_consolidate(
 
   // Consolidate
   auto mode = Consolidator::mode_from_config(config);
-  auto consolidator = Consolidator::create(rm, mode, config, this);
+  auto consolidator = Consolidator::create(mode, config, this);
   return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
 }
 
 Status StorageManagerCanonical::fragments_consolidate(
-    tdb::RM& rm,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -281,7 +279,7 @@ Status StorageManagerCanonical::fragments_consolidate(
 
   // Consolidate
   auto consolidator =
-      Consolidator::create(rm, ConsolidationMode::FRAGMENT, config, this);
+      Consolidator::create(ConsolidationMode::FRAGMENT, config, this);
   auto fragment_consolidator =
       dynamic_cast<FragmentConsolidator*>(consolidator.get());
   return fragment_consolidator->consolidate_fragments(
@@ -445,7 +443,7 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
 }
 
 void StorageManagerCanonical::array_vacuum(
-    tdb::RM& rm, const char* array_name, const Config& config) {
+    const char* array_name, const Config& config) {
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(rest_client()->post_vacuum_to_rest(array_uri, config));
@@ -453,12 +451,11 @@ void StorageManagerCanonical::array_vacuum(
   }
 
   auto mode = Consolidator::mode_from_config(config, true);
-  auto consolidator = Consolidator::create(rm, mode, config, this);
+  auto consolidator = Consolidator::create(mode, config, this);
   consolidator->vacuum(array_name);
 }
 
 Status StorageManagerCanonical::array_metadata_consolidate(
-    tdb::RM& rm,
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -512,7 +509,7 @@ Status StorageManagerCanonical::array_metadata_consolidate(
 
   // Consolidate
   auto consolidator =
-      Consolidator::create(rm, ConsolidationMode::ARRAY_META, config, this);
+      Consolidator::create(ConsolidationMode::ARRAY_META, config, this);
   return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
 }
@@ -1829,7 +1826,7 @@ Status StorageManagerCanonical::set_default_tags() {
 }
 
 Status StorageManagerCanonical::group_metadata_consolidate(
-    tdb::RM& rm, const char* group_name, const Config& config) {
+    const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
@@ -1848,13 +1845,13 @@ Status StorageManagerCanonical::group_metadata_consolidate(
   // Consolidate
   // Encryption credentials are loaded by Group from config
   auto consolidator =
-      Consolidator::create(rm, ConsolidationMode::GROUP_META, config, this);
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
   return consolidator->consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 }
 
 void StorageManagerCanonical::group_metadata_vacuum(
-    tdb::RM& rm, const char* group_name, const Config& config) {
+    const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
@@ -1872,7 +1869,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
   }
 
   auto consolidator =
-      Consolidator::create(rm, ConsolidationMode::GROUP_META, config, this);
+      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
   consolidator->vacuum(group_name);
 }
 

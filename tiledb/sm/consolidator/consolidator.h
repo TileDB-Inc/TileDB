@@ -78,7 +78,6 @@ class Consolidator {
    * @return New Consolidator instance or nullptr on error.
    */
   static shared_ptr<Consolidator> create(
-      tdb::RM& rm,
       const ConsolidationMode mode,
       const Config& config,
       StorageManager* storage_manager);

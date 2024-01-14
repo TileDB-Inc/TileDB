@@ -37,6 +37,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/resource/resource.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/group/group.h"
@@ -45,8 +46,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
@@ -56,6 +56,7 @@ class Query;
 
 enum class SerializationType : uint8_t;
 
+template <class RM>
 class RestClient {
  public:
   /** Constructor. */
@@ -432,7 +433,7 @@ class RestClient {
   shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
-  inline static std::atomic<uint64_t> logger_id_ = 0;
+  static std::atomic<uint64_t> logger_id_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */
@@ -490,21 +491,6 @@ class RestClient {
       serialization::CopyState* copy_state);
 
   /**
-   * Returns a string representation of the given subarray. The format is:
-   *
-   *   "dim0min,dim0max,dim1min,dim1max,..."
-   *
-   * @param schema Array schema to use for domain information
-   * @param subarray Subarray to convert to string
-   * @param subarray_str Will be set to the CSV string
-   * @return Status
-   */
-  static Status subarray_to_str(
-      const ArraySchema& schema,
-      const void* subarray,
-      std::string* subarray_str);
-
-  /**
    * Sets the buffer sizes on the given query using the given state mapping (per
    * attribute). Applicable only when deserializing read queries on the client.
    *
@@ -535,7 +521,6 @@ class RestClient {
   Status ensure_json_null_delimited_string(Buffer* buffer);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_REST_CLIENT_H

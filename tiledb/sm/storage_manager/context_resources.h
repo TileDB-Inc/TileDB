@@ -35,6 +35,7 @@
 
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/resource/resource.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -44,13 +45,36 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+template <class>
 class RestClient;
 
 /**
  * This class manages the context for the C API, wrapping a
  * storage manager object.
+ *
+ * @section Maturity
+ *
+ * This class will need a template argument for a resource manager. It does not
+ * have one at the present time because there are too many references to it
+ * member variables. Each would require a redeclaration, and it's too much code
+ * to change just yet. Once all the classes that reference this one have
+ * resource managers, it will be time to change this class to follow.
  */
 class ContextResources {
+ public:
+  /**
+   * An second source for the definition of `resource_manager_type`. It is the
+   * same as the one in `class Context`.
+   *
+   * In an ideal world, this would simply be forwarded from `class Context`
+   * directly. We are not in such a world and cannot include the header with the
+   * definition that class without also incurring all the cyclic dependencies
+   * involving `StorageManager`.
+   */
+  using resource_manager_type = tdb::context_bypass_RM;
+
+ private:
+  using rest_client_type = RestClient<resource_manager_type>;
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -105,7 +129,7 @@ class ContextResources {
     return vfs_;
   }
 
-  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+  [[nodiscard]] inline shared_ptr<rest_client_type> rest_client() const {
     return rest_client_;
   }
 
@@ -136,7 +160,7 @@ class ContextResources {
   mutable VFS vfs_;
 
   /** The rest client (may be null if none was configured). */
-  shared_ptr<RestClient> rest_client_;
+  shared_ptr<rest_client_type> rest_client_;
 };
 
 }  // namespace tiledb::sm

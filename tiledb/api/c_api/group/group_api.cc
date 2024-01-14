@@ -583,8 +583,8 @@ capi_return_t tiledb_group_consolidate_metadata(
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();
-  throw_if_not_ok(ctx->storage_manager()->group_metadata_consolidate(
-      ctx->resource_manager(), group_uri, cfg));
+  throw_if_not_ok(
+      ctx->storage_manager()->group_metadata_consolidate(group_uri, cfg));
 
   return TILEDB_OK;
 }
@@ -595,8 +595,7 @@ capi_return_t tiledb_group_vacuum_metadata(
 
   auto cfg =
       (config == nullptr) ? ctx->storage_manager()->config() : config->config();
-  ctx->storage_manager()->group_metadata_vacuum(
-      ctx->resource_manager(), group_uri, cfg);
+  ctx->storage_manager()->group_metadata_vacuum(group_uri, cfg);
 
   return TILEDB_OK;
 }

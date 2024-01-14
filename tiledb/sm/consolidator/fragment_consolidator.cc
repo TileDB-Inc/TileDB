@@ -63,9 +63,8 @@ class FragmentConsolidatorException : public StatusException {
 /* ****************************** */
 
 FragmentConsolidator::FragmentConsolidator(
-    tdb::RM& rm, const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager)
-    , rm_(rm) {
+    const Config& config, StorageManager* storage_manager)
+    : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());

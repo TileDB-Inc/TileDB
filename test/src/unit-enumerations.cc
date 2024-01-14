@@ -65,6 +65,7 @@ using namespace tiledb::sm;
 const static std::string default_enmr_name = ENUM_NAME_PTR;
 
 struct EnumerationFx {
+  using resource_manager_type = Context::resource_manager_type;
   EnumerationFx();
   ~EnumerationFx();
 
@@ -2757,11 +2758,11 @@ void EnumerationFx::ser_des_query(
   BufferList blist;
 
   throw_if_not_ok(
-      serialization::query_serialize(q_in, stype, client_side, &blist));
+      serialization::query_serialize<resource_manager_type>(q_in, stype, client_side, &blist));
 
   flatten_buffer_list(blist, buf);
 
-  throw_if_not_ok(serialization::query_deserialize(
+  throw_if_not_ok(serialization::query_deserialize<resource_manager_type>(
       buf,
       stype,
       client_side,

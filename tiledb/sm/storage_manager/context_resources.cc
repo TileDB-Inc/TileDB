@@ -71,7 +71,7 @@ ContextResources::ContextResources(
   if constexpr (TILEDB_SERIALIZATION_ENABLED) {
     auto server_address = config_.get<std::string>("rest.server_address");
     if (server_address) {
-      auto client = tdb::make_shared<RestClient>(HERE());
+      auto client = tdb::make_shared<rest_client_type>(HERE());
       auto st = client->init(&stats(), &config_, &compute_tp(), logger_);
       throw_if_not_ok(st);
       rest_client_ = client;
