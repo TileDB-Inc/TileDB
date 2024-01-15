@@ -62,7 +62,10 @@ jobs:
                   fi
           done
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
-          echo $TEMPLATE > $TEMPLATE.sha
+          echo $SHA > $TEMPLATE.sha
+          ls .github/mist
+          cat $TEMPLATE
+          cat $TEMPLATE.sha
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
