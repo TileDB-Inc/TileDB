@@ -26,7 +26,8 @@
 
 include(object_library)
 
-#
-# Subdirectories
-#
-add_subdirectory(test)
+commence(object_library resource_memory)
+    this_target_sources(memory.cc)
+conclude(object_library)
+
+add_test_subdirectory()

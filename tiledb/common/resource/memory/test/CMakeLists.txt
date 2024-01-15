@@ -24,3 +24,8 @@
 # THE SOFTWARE.
 #
 include(unit_test)
+
+commence(unit_test resource_memory)
+    this_target_sources(unit_container.cc)
+    this_target_object_libraries(resource_memory)
+conclude(unit_test)

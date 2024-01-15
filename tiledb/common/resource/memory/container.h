@@ -1,5 +1,5 @@
 /**
- * @file tiledb/common/resource/test/unit_resource.cc
+ * @file   tiledb/common/resource/memory/memory.h
  *
  * @section LICENSE
  *
@@ -24,19 +24,46 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
  */
 
-#include <test/support/tdb_catch.h>
-#include "resource_testsupport.h"
+#ifndef TILEDB_COMMON_RESOURCE_CONTAINER_H
+#define TILEDB_COMMON_RESOURCE_CONTAINER_H
 
-TEST_CASE("Resource - unbudgeted constructor", "") {
-  WhbxRM<tdbrm::RMPolicyUnbudgeted> x{};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
-}
+#include "./memory.h"
+#include <vector>
 
-TEST_CASE("Resource - production constructor", "") {
-  WhbxRM<tdbrm::RMPolicyProduction> x{tdbrm::AllResourcesBudget{}};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
-}
+namespace tiledb::common {
+
+/**
+ * Resource-managed vector
+ *
+ * This class is
+ *
+ * @tparam T type of the vector contents
+ */
+template <class T>
+class vector : public std::vector<T, pmr_allocator<T>> {
+  using base = std::vector<T, pmr_allocator<T>>;
+ public:
+  /**
+   * Default constructor is deleted.
+   *
+   * It would violate policy for this class to have a default constructor. All
+   * `tdb` containers require an allocator for construction; they do not
+   * allocate on the global heap.
+   */
+  vector() = delete;
+
+  /**
+   * Allocator-only constructor is the closest thing to a default constructor.
+   */
+  explicit vector(pmr_allocator<T>& a)
+      : base(a) {
+  }
+};
+
+}  // namespace tiledb::common
+
+#endif

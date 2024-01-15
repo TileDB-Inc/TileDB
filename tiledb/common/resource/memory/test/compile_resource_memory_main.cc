@@ -1,5 +1,5 @@
 /**
- * @file tiledb/common/resource/test/unit_resource.cc
+ * @file tiledb/common/resource/test/compile_resource_main.cc
  *
  * @section LICENSE
  *
@@ -26,17 +26,6 @@
  * THE SOFTWARE.
  */
 
-#include <test/support/tdb_catch.h>
-#include "resource_testsupport.h"
-
-TEST_CASE("Resource - unbudgeted constructor", "") {
-  WhbxRM<tdbrm::RMPolicyUnbudgeted> x{};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
-}
-
-TEST_CASE("Resource - production constructor", "") {
-  WhbxRM<tdbrm::RMPolicyProduction> x{tdbrm::AllResourcesBudget{}};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
+int main() {
+  return 0;
 }

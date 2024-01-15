@@ -27,16 +27,23 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "resource_testsupport.h"
+#include "../../test/resource_testsupport.h"
+#include "../container.h"
 
-TEST_CASE("Resource - unbudgeted constructor", "") {
-  WhbxRM<tdbrm::RMPolicyUnbudgeted> x{};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
-}
+namespace tiledb::common {}
+namespace tdb = tiledb::common;
 
-TEST_CASE("Resource - production constructor", "") {
-  WhbxRM<tdbrm::RMPolicyProduction> x{tdbrm::AllResourcesBudget{}};
-  auto& mm{x.memory()};
-  (void)mm.allocator();
+template <class T>
+using tdb_vector = tdb::vector<T>;
+
+struct contents {
+  int x{0};
+};
+
+TEST_CASE("tdb_vector - allocator-only constructor", "") {
+  WhbxRMUnbudgeted rm;
+  auto& mm{rm.memory()};
+  auto& a{mm.allocator()};
+  tdb_vector<contents> x(a);
+  CHECK(x.empty());
 }

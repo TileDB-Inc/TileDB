@@ -50,8 +50,8 @@ static constexpr bool using_memory_resources = false;
 #endif
 
 namespace tiledb::common {
-
-/* -------------------------------------------------------
+/*
+ * -------------------------------------------------------
  * Workaround for missing <memory_resource>
  *
  * The C++17 header <memory_resource> is not available on all platforms at of
@@ -68,7 +68,6 @@ namespace tiledb::common {
  * - For systems without <memory_resource>, we are using `std::allocator`.
  * -------------------------------------------------------
  */
-
 /**
  * Template that specifies the common allocator type and how to use it. This
  * class is for specialization only.
@@ -84,9 +83,11 @@ template <bool using_PMR>
 struct IterimAllocators;
 
 #if __has_include(<memory_resource>)
-#include <memory_resource>
 /**
- * Selection class when we have <memory_resources>
+ * Selection class when we have <memory_resource>
+ *
+ * This class is only compiled when <memory_resource> is available, because it
+ * requires a definition in `std::pmr`.
  */
 template <>
 struct IterimAllocators<true> {
@@ -95,12 +96,15 @@ struct IterimAllocators<true> {
    * will later be replaced with a subclass that ties in with the resource
    * management system.
    */
-  using pmr_allocator = std::pmr::polymorphic_allocator<std::byte>;
+  template <class T = std::byte>
+  using pmr_allocator = std::pmr::polymorphic_allocator<T>;
 };
 #endif
 
 /**
- * Selection class when we don't have <memory_resource> is always compiled.
+ * Selection class when we don't have <memory_resource>.
+ *
+ * This class is always compiled, whether or not we have the header.
  */
 template <>
 struct IterimAllocators<false> {
@@ -108,10 +112,10 @@ struct IterimAllocators<false> {
    * The hack version is pretty much any allocator that's available, and that's
    * `std::allocator`.
    */
-  using pmr_allocator = std::allocator<std::byte>;
+  template <class T = std::byte>
+  using pmr_allocator = std::allocator<T>;
 };
 
-namespace resource_manager {
 namespace detail {
 /**
  * The allocator type used for polymorphic allocation.
@@ -133,9 +137,65 @@ namespace detail {
  *
  * This class is using the iterim allocators at present.
  */
-using pmr_allocator = IterimAllocators<tiledb::common::using_memory_resources>::pmr_allocator;
+template <class T>
+using pmr_allocator_base = IterimAllocators<tiledb::common::using_memory_resources>::pmr_allocator<T>;
 }
 
+namespace resource_manager {
+template <bool>
+struct MMPolicyUnbudgeted;
+
+}
+
+/**
+ * C++ allocator for memory under control of a resource manager
+ *
+ * @section Design
+ *
+ * This class does not have public constructors. Adding public constructors
+ * subverts the resource management system. All allocators of this type must
+ * originate in a resource manager, which thus acts as a factory for allocator
+ * objects.
+ *
+ * @tparam T type of allocated memory
+ */
+template <class T = std::byte>
+class pmr_allocator : public detail::pmr_allocator_base<T> {
+  friend struct resource_manager::MMPolicyUnbudgeted<false>;
+  friend struct resource_manager::MMPolicyUnbudgeted<true>;
+
+  /**
+   * Default allocator is private; it is only avaliable through friend declarations.
+   */
+  pmr_allocator() = default;
+
+  template <class... Args>
+  pmr_allocator(Args&&... args)
+      : detail::pmr_allocator_base<T>{std::forward<Args>(args)...} {
+  }
+
+ public:
+
+  /**
+   * Copy constructor is deleted because it's not clear we want one.
+   *
+   * @section Maturity
+   *
+   * If there's a copy constructor, it needs to reference the same memory
+   * manager that the original does, and it must draw from the same budget. This
+   * would mean updated any bidirectional link that might exist, and do so in a
+   * thread-safe fashion. For the interim we simply delete the constructor and
+   * avoid dealing with these issues.
+   */
+  pmr_allocator(const pmr_allocator&) = default;
+
+  /**
+   * Move constuctor.
+   */
+  pmr_allocator(pmr_allocator&&) = default;
+};
+
+namespace resource_manager {
 /**
  * Memory management policy is a template argument for both managers and containers.
  *
@@ -156,7 +216,7 @@ concept MemoryManagementPolicy = requires() {
  */
 template <bool UsingPMR = tiledb::common::using_memory_resources>
 struct MMPolicyUnbudgeted {
-  using allocator_type = detail::pmr_allocator;
+  using allocator_type = pmr_allocator<std::byte>;
 
   static allocator_type construct_allocator() {
     if constexpr (UsingPMR) {
@@ -171,11 +231,11 @@ static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<>>);
 /*
  * forward declaration for friend of `class Memory`
  */
-template <ResourceManagementPolicy P>
+template <ResourceManagementPolicy>
 class ResourceManager;
 
 namespace detail {
-template <MemoryManagementPolicy P>
+template <MemoryManagementPolicy>
 class MemoryBase {};
 
 /**
@@ -230,48 +290,6 @@ class MemoryManager : public detail::Memory<typename P::memory_management_policy
 };
 
 }  // namespace resource_manager
-
-namespace detail {
-template <bool using_PMR>
-class vector_definition;
-
-template <>
-class vector_definition<true> {};
-
-template <>
-class vector_definition<false> {};
-
-}
-
-/**
- * Manageable `vector` with mandatory and polymorphic allocator.
- */
-#if false
-/*
- * pmr::vector not available on all platforms at present
- */
-template <class T>
-class vector : public std::pmr::vector<T> {
-  using base = std::pmr::vector<T>;
-
- public:
-  /**
-   * Default constructor is deleted.
-   *
-   * It would violate policy for this class to have a default constructor. All
-   * `tdb` containers require an allocator for construction; they do not
-   * allocate on the global heap.
-   */
-  vector() = delete;
-
-  /**
-   * Allocator-only constructor is the closest thing to a default constructor.
-   */
-  explicit vector(const pmr_allocator& a)
-      : base(a) {
-  }
-};
-#endif
 
 }  // namespace tiledb::common
 
