@@ -81,18 +81,18 @@ void query_plan_request_from_capnp(
 }
 
 void query_plan_response_to_capnp(
-    capnp::QueryPlanResponse::Builder& builder, const std::string& query_plan) {
-  builder.setQueryPlan(query_plan);
+    capnp::QueryPlanResponse::Builder& builder, const QueryPlan& query_plan) {
+  builder.setStrategy(query_plan.strategy());
 }
 
 std::string query_plan_response_from_capnp(
     const capnp::QueryPlanResponse::Reader& reader) {
-  std::string query_plan;
-  if (reader.hasQueryPlan()) {
-    query_plan = reader.getQueryPlan().cStr();
+  std::string strategy;
+  if (reader.hasStrategy()) {
+    strategy = reader.getStrategy().cStr();
   }
 
-  return query_plan;
+  return strategy;
 }
 
 void serialize_query_plan_request(
@@ -194,7 +194,7 @@ void deserialize_query_plan_request(
 }
 
 void serialize_query_plan_response(
-    const std::string& query_plan,
+    const QueryPlan& query_plan,
     SerializationType serialization_type,
     Buffer& response) {
   try {
@@ -244,8 +244,10 @@ void serialize_query_plan_response(
   }
 }
 
-std::string deserialize_query_plan_response(
-    SerializationType serialization_type, const Buffer& response) {
+QueryPlan deserialize_query_plan_response(
+    Query& query,
+    SerializationType serialization_type,
+    const Buffer& response) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -256,7 +258,7 @@ std::string deserialize_query_plan_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(response.data())), builder);
         capnp::QueryPlanResponse::Reader reader = builder.asReader();
-        return query_plan_response_from_capnp(reader);
+        return QueryPlan(query, query_plan_response_from_capnp(reader));
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
@@ -265,7 +267,7 @@ std::string deserialize_query_plan_response(
             response.size() / sizeof(::capnp::word)));
         capnp::QueryPlanResponse::Reader reader =
             array_reader.getRoot<capnp::QueryPlanResponse>();
-        return query_plan_response_from_capnp(reader);
+        return QueryPlan(query, query_plan_response_from_capnp(reader));
       }
       default: {
         throw Status_SerializationError(
@@ -299,13 +301,13 @@ void deserialize_query_plan_request(
 }
 
 void serialize_query_plan_response(
-    const std::string&, const SerializationType, Buffer&) {
+    const QueryPlan&, const SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::string deserialize_query_plan_response(
-    const SerializationType, const Buffer&) {
+QueryPlan deserialize_query_plan_response(
+    Query&, const SerializationType, const Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
