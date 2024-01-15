@@ -60,7 +60,7 @@ jobs:
           done
           
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.zipball_url }}
-          SHA_TILEDB_SOURCE=$(curl $URL_TILEDB_SOURCE | sha1sum | cut -d " " -f 1)
+          SHA_TILEDB_SOURCE=$(curl -sL $URL_TILEDB_SOURCE | sha1sum | cut -d " " -f 1)
           sed -i -e "s|{{URL_TILEDB_SOURCE}}|$URL_TILEDB_SOURCE|g" $TEMPLATE
           sed -i -e "s|{{SHA_TILEDB_SOURCE}}|$SHA_TILEDB_SOURCE|g" $TEMPLATE
           
