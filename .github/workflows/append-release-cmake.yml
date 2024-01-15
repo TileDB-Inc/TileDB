@@ -23,6 +23,10 @@ jobs:
       - name: Checkout TileDB
         uses: actions/checkout@v3
 
+      - name: Make release directory
+        run: |
+          mkdir release
+
       - name: Github release data
         id: release_data
         uses: KevinRohn/github-full-release-data@v2.0.4
