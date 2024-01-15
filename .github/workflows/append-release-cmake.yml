@@ -31,7 +31,7 @@ jobs:
         id: release_data
         uses: KevinRohn/github-full-release-data@v2.0.4
         with:
-          repository: 'TileDB-Inc/TileDB'
+          # repository: 'TileDB-Inc/TileDB'
           version: ${{ inputs.ref }}
           asset-file: '*.zip,*.tar.gz'
           asset-output: './release/'
@@ -61,3 +61,13 @@ jobs:
                           cat $TEMPLATE | sed "s|{{SHA_${REL}}}|$SHA|g" > $TEMPLATE
                   fi
           done
+          SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
+          echo $TEMPLATE > $TEMPLATE.sha
+
+      - name: Upload template to release
+        uses: svenstaro/upload-release-action@v2
+        with:
+          file: .github/misc/FindTileDB_EP.cmake*
+          tag: ${{ inputs.ref }}
+          overwrite: true
+          file_glob: true
