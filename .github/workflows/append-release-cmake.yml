@@ -20,6 +20,9 @@ jobs:
   fetch_release_files:
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v3
+
       - name: Github release data
         id: release_data
         uses: KevinRohn/github-full-release-data@v2.0.4
@@ -27,8 +30,30 @@ jobs:
           repository: 'TileDB-Inc/TileDB'
           version: ${{ inputs.ref }}
           asset-file: '*.zip,*.tar.gz'
-          asset-output: './'
+          asset-output: './rel'
 
       - name: Print release data
         run: |
-          ls -lah
+          PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
+          TEMPLATE=.github/misc/FindTileDB_EP.cmake
+
+          for FILE in $(ls rel)
+          do
+                  if [[ $FILE =~ $PATTERN ]]
+                  then
+                          OS=${BASH_REMATCH[1]^^}
+                          ARCH=${BASH_REMATCH[2]^^}
+                          NOAVX2=${BASH_REMATCH[3]//-/_}
+
+                          REL=TILEDB_${OS}_${ARCH}${NOAVX2^^}
+                          URL="https://github.com/TileDB-Inc/TileDB/releases/download/${{ inputs.ref }}/$FILE"
+                          SHA=$(sha1sum rel/$FILE | cut -d " " -f 1)
+
+                          echo $REL
+                          echo $URL
+                          echo $SHA
+          
+                          cat $TEMPLATE | sed "s|{{URL_${REL}}}|$URL|g" > $TEMPLATE
+                          cat $TEMPLATE | sed "s|{{SHA_${REL}}}|$SHA|g" > $TEMPLATE
+                  fi
+          done
