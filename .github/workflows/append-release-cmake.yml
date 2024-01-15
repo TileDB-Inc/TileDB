@@ -67,7 +67,7 @@ jobs:
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
         with:
-          file: .github/misc/FindTileDB_EP.cmake*
+          file: .github/misc/FindTileDB_EP*
           tag: ${{ inputs.ref }}
           overwrite: true
           file_glob: true
