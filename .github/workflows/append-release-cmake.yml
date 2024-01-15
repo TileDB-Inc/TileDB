@@ -17,7 +17,7 @@ on:
         type: string
 
 jobs:
-  fetch_release_files:
+  generate_cmake_files:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout TileDB
@@ -58,7 +58,10 @@ jobs:
                           echo $SHA
           
                           cat $TEMPLATE | sed "s|{{URL_${REL}}}|$URL|g" > $TEMPLATE
+                          cat $TEMPLATE
+          
                           cat $TEMPLATE | sed "s|{{SHA_${REL}}}|$SHA|g" > $TEMPLATE
+                          cat $TEMPLATE
                   fi
           done
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
