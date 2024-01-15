@@ -85,7 +85,7 @@ struct HandleQueryPlanRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override;
-  std::string call_handler(SerializationType stype, Query& query);
+  QueryPlan call_handler(SerializationType stype, Query& query);
 };
 
 struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
@@ -229,7 +229,7 @@ TEST_CASE_METHOD(
   auto query_plan_ser_deser = call_handler(stype, *query->query_);
 
   // Compare the two query plans
-  REQUIRE(query_plan->view() == query_plan_ser_deser);
+  REQUIRE(query_plan->view() == query_plan_ser_deser.dump_json());
 
   // Clean up
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
@@ -466,7 +466,7 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   return schema;
 }
 
-std::string HandleQueryPlanRequestFx::call_handler(
+QueryPlan HandleQueryPlanRequestFx::call_handler(
     SerializationType stype, Query& query) {
   auto ctx = tiledb::Context();
   auto array = tiledb::Array(ctx, uri_.to_string(), TILEDB_READ);
@@ -483,8 +483,8 @@ std::string HandleQueryPlanRequestFx::call_handler(
       resp_buf);
   REQUIRE(rval == TILEDB_OK);
 
-  auto query_plan =
-      serialization::deserialize_query_plan_response(stype, resp_buf->buffer());
+  auto query_plan = serialization::deserialize_query_plan_response(
+      query, stype, resp_buf->buffer());
 
   tiledb_buffer_handle_t::break_handle(req_buf);
   tiledb_buffer_handle_t::break_handle(resp_buf);

@@ -4347,7 +4347,7 @@ capi_return_t tiledb_handle_query_plan_request(
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
   if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
+    throw std::invalid_argument("Array parameter must be valid.");
   }
 
   api::ensure_buffer_is_valid(request);
@@ -4362,7 +4362,7 @@ capi_return_t tiledb_handle_query_plan_request(
   sm::QueryPlan plan(query);
 
   tiledb::sm::serialization::serialize_query_plan_response(
-      plan.dump_json(),
+      plan,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 

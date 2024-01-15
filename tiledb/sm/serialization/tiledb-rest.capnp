@@ -71,6 +71,7 @@ struct Array {
 struct ArrayOpen {
   config @0 :Config;
   # Config
+
   queryType @1 :Text;
   # Query type to open the array for
 }
@@ -1265,13 +1266,13 @@ struct QueryPlanRequest {
   config @0 :Config;
   # Config
 
-  query @1 : Query;
+  query @1 :Query;
   # the query for which we request the plan
 }
 
 struct QueryPlanResponse {
-  queryPlan @0 :Text;
-  # The returned query plan
+  strategy @0 :Text;
+  # strategy used by the query
 }
 
 struct ConsolidationPlanRequest {
