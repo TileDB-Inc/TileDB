@@ -1613,7 +1613,8 @@ Status query_from_capnp(
     void* buffer_start,
     CopyState* const copy_state,
     Query* const query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool query_plan) {
   using namespace tiledb::sm;
 
   auto array = query->array();
@@ -2114,12 +2115,16 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size, true, true));
+              name, varlen_data, &attr_state->var_len_size, !query_plan, true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size, true, true));
+              name, offsets, &attr_state->fixed_len_size, !query_plan, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                !query_plan,
+                true));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -2142,10 +2147,14 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, data, &attr_state->fixed_len_size, true, true));
+              name, data, &attr_state->fixed_len_size, !query_plan, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                !query_plan,
+                true));
           }
         }
       } else {

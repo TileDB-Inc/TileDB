@@ -75,7 +75,8 @@ void query_plan_request_from_capnp(
         nullptr,
         nullptr,
         &query,
-        &compute_tp));
+        &compute_tp,
+        true));
   }
 }
 
