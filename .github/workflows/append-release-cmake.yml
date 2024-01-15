@@ -30,9 +30,9 @@ jobs:
           repository: 'TileDB-Inc/TileDB'
           version: ${{ inputs.ref }}
           asset-file: '*.zip,*.tar.gz'
-          asset-output: './rel'
+          asset-output: 'rel/'
 
-      - name: Print release data
+      - name: Render template
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
           TEMPLATE=.github/misc/FindTileDB_EP.cmake
