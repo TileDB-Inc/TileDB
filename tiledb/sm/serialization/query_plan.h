@@ -97,7 +97,9 @@ void serialize_query_plan_response(
  * @return The requested query plan.
  */
 QueryPlan deserialize_query_plan_response(
-    Query&, const SerializationType serialization_type, const Buffer& response);
+    Query& query,
+    const SerializationType serialization_type,
+    const Buffer& response);
 
 }  // namespace serialization
 }  // namespace tiledb::sm
