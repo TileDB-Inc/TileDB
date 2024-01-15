@@ -60,8 +60,8 @@ jobs:
                           echo $URL
                           echo $SHA
           
-                          cat $TEMPLATE | sed "s|{{URL_${REL}}}|$URL|g" > $TEMPLATE
-                          cat $TEMPLATE | sed "s|{{SHA_${REL}}}|$SHA|g" > $TEMPLATE
+                          sed -i -e "s|{{URL_${REL}}}|$URL|g" $TEMPLATE
+                          sed -i -e "s|{{SHA_${REL}}}|$SHA|g" $TEMPLATE
                   fi
           done
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
