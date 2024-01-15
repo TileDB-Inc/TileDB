@@ -25,7 +25,7 @@ jobs:
 
       - name: Make release directory
         run: |
-          mkdir release
+          mkdir release output
 
       - name: Github release data
         id: release_data
@@ -39,7 +39,10 @@ jobs:
       - name: Render template
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
-          TEMPLATE=".github/misc/FindTileDB_EP.cmake"
+          TEMPLATE="output/FindTileDB_EP.cmake"
+          cp .github/misc/FindTileDB_EP.cmake $TEMPLATE
+          
+          cat $TEMPLATE
 
           for FILE in $(ls release)
           do
@@ -58,22 +61,19 @@ jobs:
                           echo $SHA
           
                           cat $TEMPLATE | sed "s|{{URL_${REL}}}|$URL|g" > $TEMPLATE
-                          cat $TEMPLATE
-          
                           cat $TEMPLATE | sed "s|{{SHA_${REL}}}|$SHA|g" > $TEMPLATE
-                          cat $TEMPLATE
                   fi
           done
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
           echo $SHA > $TEMPLATE.sha
-          ls .github/misc
+          ls output
           cat $TEMPLATE
           cat $TEMPLATE.sha
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
         with:
-          file: .github/misc/FindTileDB_EP*
+          file: output/*
           tag: ${{ inputs.ref }}
           overwrite: true
           file_glob: true
