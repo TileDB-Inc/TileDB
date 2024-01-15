@@ -39,7 +39,7 @@ jobs:
       - name: Render template
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
-          TEMPLATE=.github/misc/FindTileDB_EP.cmake
+          TEMPLATE=".github/misc/FindTileDB_EP.cmake"
 
           for FILE in $(ls release)
           do
