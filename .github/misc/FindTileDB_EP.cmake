@@ -64,8 +64,8 @@ else()
         # Try to download prebuilt artifacts unless the user specifies to build from source
         if(DOWNLOAD_TILEDB_PREBUILT)
             if (WIN32) # Windows
-                SET(DOWNLOAD_URL "https://github.com/TileDB-Inc/TileDB/releases/download/2.18.2/tiledb-windows-x86_64-2.18.2-9ae6e1a.zip")
-                SET(DOWNLOAD_SHA1 "c440403fde701e5014a7ffa046d38bb49b141e55")
+                SET(DOWNLOAD_URL ${URL_TILEDB_WINDOWS_X86_64})
+                SET(DOWNLOAD_SHA1 ${SHA_TILEDB_WINDOWS_X86_64})
             elseif(APPLE) # OSX
                 if (DEFINED CMAKE_OSX_ARCHITECTURES)
                     set(ACTUAL_TARGET ${CMAKE_OSX_ARCHITECTURES})
@@ -75,15 +75,15 @@ else()
 
 
                 if (ACTUAL_TARGET MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
-                    SET(DOWNLOAD_URL "https://github.com/TileDB-Inc/TileDB/releases/download/2.18.2/tiledb-macos-x86_64-2.18.2-9ae6e1a.tar.gz")
-                    SET(DOWNLOAD_SHA1 "6ba986407b2d0e25fb5df19d08ed22fefeac1c2a")
+                    SET(DOWNLOAD_URL ${URL_TILEDB_MACOS_X86_64})
+                    SET(DOWNLOAD_SHA1 ${SHA_TILEDB_MACOS_X86_64})
                 elseif (ACTUAL_TARGET STREQUAL arm64 OR ACTUAL_TARGET MATCHES "^aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-                    SET(DOWNLOAD_URL "https://github.com/TileDB-Inc/TileDB/releases/download/2.18.2/tiledb-macos-arm64-2.18.2-9ae6e1a.tar.gz")
-                    SET(DOWNLOAD_SHA1 "4395a283db57844a944f02dab5bd0f0001eb7e30")
+                    SET(DOWNLOAD_URL ${URL_TILEDB_MACOS_ARM64})
+                    SET(DOWNLOAD_SHA1 ${SHA_TILEDB_MACOS_ARM64})
                 endif()
             else() # Linux
-                SET(DOWNLOAD_URL "https://github.com/TileDB-Inc/TileDB/releases/download/2.18.2/tiledb-linux-x86_64-2.18.2-9ae6e1a.tar.gz")
-                SET(DOWNLOAD_SHA1 "6386504a58d52330f41fa688a2b259b67824e2c8")
+                SET(DOWNLOAD_URL ${URL_TILEDB_LINUX_X86_64})
+                SET(DOWNLOAD_SHA1 ${SHA_TILEDB_LINUX_X86_64})
             endif()
 
             ExternalProject_Add(ep_tiledb
@@ -105,8 +105,8 @@ else()
         else() # Build from source
             ExternalProject_Add(ep_tiledb
                     PREFIX "externals"
-                    URL "https://github.com/TileDB-Inc/TileDB/archive/2.18.2.zip"
-                    URL_HASH SHA1=70bb2e9a7603675849830b763d1a0d17fce4bafa
+                    URL "{{URL_TILEDB_SOURCE}}"
+                    URL_HASH SHA1={{SHA_TILEDB_SOURCE}}
                     DOWNLOAD_NAME "tiledb.zip"
                     CMAKE_ARGS
                     -DCMAKE_INSTALL_PREFIX=${EP_INSTALL_PREFIX}

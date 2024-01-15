@@ -23,7 +23,7 @@ jobs:
       - name: Checkout TileDB
         uses: actions/checkout@v3
 
-      - name: Make release directory
+      - name: Make release and output directories
         run: |
           mkdir release output
 
@@ -42,8 +42,6 @@ jobs:
           TEMPLATE="output/FindTileDB_EP.cmake"
           cp .github/misc/FindTileDB_EP.cmake $TEMPLATE
           
-          cat $TEMPLATE
-
           for FILE in $(ls release)
           do
                   if [[ $FILE =~ $PATTERN ]]
@@ -55,20 +53,19 @@ jobs:
                           REL=TILEDB_${OS}_${ARCH}${NOAVX2^^}
                           URL="https://github.com/TileDB-Inc/TileDB/releases/download/${{ inputs.ref }}/$FILE"
                           SHA=$(sha1sum release/$FILE | cut -d " " -f 1)
-
-                          echo $REL
-                          echo $URL
-                          echo $SHA
           
                           sed -i -e "s|{{URL_${REL}}}|$URL|g" $TEMPLATE
                           sed -i -e "s|{{SHA_${REL}}}|$SHA|g" $TEMPLATE
                   fi
           done
+          
+          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.zipball_url }}
+          SHA_TILEDB_SOURCE=$(curl $URL_TILEDB_SOURCE | sha1sum | cut -d " " -f 1)
+          sed -i -e "s|{{URL_TILEDB_SOURCE}}|$URL_TILEDB_SOURCE|g" $TEMPLATE
+          sed -i -e "s|{{SHA_TILEDB_SOURCE}}|$SHA_TILEDB_SOURCE|g" $TEMPLATE
+          
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
           echo $SHA > $TEMPLATE.sha
-          ls output
-          cat $TEMPLATE
-          cat $TEMPLATE.sha
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
