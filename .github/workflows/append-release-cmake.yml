@@ -63,7 +63,7 @@ jobs:
           done
           SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
           echo $SHA > $TEMPLATE.sha
-          ls .github/mist
+          ls .github/misc
           cat $TEMPLATE
           cat $TEMPLATE.sha
 
