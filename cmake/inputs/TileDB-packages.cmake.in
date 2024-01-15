@@ -43,7 +43,7 @@ function(DOWNLOAD_TILEDB FROM_SOURCE)
 
     # Source build
     set(URL_TILEDB_SOURCE "{{URL_TILEDB_SOURCE}}")
-    set(SHA_TILEDB_SOURCE "{{SHA_TILEDB_SROUCE}}")
+    set(SHA_TILEDB_SOURCE "{{SHA_TILEDB_SOURCE}}")
 
     if(${FROM_SOURCE})
         ExternalProject_Add(ep_tiledb
