@@ -63,6 +63,8 @@ enum class ConsolidationMode {
 /** Handles array consolidation. */
 class Consolidator {
  public:
+  using context_bypass_RM = void;
+
   /* ********************************* */
   /*          FACTORY METHODS          */
   /* ********************************* */

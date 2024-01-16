@@ -281,7 +281,8 @@ Status StorageManagerCanonical::fragments_consolidate(
   auto consolidator =
       Consolidator::create(ConsolidationMode::FRAGMENT, config, this);
   auto fragment_consolidator =
-      dynamic_cast<FragmentConsolidator*>(consolidator.get());
+      dynamic_cast<FragmentConsolidator<Consolidator::context_bypass_RM>*>(
+          consolidator.get());
   return fragment_consolidator->consolidate_fragments(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
 }

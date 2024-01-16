@@ -106,6 +106,7 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
 /**
  * Consolidation workspace holds the large buffers used by the operation.
  */
+template <class RM>
 class FragmentConsolidationWorkspace {
  public:
   FragmentConsolidationWorkspace() = default;
@@ -158,6 +159,7 @@ class FragmentConsolidationWorkspace {
 };
 
 /** Handles fragment consolidation. */
+template <class RM>
 class FragmentConsolidator : public Consolidator {
   friend class WhiteboxFragmentConsolidator;
 
@@ -286,7 +288,7 @@ class FragmentConsolidator : public Consolidator {
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
       URI* new_fragment_uri,
-      FragmentConsolidationWorkspace& cw);
+      FragmentConsolidationWorkspace<RM>& cw);
 
   /**
    * Copies the array by reading from the fragments to be consolidated
@@ -298,7 +300,7 @@ class FragmentConsolidator : public Consolidator {
    * @param cw A workspace containing buffers for the queries
    */
   void copy_array(
-      Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
+      Query* query_r, Query* query_w, FragmentConsolidationWorkspace<RM>& cw);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves
@@ -354,7 +356,7 @@ class FragmentConsolidator : public Consolidator {
    * @param cw Consolidation workspace containing the buffers
    */
   void set_query_buffers(
-      Query* query, FragmentConsolidationWorkspace& cw) const;
+      Query* query, FragmentConsolidationWorkspace<RM>& cw) const;
 
   /** Writes the vacuum file that contains the URIs of the consolidated
    * fragments. */

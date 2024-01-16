@@ -58,7 +58,8 @@ class FragmentConsolidatorException : public StatusException {
   }
 };
 
-void FragmentConsolidationWorkspace::resize_buffers(
+template <class RM>
+void FragmentConsolidationWorkspace<RM>::resize_buffers(
     stats::Stats* stats,
     const FragmentConsolidationConfig& config,
     const ArraySchema& array_schema,
@@ -167,7 +168,8 @@ void FragmentConsolidationWorkspace::resize_buffers(
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-FragmentConsolidator::FragmentConsolidator(
+template <class RM>
+FragmentConsolidator<RM>::FragmentConsolidator(
     const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
@@ -180,7 +182,8 @@ FragmentConsolidator::FragmentConsolidator(
 /*               API              */
 /* ****************************** */
 
-Status FragmentConsolidator::consolidate(
+template <class RM>
+Status FragmentConsolidator<RM>::consolidate(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -227,7 +230,7 @@ Status FragmentConsolidator::consolidate(
     return st;
   }
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace<RM> cw;
 
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
@@ -293,7 +296,8 @@ Status FragmentConsolidator::consolidate(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::consolidate_fragments(
+template <class RM>
+Status FragmentConsolidator<RM>::consolidate_fragments(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -368,7 +372,7 @@ Status FragmentConsolidator::consolidate_fragments(
         "Cannot consolidate; Not all fragments could be found"));
   }
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace<RM> cw;
 
   // Consolidate the selected fragments
   URI new_fragment_uri;
@@ -402,7 +406,8 @@ Status FragmentConsolidator::consolidate_fragments(
   return Status::Ok();
 }
 
-void FragmentConsolidator::vacuum(const char* array_name) {
+template <class RM>
+void FragmentConsolidator<RM>::vacuum(const char* array_name) {
   if (array_name == nullptr) {
     throw FragmentConsolidatorException(
         "Cannot vacuum fragments; Array name cannot be null");
@@ -453,7 +458,8 @@ void FragmentConsolidator::vacuum(const char* array_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-bool FragmentConsolidator::are_consolidatable(
+template <class RM>
+bool FragmentConsolidator<RM>::are_consolidatable(
     const Domain& domain,
     const FragmentInfo& fragment_info,
     size_t start,
@@ -482,13 +488,14 @@ bool FragmentConsolidator::are_consolidatable(
   return (double(union_cell_num) / sum_cell_num) <= config_.amplification_;
 }
 
-Status FragmentConsolidator::consolidate_internal(
+template <class RM>
+Status FragmentConsolidator<RM>::consolidate_internal(
     shared_ptr<Array> array_for_reads,
     shared_ptr<Array> array_for_writes,
     const std::vector<TimestampedURI>& to_consolidate,
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
-    FragmentConsolidationWorkspace& cw) {
+    FragmentConsolidationWorkspace<RM>& cw) {
   auto timer_se = stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
@@ -607,8 +614,9 @@ Status FragmentConsolidator::consolidate_internal(
   return st;
 }
 
-void FragmentConsolidator::copy_array(
-    Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw) {
+template <class RM>
+void FragmentConsolidator<RM>::copy_array(
+    Query* query_r, Query* query_w, FragmentConsolidationWorkspace<RM>& cw) {
   auto timer_se = stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
@@ -639,7 +647,8 @@ void FragmentConsolidator::copy_array(
   } while (query_r->status() == QueryStatus::INCOMPLETE);
 }
 
-Status FragmentConsolidator::create_queries(
+template <class RM>
+Status FragmentConsolidator<RM>::create_queries(
     shared_ptr<Array> array_for_reads,
     shared_ptr<Array> array_for_writes,
     const NDRange& subarray,
@@ -706,7 +715,8 @@ Status FragmentConsolidator::create_queries(
   return Status::Ok();
 }
 
-Status FragmentConsolidator::compute_next_to_consolidate(
+template <class RM>
+Status FragmentConsolidator<RM>::compute_next_to_consolidate(
     const ArraySchema& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
@@ -822,8 +832,9 @@ Status FragmentConsolidator::compute_next_to_consolidate(
   return Status::Ok();
 }
 
-void FragmentConsolidator::set_query_buffers(
-    Query* query, FragmentConsolidationWorkspace& cw) const {
+template <class RM>
+void FragmentConsolidator<RM>::set_query_buffers(
+    Query* query, FragmentConsolidationWorkspace<RM>& cw) const {
   std::vector<span<std::byte>>* buffers{&cw.buffers()};
   std::vector<uint64_t>* buffer_sizes{&cw.sizes()};
 
@@ -907,7 +918,8 @@ void FragmentConsolidator::set_query_buffers(
   }
 }
 
-Status FragmentConsolidator::set_config(const Config& config) {
+template <class RM>
+Status FragmentConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   merged_config.inherit(config);
@@ -992,7 +1004,8 @@ Status FragmentConsolidator::set_config(const Config& config) {
   return Status::Ok();
 }
 
-Status FragmentConsolidator::write_vacuum_file(
+template <class RM>
+Status FragmentConsolidator<RM>::write_vacuum_file(
     const format_version_t write_version,
     const URI& array_uri,
     const URI& vac_uri,
@@ -1018,4 +1031,5 @@ Status FragmentConsolidator::write_vacuum_file(
   return Status::Ok();
 }
 
+template class FragmentConsolidator<void>;
 }  // namespace tiledb::sm

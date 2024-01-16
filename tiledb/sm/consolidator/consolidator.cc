@@ -56,7 +56,8 @@ shared_ptr<Consolidator> Consolidator::create(
     case ConsolidationMode::FRAGMENT_META:
       return make_shared<FragmentMetaConsolidator>(HERE(), storage_manager);
     case ConsolidationMode::FRAGMENT:
-      return make_shared<FragmentConsolidator>(HERE(), config, storage_manager);
+      return make_shared<FragmentConsolidator<context_bypass_RM>>(
+          HERE(), config, storage_manager);
     case ConsolidationMode::ARRAY_META:
       return make_shared<ArrayMetaConsolidator>(
           HERE(), config, storage_manager);
