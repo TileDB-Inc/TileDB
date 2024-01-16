@@ -165,7 +165,7 @@ capi_return_t tiledb_query_get_default_channel(
   // We don't have an internal representation of a channel,
   // the default channel is currently just a hashmap, so only pass the query
   // to the channel constructor to be carried until next the api call.
-  *channel = tiledb_query_channel_handle_t::make_handle(query);
+  *channel = tiledb_query_channel_handle_t::make_handle(query->query_);
 
   return TILEDB_OK;
 }

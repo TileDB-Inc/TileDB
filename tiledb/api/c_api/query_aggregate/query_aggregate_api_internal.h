@@ -90,8 +90,8 @@ struct tiledb_query_channel_handle_t
    * Ordinary constructor.
    * @param query The query object that owns the channel
    */
-  tiledb_query_channel_handle_t(tiledb_query_t* query)
-      : query_(query->query_) {
+  tiledb_query_channel_handle_t(tiledb::sm::Query* query)
+      : query_(query) {
   }
 
   inline void add_aggregate(
