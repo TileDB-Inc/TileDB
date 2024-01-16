@@ -46,7 +46,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-ArrayMetaConsolidator::ArrayMetaConsolidator(
+template <class RM>
+ArrayMetaConsolidator<RM>::ArrayMetaConsolidator(
     const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
@@ -59,7 +60,8 @@ ArrayMetaConsolidator::ArrayMetaConsolidator(
 /*               API              */
 /* ****************************** */
 
-Status ArrayMetaConsolidator::consolidate(
+template <class RM>
+Status ArrayMetaConsolidator<RM>::consolidate(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -140,7 +142,8 @@ Status ArrayMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-void ArrayMetaConsolidator::vacuum(const char* array_name) {
+template <class RM>
+void ArrayMetaConsolidator<RM>::vacuum(const char* array_name) {
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
         "Cannot vacuum array metadata; Array name cannot be null");
@@ -165,7 +168,8 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status ArrayMetaConsolidator::set_config(const Config& config) {
+template <class RM>
+Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   merged_config.inherit(config);
@@ -179,5 +183,7 @@ Status ArrayMetaConsolidator::set_config(const Config& config) {
 
   return Status::Ok();
 }
+
+template class ArrayMetaConsolidator<Consolidator::context_bypass_RM>;
 
 }  // namespace tiledb::sm

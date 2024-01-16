@@ -60,7 +60,7 @@ shared_ptr<Consolidator> Consolidator::create(
       return make_shared<FragmentConsolidator<context_bypass_RM>>(
           HERE(), config, storage_manager);
     case ConsolidationMode::ARRAY_META:
-      return make_shared<ArrayMetaConsolidator>(
+      return make_shared<ArrayMetaConsolidator<context_bypass_RM>>(
           HERE(), config, storage_manager);
     case ConsolidationMode::COMMITS:
       return make_shared<CommitsConsolidator<context_bypass_RM>>(

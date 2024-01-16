@@ -46,6 +46,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 /** Handles array metadata consolidation. */
+template <class RM>
 class ArrayMetaConsolidator : public Consolidator {
  public:
   /* ********************************* */
