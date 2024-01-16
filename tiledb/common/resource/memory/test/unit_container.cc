@@ -40,10 +40,17 @@ struct contents {
   int x{0};
 };
 
+TEST_CASE("allocators"){
+  SECTION("std::allocator - type conversion") {
+    std::allocator<std::byte> a;
+    std::allocator<contents> b(a);
+  }
+}
+
 TEST_CASE("tdb_vector - allocator-only constructor", "") {
   WhbxRMUnbudgeted rm;
   auto& mm{rm.memory()};
-  auto& a{mm.allocator()};
+  auto a{mm.allocator<contents>()};
   tdb_vector<contents> x(a);
   CHECK(x.empty());
 }

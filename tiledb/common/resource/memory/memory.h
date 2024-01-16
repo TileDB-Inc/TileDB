@@ -32,9 +32,13 @@
 #define TILEDB_COMMON_RESOURCE_MEMORY_H
 
 #include "../resource-internal.h"
+
 #include <concepts>
 #include <memory>
 #include <utility>
+
+#include "tiledb/stdx/named_requirement/allocator.h"
+
 /*
  * header inclusion needs to be outside any namespace
  */
@@ -142,10 +146,15 @@ using pmr_allocator_base = IterimAllocators<tiledb::common::using_memory_resourc
 }
 
 namespace resource_manager {
+/* Forward declaration */
 template <bool>
 struct MMPolicyUnbudgeted;
-
 }
+
+/** Marker class */
+class OriginalAllocatorT {};
+/** Marker instance */
+static constexpr OriginalAllocatorT OriginalAllocator{};
 
 /**
  * C++ allocator for memory under control of a resource manager
@@ -161,39 +170,45 @@ struct MMPolicyUnbudgeted;
  */
 template <class T = std::byte>
 class pmr_allocator : public detail::pmr_allocator_base<T> {
+  /*
+   * pmr_allocator<T> is friends with pmr_allocator<U>
+   */
+  template <class U>
+  friend class pmr_allocator;
+
+  using base_type = detail::pmr_allocator_base<T>;
   friend struct resource_manager::MMPolicyUnbudgeted<false>;
   friend struct resource_manager::MMPolicyUnbudgeted<true>;
 
   /**
    * Default allocator is private; it is only avaliable through friend declarations.
    */
-  pmr_allocator() = default;
-
-  template <class... Args>
-  pmr_allocator(Args&&... args)
-      : detail::pmr_allocator_base<T>{std::forward<Args>(args)...} {
+  pmr_allocator(OriginalAllocatorT, base_type x)
+      : base_type(x) {
   }
 
  public:
-
-  /**
-   * Copy constructor is deleted because it's not clear we want one.
-   *
-   * @section Maturity
-   *
-   * If there's a copy constructor, it needs to reference the same memory
-   * manager that the original does, and it must draw from the same budget. This
-   * would mean updated any bidirectional link that might exist, and do so in a
-   * thread-safe fashion. For the interim we simply delete the constructor and
-   * avoid dealing with these issues.
-   */
+  /** Copy constructor */
   pmr_allocator(const pmr_allocator&) = default;
 
-  /**
-   * Move constuctor.
-   */
+  /** Move constuctor */
   pmr_allocator(pmr_allocator&&) = default;
+
+  /** Copy conversion */
+  template <class U>
+  pmr_allocator(const pmr_allocator<U>& x)
+      : pmr_allocator(
+            OriginalAllocator,
+            static_cast<base_type>(
+                static_cast<pmr_allocator<U>::base_type>(x))){};
+
+  /** Copy assignment */
+  pmr_allocator& operator=(const pmr_allocator&) = default;
+
+  /** Move assignment */
+  pmr_allocator& operator=(pmr_allocator&&) = default;
 };
+static_assert(stdx::named_requirement::allocator<pmr_allocator>);
 
 namespace resource_manager {
 /**
@@ -203,7 +218,8 @@ namespace resource_manager {
  */
 template <class P>
 concept MemoryManagementPolicy = requires() {
-  typename P::allocator_type;
+  typename P::template allocator_type<int>;
+  //stdx::named_requirement::allocator<P::template allocator_type>;
 } && requires(P x) {
   // At this time only checking for the symbol, not its type
   x.construct_allocator;
@@ -216,17 +232,19 @@ concept MemoryManagementPolicy = requires() {
  */
 template <bool UsingPMR = tiledb::common::using_memory_resources>
 struct MMPolicyUnbudgeted {
-  using allocator_type = pmr_allocator<std::byte>;
+  template <class T>
+  using allocator_type = pmr_allocator<T>;
 
-  static allocator_type construct_allocator() {
+  static allocator_type<std::byte> construct_allocator() {
     if constexpr (UsingPMR) {
-      return {std::pmr::new_delete_resource()};
+      return allocator_type<std::byte>(OriginalAllocator, std::pmr::new_delete_resource());
     } else {
       return {};
     }
   }
 };
-static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<>>);
+static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<true>>);
+static_assert(MemoryManagementPolicy<MMPolicyUnbudgeted<false>>);
 
 /*
  * forward declaration for friend of `class Memory`
@@ -247,7 +265,7 @@ class Memory : public MemoryBase<P> {
   /**
    * Each memory manager contains an allocator that draws from its own budget.
    */
-  P::allocator_type allocator_;
+  P::template allocator_type<std::byte> allocator_;
 
  protected:
   /**
@@ -265,8 +283,9 @@ class Memory : public MemoryBase<P> {
   /**
    * Access for the allocator of this manager
    */
-  P::allocator_type& allocator() {
-    return allocator_;
+  template <class T>
+  P::template allocator_type<T> allocator() const {
+    return P::template allocator_type<T>(allocator_);
   }
 };
 

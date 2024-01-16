@@ -1805,5 +1805,4 @@ Status RestClient<RM>::post_vacuum_to_rest(const URI&, const Config&) {
 template
 class RestClient<tiledb::common::context_bypass_RM>;
 
-
 }  // namespace tiledb::sm
