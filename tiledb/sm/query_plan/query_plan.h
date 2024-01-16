@@ -71,8 +71,12 @@ class QueryPlan {
   /**
    * Constructor
    *
-   * @param query A query object for which we want to calculate the plan
-   * FIXME: add doc
+   * @param query A query object for which we want to calculate the plan.
+   * @param layout The query layout.
+   * @param strategy_name The name of the strategy the query uses.
+   * @param array_type The type of the array.
+   * @param attributes The attribute names set in the query.
+   * @param dimensions The dimension names set in the query.
    */
   QueryPlan(
       Query& query,
@@ -96,35 +100,35 @@ class QueryPlan {
   std::string dump_json(uint32_t indent = 4);
 
   /*
-   * Get the query layout stored in the query plan
+   * Get the query layout stored in the query plan.
    */
   inline Layout query_layout() const {
     return query_layout_;
   }
 
   /*
-   * Get the strategy name stored in the query plan
+   * Get the strategy name stored in the query plan.
    */
   inline std::string strategy() const {
     return strategy_name_;
   }
 
   /*
-   * Get the array type stored in the query plan
+   * Get the array type stored in the query plan.
    */
   inline ArrayType array_type() const {
     return array_type_;
   }
 
   /*
-   * Get the attribute names stored in the query plan
+   * Get the attribute names stored in the query plan.
    */
   inline std::vector<std::string> attributes() const {
     return attributes_;
   }
 
   /*
-   * Get the dimension names stored in the query plan
+   * Get the dimension names stored in the query plan.
    */
   inline std::vector<std::string> dimensions() const {
     return dimensions_;
