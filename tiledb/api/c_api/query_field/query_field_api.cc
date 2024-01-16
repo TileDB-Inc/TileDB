@@ -80,8 +80,6 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
-
-  channel_ = tiledb_query_channel_handle_t::make_handle(query);
 }
 
 namespace tiledb::api {

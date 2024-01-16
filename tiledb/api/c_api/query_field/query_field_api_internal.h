@@ -73,7 +73,6 @@ struct tiledb_query_field_handle_t
   std::shared_ptr<FieldOrigin> field_origin_;
   tiledb::sm::Datatype type_;
   uint32_t cell_val_num_;
-  tiledb_query_channel_handle_t* channel_;
 
  public:
   /**
@@ -87,9 +86,7 @@ struct tiledb_query_field_handle_t
    */
   tiledb_query_field_handle_t(tiledb_query_t* query, const char* field_name);
 
-  ~tiledb_query_field_handle_t() {
-    tiledb_query_channel_handle_t::break_handle(channel_);
-  }
+  ~tiledb_query_field_handle_t() = default;
 
   tiledb_field_origin_t origin() {
     return field_origin_->origin();
@@ -101,7 +98,7 @@ struct tiledb_query_field_handle_t
     return cell_val_num_;
   }
   tiledb_query_channel_handle_t* channel() {
-    return channel_;
+    return tiledb_query_channel_t::make_handle(query_);
   }
 };
 
