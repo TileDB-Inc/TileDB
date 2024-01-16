@@ -560,7 +560,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
  *    signals.
  *    **Default**: "true"
- * - `vfs.hdfs.name_node_uri"` <br>
+ * - `vfs.hdfs.name_node_uri` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
  * - `vfs.hdfs.username` <br>
