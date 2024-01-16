@@ -1716,7 +1716,7 @@ struct QueryPlanResponse {
   class Pipeline;
 
   struct _capnpPrivate {
-    CAPNP_DECLARE_STRUCT_HEADER(9fd8fc2f462b2d06, 0, 1)
+    CAPNP_DECLARE_STRUCT_HEADER(9fd8fc2f462b2d06, 0, 5)
 #if !CAPNP_LITE
     static constexpr ::capnp::_::RawBrandedSchema const* brand() {
       return &schema->defaultBrand;
@@ -15140,8 +15140,22 @@ class QueryPlanResponse::Reader {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasStrategy() const;
-  inline ::capnp::Text::Reader getStrategy() const;
+  inline bool hasQueryLayout() const;
+  inline ::capnp::Text::Reader getQueryLayout() const;
+
+  inline bool hasStrategyName() const;
+  inline ::capnp::Text::Reader getStrategyName() const;
+
+  inline bool hasArrayType() const;
+  inline ::capnp::Text::Reader getArrayType() const;
+
+  inline bool hasAttributeNames() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getAttributeNames() const;
+
+  inline bool hasDimensionNames() const;
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+  getDimensionNames() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -15182,12 +15196,56 @@ class QueryPlanResponse::Builder {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasStrategy();
-  inline ::capnp::Text::Builder getStrategy();
-  inline void setStrategy(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initStrategy(unsigned int size);
-  inline void adoptStrategy(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownStrategy();
+  inline bool hasQueryLayout();
+  inline ::capnp::Text::Builder getQueryLayout();
+  inline void setQueryLayout(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initQueryLayout(unsigned int size);
+  inline void adoptQueryLayout(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownQueryLayout();
+
+  inline bool hasStrategyName();
+  inline ::capnp::Text::Builder getStrategyName();
+  inline void setStrategyName(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initStrategyName(unsigned int size);
+  inline void adoptStrategyName(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownStrategyName();
+
+  inline bool hasArrayType();
+  inline ::capnp::Text::Builder getArrayType();
+  inline void setArrayType(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initArrayType(unsigned int size);
+  inline void adoptArrayType(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownArrayType();
+
+  inline bool hasAttributeNames();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getAttributeNames();
+  inline void setAttributeNames(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setAttributeNames(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initAttributeNames(unsigned int size);
+  inline void adoptAttributeNames(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownAttributeNames();
+
+  inline bool hasDimensionNames();
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  getDimensionNames();
+  inline void setDimensionNames(
+      ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value);
+  inline void setDimensionNames(
+      ::kj::ArrayPtr<const ::capnp::Text::Reader> value);
+  inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+  initDimensionNames(unsigned int size);
+  inline void adoptDimensionNames(
+      ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+          value);
+  inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+  disownDimensionNames();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -32672,44 +32730,237 @@ QueryPlanRequest::Builder::disownQuery() {
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool QueryPlanResponse::Reader::hasStrategy() const {
+inline bool QueryPlanResponse::Reader::hasQueryLayout() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool QueryPlanResponse::Builder::hasStrategy() {
+inline bool QueryPlanResponse::Builder::hasQueryLayout() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::Text::Reader QueryPlanResponse::Reader::getStrategy() const {
+inline ::capnp::Text::Reader QueryPlanResponse::Reader::getQueryLayout() const {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::Text::Builder QueryPlanResponse::Builder::getStrategy() {
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::getQueryLayout() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void QueryPlanResponse::Builder::setStrategy(
+inline void QueryPlanResponse::Builder::setQueryLayout(
     ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
-inline ::capnp::Text::Builder QueryPlanResponse::Builder::initStrategy(
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::initQueryLayout(
     unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::Text>::init(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       size);
 }
-inline void QueryPlanResponse::Builder::adoptStrategy(
+inline void QueryPlanResponse::Builder::adoptQueryLayout(
     ::capnp::Orphan<::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::Text>
-QueryPlanResponse::Builder::disownStrategy() {
+QueryPlanResponse::Builder::disownQueryLayout() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
+}
+
+inline bool QueryPlanResponse::Reader::hasStrategyName() const {
+  return !_reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool QueryPlanResponse::Builder::hasStrategyName() {
+  return !_builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader QueryPlanResponse::Reader::getStrategyName()
+    const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::getStrategyName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+inline void QueryPlanResponse::Builder::setStrategyName(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::initStrategyName(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      size);
+}
+inline void QueryPlanResponse::Builder::adoptStrategyName(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+QueryPlanResponse::Builder::disownStrategyName() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
+}
+
+inline bool QueryPlanResponse::Reader::hasArrayType() const {
+  return !_reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool QueryPlanResponse::Builder::hasArrayType() {
+  return !_builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::Text::Reader QueryPlanResponse::Reader::getArrayType() const {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _reader.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::getArrayType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::get(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+inline void QueryPlanResponse::Builder::setArrayType(
+    ::capnp::Text::Reader value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::set(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      value);
+}
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::initArrayType(
+    unsigned int size) {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::init(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      size);
+}
+inline void QueryPlanResponse::Builder::adoptArrayType(
+    ::capnp::Orphan<::capnp::Text>&& value) {
+  ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS),
+      kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::Text>
+QueryPlanResponse::Builder::disownArrayType() {
+  return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
+      _builder.getPointerField(::capnp::bounded<2>() * ::capnp::POINTERS));
+}
+
+inline bool QueryPlanResponse::Reader::hasAttributeNames() const {
+  return !_reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool QueryPlanResponse::Builder::hasAttributeNames() {
+  return !_builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+QueryPlanResponse::Reader::getAttributeNames() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+QueryPlanResponse::Builder::getAttributeNames() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+inline void QueryPlanResponse::Builder::setAttributeNames(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline void QueryPlanResponse::Builder::setAttributeNames(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+QueryPlanResponse::Builder::initAttributeNames(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          size);
+}
+inline void QueryPlanResponse::Builder::adoptAttributeNames(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+QueryPlanResponse::Builder::disownAttributeNames() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<3>() * ::capnp::POINTERS));
+}
+
+inline bool QueryPlanResponse::Reader::hasDimensionNames() const {
+  return !_reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline bool QueryPlanResponse::Builder::hasDimensionNames() {
+  return !_builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS)
+              .isNull();
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader
+QueryPlanResponse::Reader::getDimensionNames() const {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _reader.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+QueryPlanResponse::Builder::getDimensionNames() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::get(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
+}
+inline void QueryPlanResponse::Builder::setDimensionNames(
+    ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Reader value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          value);
+}
+inline void QueryPlanResponse::Builder::setDimensionNames(
+    ::kj::ArrayPtr<const ::capnp::Text::Reader> value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::set(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          value);
+}
+inline ::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>::Builder
+QueryPlanResponse::Builder::initDimensionNames(unsigned int size) {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::init(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          size);
+}
+inline void QueryPlanResponse::Builder::adoptDimensionNames(
+    ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>&&
+        value) {
+  ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::adopt(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS),
+          kj::mv(value));
+}
+inline ::capnp::Orphan<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>
+QueryPlanResponse::Builder::disownDimensionNames() {
+  return ::capnp::_::
+      PointerHelpers<::capnp::List<::capnp::Text, ::capnp::Kind::BLOB>>::disown(
+          _builder.getPointerField(::capnp::bounded<4>() * ::capnp::POINTERS));
 }
 
 inline bool ConsolidationPlanRequest::Reader::hasConfig() const {

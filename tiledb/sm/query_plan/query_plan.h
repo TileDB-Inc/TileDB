@@ -65,9 +65,22 @@ class QueryPlan {
    * Constructor
    *
    * @param query A query object for which we want to calculate the plan
-   * @param strategy The strategy of the query, required only for remote queries
    */
-  QueryPlan(Query& query, const std::string strategy = "");
+  QueryPlan(Query& query);
+
+  /**
+   * Constructor
+   *
+   * @param query A query object for which we want to calculate the plan
+   * FIXME: add doc
+   */
+  QueryPlan(
+      Query& query,
+      Layout layout,
+      const std::string& strategy_name,
+      ArrayType array_type,
+      const std::vector<std::string>& attributes,
+      const std::vector<std::string>& dimensions);
 
   /* ****************************** */
   /*              API               */
@@ -83,10 +96,38 @@ class QueryPlan {
   std::string dump_json(uint32_t indent = 4);
 
   /*
+   * Get the query layout stored in the query plan
+   */
+  inline Layout query_layout() const {
+    return query_layout_;
+  }
+
+  /*
    * Get the strategy name stored in the query plan
    */
   inline std::string strategy() const {
     return strategy_name_;
+  }
+
+  /*
+   * Get the array type stored in the query plan
+   */
+  inline ArrayType array_type() const {
+    return array_type_;
+  }
+
+  /*
+   * Get the attribute names stored in the query plan
+   */
+  inline std::vector<std::string> attributes() const {
+    return attributes_;
+  }
+
+  /*
+   * Get the dimension names stored in the query plan
+   */
+  inline std::vector<std::string> dimensions() const {
+    return dimensions_;
   }
 
  private:

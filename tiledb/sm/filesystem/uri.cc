@@ -327,13 +327,7 @@ std::string URI::to_path(const std::string& uri) {
 
 std::string URI::backend_name() const {
   if (is_tiledb(uri_)) {
-    std::string array_ns, array_uri;
-    throw_if_not_ok(URI(uri_).get_rest_components(&array_ns, &array_uri));
-    auto prefix = array_uri.substr(0, array_uri.find_first_of(':'));
-    if (prefix == array_uri) {  // no `:` separator found in URI
-      prefix = "Unknown";
-    }
-    return prefix;
+    return "";
   } else {
     return uri_.substr(0, uri_.find_first_of(':'));
   }

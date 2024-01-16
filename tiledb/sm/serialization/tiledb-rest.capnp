@@ -1271,8 +1271,20 @@ struct QueryPlanRequest {
 }
 
 struct QueryPlanResponse {
-  strategy @0 :Text;
-  # strategy used by the query
+  queryLayout @0 :Text;
+  # query layout
+
+  strategyName @1 :Text;
+  # name of strategy used by the query
+
+  arrayType @2 :Text;
+  # type of array
+
+  attributeNames @3 :List(Text);
+  # names of attributes in the query
+
+  dimensionNames @4 :List(Text);
+  # names of dimensions in the query
 }
 
 struct ConsolidationPlanRequest {
