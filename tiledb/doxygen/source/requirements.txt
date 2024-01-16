@@ -1,4 +1,9 @@
 breathe==4.26.1
+sphinxcontrib-applehelp<1.0.8 # pinned to requiring sphinx 5.0
+sphinxcontrib-devhelp<1.0.5 # pinned to requiring sphinx 5.0
+sphinxcontrib-htmlhelp<2.0.5 # pinned to requiring sphinx 5.0
+sphinxcontrib-qthelp<1.0.7 # pinned to requiring sphinx 5.0
+sphinxcontrib-serializinghtml<1.1.10 # pinned to requiring sphinx 5.0
 sphinxcontrib-contentui==0.2.5
 sphinx_rtd_theme==0.5.0
 docutils < 0.18 # pin pending https://github.com/sphinx-doc/sphinx/issues/9777
