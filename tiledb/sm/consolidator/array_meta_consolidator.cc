@@ -66,13 +66,14 @@ Status ArrayMetaConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_array_meta");
+  auto timer_se =
+      Consolidator<RM>::stats_->start_timer("consolidate_array_meta");
 
-  check_array_uri(array_name);
+  Consolidator<RM>::check_array_uri(array_name);
 
   // Open array for reading
   auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, storage_manager_);
+  Array array_for_reads(array_uri, Consolidator<RM>::storage_manager_);
   RETURN_NOT_OK(array_for_reads.open(
       QueryType::READ,
       config_.timestamp_start_,

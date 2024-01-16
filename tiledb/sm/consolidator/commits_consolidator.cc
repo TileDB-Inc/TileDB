@@ -126,6 +126,6 @@ void CommitsConsolidator<RM>::vacuum(const char* array_name) {
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
-template class CommitsConsolidator<context_bypass_RM>;
+template class CommitsConsolidator<Consolidator<void>::resource_manager_type>;
 
 }  // namespace tiledb::sm
