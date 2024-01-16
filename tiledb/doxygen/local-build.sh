@@ -1,5 +1,8 @@
 #!/bin/bash
 set -x
+
+# FORCE CI BUILD - TEMPORARY
+
 # Builds the ReadTheDocs documentation locally.
 # Usage. Execute in this directory:
 #   $ ./local-build.sh
