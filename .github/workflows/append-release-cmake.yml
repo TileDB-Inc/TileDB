@@ -39,8 +39,8 @@ jobs:
       - name: Render template
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
-          TEMPLATE="output/TileDB-${{ steps.release_data.outputs.tag_name }}-packages.cmake"
-          cp cmake/inputs/TileDB-packages.cmake.in $TEMPLATE
+          RELLIST="output/rellist.csv"
+          echo "os,arch,url,sha,noavx2" > $RELLIST
           
           for FILE in $(ls release)
           do
@@ -50,22 +50,20 @@ jobs:
                           ARCH=${BASH_REMATCH[2]^^}
                           NOAVX2=${BASH_REMATCH[3]//-/_}
 
-                          REL=TILEDB_${OS}_${ARCH}${NOAVX2^^}
                           URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
                           SHA=$(sha1sum release/$FILE | cut -d " " -f 1)
           
-                          sed -i -e "s|{{URL_${REL}}}|$URL|g" $TEMPLATE
-                          sed -i -e "s|{{SHA_${REL}}}|$SHA|g" $TEMPLATE
+                          echo "${OS},${ARCH},${URL},${SHA},${NOAVX2}" >> $RELLIST
                   fi
           done
           
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.zipball_url }}
           SHA_TILEDB_SOURCE=$(curl -sL $URL_TILEDB_SOURCE | sha1sum | cut -d " " -f 1)
-          sed -i -e "s|{{URL_TILEDB_SOURCE}}|$URL_TILEDB_SOURCE|g" $TEMPLATE
-          sed -i -e "s|{{SHA_TILEDB_SOURCE}}|$SHA_TILEDB_SOURCE|g" $TEMPLATE
           
-          SHA=$(sha1sum $TEMPLATE | cut -d " " -f 1)
-          echo $SHA > $TEMPLATE.sha
+          echo "source,source,${URL_TILEDB_SOURCE},${SHA_TILEDB_SOURCE},source" >> $RELLIST
+          
+          SHA=$(sha1sum $RELLIST | cut -d " " -f 1)
+          echo $SHA > $RELLIST.sha
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
