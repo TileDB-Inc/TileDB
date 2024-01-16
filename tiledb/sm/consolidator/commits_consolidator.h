@@ -47,7 +47,7 @@ namespace tiledb::sm {
 
 /** Handles commits consolidation. */
 template <class RM>
-class CommitsConsolidator : public Consolidator {
+class CommitsConsolidator : public Consolidator<RM> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

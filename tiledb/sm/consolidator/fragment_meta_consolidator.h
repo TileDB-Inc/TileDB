@@ -47,7 +47,7 @@ namespace tiledb::sm {
 
 /** Handles fragment metadata consolidation. */
 template <class RM>
-class FragmentMetaConsolidator : public Consolidator {
+class FragmentMetaConsolidator : public Consolidator<RM> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */

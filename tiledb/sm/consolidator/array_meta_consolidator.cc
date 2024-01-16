@@ -49,7 +49,7 @@ namespace tiledb::sm {
 template <class RM>
 ArrayMetaConsolidator<RM>::ArrayMetaConsolidator(
     const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    : Consolidator<RM>(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -184,6 +184,6 @@ Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
-template class ArrayMetaConsolidator<Consolidator::context_bypass_RM>;
+template class ArrayMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

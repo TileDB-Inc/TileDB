@@ -71,6 +71,7 @@ class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Buffer;
+template <class RM>
 class Consolidator;
 class EncryptionKey;
 class FragmentMetadata;

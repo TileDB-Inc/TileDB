@@ -58,7 +58,7 @@ class URI;
 /* ********************************* */
 
 /** Consolidation configuration parameters. */
-struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
+struct FragmentConsolidationConfig : ConsolidationConfigBase {
   /**
    * Include timestamps in the consolidated fragment or not.
    */
@@ -160,7 +160,7 @@ class FragmentConsolidationWorkspace {
 
 /** Handles fragment consolidation. */
 template <class RM>
-class FragmentConsolidator : public Consolidator {
+class FragmentConsolidator : public Consolidator<RM> {
   friend class WhiteboxFragmentConsolidator;
 
  public:

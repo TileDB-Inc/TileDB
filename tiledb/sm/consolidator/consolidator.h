@@ -60,10 +60,20 @@ enum class ConsolidationMode {
   GROUP_META      // Group metadata mode.
 };
 
+/** Consolidation configuration parameters. */
+struct ConsolidationConfigBase {
+  /** Start time for consolidation. */
+  uint64_t timestamp_start_;
+  /** End time for consolidation. */
+  uint64_t timestamp_end_;
+};
+
 /** Handles array consolidation. */
+template <class RM>
 class Consolidator {
  public:
   using context_bypass_RM = void;
+  using resource_manager_type = context_bypass_RM;
 
   /* ********************************* */
   /*          FACTORY METHODS          */
@@ -130,14 +140,6 @@ class Consolidator {
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfigBase {
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
-  };
 
  protected:
   /* ********************************* */

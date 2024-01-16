@@ -51,7 +51,7 @@ namespace tiledb::sm {
 
 template <class RM>
 CommitsConsolidator<RM>::CommitsConsolidator(StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    : Consolidator<RM>(storage_manager) {
 }
 
 /* ****************************** */
@@ -126,6 +126,6 @@ void CommitsConsolidator<RM>::vacuum(const char* array_name) {
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
-template class CommitsConsolidator<Consolidator::context_bypass_RM>;
+template class CommitsConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

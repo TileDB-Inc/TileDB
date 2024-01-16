@@ -48,32 +48,32 @@ namespace tiledb::sm {
 /* ********************************* */
 
 /** Factory function to create the consolidator depending on mode. */
-shared_ptr<Consolidator> Consolidator::create(
+template <class RM>
+shared_ptr<Consolidator<RM>> Consolidator<RM>::create(
     const ConsolidationMode mode,
     const Config& config,
     StorageManager* storage_manager) {
   switch (mode) {
     case ConsolidationMode::FRAGMENT_META:
-      return make_shared<FragmentMetaConsolidator<context_bypass_RM>>(
-          HERE(), storage_manager);
+      return make_shared<FragmentMetaConsolidator<RM>>(HERE(), storage_manager);
     case ConsolidationMode::FRAGMENT:
-      return make_shared<FragmentConsolidator<context_bypass_RM>>(
+      return make_shared<FragmentConsolidator<RM>>(
           HERE(), config, storage_manager);
     case ConsolidationMode::ARRAY_META:
-      return make_shared<ArrayMetaConsolidator<context_bypass_RM>>(
+      return make_shared<ArrayMetaConsolidator<RM>>(
           HERE(), config, storage_manager);
     case ConsolidationMode::COMMITS:
-      return make_shared<CommitsConsolidator<context_bypass_RM>>(
-          HERE(), storage_manager);
+      return make_shared<CommitsConsolidator<RM>>(HERE(), storage_manager);
     case ConsolidationMode::GROUP_META:
-      return make_shared<GroupMetaConsolidator<context_bypass_RM>>(
+      return make_shared<GroupMetaConsolidator<RM>>(
           HERE(), config, storage_manager);
     default:
       return nullptr;
   }
 }
 
-ConsolidationMode Consolidator::mode_from_config(
+template <class RM>
+ConsolidationMode Consolidator<RM>::mode_from_config(
     const Config& config, const bool vacuum_mode) {
   bool found = false;
   const std::string mode = vacuum_mode ?
@@ -102,19 +102,22 @@ ConsolidationMode Consolidator::mode_from_config(
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Consolidator::Consolidator(StorageManager* storage_manager)
+template <class RM>
+Consolidator<RM>::Consolidator(StorageManager* storage_manager)
     : storage_manager_(storage_manager)
     , stats_(storage_manager_->stats()->create_child("Consolidator"))
     , logger_(storage_manager_->logger()->clone("Consolidator", ++logger_id_)) {
 }
 
-Consolidator::~Consolidator() = default;
+template <class RM>
+Consolidator<RM>::~Consolidator() = default;
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-Status Consolidator::consolidate(
+template <class RM>
+Status Consolidator<RM>::consolidate(
     [[maybe_unused]] const char* array_name,
     [[maybe_unused]] EncryptionType encryption_type,
     [[maybe_unused]] const void* encryption_key,
@@ -123,14 +126,18 @@ Status Consolidator::consolidate(
       Status_ConsolidatorError("Cannot consolidate; Invalid object"));
 }
 
-void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
+template <class RM>
+void Consolidator<RM>::vacuum([[maybe_unused]] const char* array_name) {
   throw Status_ConsolidatorError("Cannot vacuum; Invalid object");
 }
 
-void Consolidator::check_array_uri(const char* array_name) {
+template <class RM>
+void Consolidator<RM>::check_array_uri(const char* array_name) {
   if (URI(array_name).is_tiledb()) {
     throw std::logic_error("Consolidation is not supported for remote arrays.");
   }
 }
+
+template class Consolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

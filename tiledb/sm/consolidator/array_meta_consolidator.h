@@ -47,7 +47,7 @@ namespace tiledb::sm {
 
 /** Handles array metadata consolidation. */
 template <class RM>
-class ArrayMetaConsolidator : public Consolidator {
+class ArrayMetaConsolidator : public Consolidator<RM> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -108,7 +108,7 @@ class ArrayMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  Consolidator::ConsolidationConfigBase config_;
+  Consolidator<RM>::ConsolidationConfigBase config_;
 };
 
 }  // namespace tiledb::sm

@@ -51,7 +51,7 @@ namespace tiledb::sm {
 template <class RM>
 GroupMetaConsolidator<RM>::GroupMetaConsolidator(
     const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    : Consolidator<RM>(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -173,6 +173,6 @@ Status GroupMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
-template class GroupMetaConsolidator<Consolidator::context_bypass_RM>;
+template class GroupMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

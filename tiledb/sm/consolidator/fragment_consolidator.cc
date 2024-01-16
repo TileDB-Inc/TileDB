@@ -171,7 +171,7 @@ void FragmentConsolidationWorkspace<RM>::resize_buffers(
 template <class RM>
 FragmentConsolidator<RM>::FragmentConsolidator(
     const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    : Consolidator<RM>(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -1031,5 +1031,5 @@ Status FragmentConsolidator<RM>::write_vacuum_file(
   return Status::Ok();
 }
 
-template class FragmentConsolidator<void>;
+template class FragmentConsolidator<context_bypass_RM>;
 }  // namespace tiledb::sm

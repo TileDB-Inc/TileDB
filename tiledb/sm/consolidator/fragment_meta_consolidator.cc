@@ -54,7 +54,7 @@ namespace tiledb::sm {
 template <class RM>
 FragmentMetaConsolidator<RM>::FragmentMetaConsolidator(
     StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    : Consolidator<RM>(storage_manager) {
 }
 
 /* ****************************** */
@@ -222,6 +222,6 @@ void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
       }));
 }
 
-template class FragmentMetaConsolidator<Consolidator::context_bypass_RM>;
+template class FragmentMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

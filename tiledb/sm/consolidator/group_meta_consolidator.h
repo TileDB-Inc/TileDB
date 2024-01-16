@@ -45,7 +45,7 @@ namespace tiledb::sm {
 
 /** Handles group metadata consolidation. */
 template <class RM>
-class GroupMetaConsolidator : public Consolidator {
+class GroupMetaConsolidator : public Consolidator<RM> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -106,7 +106,7 @@ class GroupMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  Consolidator::ConsolidationConfigBase config_;
+  Consolidator<RM>::ConsolidationConfigBase config_;
 };
 
 }  // namespace tiledb::sm
