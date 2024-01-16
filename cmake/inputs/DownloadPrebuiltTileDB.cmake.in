@@ -105,8 +105,14 @@ function(fetch_prebuilt_tiledb)
                 ${ARGN}
                 )
 
+        if(NOT ${FETCH_PREBUILT_TILEDB_VERSION})
+                set(FETCH_PREBUILT_TILEDB_VERSION "{{LATEST_TILEDB_VERSION}}")
+        endif()
         fetch_tiledb_release_list(${FETCH_PREBUILT_TILEDB_VERSION} RELLIST_HASH)
-        detect_artifact_name(ARTIFACT_NAME)
+
+        if(NOT ${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME})
+                detect_artifact_name(FETCH_PREBUILT_TILEDB_ARTIFACT_NAME)
+        endif()
 
         ExternalProject_Add(ep_tiledb
                 PREFIX "externals"

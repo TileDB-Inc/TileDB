@@ -40,6 +40,8 @@ jobs:
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
           RELLIST="output/rellist.csv"
+          MODULE="output/DownloadPrebuiltTileDB.cmake"
+          cp cmake/inputs/DownloadPrebuiltTileDB.cmake.in $MODULE
           echo "os,arch,url,sha,noavx2" > $RELLIST
           
           for FILE in $(ls release)
@@ -64,6 +66,8 @@ jobs:
           
           SHA=$(sha1sum $RELLIST | cut -d " " -f 1)
           echo $SHA > $RELLIST.sha
+          
+          sed -i -e "s|{{LATEST_TILEDB_VERSION}}|${{ steps.release_data.outputs.tag_name }}|g" $MODULE
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
