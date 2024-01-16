@@ -239,9 +239,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get unfiltered fragment uris
   if (array_directory_reader.hasUnfilteredFragmentUris()) {
+    auto unfiltered_fragment_uris =
+        array_directory_reader.getUnfilteredFragmentUris();
     array_directory->unfiltered_fragment_uris().reserve(
-        array_directory_reader.getUnfilteredFragmentUris().size());
-    for (auto uri : array_directory_reader.getUnfilteredFragmentUris()) {
+        unfiltered_fragment_uris.size());
+    for (auto uri : unfiltered_fragment_uris) {
       array_directory->unfiltered_fragment_uris().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -249,9 +251,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get consolidated commit uris
   if (array_directory_reader.hasConsolidatedCommitUris()) {
+    auto consolidated_commit_uris =
+        array_directory_reader.getConsolidatedCommitUris();
     array_directory->consolidated_commit_uris_set().reserve(
-        array_directory_reader.getConsolidatedCommitUris().size());
-    for (auto uri : array_directory_reader.getConsolidatedCommitUris()) {
+        consolidated_commit_uris.size());
+    for (auto uri : consolidated_commit_uris) {
       array_directory->consolidated_commit_uris_set().emplace(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri).to_string());
     }
@@ -259,9 +263,9 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get array schema uris
   if (array_directory_reader.hasArraySchemaUris()) {
-    array_directory->array_schema_uris().reserve(
-        array_directory_reader.getArraySchemaUris().size());
-    for (auto uri : array_directory_reader.getArraySchemaUris()) {
+    auto array_schema_uris = array_directory_reader.getArraySchemaUris();
+    array_directory->array_schema_uris().reserve(array_schema_uris.size());
+    for (auto uri : array_schema_uris) {
       array_directory->array_schema_uris().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -277,9 +281,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get array meta uris to vacuum
   if (array_directory_reader.hasArrayMetaUrisToVacuum()) {
+    auto array_meta_uris_to_vacuum =
+        array_directory_reader.getArrayMetaUrisToVacuum();
     array_directory->array_meta_uris_to_vacuum().reserve(
-        array_directory_reader.getArrayMetaUrisToVacuum().size());
-    for (auto uri : array_directory_reader.getArrayMetaUrisToVacuum()) {
+        array_meta_uris_to_vacuum.size());
+    for (auto uri : array_meta_uris_to_vacuum) {
       array_directory->array_meta_uris_to_vacuum().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -287,9 +293,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get array meta vac uris to vacuum
   if (array_directory_reader.hasArrayMetaVacUrisToVacuum()) {
+    auto array_meta_vac_uris_to_vacuum =
+        array_directory_reader.getArrayMetaVacUrisToVacuum();
     array_directory->array_meta_vac_uris_to_vacuum().reserve(
-        array_directory_reader.getArrayMetaVacUrisToVacuum().size());
-    for (auto uri : array_directory_reader.getArrayMetaVacUrisToVacuum()) {
+        array_meta_vac_uris_to_vacuum.size());
+    for (auto uri : array_meta_vac_uris_to_vacuum) {
       array_directory->array_meta_vac_uris_to_vacuum().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -297,9 +305,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get commit uris to consolidate
   if (array_directory_reader.hasCommitUrisToConsolidate()) {
+    auto commit_uris_to_consolidate =
+        array_directory_reader.getCommitUrisToConsolidate();
     array_directory->commit_uris_to_consolidate().reserve(
-        array_directory_reader.getCommitUrisToConsolidate().size());
-    for (auto uri : array_directory_reader.getCommitUrisToConsolidate()) {
+        commit_uris_to_consolidate.size());
+    for (auto uri : commit_uris_to_consolidate) {
       array_directory->commit_uris_to_consolidate().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -307,9 +317,10 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get commit uris to vacuum
   if (array_directory_reader.hasCommitUrisToVacuum()) {
+    auto commit_uris_to_vacuum = array_directory_reader.getCommitUrisToVacuum();
     array_directory->commit_uris_to_vacuum().reserve(
-        array_directory_reader.getCommitUrisToVacuum().size());
-    for (auto uri : array_directory_reader.getCommitUrisToVacuum()) {
+        commit_uris_to_vacuum.size());
+    for (auto uri : commit_uris_to_vacuum) {
       array_directory->commit_uris_to_vacuum().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -317,10 +328,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get consolidated commit uris to vacuum
   if (array_directory_reader.hasConsolidatedCommitUrisToVacuum()) {
+    auto consolidated_commits_uris_to_vacuum =
+        array_directory_reader.getConsolidatedCommitUrisToVacuum();
     array_directory->consolidated_commits_uris_to_vacuum().reserve(
-        array_directory_reader.getConsolidatedCommitUrisToVacuum().size());
-    for (auto uri :
-         array_directory_reader.getConsolidatedCommitUrisToVacuum()) {
+        consolidated_commits_uris_to_vacuum.size());
+    for (auto uri : consolidated_commits_uris_to_vacuum) {
       array_directory->consolidated_commits_uris_to_vacuum().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -328,9 +340,9 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get array meta uris
   if (array_directory_reader.hasArrayMetaUris()) {
-    array_directory->array_meta_uris().reserve(
-        array_directory_reader.getArrayMetaUris().size());
-    for (auto timestamp_reader : array_directory_reader.getArrayMetaUris()) {
+    auto array_meta_uris = array_directory_reader.getArrayMetaUris();
+    array_directory->array_meta_uris().reserve(array_meta_uris.size());
+    for (auto timestamp_reader : array_meta_uris) {
       array_directory->array_meta_uris().emplace_back(
           URI(deserialize_array_uri_to_absolute(
               timestamp_reader.getUri().cStr(), array_uri)),
@@ -342,9 +354,9 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get fragment meta uris
   if (array_directory_reader.hasFragmentMetaUris()) {
-    array_directory->fragment_meta_uris().reserve(
-        array_directory_reader.getFragmentMetaUris().size());
-    for (auto uri : array_directory_reader.getFragmentMetaUris()) {
+    auto fragment_meta_uris = array_directory_reader.getFragmentMetaUris();
+    array_directory->fragment_meta_uris().reserve(fragment_meta_uris.size());
+    for (auto uri : fragment_meta_uris) {
       array_directory->fragment_meta_uris().emplace_back(
           deserialize_array_uri_to_absolute(uri.cStr(), array_uri));
     }
@@ -352,10 +364,11 @@ shared_ptr<ArrayDirectory> array_directory_from_capnp(
 
   // Get delete tiles location
   if (array_directory_reader.hasDeleteAndUpdateTileLocation()) {
+    auto delete_and_update_tiles_location =
+        array_directory_reader.getDeleteAndUpdateTileLocation();
     array_directory->delete_and_update_tiles_location().reserve(
-        array_directory_reader.getDeleteAndUpdateTileLocation().size());
-    for (auto del_tile_reader :
-         array_directory_reader.getDeleteAndUpdateTileLocation()) {
+        delete_and_update_tiles_location.size());
+    for (auto del_tile_reader : delete_and_update_tiles_location) {
       array_directory->delete_and_update_tiles_location().emplace_back(
           URI(deserialize_array_uri_to_absolute(
               del_tile_reader.getUri().cStr(), array_uri)),

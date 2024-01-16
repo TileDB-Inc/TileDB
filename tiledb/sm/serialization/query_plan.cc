@@ -107,17 +107,17 @@ void query_plan_response_to_capnp(
 
 QueryPlan query_plan_response_from_capnp(
     const capnp::QueryPlanResponse::Reader& reader, Query& query) {
-  auto layout = Layout::ROW_MAJOR;
+  auto layout{Layout::ROW_MAJOR};
   if (reader.hasQueryLayout()) {
     throw_if_not_ok(layout_enum(reader.getQueryLayout().cStr(), &layout));
   }
 
-  std::string strategy = "";
+  std::string strategy{};
   if (reader.hasStrategyName()) {
     strategy = reader.getStrategyName().cStr();
   }
 
-  auto array_type = ArrayType::DENSE;
+  auto array_type{ArrayType::DENSE};
   if (reader.hasQueryLayout()) {
     throw_if_not_ok(array_type_enum(reader.getArrayType().cStr(), &array_type));
   }
