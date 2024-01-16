@@ -48,12 +48,12 @@ jobs:
                   then
                           OS=${BASH_REMATCH[1]^^}
                           ARCH=${BASH_REMATCH[2]^^}
-                          NOAVX2=${BASH_REMATCH[3]//-/_}
+                          NOAVX2=${BASH_REMATCH[3]//-/}
 
                           URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
                           SHA=$(sha1sum release/$FILE | cut -d " " -f 1)
           
-                          echo "${OS},${ARCH},${URL},${SHA},${NOAVX2}" >> $RELLIST
+                          echo "${OS},${ARCH},${URL},${SHA},${NOAVX2^^}" >> $RELLIST
                   fi
           done
           
