@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -63,9 +63,9 @@ namespace tiledb {
  *
  * Note: as laid out in the Storage Format,
  * the following Datatypes are not valid for Dimension:
- * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
- * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT, TILEDB_BOOL,
+ * TILEDB_STRING_UTF8, TILEDB_STRING_UTF16, TILEDB_STRING_UTF32,
+ * TILEDB_STRING_UCS2, TILEDB_STRING_UCS4, TILEDB_ANY
  **/
 class Dimension {
  public:
@@ -254,6 +254,8 @@ class Dimension {
         // representation
         return "";
       case TILEDB_BLOB:
+      case TILEDB_GEOM_WKB:
+      case TILEDB_GEOM_WKT:
       case TILEDB_CHAR:
       case TILEDB_BOOL:
       case TILEDB_STRING_UTF8:
@@ -373,6 +375,8 @@ class Dimension {
         // representation
         return "";
       case TILEDB_BLOB:
+      case TILEDB_GEOM_WKB:
+      case TILEDB_GEOM_WKT:
       case TILEDB_CHAR:
       case TILEDB_BOOL:
       case TILEDB_STRING_UTF8:

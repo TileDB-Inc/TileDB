@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -64,8 +64,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FragmentMetadataStatusException : public StatusException {
  public:
@@ -454,6 +453,8 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
               compute_fragment_min_max_sum<char>(name);
               break;
             case Datatype::BLOB:
+            case Datatype::GEOM_WKB:
+            case Datatype::GEOM_WKT:
               compute_fragment_min_max_sum<std::byte>(name);
               break;
             default:
@@ -4801,5 +4802,4 @@ template std::byte FragmentMetadata::get_tile_max_as<std::byte>(
 template char FragmentMetadata::get_tile_max_as<char>(
     const std::string& name, uint64_t tile_idx) const;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

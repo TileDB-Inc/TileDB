@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,8 +51,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 QueryCondition::QueryCondition() {
 }
@@ -1091,6 +1090,8 @@ void QueryCondition::apply_ast_node(
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -1847,6 +1848,8 @@ void QueryCondition::apply_ast_node_dense(
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -2621,6 +2624,8 @@ void QueryCondition::apply_ast_node_sparse(
     } break;
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
@@ -2767,5 +2772,4 @@ template Status QueryCondition::apply_sparse<uint8_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

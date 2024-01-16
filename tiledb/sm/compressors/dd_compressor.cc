@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 const uint64_t DoubleDelta::OVERHEAD = 17;
 
@@ -109,14 +108,16 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return LOG_STATUS(Status_CompressionError(
-          "Cannot compress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+          "DoubleDelta tile compression is not yet supported for float or "
+          "geometric datatypes."));
   }
 
   assert(false);
   return LOG_STATUS(Status_CompressionError(
-      "Cannot compress tile with DoubleDelta; Not supported datatype"));
+      "Cannot compress tile with DoubleDelta; Unupported datatype"));
 }
 
 Status DoubleDelta::decompress(
@@ -178,14 +179,16 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return LOG_STATUS(Status_CompressionError(
-          "Cannot decompress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+          "DoubleDelta tile decompression is not yet supported for float or "
+          "geometric datatypes."));
   }
 
   assert(false);
   return LOG_STATUS(Status_CompressionError(
-      "Cannot decompress tile with DoubleDelta; Not supported datatype"));
+      "Cannot decompress tile with DoubleDelta; Unupported datatype"));
 }
 
 uint64_t DoubleDelta::overhead(uint64_t) {
@@ -469,5 +472,4 @@ template Status DoubleDelta::decompress<int64_t>(
 template Status DoubleDelta::decompress<uint64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
-};  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
