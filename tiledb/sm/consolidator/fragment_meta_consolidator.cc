@@ -51,7 +51,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-FragmentMetaConsolidator::FragmentMetaConsolidator(
+template <class RM>
+FragmentMetaConsolidator<RM>::FragmentMetaConsolidator(
     StorageManager* storage_manager)
     : Consolidator(storage_manager) {
 }
@@ -60,7 +61,8 @@ FragmentMetaConsolidator::FragmentMetaConsolidator(
 /*               API              */
 /* ****************************** */
 
-Status FragmentMetaConsolidator::consolidate(
+template <class RM>
+Status FragmentMetaConsolidator<RM>::consolidate(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -181,7 +183,8 @@ Status FragmentMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-void FragmentMetaConsolidator::vacuum(const char* array_name) {
+template <class RM>
+void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
         "Cannot vacuum fragment metadata; Array name cannot be null");
@@ -218,5 +221,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
         return Status::Ok();
       }));
 }
+
+template class FragmentMetaConsolidator<Consolidator::context_bypass_RM>;
 
 }  // namespace tiledb::sm

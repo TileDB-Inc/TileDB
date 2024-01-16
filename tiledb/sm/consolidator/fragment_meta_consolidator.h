@@ -46,6 +46,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 /** Handles fragment metadata consolidation. */
+template <class RM>
 class FragmentMetaConsolidator : public Consolidator {
  public:
   /* ********************************* */
