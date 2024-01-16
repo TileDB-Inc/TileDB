@@ -63,7 +63,8 @@ shared_ptr<Consolidator> Consolidator::create(
       return make_shared<ArrayMetaConsolidator>(
           HERE(), config, storage_manager);
     case ConsolidationMode::COMMITS:
-      return make_shared<CommitsConsolidator>(HERE(), storage_manager);
+      return make_shared<CommitsConsolidator<context_bypass_RM>>(
+          HERE(), storage_manager);
     case ConsolidationMode::GROUP_META:
       return make_shared<GroupMetaConsolidator<context_bypass_RM>>(
           HERE(), config, storage_manager);

@@ -46,6 +46,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 /** Handles commits consolidation. */
+template <class RM>
 class CommitsConsolidator : public Consolidator {
  public:
   /* ********************************* */

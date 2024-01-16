@@ -49,7 +49,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-CommitsConsolidator::CommitsConsolidator(StorageManager* storage_manager)
+template <class RM>
+CommitsConsolidator<RM>::CommitsConsolidator(StorageManager* storage_manager)
     : Consolidator(storage_manager) {
 }
 
@@ -57,7 +58,8 @@ CommitsConsolidator::CommitsConsolidator(StorageManager* storage_manager)
 /*               API              */
 /* ****************************** */
 
-Status CommitsConsolidator::consolidate(
+template <class RM>
+Status CommitsConsolidator<RM>::consolidate(
     const char* array_name,
     EncryptionType encryption_type,
     const void* encryption_key,
@@ -101,7 +103,8 @@ Status CommitsConsolidator::consolidate(
   return Status::Ok();
 }
 
-void CommitsConsolidator::vacuum(const char* array_name) {
+template <class RM>
+void CommitsConsolidator<RM>::vacuum(const char* array_name) {
   if (array_name == nullptr) {
     throw Status_StorageManagerError(
         "Cannot vacuum array metadata; Array name cannot be null");
@@ -122,5 +125,7 @@ void CommitsConsolidator::vacuum(const char* array_name) {
   vfs->remove_files(
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
+
+template class CommitsConsolidator<Consolidator::context_bypass_RM>;
 
 }  // namespace tiledb::sm
