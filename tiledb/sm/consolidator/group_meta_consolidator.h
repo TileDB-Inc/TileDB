@@ -44,6 +44,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 /** Handles group metadata consolidation. */
+template <class RM>
 class GroupMetaConsolidator : public Consolidator {
  public:
   /* ********************************* */

@@ -48,7 +48,8 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-GroupMetaConsolidator::GroupMetaConsolidator(
+template <class RM>
+GroupMetaConsolidator<RM>::GroupMetaConsolidator(
     const Config& config, StorageManager* storage_manager)
     : Consolidator(storage_manager) {
   auto st = set_config(config);
@@ -61,7 +62,8 @@ GroupMetaConsolidator::GroupMetaConsolidator(
 /*               API              */
 /* ****************************** */
 
-Status GroupMetaConsolidator::consolidate(
+template <class RM>
+Status GroupMetaConsolidator<RM>::consolidate(
     const char* group_name, EncryptionType, const void*, uint32_t) {
   auto timer_se = stats_->start_timer("consolidate_group_meta");
 
@@ -124,7 +126,8 @@ Status GroupMetaConsolidator::consolidate(
   return Status::Ok();
 }
 
-void GroupMetaConsolidator::vacuum(const char* group_name) {
+template <class RM>
+void GroupMetaConsolidator<RM>::vacuum(const char* group_name) {
   if (group_name == nullptr) {
     throw Status_StorageManagerError(
         "Cannot vacuum group metadata; Group name cannot be null");
@@ -154,7 +157,8 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
 /*        PRIVATE METHODS         */
 /* ****************************** */
 
-Status GroupMetaConsolidator::set_config(const Config& config) {
+template <class RM>
+Status GroupMetaConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
   Config merged_config = storage_manager_->config();
   merged_config.inherit(config);
@@ -168,5 +172,7 @@ Status GroupMetaConsolidator::set_config(const Config& config) {
 
   return Status::Ok();
 }
+
+template class GroupMetaConsolidator<Consolidator::context_bypass_RM>;
 
 }  // namespace tiledb::sm
