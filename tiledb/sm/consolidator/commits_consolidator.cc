@@ -64,13 +64,13 @@ Status CommitsConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_commits");
+  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_commits");
 
-  check_array_uri(array_name);
+  Consolidator<RM>::check_array_uri(array_name);
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(array_uri, Consolidator<RM>::storage_manager_);
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
@@ -78,13 +78,13 @@ Status CommitsConsolidator<RM>::consolidate(
   auto write_version = array_for_writes.array_schema_latest().write_version();
   RETURN_NOT_OK(array_for_writes.close());
   if (write_version < 12) {
-    return logger_->status(Status_ConsolidatorError(
+    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
         "Array version should be at least 12 to consolidate commits."));
   }
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
+      Consolidator<RM>::storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -97,7 +97,7 @@ Status CommitsConsolidator<RM>::consolidate(
 
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
-  storage_manager_->write_consolidated_commits_file(
+  Consolidator<RM>::storage_manager_->write_consolidated_commits_file(
       write_version, array_dir, to_consolidate);
 
   return Status::Ok();
@@ -112,15 +112,15 @@ void CommitsConsolidator<RM>::vacuum(const char* array_name) {
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
+      Consolidator<RM>::storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
+  auto vfs = Consolidator<RM>::storage_manager_->vfs();
+  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
   vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
   vfs->remove_files(
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());

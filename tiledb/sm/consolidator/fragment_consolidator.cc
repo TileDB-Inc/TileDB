@@ -188,19 +188,21 @@ Status FragmentConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = stats_->start_timer("consolidate_frags");
+  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_frags");
 
-  check_array_uri(array_name);
+  Consolidator<RM>::check_array_uri(array_name);
 
   // Open array for reading
-  auto array_for_reads{
-      make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
+  auto array_for_reads{make_shared<Array>(
+      HERE(), URI(array_name), Consolidator<RM>::storage_manager_)};
   RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
   auto array_for_writes{make_shared<Array>(
-      HERE(), array_for_reads->array_uri(), storage_manager_)};
+      HERE(),
+      array_for_reads->array_uri(),
+      Consolidator<RM>::storage_manager_)};
   RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
@@ -216,7 +218,8 @@ Status FragmentConsolidator<RM>::consolidate(
   // must be fetched (even before `config_.timestamp_start_`),
   // to compute the anterior ND range that can help determine
   // which dense fragments are consolidatable.
-  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
+  FragmentInfo fragment_info(
+      URI(array_name), Consolidator<RM>::storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       config_.timestamp_start_,
@@ -291,7 +294,7 @@ Status FragmentConsolidator<RM>::consolidate(
       array_for_reads->close(), throw_if_not_ok(array_for_writes->close()));
   RETURN_NOT_OK(array_for_writes->close());
 
-  stats_->add_counter("consolidate_step_num", step);
+  Consolidator<RM>::stats_->add_counter("consolidate_step_num", step);
 
   return Status::Ok();
 }
@@ -303,17 +306,19 @@ Status FragmentConsolidator<RM>::consolidate_fragments(
     const void* encryption_key,
     uint32_t key_length,
     const std::vector<std::string>& fragment_uris) {
-  auto timer_se = stats_->start_timer("consolidate_frags");
+  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_frags");
 
   // Open array for reading
-  auto array_for_reads{
-      make_shared<Array>(HERE(), URI(array_name), storage_manager_)};
+  auto array_for_reads{make_shared<Array>(
+      HERE(), URI(array_name), Consolidator<RM>::storage_manager_)};
   RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
   // Open array for writing
   auto array_for_writes{make_shared<Array>(
-      HERE(), array_for_reads->array_uri(), storage_manager_)};
+      HERE(),
+      array_for_reads->array_uri(),
+      Consolidator<RM>::storage_manager_)};
   RETURN_NOT_OK(array_for_writes->open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
@@ -329,7 +334,8 @@ Status FragmentConsolidator<RM>::consolidate_fragments(
   }
 
   // Get all fragment info
-  FragmentInfo fragment_info(URI(array_name), storage_manager_->resources());
+  FragmentInfo fragment_info(
+      URI(array_name), Consolidator<RM>::storage_manager_->resources());
   auto st = fragment_info.load(
       array_for_reads->array_directory(),
       0,
@@ -368,7 +374,7 @@ Status FragmentConsolidator<RM>::consolidate_fragments(
   }
 
   if (count != fragment_uris.size()) {
-    return logger_->status(Status_ConsolidatorError(
+    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
         "Cannot consolidate; Not all fragments could be found"));
   }
 
@@ -415,7 +421,7 @@ void FragmentConsolidator<RM>::vacuum(const char* array_name) {
 
   // Get the fragment URIs and vacuum file URIs to be vacuumed
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
+      Consolidator<RM>::storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max(),
@@ -432,8 +438,8 @@ void FragmentConsolidator<RM>::vacuum(const char* array_name) {
   }
 
   // Delete the vacuum files.
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
+  auto vfs = Consolidator<RM>::storage_manager_->vfs();
+  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
   vfs->remove_files(
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 
@@ -496,7 +502,7 @@ Status FragmentConsolidator<RM>::consolidate_internal(
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
     FragmentConsolidationWorkspace<RM>& cw) {
-  auto timer_se = stats_->start_timer("consolidate_internal");
+  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
 
@@ -538,7 +544,8 @@ Status FragmentConsolidator<RM>::consolidate_internal(
 
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  cw.resize_buffers(stats_, config_, array_schema, average_var_cell_sizes);
+  cw.resize_buffers(
+      Consolidator<RM>::stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -583,10 +590,12 @@ Status FragmentConsolidator<RM>::consolidate_internal(
     tdb_delete(query_r);
     tdb_delete(query_w);
     bool is_dir = false;
-    auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
+    auto st2 = Consolidator<RM>::storage_manager_->vfs()->is_dir(
+        *new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(Consolidator<RM>::storage_manager_->vfs()->remove_dir(
+          *new_fragment_uri));
     return st;
   }
 
@@ -600,10 +609,11 @@ Status FragmentConsolidator<RM>::consolidate_internal(
     tdb_delete(query_r);
     tdb_delete(query_w);
     bool is_dir = false;
-    throw_if_not_ok(
-        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
+    throw_if_not_ok(Consolidator<RM>::storage_manager_->vfs()->is_dir(
+        *new_fragment_uri, &is_dir));
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(Consolidator<RM>::storage_manager_->vfs()->remove_dir(
+          *new_fragment_uri));
     return st;
   }
 
@@ -617,7 +627,8 @@ Status FragmentConsolidator<RM>::consolidate_internal(
 template <class RM>
 void FragmentConsolidator<RM>::copy_array(
     Query* query_r, Query* query_w, FragmentConsolidationWorkspace<RM>& cw) {
-  auto timer_se = stats_->start_timer("consolidate_copy_array");
+  auto timer_se =
+      Consolidator<RM>::stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
@@ -655,7 +666,8 @@ Status FragmentConsolidator<RM>::create_queries(
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
-  auto timer_se = stats_->start_timer("consolidate_create_queries");
+  auto timer_se =
+      Consolidator<RM>::stats_->start_timer("consolidate_create_queries");
 
   const auto dense = array_for_reads->array_schema_latest().dense();
 
@@ -664,7 +676,8 @@ Status FragmentConsolidator<RM>::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  *query_r = tdb_new(Query, storage_manager_, array_for_reads);
+  *query_r =
+      tdb_new(Query, Consolidator<RM>::storage_manager_, array_for_reads);
   RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
@@ -689,7 +702,11 @@ Status FragmentConsolidator<RM>::create_queries(
       first, last, write_version);
 
   // Create write query
-  *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
+  *query_w = tdb_new(
+      Query,
+      Consolidator<RM>::storage_manager_,
+      array_for_writes,
+      fragment_name);
   RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
   (*query_w)->set_fragment_size(config_.max_fragment_size_);
@@ -721,7 +738,8 @@ Status FragmentConsolidator<RM>::compute_next_to_consolidate(
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
-  auto timer_se = stats_->start_timer("consolidate_compute_next");
+  auto timer_se =
+      Consolidator<RM>::stats_->start_timer("consolidate_compute_next");
 
   // Preparation
   auto sparse = !array_schema.dense();
@@ -921,7 +939,7 @@ void FragmentConsolidator<RM>::set_query_buffers(
 template <class RM>
 Status FragmentConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = Consolidator<RM>::storage_manager_->config();
   merged_config.inherit(config);
   bool found = false;
   config_.amplification_ = 0.0f;
@@ -936,7 +954,7 @@ Status FragmentConsolidator<RM>::set_config(const Config& config) {
   // Only set the buffer_size_ if the user specified a value. Otherwise, we use
   // the new sm.consolidation.total_buffer_size instead.
   if (merged_config.set_params().count("sm.consolidation.buffer_size") > 0) {
-    logger_->warn(
+    Consolidator<RM>::logger_->warn(
         "The `sm.consolidation.buffer_size configuration setting has been "
         "deprecated. Set consolidation buffer sizes using the newer "
         "`sm.consolidation.total_buffer_size` setting.");
@@ -989,15 +1007,15 @@ Status FragmentConsolidator<RM>::set_config(const Config& config) {
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return logger_->status(Status_ConsolidatorError(
+    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Minimum fragments config parameter is larger "
         "than the maximum"));
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return logger_->status(Status_ConsolidatorError(
+    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
-    return logger_->status(
+    return Consolidator<RM>::logger_->status(
         Status_ConsolidatorError("Invalid configuration; Amplification config "
                                  "parameter must be non-negative"));
 
@@ -1024,9 +1042,9 @@ Status FragmentConsolidator<RM>::write_vacuum_file(
   }
 
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->write(
+      vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }

@@ -106,7 +106,7 @@ class GroupMetaConsolidator : public Consolidator<RM> {
   /* ********************************* */
 
   /** Consolidation configuration parameters. */
-  Consolidator<RM>::ConsolidationConfigBase config_;
+  ConsolidationConfigBase config_;
 };
 
 }  // namespace tiledb::sm

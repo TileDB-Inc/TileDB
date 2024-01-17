@@ -83,7 +83,7 @@ Status ArrayMetaConsolidator<RM>::consolidate(
       key_length));
 
   // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(array_uri, Consolidator<RM>::storage_manager_);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
@@ -136,9 +136,9 @@ Status ArrayMetaConsolidator<RM>::consolidate(
   }
 
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->write(
+      vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -151,11 +151,11 @@ void ArrayMetaConsolidator<RM>::vacuum(const char* array_name) {
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
-  auto vfs = storage_manager_->vfs();
-  auto compute_tp = storage_manager_->compute_tp();
+  auto vfs = Consolidator<RM>::storage_manager_->vfs();
+  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
 
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
+      Consolidator<RM>::storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max());
@@ -172,7 +172,7 @@ void ArrayMetaConsolidator<RM>::vacuum(const char* array_name) {
 template <class RM>
 Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = Consolidator<RM>::storage_manager_->config();
   merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
