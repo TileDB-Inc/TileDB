@@ -153,7 +153,7 @@ if (TILEDB_SUPERBUILD)
   return()
 endif()
 
-project(TileDB)
+project(TileDB VERSION ${TILEDB_VERSION})
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
 # Paths to locate the installed external projects.
