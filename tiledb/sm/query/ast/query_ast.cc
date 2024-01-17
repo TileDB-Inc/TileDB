@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 static inline bool supported_string_type(Datatype type) {
   return (
@@ -319,15 +318,16 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   // Ensure that the attribute type is valid.
   switch (type) {
     case Datatype::ANY:
-      return Status_QueryConditionError(
-          "Value node attribute type may not be of type 'ANY': " + field_name_);
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return Status_QueryConditionError(
-          "Only ASCII and UTF-8 string types are currently supported." +
-          field_name_);
+          "Unsupported value node attribute type " + datatype_str(type) +
+          " on field " + field_name_);
     default:
       break;
   }
@@ -592,5 +592,4 @@ void ASTNodeExpr::set_use_enumeration(bool use_enumeration) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

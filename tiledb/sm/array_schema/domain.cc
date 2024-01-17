@@ -928,9 +928,8 @@ void Domain::set_tile_cell_order_cmp_funcs() {
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
       case Datatype::ANY:
-        tile_order_cmp_func_[d] = nullptr;
-        cell_order_cmp_func_[d] = nullptr;
-        cell_order_cmp_func_2_[d] = nullptr;
+        throw std::invalid_argument(
+            "Unsupported dimension datatype " + datatype_str(type));
     }
   }
 }

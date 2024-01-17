@@ -62,6 +62,8 @@ void Delta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       Delta::compress<std::byte>(input_buffer, output_buffer);
       break;
     case Datatype::INT8:
@@ -127,10 +129,8 @@ void Delta::compress(
       break;
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-    case Datatype::GEOM_WKB:
-    case Datatype::GEOM_WKT:
       throw DeltaCompressorException(
-          "Compression is not yet supported for float or geometric datatypes.");
+          "Compression is not yet supported for float datatypes.");
     default:
       throw DeltaCompressorException(
           "Compression failed; Unsupported datatype");
@@ -143,6 +143,8 @@ void Delta::decompress(
     PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       Delta::decompress<std::byte>(input_buffer, output_buffer);
       break;
     case Datatype::INT8:
@@ -208,11 +210,8 @@ void Delta::decompress(
       break;
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-    case Datatype::GEOM_WKB:
-    case Datatype::GEOM_WKT:
       throw DeltaCompressorException(
-          "Decompression is not yet supported for float or geometric "
-          "datatypes.");
+          "Decompression is not yet supported for float datatypes.");
     default:
       throw DeltaCompressorException(
           "Decompression failed; Unsupported datatype");

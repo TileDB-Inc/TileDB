@@ -1099,9 +1099,8 @@ void QueryCondition::apply_ast_node(
     default:
       throw std::runtime_error(
           "QueryCondition::apply_ast_node: Cannot perform query comparison; "
-          "Unsupported query "
-          "conditional type on " +
-          node->get_field_name());
+          "Unsupported datatype " +
+          datatype_str(type) + " on " + node->get_field_name());
   }
 
   return;

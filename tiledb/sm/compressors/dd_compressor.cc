@@ -55,6 +55,8 @@ Status DoubleDelta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::compress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
@@ -108,16 +110,14 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-    case Datatype::GEOM_WKB:
-    case Datatype::GEOM_WKT:
-      return LOG_STATUS(Status_CompressionError(
-          "DoubleDelta tile compression is not yet supported for float or "
-          "geometric datatypes."));
+      return LOG_STATUS(
+          Status_CompressionError("DoubleDelta tile compression is not yet "
+                                  "supported for float types."));
   }
 
   assert(false);
   return LOG_STATUS(Status_CompressionError(
-      "Cannot compress tile with DoubleDelta; Unupported datatype"));
+      "Cannot compress tile with DoubleDelta; Unsupported datatype"));
 }
 
 Status DoubleDelta::decompress(
@@ -126,6 +126,8 @@ Status DoubleDelta::decompress(
     PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::decompress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
@@ -179,11 +181,9 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-    case Datatype::GEOM_WKB:
-    case Datatype::GEOM_WKT:
-      return LOG_STATUS(Status_CompressionError(
-          "DoubleDelta tile decompression is not yet supported for float or "
-          "geometric datatypes."));
+      return LOG_STATUS(
+          Status_CompressionError("DoubleDelta tile decompression is not yet "
+                                  "supported for float types."));
   }
 
   assert(false);

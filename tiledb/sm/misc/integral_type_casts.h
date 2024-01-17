@@ -96,7 +96,9 @@ template <typename Source>
 void safe_integral_cast_to_datatype(
     Source value, Datatype type, ByteVecValue& dest) {
   if (!datatype_is_integer(type)) {
-    throw std::invalid_argument("Datatype must be integral");
+    throw std::invalid_argument(
+        "Unsupported datatype " + datatype_str(type) +
+        "; Datatype must be integral");
   }
 
   switch (type) {
@@ -128,7 +130,9 @@ void safe_integral_cast_to_datatype(
       dest.assign_as<uint64_t>(safe_integral_cast<Source, uint64_t>(value));
       return;
     default:
-      throw std::logic_error("Definitions of integral types are mismatched.");
+      throw std::logic_error(
+          "Definitions of integral types are mismatched on datatype " +
+          datatype_str(type));
   }
 
   ::stdx::unreachable();
