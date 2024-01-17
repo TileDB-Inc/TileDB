@@ -35,6 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -215,7 +216,8 @@ TEST_CASE(
   cfg.with_delete_meta_ = with_delete_meta;
   cfg.buffer_size_ = 1000;
 
-  FragmentConsolidationWorkspace<resource_manager_type> cw;
+  FragmentConsolidationWorkspace<StorageManagerCanonical::resource_manager_type>
+      cw;
   cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
   std::vector<span<std::byte>>& buffers{cw.buffers()};
   std::vector<uint64_t>& buffer_sizes{cw.sizes()};

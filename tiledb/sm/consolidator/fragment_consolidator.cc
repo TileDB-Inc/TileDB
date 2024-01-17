@@ -1049,5 +1049,5 @@ Status FragmentConsolidator<RM>::write_vacuum_file(
   return Status::Ok();
 }
 
-template class FragmentConsolidator<context_bypass_RM>;
+template class FragmentConsolidator<StorageManagerCanonical::context_bypass_RM>;
 }  // namespace tiledb::sm
