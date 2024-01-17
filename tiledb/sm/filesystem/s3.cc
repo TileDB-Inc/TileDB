@@ -1534,7 +1534,14 @@ Status S3::init_client() const {
       }
       case 16: {
         credentials_provider_ = make_shared<
-            Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(HERE());
+            Aws::Auth::STSProfileWithWebIdentityCredentialsProvider>(
+            HERE(),
+            Aws::Auth::GetConfigProfileName(),
+            std::chrono::minutes(60),
+            [client_config](const auto& credentials) {
+              return make_shared<Aws::STS::STSClient>(
+                  HERE(), credentials, client_config);
+            });
         break;
       }
       default: {
