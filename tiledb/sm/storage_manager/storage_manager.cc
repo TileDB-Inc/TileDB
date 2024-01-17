@@ -221,9 +221,9 @@ Status StorageManagerCanonical::array_consolidate(
   }
 
   // Consolidate
-  auto mode = Consolidator<resource_manager_type>::mode_from_config(config);
+  auto mode = Consolidator<context_bypass_RM>::mode_from_config(config);
   auto consolidator =
-      Consolidator<resource_manager_type>::create(mode, config, this);
+      Consolidator<context_bypass_RM>::create(mode, config, this);
   return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
 }
@@ -279,10 +279,10 @@ Status StorageManagerCanonical::fragments_consolidate(
   }
 
   // Consolidate
-  auto consolidator = Consolidator<resource_manager_type>::create(
+  auto consolidator = Consolidator<context_bypass_RM>::create(
       ConsolidationMode::FRAGMENT, config, this);
   auto fragment_consolidator =
-      dynamic_cast<FragmentConsolidator<resource_manager_type>*>(
+      dynamic_cast<FragmentConsolidator<context_bypass_RM>*>(
           consolidator.get());
   return fragment_consolidator->consolidate_fragments(
       array_name, encryption_type, encryption_key, key_length, fragment_uris);
@@ -452,10 +452,9 @@ void StorageManagerCanonical::array_vacuum(
     return;
   }
 
-  auto mode =
-      Consolidator<resource_manager_type>::mode_from_config(config, true);
+  auto mode = Consolidator<context_bypass_RM>::mode_from_config(config, true);
   auto consolidator =
-      Consolidator<resource_manager_type>::create(mode, config, this);
+      Consolidator<context_bypass_RM>::create(mode, config, this);
   consolidator->vacuum(array_name);
 }
 
@@ -512,7 +511,7 @@ Status StorageManagerCanonical::array_metadata_consolidate(
   }
 
   // Consolidate
-  auto consolidator = Consolidator<resource_manager_type>::create(
+  auto consolidator = Consolidator<context_bypass_RM>::create(
       ConsolidationMode::ARRAY_META, config, this);
   return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
@@ -1849,7 +1848,7 @@ Status StorageManagerCanonical::group_metadata_consolidate(
 
   // Consolidate
   // Encryption credentials are loaded by Group from config
-  auto consolidator = Consolidator<resource_manager_type>::create(
+  auto consolidator = Consolidator<context_bypass_RM>::create(
       ConsolidationMode::GROUP_META, config, this);
   return consolidator->consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
@@ -1873,7 +1872,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
         "Cannot vacuum group metadata; Group does not exist");
   }
 
-  auto consolidator = Consolidator<resource_manager_type>::create(
+  auto consolidator = Consolidator<context_bypass_RM>::create(
       ConsolidationMode::GROUP_META, config, this);
   consolidator->vacuum(group_name);
 }

@@ -72,6 +72,9 @@ struct ConsolidationConfigBase {
 template <class RM>
 class Consolidator {
  public:
+  using context_bypass_RM = void;
+  using resource_manager_type = context_bypass_RM;
+
   /* ********************************* */
   /*          FACTORY METHODS          */
   /* ********************************* */

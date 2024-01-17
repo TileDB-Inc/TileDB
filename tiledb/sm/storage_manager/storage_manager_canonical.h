@@ -91,9 +91,6 @@ enum class ObjectType : uint8_t;
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManagerCanonical {
  public:
-  using context_bypass_RM = void;
-  using resource_manager_type = context_bypass_RM;
-
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
   /* ********************************* */

@@ -138,6 +138,6 @@ void Consolidator<RM>::check_array_uri(const char* array_name) {
   }
 }
 
-template class Consolidator<StorageManagerCanonical::context_bypass_RM>;
+template class Consolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

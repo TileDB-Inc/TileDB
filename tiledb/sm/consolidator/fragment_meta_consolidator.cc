@@ -230,7 +230,6 @@ void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
       }));
 }
 
-template class FragmentMetaConsolidator<
-    StorageManagerCanonical::context_bypass_RM>;
+template class FragmentMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

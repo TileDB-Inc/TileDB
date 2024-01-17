@@ -185,7 +185,6 @@ Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
-template class ArrayMetaConsolidator<
-    StorageManagerCanonical::context_bypass_RM>;
+template class ArrayMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

@@ -216,8 +216,7 @@ TEST_CASE(
   cfg.with_delete_meta_ = with_delete_meta;
   cfg.buffer_size_ = 1000;
 
-  FragmentConsolidationWorkspace<StorageManagerCanonical::resource_manager_type>
-      cw;
+  FragmentConsolidationWorkspace<context_bypass_RM> cw;
   cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
   std::vector<span<std::byte>>& buffers{cw.buffers()};
   std::vector<uint64_t>& buffer_sizes{cw.sizes()};

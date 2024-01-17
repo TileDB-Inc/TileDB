@@ -174,7 +174,6 @@ Status GroupMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
-template class GroupMetaConsolidator<
-    StorageManagerCanonical::context_bypass_RM>;
+template class GroupMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm
