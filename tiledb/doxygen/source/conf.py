@@ -78,7 +78,7 @@ author = 'TileDB, Inc.'
 # The short X.Y version.
 version = '2.18'
 # The full version, including alpha/beta/rc tags.
-release = '2.18.3'
+release = '2.18.4'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
