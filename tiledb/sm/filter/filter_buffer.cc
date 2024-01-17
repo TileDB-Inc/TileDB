@@ -43,12 +43,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-FilterBuffer::BufferOrView::BufferOrView(const shared_ptr<Buffer>& buffer) {
+template <class RM>
+FilterBuffer<RM>::BufferOrView::BufferOrView(const shared_ptr<Buffer>& buffer) {
   underlying_buffer_ = buffer;
   is_view_ = false;
 }
 
-FilterBuffer::BufferOrView::BufferOrView(
+template <class RM>
+FilterBuffer<RM>::BufferOrView::BufferOrView(
     const shared_ptr<Buffer>& buffer, uint64_t offset, uint64_t nbytes) {
   is_view_ = true;
   underlying_buffer_ = buffer;
@@ -56,25 +58,30 @@ FilterBuffer::BufferOrView::BufferOrView(
       tdb_new(Buffer, (char*)buffer->data() + offset, nbytes));
 }
 
-FilterBuffer::BufferOrView::BufferOrView(BufferOrView&& other) {
+template <class RM>
+FilterBuffer<RM>::BufferOrView::BufferOrView(BufferOrView&& other) {
   underlying_buffer_.swap(other.underlying_buffer_);
   view_.swap(other.view_);
   std::swap(is_view_, other.is_view_);
 }
 
-Buffer* FilterBuffer::BufferOrView::buffer() const {
+template <class RM>
+Buffer* FilterBuffer<RM>::BufferOrView::buffer() const {
   return is_view_ ? view_.get() : underlying_buffer_.get();
 }
 
-shared_ptr<Buffer> FilterBuffer::BufferOrView::underlying_buffer() const {
+template <class RM>
+shared_ptr<Buffer> FilterBuffer<RM>::BufferOrView::underlying_buffer() const {
   return underlying_buffer_;
 }
 
-bool FilterBuffer::BufferOrView::is_view() const {
+template <class RM>
+bool FilterBuffer<RM>::BufferOrView::is_view() const {
   return is_view_;
 }
 
-FilterBuffer::BufferOrView FilterBuffer::BufferOrView::get_view(
+template <class RM>
+FilterBuffer<RM>::BufferOrView FilterBuffer<RM>::BufferOrView::get_view(
     uint64_t offset, uint64_t nbytes) const {
   if (is_view_) {
     BufferOrView new_view(underlying_buffer_);
@@ -87,11 +94,13 @@ FilterBuffer::BufferOrView FilterBuffer::BufferOrView::get_view(
   }
 }
 
-FilterBuffer::FilterBuffer()
+template <class RM>
+FilterBuffer<RM>::FilterBuffer()
     : FilterBuffer(nullptr) {
 }
 
-FilterBuffer::FilterBuffer(FilterStorage* storage) {
+template <class RM>
+FilterBuffer<RM>::FilterBuffer(FilterStorage* storage) {
   offset_ = 0;
   current_buffer_ = buffers_.cend();
   current_relative_offset_ = 0;
@@ -101,7 +110,8 @@ FilterBuffer::FilterBuffer(FilterStorage* storage) {
   storage_ = storage;
 }
 
-Status FilterBuffer::swap(FilterBuffer& other) {
+template <class RM>
+Status FilterBuffer<RM>::swap(FilterBuffer& other) {
   if (read_only_ || other.read_only_)
     return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot swap read-only buffers."));
@@ -118,7 +128,8 @@ Status FilterBuffer::swap(FilterBuffer& other) {
   return Status::Ok();
 }
 
-Status FilterBuffer::init(void* data, uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::init(void* data, uint64_t nbytes) {
   if (!buffers_.empty())
     return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot init buffer: not empty."));
@@ -137,7 +148,8 @@ Status FilterBuffer::init(void* data, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status FilterBuffer::set_fixed_allocation(void* buffer, uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::set_fixed_allocation(void* buffer, uint64_t nbytes) {
   if (!buffers_.empty() || fixed_allocation_data_ != nullptr)
     return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot set fixed allocation: not empty."));
@@ -152,7 +164,8 @@ Status FilterBuffer::set_fixed_allocation(void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status FilterBuffer::copy_to(Buffer* dest) const {
+template <class RM>
+Status FilterBuffer<RM>::copy_to(Buffer* dest) const {
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
     Buffer* src = it->buffer();
     src->reset_offset();
@@ -162,7 +175,8 @@ Status FilterBuffer::copy_to(Buffer* dest) const {
   return Status::Ok();
 }
 
-Status FilterBuffer::copy_to(void* dest) const {
+template <class RM>
+Status FilterBuffer<RM>::copy_to(void* dest) const {
   uint64_t dest_offset = 0;
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
     Buffer* src = it->buffer();
@@ -173,7 +187,8 @@ Status FilterBuffer::copy_to(void* dest) const {
   return Status::Ok();
 }
 
-Status FilterBuffer::get_const_buffer(
+template <class RM>
+Status FilterBuffer<RM>::get_const_buffer(
     uint64_t nbytes, ConstBuffer* buffer) const {
   if (current_buffer_ == buffers_.end())
     return LOG_STATUS(
@@ -190,7 +205,8 @@ Status FilterBuffer::get_const_buffer(
   return Status::Ok();
 }
 
-std::vector<ConstBuffer> FilterBuffer::buffers() const {
+template <class RM>
+std::vector<ConstBuffer> FilterBuffer<RM>::buffers() const {
   std::vector<ConstBuffer> result;
 
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
@@ -201,7 +217,8 @@ std::vector<ConstBuffer> FilterBuffer::buffers() const {
   return result;
 }
 
-std::vector<ConstBuffer> FilterBuffer::buffers_as(Datatype datatype) const {
+template <class RM>
+std::vector<ConstBuffer> FilterBuffer<RM>::buffers_as(Datatype datatype) const {
   switch (datatype) {
     case Datatype::ANY:
       // If datatype is ANY, return buffers as-is
@@ -257,8 +274,9 @@ std::vector<ConstBuffer> FilterBuffer::buffers_as(Datatype datatype) const {
   }
 }
 
+template <class RM>
 template <typename T>
-std::vector<ConstBuffer> FilterBuffer::buffers_as() const {
+std::vector<ConstBuffer> FilterBuffer<RM>::buffers_as() const {
   std::vector<ConstBuffer> result;
 
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
@@ -269,11 +287,13 @@ std::vector<ConstBuffer> FilterBuffer::buffers_as() const {
   return result;
 }
 
-uint64_t FilterBuffer::num_buffers() const {
+template <class RM>
+uint64_t FilterBuffer<RM>::num_buffers() const {
   return buffers_.size();
 }
 
-Buffer* FilterBuffer::buffer_ptr(unsigned index) const {
+template <class RM>
+Buffer* FilterBuffer<RM>::buffer_ptr(unsigned index) const {
   assert(!read_only_);  // Just to be safe
 
   for (auto it = buffers_.cbegin(), ite = buffers_.cend(); it != ite; ++it) {
@@ -287,7 +307,8 @@ Buffer* FilterBuffer::buffer_ptr(unsigned index) const {
   return nullptr;
 }
 
-Status FilterBuffer::read(void* buffer, uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::read(void* buffer, uint64_t nbytes) {
   uint64_t bytes_left = nbytes;
   uint64_t dest_offset = 0;
   for (auto it = current_buffer_, ite = buffers_.cend(); it != ite; ++it) {
@@ -328,11 +349,13 @@ Status FilterBuffer::read(void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-bool FilterBuffer::read_only() const {
+template <class RM>
+bool FilterBuffer<RM>::read_only() const {
   return read_only_;
 }
 
-Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::write(const void* buffer, uint64_t nbytes) {
   if (read_only_)
     return LOG_STATUS(
         Status_FilterError("FilterBuffer error; cannot set write: read-only."));
@@ -397,7 +420,8 @@ Status FilterBuffer::write(const void* buffer, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::write(FilterBuffer* other, uint64_t nbytes) {
   if (read_only_)
     return LOG_STATUS(
         Status_FilterError("FilterBuffer error; cannot write: read-only."));
@@ -427,7 +451,8 @@ Status FilterBuffer::write(FilterBuffer* other, uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status FilterBuffer::get_relative_offset(
+template <class RM>
+Status FilterBuffer<RM>::get_relative_offset(
     uint64_t offset,
     std::list<BufferOrView>::const_iterator* list_node,
     uint64_t* relative_offset) const {
@@ -447,24 +472,28 @@ Status FilterBuffer::get_relative_offset(
       "FilterBuffer error; cannot determine relative offset."));
 }
 
-uint64_t FilterBuffer::offset() const {
+template <class RM>
+uint64_t FilterBuffer<RM>::offset() const {
   return offset_;
 }
 
-uint64_t FilterBuffer::size() const {
+template <class RM>
+uint64_t FilterBuffer<RM>::size() const {
   uint64_t size = 0;
   for (auto& b : buffers_)
     size += b.buffer()->size();
   return size;
 }
 
-void FilterBuffer::reset_offset() {
+template <class RM>
+void FilterBuffer<RM>::reset_offset() {
   offset_ = 0;
   current_buffer_ = buffers_.begin();
   current_relative_offset_ = 0;
 }
 
-void FilterBuffer::set_offset(uint64_t offset) {
+template <class RM>
+void FilterBuffer<RM>::set_offset(uint64_t offset) {
   if (offset == 0) {
     reset_offset();
     return;
@@ -479,11 +508,13 @@ void FilterBuffer::set_offset(uint64_t offset) {
   current_relative_offset_ = relative_offset;
 }
 
-void FilterBuffer::set_read_only(bool read_only) {
+template <class RM>
+void FilterBuffer<RM>::set_read_only(bool read_only) {
   read_only_ = read_only;
 }
 
-void FilterBuffer::advance_offset(uint64_t nbytes) {
+template <class RM>
+void FilterBuffer<RM>::advance_offset(uint64_t nbytes) {
   Buffer* buf = current_buffer_->buffer();
   if (current_relative_offset_ + nbytes < buf->size()) {
     // Fast path: within the current buffer
@@ -507,7 +538,8 @@ void FilterBuffer::advance_offset(uint64_t nbytes) {
   }
 }
 
-Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
+template <class RM>
+Status FilterBuffer<RM>::prepend_buffer(uint64_t nbytes) {
   if (read_only_)
     return LOG_STATUS(Status_FilterError(
         "FilterBuffer error; cannot prepend buffer: read-only."));
@@ -546,7 +578,8 @@ Status FilterBuffer::prepend_buffer(uint64_t nbytes) {
   return Status::Ok();
 }
 
-Status FilterBuffer::append_view(
+template <class RM>
+Status FilterBuffer<RM>::append_view(
     const FilterBuffer* other, uint64_t offset, uint64_t nbytes) {
   if (read_only_)
     return LOG_STATUS(Status_FilterError(
@@ -608,11 +641,13 @@ Status FilterBuffer::append_view(
   return Status::Ok();
 }
 
-Status FilterBuffer::append_view(const FilterBuffer* other) {
+template <class RM>
+Status FilterBuffer<RM>::append_view(const FilterBuffer* other) {
   return append_view(other, 0, other->size());
 }
 
-Status FilterBuffer::clear() {
+template <class RM>
+Status FilterBuffer<RM>::clear() {
   if (read_only_)
     return LOG_STATUS(
         Status_FilterError("FilterBuffer error; cannot clear: read-only."));
@@ -640,17 +675,39 @@ Status FilterBuffer::clear() {
   return Status::Ok();
 }
 
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<char>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<float>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<double>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<int8_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint8_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<int16_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint16_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<int32_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint32_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<int64_t>() const;
-template std::vector<ConstBuffer> FilterBuffer::buffers_as<uint64_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<char>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<float>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<double>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<int8_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<uint8_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<int16_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<uint16_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<int32_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<uint32_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<int64_t>() const;
+template std::vector<ConstBuffer>
+FilterBuffer<context_bypass_RM>::buffers_as<uint64_t>() const;
+
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate `FilterBuffer`.
+ */
+template class FilterBuffer<context_bypass_RM>;
 
 }  // namespace sm
 }  // namespace tiledb

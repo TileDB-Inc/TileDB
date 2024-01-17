@@ -55,6 +55,7 @@ enum class Datatype : uint8_t;
  * Class that manages an ordered list of multiple separate buffers and offers as
  * a single contiguous view on the underlying bytes.
  */
+template <class RM>
 class FilterBuffer {
  public:
   /** Constructor. */

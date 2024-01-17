@@ -44,7 +44,9 @@
  */
 #include "common-std.h"
 
-namespace tiledb::common {}
+namespace tiledb::common {
+using context_bypass_RM = void;
+}
 namespace tdb = tiledb::common;
 
 /*

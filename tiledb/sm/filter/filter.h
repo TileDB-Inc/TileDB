@@ -45,6 +45,7 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+template <class RM>
 class FilterBuffer;
 class Tile;
 class WriterTile;
