@@ -64,13 +64,13 @@ Status CommitsConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_commits");
+  auto timer_se = this->stats_->start_timer("consolidate_commits");
 
-  Consolidator<RM>::check_array_uri(array_name);
+  this->check_array_uri(array_name);
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, Consolidator<RM>::storage_manager_);
+  Array array_for_writes(array_uri, this->storage_manager_);
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
@@ -84,7 +84,7 @@ Status CommitsConsolidator<RM>::consolidate(
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      Consolidator<RM>::storage_manager_->resources(),
+      this->storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -97,7 +97,7 @@ Status CommitsConsolidator<RM>::consolidate(
 
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
-  Consolidator<RM>::storage_manager_->write_consolidated_commits_file(
+  this->storage_manager_->write_consolidated_commits_file(
       write_version, array_dir, to_consolidate);
 
   return Status::Ok();
@@ -112,20 +112,30 @@ void CommitsConsolidator<RM>::vacuum(const char* array_name) {
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   ArrayDirectory array_dir(
-      Consolidator<RM>::storage_manager_->resources(),
+      this->storage_manager_->resources(),
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
-  auto vfs = Consolidator<RM>::storage_manager_->vfs();
-  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
+  auto vfs = this->storage_manager_->vfs();
+  auto compute_tp = this->storage_manager_->compute_tp();
   vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
   vfs->remove_files(
       compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate `Consolidator`
+ * and it's deriving classes.
+ */
 template class CommitsConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

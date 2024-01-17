@@ -72,8 +72,8 @@ struct ConsolidationConfigBase {
 template <class RM>
 class Consolidator {
  public:
-  using context_bypass_RM = void;
-  using resource_manager_type = context_bypass_RM;
+  /** The type of the resource manager used to construct this Consolidator. */
+  using resource_manager_type = RM;
 
   /* ********************************* */
   /*          FACTORY METHODS          */
@@ -179,4 +179,4 @@ class Consolidator {
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_FRAGMENT_H
+#endif  // TILEDB_CONSOLIDATOR_H

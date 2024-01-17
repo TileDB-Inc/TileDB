@@ -65,19 +65,18 @@ GroupMetaConsolidator<RM>::GroupMetaConsolidator(
 template <class RM>
 Status GroupMetaConsolidator<RM>::consolidate(
     const char* group_name, EncryptionType, const void*, uint32_t) {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_group_meta");
+  auto timer_se = this->stats_->start_timer("consolidate_group_meta");
 
-  Consolidator<RM>::check_array_uri(group_name);
+  this->check_array_uri(group_name);
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  Group group_for_reads(group_uri, Consolidator<RM>::storage_manager_);
+  Group group_for_reads(group_uri, this->storage_manager_);
   RETURN_NOT_OK(group_for_reads.open(
       QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
 
   // Open group for writing
-  Group group_for_writes(group_uri, Consolidator<RM>::storage_manager_);
+  Group group_for_writes(group_uri, this->storage_manager_);
   RETURN_NOT_OK_ELSE(
       group_for_writes.open(QueryType::WRITE),
       throw_if_not_ok(group_for_reads.close()));
@@ -120,9 +119,9 @@ Status GroupMetaConsolidator<RM>::consolidate(
     ss << uri.to_string() << "\n";
 
   auto data = ss.str();
-  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->write(
-      vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->close_file(vac_uri));
+  RETURN_NOT_OK(
+      this->storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(this->storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -135,8 +134,8 @@ void GroupMetaConsolidator<RM>::vacuum(const char* group_name) {
   }
 
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
-  auto vfs = Consolidator<RM>::storage_manager_->vfs();
-  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
+  auto vfs = this->storage_manager_->vfs();
+  auto compute_tp = this->storage_manager_->compute_tp();
   GroupDirectory group_dir;
   try {
     group_dir = GroupDirectory(
@@ -161,7 +160,7 @@ void GroupMetaConsolidator<RM>::vacuum(const char* group_name) {
 template <class RM>
 Status GroupMetaConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = Consolidator<RM>::storage_manager_->config();
+  Config merged_config = this->storage_manager_->config();
   merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
@@ -174,6 +173,16 @@ Status GroupMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate `Consolidator`
+ * and it's deriving classes.
+ */
 template class GroupMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

@@ -67,13 +67,12 @@ Status FragmentMetaConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_frag_meta");
+  auto timer_se = this->stats_->start_timer("consolidate_frag_meta");
 
-  Consolidator<RM>::check_array_uri(array_name);
+  this->check_array_uri(array_name);
 
   // Open array for reading
-  Array array(URI(array_name), Consolidator<RM>::storage_manager_);
+  Array array(URI(array_name), this->storage_manager_);
   RETURN_NOT_OK(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
 
@@ -100,8 +99,7 @@ Status FragmentMetaConsolidator<RM>::consolidate(
       first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
-  RETURN_NOT_OK(
-      Consolidator<RM>::storage_manager_->vfs()->create_dir(frag_md_uri));
+  RETURN_NOT_OK(this->storage_manager_->vfs()->create_dir(frag_md_uri));
   uri = URI(frag_md_uri.to_string() + name + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -125,10 +123,7 @@ Status FragmentMetaConsolidator<RM>::consolidate(
   // Serialize all fragment metadata footers in parallel
   std::vector<tiledb_unique_ptr<WriterTile>> tiles(meta.size());
   auto status = parallel_for(
-      Consolidator<RM>::storage_manager_->compute_tp(),
-      0,
-      tiles.size(),
-      [&](size_t i) {
+      this->storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
         meta[i]->write_footer(size_computation_serializer);
         tiles[i].reset(tdb_new(
@@ -180,10 +175,10 @@ Status FragmentMetaConsolidator<RM>::consolidate(
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
-  GenericTileIO tile_io(Consolidator<RM>::storage_manager_->resources(), uri);
+  GenericTileIO tile_io(this->storage_manager_->resources(), uri);
   [[maybe_unused]] uint64_t nbytes = 0;
   tile_io.write_generic(&tile, enc_key, &nbytes);
-  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->close_file(uri));
+  RETURN_NOT_OK(this->storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();
 }
@@ -198,10 +193,7 @@ void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
   ArrayDirectory array_dir(
-      Consolidator<RM>::storage_manager_->resources(),
-      URI(array_name),
-      0,
-      UINT64_MAX);
+      this->storage_manager_->resources(), URI(array_name), 0, UINT64_MAX);
 
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
@@ -215,8 +207,8 @@ void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
     }
   }
 
-  auto vfs = Consolidator<RM>::storage_manager_->vfs();
-  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
+  auto vfs = this->storage_manager_->vfs();
+  auto compute_tp = this->storage_manager_->compute_tp();
 
   // Vacuum
   throw_if_not_ok(
@@ -230,6 +222,16 @@ void FragmentMetaConsolidator<RM>::vacuum(const char* array_name) {
       }));
 }
 
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate `Consolidator`
+ * and it's deriving classes.
+ */
 template class FragmentMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm

@@ -66,14 +66,13 @@ Status ArrayMetaConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_array_meta");
+  auto timer_se = this->stats_->start_timer("consolidate_array_meta");
 
   Consolidator<RM>::check_array_uri(array_name);
 
   // Open array for reading
   auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, Consolidator<RM>::storage_manager_);
+  Array array_for_reads(array_uri, this->storage_manager_);
   RETURN_NOT_OK(array_for_reads.open(
       QueryType::READ,
       config_.timestamp_start_,
@@ -81,9 +80,8 @@ Status ArrayMetaConsolidator<RM>::consolidate(
       encryption_type,
       encryption_key,
       key_length));
-
   // Open array for writing
-  Array array_for_writes(array_uri, Consolidator<RM>::storage_manager_);
+  Array array_for_writes(array_uri, this->storage_manager_);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
@@ -136,9 +134,9 @@ Status ArrayMetaConsolidator<RM>::consolidate(
   }
 
   auto data = ss.str();
-  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->write(
-      vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(Consolidator<RM>::storage_manager_->vfs()->close_file(vac_uri));
+  RETURN_NOT_OK(
+      this->storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(this->storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -151,11 +149,11 @@ void ArrayMetaConsolidator<RM>::vacuum(const char* array_name) {
   }
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
-  auto vfs = Consolidator<RM>::storage_manager_->vfs();
-  auto compute_tp = Consolidator<RM>::storage_manager_->compute_tp();
+  auto vfs = this->storage_manager_->vfs();
+  auto compute_tp = this->storage_manager_->compute_tp();
 
   auto array_dir = ArrayDirectory(
-      Consolidator<RM>::storage_manager_->resources(),
+      this->storage_manager_->resources(),
       URI(array_name),
       0,
       std::numeric_limits<uint64_t>::max());
@@ -172,7 +170,7 @@ void ArrayMetaConsolidator<RM>::vacuum(const char* array_name) {
 template <class RM>
 Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = Consolidator<RM>::storage_manager_->config();
+  Config merged_config = this->storage_manager_->config();
   merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
@@ -185,6 +183,16 @@ Status ArrayMetaConsolidator<RM>::set_config(const Config& config) {
   return Status::Ok();
 }
 
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate `Consolidator`
+ * and it's deriving classes.
+ */
 template class ArrayMetaConsolidator<context_bypass_RM>;
 
 }  // namespace tiledb::sm
