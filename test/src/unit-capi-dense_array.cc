@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -150,7 +150,6 @@ struct DenseArrayFx {
       const tiledb_layout_t layout,
       std::vector<TestRange>& ranges,
       std::vector<uint64_t>& a1);
-  static std::string random_name(const std::string& prefix);
 
   /**
    * Creates a 2D dense array.
@@ -3093,13 +3092,6 @@ void DenseArrayFx::check_non_empty_domain(const std::string& path) {
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
 };
-
-std::string DenseArrayFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
 
 TEST_CASE_METHOD(
     DenseArrayFx,

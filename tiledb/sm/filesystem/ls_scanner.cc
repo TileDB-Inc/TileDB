@@ -1,11 +1,11 @@
 /**
- * @file   uuid.h
+ * @file ls_scanner.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,33 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares a platform-independent UUID generator.
+ * This defines the LsScanner class and related types used for VFS.
  */
 
-#ifndef TILEDB_UUID_H
-#define TILEDB_UUID_H
-
-#include "tiledb/common/status.h"
-
-using namespace tiledb::common;
-
-namespace tiledb {
-namespace sm {
-namespace uuid {
-
-/**
- * Generates a 128-bit UUID. The string is formatted with hyphens like:
- * 'xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxx' where 'x' is a hexadecimal digit.
- * Note: this function internally acquires a lock.
- *
- * @param uuid Output parameter which will store the UUID in string format.
- * @param hyphenate If false, the UUID string will not be hyphenated.
- * @return Status
- */
-Status generate_uuid(std::string* uuid, bool hyphenate = true);
-
-}  // namespace uuid
-}  // namespace sm
-}  // namespace tiledb
-
-#endif
+#include "ls_scanner.h"

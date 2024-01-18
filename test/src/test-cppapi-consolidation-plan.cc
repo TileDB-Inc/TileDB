@@ -37,6 +37,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/serialization/consolidation.h"
 
 #include <test/support/tdb_catch.h>
@@ -170,7 +171,7 @@ std::string CppConsolidationPlanFx::write_sparse(
   // Close array.
   array->close();
 
-  return query.fragment_uri(0);
+  return tiledb::sm::URI(query.fragment_uri(0)).last_path_part();
 }
 
 void CppConsolidationPlanFx::remove_array(const std::string& array_name) {

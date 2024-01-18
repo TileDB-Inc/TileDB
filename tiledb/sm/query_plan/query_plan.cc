@@ -48,20 +48,18 @@ namespace sm {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-QueryPlan::QueryPlan(Query& query) {
-  if (query.array()->is_remote()) {
-    throw std::logic_error(
-        "Failed to create a query plan; Remote arrays"
-        "are not currently supported.");
-  }
-
+QueryPlan::QueryPlan(Query& query, std::string strategy) {
   array_uri_ = query.array()->array_uri().to_string();
   vfs_backend_ = URI(array_uri_).backend_name();
   query_layout_ = query.layout();
 
-  // This most probably ends up creating the strategy on the query
-  auto strategy_ptr = query.strategy();
-  strategy_name_ = strategy_ptr->name();
+  if (strategy.empty()) {
+    // This most probably ends up creating the strategy on the query
+    auto strategy_ptr = query.strategy();
+    strategy_name_ = strategy_ptr->name();
+  } else {
+    strategy_name_ = strategy;
+  }
 
   array_type_ = query.array()->array_schema_latest().array_type();
 

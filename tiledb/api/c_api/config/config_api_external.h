@@ -164,11 +164,12 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    (since the resulting fragment is dense). <br>
  *    **Default**: 1.0
  * - `sm.consolidation.buffer_size` <br>
- *    Deprecated. Prefer `sm.consolidation.total_buffer_size` instead.
+ *    **Deprecated**
  *    The size (in bytes) of the attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 50,000,000
  * - `sm.consolidation.total_buffer_size` <br>
+ *    **Deprecated**
  *    The size (in bytes) of all attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 2,147,483,648
@@ -565,7 +566,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
  *    signals.
  *    **Default**: "true"
- * - `vfs.hdfs.name_node_uri"` <br>
+ * - `vfs.hdfs.name_node_uri` <br>
  *    Name node for HDFS. <br>
  *    **Default**: ""
  * - `vfs.hdfs.username` <br>

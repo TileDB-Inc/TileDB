@@ -84,19 +84,22 @@ void deserialize_query_plan_request(
  * @param response Buffer to store serialized bytes in.
  */
 void serialize_query_plan_response(
-    const std::string& query_plan,
+    const QueryPlan& query_plan,
     const SerializationType serialization_type,
     Buffer& response);
 
 /**
- * Deserialize a Query Plan request to cap'n proto object
+ * Deserialize a Query Plan response from cap'n proto object
  *
+ * @param query The query the plan is requested for.
  * @param serialization_type Format to serialize from: Cap'n Proto or JSON.
  * @param response Buffer to read serialized bytes from.
- * @return The requested query plan as a string.
+ * @return The requested query plan.
  */
-std::string deserialize_query_plan_response(
-    const SerializationType serialization_type, const Buffer& response);
+QueryPlan deserialize_query_plan_response(
+    Query& query,
+    const SerializationType serialization_type,
+    const Buffer& response);
 
 }  // namespace serialization
 }  // namespace tiledb::sm

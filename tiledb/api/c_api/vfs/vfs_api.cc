@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "vfs_api_experimental.h"
 #include "vfs_api_internal.h"
 
 namespace tiledb::api {
@@ -311,6 +312,23 @@ capi_return_t tiledb_vfs_touch(tiledb_vfs_t* vfs, const char* uri) {
   return TILEDB_OK;
 }
 
+capi_return_t tiledb_vfs_ls_recursive(
+    tiledb_vfs_t* vfs,
+    const char* path,
+    tiledb_ls_callback_t callback,
+    void* data) {
+  ensure_vfs_is_valid(vfs);
+  if (path == nullptr) {
+    throw CAPIStatusException("Invalid TileDB object: VFS passed a null path.");
+  } else if (callback == nullptr) {
+    throw CAPIStatusException(
+        "Invalid TileDB object: Callback function is null.");
+  }
+  ensure_output_pointer_is_valid(data);
+  vfs->ls_recursive(tiledb::sm::URI(path), callback, data);
+  return TILEDB_OK;
+}
+
 }  // namespace tiledb::api
 
 using tiledb::api::api_entry_context;
@@ -543,4 +561,15 @@ CAPI_INTERFACE(
 CAPI_INTERFACE(
     vfs_touch, tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const char* uri) {
   return api_entry_context<tiledb::api::tiledb_vfs_touch>(ctx, vfs, uri);
+}
+
+CAPI_INTERFACE(
+    vfs_ls_recursive,
+    tiledb_ctx_t* ctx,
+    tiledb_vfs_t* vfs,
+    const char* path,
+    tiledb_ls_callback_t callback,
+    void* data) {
+  return api_entry_context<tiledb::api::tiledb_vfs_ls_recursive>(
+      ctx, vfs, path, callback, data);
 }

@@ -203,7 +203,7 @@ void UpdatesFx::check_update_conditions(
 
   // Load delete conditions.
   auto&& [st, conditions, update_values] =
-      sm_->load_delete_and_update_conditions(*array_ptr);
+      sm_->load_delete_and_update_conditions(*(array_ptr->opened_array()));
   REQUIRE(st.ok());
   REQUIRE(conditions->size() == qcs.size());
 

@@ -34,10 +34,15 @@
 #define TILEDB_S3_H
 
 #ifdef HAVE_S3
+
+#include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
@@ -86,7 +91,67 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
 
-class TileDBS3Client;
+/** Class for S3 status exceptions. */
+class S3Exception : public StatusException {
+ public:
+  explicit S3Exception(const std::string& msg)
+      : StatusException("S3", msg) {
+  }
+};
+
+namespace {
+
+/**
+ * Return the exception name and error message from the given outcome object.
+ *
+ * @tparam R AWS result type
+ * @tparam E AWS error type
+ * @param outcome Outcome to retrieve error message from
+ * @return Error message string
+ */
+template <typename R, typename E>
+std::string outcome_error_message(const Aws::Utils::Outcome<R, E>& outcome) {
+  if (outcome.IsSuccess()) {
+    return "Success";
+  }
+
+  auto err = outcome.GetError();
+  Aws::StringStream ss;
+
+  ss << "[Error Type: " << static_cast<int>(err.GetErrorType()) << "]"
+     << " [HTTP Response Code: " << static_cast<int>(err.GetResponseCode())
+     << "]";
+
+  if (!err.GetExceptionName().empty()) {
+    ss << " [Exception: " << err.GetExceptionName() << "]";
+  }
+
+  // For some reason, these symbols are not exposed when building with MINGW
+  // so for now we just disable adding the tags on Windows.
+  if constexpr (!platform::is_os_windows) {
+    if (!err.GetRemoteHostIpAddress().empty()) {
+      ss << " [Remote IP: " << err.GetRemoteHostIpAddress() << "]";
+    }
+
+    if (!err.GetRequestId().empty()) {
+      ss << " [Request ID: " << err.GetRequestId() << "]";
+    }
+  }
+
+  if (err.GetResponseHeaders().size() > 0) {
+    ss << " [Headers:";
+    for (auto&& h : err.GetResponseHeaders()) {
+      ss << " '" << h.first << "' = '" << h.second << "'";
+    }
+    ss << "]";
+  }
+
+  ss << " : " << err.GetMessage();
+
+  return ss.str();
+}
+
+}  // namespace
 
 /**
  * The s3-specific configuration parameters.
@@ -272,6 +337,219 @@ struct S3Parameters {
 };
 
 /**
+ * Helper class which overrides Aws::S3::S3Client to set headers from
+ * vfs.s3.custom_headers.*
+ *
+ * @note The AWS SDK does not have a common base class, so there's no
+ * straightforward way to add a header to a unique request before submitting
+ * it. This class exists solely to override the S3Client, adding custom headers
+ * upon building the Http Request.
+ */
+class TileDBS3Client : public Aws::S3::S3Client {
+ public:
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  TileDBS3Client(
+      const S3Parameters& s3_params,
+      const std::shared_ptr<Aws::Auth::AWSCredentialsProvider>& creds,
+      const Aws::Client::ClientConfiguration& client_config,
+      Aws::Client::AWSAuthV4Signer::PayloadSigningPolicy sign_payloads,
+      bool use_virtual_addressing)
+      : Aws::S3::S3Client(
+            creds, client_config, sign_payloads, use_virtual_addressing)
+      , params_(s3_params) {
+  }
+
+  void BuildHttpRequest(
+      const Aws::AmazonWebServiceRequest& request,
+      const std::shared_ptr<Aws::Http::HttpRequest>& httpRequest)
+      const override {
+    S3Client::BuildHttpRequest(request, httpRequest);
+
+    // Set header from S3Parameters custom headers
+    for (auto& [key, val] : params_.custom_headers_) {
+      httpRequest->SetHeaderValue(key, val);
+    }
+  }
+
+  inline bool requester_pays() const {
+    return params_.requester_pays_;
+  }
+
+ protected:
+  /**
+   * A reference to the S3 configuration parameters, which stores the header.
+   *
+   * @note Until the removal of init_client(), this must be const-qualified.
+   */
+  const S3Parameters& params_;
+};
+
+/**
+ * S3Scanner wraps the AWS ListObjectsV2 request and provides an iterator for
+ * results. If we reach the end of the current batch of results and results are
+ * truncated, we fetch the next batch of results from S3.
+ *
+ * For each batch of results collected by fetch_results(), the begin_ and end_
+ * members are initialized to the first and last elements of the batch. The scan
+ * steps through each result in the range [begin_, end_), using next() to
+ * advance to the next object accepted by the filters for this scan.
+ *
+ * @section Known Defect
+ *      The iterators of S3Scanner are initialized by the AWS ListObjectsV2
+ *      results and there is no way to determine if they are different from
+ *      iterators returned by a previous request. To be able to detect this, we
+ *      can track the batch number and compare it to the batch number associated
+ *      with the iterator returned by the previous request. Batch number can be
+ *      tracked by the total number of times we submit a ListObjectsV2 request
+ *      within fetch_results().
+ *
+ * @tparam F The FilePredicate type used to filter object results.
+ * @tparam D The DirectoryPredicate type used to prune prefix results.
+ */
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+class S3Scanner : public LsScanner<F, D> {
+ public:
+  /** Declare LsScanIterator as a friend class for access to call next(). */
+  template <class scanner_type, class T>
+  friend class LsScanIterator;
+  using Iterator = LsScanIterator<S3Scanner<F, D>, Aws::S3::Model::Object>;
+
+  /** Constructor. */
+  S3Scanner(
+      const std::shared_ptr<TileDBS3Client>& client,
+      const URI& prefix,
+      F file_filter,
+      D dir_filter = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /**
+   * Returns true if there are more results to fetch from S3.
+   */
+  [[nodiscard]] inline bool more_to_fetch() const {
+    return list_objects_outcome_.GetResult().GetIsTruncated();
+  }
+
+  /**
+   * @return Iterator to the beginning of the results being iterated on.
+   *    Input iterators are single-pass, so we return a copy of this iterator at
+   *    it's current position.
+   */
+  Iterator begin() {
+    return Iterator(this);
+  }
+
+  /**
+   * @return Default constructed iterator, which marks the end of results using
+   *    nullptr.
+   */
+  Iterator end() {
+    return Iterator();
+  }
+
+ private:
+  /**
+   * Advance to the next object accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data pointer.
+   * @sa LsScanIterator::operator++()
+   */
+  void next(typename Iterator::pointer& ptr);
+
+  /**
+   * If the iterator is at the end of the current batch, this will fetch the
+   * next batch of results from S3. This does not check if the results are
+   * accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data iterator.
+   */
+  void advance(typename Iterator::pointer& ptr) {
+    ptr++;
+    if (ptr == end_) {
+      if (more_to_fetch()) {
+        // Fetch results and reset the iterator.
+        ptr = fetch_results();
+      } else {
+        // Set the pointer to nullptr to indicate the end of results.
+        end_ = ptr = typename Iterator::pointer();
+      }
+    }
+  }
+
+  /**
+   * Fetch the next batch of results from S3. This also handles setting the
+   * continuation token for the next request, if the results were truncated.
+   *
+   * @return A pointer to the first result in the new batch. The return value
+   *    is used to update the pointer managed by the iterator during traversal.
+   *    If the request returned no results, this will return nullptr to mark the
+   *    end of the scan.
+   * @sa LsScanIterator::operator++()
+   * @sa S3Scanner::next(typename Iterator::pointer&)
+   */
+  typename Iterator::pointer fetch_results() {
+    // If this is our first request, GetIsTruncated() will be false.
+    if (more_to_fetch()) {
+      // If results are truncated on a subsequent request, we set the next
+      // continuation token before resubmitting our request.
+      Aws::String next_marker =
+          list_objects_outcome_.GetResult().GetNextContinuationToken();
+      if (next_marker.empty()) {
+        throw S3Exception(
+            "Failed to retrieve next continuation token for ListObjectsV2 "
+            "request.");
+      }
+      list_objects_request_.SetContinuationToken(std::move(next_marker));
+    } else if (list_objects_outcome_.IsSuccess()) {
+      // If we have previously submitted a successful request and there are no
+      // more results, we've reached the end of the scan.
+      begin_ = end_ = typename Iterator::pointer();
+      return end_;
+    }
+
+    list_objects_outcome_ = client_->ListObjectsV2(list_objects_request_);
+    if (!list_objects_outcome_.IsSuccess()) {
+      throw S3Exception(
+          std::string("Error while listing with prefix '") +
+          this->prefix_.add_trailing_slash().to_string() + "' and delimiter '" +
+          delimiter_ + "'" + outcome_error_message(list_objects_outcome_));
+    }
+    // Update pointers to the newly fetched results.
+    begin_ = list_objects_outcome_.GetResult().GetContents().begin();
+    end_ = list_objects_outcome_.GetResult().GetContents().end();
+
+    if (list_objects_outcome_.GetResult().GetContents().empty()) {
+      // If the request returned no results, we've reached the end of the scan.
+      // We hit this case when the number of objects in the bucket is a multiple
+      // of the current max_keys.
+      return end_;
+    }
+
+    return begin_;
+  }
+
+  /** Pointer to the S3 client initialized by VFS. */
+  shared_ptr<TileDBS3Client> client_;
+  /** Delimiter used for ListObjects request. */
+  std::string delimiter_;
+  /** Iterators for the current objects fetched from S3. */
+  typename Iterator::pointer begin_, end_;
+
+  /** The current request being scanned. */
+  Aws::S3::Model::ListObjectsV2Request list_objects_request_;
+  /** The current request outcome being scanned. */
+  Aws::S3::Model::ListObjectsV2Outcome list_objects_outcome_;
+};
+
+/**
  * This class implements the various S3 filesystem functions. It also
  * maintains buffer caches for writing into the various attribute files.
  */
@@ -413,17 +691,71 @@ class S3 {
   /**
    *
    * Lists objects and object information that start with `prefix`.
+   * For recursive results, an empty string can be passed as the `delimiter`.
    *
    * @param prefix The parent path to list sub-paths.
-   * @param delimiter The uri is truncated to the first delimiter
-   * @param max_paths The maximum number of paths to be retrieved
-   * @return A list of directory_entry objects
+   * @param delimiter The uri is truncated to the first delimiter.
+   * @param max_paths The maximum number of paths to be retrieved.
+   * @return Status tuple where second is a list of directory_entry objects.
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
+  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
       const URI& prefix,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    throw_if_not_ok(init_client());
+    S3Scanner<F, D> s3_scanner(client_, parent, f, d, recursive);
+    // Prepend each object key with the bucket URI.
+    auto prefix = parent.to_string();
+    prefix = prefix.substr(0, prefix.find('/', 5));
+
+    LsObjects objects;
+    for (auto object : s3_scanner) {
+      objects.emplace_back(prefix + "/" + object.GetKey(), object.GetSize());
+    }
+    return objects;
+  }
+
+  /**
+   * Constructs a scanner for listing S3 objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed S3Scanner object.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  S3Scanner<F, D> scanner(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    throw_if_not_ok(init_client());
+    return S3Scanner<F, D>(client_, parent, f, d, recursive, max_keys);
+  }
 
   /**
    * Renames an object.
@@ -576,6 +908,28 @@ class S3 {
    * @param length The size of the input buffer.
    */
   void global_order_write(const URI& uri, const void* buffer, uint64_t length);
+
+  /* ********************************* */
+  /*        PUBLIC STATIC METHODS      */
+  /* ********************************* */
+
+  /**
+   * Returns the input `path` after adding a `/` character
+   * at the front if it does not exist.
+   */
+  static std::string add_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the front if it exists.
+   */
+  static std::string remove_front_slash(const std::string& path);
+
+  /**
+   * Returns the input `path` after removing a potential `/` character
+   * from the end if it exists.
+   */
+  static std::string remove_trailing_slash(const std::string& path);
 
  private:
   /* ********************************* */
@@ -886,7 +1240,7 @@ class S3 {
   mutable std::mutex client_init_mtx_;
 
   /** Configuration object used to initialize the client. */
-  mutable tdb_unique_ptr<Aws::Client::ClientConfiguration> client_config_;
+  mutable shared_ptr<Aws::Client::ClientConfiguration> client_config_;
 
   /** The executor used by 'client_'. */
   mutable shared_ptr<S3ThreadPoolExecutor> s3_tp_executor_;
@@ -972,24 +1326,6 @@ class S3 {
       const void* buffer,
       uint64_t length,
       uint64_t* nbytes_filled);
-
-  /**
-   * Returns the input `path` after adding a `/` character
-   * at the front if it does not exist.
-   */
-  std::string add_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the front if it exists.
-   */
-  std::string remove_front_slash(const std::string& path) const;
-
-  /**
-   * Returns the input `path` after removing a potential `/` character
-   * from the end if it exists.
-   */
-  std::string remove_trailing_slash(const std::string& path) const;
 
   /**
    * Writes the contents of the input buffer to the S3 object given by
@@ -1191,6 +1527,63 @@ class S3 {
   URI generate_chunk_uri(
       const URI& attribute_uri, const std::string& chunk_name);
 };
+
+template <FilePredicate F, DirectoryPredicate D>
+S3Scanner<F, D>::S3Scanner(
+    const shared_ptr<TileDBS3Client>& client,
+    const URI& prefix,
+    F file_filter,
+    D dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , delimiter_(this->is_recursive_ ? "" : "/") {
+  const auto prefix_dir = prefix.add_trailing_slash();
+  auto prefix_str = prefix_dir.to_string();
+  Aws::Http::URI aws_uri = prefix_str.c_str();
+  if (!prefix_dir.is_s3()) {
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
+  }
+
+  list_objects_request_.SetBucket(aws_uri.GetAuthority());
+  const std::string aws_uri_str(S3::remove_front_slash(aws_uri.GetPath()));
+  list_objects_request_.SetPrefix(aws_uri_str.c_str());
+  // Empty delimiter returns recursive results from S3.
+  list_objects_request_.SetDelimiter(delimiter_.c_str());
+  // The default max_keys for ListObjects is 1000.
+  list_objects_request_.SetMaxKeys(max_keys);
+
+  if (client_->requester_pays()) {
+    list_objects_request_.SetRequestPayer(
+        Aws::S3::Model::RequestPayer::requester);
+  }
+  fetch_results();
+  next(begin_);
+}
+
+template <FilePredicate F, DirectoryPredicate D>
+void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto object = *ptr;
+    uint64_t size = object.GetSize();
+    std::string path = "s3://" + list_objects_request_.GetBucket() +
+                       S3::add_front_slash(object.GetKey());
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(path, size)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
 
 }  // namespace tiledb::sm
 

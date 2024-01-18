@@ -111,6 +111,14 @@ Status ArrayMetaConsolidator::consolidate(
   // Get the new URI name for consolidated metadata
   URI new_uri = metadata_w->get_uri(array_uri);
 
+  // Write vac files relative to the array URI. This was fixed for reads in
+  // version 19 so only do this for arrays starting with version 19.
+  size_t base_uri_size = 0;
+  if (array_for_reads.array_schema_latest_ptr() == nullptr ||
+      array_for_reads.array_schema_latest().write_version() >= 19) {
+    base_uri_size = array_for_reads.array_uri().to_string().size();
+  }
+
   // Close arrays
   RETURN_NOT_OK_ELSE(
       array_for_reads.close(), throw_if_not_ok(array_for_writes.close()));
@@ -118,15 +126,6 @@ Status ArrayMetaConsolidator::consolidate(
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
-  size_t base_uri_size = 0;
-
-  // Write vac files relative to the array URI. This was fixed for reads in
-  // version 19 so only do this for arrays starting with version 19.
-  if (array_for_reads.array_schema_latest_ptr() == nullptr ||
-      array_for_reads.array_schema_latest().write_version() >= 19) {
-    base_uri_size = array_for_reads.array_uri().to_string().size();
-  }
 
   std::stringstream ss;
   for (const auto& uri : to_vacuum) {

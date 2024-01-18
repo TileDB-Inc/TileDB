@@ -73,43 +73,31 @@ class GlobalOrderWriterStatusException : public StatusException {
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     uint64_t fragment_size,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0) {
   // Check the layout is global order.
-  if (layout != Layout::GLOBAL_ORDER) {
+  if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterStatusException(
         "Failed to initialize global order writer. Layout " +
-        layout_str(layout) + " is not global order.");
+        layout_str(layout_) + " is not global order.");
   }
 
   // Check no ordered attributes.

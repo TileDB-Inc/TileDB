@@ -68,7 +68,7 @@ jobs:
       - name: Set variables
         id: get-values
         run: |
-          release_hash=$( echo ${{ github.sha }} | cut -c-8 - )
+          release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
           ref=${{ github.head_ref || github.ref_name }}
           echo "release_hash=$release_hash" >> $GITHUB_OUTPUT
           echo "archive_name=tiledb-${{ matrix.platform }}-${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
@@ -127,8 +127,24 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
-  Publish-Release:
+  Test-Release-Artifacts:
     needs: Build-Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release artifacts
+        uses: actions/download-artifact@v2
+        with:
+          name: tiledb-dist
+          path: dist
+      - name: Test names of release artifacts
+        run: |
+          if [ ls dist/ | grep -Ev -- '^tiledb-(linux|macos|windows)+-(x86_64|arm64)(-noavx2)?-.+-[0-9a-f]{7}\.(zip|tar\.gz)$' ]; then
+            echo "Some release artifact names do not match expected pattern"
+            exit 1
+          fi
+
+  Publish-Release:
+    needs: Test-Release-Artifacts
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:

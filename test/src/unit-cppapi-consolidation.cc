@@ -120,7 +120,9 @@ TEST_CASE(
   remove_array(array_name);
 
   // Create array
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  Context ctx(cfg);
   Domain domain(ctx);
   auto d = Dimension::create<int>(ctx, "d1", {{10, 110}}, 50);
   domain.add_dimensions(d);

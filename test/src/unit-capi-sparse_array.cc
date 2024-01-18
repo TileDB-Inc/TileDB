@@ -133,7 +133,6 @@ struct SparseArrayFx {
       const std::vector<float>& a3);
   void create_temp_dir(const std::string& path);
   void remove_temp_dir(const std::string& path);
-  static std::string random_name(const std::string& prefix);
   void check_sorted_reads(
       const std::string& array_name,
       tiledb_filter_type_t compressor,
@@ -259,13 +258,6 @@ void SparseArrayFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string SparseArrayFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void SparseArrayFx::create_sparse_array_2D(

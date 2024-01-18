@@ -106,7 +106,6 @@ struct ArrayFx {
   void create_dense_vector(const std::string& path);
   void create_dense_array(const std::string& path);
   void write_fragment(tiledb_array_t* array, uint64_t timestamp);
-  static std::string random_name(const std::string& prefix);
   static int get_fragment_timestamps(const char* path, void* data);
 };
 
@@ -139,13 +138,6 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string ArrayFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
@@ -2345,7 +2337,7 @@ TEST_CASE_METHOD(
 
   // Check the retrieved non empty domain
   auto non_empty_domain = new_array->array_->loaded_non_empty_domain();
-  CHECK(non_empty_domain->empty() == false);
+  CHECK(non_empty_domain.empty() == false);
 
   // Check the retrieved metadata
   Datatype type;

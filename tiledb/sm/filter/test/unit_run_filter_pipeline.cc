@@ -32,8 +32,34 @@
  * operations such as adding 1 to each value in the original data so that the
  * filtered data itself can be checked after running the filter pipeline
  * forward.
+ *
+ *
+ * Notes on variable length data:
+ *
+ * The filtered pipeline will break-up tile data into chunks for filtering.
+ * Below we describe the decision process for adding to the existing chunk vs
+ * creating a new chunk for variable length data.
+ *
+ * Define the following when adding a value of variable length data:
+ *
+ * * "current size": the size of the current chunk before adding the data
+ * * "new size": the size of the current chunk if the new data is added to it
+ * * "target size": the target size for chunks
+ * * "min size": 50% the target size for chunks
+ * * "max size": 150% the target size for chunks
+ *
+ * A new chunk is created if the total size > target size.
+ *
+ * When a new chunk is created, if either of the following are met, then add
+ * the current component to the existing chunk:
+ *
+ *  Condition 1. current size < min size
+ *  Condition 2. new size < max size
+ *
  */
 
+#include <algorithm>
+#include <optional>
 #include <random>
 
 #include <test/support/tdb_catch.h>
@@ -52,7 +78,9 @@
 #include "add_1_including_metadata_filter.h"
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
+#include "filtered_tile_checker.h"
 #include "pseudo_checksum_filter.h"
+#include "tile_data_generator.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -66,406 +94,341 @@ using namespace tiledb::sm;
 // A dummy `Stats` instance.
 static tiledb::sm::stats::Stats dummy_stats("test");
 
-WriterTile make_increasing_tile(const uint64_t nelts) {
-  const uint64_t tile_size = nelts * sizeof(uint64_t);
-  const uint64_t cell_size = sizeof(uint64_t);
+class SimpleTestData {};
 
-  WriterTile tile(
-      constants::format_version, Datatype::UINT64, cell_size, tile_size);
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK_NOTHROW(tile.write(&i, i * sizeof(uint64_t), sizeof(uint64_t)));
+/**
+ * Original variable length test from the pipeline tests.
+ *
+ * For this test target size is 10 cells per chunk. Below is a list of value
+ * cell lengths, the cell they are added to, and the rational.
+ *
+ * target = 8 cells
+ * min = 4 cells
+ * max = 12 cells
+ *
+ * | # Cells | Previous/New # Cell in Chunk | Notes                            |
+ * |:-------:|:--------|:------------------------------------------------------|
+ * |  4      |  0 / 4  | chunk 0: initial chunk                                |
+ * |  10     |  4 / 14 | chunk 0: new > max, prev. <= min (next new)           |
+ * |  6      |  0 / 6  | chunk 1: new <= target                                |
+ * |  11     |  6 / 11 | chunk 2: target < new <= max, prev. > min  (next new) |
+ * |  7      |  0 / 7  | chunk 3: new <= target                                |
+ * |  9      |  7 / 16 | chunk 4: new > max, prev. > min (this new)            |
+ * |  1      |  9 / 10 | chunk 4: new <= target                                |
+ * |  10     | 10 / 20 | chunk 5: new > max, prev. > min (this new)            |
+ * |  20     |  0 / 20 | chunk 6: new > max, prev. < min (next new)            |
+ * |  2      |  0 / 2  | chunk 7: new <= target                                |
+ * |  2      |  2 / 4  | chunk 7: new <= target                                |
+ * |  2      |  4 / 6  | chunk 7: new <= target                                |
+ * |  2      |  6 / 8  | chunk 7: new <= target                                |
+ * |  2      |  8 / 10 | chunk 7: new <= target                                |
+ * |  12     | 10 / 24 | chunk 8: new > max, prev. > min (this new)            |
+ *
+ */
+class SimpleVariableTestData {
+ public:
+  SimpleVariableTestData()
+      : target_ncells_per_chunk_{10}
+      , elements_per_chunk_{14, 6, 11, 7, 10, 10, 20, 10, 12}
+      , tile_data_generator_{
+            {4, 10, 6, 11, 7, 9, 1, 10, 20, 2, 2, 2, 2, 2, 12}} {
+    WriterTile::set_max_tile_chunk_size(
+        target_ncells_per_chunk_ * sizeof(uint64_t));
+  }
+  ~SimpleVariableTestData() {
+    WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
   }
 
-  return tile;
-}
-
-WriterTile make_offsets_tile(std::vector<uint64_t>& offsets) {
-  const uint64_t offsets_tile_size =
-      offsets.size() * constants::cell_var_offset_size;
-
-  WriterTile offsets_tile(
-      constants::format_version,
-      Datatype::UINT64,
-      constants::cell_var_offset_size,
-      offsets_tile_size);
-
-  // Set up test data
-  for (uint64_t i = 0; i < offsets.size(); i++) {
-    CHECK_NOTHROW(offsets_tile.write(
-        &offsets[i],
-        i * constants::cell_var_offset_size,
-        constants::cell_var_offset_size));
+  /** Returns the number elements (cells) stored in each chunk. */
+  const std::vector<uint64_t>& elements_per_chunk() const {
+    return elements_per_chunk_;
   }
 
-  return offsets_tile;
-}
+  const TileDataGenerator& tile_data_generator() const {
+    return tile_data_generator_;
+  }
 
-Tile create_tile_for_unfiltering(uint64_t nelts, WriterTile& tile) {
-  Tile ret(
-      tile.format_version(),
-      tile.type(),
-      tile.cell_size(),
-      0,
-      tile.cell_size() * nelts,
-      tile.filtered_buffer().data(),
-      tile.filtered_buffer().size());
-  return ret;
-}
+ private:
+  uint64_t target_ncells_per_chunk_{};
+  std::vector<uint64_t> elements_per_chunk_{};
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator_;
+};
 
-void run_reverse(
-    const tiledb::sm::Config& config,
+/**
+ * Checks the following:
+ *
+ * 1. Pipeline runs forward without error.
+ * 2. Filtered buffer data is as expected.
+ * 3. Pipeline runs backward without error.
+ * 4. Result from roundtrip matches the original data.
+ */
+void check_run_pipeline_full(
+    Config& config,
     ThreadPool& tp,
-    Tile& unfiltered_tile,
+    WriterTile& tile,
+    std::optional<WriterTile>& offsets_tile,
     FilterPipeline& pipeline,
-    bool success = true) {
+    const TileDataGenerator* test_data,
+    const FilteredTileChecker& filtered_buffer_checker) {
+  // Run the pipeline forward.
+  CHECK(pipeline
+            .run_forward(
+                &dummy_stats,
+                &tile,
+                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
+                &tp)
+            .ok());
+
+  // Check the original unfiltered data was removed.
+  CHECK(tile.size() == 0);
+
+  // Check the filtered buffer has the expected data.
+  auto filtered_buffer = tile.filtered_buffer();
+  filtered_buffer_checker.check(filtered_buffer);
+
+  // Run the data in reverse.
+  auto unfiltered_tile =
+      test_data->create_filtered_buffer_tile(filtered_buffer);
   ChunkData chunk_data;
   unfiltered_tile.load_chunk_data(chunk_data);
-  CHECK(
-      success == pipeline
-                     .run_reverse(
-                         &dummy_stats,
-                         &unfiltered_tile,
-                         nullptr,
-                         chunk_data,
-                         0,
-                         chunk_data.filtered_chunks_.size(),
-                         tp.concurrency_level(),
-                         config)
-                     .ok());
+  CHECK(pipeline
+            .run_reverse(
+                &dummy_stats,
+                &unfiltered_tile,
+                nullptr,
+                chunk_data,
+                0,
+                chunk_data.filtered_chunks_.size(),
+                tp.concurrency_level(),
+                config)
+            .ok());
+
+  // Check the original data is reverted.
+  test_data->check_tile_data(unfiltered_tile);
+}
+
+/**
+ * Checks the following:
+ *
+ * 1. Pipeline runs forward without error.
+ * 2. Pipeline runs backward without error.
+ * 3. Result from roundtrip matches the original data.
+ */
+void check_run_pipeline_roundtrip(
+    Config& config,
+    ThreadPool& tp,
+    WriterTile& tile,
+    std::optional<WriterTile>& offsets_tile,
+    FilterPipeline& pipeline,
+    TileDataGenerator* test_data) {
+  // Run the pipeline forward.
+  CHECK(pipeline
+            .run_forward(
+                &dummy_stats,
+                &tile,
+                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
+                &tp)
+            .ok());
+
+  // Check the original unfiltered data was removed.
+  CHECK(tile.size() == 0);
+
+  // Run the data in reverse.
+  auto unfiltered_tile =
+      test_data->create_filtered_buffer_tile(tile.filtered_buffer());
+  ChunkData chunk_data;
+  unfiltered_tile.load_chunk_data(chunk_data);
+  CHECK(pipeline
+            .run_reverse(
+                &dummy_stats,
+                &unfiltered_tile,
+                nullptr,
+                chunk_data,
+                0,
+                chunk_data.filtered_chunks_.size(),
+                tp.concurrency_level(),
+                config)
+            .ok());
+
+  // Check the original data is reverted.
+  test_data->check_tile_data(unfiltered_tile);
 }
 
 TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-  // Check size and number of chunks
-  CHECK(tile.size() == 0);
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
 
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
+  // Create pipeline.
+  FilterPipeline pipeline;
 
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      0);  // First chunk metadata size
-  offset += sizeof(uint32_t);
+  // Create expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 0, 1);
 
-  // Check all elements unchanged.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == i);
-    offset += sizeof(uint64_t);
-  }
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
+}
 
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
+TEST_CASE(
+    "Filter: Test empty pipeline on uint16 data", "[filter][empty-pipeline]") {
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint16_t, Datatype::UINT16> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
+
+  // Create pipeline.
+  FilterPipeline pipeline;
+
+  // Create  expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint16_t>(
+          elements_per_chunk, 0, 1);
+
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE(
     "Filter: Test empty pipeline var sized", "[filter][empty-pipeline][var]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
-  WriterTile::set_max_tile_chunk_size(80);
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check size and number of chunks
-  CHECK(tile.size() == 0);
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
 
-  offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      9);  // Number of chunks
-  offset += sizeof(uint64_t);
+  // Create pipeline to test and expected filtered data checker.
+  FilterPipeline pipeline;
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 0, 1);
 
-  uint64_t el = 0;
-  for (uint64_t i = 0; i < 9; i++) {
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // Chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements unchanged.
-    for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == el++);
-      offset += sizeof(uint64_t);
-    }
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  // Run the round-trip test.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE(
     "Filter: Test simple in-place pipeline", "[filter][simple-in-place]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
 
   FilterPipeline pipeline;
-  ThreadPool tp(4);
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 1, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements incremented.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 1));
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 3, 1);
 
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements incremented.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 3));
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 }
 
 TEST_CASE(
     "Filter: Test simple in-place pipeline var",
     "[filter][simple-in-place][var]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
-  ThreadPool tp(4);
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    WriterTile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 1, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          0);  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Check all elements incremented.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
@@ -473,757 +436,348 @@ TEST_CASE(
     WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 3, 1);
 
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          0);  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Check all elements incremented.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el + 2);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE(
     "Filter: Test simple out-of-place pipeline",
     "[filter][simple-out-of-place]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
+
+  // Create pipeline to test.
+  FilterPipeline pipeline;
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 1, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements incremented.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 1));
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 3, 1);
 
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements incremented.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 3));
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 }
 
 TEST_CASE(
     "Filter: Test simple out-of-place pipeline var",
     "[filter][simple-out-of-place][var]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
-  ThreadPool tp(4);
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    WriterTile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 1, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          0);  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Check all elements incremented.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
-    // Add a few more +1 filters and re-run.
-    WriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
+    // Create expected filtered data checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, 3, 1);
 
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          0);  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Check all elements incremented.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el + 2);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE(
     "Filter: Test mixed in- and out-of-place pipeline",
     "[filter][in-out-place]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
+
+  // Create filter pipeline.
+  FilterPipeline pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
-  CHECK(tile.size() == 0);
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * sizeof(uint32_t));
+  // Create expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 4, 1);
 
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      0);  // First chunk metadata size
-  offset += sizeof(uint32_t);
-
-  // Check all elements incremented.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 4));
-    offset += sizeof(uint64_t);
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE(
     "Filter: Test mixed in- and out-of-place pipeline var",
     "[filter][in-out-place][var]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
-  ThreadPool tp(4);
-  WriterTile::set_max_tile_chunk_size(80);
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-  // Check size and number of chunks
-  CHECK(tile.size() == 0);
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
+  // Create expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 4, 1);
 
-  offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      9);  // Number of chunks
-  offset += sizeof(uint64_t);
-
-  uint64_t el = 0;
-  for (uint64_t i = 0; i < 9; i++) {
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // Chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements incremented.
-    for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el + 3);
-      offset += sizeof(uint64_t);
-    }
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  const uint64_t expected_checksum = 4950;
-  auto tile = make_increasing_tile(nelts);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
+
+  // Create filter pipeline.
+  FilterPipeline pipeline;
   pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+  const uint64_t expected_checksum = 4950;
 
   SECTION("- Single stage") {
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+    // Create filtered buffer checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, {{expected_checksum}}, 0, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t) +
-            3 * sizeof(uint32_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        sizeof(uint64_t));  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Checksum
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        expected_checksum);
-    offset += sizeof(uint64_t);
-
-    // Check all elements are the same.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == i);
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
+    // Add filters.
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
 
+    // Create filtered buffer checker.
+    //    const uint64_t expected_checksum = 2 * 4950;
     // Compute the second (final) checksum value.
-    uint64_t expected_checksum_2 = 0;
-    for (uint64_t i = 0; i < nelts; i++)
-      expected_checksum_2 += i + 2;
+    const uint64_t expected_checksum_2 = 5150;
 
-    // Check size and number of chunks.
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + sizeof(uint64_t) +
-            sizeof(uint64_t) + 3 * sizeof(uint32_t));
+    // Create filtered buffer checker.
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk,
+            {{expected_checksum_2, expected_checksum}},
+            2,
+            1);
 
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        1);  // Number of chunks
-    offset += sizeof(uint64_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        nelts * sizeof(uint64_t));  // First chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        2 * sizeof(uint64_t));  // First chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Outer checksum
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        expected_checksum_2);
-    offset += sizeof(uint64_t);
-
-    // Inner checksum
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        expected_checksum);
-    offset += sizeof(uint64_t);
-
-    // Check all elements are correct.
-    for (uint64_t i = 0; i < nelts; i++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == i + 2);
-      offset += sizeof(uint64_t);
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 }
 
 TEST_CASE(
     "Filter: Test pseudo-checksum var", "[filter][pseudo-checksum][var]") {
-  tiledb::sm::Config config;
-
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
-
-  std::vector<uint64_t> expected_checksums{
-      91, 99, 275, 238, 425, 525, 1350, 825, 1122};
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
+
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
+
+  // Create filter pipeline.
+  FilterPipeline pipeline;
   pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    WriterTile::set_max_tile_chunk_size(80);
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
+    // Create expected filtered data checker.
+    std::vector<std::vector<uint64_t>> expected_checksums{
+        {91}, {99}, {275}, {238}, {425}, {525}, {1350}, {825}, {1122}};
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, expected_checksums, 0, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t) +
-            9 * sizeof(uint64_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          sizeof(uint64_t));  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Checksum
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-          expected_checksums[i]);
-      offset += sizeof(uint64_t);
-
-      // Check all elements are the same.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == el++);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
 
   SECTION("- Multi-stage") {
-    WriterTile::set_max_tile_chunk_size(80);
+    // Update pipeline.
     pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
 
-    std::vector<uint64_t> expected_checksums2{
-        119, 111, 297, 252, 445, 545, 1390, 845, 1146};
+    // Create expected filtered data checker.
+    std::vector<std::vector<uint64_t>> expected_checksums{
+        {119, 91},
+        {111, 99},
+        {297, 275},
+        {252, 238},
+        {445, 425},
+        {545, 525},
+        {1390, 1350},
+        {845, 825},
+        {1146, 1122}};
+    auto filtered_buffer_checker =
+        FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+            elements_per_chunk, expected_checksums, 2, 1);
 
-    // Check size and number of chunks
-    CHECK(tile.size() == 0);
-    CHECK(
-        tile.filtered_buffer().size() ==
-        nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t) +
-            2 * 9 * sizeof(uint64_t));
-
-    uint64_t offset = 0;
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-        9);  // Number of chunks
-    offset += sizeof(uint64_t);
-
-    uint64_t el = 0;
-    for (uint64_t i = 0; i < 9; i++) {
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk orig size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          out_sizes[i]);  // Chunk filtered size
-      offset += sizeof(uint32_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-          2 * sizeof(uint64_t));  // Chunk metadata size
-      offset += sizeof(uint32_t);
-
-      // Checksums
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-          expected_checksums2[i]);
-      offset += sizeof(uint64_t);
-      CHECK(
-          tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-          expected_checksums[i]);
-      offset += sizeof(uint64_t);
-
-      // Check all elements are incremented.
-      for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-        CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el + 1);
-        offset += sizeof(uint64_t);
-      }
-    }
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-    for (uint64_t i = 0; i < nelts; i++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == i);
-    }
+    // Run the pipeline tests.
+    check_run_pipeline_full(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        filtered_buffer_checker);
   }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
-  tiledb::sm::Config config;
-
-  // Set up test data
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  FilterPipeline pipeline;
+  // Create TileDB needed for running pipeline.
+  Config config;
   ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
+
+  // Create filter pipeline.
+  FilterPipeline pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -1237,85 +791,34 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   CHECK(add_n != nullptr);
   add_n->set_increment(2);
 
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+  // Create pipeline to test and expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 4, 1);
 
-  CHECK(tile.size() == 0);
-  CHECK(tile.filtered_buffer().size() != 0);
-
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      0);  // First chunk metadata size
-  offset += sizeof(uint32_t);
-
-  // Check all elements incremented.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 4));
-    offset += sizeof(uint64_t);
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
-  // Set up test data
-  std::vector<uint64_t> sizes{
-      0,
-      32,   // Chunk0: 4 cells.
-      80,   // 10 cells, still makes it into this chunk as current size < 50%.
-      48,   // Chunk1: 6 cells.
-      88,   // Chunk2: 11 cells, size > 50% and > than 10 cells.
-      56,   // Chunk3: 7 cells.
-      72,   // Chunk4: 9 cells, size > 50%.
-      8,    // Chunk4: 10 cell, full.
-      80,   // Chunk5: 10 cells.
-      160,  // Chunk6: 20 cells.
-      16,   // Chunk7: 2 cells.
-      16,   // Chunk7: 4 cells.
-      16,   // Chunk7: 6 cells.
-      16,   // Chunk7: 8 cells.
-      16,   // Chunk7: 10 cells.
-  };        // Chunk8: 12 cells.
-
-  std::vector<uint64_t> out_sizes{112, 48, 88, 56, 80, 80, 160, 80, 96};
-
-  std::vector<uint64_t> offsets(sizes.size());
-  uint64_t offset = 0;
-  for (uint64_t i = 0; i < offsets.size() - 1; i++) {
-    offsets[i] = offset;
-    offset += sizes[i + 1];
-  }
-  offsets[offsets.size() - 1] = offset;
-
-  auto offsets_tile = make_offsets_tile(offsets);
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  auto&& [tile, offsets_tile] =
+      test_data.tile_data_generator().create_writer_tiles();
+  const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
-  ThreadPool tp(4);
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -1329,66 +832,36 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   CHECK(add_n != nullptr);
   add_n->set_increment(2);
 
-  WriterTile::set_max_tile_chunk_size(80);
-  CHECK(pipeline.run_forward(&dummy_stats, &tile, &offsets_tile, &tp).ok());
+  // Create expected filtered data checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, 4, 1);
 
-  // Check size and number of chunks
-  CHECK(tile.size() == 0);
-  CHECK(
-      tile.filtered_buffer().size() ==
-      nelts * sizeof(uint64_t) + sizeof(uint64_t) + 3 * 9 * sizeof(uint32_t));
-
-  offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      9);  // Number of chunks
-  offset += sizeof(uint64_t);
-
-  uint64_t el = 0;
-  for (uint64_t i = 0; i < 9; i++) {
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk orig size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        out_sizes[i]);  // Chunk filtered size
-    offset += sizeof(uint32_t);
-    CHECK(
-        tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-        0);  // Chunk metadata size
-    offset += sizeof(uint32_t);
-
-    // Check all elements are incremented.
-    for (uint64_t j = 0; j < out_sizes[i] / sizeof(uint64_t); j++) {
-      CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == ++el + 3);
-      offset += sizeof(uint64_t);
-    }
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
-
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &test_data.tile_data_generator(),
+      filtered_buffer_checker);
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
+
+  // Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  std::vector<uint64_t> elements_per_chunk{100};
 
   const uint64_t expected_checksum = 5350;
 
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts);
-
   FilterPipeline pipeline;
-  ThreadPool tp(4);
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -1408,57 +881,28 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   CHECK(add_n_2 != nullptr);
   CHECK(add_n_2->increment() == 2);
 
-  CHECK(pipeline_copy.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
+  // Create filtered buffer checker.
+  auto filtered_buffer_checker =
+      FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
+          elements_per_chunk, {{expected_checksum}}, 4, 1);
 
-  CHECK(tile.size() == 0);
-  CHECK(tile.filtered_buffer().size() != 0);
-
-  uint64_t offset = 0;
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      1);  // Number of chunks
-  offset += sizeof(uint64_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk orig size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      nelts * sizeof(uint64_t));  // First chunk filtered size
-  offset += sizeof(uint32_t);
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint32_t>(offset) ==
-      sizeof(uint64_t));  // First chunk metadata size
-  offset += sizeof(uint32_t);
-
-  // Checksum
-  CHECK(
-      tile.filtered_buffer().value_at_as<uint64_t>(offset) ==
-      expected_checksum);
-  offset += sizeof(uint64_t);
-
-  // Check all elements incremented.
-  for (uint64_t i = 0; i < nelts; i++) {
-    CHECK(tile.filtered_buffer().value_at_as<uint64_t>(offset) == (i + 4));
-    offset += sizeof(uint64_t);
-  }
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-  run_reverse(config, tp, unfiltered_tile, pipeline);
-
-  for (uint64_t i = 0; i < nelts; i++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == i);
-  }
+  // Run the pipeline tests.
+  check_run_pipeline_full(
+      config,
+      tp,
+      tile,
+      offsets_tile,
+      pipeline,
+      &tile_data_generator,
+      filtered_buffer_checker);
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
-  tiledb::sm::Config config;
+  // Create TileDB needed for running pipeline.
+  Config config;
+  ThreadPool tp(4);
 
-  const uint64_t nelts = 100;
-
+  // Create an encryption key.
   EncryptionKey encryption_key;
   REQUIRE(encryption_key
               .set_key(
@@ -1492,14 +936,18 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       },
   };
 
-  // List of potential filters that must occur at the beginning of the pipeline.
+  // List of potential filters that must occur at the beginning of the
+  // pipeline.
   std::vector<std::function<tiledb::sm::Filter*(void)>> constructors_first = {
       // Pos-delta would (correctly) return error after e.g. compression.
       []() { return tdb_new(PositiveDeltaFilter, Datatype::UINT64); }};
 
-  ThreadPool tp(4);
+  // Create tile data generator.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
   for (int i = 0; i < 100; i++) {
-    auto tile = make_increasing_tile(nelts);
+    // Create fresh input tiles.
+    auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
 
     // Construct a random pipeline
     FilterPipeline pipeline;
@@ -1528,19 +976,10 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       }
     }
 
-    // End result should always be the same as the input.
-    CHECK(pipeline.run_forward(&dummy_stats, &tile, nullptr, &tp).ok());
-    CHECK(tile.size() == 0);
-    CHECK(tile.filtered_buffer().size() != 0);
-
-    auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
-
-    for (uint64_t n = 0; n < nelts; n++) {
-      uint64_t elt = 0;
-      CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
-      CHECK(elt == n);
-    }
+    // Check the pipelines run forward and backward without error and return the
+    // input data.
+    // Run the pipeline tests.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
   }
 }

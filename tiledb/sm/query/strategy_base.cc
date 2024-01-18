@@ -46,23 +46,16 @@ namespace sm {
 /* ****************************** */
 
 StrategyBase::StrategyBase(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : stats_(stats)
     , logger_(logger)
-    , array_(array)
-    , array_schema_(array->array_schema_latest())
-    , config_(config)
-    , buffers_(buffers)
-    , layout_(layout)
-    , storage_manager_(storage_manager)
-    , subarray_(subarray)
+    , array_(params.array())
+    , array_schema_(params.array()->array_schema_latest())
+    , config_(params.config())
+    , buffers_(params.buffers())
+    , layout_(params.layout())
+    , storage_manager_(params.storage_manager())
+    , subarray_(params.subarray())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {

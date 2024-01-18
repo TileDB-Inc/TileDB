@@ -145,7 +145,7 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
   std::string s3_bucket;
   if (s3_enabled) {
     SECTION("Filesystem: S3") {
-      path = "s3://" + random_name("tiledb") + "/tiledb_test/";
+      path = "s3://tiledb-" + random_label() + "/tiledb_test/";
       s3_bucket = path.substr(0, path.find("tiledb_test/"));
 
       // Check S3 bucket functionality
@@ -171,7 +171,7 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
   /** Note: Azure testing not currently enabled.
   if (azure_enabled) {
     SECTION("Filesystem: Azure") {
-      path = "azure://" + random_name("tiledb") + "/tiledb_test/";
+      path = "azure://tiledb-" + random_label() + "/tiledb_test/";
     }
   } */
 
@@ -403,7 +403,7 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
 
     // Move from one bucket to another (only for S3)
     if (backend_is_s3) {
-      std::string bucket2 = "s3://" + random_name("tiledb") + "/";
+      std::string bucket2 = "s3://tiledb-" + random_label() + "/";
       std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
 
       // Remove and recreate bucket if already exists
@@ -481,7 +481,7 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
 
         // Copy from one bucket to another (only for S3)
         if (backend_is_s3) {
-          std::string bucket2 = "s3://" + random_name("tiledb") + "/";
+          std::string bucket2 = "s3://tiledb-" + random_label() + "/";
           std::string subdir3 = bucket2 + "tiledb_test/subdir3/";
 
           // Remove and recreate bucket if already exists

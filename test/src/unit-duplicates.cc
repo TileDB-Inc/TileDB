@@ -334,11 +334,23 @@ TEST_CASE_METHOD(
                         !std::memcmp(data_c_2, data_r, data_r_size);
   CHECK(data_c_matches);
 
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
   // Consolidate
-  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), nullptr);
+  rc = tiledb_array_consolidate(ctx_, array_name_.c_str(), config);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_vacuum(ctx_, array_name_.c_str(), nullptr);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_config_free(&config);
 
   // Open array for reading - #2
   rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);

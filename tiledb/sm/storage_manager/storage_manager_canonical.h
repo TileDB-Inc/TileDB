@@ -66,6 +66,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class OpenedArray;
 class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
@@ -597,14 +598,14 @@ class StorageManagerCanonical {
   /**
    * Loads the delete and update conditions from storage.
    *
-   * @param array The array.
+   * @param opened_array The opened array.
    * @return Status, vector of the conditions, vector of the update values.
    */
   tuple<
       Status,
       optional<std::vector<QueryCondition>>,
       optional<std::vector<std::vector<UpdateValue>>>>
-  load_delete_and_update_conditions(const Array& array);
+  load_delete_and_update_conditions(const OpenedArray& opened_array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;

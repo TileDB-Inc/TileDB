@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -98,7 +98,6 @@ struct DenseArrayRESTFx {
   void create_dense_array_1_attribute(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
   void write_dense_array_missing_attributes(const std::string& array_name);
-  static std::string random_name(const std::string& prefix);
 
   /**
    * Creates a 2D dense array.

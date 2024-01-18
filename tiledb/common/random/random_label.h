@@ -1,11 +1,11 @@
 /**
- * @file compile_uuid_main.cc
+ * @file   random_label.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,11 +24,30 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares a random label generator.
  */
 
-#include "../uuid.h"
+#ifndef TILEDB_HELPERS_H
+#define TILEDB_HELPERS_H
 
-int main() {
-  (void)tiledb::sm::uuid::generate_uuid(nullptr, false);
-  return 0;
-}
+#include <string>
+
+namespace tiledb::common {
+
+/**
+ * Returns a PRNG-generated label as a 32-digit hexadecimal random number.
+ * (Ex. f258d22d4db9139204eef2b4b5d860cc).
+ *
+ * Note: the random number is actually the combination of two 16-digit numbers.
+ * The values are 0-padded to ensure exactly a 128-bit, 32-digit length.
+ *
+ * @return A random label.
+ */
+std::string random_label();
+
+}  // namespace tiledb::common
+
+#endif  // TILEDB_HELPERS_H

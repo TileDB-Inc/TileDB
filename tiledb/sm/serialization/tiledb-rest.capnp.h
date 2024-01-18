@@ -15140,8 +15140,8 @@ class QueryPlanResponse::Reader {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasQueryPlan() const;
-  inline ::capnp::Text::Reader getQueryPlan() const;
+  inline bool hasStrategy() const;
+  inline ::capnp::Text::Reader getStrategy() const;
 
  private:
   ::capnp::_::StructReader _reader;
@@ -15182,12 +15182,12 @@ class QueryPlanResponse::Builder {
   }
 #endif  // !CAPNP_LITE
 
-  inline bool hasQueryPlan();
-  inline ::capnp::Text::Builder getQueryPlan();
-  inline void setQueryPlan(::capnp::Text::Reader value);
-  inline ::capnp::Text::Builder initQueryPlan(unsigned int size);
-  inline void adoptQueryPlan(::capnp::Orphan<::capnp::Text>&& value);
-  inline ::capnp::Orphan<::capnp::Text> disownQueryPlan();
+  inline bool hasStrategy();
+  inline ::capnp::Text::Builder getStrategy();
+  inline void setStrategy(::capnp::Text::Reader value);
+  inline ::capnp::Text::Builder initStrategy(unsigned int size);
+  inline void adoptStrategy(::capnp::Orphan<::capnp::Text>&& value);
+  inline ::capnp::Orphan<::capnp::Text> disownStrategy();
 
  private:
   ::capnp::_::StructBuilder _builder;
@@ -32672,42 +32672,42 @@ QueryPlanRequest::Builder::disownQuery() {
           _builder.getPointerField(::capnp::bounded<1>() * ::capnp::POINTERS));
 }
 
-inline bool QueryPlanResponse::Reader::hasQueryPlan() const {
+inline bool QueryPlanResponse::Reader::hasStrategy() const {
   return !_reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline bool QueryPlanResponse::Builder::hasQueryPlan() {
+inline bool QueryPlanResponse::Builder::hasStrategy() {
   return !_builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS)
               .isNull();
 }
-inline ::capnp::Text::Reader QueryPlanResponse::Reader::getQueryPlan() const {
+inline ::capnp::Text::Reader QueryPlanResponse::Reader::getStrategy() const {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _reader.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline ::capnp::Text::Builder QueryPlanResponse::Builder::getQueryPlan() {
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::getStrategy() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::get(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }
-inline void QueryPlanResponse::Builder::setQueryPlan(
+inline void QueryPlanResponse::Builder::setStrategy(
     ::capnp::Text::Reader value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::set(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       value);
 }
-inline ::capnp::Text::Builder QueryPlanResponse::Builder::initQueryPlan(
+inline ::capnp::Text::Builder QueryPlanResponse::Builder::initStrategy(
     unsigned int size) {
   return ::capnp::_::PointerHelpers<::capnp::Text>::init(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       size);
 }
-inline void QueryPlanResponse::Builder::adoptQueryPlan(
+inline void QueryPlanResponse::Builder::adoptStrategy(
     ::capnp::Orphan<::capnp::Text>&& value) {
   ::capnp::_::PointerHelpers<::capnp::Text>::adopt(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS),
       kj::mv(value));
 }
 inline ::capnp::Orphan<::capnp::Text>
-QueryPlanResponse::Builder::disownQueryPlan() {
+QueryPlanResponse::Builder::disownStrategy() {
   return ::capnp::_::PointerHelpers<::capnp::Text>::disown(
       _builder.getPointerField(::capnp::bounded<0>() * ::capnp::POINTERS));
 }

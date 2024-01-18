@@ -201,6 +201,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ls_scanner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/filesystem_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bit_width_reduction_filter.cc
@@ -242,7 +243,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
@@ -598,10 +598,10 @@ if (TILEDB_HDFS)
 endif()
 
 # Sanitizer linker flags
-if (SANITIZER)
+if (TILEDB_SANITIZER)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
-      -fsanitize=${SANITIZER}
+      -fsanitize=${TILEDB_SANITIZER}
   )
 endif()
 
