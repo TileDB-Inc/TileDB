@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -516,7 +516,7 @@ std::vector<uint8_t> CppAggregatesFx<T>::make_data_buff(
     }
   } else {
     for (auto& v : values) {
-      data.emplace_back(v);
+      data.emplace_back(static_cast<T>(v));
     }
   }
 
@@ -1624,6 +1624,31 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   array.close();
 }
 
+typedef tuple<std::byte> SumByteTypesUnderTest;
+TEMPLATE_LIST_TEST_CASE_METHOD(
+    CppAggregatesFx,
+    "C++ API: Aggregates basic sum, std::byte",
+    "[cppapi][aggregates][basic][sum][byte]",
+    SumByteTypesUnderTest) {
+  typedef TestType T;
+  CppAggregatesFx<T>::generate_test_params();
+  CppAggregatesFx<T>::create_array_and_write_fragments();
+  Array array{
+      CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
+  Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+
+  // Add a sum aggregator to the query.
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+
+  REQUIRE_THROWS_WITH(
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1"),
+      Catch::Matchers::ContainsSubstring(
+          "Datatype::BLOB is not a valid Datatype"));
+
+  // Close array.
+  array.close();
+}
+
 typedef tuple<
     uint8_t,
     uint16_t,
@@ -2607,7 +2632,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppAggregatesFx<int32_t>,
     "CPP: Aggregates - Basic",
-    "[aggregates][cpp_api][args]") {
+    "[cppapi][aggregates][args]") {
   dense_ = false;
   nullable_ = false;
   allow_dups_ = false;
