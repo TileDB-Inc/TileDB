@@ -107,17 +107,17 @@ jobs:
           Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
         shell: pwsh
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: tiledb-dist
+          name: tiledb-dist-${{ matrix.platform }}
           path: ${{ steps.get-values.outputs.archive_name }}.*
       - name: Archive build directory
         run: |
           tar -czf build-${{ matrix.platform }}.tar.gz -C build .
       - name: Upload build directory
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
-          name: tiledb-build
+          name: tiledb-build-${{ matrix.platform }}
           path: build-${{ matrix.platform }}.tar.gz
       - name: "Print log files (failed build only)"
         run: |
@@ -129,9 +129,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: tiledb-dist
+          pattern: tiledb-dist-*
+          merge-multiple: true
           path: dist
       - name: Test names of release artifacts
         run: |
@@ -146,9 +147,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
-          name: tiledb-dist
+          pattern: tiledb-dist-*
+          merge-multiple: true
           path: dist
       - name: Publish release artifacts
         uses: actions/github-script@v6
