@@ -1053,4 +1053,11 @@ configure_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
+# Packaging configuration
+configure_file ("${PROJECT_SOURCE_DIR}/cmake/inputs/CustomCPackOptions.cmake.in"
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake"
+        @ONLY)
+set (CPACK_PROJECT_CONFIG_FILE
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
+
 include(CPack)
