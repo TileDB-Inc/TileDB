@@ -154,10 +154,10 @@ class Add1InPlace : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override {
     auto input_size = input->size();
     RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
@@ -178,10 +178,10 @@ class Add1InPlace : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 
@@ -225,10 +225,10 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -260,10 +260,10 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 
@@ -317,10 +317,10 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override {
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -348,10 +348,10 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 

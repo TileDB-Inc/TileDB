@@ -103,10 +103,10 @@ class EncryptionAES256GCMFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Decrypt the bytes of the input data into the output data buffer.
@@ -114,10 +114,10 @@ class EncryptionAES256GCMFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
   /**
@@ -158,7 +158,9 @@ class EncryptionAES256GCMFilter : public Filter {
    * @return Status
    */
   Status decrypt_part(
-      FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const;
+      FilterBuffer<context_bypass_RM>* input,
+      Buffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata) const;
 
   /**
    * Encrypt the given input into the given output buffer.
@@ -169,7 +171,9 @@ class EncryptionAES256GCMFilter : public Filter {
    * @return Status
    */
   Status encrypt_part(
-      ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const;
+      ConstBuffer* part,
+      Buffer* output,
+      FilterBuffer<context_bypass_RM>* output_metadata) const;
 };
 
 }  // namespace sm

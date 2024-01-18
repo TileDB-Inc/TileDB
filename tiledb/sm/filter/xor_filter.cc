@@ -80,10 +80,10 @@ Datatype XORFilter::output_datatype(tiledb::sm::Datatype input_type) const {
 Status XORFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
@@ -118,10 +118,10 @@ template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_forward(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
@@ -177,10 +177,10 @@ Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
 Status XORFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output,
     const Config&) const {
   // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
@@ -216,10 +216,10 @@ template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_reverse(
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));

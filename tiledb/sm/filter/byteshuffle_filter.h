@@ -82,10 +82,10 @@ class ByteshuffleFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Unshuffle the bytes of the input data into the output data buffer.
@@ -93,10 +93,10 @@ class ByteshuffleFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
  private:

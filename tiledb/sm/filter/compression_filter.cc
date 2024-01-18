@@ -244,10 +244,10 @@ Status CompressionFilter::get_option_impl(
 Status CompressionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));
@@ -306,10 +306,10 @@ Status CompressionFilter::run_forward(
 Status CompressionFilter::run_reverse(
     const Tile& tile,
     Tile* const offsets_tile,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output,
     const Config&) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
@@ -353,7 +353,7 @@ Status CompressionFilter::compress_part(
     const WriterTile& tile,
     ConstBuffer* part,
     Buffer* output,
-    FilterBuffer* output_metadata) const {
+    FilterBuffer<context_bypass_RM>* output_metadata) const {
   // Create const buffer
   ConstBuffer input_buffer(part->data(), part->size());
 
@@ -416,9 +416,9 @@ Status CompressionFilter::compress_part(
 
 Status CompressionFilter::decompress_part(
     const Tile& tile,
-    FilterBuffer* input,
+    FilterBuffer<context_bypass_RM>* input,
     Buffer* output,
-    FilterBuffer* input_metadata) const {
+    FilterBuffer<context_bypass_RM>* input_metadata) const {
   auto cell_size = tile.cell_size();
 
   // Read the part metadata
@@ -491,7 +491,8 @@ Status CompressionFilter::decompress_part(
 
 tuple<std::vector<std::string_view>, uint64_t>
 CompressionFilter::create_input_view(
-    const FilterBuffer& input, WriterTile* const offsets_tile) {
+    const FilterBuffer<context_bypass_RM>& input,
+    WriterTile* const offsets_tile) {
   auto input_buf = static_cast<const char*>(input.buffers()[0].data());
   auto offsets_data = offsets_tile->data_as<offsets_t>();
   auto offsets_size = offsets_tile->size_as<offsets_t>();
@@ -526,10 +527,10 @@ uint8_t CompressionFilter::compute_bytesize(uint64_t param_length) {
 }
 
 Status CompressionFilter::compress_var_string_coords(
-    const FilterBuffer& input,
+    const FilterBuffer<context_bypass_RM>& input,
     WriterTile* const offsets_tile,
-    FilterBuffer& output,
-    FilterBuffer& output_metadata) const {
+    FilterBuffer<context_bypass_RM>& output,
+    FilterBuffer<context_bypass_RM>& output_metadata) const {
   if (input.num_buffers() != 1) {
     throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "
@@ -614,10 +615,10 @@ Status CompressionFilter::compress_var_string_coords(
 }
 
 Status CompressionFilter::decompress_var_string_coords(
-    FilterBuffer& input,
-    FilterBuffer& input_metadata,
+    FilterBuffer<context_bypass_RM>& input,
+    FilterBuffer<context_bypass_RM>& input_metadata,
     Tile* offsets_tile,
-    FilterBuffer& output) const {
+    FilterBuffer<context_bypass_RM>& output) const {
   if (input.num_buffers() != 1) {
     throw CompressionFilterStatusException(
         "Var-sized string input has to be in single "

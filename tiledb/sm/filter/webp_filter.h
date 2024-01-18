@@ -175,10 +175,10 @@ class WebpFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Runs the filter forward, taking raw colorspace values as input and writing
@@ -191,10 +191,10 @@ class WebpFilter : public Filter {
    * @return Status::Ok() on success. Throws on failure.
    */
   Status run_forward(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /**
    * Runs the filter in reverse, returning raw colorspace values to the client.
@@ -212,10 +212,10 @@ class WebpFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
   /**
@@ -228,10 +228,10 @@ class WebpFilter : public Filter {
    * @return Status::Ok() on success. Throws on failure.
    */
   Status run_reverse(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /**
    * Sets an option on the filter.

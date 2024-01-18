@@ -109,10 +109,10 @@ class FloatScalingFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Run reverse. Takes input data in integer representation and returns the
@@ -122,10 +122,10 @@ class FloatScalingFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
   /** Sets an option on this filter. */
@@ -168,40 +168,40 @@ class FloatScalingFilter : public Filter {
    */
   template <typename T>
   Status run_forward(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /**
    * Run forward, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
   Status run_forward(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /**
    * Run reverse, templated on the size of the input type.
    */
   template <typename T>
   Status run_reverse(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /**
    * Run reverse, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
   Status run_reverse(
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 };
 
 }  // namespace sm

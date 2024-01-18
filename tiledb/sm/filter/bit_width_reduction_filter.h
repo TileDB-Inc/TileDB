@@ -116,10 +116,10 @@ class BitWidthReductionFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Restore the bit size the given input into the given output.
@@ -127,10 +127,10 @@ class BitWidthReductionFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
   /** Set the max window size (in bytes) to use. */
@@ -155,8 +155,8 @@ class BitWidthReductionFilter : public Filter {
   template <typename T>
   Status compress_part(
       ConstBuffer* input,
-      FilterBuffer* output,
-      FilterBuffer* output_metadata) const;
+      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<context_bypass_RM>* output_metadata) const;
 
   /**
    * Computes the number of bits required to represent elements of type T in the
@@ -188,27 +188,29 @@ class BitWidthReductionFilter : public Filter {
    */
   template <typename T>
   Status read_compressed_value(
-      FilterBuffer* buffer, uint8_t compressed_bits, T* value) const;
+      FilterBuffer<context_bypass_RM>* buffer,
+      uint8_t compressed_bits,
+      T* value) const;
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
       const Tile& tile,
       Tile* const tile_offsets,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;
@@ -227,7 +229,7 @@ class BitWidthReductionFilter : public Filter {
    */
   template <typename T>
   Status write_compressed_value(
-      FilterBuffer* buffer, T value, uint8_t num_bits) const;
+      FilterBuffer<context_bypass_RM>* buffer, T value, uint8_t num_bits) const;
 };
 
 }  // namespace sm

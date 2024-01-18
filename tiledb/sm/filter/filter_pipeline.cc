@@ -241,8 +241,9 @@ Status FilterPipeline::filter_chunks_forward(
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
     FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+    FilterBuffer<context_bypass_RM> input_data(&storage), output_data(&storage);
+    FilterBuffer<context_bypass_RM> input_metadata(&storage),
+        output_metadata(&storage);
 
     // First filter's input is the original chunk.
     uint64_t offset = var_sizes ? chunk_offsets[i] : i * chunk_size;
@@ -448,8 +449,9 @@ Status FilterPipeline::run_reverse(
   for (size_t i = min_chunk_index; i < max_chunk_index; i++) {
     auto& chunk = chunk_data.filtered_chunks_[i];
     FilterStorage storage;
-    FilterBuffer input_data(&storage), output_data(&storage);
-    FilterBuffer input_metadata(&storage), output_metadata(&storage);
+    FilterBuffer<context_bypass_RM> input_data(&storage), output_data(&storage);
+    FilterBuffer<context_bypass_RM> input_metadata(&storage),
+        output_metadata(&storage);
 
     // First filter's input is the filtered chunk data.
     RETURN_NOT_OK(input_metadata.init(

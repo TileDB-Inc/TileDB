@@ -322,7 +322,9 @@ class FilterPipeline {
 
  private:
   /** A pair of FilterBuffers. */
-  typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
+  typedef std::
+      pair<FilterBuffer<context_bypass_RM>, FilterBuffer<context_bypass_RM>>
+          FilterBufferPair;
 
   /** The ordered list of filters comprising the pipeline. */
   std::vector<shared_ptr<Filter>> filters_;

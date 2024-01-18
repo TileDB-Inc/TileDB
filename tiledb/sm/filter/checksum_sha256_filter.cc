@@ -63,10 +63,10 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
 Status ChecksumSHA256Filter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));
   // Add original input metadata as a view to the output metadata
@@ -98,10 +98,10 @@ Status ChecksumSHA256Filter::run_forward(
 Status ChecksumSHA256Filter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output,
     const Config& config) const {
   // Fetch the skip checksum configuration parameter.
   bool found;
@@ -195,7 +195,7 @@ Status ChecksumSHA256Filter::run_reverse(
 }
 
 Status ChecksumSHA256Filter::checksum_part(
-    ConstBuffer* part, FilterBuffer* output_metadata) const {
+    ConstBuffer* part, FilterBuffer<context_bypass_RM>* output_metadata) const {
   // Allocate an initial output buffer.
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
@@ -212,7 +212,9 @@ Status ChecksumSHA256Filter::checksum_part(
 }
 
 Status ChecksumSHA256Filter::compare_checksum_part(
-    FilterBuffer* part, uint64_t bytes_to_compare, void* checksum) const {
+    FilterBuffer<context_bypass_RM>* part,
+    uint64_t bytes_to_compare,
+    void* checksum) const {
   tdb_unique_ptr<Buffer> byte_buffer_to_compare =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
   tdb_unique_ptr<ConstBuffer> buffer_to_compare = tdb_unique_ptr<ConstBuffer>(

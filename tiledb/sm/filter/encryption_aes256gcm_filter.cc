@@ -73,10 +73,10 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
 Status EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 
@@ -109,7 +109,9 @@ Status EncryptionAES256GCMFilter::run_forward(
 }
 
 Status EncryptionAES256GCMFilter::encrypt_part(
-    ConstBuffer* part, Buffer* output, FilterBuffer* output_metadata) const {
+    ConstBuffer* part,
+    Buffer* output,
+    FilterBuffer<context_bypass_RM>* output_metadata) const {
   // Set up the key buffer.
   ConstBuffer key(key_bytes_, Crypto::AES256GCM_KEY_BYTES);
 
@@ -142,10 +144,10 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 Status EncryptionAES256GCMFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<context_bypass_RM>* input_metadata,
+    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<context_bypass_RM>* output_metadata,
+    FilterBuffer<context_bypass_RM>* output,
     const Config&) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
@@ -173,7 +175,9 @@ Status EncryptionAES256GCMFilter::run_reverse(
 }
 
 Status EncryptionAES256GCMFilter::decrypt_part(
-    FilterBuffer* input, Buffer* output, FilterBuffer* input_metadata) const {
+    FilterBuffer<context_bypass_RM>* input,
+    Buffer* output,
+    FilterBuffer<context_bypass_RM>* input_metadata) const {
   // Get original (plaintext) and encrypted sizes.
   uint32_t encrypted_size, plaintext_size;
   RETURN_NOT_OK(input_metadata->read(&plaintext_size, sizeof(uint32_t)));

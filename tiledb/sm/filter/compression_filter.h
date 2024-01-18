@@ -129,10 +129,10 @@ class CompressionFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output) const override;
 
   /**
    * Decompress the given input into the given output.
@@ -140,10 +140,10 @@ class CompressionFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<context_bypass_RM>* input_metadata,
+      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<context_bypass_RM>* output_metadata,
+      FilterBuffer<context_bypass_RM>* output,
       const Config& config) const override;
 
   /** Set the compressor used by this filter instance. */
@@ -188,7 +188,7 @@ class CompressionFilter : public Filter {
       const WriterTile& tile,
       ConstBuffer* part,
       Buffer* output,
-      FilterBuffer* output_metadata) const;
+      FilterBuffer<context_bypass_RM>* output_metadata) const;
 
   /** Return the FilterType corresponding to the given Compressor. */
   static FilterType compressor_to_filter(Compressor compressor);
@@ -199,9 +199,9 @@ class CompressionFilter : public Filter {
    */
   Status decompress_part(
       const Tile& tile,
-      FilterBuffer* input,
+      FilterBuffer<context_bypass_RM>* input,
       Buffer* output,
-      FilterBuffer* input_metadata) const;
+      FilterBuffer<context_bypass_RM>* input_metadata) const;
 
   /** Calculate the size of the output metadata to allocate */
   size_t calculate_output_metadata_size(
@@ -214,20 +214,20 @@ class CompressionFilter : public Filter {
    * algorithms where this is a special case
    */
   Status compress_var_string_coords(
-      const FilterBuffer& input,
+      const FilterBuffer<context_bypass_RM>& input,
       WriterTile* const offsets_tile,
-      FilterBuffer& output,
-      FilterBuffer& output_metadata) const;
+      FilterBuffer<context_bypass_RM>& output,
+      FilterBuffer<context_bypass_RM>& output_metadata) const;
 
   /**
    * Helper function to decompress a buffer of variable-sized strings for
    * certain algorithms where this is a special case
    */
   Status decompress_var_string_coords(
-      FilterBuffer& input,
-      FilterBuffer& input_metadata,
+      FilterBuffer<context_bypass_RM>& input,
+      FilterBuffer<context_bypass_RM>& input_metadata,
       Tile* offsets_tile,
-      FilterBuffer& output) const;
+      FilterBuffer<context_bypass_RM>& output) const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
@@ -255,7 +255,8 @@ class CompressionFilter : public Filter {
    * size
    */
   static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
-      const FilterBuffer& input, WriterTile* const offsets_tile);
+      const FilterBuffer<context_bypass_RM>& input,
+      WriterTile* const offsets_tile);
 
   /**
    * Return the number of bytes required to store an integer
