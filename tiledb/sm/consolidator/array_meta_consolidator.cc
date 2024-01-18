@@ -68,7 +68,7 @@ Status ArrayMetaConsolidator<RM>::consolidate(
     uint32_t key_length) {
   auto timer_se = this->stats_->start_timer("consolidate_array_meta");
 
-  Consolidator<RM>::check_array_uri(array_name);
+  this->check_array_uri(array_name);
 
   // Open array for reading
   auto array_uri = URI(array_name);

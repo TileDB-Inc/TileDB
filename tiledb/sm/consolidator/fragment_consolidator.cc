@@ -188,9 +188,9 @@ Status FragmentConsolidator<RM>::consolidate(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_frags");
+  auto timer_se = this->stats_->start_timer("consolidate_frags");
 
-  Consolidator<RM>::check_array_uri(array_name);
+  this->check_array_uri(array_name);
 
   // Open array for reading
   auto array_for_reads{
@@ -292,7 +292,7 @@ Status FragmentConsolidator<RM>::consolidate(
       array_for_reads->close(), throw_if_not_ok(array_for_writes->close()));
   RETURN_NOT_OK(array_for_writes->close());
 
-  Consolidator<RM>::stats_->add_counter("consolidate_step_num", step);
+  this->stats_->add_counter("consolidate_step_num", step);
 
   return Status::Ok();
 }
@@ -304,7 +304,7 @@ Status FragmentConsolidator<RM>::consolidate_fragments(
     const void* encryption_key,
     uint32_t key_length,
     const std::vector<std::string>& fragment_uris) {
-  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_frags");
+  auto timer_se = this->stats_->start_timer("consolidate_frags");
 
   // Open array for reading
   auto array_for_reads{
@@ -370,7 +370,7 @@ Status FragmentConsolidator<RM>::consolidate_fragments(
   }
 
   if (count != fragment_uris.size()) {
-    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
+    return this->logger_->status(Status_ConsolidatorError(
         "Cannot consolidate; Not all fragments could be found"));
   }
 
@@ -498,7 +498,7 @@ Status FragmentConsolidator<RM>::consolidate_internal(
     const NDRange& union_non_empty_domains,
     URI* new_fragment_uri,
     FragmentConsolidationWorkspace<RM>& cw) {
-  auto timer_se = Consolidator<RM>::stats_->start_timer("consolidate_internal");
+  auto timer_se = this->stats_->start_timer("consolidate_internal");
 
   array_for_reads->load_fragments(to_consolidate);
 
@@ -541,7 +541,7 @@ Status FragmentConsolidator<RM>::consolidate_internal(
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
   cw.resize_buffers(
-      Consolidator<RM>::stats_, config_, array_schema, average_var_cell_sizes);
+      this->stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
   auto query_r = (Query*)nullptr;
@@ -623,8 +623,7 @@ Status FragmentConsolidator<RM>::consolidate_internal(
 template <class RM>
 void FragmentConsolidator<RM>::copy_array(
     Query* query_r, Query* query_w, FragmentConsolidationWorkspace<RM>& cw) {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_copy_array");
+  auto timer_se = this->stats_->start_timer("consolidate_copy_array");
 
   // Set the read query buffers outside the repeated submissions.
   // The Reader will reset the query buffer sizes to the original
@@ -662,8 +661,7 @@ Status FragmentConsolidator<RM>::create_queries(
     Query** query_r,
     Query** query_w,
     URI* new_fragment_uri) {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_create_queries");
+  auto timer_se = this->stats_->start_timer("consolidate_create_queries");
 
   const auto dense = array_for_reads->array_schema_latest().dense();
 
@@ -730,8 +728,7 @@ Status FragmentConsolidator<RM>::compute_next_to_consolidate(
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {
-  auto timer_se =
-      Consolidator<RM>::stats_->start_timer("consolidate_compute_next");
+  auto timer_se = this->stats_->start_timer("consolidate_compute_next");
 
   // Preparation
   auto sparse = !array_schema.dense();
@@ -946,7 +943,7 @@ Status FragmentConsolidator<RM>::set_config(const Config& config) {
   // Only set the buffer_size_ if the user specified a value. Otherwise, we use
   // the new sm.consolidation.total_buffer_size instead.
   if (merged_config.set_params().count("sm.consolidation.buffer_size") > 0) {
-    Consolidator<RM>::logger_->warn(
+    this->logger_->warn(
         "The `sm.consolidation.buffer_size configuration setting has been "
         "deprecated. Set consolidation buffer sizes using the newer "
         "`sm.consolidation.total_buffer_size` setting.");
@@ -999,15 +996,15 @@ Status FragmentConsolidator<RM>::set_config(const Config& config) {
 
   // Sanity checks
   if (config_.min_frags_ > config_.max_frags_)
-    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
+    return this->logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Minimum fragments config parameter is larger "
         "than the maximum"));
   if (config_.size_ratio_ > 1.0f || config_.size_ratio_ < 0.0f)
-    return Consolidator<RM>::logger_->status(Status_ConsolidatorError(
+    return this->logger_->status(Status_ConsolidatorError(
         "Invalid configuration; Step size ratio config parameter must be in "
         "[0.0, 1.0]"));
   if (config_.amplification_ < 0)
-    return Consolidator<RM>::logger_->status(
+    return this->logger_->status(
         Status_ConsolidatorError("Invalid configuration; Amplification config "
                                  "parameter must be non-negative"));
 
