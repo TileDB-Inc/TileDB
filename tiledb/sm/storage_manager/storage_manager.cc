@@ -38,6 +38,7 @@
 #include <iostream>
 #include <sstream>
 
+#include "context.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
@@ -221,9 +222,10 @@ Status StorageManagerCanonical::array_consolidate(
   }
 
   // Consolidate
-  auto mode = Consolidator<context_bypass_RM>::mode_from_config(config);
+  auto mode =
+      Consolidator<Context::resource_manager_type>::mode_from_config(config);
   auto consolidator =
-      Consolidator<context_bypass_RM>::create(mode, config, this);
+      Consolidator<Context::resource_manager_type>::create(mode, config, this);
   return consolidator->consolidate(
       array_name, encryption_type, encryption_key, key_length);
 }
