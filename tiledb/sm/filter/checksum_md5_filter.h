@@ -87,10 +87,11 @@ class ChecksumMD5Filter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Decrypt the bytes of the input data into the output data buffer.
@@ -98,10 +99,10 @@ class ChecksumMD5Filter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
  private:
@@ -117,7 +118,7 @@ class ChecksumMD5Filter : public Filter {
    * @return Status
    */
   Status compare_checksum_part(
-      FilterBuffer<context_bypass_RM>* part,
+      FilterBuffer<ContextResources::resource_manager_type>* part,
       uint64_t bytes_to_compared,
       void* checksum) const;
 
@@ -130,7 +131,8 @@ class ChecksumMD5Filter : public Filter {
    */
   Status checksum_part(
       ConstBuffer* part,
-      FilterBuffer<context_bypass_RM>* output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+      const;
 };
 
 }  // namespace sm

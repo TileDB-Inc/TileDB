@@ -72,10 +72,10 @@ bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {
 Status PositiveDeltaFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
     std::byte and can have arithmetic performed on it. */
@@ -148,10 +148,10 @@ template <typename T>
 Status PositiveDeltaFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Compute the upper bound on the size of the output.
   std::vector<ConstBuffer> parts = input->buffers();
   auto num_parts = (uint32_t)parts.size();
@@ -195,8 +195,9 @@ Status PositiveDeltaFilter::run_forward(
 template <typename T>
 Status PositiveDeltaFilter::encode_part(
     ConstBuffer* input,
-    FilterBuffer<context_bypass_RM>* output,
-    FilterBuffer<context_bypass_RM>* output_metadata) const {
+    FilterBuffer<ContextResources::resource_manager_type>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+    const {
   // Compute window size in bytes as a multiple of the element width
   auto input_bytes = static_cast<uint32_t>(input->size());
   uint32_t window_size = std::min(input_bytes, max_window_size_);
@@ -248,10 +249,10 @@ Status PositiveDeltaFilter::encode_part(
 Status PositiveDeltaFilter::run_reverse(
     const Tile& tile,
     Tile* const offsets_tile,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   /* Note: Arithmetic operations cannot be performed on std::byte.
     We will use uint8_t for the Datatype::BLOB case as it is the same size as
@@ -325,10 +326,10 @@ template <typename T>
 Status PositiveDeltaFilter::run_reverse(
     const Tile&,
     Tile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto tile_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows;

@@ -73,10 +73,10 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
 Status EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 
@@ -111,7 +111,8 @@ Status EncryptionAES256GCMFilter::run_forward(
 Status EncryptionAES256GCMFilter::encrypt_part(
     ConstBuffer* part,
     Buffer* output,
-    FilterBuffer<context_bypass_RM>* output_metadata) const {
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+    const {
   // Set up the key buffer.
   ConstBuffer key(key_bytes_, Crypto::AES256GCM_KEY_BYTES);
 
@@ -144,10 +145,10 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 Status EncryptionAES256GCMFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
@@ -175,9 +176,10 @@ Status EncryptionAES256GCMFilter::run_reverse(
 }
 
 Status EncryptionAES256GCMFilter::decrypt_part(
-    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
     Buffer* output,
-    FilterBuffer<context_bypass_RM>* input_metadata) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata)
+    const {
   // Get original (plaintext) and encrypted sizes.
   uint32_t encrypted_size, plaintext_size;
   RETURN_NOT_OK(input_metadata->read(&plaintext_size, sizeof(uint32_t)));

@@ -93,10 +93,11 @@ class XORFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Run reverse. Takes input data parts, and per part it reverses the
@@ -106,10 +107,10 @@ class XORFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
  private:
@@ -120,10 +121,10 @@ class XORFilter : public Filter {
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status run_forward(
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /**
    * Run reverse, templated on the tile type.
@@ -132,10 +133,10 @@ class XORFilter : public Filter {
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
   Status run_reverse(
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /**
    * XORs the input buffer by storing the first element, then

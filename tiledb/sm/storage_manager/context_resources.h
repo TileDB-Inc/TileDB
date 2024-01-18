@@ -52,6 +52,17 @@ class RestClient;
  */
 class ContextResources {
  public:
+  /**
+   * A second source for the definition of `resource_manager_type`. It is the
+   * same as the one in `class Context`.
+   *
+   * In an ideal world, this would simply be forwarded from `class Context`
+   * directly. We are not in such a world and cannot include the header with the
+   * definition of that class without also incurring all the cyclic dependencies
+   * involving `StorageManager`.
+   */
+  using resource_manager_type = tdb::context_bypass_RM;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */

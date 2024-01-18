@@ -129,10 +129,11 @@ class CompressionFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Decompress the given input into the given output.
@@ -140,10 +141,10 @@ class CompressionFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
   /** Set the compressor used by this filter instance. */
@@ -188,7 +189,8 @@ class CompressionFilter : public Filter {
       const WriterTile& tile,
       ConstBuffer* part,
       Buffer* output,
-      FilterBuffer<context_bypass_RM>* output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+      const;
 
   /** Return the FilterType corresponding to the given Compressor. */
   static FilterType compressor_to_filter(Compressor compressor);
@@ -199,9 +201,10 @@ class CompressionFilter : public Filter {
    */
   Status decompress_part(
       const Tile& tile,
-      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
       Buffer* output,
-      FilterBuffer<context_bypass_RM>* input_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata)
+      const;
 
   /** Calculate the size of the output metadata to allocate */
   size_t calculate_output_metadata_size(
@@ -214,20 +217,21 @@ class CompressionFilter : public Filter {
    * algorithms where this is a special case
    */
   Status compress_var_string_coords(
-      const FilterBuffer<context_bypass_RM>& input,
+      const FilterBuffer<ContextResources::resource_manager_type>& input,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>& output,
-      FilterBuffer<context_bypass_RM>& output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>& output,
+      FilterBuffer<ContextResources::resource_manager_type>& output_metadata)
+      const;
 
   /**
    * Helper function to decompress a buffer of variable-sized strings for
    * certain algorithms where this is a special case
    */
   Status decompress_var_string_coords(
-      FilterBuffer<context_bypass_RM>& input,
-      FilterBuffer<context_bypass_RM>& input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>& input,
+      FilterBuffer<ContextResources::resource_manager_type>& input_metadata,
       Tile* offsets_tile,
-      FilterBuffer<context_bypass_RM>& output) const;
+      FilterBuffer<ContextResources::resource_manager_type>& output) const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
@@ -255,7 +259,7 @@ class CompressionFilter : public Filter {
    * size
    */
   static tuple<std::vector<std::string_view>, uint64_t> create_input_view(
-      const FilterBuffer<context_bypass_RM>& input,
+      const FilterBuffer<ContextResources::resource_manager_type>& input,
       WriterTile* const offsets_tile);
 
   /**

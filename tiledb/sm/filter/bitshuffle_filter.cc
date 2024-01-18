@@ -61,10 +61,10 @@ void BitshuffleFilter::dump(FILE* out) const {
 Status BitshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 
   // Output size does not change with this filter.
@@ -104,7 +104,7 @@ Status BitshuffleFilter::run_forward(
 }
 
 Status BitshuffleFilter::compute_parts(
-    FilterBuffer<context_bypass_RM>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
     std::vector<ConstBuffer>* parts) const {
   auto input_parts = input->buffers();
   parts->reserve(input_parts.size() * 2);
@@ -165,10 +165,10 @@ Status BitshuffleFilter::shuffle_part(
 Status BitshuffleFilter::run_reverse(
     const Tile& tile,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
 

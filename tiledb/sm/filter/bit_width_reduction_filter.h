@@ -116,10 +116,11 @@ class BitWidthReductionFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Restore the bit size the given input into the given output.
@@ -127,10 +128,10 @@ class BitWidthReductionFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
   /** Set the max window size (in bytes) to use. */
@@ -155,8 +156,9 @@ class BitWidthReductionFilter : public Filter {
   template <typename T>
   Status compress_part(
       ConstBuffer* input,
-      FilterBuffer<context_bypass_RM>* output,
-      FilterBuffer<context_bypass_RM>* output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+      const;
 
   /**
    * Computes the number of bits required to represent elements of type T in the
@@ -188,7 +190,7 @@ class BitWidthReductionFilter : public Filter {
    */
   template <typename T>
   Status read_compressed_value(
-      FilterBuffer<context_bypass_RM>* buffer,
+      FilterBuffer<ContextResources::resource_manager_type>* buffer,
       uint8_t compressed_bits,
       T* value) const;
 
@@ -197,20 +199,20 @@ class BitWidthReductionFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
       const Tile& tile,
       Tile* const tile_offsets,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;
@@ -229,7 +231,9 @@ class BitWidthReductionFilter : public Filter {
    */
   template <typename T>
   Status write_compressed_value(
-      FilterBuffer<context_bypass_RM>* buffer, T value, uint8_t num_bits) const;
+      FilterBuffer<ContextResources::resource_manager_type>* buffer,
+      T value,
+      uint8_t num_bits) const;
 };
 
 }  // namespace sm

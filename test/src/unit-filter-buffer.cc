@@ -33,6 +33,7 @@
 
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -55,7 +56,7 @@ static void check_buf(const int* check, std::initializer_list<int> answer) {
 
 TEST_CASE("FilterBuffer: Test init", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   // Check reads and writes with a buffer not owned by the FilterBuffer.
   const char data[] = {0, 1, 2, 3, 4, 5};
@@ -100,7 +101,7 @@ TEST_CASE("FilterBuffer: Test init", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test prepend", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   const char data[] = {0, 1, 2, 3, 4, 5};
 
@@ -176,7 +177,7 @@ TEST_CASE("FilterBuffer: Test prepend", "[filter][filter-buffer]") {
 TEST_CASE(
     "FilterBuffer: Test multiple reads/writes", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
@@ -201,7 +202,7 @@ TEST_CASE(
 
 TEST_CASE("FilterBuffer: Test write from other", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage), fbuf2(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage), fbuf2(&storage);
 
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
@@ -224,7 +225,7 @@ TEST_CASE("FilterBuffer: Test write from other", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
   CHECK(fbuf.prepend_buffer(sizeof(int)).ok());
@@ -255,7 +256,7 @@ TEST_CASE("FilterBuffer: Test get ConstBuffer", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test clear", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   const char init_data[] = {0, 1, 2};
   Buffer buff;
@@ -295,7 +296,7 @@ TEST_CASE("FilterBuffer: Test clear", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test copy_to", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   const char init_data[] = {0, 1, 2};
   Buffer buff;
@@ -328,14 +329,14 @@ TEST_CASE("FilterBuffer: Test copy_to", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test append_view", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   const char init_data[] = {0, 1, 2};
   Buffer buff;
   CHECK(buff.write(init_data, sizeof(init_data)).ok());
   CHECK(fbuf.init(buff.data(), buff.size()).ok());
 
-  FilterBuffer<context_bypass_RM> fbuf2(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf2(&storage);
   CHECK(fbuf2.append_view(&fbuf, 1, 2).ok());
   char data_r[100];
   fbuf2.reset_offset();
@@ -370,7 +371,7 @@ TEST_CASE("FilterBuffer: Test append_view", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test view reclaim", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage), fbuf2(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage), fbuf2(&storage);
 
   CHECK(storage.num_available() == 0);
   CHECK(storage.num_in_use() == 0);
@@ -398,7 +399,7 @@ TEST_CASE("FilterBuffer: Test view reclaim", "[filter][filter-buffer]") {
 
 TEST_CASE("FilterBuffer: Test fixed allocation", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
   Buffer fixed;
   const unsigned nelts = 100;
   CHECK(fixed.realloc(nelts * sizeof(unsigned)).ok());
@@ -440,7 +441,7 @@ TEST_CASE("FilterBuffer: Test fixed allocation", "[filter][filter-buffer]") {
 
   SECTION("- Append view") {
     // Set up data to view
-    FilterBuffer<context_bypass_RM> fbuf2(&storage);
+    FilterBuffer<Context::resource_manager_type> fbuf2(&storage);
     CHECK(fbuf2.prepend_buffer(fbuf.size()).ok());
     fbuf2.reset_offset();
     for (unsigned i = 0; i < nelts; i++)
@@ -475,7 +476,7 @@ TEST_CASE(
     "FilterBuffer: Test copy with reinterpret type",
     "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage), fbuf2(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage), fbuf2(&storage);
 
   // Prepare some uint32 data in two separate buffers
   const uint32_t a = 100, b = 101, c = 102, d = 200, e = 201, f = 202;
@@ -518,7 +519,7 @@ TEST_CASE(
 
 TEST_CASE("FilterBuffer: Test read-only", "[filter][filter-buffer]") {
   FilterStorage storage;
-  FilterBuffer<context_bypass_RM> fbuf(&storage);
+  FilterBuffer<Context::resource_manager_type> fbuf(&storage);
 
   const char init_data[] = {0, 1, 2};
   Buffer buff;

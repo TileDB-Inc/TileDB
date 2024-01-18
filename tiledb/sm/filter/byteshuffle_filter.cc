@@ -61,10 +61,10 @@ void ByteshuffleFilter::dump(FILE* out) const {
 Status ByteshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
@@ -109,10 +109,10 @@ Status ByteshuffleFilter::shuffle_part(
 Status ByteshuffleFilter::run_reverse(
     const Tile& tile,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   // Get number of parts
   uint32_t num_parts;

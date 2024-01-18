@@ -103,10 +103,11 @@ class EncryptionAES256GCMFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Decrypt the bytes of the input data into the output data buffer.
@@ -114,10 +115,10 @@ class EncryptionAES256GCMFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
   /**
@@ -158,9 +159,10 @@ class EncryptionAES256GCMFilter : public Filter {
    * @return Status
    */
   Status decrypt_part(
-      FilterBuffer<context_bypass_RM>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
       Buffer* output,
-      FilterBuffer<context_bypass_RM>* input_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata)
+      const;
 
   /**
    * Encrypt the given input into the given output buffer.
@@ -173,7 +175,8 @@ class EncryptionAES256GCMFilter : public Filter {
   Status encrypt_part(
       ConstBuffer* part,
       Buffer* output,
-      FilterBuffer<context_bypass_RM>* output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+      const;
 };
 
 }  // namespace sm

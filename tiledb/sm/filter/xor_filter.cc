@@ -80,10 +80,10 @@ Datatype XORFilter::output_datatype(tiledb::sm::Datatype input_type) const {
 Status XORFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Since run_forward interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
   // a templated function.
@@ -118,10 +118,10 @@ template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_forward(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Output size does not change with this filter.
   RETURN_NOT_OK(output->prepend_buffer(input->size()));
   Buffer* output_buf = output->buffer_ptr(0);
@@ -177,10 +177,10 @@ Status XORFilter::xor_part(const ConstBuffer* part, Buffer* output) const {
 Status XORFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   // Since run_reverse interprets the filter's data as integers, we case on
   // the size of the type and pass in the corresponding integer type into
@@ -216,10 +216,10 @@ template <
     typename T,
     typename std::enable_if<std::is_integral<T>::value>::type*>
 Status XORFilter::run_reverse(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Get number of parts
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));

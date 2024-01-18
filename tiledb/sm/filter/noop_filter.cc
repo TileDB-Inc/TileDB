@@ -58,10 +58,10 @@ void NoopFilter::dump(FILE* out) const {
 Status NoopFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   RETURN_NOT_OK(output->append_view(input));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();
@@ -70,10 +70,10 @@ Status NoopFilter::run_forward(
 Status NoopFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   RETURN_NOT_OK(output->append_view(input));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));

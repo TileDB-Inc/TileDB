@@ -57,20 +57,20 @@ namespace tiledb::sm {
 Status WebpFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*) const {
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*) const {
   throw tiledb::sm::WebpNotPresentError();
 }
 
 Status WebpFilter::run_reverse(
     const Tile&,
     Tile* const,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*,
-    FilterBuffer<context_bypass_RM>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
+    FilterBuffer<ContextResources::resource_manager_type>*,
     const Config&) const {
   throw tiledb::sm::WebpNotPresentError();
 }
@@ -104,18 +104,18 @@ namespace tiledb::sm {
 Status WebpFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   return run_forward(input_metadata, input, output_metadata, output);
 }
 
 Status WebpFilter::run_forward(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto input_parts = input->buffers();
   auto num_parts = static_cast<uint32_t>(input_parts.size());
   uint32_t metadata_size = sizeof(uint32_t) + (num_parts * sizeof(uint32_t));
@@ -219,10 +219,10 @@ Status WebpFilter::run_forward(
 Status WebpFilter::run_reverse(
     const Tile&,
     Tile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   if (filter_data_type_ != Datatype::UINT8) {
     throw StatusException(Status_FilterError("Unsupported input type"));
@@ -231,10 +231,10 @@ Status WebpFilter::run_reverse(
 }
 
 Status WebpFilter::run_reverse(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   uint32_t num_parts;
   throw_if_not_ok(input_metadata->read(&num_parts, sizeof(uint32_t)));
   for (uint32_t i = 0; i < num_parts; i++) {

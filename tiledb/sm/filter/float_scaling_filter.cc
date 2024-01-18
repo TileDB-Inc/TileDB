@@ -63,10 +63,10 @@ void FloatScalingFilter::serialize_impl(Serializer& serializer) const {
 
 template <typename T, typename W>
 Status FloatScalingFilter::run_forward(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto input_parts = input->buffers();
   uint32_t num_parts = static_cast<uint32_t>(input_parts.size());
   uint32_t metadata_size = sizeof(uint32_t) + num_parts * sizeof(uint32_t);
@@ -102,10 +102,10 @@ Status FloatScalingFilter::run_forward(
 
 template <typename T>
 Status FloatScalingFilter::run_forward(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   switch (byte_width_) {
     case sizeof(int8_t):
       return run_forward<T, int8_t>(
@@ -129,10 +129,10 @@ Status FloatScalingFilter::run_forward(
 Status FloatScalingFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {
     case sizeof(float):
@@ -149,10 +149,10 @@ Status FloatScalingFilter::run_forward(
 
 template <typename T, typename W>
 Status FloatScalingFilter::run_reverse(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   // Get number of parts.
   uint32_t num_parts;
   RETURN_NOT_OK(input_metadata->read(&num_parts, sizeof(uint32_t)));
@@ -188,10 +188,10 @@ Status FloatScalingFilter::run_reverse(
 
 template <typename T>
 Status FloatScalingFilter::run_reverse(
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   switch (byte_width_) {
     case sizeof(int8_t): {
       return run_reverse<T, int8_t>(
@@ -220,10 +220,10 @@ Status FloatScalingFilter::run_reverse(
 Status FloatScalingFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {

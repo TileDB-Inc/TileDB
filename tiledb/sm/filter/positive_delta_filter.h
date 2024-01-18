@@ -107,10 +107,11 @@ class PositiveDeltaFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override;
 
   /**
    * Perform positive-delta decoding of the given input into the given output.
@@ -118,10 +119,10 @@ class PositiveDeltaFilter : public Filter {
   Status run_reverse(
       const Tile& tile,
       Tile* const offsets_tile,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const Config& config) const override;
 
   /** Set the max window size (in bytes) to use. */
@@ -146,8 +147,9 @@ class PositiveDeltaFilter : public Filter {
   template <typename T>
   Status encode_part(
       ConstBuffer* input,
-      FilterBuffer<context_bypass_RM>* output,
-      FilterBuffer<context_bypass_RM>* output_metadata) const;
+      FilterBuffer<ContextResources::resource_manager_type>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+      const;
 
   /** Gets an option from this filter. */
   Status get_option_impl(FilterOption option, void* value) const override;
@@ -157,20 +159,20 @@ class PositiveDeltaFilter : public Filter {
   Status run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /** Run_reverse method templated on the tile cell datatype. */
   template <typename T>
   Status run_reverse(
       const Tile& tile,
       Tile* const tile_offsets,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const;
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output) const;
 
   /** Sets an option on this filter. */
   Status set_option_impl(FilterOption option, const void* value) override;

@@ -40,6 +40,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 #include "gzip_wrappers.h"
 
@@ -63,7 +64,8 @@ int main(int argc, char* argv[]) {
   char fbuf[seg_sz];
   auto filter_stg = make_shared<tiledb::sm::FilterStorage>(HERE());
   auto inbuf = make_shared<tiledb::sm::Buffer>(HERE());
-  auto zipped_buf = make_shared<tiledb::sm::FilterBuffer<context_bypass_RM>>(
+  auto zipped_buf = make_shared<tiledb::sm::FilterBuffer<
+      tiledb::sm::ContextResources::resource_manager_type>>(
       HERE(), &*filter_stg);
   uint64_t nread;
   uint64_t cntread = 0;

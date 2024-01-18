@@ -154,10 +154,11 @@ class Add1InPlace : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override {
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override {
     auto input_size = input->size();
     RETURN_NOT_OK(output->append_view(input));
     output->reset_offset();
@@ -178,10 +179,10 @@ class Add1InPlace : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 
@@ -225,10 +226,11 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override {
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -260,10 +262,10 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 
@@ -317,10 +319,11 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output) const override {
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output)
+      const override {
     auto input_size = input->size();
     auto nelts = input_size / sizeof(uint64_t);
 
@@ -348,10 +351,10 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer<context_bypass_RM>* input_metadata,
-      FilterBuffer<context_bypass_RM>* input,
-      FilterBuffer<context_bypass_RM>* output_metadata,
-      FilterBuffer<context_bypass_RM>* output,
+      FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* input,
+      FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+      FilterBuffer<ContextResources::resource_manager_type>* output,
       const tiledb::sm::Config& config) const override {
     (void)config;
 

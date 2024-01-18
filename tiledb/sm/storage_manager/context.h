@@ -114,6 +114,17 @@ class Context {
     return &(resources_.io_tp());
   }
 
+  /**
+   * The type of resource manager used for resources subordinate to a context.
+   *
+   * @section Maturity
+   *
+   * This is a placeholder type that will be replaced by a real resource manager
+   * type in the future. It is currently used for template arguments for classes
+   * that need to be instantiated with a resource manager type.
+   */
+  using resource_manager_type = void;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

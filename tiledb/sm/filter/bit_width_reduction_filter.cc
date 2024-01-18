@@ -109,10 +109,10 @@ bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
 Status BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   switch (filter_data_type_) {
     case Datatype::INT16:
       return run_forward<int16_t>(
@@ -178,10 +178,10 @@ template <typename T>
 Status BitWidthReductionFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto input_size = static_cast<uint32_t>(input->size());
 
   // Compute the upper bound on the size of the output.
@@ -229,8 +229,9 @@ Status BitWidthReductionFilter::run_forward(
 template <typename T>
 Status BitWidthReductionFilter::compress_part(
     ConstBuffer* input,
-    FilterBuffer<context_bypass_RM>* output,
-    FilterBuffer<context_bypass_RM>* output_metadata) const {
+    FilterBuffer<ContextResources::resource_manager_type>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata)
+    const {
   // Compute window size in bytes as a multiple of the element width
   auto input_bytes = static_cast<uint32_t>(input->size());
   uint32_t window_size = std::min(input_bytes, max_window_size_);
@@ -281,10 +282,10 @@ Status BitWidthReductionFilter::compress_part(
 Status BitWidthReductionFilter::run_reverse(
     const Tile& tile,
     Tile* const offsets_tile,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output,
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output,
     const Config&) const {
   switch (filter_data_type_) {
     case Datatype::INT16:
@@ -351,10 +352,10 @@ template <typename T>
 Status BitWidthReductionFilter::run_reverse(
     const Tile&,
     Tile* const,
-    FilterBuffer<context_bypass_RM>* input_metadata,
-    FilterBuffer<context_bypass_RM>* input,
-    FilterBuffer<context_bypass_RM>* output_metadata,
-    FilterBuffer<context_bypass_RM>* output) const {
+    FilterBuffer<ContextResources::resource_manager_type>* input_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* input,
+    FilterBuffer<ContextResources::resource_manager_type>* output_metadata,
+    FilterBuffer<ContextResources::resource_manager_type>* output) const {
   auto data_type_size = datatype_size(filter_data_type_);
 
   uint32_t num_windows, orig_length;
@@ -439,7 +440,9 @@ uint8_t BitWidthReductionFilter::compute_bits_required(
 
 template <typename T>
 Status BitWidthReductionFilter::write_compressed_value(
-    FilterBuffer<context_bypass_RM>* buffer, T value, uint8_t num_bits) const {
+    FilterBuffer<ContextResources::resource_manager_type>* buffer,
+    T value,
+    uint8_t num_bits) const {
   switch (num_bits) {
     case 8: {
       auto val = static_cast<
@@ -481,7 +484,7 @@ Status BitWidthReductionFilter::write_compressed_value(
 
 template <typename T>
 Status BitWidthReductionFilter::read_compressed_value(
-    FilterBuffer<context_bypass_RM>* buffer,
+    FilterBuffer<ContextResources::resource_manager_type>* buffer,
     uint8_t compressed_bits,
     T* value) const {
   switch (compressed_bits) {
