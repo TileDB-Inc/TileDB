@@ -208,7 +208,8 @@ TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
   REQUIRE_THROWS_WITH(
       query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1),
       Catch::Matchers::ContainsSubstring(
-          "Cannot perform query comparison; Unsupported datatype"));
+          "Cannot perform query comparison; Unsupported datatype " +
+          datatype_str(Datatype::BLOB)));
 }
 
 TEST_CASE(

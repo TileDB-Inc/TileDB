@@ -1856,9 +1856,8 @@ void QueryCondition::apply_ast_node_dense(
     default:
       throw std::runtime_error(
           "Cannot perform query comparison; Unsupported query conditional "
-          "type "
-          "on " +
-          node->get_field_name());
+          "type " +
+          datatype_str(type) + " on " + node->get_field_name());
   }
 }
 
