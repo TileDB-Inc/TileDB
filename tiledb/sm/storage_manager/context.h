@@ -123,7 +123,7 @@ class Context {
    * type in the future. It is currently used for template arguments for classes
    * that need to be instantiated with a resource manager type.
    */
-  using resource_manager_type = void;
+  using resource_manager_type = tdb::context_bypass_RM;
 
  private:
   /* ********************************* */
