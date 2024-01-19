@@ -734,7 +734,7 @@ ReaderBase::load_tile_chunk_data(
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
-  const FilterPipeline<ContextResources::resource_manager_type> filters =
+  const FilterPipeline<ContextResources::resource_manager_type>& filters =
       array_schema_.filters(name);
   if (!validity_only) {
     if (!var_size || !filters.skip_offsets_filtering(

@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_FILTER_LIST_INTERNAL_H
 
 #include "filter_list_api_external.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 
@@ -48,8 +49,8 @@ struct tiledb_filter_list_handle_t
   static constexpr std::string_view object_type_name{"filter list"};
 
  private:
-  using filter_list_type = tiledb::sm::FilterPipeline<
-      tiledb::sm::ContextResources::resource_manager_type>;
+  using filter_list_type =
+      tiledb::sm::FilterPipeline<tiledb_ctx_t::resource_manager_type>;
   /**
    * The underling value is a FilterPipeline object.
    */

@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_DIMENSION_INTERNAL_H
 
 #include "dimension_api_external.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -90,8 +91,8 @@ struct tiledb_dimension_handle_t
   }
 
   inline void set_filter_pipeline(
-      const tiledb::sm::FilterPipeline<
-          tiledb::sm::ContextResources::resource_manager_type>& x) {
+      const tiledb::sm::FilterPipeline<tiledb_ctx_t::resource_manager_type>&
+          x) {
     dimension_->set_filter_pipeline(x);
   }
 
@@ -100,7 +101,7 @@ struct tiledb_dimension_handle_t
   }
 
   [[nodiscard]] inline const tiledb::sm::FilterPipeline<
-      tiledb::sm::ContextResources::resource_manager_type>
+      tiledb_ctx_t::resource_manager_type>&
   filters() const {
     return dimension_->filters();
   }

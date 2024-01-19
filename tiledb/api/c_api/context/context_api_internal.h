@@ -49,6 +49,11 @@ struct tiledb_ctx_handle_t
   tiledb::sm::Context ctx_;
 
  public:
+  /**
+   * The type of the resource manager is forwarded from `class Context`.
+   */
+  using resource_manager_type = tiledb::sm::Context::resource_manager_type;
+
   tiledb_ctx_handle_t() = delete;
 
   tiledb_ctx_handle_t(const tiledb::sm::Config& config)

@@ -34,6 +34,7 @@
 #define TILEDB_CAPI_ATTRIBUTE_INTERNAL_H
 
 #include "attribute_api_external.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -105,8 +106,8 @@ struct tiledb_attribute_handle_t
    * Facade for non-C.41 `Attribute` function
    */
   void set_filter_pipeline(
-      const tiledb::sm::FilterPipeline<
-          tiledb::sm::ContextResources::resource_manager_type> pipeline) {
+      const tiledb::sm::FilterPipeline<tiledb_ctx_t::resource_manager_type>&
+          pipeline) {
     nonconst_attribute()->set_filter_pipeline(pipeline);
   }
 
@@ -184,7 +185,7 @@ struct tiledb_attribute_handle_t
    * Facade for `Attribute` function
    */
   [[nodiscard]] inline const tiledb::sm::FilterPipeline<
-      tiledb::sm::ContextResources::resource_manager_type>
+      tiledb_ctx_t::resource_manager_type>&
   filters() const {
     return attr_->filters();
   }
