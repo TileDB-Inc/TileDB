@@ -129,9 +129,11 @@ ArraySchema::ArraySchema(
     std::vector<shared_ptr<const DimensionLabel>> dim_label_refs,
     std::vector<shared_ptr<const Enumeration>> enumerations,
     std::unordered_map<std::string, std::string> enumeration_path_map,
-    FilterPipeline cell_var_offsets_filters,
-    FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
+    FilterPipeline<ContextResources::resource_manager_type>
+        cell_var_offsets_filters,
+    FilterPipeline<ContextResources::resource_manager_type>
+        cell_validity_filters,
+    FilterPipeline<ContextResources::resource_manager_type> coords_filters)
     : uri_(uri)
     , version_(version)
     , timestamp_range_(timestamp_range)
@@ -340,11 +342,13 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   return dim_it->second->cell_val_num();
 }
 
-const FilterPipeline& ArraySchema::cell_var_offsets_filters() const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+ArraySchema::cell_var_offsets_filters() const {
   return cell_var_offsets_filters_;
 }
 
-const FilterPipeline& ArraySchema::cell_validity_filters() const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+ArraySchema::cell_validity_filters() const {
   return cell_validity_filters_;
 }
 
@@ -567,7 +571,8 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
   }
 }
 
-const FilterPipeline& ArraySchema::filters(const std::string& name) const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+ArraySchema::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
     return coords_filters();
   }
@@ -585,7 +590,8 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   return ret;
 }
 
-const FilterPipeline& ArraySchema::coords_filters() const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+ArraySchema::coords_filters() const {
   return coords_filters_;
 }
 
@@ -1312,13 +1318,16 @@ ArraySchema ArraySchema::deserialize(
   // Load filters
   // Note: Security validation delegated to invoked API
   auto coords_filters{
-      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
+      FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+          deserializer, version, Datatype::UINT64)};
   auto cell_var_filters{
-      FilterPipeline::deserialize(deserializer, version, Datatype::UINT64)};
-  FilterPipeline cell_validity_filters;
+      FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+          deserializer, version, Datatype::UINT64)};
+  FilterPipeline<ContextResources::resource_manager_type> cell_validity_filters;
   if (version >= 7) {
     cell_validity_filters =
-        FilterPipeline::deserialize(deserializer, version, Datatype::UINT8);
+        FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+            deserializer, version, Datatype::UINT8);
   }
 
   // Load domain
@@ -1440,7 +1449,8 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+Status ArraySchema::set_coords_filter_pipeline(
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
   RETURN_NOT_OK(check_string_compressor(pipeline));
   RETURN_NOT_OK(check_double_delta_compressor(pipeline));
   coords_filters_ = pipeline;
@@ -1448,7 +1458,7 @@ Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
 }
 
 Status ArraySchema::set_cell_var_offsets_filter_pipeline(
-    const FilterPipeline& pipeline) {
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
   cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
@@ -1465,13 +1475,14 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
 }
 
 Status ArraySchema::set_cell_validity_filter_pipeline(
-    const FilterPipeline& pipeline) {
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
   cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 
 void ArraySchema::set_dimension_label_filter_pipeline(
-    const std::string& label_name, const FilterPipeline& pipeline) {
+    const std::string& label_name,
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
   auto& dim_label_ref = dimension_label(label_name);
   if (!dim_label_ref.has_schema()) {
     throw ArraySchemaException(
@@ -1620,7 +1631,8 @@ void ArraySchema::check_attribute_dimension_label_names() const {
 }
 
 Status ArraySchema::check_double_delta_compressor(
-    const FilterPipeline& coords_filters) const {
+    const FilterPipeline<ContextResources::resource_manager_type>&
+        coords_filters) const {
   // Check if coordinate filters have DOUBLE DELTA as a compressor
   bool has_double_delta = false;
   for (unsigned i = 0; i < coords_filters.size(); ++i) {
@@ -1652,7 +1664,8 @@ Status ArraySchema::check_double_delta_compressor(
 }
 
 Status ArraySchema::check_string_compressor(
-    const FilterPipeline& filters) const {
+    const FilterPipeline<ContextResources::resource_manager_type>& filters)
+    const {
   // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
       !(filters.has_filter(FilterType::FILTER_RLE) ||

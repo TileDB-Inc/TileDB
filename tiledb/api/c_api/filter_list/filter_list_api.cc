@@ -40,7 +40,8 @@ namespace tiledb::api {
 capi_return_t tiledb_filter_list_alloc(
     tiledb_ctx_t*, tiledb_filter_list_t** filter_list) {
   ensure_output_pointer_is_valid(filter_list);
-  *filter_list = tiledb_filter_list_t::make_handle(sm::FilterPipeline());
+  *filter_list = tiledb_filter_list_t::make_handle(
+      sm::FilterPipeline<sm::ContextResources::resource_manager_type>());
   return TILEDB_OK;
 }
 

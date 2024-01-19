@@ -135,7 +135,8 @@ int32_t tiledb_filestore_schema_create(
         tiledb::sm::Datatype::UINT64,
         1,
         range_obj,
-        tiledb::sm::FilterPipeline{},
+        tiledb::sm::FilterPipeline<
+            tiledb::sm::ContextResources::resource_manager_type>{},
         tiledb::sm::ByteVecValue(std::move(tile_extent_vec)));
 
     auto domain = make_shared<tiledb::sm::Domain>(HERE());
@@ -148,7 +149,9 @@ int32_t tiledb_filestore_schema_create(
 
     // If the input file is not compressed, add our own compression
     if (!is_compressed_libmagic) {
-      tiledb::sm::FilterPipeline filter;
+      tiledb::sm::FilterPipeline<
+          tiledb::sm::ContextResources::resource_manager_type>
+          filter;
       filter.add_filter(tiledb::sm::CompressionFilter(
           tiledb::sm::Compressor::ZSTD,
           tiledb::sm::ZStd::default_level(),

@@ -107,7 +107,8 @@ Attribute::Attribute(
     Datatype type,
     bool nullable,
     uint32_t cell_val_num,
-    const FilterPipeline& filter_pipeline,
+    const FilterPipeline<ContextResources::resource_manager_type>&
+        filter_pipeline,
     const ByteVecValue& fill_value,
     uint8_t fill_value_validity,
     DataOrder order,
@@ -144,7 +145,8 @@ Attribute Attribute::deserialize(
 
   // Load filter pipeline
   auto filterpipeline{
-      FilterPipeline::deserialize(deserializer, version, datatype)};
+      FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+          deserializer, version, datatype)};
 
   // Load fill value
   uint64_t fill_value_size = 0;
@@ -231,7 +233,8 @@ void Attribute::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
-const FilterPipeline& Attribute::filters() const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+Attribute::filters() const {
   return filters_;
 }
 
@@ -329,8 +332,10 @@ void Attribute::set_nullable(const bool nullable) {
   nullable_ = nullable;
 }
 
-void Attribute::set_filter_pipeline(const FilterPipeline& pipeline) {
-  FilterPipeline::check_filter_types(pipeline, type_, var_size());
+void Attribute::set_filter_pipeline(
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
+  FilterPipeline<ContextResources::resource_manager_type>::check_filter_types(
+      pipeline, type_, var_size());
   filters_ = pipeline;
 }
 

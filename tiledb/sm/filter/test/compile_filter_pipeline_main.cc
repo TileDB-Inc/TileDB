@@ -29,6 +29,7 @@
 #include "../filter_pipeline.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::FilterPipeline);
+  (void)sizeof(tiledb::sm::FilterPipeline<
+               tiledb::sm::ContextResources::resource_manager_type>);
   return 0;
 }

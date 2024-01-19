@@ -321,7 +321,7 @@ shared_ptr<Domain> Domain::deserialize(
     uint32_t version,
     Layout cell_order,
     Layout tile_order,
-    FilterPipeline& coords_filters) {
+    FilterPipeline<ContextResources::resource_manager_type>& coords_filters) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;

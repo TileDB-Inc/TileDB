@@ -872,7 +872,7 @@ Status WriterBase::filter_tile(
   auto timer_se = stats_->start_timer("filter_tile");
 
   // Get a copy of the appropriate filter pipeline.
-  FilterPipeline filters;
+  FilterPipeline<ContextResources::resource_manager_type> filters;
   if (offsets) {
     assert(!nullable);
     filters = array_schema_.cell_var_offsets_filters();
@@ -895,8 +895,9 @@ Status WriterBase::filter_tile(
   }
 
   // Append an encryption filter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-      &filters, array_->get_encryption_key()));
+  RETURN_NOT_OK(
+      FilterPipeline<ContextResources::resource_manager_type>::
+          append_encryption_filter(&filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
   bool use_chunking = filters.use_tile_chunking(

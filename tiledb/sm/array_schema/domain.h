@@ -39,6 +39,7 @@
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include <vector>
@@ -57,6 +58,7 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+template <class RM>
 class FilterPipeline;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
@@ -193,7 +195,7 @@ class Domain {
       uint32_t version,
       Layout cell_order,
       Layout tile_order,
-      FilterPipeline& coords_filters);
+      FilterPipeline<ContextResources::resource_manager_type>& coords_filters);
 
   /** Returns the cell order. */
   Layout cell_order() const;

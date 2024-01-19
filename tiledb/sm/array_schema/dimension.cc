@@ -96,7 +96,8 @@ Dimension::Dimension(
     Datatype type,
     uint32_t cell_val_num,
     const Range& domain,
-    const FilterPipeline& filter_pipeline,
+    const FilterPipeline<ContextResources::resource_manager_type>&
+        filter_pipeline,
     const ByteVecValue& tile_extent)
     : cell_val_num_(cell_val_num)
     , domain_(domain)
@@ -155,7 +156,7 @@ shared_ptr<Dimension> Dimension::deserialize(
     Deserializer& deserializer,
     uint32_t version,
     Datatype type,
-    FilterPipeline& coords_filters) {
+    FilterPipeline<ContextResources::resource_manager_type>& coords_filters) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -164,7 +165,7 @@ shared_ptr<Dimension> Dimension::deserialize(
 
   Datatype datatype;
   uint32_t cell_val_num;
-  FilterPipeline filter_pipeline;
+  FilterPipeline<ContextResources::resource_manager_type> filter_pipeline;
   // Applicable only to version >= 5
   if (version >= 5) {
     // Load type
@@ -176,7 +177,8 @@ shared_ptr<Dimension> Dimension::deserialize(
 
     // Load filter pipeline
     filter_pipeline =
-        FilterPipeline::deserialize(deserializer, version, datatype);
+        FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+            deserializer, version, datatype);
     if (filter_pipeline.empty()) {
       filter_pipeline = FilterPipeline(coords_filters, datatype);
     }
@@ -242,7 +244,8 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
-const FilterPipeline& Dimension::filters() const {
+const FilterPipeline<ContextResources::resource_manager_type>&
+Dimension::filters() const {
   return filters_;
 }
 
@@ -1335,8 +1338,10 @@ Status Dimension::set_domain_unsafe(const void* domain) {
   return Status::Ok();
 }
 
-void Dimension::set_filter_pipeline(const FilterPipeline& pipeline) {
-  FilterPipeline::check_filter_types(pipeline, type_, var_size());
+void Dimension::set_filter_pipeline(
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline) {
+  FilterPipeline<ContextResources::resource_manager_type>::check_filter_types(
+      pipeline, type_, var_size());
   filters_ = pipeline;
 }
 

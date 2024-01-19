@@ -89,7 +89,9 @@ struct tiledb_dimension_handle_t
     throw_if_not_ok(dimension_->set_tile_extent(x));
   }
 
-  inline void set_filter_pipeline(const tiledb::sm::FilterPipeline& x) {
+  inline void set_filter_pipeline(
+      const tiledb::sm::FilterPipeline<
+          tiledb::sm::ContextResources::resource_manager_type>& x) {
     dimension_->set_filter_pipeline(x);
   }
 
@@ -97,7 +99,9 @@ struct tiledb_dimension_handle_t
     throw_if_not_ok(dimension_->set_cell_val_num(x));
   }
 
-  [[nodiscard]] inline const tiledb::sm::FilterPipeline& filters() const {
+  [[nodiscard]] inline const tiledb::sm::FilterPipeline<
+      tiledb::sm::ContextResources::resource_manager_type>
+  filters() const {
     return dimension_->filters();
   }
 

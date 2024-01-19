@@ -48,7 +48,8 @@ struct tiledb_filter_list_handle_t
   static constexpr std::string_view object_type_name{"filter list"};
 
  private:
-  using filter_list_type = tiledb::sm::FilterPipeline;
+  using filter_list_type = tiledb::sm::FilterPipeline<
+      tiledb::sm::ContextResources::resource_manager_type>;
   /**
    * The underling value is a FilterPipeline object.
    */

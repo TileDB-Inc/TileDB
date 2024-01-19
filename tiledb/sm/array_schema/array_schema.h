@@ -133,9 +133,11 @@ class ArraySchema {
       std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
       std::vector<shared_ptr<const Enumeration>> enumerations,
       std::unordered_map<std::string, std::string> enumeration_path_map,
-      FilterPipeline cell_var_offsets_filters,
-      FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+      FilterPipeline<ContextResources::resource_manager_type>
+          cell_var_offsets_filters,
+      FilterPipeline<ContextResources::resource_manager_type>
+          cell_validity_filters,
+      FilterPipeline<ContextResources::resource_manager_type> coords_filters);
 
   /**
    * Constructor. Clones the input.
@@ -217,10 +219,12 @@ class ArraySchema {
   unsigned int cell_val_num(const std::string& name) const;
 
   /** Return the filter pipeline used for offsets of variable-sized cells. */
-  const FilterPipeline& cell_var_offsets_filters() const;
+  const FilterPipeline<ContextResources::resource_manager_type>&
+  cell_var_offsets_filters() const;
 
   /** Return the filter pipeline used for validity cells. */
-  const FilterPipeline& cell_validity_filters() const;
+  const FilterPipeline<ContextResources::resource_manager_type>&
+  cell_validity_filters() const;
 
   /**
    * Checks the correctness of the array schema.
@@ -248,10 +252,12 @@ class ArraySchema {
    * Return the filter pipeline for the given attribute/dimension (can be
    * TILEDB_COORDS).
    */
-  const FilterPipeline& filters(const std::string& name) const;
+  const FilterPipeline<ContextResources::resource_manager_type>& filters(
+      const std::string& name) const;
 
   /** Return the pipeline used for coordinates. */
-  const FilterPipeline& coords_filters() const;
+  const FilterPipeline<ContextResources::resource_manager_type>&
+  coords_filters() const;
 
   /** True if the array is dense. */
   bool dense() const;
@@ -492,13 +498,16 @@ class ArraySchema {
   void set_array_uri(const URI& array_uri);
 
   /** Sets the filter pipeline for the variable cell offsets. */
-  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_cell_var_offsets_filter_pipeline(
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /** Sets the filter pipeline for the validity cell offsets. */
-  Status set_cell_validity_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_cell_validity_filter_pipeline(
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /** Sets the filter pipeline for the coordinates. */
-  Status set_coords_filter_pipeline(const FilterPipeline& pipeline);
+  Status set_coords_filter_pipeline(
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
@@ -513,7 +522,8 @@ class ArraySchema {
    * @param filter_list The filter_list to be set.
    */
   void set_dimension_label_filter_pipeline(
-      const std::string& label_name, const FilterPipeline& pipeline);
+      const std::string& label_name,
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /**
    * Sets the tile extent on a dimension label in an array schema.
@@ -670,13 +680,15 @@ class ArraySchema {
   std::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
-  FilterPipeline cell_var_offsets_filters_;
+  FilterPipeline<ContextResources::resource_manager_type>
+      cell_var_offsets_filters_;
 
   /** The filter pipeline run on validity tiles for nullable attributes. */
-  FilterPipeline cell_validity_filters_;
+  FilterPipeline<ContextResources::resource_manager_type>
+      cell_validity_filters_;
 
   /** The filter pipeline run on coordinate tiles. */
-  FilterPipeline coords_filters_;
+  FilterPipeline<ContextResources::resource_manager_type> coords_filters_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
@@ -704,13 +716,16 @@ class ArraySchema {
    * coordinate filters and is inherited by a dimension.
    */
   Status check_double_delta_compressor(
-      const FilterPipeline& coords_filters) const;
+      const FilterPipeline<ContextResources::resource_manager_type>&
+          coords_filters) const;
 
   /**
    * Returns error if RLE or Dictionary encoding is used for string
    * dimensions but it is not the only filter in the filter list.
    */
-  Status check_string_compressor(const FilterPipeline& coords_filters) const;
+  Status check_string_compressor(
+      const FilterPipeline<ContextResources::resource_manager_type>&
+          coords_filters) const;
 
   void check_webp_filter() const;
 

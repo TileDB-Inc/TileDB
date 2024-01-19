@@ -67,6 +67,7 @@
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using resource_manager_type = ContextResources::resource_manager_type;
 
 WriterTile make_increasing_tile(const uint64_t nelts) {
   const uint64_t tile_size = nelts * sizeof(uint64_t);
@@ -118,7 +119,7 @@ void run_reverse(
     const tiledb::sm::Config& config,
     ThreadPool& tp,
     Tile& unfiltered_tile,
-    FilterPipeline& pipeline,
+    FilterPipeline<resource_manager_type>& pipeline,
     bool success = true) {
   ChunkData chunk_data;
   unfiltered_tile.load_chunk_data(chunk_data);
@@ -407,7 +408,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
             .ok());
   CHECK(schema.set_domain(domain).ok());
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
 
   SECTION("- Simple") {
@@ -532,7 +533,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
             .ok());
   CHECK(schema.set_domain(domain).ok());
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
 
   SECTION("- Simple") {
@@ -629,7 +630,7 @@ TEST_CASE(
   auto tile = make_increasing_tile(nelts);
 
   // MD5
-  FilterPipeline md5_pipeline;
+  FilterPipeline<resource_manager_type> md5_pipeline;
   ThreadPool tp(4);
   ChecksumMD5Filter md5_filter(Datatype::UINT64);
   md5_pipeline.add_filter(md5_filter);
@@ -651,7 +652,7 @@ TEST_CASE(
   // SHA256
   auto tile2 = make_increasing_tile(nelts);
 
-  FilterPipeline sha_256_pipeline;
+  FilterPipeline<resource_manager_type> sha_256_pipeline;
   ChecksumMD5Filter sha_256_filter(Datatype::UINT64);
   sha_256_pipeline.add_filter(sha_256_filter);
   CHECK(
@@ -676,7 +677,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   // Set up test data
   const uint64_t nelts = 1000;
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter(Datatype::UINT64));
 
@@ -887,7 +888,7 @@ TEST_CASE(
   const uint64_t offsets_tile_size =
       offsets.size() * constants::cell_var_offset_size;
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitWidthReductionFilter(Datatype::UINT64));
 
@@ -1119,7 +1120,7 @@ TEST_CASE("Filter: Test positive-delta encoding", "[filter][positive-delta]") {
   // Set up test data
   const uint64_t nelts = 1000;
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter(Datatype::UINT64));
 
@@ -1238,7 +1239,7 @@ TEST_CASE(
   }
   offsets[offsets.size() - 1] = offset;
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(PositiveDeltaFilter(Datatype::UINT64));
 
@@ -1364,7 +1365,7 @@ TEST_CASE("Filter: Test bitshuffle", "[filter][bitshuffle]") {
   const uint64_t nelts = 1000;
   auto tile = make_increasing_tile(nelts);
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitshuffleFilter(Datatype::UINT64));
 
@@ -1452,7 +1453,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
 
   auto offsets_tile = make_offsets_tile(offsets);
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(BitshuffleFilter(Datatype::UINT64));
 
@@ -1515,7 +1516,7 @@ TEST_CASE("Filter: Test byteshuffle", "[filter][byteshuffle]") {
   const uint64_t nelts = 1000;
   auto tile = make_increasing_tile(nelts);
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(ByteshuffleFilter(Datatype::UINT64));
 
@@ -1603,7 +1604,7 @@ TEST_CASE("Filter: Test byteshuffle var", "[filter][byteshuffle][var]") {
 
   auto offsets_tile = make_offsets_tile(offsets);
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(ByteshuffleFilter(Datatype::UINT64));
 
@@ -1667,7 +1668,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   auto tile = make_increasing_tile(nelts);
 
   SECTION("- AES-256-GCM") {
-    FilterPipeline pipeline;
+    FilterPipeline<resource_manager_type> pipeline;
     ThreadPool tp(4);
     pipeline.add_filter(EncryptionAES256GCMFilter(Datatype::UINT64));
 
@@ -1772,7 +1773,7 @@ void testing_float_scaling_filter() {
     float_result_vec.push_back(val_float);
   }
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(FloatScalingFilter(t));
   CHECK(pipeline.get_filter<FloatScalingFilter>()
@@ -1842,7 +1843,7 @@ void testing_xor_filter(Datatype t) {
     results.push_back(val);
   }
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   ThreadPool tp(4);
   pipeline.add_filter(XORFilter(t));
 
@@ -1890,7 +1891,7 @@ TEST_CASE("Filter: Test XOR", "[filter][xor]") {
 }
 
 TEST_CASE("Filter: Pipeline filtered output types", "[filter][pipeline]") {
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
 
   SECTION("- DoubleDelta filter reinterprets float->int32") {
     pipeline.add_filter(CompressionFilter(

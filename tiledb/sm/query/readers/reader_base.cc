@@ -734,7 +734,8 @@ ReaderBase::load_tile_chunk_data(
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
 
-  const FilterPipeline& filters = array_schema_.filters(name);
+  const FilterPipeline<ContextResources::resource_manager_type> filters =
+      array_schema_.filters(name);
   if (!validity_only) {
     if (!var_size || !filters.skip_offsets_filtering(
                          t_var->type(), array_schema_.version())) {
@@ -939,31 +940,36 @@ Status ReaderBase::unfilter_tile(
   auto t_var = var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
   auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
-  FilterPipeline fixed_filters;
-  FilterPipeline var_filters;
-  FilterPipeline validity_filters;
+  using resource_manager_type = ContextResources::resource_manager_type;
+  FilterPipeline<resource_manager_type> fixed_filters;
+  FilterPipeline<resource_manager_type> var_filters;
+  FilterPipeline<resource_manager_type> validity_filters;
 
   // Create our filter pipelines
   if (!validity_only) {
     if (!var_size) {
       fixed_filters = array_schema_.filters(name);
-      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-          &fixed_filters, array_->get_encryption_key()));
+      RETURN_NOT_OK(
+          FilterPipeline<resource_manager_type>::append_encryption_filter(
+              &fixed_filters, array_->get_encryption_key()));
     } else {
       fixed_filters = array_schema_.cell_var_offsets_filters();
-      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-          &fixed_filters, array_->get_encryption_key()));
+      RETURN_NOT_OK(
+          FilterPipeline<resource_manager_type>::append_encryption_filter(
+              &fixed_filters, array_->get_encryption_key()));
 
       var_filters = array_schema_.filters(name);
-      RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-          &var_filters, array_->get_encryption_key()));
+      RETURN_NOT_OK(
+          FilterPipeline<resource_manager_type>::append_encryption_filter(
+              &var_filters, array_->get_encryption_key()));
     }
   }
 
   if (nullable) {
     validity_filters = array_schema_.cell_validity_filters();
-    RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
-        &validity_filters, array_->get_encryption_key()));
+    RETURN_NOT_OK(
+        FilterPipeline<resource_manager_type>::append_encryption_filter(
+            &validity_filters, array_->get_encryption_key()));
   }
 
   bool skip_offsets_filtering = false;

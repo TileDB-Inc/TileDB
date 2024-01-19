@@ -159,10 +159,11 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 
   Deserializer filter_pipeline_deserializer(
       filter_pipeline_buf.data(), filter_pipeline_buf.size());
-  auto filterpipeline{FilterPipeline::deserialize(
-      filter_pipeline_deserializer,
-      header.version_number,
-      static_cast<Datatype>(header.datatype))};
+  auto filterpipeline{
+      FilterPipeline<ContextResources::resource_manager_type>::deserialize(
+          filter_pipeline_deserializer,
+          header.version_number,
+          static_cast<Datatype>(header.datatype))};
   header.filters = std::move(filterpipeline);
 
   return header;
@@ -253,8 +254,9 @@ void GenericTileIO::init_generic_tile_header(
       constants::generic_tile_compression_level,
       tile->type()));
 
-  throw_if_not_ok(FilterPipeline::append_encryption_filter(
-      &header->filters, encryption_key));
+  throw_if_not_ok(
+      FilterPipeline<ContextResources::resource_manager_type>::
+          append_encryption_filter(&header->filters, encryption_key));
 }
 
 }  // namespace sm

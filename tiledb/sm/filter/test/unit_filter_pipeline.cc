@@ -48,6 +48,7 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
+#include "tiledb/sm/storage_manager/context.h"
 
 using namespace tiledb::sm;
 
@@ -103,7 +104,7 @@ TEST_CASE(
   filters_buffer_offset<int32_t, 34>(p) = compressor_level3;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto filters{FilterPipeline::deserialize(
+  auto filters{FilterPipeline<Context::resource_manager_type>::deserialize(
       deserializer, constants::format_version, Datatype::INT32)};
 
   CHECK(filters.max_chunk_size() == max_chunk_size);
@@ -127,7 +128,8 @@ TEST_CASE(
 
 TEST_CASE(
     "FilterPipeline: Test if filter list has a filter", "[filter-pipeline]") {
-  FilterPipeline fp;
+  using resource_manager_type = Context::resource_manager_type;
+  FilterPipeline<resource_manager_type> fp;
   fp.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
   fp.add_filter(BitWidthReductionFilter(Datatype::ANY));
   fp.add_filter(CompressionFilter(Compressor::RLE, 1, Datatype::ANY));
@@ -140,13 +142,15 @@ TEST_CASE(
   CHECK_FALSE(fp.has_filter(FilterType::FILTER_BITSHUFFLE));
 
   // Check no error when pipeline empty
-  FilterPipeline fp2;
+  FilterPipeline<resource_manager_type> fp2;
   CHECK_FALSE(fp2.has_filter(FilterType::FILTER_RLE));
 }
 
 TEST_CASE(
     "FilterPipeline: Test if tile chunking should occur in filtering",
     "[filter-pipeline]") {
+  using resource_manager_type = Context::resource_manager_type;
+
   // Parametrize test to be check for both RLE and Dictionary compression
   using record = std::tuple<tiledb::sm::Compressor, uint32_t>;
   auto filter = GENERATE(
@@ -155,13 +159,13 @@ TEST_CASE(
   auto version = std::get<1>(filter);
 
   // pipeline that contains an RLE or Dictionary compressor
-  FilterPipeline fp_with;
+  FilterPipeline<resource_manager_type> fp_with;
   fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
   fp_with.add_filter(BitWidthReductionFilter(Datatype::ANY));
   fp_with.add_filter(CompressionFilter(f, 1, Datatype::ANY));
 
   // pipeline that doesn't contain an RLE or Dictionary compressor
-  FilterPipeline fp_without;
+  FilterPipeline<resource_manager_type> fp_without;
   fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
   fp_without.add_filter(BitWidthReductionFilter(Datatype::ANY));
 
@@ -196,7 +200,7 @@ TEST_CASE(
   auto filter = Compressor::DELTA;
 
   // pipeline that contains an RLE or Dictionary compressor
-  FilterPipeline fp;
+  FilterPipeline<Context::resource_manager_type> fp;
   fp.add_filter(CompressionFilter(filter, 1, Datatype::ANY));
   fp.set_max_chunk_size(0);
 
@@ -215,13 +219,13 @@ TEST_CASE(
   auto version = std::get<1>(filter);
 
   // pipeline that contains an RLE or Dictionary compressor
-  FilterPipeline fp_with;
+  FilterPipeline<Context::resource_manager_type> fp_with;
   fp_with.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
   fp_with.add_filter(BitWidthReductionFilter(Datatype::ANY));
   fp_with.add_filter(CompressionFilter(f, 1, Datatype::ANY));
 
   // pipeline that doesn't contain an RLE or Dictionary compressor
-  FilterPipeline fp_without;
+  FilterPipeline<Context::resource_manager_type> fp_without;
   fp_without.add_filter(CompressionFilter(Compressor::ZSTD, 2, Datatype::ANY));
   fp_without.add_filter(BitWidthReductionFilter(Datatype::ANY));
 

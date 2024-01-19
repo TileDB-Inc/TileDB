@@ -108,7 +108,8 @@ class Attribute {
       Datatype type,
       bool nullable,
       uint32_t cell_val_num,
-      const FilterPipeline& filter_pipeline,
+      const FilterPipeline<ContextResources::resource_manager_type>&
+          filter_pipeline,
       const ByteVecValue& fill_value,
       uint8_t fill_value_validity,
       DataOrder order = DataOrder::UNORDERED_DATA,
@@ -214,7 +215,8 @@ class Attribute {
   }
 
   /** Returns the filter pipeline of this attribute. */
-  const FilterPipeline& filters() const;
+  const FilterPipeline<ContextResources::resource_manager_type>& filters()
+      const;
 
   /**
    * Populates the object members from the data in the input binary buffer.
@@ -247,7 +249,8 @@ class Attribute {
   void set_nullable(bool nullable);
 
   /** Sets the filter pipeline for this attribute. */
-  void set_filter_pipeline(const FilterPipeline& pipeline);
+  void set_filter_pipeline(
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /**
    * Sets the fill value for the attribute. Applicable to
@@ -283,7 +286,7 @@ class Attribute {
   bool nullable_;
 
   /** The attribute filter pipeline. */
-  FilterPipeline filters_;
+  FilterPipeline<ContextResources::resource_manager_type> filters_;
 
   /** The attribute name. */
   std::string name_;

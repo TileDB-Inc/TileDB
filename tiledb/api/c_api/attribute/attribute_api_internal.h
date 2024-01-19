@@ -104,7 +104,9 @@ struct tiledb_attribute_handle_t
   /**
    * Facade for non-C.41 `Attribute` function
    */
-  void set_filter_pipeline(const tiledb::sm::FilterPipeline& pipeline) {
+  void set_filter_pipeline(
+      const tiledb::sm::FilterPipeline<
+          tiledb::sm::ContextResources::resource_manager_type> pipeline) {
     nonconst_attribute()->set_filter_pipeline(pipeline);
   }
 
@@ -181,7 +183,9 @@ struct tiledb_attribute_handle_t
   /**
    * Facade for `Attribute` function
    */
-  [[nodiscard]] inline const tiledb::sm::FilterPipeline& filters() const {
+  [[nodiscard]] inline const tiledb::sm::FilterPipeline<
+      tiledb::sm::ContextResources::resource_manager_type>
+  filters() const {
     return attr_->filters();
   }
   /**

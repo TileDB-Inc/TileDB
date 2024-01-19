@@ -61,6 +61,7 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+template <class RM>
 class FilterPipeline;
 
 enum class Compressor : uint8_t;
@@ -108,7 +109,8 @@ class Dimension {
       Datatype type,
       uint32_t cell_val_num,
       const Range& domain,
-      const FilterPipeline& filter_pipeline,
+      const FilterPipeline<ContextResources::resource_manager_type>&
+          filter_pipeline,
       const ByteVecValue& tile_extent);
 
   /**
@@ -165,7 +167,7 @@ class Dimension {
       Deserializer& deserializer,
       uint32_t version,
       Datatype type,
-      FilterPipeline& coords_filters);
+      FilterPipeline<ContextResources::resource_manager_type>& coords_filters);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -174,7 +176,8 @@ class Dimension {
   void dump(FILE* out) const;
 
   /** Returns the filter pipeline of this dimension. */
-  const FilterPipeline& filters() const;
+  const FilterPipeline<ContextResources::resource_manager_type>& filters()
+      const;
 
   /** Returns the dimension name. */
   const std::string& name() const;
@@ -719,7 +722,8 @@ class Dimension {
   Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
-  void set_filter_pipeline(const FilterPipeline& pipeline);
+  void set_filter_pipeline(
+      const FilterPipeline<ContextResources::resource_manager_type>& pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -773,7 +777,7 @@ class Dimension {
   Range domain_;
 
   /** The dimension filter pipeline. */
-  FilterPipeline filters_;
+  FilterPipeline<ContextResources::resource_manager_type> filters_;
 
   /** The dimension name. */
   std::string name_;

@@ -79,7 +79,7 @@ class GenericTileIO {
     /** Number of bytes in the serialized filter pipeline instance. */
     uint32_t filter_pipeline_size;
     /** Filter pipeline used to filter the tile. */
-    FilterPipeline filters;
+    FilterPipeline<ContextResources::resource_manager_type> filters;
 
     /** Constructor. */
     GenericTileHeader()
