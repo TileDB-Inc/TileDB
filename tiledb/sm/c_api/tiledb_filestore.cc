@@ -116,7 +116,7 @@ int32_t tiledb_filestore_schema_create(
     // All other calls for adding domains, attributes, etc
     // create copies of the underlying core objects from within
     // the cpp objects constructed here
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema<ContextResources::resource_manager_type>>(
         HERE(), tiledb::sm::ArrayType::DENSE);
     auto& schema = (*array_schema)->array_schema_;
 

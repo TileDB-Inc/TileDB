@@ -117,7 +117,7 @@ void generic_tile_offsets_from_capnp(
 }
 
 Status fragment_metadata_from_capnp(
-    const shared_ptr<const ArraySchema>& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type> & array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
     shared_ptr<FragmentMetadata> frag_meta,
     ContextResources* resources,

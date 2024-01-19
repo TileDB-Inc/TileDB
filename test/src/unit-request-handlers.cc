@@ -72,7 +72,7 @@ struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override;
-  ArraySchema call_handler(
+  ArraySchema<ContextResources::resource_manager_type> call_handler(
       serialization::LoadArraySchemaRequest req, SerializationType stype);
 
   shared_ptr<const Enumeration> create_string_enumeration(
@@ -414,7 +414,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   return schema;
 }
 
-ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
+ArraySchema<ContextResources::resource_manager_type> HandleLoadArraySchemaRequestFx::call_handler(
     serialization::LoadArraySchemaRequest req, SerializationType stype) {
   // If this looks weird, its because we're using the public C++ API to create
   // these objets instead of the internal APIs elsewhere in this test suite.

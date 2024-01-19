@@ -48,7 +48,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Config;
 class Query;
 class URI;
@@ -129,7 +131,7 @@ class FragmentConsolidationWorkspace {
   void resize_buffers(
       stats::Stats* stats,
       const FragmentConsolidationConfig& config,
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
   /**
@@ -336,7 +338,7 @@ class FragmentConsolidator : public Consolidator {
    * @return Status
    */
   Status compute_next_to_consolidate(
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       const FragmentInfo& fragment_info,
       std::vector<TimestampedURI>* to_consolidate,
       NDRange* union_non_empty_domains) const;

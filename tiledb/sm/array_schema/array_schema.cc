@@ -202,7 +202,7 @@ ArraySchema<RM>::ArraySchema(
  */
 
 template <class RM>
-ArraySchema<RM>::ArraySchema(const ArraySchema& array_schema)
+ArraySchema<RM>::ArraySchema(const ArraySchema<RM>& array_schema)
     : uri_{array_schema.uri_}
     , array_uri_{array_schema.array_uri_}
     , version_{array_schema.version_}
@@ -489,7 +489,7 @@ void ArraySchema<RM>::check_without_config() const {
 
 template <class RM>
 void ArraySchema<RM>::check_dimension_label_schema(
-    const std::string& name, const ArraySchema& schema) const {
+    const std::string& name, const ArraySchema<RM>& schema) const {
   // Check there is a dimension label with the requested name and get the
   // dimension label reference for it.
   auto dim_iter = dimension_label_map_.find(name);
@@ -1311,7 +1311,7 @@ void ArraySchema<RM>::drop_enumeration(const std::string& enmr_name) {
 
 // #TODO Add security validation on incoming URI
 template <class RM>
-ArraySchema ArraySchema<RM>::deserialize(
+ArraySchema<RM> ArraySchema<RM>::deserialize(
     Deserializer& deserializer, const URI& uri) {
   Status st;
   // Load version

@@ -235,7 +235,7 @@ class TestAttribute {
  * Array Schema wrapper
  */
 class TestArraySchema {
-  ArraySchema schema_;
+  ArraySchema<ContextResources::resource_manager_type> schema_;
 
   /**
    * Convert an initializer list of `TestDimension` to a vector of `Dimension`
@@ -319,7 +319,7 @@ class TestArraySchema {
   /**
    * Accessor for the underlying schema object.
    */
-  const ArraySchema& schema() const {
+  const ArraySchema<ContextResources::resource_manager_type>& schema() const {
     return schema_;
   };
 

@@ -49,7 +49,10 @@ namespace sm {
 
 class Array;
 class Buffer;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Dimension;
 enum class SerializationType : uint8_t;
 
@@ -100,7 +103,7 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
  * @return Status
  */
 Status array_schema_to_capnp(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side);
 
@@ -111,7 +114,7 @@ Status array_schema_to_capnp(
  * @param uri A URI object
  * @return a new ArraySchema
  */
-ArraySchema array_schema_from_capnp(
+ArraySchema<ContextResources::resource_manager_type> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
 /**
@@ -147,12 +150,12 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
  * @return
  */
 Status array_schema_serialize(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side);
 
-ArraySchema array_schema_deserialize(
+ArraySchema<ContextResources::resource_manager_type> array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(
@@ -184,7 +187,7 @@ Status max_buffer_sizes_serialize(
     Buffer* serialized_buffer);
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
@@ -200,11 +203,11 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType serialization_type, const Buffer& data);
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     SerializationType serialization_type,
     Buffer& data);
 
-ArraySchema deserialize_load_array_schema_response(
+ArraySchema<ContextResources::resource_manager_type> deserialize_load_array_schema_response(
     SerializationType serialization_type, const Buffer& data);
 
 }  // namespace serialization

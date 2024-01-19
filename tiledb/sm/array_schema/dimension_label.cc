@@ -60,7 +60,7 @@ DimensionLabel::DimensionLabel(
     DataOrder label_order,
     Datatype label_type,
     uint32_t label_cell_val_num,
-    shared_ptr<ArraySchema> schema,
+    shared_ptr<ArraySchema<ContextResources::resource_manager_type>> schema,
     bool is_external,
     bool relative_uri)
     : dim_id_(dim_id)
@@ -267,7 +267,7 @@ void DimensionLabel::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
-const shared_ptr<ArraySchema> DimensionLabel::schema() const {
+const shared_ptr<ArraySchema<ContextResources::resource_manager_type>> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(
         "DimensionLabel",

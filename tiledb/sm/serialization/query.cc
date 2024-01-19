@@ -186,7 +186,7 @@ std::vector<Range> range_buffers_from_capnp(
 }
 
 Status subarray_to_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const Subarray* subarray,
     capnp::Subarray::Builder* builder) {
   builder->setLayout(layout_str(subarray->layout()));
@@ -351,7 +351,7 @@ Status subarray_from_capnp(
 }
 
 Status subarray_partitioner_to_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const SubarrayPartitioner& partitioner,
     capnp::SubarrayPartitioner::Builder* builder) {
   // Subarray
@@ -577,7 +577,7 @@ Status subarray_partitioner_from_capnp(
 }
 
 Status read_state_to_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const Reader& reader,
     capnp::QueryReader::Builder* builder) {
   auto read_state = reader.read_state();
@@ -614,7 +614,7 @@ Status index_read_state_to_capnp(
 }
 
 Status dense_read_state_to_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const DenseReader& reader,
     capnp::QueryReader::Builder* builder) {
   auto read_state = reader.read_state();
@@ -664,7 +664,7 @@ Status read_state_from_capnp(
 }
 
 Status index_read_state_from_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
   auto read_state = reader->read_state();
@@ -1162,7 +1162,7 @@ Status reader_from_capnp(
 }
 
 Status index_reader_from_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const capnp::ReaderIndex::Reader& reader_reader,
     Query* query,
     SparseIndexReaderBase* reader) {
@@ -1204,7 +1204,7 @@ Status index_reader_from_capnp(
 }
 
 Status dense_reader_from_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const capnp::QueryReader::Reader& reader_reader,
     Query* query,
     DenseReader* reader,

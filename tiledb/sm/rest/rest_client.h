@@ -48,7 +48,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class ArraySchemaEvolution;
 class Config;
 class FragmentInfo;
@@ -97,7 +99,7 @@ class RestClient {
    * @param uri of array being loaded
    * @return Status and new ArraySchema shared pointer.
    */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema_from_rest(
+  tuple<Status, optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>> get_array_schema_from_rest(
       const URI& uri);
 
   /**
@@ -108,7 +110,7 @@ class RestClient {
    * @param uri The Array URI to load the schema from.
    * @return shared_ptr<ArraySchema> The loaded array schema.
    */
-  shared_ptr<ArraySchema> post_array_schema_from_rest(
+  shared_ptr<ArraySchema<ContextResources::resource_manager_type>> post_array_schema_from_rest(
       const Config& config,
       const URI& uri,
       uint64_t timestamp_start,
@@ -133,7 +135,7 @@ class RestClient {
    * @return Status Ok() on success Error() on failures
    */
   Status post_array_schema_to_rest(
-      const URI& uri, const ArraySchema& array_schema);
+      const URI& uri, const ArraySchema<ContextResources::resource_manager_type>& array_schema);
 
   /**
    * Deletes all written data from array at the given URI from the REST server.
@@ -202,7 +204,7 @@ class RestClient {
    */
   Status get_array_max_buffer_sizes(
       const URI& uri,
-      const ArraySchema& schema,
+      const ArraySchema<ContextResources::resource_manager_type>& schema,
       const void* subarray,
       std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
           buffer_sizes);
@@ -500,7 +502,7 @@ class RestClient {
    * @return Status
    */
   static Status subarray_to_str(
-      const ArraySchema& schema,
+      const ArraySchema<ContextResources::resource_manager_type>& schema,
       const void* subarray,
       std::string* subarray_str);
 

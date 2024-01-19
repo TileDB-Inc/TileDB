@@ -44,7 +44,9 @@ using namespace tiledb::type;
 
 namespace tiledb::sm {
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Buffer;
 class ConstBuffer;
 class Dimension;
@@ -100,7 +102,7 @@ class DimensionLabel {
       DataOrder label_order,
       Datatype label_type,
       uint32_t label_cell_val_num,
-      shared_ptr<ArraySchema> schema,
+      shared_ptr<ArraySchema<ContextResources::resource_manager_type>> schema,
       bool is_external,
       bool relative_uri);
 
@@ -189,7 +191,7 @@ class DimensionLabel {
     return dim_label_name_;
   }
 
-  const shared_ptr<ArraySchema> schema() const;
+  const shared_ptr<ArraySchema<ContextResources::resource_manager_type>> schema() const;
 
   /**
    * Serializes the dimension label object into a buffer.
@@ -251,7 +253,7 @@ class DimensionLabel {
    * The schema is used for creating the dimension label and is not included in
    * the dimension label schema serialization and deserialization from disk.
    */
-  shared_ptr<ArraySchema> schema_;
+  shared_ptr<ArraySchema<ContextResources::resource_manager_type>> schema_;
 
   /**
    * If ``true`` the dimension label exists outside the array, otherwise

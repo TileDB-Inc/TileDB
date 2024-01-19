@@ -217,7 +217,7 @@ class DenseTiler {
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
   /** The array schema. */
-  const ArraySchema& array_schema_;
+  const ArraySchema<ContextResources::resource_manager_type>& array_schema_;
 
   /** The input buffers, from which the tiles will be produced. */
   const std::unordered_map<std::string, QueryBuffer>* buffers_;

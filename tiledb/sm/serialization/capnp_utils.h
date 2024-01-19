@@ -551,7 +551,7 @@ Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
 template <typename CapnpT>
 Status serialize_subarray(
     CapnpT& builder,
-    const tiledb::sm::ArraySchema& array_schema,
+    const tiledb::sm::ArraySchema<ContextResources::resource_manager_type>& array_schema,
     const void* subarray) {
   // Check coords type
   auto dim_num = array_schema.dim_num();
@@ -598,7 +598,7 @@ Status serialize_subarray(
 template <typename CapnpT>
 Status deserialize_subarray(
     const CapnpT& reader,
-    const tiledb::sm::ArraySchema& array_schema,
+    const tiledb::sm::ArraySchema<ContextResources::resource_manager_type>& array_schema,
     void** subarray) {
   // Check coords type
   auto dim_num = array_schema.dim_num();

@@ -53,7 +53,9 @@ class ConstBuffer;
 class Dimension;
 class Domain;
 class Enumeration;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -93,8 +95,8 @@ class ArraySchemaEvolution {
   /*               API                 */
   /* ********************************* */
 
-  shared_ptr<ArraySchema> evolve_schema(
-      const shared_ptr<const ArraySchema>& orig_schema);
+  shared_ptr<ArraySchema<ContextResources::resource_manager_type>> evolve_schema(
+      const ArraySchema<ContextResources::resource_manager_type> & orig_schema);
 
   /**
    * Adds an attribute, copying the input.

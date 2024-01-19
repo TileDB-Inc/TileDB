@@ -89,7 +89,7 @@ class UpdateValue {
    *
    * @param array_schema The current array schema.
    */
-  void check(const ArraySchema& array_schema) const;
+  void check(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const;
 
  private:
   /* ********************************* */

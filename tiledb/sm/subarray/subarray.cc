@@ -2280,7 +2280,7 @@ bool Subarray::est_result_size_computed() {
 }
 
 Status Subarray::compute_relevant_fragment_est_result_sizes(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,

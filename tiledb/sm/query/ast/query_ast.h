@@ -121,7 +121,7 @@ class ASTNode {
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
   virtual void rewrite_enumeration_conditions(
-      const ArraySchema& array_schema) = 0;
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema) = 0;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -132,7 +132,7 @@ class ASTNode {
    * queried on.
    * @return Status OK if successful.
    */
-  virtual Status check_node_validity(const ArraySchema& array_schema) const = 0;
+  virtual Status check_node_validity(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const = 0;
 
   /**
    * @brief Combines two ASTNodes (the caller node and rhs) with the combination
@@ -401,7 +401,7 @@ class ASTNodeVal : public ASTNode {
    *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
-  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
+  void rewrite_enumeration_conditions(const ArraySchema<ContextResources::resource_manager_type>& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -412,7 +412,7 @@ class ASTNodeVal : public ASTNode {
    * queried on.
    * @return Status OK if successful.
    */
-  Status check_node_validity(const ArraySchema& array_schema) const override;
+  Status check_node_validity(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const override;
 
   /**
    * @brief Combines two ASTNodes (the caller node and rhs) with the combination
@@ -649,7 +649,7 @@ class ASTNodeExpr : public ASTNode {
    *
    * @param array_schema The array schema with all relevant enumerations loaded.
    */
-  void rewrite_enumeration_conditions(const ArraySchema& array_schema) override;
+  void rewrite_enumeration_conditions(const ArraySchema<ContextResources::resource_manager_type>& array_schema) override;
 
   /**
    * @brief Checks whether the node is valid based on the array schema of the
@@ -660,7 +660,7 @@ class ASTNodeExpr : public ASTNode {
    * queried on.
    * @return Status OK if successful.
    */
-  Status check_node_validity(const ArraySchema& array_schema) const override;
+  Status check_node_validity(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const override;
 
   /**
    * @brief Combines two ASTNodes (the caller node and rhs) with the combination

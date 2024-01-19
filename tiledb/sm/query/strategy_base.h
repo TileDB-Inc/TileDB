@@ -44,7 +44,10 @@ namespace tiledb {
 namespace sm {
 
 class OpenedArray;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class IAggregator;
 enum class Layout : uint8_t;
 class MemoryTracker;
@@ -244,7 +247,7 @@ class StrategyBase {
   shared_ptr<OpenedArray> array_;
 
   /** The array schema. */
-  const ArraySchema& array_schema_;
+  const ArraySchema<ContextResources::resource_manager_type>& array_schema_;
 
   /** The config for query-level parameters only. */
   Config& config_;

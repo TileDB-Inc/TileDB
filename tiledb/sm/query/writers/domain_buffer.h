@@ -124,7 +124,7 @@ class SingleCoord {
    * @param schema Array schema.
    * @param coord Data ref to the coordinate.
    */
-  SingleCoord(const ArraySchema& schema, const DomainBufferDataRef& coord)
+  SingleCoord(const ArraySchema<ContextResources::resource_manager_type>& schema, const DomainBufferDataRef& coord)
       : coords_(schema.dim_num())
       , qb_(schema.dim_num())
       , sizes_(schema.dim_num() + 1)
@@ -156,7 +156,7 @@ class SingleCoord {
    * @param single_offset Deserialized offset vector
    */
   SingleCoord(
-      const ArraySchema& schema,
+      const ArraySchema<ContextResources::resource_manager_type>& schema,
       std::vector<std::vector<uint8_t>> coords,
       std::vector<uint64_t> sizes,
       std::vector<uint64_t> single_offset)
@@ -254,7 +254,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
    * @param buffers a buffer map for each dimension of the domain
    */
   DomainBuffersView(
-      const ArraySchema& schema,
+      const ArraySchema<ContextResources::resource_manager_type>& schema,
       const std::unordered_map<std::string, QueryBuffer>& buffers)
       : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
@@ -290,7 +290,7 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
    * @param schema the schema of an open array
    * @param coord a single coordinate value
    */
-  DomainBuffersView(const ArraySchema& schema, SingleCoord& coord)
+  DomainBuffersView(const ArraySchema<ContextResources::resource_manager_type>& schema, SingleCoord& coord)
       : qb_(schema.dim_num()) {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {

@@ -88,7 +88,7 @@ ArrayDirectory::ArrayDirectory(
 /*                API                */
 /* ********************************* */
 
-shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
+shared_ptr<ArraySchema<ContextResources::resource_manager_type>> ArrayDirectory::load_array_schema_from_uri(
     ContextResources& resources,
     const URI& schema_uri,
     const EncryptionKey& encryption_key) {
@@ -101,11 +101,11 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
-  return make_shared<ArraySchema>(
-      HERE(), ArraySchema::deserialize(deserializer, schema_uri));
+  return make_shared<ArraySchema<ContextResources::resource_manager_type>>(
+      HERE(), ArraySchema<ContextResources::resource_manager_type>::deserialize(deserializer, schema_uri));
 }
 
-shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
+shared_ptr<ArraySchema<ContextResources::resource_manager_type>> ArrayDirectory::load_array_schema_latest(
     const EncryptionKey& encryption_key) const {
   auto timer_se =
       resources_.get().stats().start_timer("sm_load_array_schema_latest");
@@ -126,8 +126,8 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
 }
 
 tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+    shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>
 ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
   // Load all array schemas
   auto&& array_schemas = load_all_array_schemas(encryption_key);
@@ -141,7 +141,7 @@ ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
   return {it->second, array_schemas};
 }
 
-std::unordered_map<std::string, shared_ptr<ArraySchema>>
+std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>
 ArrayDirectory::load_all_array_schemas(
     const EncryptionKey& encryption_key) const {
   auto timer_se =
@@ -158,7 +158,7 @@ ArrayDirectory::load_all_array_schemas(
         "Cannot get the array schema vector; No array schemas found.");
   }
 
-  std::vector<shared_ptr<ArraySchema>> schema_vector;
+  std::vector<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> schema_vector;
   auto schema_num = schema_uris.size();
   schema_vector.resize(schema_num);
 
@@ -178,7 +178,7 @@ ArrayDirectory::load_all_array_schemas(
       });
   throw_if_not_ok(status);
 
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
+  std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas;
   for (const auto& schema : schema_vector) {
     array_schemas[schema->name()] = schema;
   }

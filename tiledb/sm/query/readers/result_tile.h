@@ -263,7 +263,7 @@ class ResultTile {
     /** Constructor with var_size and nullable parameters. */
     TileTuple(
         const format_version_t format_version,
-        const ArraySchema& array_schema,
+        const ArraySchema<ContextResources::resource_manager_type>& array_schema,
         const std::string& name,
         const TileSizes tile_sizes,
         const TileData tile_data)
@@ -419,7 +419,7 @@ class ResultTile {
   /** Initializes the result tile for the given attribute. */
   void init_attr_tile(
       const format_version_t format_version,
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
       const TileData tile_data);
@@ -427,7 +427,7 @@ class ResultTile {
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
       const format_version_t format_version,
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
       const TileData tile_data,

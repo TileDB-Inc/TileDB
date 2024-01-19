@@ -149,7 +149,7 @@ bool ASTNodeVal::is_backwards_compatible() const {
 }
 
 void ASTNodeVal::rewrite_enumeration_conditions(
-    const ArraySchema& array_schema) {
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   // This is called by the Query class before applying a query condition. This
   // works by looking up each related enumeration and translating the
   // condition's value to reflect the underlying index value. I.e., if the
@@ -242,7 +242,7 @@ void ASTNodeVal::rewrite_enumeration_conditions(
   use_enumeration_ = false;
 }
 
-Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
+Status ASTNodeVal::check_node_validity(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const {
   // Ensure that the field exists.
   if (!array_schema.is_field(field_name_)) {
     return Status_QueryConditionError("Field doesn't exist");
@@ -495,13 +495,13 @@ bool ASTNodeExpr::is_backwards_compatible() const {
 }
 
 void ASTNodeExpr::rewrite_enumeration_conditions(
-    const ArraySchema& array_schema) {
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   for (auto& child : nodes_) {
     child->rewrite_enumeration_conditions(array_schema);
   }
 }
 
-Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
+Status ASTNodeExpr::check_node_validity(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const {
   // If the node is a compound expression node, ensure there are at least
   // two children in the node and then run a check on each child node.
   if (nodes_.size() < 2) {

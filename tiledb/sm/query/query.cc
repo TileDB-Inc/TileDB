@@ -381,11 +381,11 @@ Array* Query::array() {
   return array_;
 }
 
-const ArraySchema& Query::array_schema() const {
+const ArraySchema<ContextResources::resource_manager_type>& Query::array_schema() const {
   return *(array_schema_.get());
 }
 
-const std::shared_ptr<const ArraySchema> Query::array_schema_shared() const {
+const std::ArraySchema<ContextResources::resource_manager_type>  Query::array_schema_shared() const {
   return array_schema_;
 }
 
@@ -1668,7 +1668,7 @@ shared_ptr<Buffer> Query::rest_scratch() const {
 }
 
 bool Query::use_refactored_dense_reader(
-    const ArraySchema& array_schema, bool all_dense) {
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema, bool all_dense) {
   bool use_refactored_reader = false;
   bool found = false;
 
@@ -1696,7 +1696,7 @@ bool Query::use_refactored_dense_reader(
 }
 
 bool Query::use_refactored_sparse_global_order_reader(
-    Layout layout, const ArraySchema& array_schema) {
+    Layout layout, const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
 
@@ -1726,7 +1726,7 @@ bool Query::use_refactored_sparse_global_order_reader(
 }
 
 bool Query::use_refactored_sparse_unordered_with_dups_reader(
-    Layout layout, const ArraySchema& array_schema) {
+    Layout layout, const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   bool use_refactored_reader = false;
   bool found = false;
 

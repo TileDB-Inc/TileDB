@@ -634,7 +634,7 @@ bool Array::is_remote() const {
   return remote_;
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> Array::get_array_schema()
+tuple<Status, optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>> Array::get_array_schema()
     const {
   // Error if the array is not open
   if (!is_open_)
@@ -1238,8 +1238,8 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 /* ********************************* */
 
 tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>,
     std::vector<shared_ptr<FragmentMetadata>>>
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
@@ -1254,8 +1254,8 @@ Array::open_for_reads() {
 }
 
 tuple<
-    shared_ptr<ArraySchema>,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+    shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>
 Array::open_for_reads_without_fragments() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_without_fragments_load_schemas");
@@ -1271,8 +1271,8 @@ Array::open_for_reads_without_fragments() {
 
 tuple<
     Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>,
+    optional<std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>>
 Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");

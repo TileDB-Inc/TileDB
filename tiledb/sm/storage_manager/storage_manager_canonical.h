@@ -68,7 +68,10 @@ namespace sm {
 class Array;
 class OpenedArray;
 class ArrayDirectory;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class ArraySchemaEvolution;
 class Buffer;
 class Consolidator;
@@ -366,7 +369,7 @@ class StorageManagerCanonical {
    */
   Status array_create(
       const URI& array_uri,
-      const shared_ptr<ArraySchema>& array_schema,
+      const shared_ptr<ArraySchema<ContextResources::resource_manager_type>>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**
@@ -728,7 +731,7 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status store_array_schema(
-      const shared_ptr<ArraySchema>& array_schema,
+      const shared_ptr<ArraySchema<ContextResources::resource_manager_type>>& array_schema,
       const EncryptionKey& encryption_key);
 
   /**

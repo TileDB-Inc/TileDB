@@ -53,7 +53,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class SchemaEvolution;
 class FragmentMetadata;
 enum class QueryType : uint8_t;
@@ -122,30 +124,30 @@ class OpenedArray {
   }
 
   /** Returns the latest array schema. */
-  inline const ArraySchema& array_schema_latest() const {
+  inline const ArraySchema<ContextResources::resource_manager_type>& array_schema_latest() const {
     return *(array_schema_latest_.get());
   }
 
   /** Returns the latest array schema as a shared pointer. */
-  inline shared_ptr<ArraySchema> array_schema_latest_ptr() const {
+  inline shared_ptr<ArraySchema<ContextResources::resource_manager_type>> array_schema_latest_ptr() const {
     return array_schema_latest_;
   }
 
   /** Sets the latest array schema. */
   inline void set_array_schema_latest(
-      const shared_ptr<ArraySchema>& array_schema) {
+      const shared_ptr<ArraySchema<ContextResources::resource_manager_type>>& array_schema) {
     array_schema_latest_ = array_schema;
   }
 
   /** Returns all array schemas. */
-  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
 
   /** Sets all array schema. */
   inline void set_array_schemas_all(
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&& all_schemas) {
     array_schemas_all_ = std::move(all_schemas);
   }
 
@@ -211,12 +213,12 @@ class OpenedArray {
   optional<ArrayDirectory> array_dir_;
 
   /** The latest array schema. */
-  shared_ptr<ArraySchema> array_schema_latest_;
+  shared_ptr<ArraySchema<ContextResources::resource_manager_type>> array_schema_latest_;
 
   /**
    * A map of all array_schemas_all
    */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas_all_;
 
   /** The array metadata. */
   Metadata metadata_;
@@ -316,22 +318,22 @@ class Array {
    * @param array_schema The array schema to set.
    */
   inline void set_array_schema_latest(
-      const shared_ptr<ArraySchema>& array_schema) {
+      const shared_ptr<ArraySchema<ContextResources::resource_manager_type>>& array_schema) {
     opened_array_->set_array_schema_latest(array_schema);
   }
 
   /** Returns the latest array schema. */
-  inline const ArraySchema& array_schema_latest() const {
+  inline const ArraySchema<ContextResources::resource_manager_type>& array_schema_latest() const {
     return opened_array_->array_schema_latest();
   }
 
   /** Returns the latest array schema as a shared pointer. */
-  inline shared_ptr<const ArraySchema> array_schema_latest_ptr() const {
+  inline shared_ptr<const ArraySchema<ContextResources::resource_manager_type>> array_schema_latest_ptr() const {
     return opened_array_->array_schema_latest_ptr();
   }
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
   array_schemas_all() const {
     return opened_array_->array_schemas_all();
   }
@@ -341,7 +343,7 @@ class Array {
    * @param all_schemas The array schemas to set.
    */
   inline void set_array_schemas_all(
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&& all_schemas) {
     opened_array_->set_array_schemas_all(std::move(all_schemas));
   }
 
@@ -509,7 +511,7 @@ class Array {
   bool is_remote() const;
 
   /** Retrieves the array schema. Errors if the array is not open. */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema() const;
+  tuple<Status, optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>> get_array_schema() const;
 
   /** Retrieves the query type. Throws if the array is not open. */
   QueryType get_query_type() const;
@@ -960,8 +962,8 @@ class Array {
    *           after the array is opened.
    */
   tuple<
-      shared_ptr<ArraySchema>,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>,
       std::vector<shared_ptr<FragmentMetadata>>>
   open_for_reads();
 
@@ -975,8 +977,8 @@ class Array {
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      shared_ptr<ArraySchema>,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+      shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>
   open_for_reads_without_fragments();
 
   /** Opens an array for writes.
@@ -990,8 +992,8 @@ class Array {
    */
   tuple<
       Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>,
+      optional<std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */

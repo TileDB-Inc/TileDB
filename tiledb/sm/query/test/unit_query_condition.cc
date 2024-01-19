@@ -1018,7 +1018,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1030,7 +1030,7 @@ void test_apply_cells<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1227,7 +1227,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -1374,7 +1374,7 @@ template <typename T>
 void test_apply_operators(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells<T>(
@@ -1434,7 +1434,7 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* result_tile);
 
 /**
@@ -1444,7 +1444,7 @@ template <>
 void test_apply_tile<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -1497,7 +1497,7 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -1871,7 +1871,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1883,7 +1883,7 @@ void test_apply_cells_dense<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -2004,7 +2004,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2086,7 +2086,7 @@ template <typename T>
 void test_apply_operators_dense(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_dense<T>(
@@ -2146,7 +2146,7 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2156,7 +2156,7 @@ template <>
 void test_apply_tile_dense<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -2208,7 +2208,7 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -2593,7 +2593,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -2605,7 +2605,7 @@ void test_apply_cells_sparse<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -2711,7 +2711,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2785,7 +2785,7 @@ template <typename T>
 void test_apply_operators_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_sparse<T>(
@@ -2845,7 +2845,7 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2855,7 +2855,7 @@ template <>
 void test_apply_tile_sparse<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
@@ -2907,7 +2907,7 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
@@ -3176,7 +3176,7 @@ struct TestParams {
 void validate_qc_apply(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
@@ -3218,7 +3218,7 @@ void validate_qc_apply(
 void validate_qc_apply_sparse(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
@@ -3258,7 +3258,7 @@ void validate_qc_apply_sparse(
 void validate_qc_apply_dense(
     TestParams& tp,
     uint64_t cells,
-    shared_ptr<const ArraySchema> array_schema,
+    ArraySchema<ContextResources::resource_manager_type>  array_schema,
     ResultTile& result_tile,
     bool negated = false) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);

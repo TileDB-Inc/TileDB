@@ -51,7 +51,7 @@ class WriterTileTuple {
   /* ********************************* */
 
   WriterTileTuple(
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       const uint64_t cell_num_per_tile,
       const bool var_size,
       const bool nullable,

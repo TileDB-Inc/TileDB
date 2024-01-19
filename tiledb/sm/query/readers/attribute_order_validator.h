@@ -43,7 +43,8 @@
 
 using namespace tiledb::common;
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
 
 namespace tiledb::sm {
 

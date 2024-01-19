@@ -248,7 +248,7 @@ Status condition_to_capnp(
     capnp::Condition::Builder* condition_builder);
 
 Status subarray_to_capnp(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const Subarray* subarray,
     capnp::Subarray::Builder* builder);
 

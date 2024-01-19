@@ -46,7 +46,10 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class MemoryTracker;
 class Subarray;
 

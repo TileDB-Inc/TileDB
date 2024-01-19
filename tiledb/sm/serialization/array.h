@@ -47,7 +47,10 @@ namespace sm {
 
 class Array;
 class Buffer;
-class ArraySchema;
+
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Dimension;
 enum class SerializationType : uint8_t;
 

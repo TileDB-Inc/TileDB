@@ -46,7 +46,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class ArraySchema;
+template <>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Config;
 class Query;
 class URI;

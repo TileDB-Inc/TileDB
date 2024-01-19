@@ -229,7 +229,7 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
+  shared_ptr<ArraySchema<ContextResources::resource_manager_type>> get_array_schema(uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);
@@ -317,8 +317,8 @@ class FragmentInfo {
    *           after the array is opened.
    */
   static tuple<
-      shared_ptr<ArraySchema>,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      shared_ptr<ArraySchema<ContextResources::resource_manager_type>>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>,
       std::vector<shared_ptr<FragmentMetadata>>>
   load_array_schemas_and_fragment_metadata(
       ContextResources& resources,
@@ -344,12 +344,12 @@ class FragmentInfo {
   uint32_t unconsolidated_metadata_num() const;
 
   /** Returns array schemas map. */
-  inline const shared_ptr<ArraySchema> array_schema_latest() const {
+  inline const shared_ptr<ArraySchema<ContextResources::resource_manager_type>> array_schema_latest() const {
     return array_schema_latest_;
   }
 
   /** Returns array schemas map. */
-  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
   array_schemas_all() const {
     return array_schemas_all_;
   }
@@ -362,12 +362,12 @@ class FragmentInfo {
   // Accessors
 
   /** Returns array schemas latest. */
-  inline shared_ptr<ArraySchema>& array_schema_latest() {
+  inline shared_ptr<ArraySchema<ContextResources::resource_manager_type>>& array_schema_latest() {
     return array_schema_latest_;
   }
 
   /** array_schemas_all accessor. */
-  inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  inline std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
   array_schemas_all() {
     return array_schemas_all_;
   }
@@ -412,13 +412,13 @@ class FragmentInfo {
   EncryptionKey enc_key_;
 
   /** The latest array schema. */
-  std::shared_ptr<ArraySchema> array_schema_latest_;
+  std::shared_ptr<ArraySchema<ContextResources::resource_manager_type>> array_schema_latest_;
 
   /**
    * All the array schemas relevant to the loaded fragment metadata
    * keyed by their file name.
    */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas_all_;
 
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;

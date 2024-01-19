@@ -143,7 +143,7 @@ class ArraySchema {
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema& array_schema);
+  explicit ArraySchema(const ArraySchema<RM>& array_schema);
 
   /** Destructor. */
   ~ArraySchema() = default;
@@ -243,7 +243,7 @@ class ArraySchema {
    * @param schema The dimension label schema to check.
    */
   void check_dimension_label_schema(
-      const std::string& name, const ArraySchema& schema) const;
+      const std::string& name, const ArraySchema<RM>& schema) const;
 
   /**
    * Return the filter pipeline for the given attribute/dimension (can be
@@ -469,7 +469,7 @@ class ArraySchema {
    * @param uri The uri of the Array.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
+  static ArraySchema<RM> deserialize(Deserializer& deserializer, const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {

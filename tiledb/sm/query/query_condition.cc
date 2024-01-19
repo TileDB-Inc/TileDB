@@ -135,7 +135,7 @@ Status QueryCondition::init(
 }
 
 void QueryCondition::rewrite_enumeration_conditions(
-    const ArraySchema& array_schema) {
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   if (!tree_) {
     return;
   }
@@ -143,7 +143,7 @@ void QueryCondition::rewrite_enumeration_conditions(
   tree_->rewrite_enumeration_conditions(array_schema);
 }
 
-Status QueryCondition::check(const ArraySchema& array_schema) const {
+Status QueryCondition::check(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const {
   if (!tree_) {
     return Status::Ok();
   }
@@ -861,7 +861,7 @@ void QueryCondition::apply_ast_node(
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
@@ -1109,7 +1109,7 @@ void QueryCondition::apply_ast_node(
 template <typename CombinationOp>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
@@ -1215,7 +1215,7 @@ void QueryCondition::apply_tree(
 }
 
 Status QueryCondition::apply(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
@@ -1274,7 +1274,7 @@ struct QueryCondition::DenseDimCondition {
   static void apply_ast_node_dense(
       const std::string,
       const void*,
-      const ArraySchema&,
+      const ArraySchema<ContextResources::resource_manager_type>&,
       const uint64_t,
       const uint64_t,
       CombinationOp,
@@ -1294,7 +1294,7 @@ struct QueryCondition::DenseDimCondition<
   static void apply_ast_node_dense(
       const std::string field_name,
       const void* condition_value_content,
-      const ArraySchema& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type>& array_schema,
       const uint64_t start,
       const uint64_t stride,
       CombinationOp combination_op,
@@ -1332,7 +1332,7 @@ struct QueryCondition::DenseDimCondition<
 template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
@@ -1433,7 +1433,7 @@ void QueryCondition::apply_ast_node_dense(
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
@@ -1566,7 +1566,7 @@ void QueryCondition::apply_ast_node_dense(
 template <typename CombinationOp>
 void QueryCondition::apply_ast_node_dense(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
@@ -1863,7 +1863,7 @@ void QueryCondition::apply_ast_node_dense(
 template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
@@ -1981,7 +1981,7 @@ void QueryCondition::apply_tree_dense(
 }
 
 Status QueryCondition::apply_dense(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
@@ -2479,7 +2479,7 @@ void QueryCondition::apply_ast_node_sparse(
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_ast_node_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
@@ -2636,7 +2636,7 @@ void QueryCondition::apply_ast_node_sparse(
 template <typename BitmapType, typename CombinationOp>
 void QueryCondition::apply_tree_sparse(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
@@ -2729,7 +2729,7 @@ void QueryCondition::apply_tree_sparse(
 
 template <typename BitmapType>
 Status QueryCondition::apply_sparse(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile& result_tile,
     std::vector<BitmapType>& result_bitmap) {
   apply_tree_sparse<BitmapType>(
@@ -2764,8 +2764,8 @@ void QueryCondition::set_ast(tdb_unique_ptr<ASTNode>&& ast) {
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema, ResultTile&, std::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema, ResultTile&, std::vector<uint64_t>&);
 }  // namespace sm
 }  // namespace tiledb

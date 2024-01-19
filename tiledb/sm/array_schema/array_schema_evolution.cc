@@ -99,7 +99,7 @@ ArraySchemaEvolution::~ArraySchemaEvolution() {
 /* ****************************** */
 
 shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
-    const shared_ptr<const ArraySchema>& orig_schema) {
+    const ArraySchema<ContextResources::resource_manager_type> & orig_schema) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (orig_schema == nullptr) {
     throw ArraySchemaEvolutionException(

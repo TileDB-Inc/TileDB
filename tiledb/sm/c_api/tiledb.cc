@@ -256,7 +256,7 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+  (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema<ContextResources::resource_manager_type>>(
       HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
@@ -2599,7 +2599,7 @@ int32_t tiledb_array_create(
         uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
-    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+    for (tiledb::sm::ArraySchema<ContextResources::resource_manager_type>::dimension_label_size_type ilabel{0};
          ilabel < array_schema->array_schema_->dim_label_num();
          ++ilabel) {
       // Get dimension label information and define URI and name.
@@ -2677,7 +2677,7 @@ int32_t tiledb_array_create_with_key(
         uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
-    for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
+    for (tiledb::sm::ArraySchema<ContextResources::resource_manager_type>::dimension_label_size_type ilabel{0};
          ilabel < array_schema->array_schema_->dim_label_num();
          ++ilabel) {
       // Get dimension label information and define URI and name.
@@ -3499,7 +3499,7 @@ int32_t tiledb_deserialize_array_schema(
   }
 
   try {
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
+    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema<ContextResources::resource_manager_type>>>(
         HERE(),
         tiledb::sm::serialization::array_schema_deserialize(
             (tiledb::sm::SerializationType)serialize_type, buffer->buffer()));

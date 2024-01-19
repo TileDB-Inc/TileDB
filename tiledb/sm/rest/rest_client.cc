@@ -209,7 +209,7 @@ tuple<Status, std::optional<bool>> RestClient::check_group_exists_from_rest(
   return {Status::Ok(), false};
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>>
+tuple<Status, optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>
 RestClient::get_array_schema_from_rest(const URI& uri) {
   // Init curl and form the URL
   Curl curlc(logger_);
@@ -245,7 +245,7 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
               serialization_type_, returned_data))};
 }
 
-shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
+shared_ptr<ArraySchema<ContextResources::resource_manager_type>> RestClient::post_array_schema_from_rest(
     const Config& config,
     const URI& uri,
     uint64_t timestamp_start,
@@ -296,7 +296,7 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
 }
 
 Status RestClient::post_array_schema_to_rest(
-    const URI& uri, const ArraySchema& array_schema) {
+    const URI& uri, const ArraySchema<ContextResources::resource_manager_type>& array_schema) {
   Buffer buff;
   RETURN_NOT_OK(serialization::array_schema_serialize(
       array_schema, serialization_type_, &buff, false));
@@ -521,7 +521,7 @@ Status RestClient::get_array_non_empty_domain(
 
 Status RestClient::get_array_max_buffer_sizes(
     const URI& uri,
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const void* subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
@@ -1074,7 +1074,7 @@ Status RestClient::submit_and_finalize_query_to_rest(
 }
 
 Status RestClient::subarray_to_str(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const void* subarray,
     std::string* subarray_str) {
   const auto coords_type{schema.dimension_ptr(0)->type()};
@@ -1535,7 +1535,7 @@ Status RestClient::set_header(const std::string&, const std::string&) {
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>>
+tuple<Status, optional<shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>>
 RestClient::get_array_schema_from_rest(const URI&) {
   return {
       LOG_STATUS(Status_RestError(
@@ -1543,7 +1543,7 @@ RestClient::get_array_schema_from_rest(const URI&) {
       nullopt};
 }
 
-Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema&) {
+Status RestClient::post_array_schema_to_rest(const URI&, const ArraySchema<ContextResources::resource_manager_type>&) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -1582,7 +1582,7 @@ Status RestClient::get_array_non_empty_domain(Array*, uint64_t, uint64_t) {
 
 Status RestClient::get_array_max_buffer_sizes(
     const URI&,
-    const ArraySchema&,
+    const ArraySchema<ContextResources::resource_manager_type>&,
     const void*,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
   return LOG_STATUS(

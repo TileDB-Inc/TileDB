@@ -814,7 +814,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 }
 
 Status array_schema_to_capnp(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     capnp::ArraySchema::Builder* array_schema_builder,
     const bool client_side) {
   // Only set the URI if client side
@@ -914,7 +914,7 @@ Status array_schema_to_capnp(
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema array_schema_from_capnp(
+ArraySchema<ContextResources::resource_manager_type> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
@@ -1148,7 +1148,7 @@ ArraySchema array_schema_from_capnp(
 }
 
 Status array_schema_serialize(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side) {
@@ -1201,7 +1201,7 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-ArraySchema array_schema_deserialize(
+ArraySchema<ContextResources::resource_manager_type> array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
@@ -1723,7 +1723,7 @@ Status max_buffer_sizes_serialize(
 }
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
@@ -1908,13 +1908,13 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 
 void load_array_schema_response_to_capnp(
     capnp::LoadArraySchemaResponse::Builder& builder,
-    const ArraySchema& schema) {
+    const ArraySchema<ContextResources::resource_manager_type>& schema) {
   auto schema_builder = builder.initSchema();
   throw_if_not_ok(array_schema_to_capnp(schema, &schema_builder, false));
 }
 
 void serialize_load_array_schema_response(
-    const ArraySchema& schema,
+    const ArraySchema<ContextResources::resource_manager_type>& schema,
     SerializationType serialization_type,
     Buffer& data) {
   try {
@@ -1963,13 +1963,13 @@ void serialize_load_array_schema_response(
   }
 }
 
-ArraySchema load_array_schema_response_from_capnp(
+ArraySchema<ContextResources::resource_manager_type> load_array_schema_response_from_capnp(
     capnp::LoadArraySchemaResponse::Reader& reader) {
   auto schema_reader = reader.getSchema();
   return array_schema_from_capnp(schema_reader, URI());
 }
 
-ArraySchema deserialize_load_array_schema_response(
+ArraySchema<ContextResources::resource_manager_type> deserialize_load_array_schema_response(
     SerializationType serialization_type, const Buffer& data) {
   try {
     switch (serialization_type) {
@@ -2011,12 +2011,12 @@ ArraySchema deserialize_load_array_schema_response(
 #else
 
 Status array_schema_serialize(
-    const ArraySchema&, SerializationType, Buffer*, const bool) {
+    const ArraySchema<ContextResources::resource_manager_type>&, SerializationType, Buffer*, const bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
 
-ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+ArraySchema<ContextResources::resource_manager_type> array_schema_deserialize(SerializationType, const Buffer&) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2050,7 +2050,7 @@ Status max_buffer_sizes_serialize(
 }
 
 Status max_buffer_sizes_deserialize(
-    const ArraySchema&,
+    const ArraySchema<ContextResources::resource_manager_type>&,
     const Buffer&,
     SerializationType,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*) {
@@ -2071,12 +2071,12 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
 }
 
 void serialize_load_array_schema_response(
-    const ArraySchema&, SerializationType, Buffer&) {
+    const ArraySchema<ContextResources::resource_manager_type>&, SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
 
-ArraySchema deserialize_load_array_schema_response(
+ArraySchema<ContextResources::resource_manager_type> deserialize_load_array_schema_response(
     SerializationType, const Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");

@@ -86,7 +86,7 @@ UpdateValue::UpdateValue(UpdateValue&& rhs)
 UpdateValue::~UpdateValue() {
 }
 
-void UpdateValue::check(const ArraySchema& array_schema) const {
+void UpdateValue::check(const ArraySchema<ContextResources::resource_manager_type>& array_schema) const {
   const uint64_t update_value_size = update_value_data_.size();
 
   // Ensure field name exists.

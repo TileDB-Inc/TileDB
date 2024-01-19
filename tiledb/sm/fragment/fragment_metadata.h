@@ -56,7 +56,9 @@ class Range;
 namespace tiledb {
 namespace sm {
 
-class ArraySchema;
+template<>
+class ArraySchema<ContextResources::resource_manager_type>;
+
 class Buffer;
 class EncryptionKey;
 class TileMetadata;
@@ -90,7 +92,7 @@ class FragmentMetadata {
   FragmentMetadata(
       ContextResources* resources,
       MemoryTracker* memory_tracker,
-      const shared_ptr<const ArraySchema>& array_schema,
+      const ArraySchema<ContextResources::resource_manager_type> & array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
       bool dense = true,
@@ -450,7 +452,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas);
 
   /**
    * Loads the fragment metadata of an open array given a vector of
@@ -483,8 +485,8 @@ class FragmentMetadata {
   static std::vector<shared_ptr<FragmentMetadata>> load(
       ContextResources& resources,
       MemoryTracker* memory_tracker,
-      const shared_ptr<const ArraySchema> array_schema,
-      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+      const shared_ptr<const ArraySchema<ContextResources::resource_manager_type>> array_schema,
+      const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
@@ -708,7 +710,7 @@ class FragmentMetadata {
    * @param array_schema The schema pointer.
    * @return void
    */
-  void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
+  void set_array_schema(const ArraySchema<ContextResources::resource_manager_type> & array_schema);
 
   /** Sets the array_schema name */
   void set_schema_name(const std::string& name);
@@ -1058,7 +1060,7 @@ class FragmentMetadata {
    *
    * @return
    */
-  const shared_ptr<const ArraySchema>& array_schema() const;
+  const shared_ptr<const ArraySchema<ContextResources::resource_manager_type>> & array_schema() const;
 
   /** File sizes accessor */
   std::vector<uint64_t>& file_sizes() {
@@ -1269,7 +1271,7 @@ class FragmentMetadata {
   MemoryTracker* memory_tracker_;
 
   /** The array schema */
-  shared_ptr<const ArraySchema> array_schema_;
+  shared_ptr<const ArraySchema<ContextResources::resource_manager_type>> array_schema_;
 
   /** The array schema name */
   std::string array_schema_name_;
@@ -1773,7 +1775,7 @@ class FragmentMetadata {
   /** Loads the basic metadata from storage (version 2 or before). */
   void load_v1_v2(
       const EncryptionKey& encryption_key,
-      const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+      const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
           array_schemas);
 
   /**
@@ -1784,7 +1786,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas);
 
   /**
    * Loads the footer of the metadata file, which contains
@@ -1796,7 +1798,7 @@ class FragmentMetadata {
       const EncryptionKey& encryption_key,
       Tile* fragment_metadata_tile,
       uint64_t offset,
-      std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
+      std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas);
 
   /** Writes the sizes of each attribute file to the buffer. */
   void write_file_sizes(Serializer& serializer) const;

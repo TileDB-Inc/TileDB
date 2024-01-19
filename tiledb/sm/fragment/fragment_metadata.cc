@@ -84,7 +84,7 @@ FragmentMetadata::FragmentMetadata() {
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
     MemoryTracker* memory_tracker,
-    const shared_ptr<const ArraySchema>& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type> & array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
     bool dense,
@@ -466,7 +466,7 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
 }
 
 void FragmentMetadata::set_array_schema(
-    const shared_ptr<const ArraySchema>& array_schema) {
+    const ArraySchema<ContextResources::resource_manager_type> & array_schema) {
   array_schema_ = array_schema;
 
   // Rebuild index mapping
@@ -777,8 +777,8 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
 std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     ContextResources& resources,
     MemoryTracker* memory_tracker,
-    const shared_ptr<const ArraySchema> array_schema_latest,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+    const ArraySchema<ContextResources::resource_manager_type>  array_schema_latest,
+    const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
         array_schemas_all,
     const EncryptionKey& encryption_key,
     const std::vector<TimestampedURI>& fragments_to_load,
@@ -858,7 +858,7 @@ void FragmentMetadata::load(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas) {
   auto meta_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
   // Load the metadata file size when we are not reading from consolidated
@@ -3629,7 +3629,7 @@ void FragmentMetadata::load_array_schema_name(Deserializer& deserializer) {
 
 void FragmentMetadata::load_v1_v2(
     const EncryptionKey& encryption_key,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+    const std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>>&
         array_schemas) {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
@@ -3671,7 +3671,7 @@ void FragmentMetadata::load_v3_or_higher(
     const EncryptionKey& encryption_key,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas) {
   load_footer(encryption_key, fragment_metadata_tile, offset, array_schemas);
 }
 
@@ -3679,7 +3679,7 @@ void FragmentMetadata::load_footer(
     const EncryptionKey&,
     Tile* fragment_metadata_tile,
     uint64_t offset,
-    std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas) {
+    std::unordered_map<std::string, shared_ptr<ArraySchema<ContextResources::resource_manager_type>>> array_schemas) {
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (loaded_metadata_.footer_) {
@@ -4685,7 +4685,7 @@ void FragmentMetadata::clean_up() {
   throw_if_not_ok(resources_->vfs().remove_file(fragment_metadata_uri));
 }
 
-const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
+const shared_ptr<const ArraySchema<ContextResources::resource_manager_type>> & FragmentMetadata::array_schema() const {
   return array_schema_;
 }
 

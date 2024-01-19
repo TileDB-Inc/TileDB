@@ -61,7 +61,7 @@ class FragmentConsolidatorException : public StatusException {
 void FragmentConsolidationWorkspace::resize_buffers(
     stats::Stats* stats,
     const FragmentConsolidationConfig& config,
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
   auto timer_se = stats->start_timer("resize_buffers");
 
@@ -707,7 +707,7 @@ Status FragmentConsolidator::create_queries(
 }
 
 Status FragmentConsolidator::compute_next_to_consolidate(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     const FragmentInfo& fragment_info,
     std::vector<TimestampedURI>* to_consolidate,
     NDRange* union_non_empty_domains) const {

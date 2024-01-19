@@ -166,7 +166,7 @@ void ReadCellSlabIterFx::create_result_space_tiles(
 }
 
 void set_result_tile_dim(
-    const ArraySchema& array_schema,
+    const ArraySchema<ContextResources::resource_manager_type>& array_schema,
     ResultTile& result_tile,
     std::string dim,
     uint64_t dim_idx,
