@@ -75,27 +75,13 @@ class WriterBaseStatusException : public StatusException {
 WriterBase::WriterBase(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
-    : StrategyBase(
-          stats,
-          logger->clone("Writer", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout)
+    optional<std::string> fragment_name)
+    : StrategyBase(stats, logger->clone("Writer", ++logger_id_), params)
     , disable_checks_consolidation_(disable_checks_consolidation)
     , coords_info_(coords_info)
     , check_coord_dups_(false)
@@ -110,7 +96,7 @@ WriterBase::WriterBase(
         "Cannot initialize query; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
     throw WriterBaseStatusException(
         "Cannot initialize writer; Buffers not set");
   }
@@ -202,7 +188,7 @@ WriterBase::WriterBase(
     check_extra_element();
   }
 
-  if (!skip_checks_serialization) {
+  if (!params.skip_checks_serialization()) {
     // Consolidation might set a subarray that is not tile aligned.
     if (!disable_checks_consolidation) {
       check_subarray();

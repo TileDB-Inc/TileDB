@@ -163,18 +163,19 @@ TEST_CASE_METHOD(
             .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
   DefaultChannelAggregates default_channel_aggregates;
-  Reader reader(
-      &g_helper_stats,
-      g_helper_logger(),
+  auto params = StrategyParams(
       context.storage_manager(),
-      &array,
+      array.opened_array(),
       config,
       buffers,
       aggregate_buffers,
       subarray,
       Layout::ROW_MAJOR,
       condition,
-      default_channel_aggregates);
+      default_channel_aggregates,
+      false,
+      array.memory_tracker());
+  Reader reader(&g_helper_stats, g_helper_logger(), params);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);
   int32_t domain_vec[] = {1, 10, 1, 15};

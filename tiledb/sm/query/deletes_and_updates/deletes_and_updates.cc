@@ -57,25 +57,10 @@ class DeleteAndUpdateStatusException : public StatusException {
 DeletesAndUpdates::DeletesAndUpdates(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    std::vector<UpdateValue>& update_values,
-    bool skip_checks_serialization)
-    : StrategyBase(
-          stats,
-          logger->clone("Deletes", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout)
-    , condition_(condition)
+    StrategyParams& params,
+    std::vector<UpdateValue>& update_values)
+    : StrategyBase(stats, logger->clone("Deletes", ++logger_id_), params)
+    , condition_(params.condition())
     , update_values_(update_values) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
@@ -98,7 +83,7 @@ DeletesAndUpdates::DeletesAndUpdates(
         "Cannot initialize deletes; Subarrays are not supported");
   }
 
-  if (!skip_checks_serialization && !condition_.has_value()) {
+  if (!params.skip_checks_serialization() && !condition_.has_value()) {
     throw DeleteAndUpdateStatusException(
         "Cannot initialize deletes; One condition is needed");
   }

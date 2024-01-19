@@ -352,6 +352,7 @@ list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_experimental.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -593,3 +594,16 @@ add_custom_target(
    COMMAND rmdir "${CMAKE_INSTALL_PREFIX}/include/tiledb"
    COMMAND echo "TileDB uninstalled"
 )
+
+###########################################################
+# Run the optional extra cmake include
+###########################################################
+
+if(TILEDB_EXTRA_CMAKE_INCLUDE)
+  get_filename_component(
+    EXTRA_INCLUDE_ABSPATH
+    "${TILEDB_EXTRA_CMAKE_INCLUDE}"
+    ABSOLUTE
+  )
+  include("${EXTRA_INCLUDE_ABSPATH}")
+endif()

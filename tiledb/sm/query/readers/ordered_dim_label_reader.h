@@ -252,17 +252,8 @@ class OrderedDimLabelReader : public ReaderBase, public IQueryStrategy {
   OrderedDimLabelReader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool increasing_order,
-      bool skip_checks_serialization);
+      StrategyParams& params,
+      bool increasing_order);
 
   /** Destructor. */
   ~OrderedDimLabelReader() = default;

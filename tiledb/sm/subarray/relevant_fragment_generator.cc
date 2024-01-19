@@ -46,12 +46,14 @@ namespace tiledb {
 namespace sm {
 
 RelevantFragmentGenerator::RelevantFragmentGenerator(
-    const Array& array, const Subarray& subarray, stats::Stats* stats)
+    const shared_ptr<OpenedArray> opened_array,
+    const Subarray& subarray,
+    stats::Stats* stats)
     : stats_(stats)
-    , array_(array)
+    , array_(opened_array)
     , subarray_(subarray) {
-  auto dim_num = array_.array_schema_latest().dim_num();
-  auto fragment_num = array_.fragment_metadata().size();
+  auto dim_num = array_->array_schema_latest().dim_num();
+  auto fragment_num = array_->fragment_metadata().size();
 
   // Create a fragment bytemap for each dimension. Each
   // non-zero byte represents an overlap between a fragment
@@ -94,8 +96,8 @@ bool RelevantFragmentGenerator::update_range_coords(
 RelevantFragments RelevantFragmentGenerator::compute_relevant_fragments(
     ThreadPool* const compute_tp) {
   auto timer_se = stats_->start_timer("compute_relevant_frags");
-  auto dim_num = array_.array_schema_latest().dim_num();
-  auto fragment_num = array_.fragment_metadata().size();
+  auto dim_num = array_->array_schema_latest().dim_num();
+  auto fragment_num = array_->fragment_metadata().size();
 
   // Populate the fragment bytemap for each dimension in parallel.
   throw_if_not_ok(parallel_for(compute_tp, 0, dim_num, [&](const uint32_t d) {
@@ -122,8 +124,8 @@ Status RelevantFragmentGenerator::compute_relevant_fragments_for_dim(
     const std::vector<uint64_t>& start_coords,
     const std::vector<uint64_t>& end_coords,
     std::vector<uint8_t>* const frag_bytemap) const {
-  const auto meta = array_.fragment_metadata();
-  auto dim{array_.array_schema_latest().dimension_ptr(dim_idx)};
+  const auto meta = array_->fragment_metadata();
+  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
 
   return parallel_for(compute_tp, 0, fragment_num, [&](const uint64_t f) {
     // We're done when we have already determined fragment `f` to

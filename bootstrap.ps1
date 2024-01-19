@@ -24,6 +24,9 @@ Semicolon separated list to binary dependencies.
 Specify the linkage type to build TileDB with. Valid values are
 "static" and "shared". Default is "shared".
 
+.PARAMETER RemoveDeprecations
+Build TileDB without any deprecated APIs.
+
 .PARAMETER CMakeGenerator
 Optionally specify the CMake generator string, e.g. "Visual Studio 15
 2017". Check 'cmake --help' for a list of supported generators.
@@ -117,6 +120,7 @@ Param(
     [string]$VcpkgBaseTriplet,
     [string]$Dependency,
     [string]$Linkage = "shared",
+    [switch]$RemoveDeprecations,
     [string]$CMakeGenerator,
     [switch]$EnableAssert,
     [switch]$EnableDebug,
@@ -188,6 +192,13 @@ if ($EnableCoverage.IsPresent) {
 $Verbosity = "OFF"
 if ($EnableVerbose.IsPresent) {
     $Verbosity = "ON"
+}
+
+if ($RemoveDeprecations.IsPresent) {
+    $_RemoveDeprecations = "ON"
+}
+else {
+    $_RemoveDeprecations = "OFF"
 }
 
 # Set TileDB Azure flag
@@ -319,7 +330,7 @@ if ($CMakeGenerator -eq $null) {
 
 # Run CMake.
 # We use Invoke-Expression so we can echo the command to the user.
-$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
+$CommandString = "cmake -A X64 -DCMAKE_BUILD_TYPE=$BuildType -DCMAKE_INSTALL_PREFIX=""$InstallPrefix"" $VcpkgBaseTriplet -DCMAKE_PREFIX_PATH=""$DependencyDir"" -DMSVC_MP_FLAG=""/MP$BuildProcesses"" -DTILEDB_ASSERTIONS=$AssertionMode -DTILEDB_VERBOSE=$Verbosity -DTILEDB_AZURE=$UseAzure -DTILEDB_S3=$UseS3 -DTILEDB_GCS=$UseGcs -DTILEDB_SERIALIZATION=$UseSerialization -DTILEDB_WERROR=$Werror -DTILEDB_CPP_API=$CppApi -DTILEDB_TESTS=$Tests -DTILEDB_STATS=$Stats -DBUILD_SHARED_LIBS=$BuildSharedLibs -DTILEDB_FORCE_ALL_DEPS=$TileDBBuildDeps -DTILEDB_REMOVE_DEPRECATIONS=$_RemoveDeprecations -DTILEDB_TOOLS=$TileDBTools -DTILEDB_EXPERIMENTAL_FEATURES=$TileDBExperimentalFeatures -DTILEDB_WEBP=$BuildWebP -DTILEDB_CRC32=$BuildCrc32 -DTILEDB_ARROW_TESTS=$ArrowTests -DTILEDB_TESTS_ENABLE_REST=$RestTests -DTILEDB_TESTS_AWS_S3_CONFIG=$ConfigureS3 $GeneratorFlag ""$SourceDirectory"""
 Write-Host $CommandString
 Write-Host
 Invoke-Expression "$CommandString"

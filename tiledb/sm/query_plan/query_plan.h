@@ -65,8 +65,9 @@ class QueryPlan {
    * Constructor
    *
    * @param query A query object for which we want to calculate the plan
+   * @param strategy The strategy of the query, required only for remote queries
    */
-  QueryPlan(Query& query);
+  QueryPlan(Query& query, const std::string strategy = "");
 
   /* ****************************** */
   /*              API               */
@@ -80,6 +81,13 @@ class QueryPlan {
    * @return a json representation of the query plan
    */
   std::string dump_json(uint32_t indent = 4);
+
+  /*
+   * Get the strategy name stored in the query plan
+   */
+  inline std::string strategy() const {
+    return strategy_name_;
+  }
 
  private:
   /* ****************************** */
