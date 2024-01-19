@@ -46,6 +46,7 @@
 #include "tiledb/sm/filter/filter_buffer.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
@@ -62,6 +63,7 @@ class Tile;
  * process/modify tile data. The pipeline is run "forward" during writes and
  * in "reverse" during reads.
  */
+template <class RM>
 class FilterPipeline {
  public:
   /** Constructor. Initializes an empty pipeline. */

@@ -57,24 +57,28 @@ class FilterPipelineStatusException : public StatusException {
   }
 };
 
-FilterPipeline::FilterPipeline()
+template <class RM>
+FilterPipeline<RM>::FilterPipeline()
     : max_chunk_size_(constants::max_tile_chunk_size) {
 }
 
-FilterPipeline::FilterPipeline(
+template <class RM>
+FilterPipeline<RM>::FilterPipeline(
     uint32_t max_chunk_size, const std::vector<shared_ptr<Filter>>& filters)
     : filters_(filters)
     , max_chunk_size_(max_chunk_size) {
 }
 
-FilterPipeline::FilterPipeline(const FilterPipeline& other) {
+template <class RM>
+FilterPipeline<RM>::FilterPipeline(const FilterPipeline& other) {
   for (auto& filter : other.filters_) {
     add_filter(*filter);
   }
   max_chunk_size_ = other.max_chunk_size_;
 }
 
-FilterPipeline::FilterPipeline(
+template <class RM>
+FilterPipeline<RM>::FilterPipeline(
     const FilterPipeline& other, const Datatype on_disk_type) {
   auto current_type = on_disk_type;
   for (auto& filter : other.filters_) {
@@ -84,11 +88,13 @@ FilterPipeline::FilterPipeline(
   max_chunk_size_ = other.max_chunk_size_;
 }
 
-FilterPipeline::FilterPipeline(FilterPipeline&& other) {
+template <class RM>
+FilterPipeline<RM>::FilterPipeline(FilterPipeline&& other) {
   swap(other);
 }
 
-FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
+template <class RM>
+FilterPipeline<RM>& FilterPipeline<RM>::operator=(const FilterPipeline& other) {
   // Call copy constructor
   FilterPipeline copy(other);
   // Swap with the temporary copy
@@ -96,26 +102,32 @@ FilterPipeline& FilterPipeline::operator=(const FilterPipeline& other) {
   return *this;
 }
 
-FilterPipeline& FilterPipeline::operator=(FilterPipeline&& other) {
+template <class RM>
+FilterPipeline<RM>& FilterPipeline<RM>::operator=(FilterPipeline&& other) {
   swap(other);
   return *this;
 }
 
-void FilterPipeline::add_filter(const Filter& filter) {
+template <class RM>
+void FilterPipeline<RM>::add_filter(const Filter& filter) {
   shared_ptr<Filter> copy(filter.clone());
   filters_.push_back(std::move(copy));
 }
 
-void FilterPipeline::add_filter(const Filter& filter, const Datatype new_type) {
+template <class RM>
+void FilterPipeline<RM>::add_filter(
+    const Filter& filter, const Datatype new_type) {
   shared_ptr<Filter> copy(filter.clone(new_type));
   filters_.push_back(std::move(copy));
 }
 
-void FilterPipeline::clear() {
+template <class RM>
+void FilterPipeline<RM>::clear() {
   filters_.clear();
 }
 
-void FilterPipeline::check_filter_types(
+template <class RM>
+void FilterPipeline<RM>::check_filter_types(
     const FilterPipeline& pipeline,
     const Datatype first_input_type,
     bool is_var) {
@@ -150,8 +162,9 @@ void FilterPipeline::check_filter_types(
   }
 }
 
+template <class RM>
 tuple<Status, optional<std::vector<uint64_t>>>
-FilterPipeline::get_var_chunk_sizes(
+FilterPipeline<RM>::get_var_chunk_sizes(
     uint32_t chunk_size,
     WriterTile* const tile,
     WriterTile* const offsets_tile) const {
@@ -207,7 +220,8 @@ FilterPipeline::get_var_chunk_sizes(
   return {Status::Ok(), std::move(chunk_offsets)};
 }
 
-Status FilterPipeline::filter_chunks_forward(
+template <class RM>
+Status FilterPipeline<RM>::filter_chunks_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     uint32_t chunk_size,
@@ -370,18 +384,21 @@ Status FilterPipeline::filter_chunks_forward(
   return Status::Ok();
 }
 
-Filter* FilterPipeline::get_filter(unsigned index) const {
+template <class RM>
+Filter* FilterPipeline<RM>::get_filter(unsigned index) const {
   if (index >= filters_.size())
     return nullptr;
 
   return filters_[index].get();
 }
 
-uint32_t FilterPipeline::max_chunk_size() const {
+template <class RM>
+uint32_t FilterPipeline<RM>::max_chunk_size() const {
   return max_chunk_size_;
 }
 
-Status FilterPipeline::run_forward(
+template <class RM>
+Status FilterPipeline<RM>::run_forward(
     stats::Stats* const writer_stats,
     WriterTile* const tile,
     WriterTile* const offsets_tile,
@@ -424,7 +441,8 @@ Status FilterPipeline::run_forward(
   return Status::Ok();
 }
 
-void FilterPipeline::run_reverse_generic_tile(
+template <class RM>
+void FilterPipeline<RM>::run_reverse_generic_tile(
     stats::Stats* stats, Tile& tile, const Config& config) const {
   ChunkData chunk_data;
   tile.load_chunk_data(chunk_data);
@@ -435,7 +453,8 @@ void FilterPipeline::run_reverse_generic_tile(
   tile.clear_filtered_buffer();
 }
 
-Status FilterPipeline::run_reverse(
+template <class RM>
+Status FilterPipeline<RM>::run_reverse(
     stats::Stats* const reader_stats,
     Tile* const tile,
     Tile* const offsets_tile,
@@ -520,7 +539,8 @@ Status FilterPipeline::run_reverse(
 // num_filters (uint32_t)
 // filter0 metadata (see Filter::serialize)
 // filter1...
-void FilterPipeline::serialize(Serializer& serializer) const {
+template <class RM>
+void FilterPipeline<RM>::serialize(Serializer& serializer) const {
   serializer.write<uint32_t>(max_chunk_size_);
   auto num_filters = static_cast<uint32_t>(filters_.size());
   serializer.write<uint32_t>(num_filters);
@@ -540,7 +560,8 @@ void FilterPipeline::serialize(Serializer& serializer) const {
   }
 }
 
-FilterPipeline FilterPipeline::deserialize(
+template <class RM>
+FilterPipeline<RM> FilterPipeline<RM>::deserialize(
     Deserializer& deserializer, const uint32_t version, Datatype datatype) {
   auto max_chunk_size = deserializer.read<uint32_t>();
   auto num_filters = deserializer.read<uint32_t>();
@@ -555,7 +576,8 @@ FilterPipeline FilterPipeline::deserialize(
   return FilterPipeline(max_chunk_size, filters);
 }
 
-void FilterPipeline::dump(FILE* out) const {
+template <class RM>
+void FilterPipeline<RM>::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
@@ -565,7 +587,8 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
-void FilterPipeline::ensure_compatible(
+template <class RM>
+void FilterPipeline<RM>::ensure_compatible(
     const Filter& first, const Filter& second, Datatype first_input_type) {
   auto first_output_type = first.output_datatype(first_input_type);
   if (!second.accepts_input_datatype(first_output_type)) {
@@ -576,7 +599,8 @@ void FilterPipeline::ensure_compatible(
   }
 }
 
-bool FilterPipeline::has_filter(const FilterType& filter_type) const {
+template <class RM>
+bool FilterPipeline<RM>::has_filter(const FilterType& filter_type) const {
   for (auto& f : filters_) {
     if (f->type() == filter_type)
       return true;
@@ -584,24 +608,29 @@ bool FilterPipeline::has_filter(const FilterType& filter_type) const {
   return false;
 }
 
-void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
+template <class RM>
+void FilterPipeline<RM>::set_max_chunk_size(uint32_t max_chunk_size) {
   max_chunk_size_ = max_chunk_size;
 }
 
-unsigned FilterPipeline::size() const {
+template <class RM>
+unsigned FilterPipeline<RM>::size() const {
   return static_cast<unsigned>(filters_.size());
 }
 
-bool FilterPipeline::empty() const {
+template <class RM>
+bool FilterPipeline<RM>::empty() const {
   return filters_.empty();
 }
 
-void FilterPipeline::swap(FilterPipeline& other) {
+template <class RM>
+void FilterPipeline<RM>::swap(FilterPipeline& other) {
   filters_.swap(other.filters_);
   std::swap(max_chunk_size_, other.max_chunk_size_);
 }
 
-Status FilterPipeline::append_encryption_filter(
+template <class RM>
+Status FilterPipeline<RM>::append_encryption_filter(
     FilterPipeline* pipeline, const EncryptionKey& encryption_key) {
   switch (encryption_key.encryption_type()) {
     case EncryptionType::NO_ENCRYPTION:
@@ -616,7 +645,8 @@ Status FilterPipeline::append_encryption_filter(
   }
 }
 
-bool FilterPipeline::skip_offsets_filtering(
+template <class RM>
+bool FilterPipeline<RM>::skip_offsets_filtering(
     const Datatype type, const uint32_t version) const {
   if (((version >= 12 && type == Datatype::STRING_ASCII) ||
        (version >= 17 && type == Datatype::STRING_UTF8)) &&
@@ -632,7 +662,8 @@ bool FilterPipeline::skip_offsets_filtering(
   return false;
 }
 
-bool FilterPipeline::use_tile_chunking(
+template <class RM>
+bool FilterPipeline<RM>::use_tile_chunking(
     const bool is_var, const uint32_t version, const Datatype type) const {
   if (max_chunk_size_ == 0) {
     return false;
@@ -648,6 +679,18 @@ bool FilterPipeline::use_tile_chunking(
 
   return true;
 }
+
+/**
+ * Explicit template instantiation.
+ *
+ * @section Maturity
+ *
+ * This is a temporary explicit instantiation to avoid linking errors while
+ * setting up resource management template arguments. While this work is being
+ * done, this is the only type that will be used to instantiate
+ * `FilterPipeline`.
+ */
+template class FilterPipeline<context_bypass_RM>;
 
 }  // namespace sm
 }  // namespace tiledb
