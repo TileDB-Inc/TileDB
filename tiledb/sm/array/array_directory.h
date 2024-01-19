@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,9 +39,9 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <functional>
 #include <unordered_map>
@@ -221,8 +221,8 @@ class ArrayDirectory {
         : uri_(uri)
         , condition_marker_(condition_marker)
         , offset_(offset) {
-      utils::parse::FragmentURI fragment_uri{URI(condition_marker)};
-      auto timestamps{fragment_uri.timestamp_range()};
+      FragmentID fragment_id{condition_marker};
+      auto timestamps{fragment_id.timestamp_range()};
       timestamp_ = timestamps.first;
     }
 

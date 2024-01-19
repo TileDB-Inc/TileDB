@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,10 +34,10 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
@@ -243,8 +243,8 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
   for (size_t i = 0; i < uris.size(); ++i) {
-    utils::parse::FragmentURI fragment_uri{uris[i]};
-    auto timestamp_range{fragment_uri.timestamp_range()};
+    FragmentID fragment_id{uris[i]};
+    auto timestamp_range{fragment_id.timestamp_range()};
     if (is_vacuum_file(uris[i])) {
       if (timestamp_range.first >= timestamp_start_ &&
           timestamp_range.second <= timestamp_end_)
@@ -333,8 +333,8 @@ GroupDirectory::compute_filtered_uris(
     // Add only URIs whose first timestamp is greater than or equal to the
     // timestamp_start and whose second timestamp is smaller than or equal to
     // the timestamp_end
-    utils::parse::FragmentURI fragment_uri{uri};
-    auto timestamp_range{fragment_uri.timestamp_range()};
+    FragmentID fragment_id{uri};
+    auto timestamp_range{fragment_id.timestamp_range()};
     auto t1 = timestamp_range.first;
     auto t2 = timestamp_range.second;
     if (t1 >= timestamp_start_ && t2 <= timestamp_end_)

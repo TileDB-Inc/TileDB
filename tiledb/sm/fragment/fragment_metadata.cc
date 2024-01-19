@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -53,7 +54,6 @@
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/storage_format/serialization/serializers.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -799,8 +799,8 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
         // version. Therefore, the check below is defensive and will always
         // ensure backwards compatibility.
         shared_ptr<FragmentMetadata> metadata;
-        utils::parse::FragmentURI fragment_uri{sf.uri_};
-        if (fragment_uri.version() <= 2) {
+        FragmentID fragment_id{sf.uri_};
+        if (fragment_id.array_format_version() <= 2) {
           bool sparse;
           RETURN_NOT_OK(resources.vfs().is_file(coords_uri, &sparse));
           metadata = make_shared<FragmentMetadata>(
@@ -829,7 +829,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
 
         auto it = offsets.end();
         if (metadata->format_version() >= 9) {
-          it = offsets.find(fragment_uri.name());
+          it = offsets.find(fragment_id.name());
         } else {
           it = offsets.find(sf.uri_.to_string());
         }
@@ -864,8 +864,8 @@ void FragmentMetadata::load(
   }
 
   // Get fragment name version
-  utils::parse::FragmentURI fragment_uri{fragment_uri_};
-  if (fragment_uri.version() <= 2) {
+  FragmentID fragment_id{fragment_uri_};
+  if (fragment_id.array_format_version() <= 2) {
     return load_v1_v2(encryption_key, array_schemas);
   } else {
     return load_v3_or_higher(
@@ -2197,8 +2197,8 @@ uint64_t FragmentMetadata::footer_size() const {
 
 void FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  utils::parse::FragmentURI fragment_uri{fragment_uri_};
-  auto fragment_format_version{fragment_uri.version()};
+  FragmentID fragment_id{fragment_uri_};
+  auto fragment_format_version{fragment_id.array_format_version()};
   auto all_fixed = array_schema_->domain().all_dims_fixed();
   if (all_fixed && fragment_format_version < 5) {
     *size = footer_size_v3_v4();

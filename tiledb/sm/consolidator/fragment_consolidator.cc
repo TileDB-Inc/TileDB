@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,12 +36,12 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
 #include <numeric>
@@ -518,8 +518,8 @@ Status FragmentConsolidator::consolidate_internal(
   if (!config_.purge_deleted_cells_ &&
       array_schema.write_version() >= constants::deletes_min_version) {
     // Get the first fragment first timestamp.
-    utils::parse::FragmentURI fragment_uri{to_consolidate[0].uri_};
-    auto timestamps{fragment_uri.timestamp_range()};
+    FragmentID fragment_id{to_consolidate[0].uri_};
+    auto timestamps{fragment_id.timestamp_range()};
 
     for (auto& delete_and_update_tile_location :
          array_for_reads->array_directory()

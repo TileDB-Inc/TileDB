@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -49,12 +49,12 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 #include "tiledb/type/apply_with_type.h"
 
 #include <algorithm>
@@ -1386,8 +1386,8 @@ ArraySchema ArraySchema::deserialize(
   }
 
   // Populate timestamp range
-  utils::parse::FragmentURI fragment_uri{uri};
-  auto timestamp_range{fragment_uri.timestamp_range()};
+  FragmentID fragment_id{uri};
+  auto timestamp_range{fragment_id.timestamp_range()};
 
   // Set schema name
   std::string name = uri.last_path_part();

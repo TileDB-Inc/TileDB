@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,10 +35,10 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <functional>
@@ -209,8 +209,8 @@ uint64_t QueryCondition::condition_timestamp() const {
     return 0;
   }
 
-  utils::parse::FragmentURI fragment_uri{URI(condition_marker_)};
-  auto timestamps{fragment_uri.timestamp_range()};
+  FragmentID fragment_id{condition_marker_};
+  auto timestamps{fragment_id.timestamp_range()};
   return timestamps.first;
 }
 
