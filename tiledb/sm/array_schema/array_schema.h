@@ -64,6 +64,7 @@ enum class DataOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
+template <class RM>
 class ArraySchema {
  public:
   /**

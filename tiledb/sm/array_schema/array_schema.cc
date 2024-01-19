@@ -79,11 +79,13 @@ class ArraySchemaException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchema::ArraySchema()
+template <class RM>
+ArraySchema<RM>::ArraySchema()
     : ArraySchema(ArrayType::DENSE) {
 }
 
-ArraySchema::ArraySchema(ArrayType array_type)
+template <class RM>
+ArraySchema<RM>::ArraySchema(ArrayType array_type)
     : uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
@@ -114,7 +116,8 @@ ArraySchema::ArraySchema(ArrayType array_type)
   generate_uri();
 }
 
-ArraySchema::ArraySchema(
+template <class RM>
+ArraySchema<RM>::ArraySchema(
     URI uri,
     uint32_t version,
     std::pair<uint64_t, uint64_t> timestamp_range,
@@ -197,7 +200,9 @@ ArraySchema::ArraySchema(
  * default copy constructor. At some point this may no longer hold and we can
  * eliminate this code in favor of the default.
  */
-ArraySchema::ArraySchema(const ArraySchema& array_schema)
+
+template <class RM>
+ArraySchema<RM>::ArraySchema(const ArraySchema& array_schema)
     : uri_{array_schema.uri_}
     , array_uri_{array_schema.array_uri_}
     , version_{array_schema.version_}
@@ -232,26 +237,31 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
 /*               API              */
 /* ****************************** */
 
-bool ArraySchema::allows_dups() const {
+template <class RM>
+bool ArraySchema<RM>::allows_dups() const {
   return allows_dups_;
 }
 
-ArrayType ArraySchema::array_type() const {
+template <class RM>
+ArrayType ArraySchema<RM>::array_type() const {
   return array_type_;
 }
 
-const URI& ArraySchema::array_uri() const {
+template <class RM>
+const URI& ArraySchema<RM>::array_uri() const {
   return array_uri_;
 }
 
-const Attribute* ArraySchema::attribute(attribute_size_type id) const {
+template <class RM>
+const Attribute* ArraySchema<RM>::attribute(attribute_size_type id) const {
   if (id < attributes_.size()) {
     return attributes_[id].get();
   }
   return nullptr;
 }
 
-shared_ptr<const Attribute> ArraySchema::shared_attribute(
+template <class RM>
+shared_ptr<const Attribute> ArraySchema<RM>::shared_attribute(
     attribute_size_type id) const {
   if (id < attributes_.size()) {
     return attributes_[id];
@@ -259,12 +269,14 @@ shared_ptr<const Attribute> ArraySchema::shared_attribute(
   return {};
 }
 
-const Attribute* ArraySchema::attribute(const std::string& name) const {
+template <class RM>
+const Attribute* ArraySchema<RM>::attribute(const std::string& name) const {
   auto it = attribute_map_.find(name);
   return it == attribute_map_.end() ? nullptr : it->second.pointer;
 }
 
-shared_ptr<const Attribute> ArraySchema::shared_attribute(
+template <class RM>
+shared_ptr<const Attribute> ArraySchema<RM>::shared_attribute(
     const std::string& name) const {
   auto it = attribute_map_.find(name);
   if (it == attribute_map_.end()) {
@@ -273,20 +285,24 @@ shared_ptr<const Attribute> ArraySchema::shared_attribute(
   return attributes_[it->second.index];
 }
 
-const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
+template <class RM>
+const std::vector<shared_ptr<const Attribute>>& ArraySchema<RM>::attributes()
     const {
   return attributes_;
 }
 
-uint64_t ArraySchema::capacity() const {
+template <class RM>
+uint64_t ArraySchema<RM>::capacity() const {
   return capacity_;
 }
 
-Layout ArraySchema::cell_order() const {
+template <class RM>
+Layout ArraySchema<RM>::cell_order() const {
   return cell_order_;
 }
 
-uint64_t ArraySchema::cell_size(const std::string& name) const {
+template <class RM>
+uint64_t ArraySchema<RM>::cell_size(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
     auto dim_num = domain_->dim_num();
@@ -322,7 +338,8 @@ uint64_t ArraySchema::cell_size(const std::string& name) const {
              cell_val_num * datatype_size(dim->type());
 }
 
-unsigned int ArraySchema::cell_val_num(const std::string& name) const {
+template <class RM>
+unsigned int ArraySchema<RM>::cell_val_num(const std::string& name) const {
   // Special attributes
   if (is_special_attribute(name)) {
     return 1;
@@ -340,15 +357,18 @@ unsigned int ArraySchema::cell_val_num(const std::string& name) const {
   return dim_it->second->cell_val_num();
 }
 
-const FilterPipeline& ArraySchema::cell_var_offsets_filters() const {
+template <class RM>
+const FilterPipeline& ArraySchema<RM>::cell_var_offsets_filters() const {
   return cell_var_offsets_filters_;
 }
 
-const FilterPipeline& ArraySchema::cell_validity_filters() const {
+template <class RM>
+const FilterPipeline& ArraySchema<RM>::cell_validity_filters() const {
   return cell_validity_filters_;
 }
 
-void ArraySchema::check_webp_filter() const {
+template <class RM>
+void ArraySchema<RM>::check_webp_filter() const {
   if constexpr (webp_filter_exists) {
     WebpFilter* webp = nullptr;
     for (const auto& attr : attributes_) {
@@ -393,12 +413,14 @@ void ArraySchema::check_webp_filter() const {
   }
 }
 
-void ArraySchema::check(const Config& cfg) const {
+template <class RM>
+void ArraySchema<RM>::check(const Config& cfg) const {
   check_without_config();
   check_enumerations(cfg);
 }
 
-void ArraySchema::check_without_config() const {
+template <class RM>
+void ArraySchema<RM>::check_without_config() const {
   if (domain_ == nullptr)
     throw ArraySchemaException{"Array schema check failed; Domain not set"};
 
@@ -465,7 +487,8 @@ void ArraySchema::check_without_config() const {
   }
 }
 
-void ArraySchema::check_dimension_label_schema(
+template <class RM>
+void ArraySchema<RM>::check_dimension_label_schema(
     const std::string& name, const ArraySchema& schema) const {
   // Check there is a dimension label with the requested name and get the
   // dimension label reference for it.
@@ -533,7 +556,8 @@ void ArraySchema::check_dimension_label_schema(
   }
 }
 
-void ArraySchema::check_enumerations(const Config& cfg) const {
+template <class RM>
+void ArraySchema<RM>::check_enumerations(const Config& cfg) const {
   auto max_size = cfg.get<uint64_t>("sm.enumerations_max_size");
   if (!max_size.has_value()) {
     throw std::runtime_error(
@@ -567,7 +591,8 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
   }
 }
 
-const FilterPipeline& ArraySchema::filters(const std::string& name) const {
+template <class RM>
+const FilterPipeline& ArraySchema<RM>::filters(const std::string& name) const {
   if (is_special_attribute(name)) {
     return coords_filters();
   }
@@ -585,20 +610,24 @@ const FilterPipeline& ArraySchema::filters(const std::string& name) const {
   return ret;
 }
 
-const FilterPipeline& ArraySchema::coords_filters() const {
+template <class RM>
+const FilterPipeline& ArraySchema<RM>::coords_filters() const {
   return coords_filters_;
 }
 
-bool ArraySchema::dense() const {
+template <class RM>
+bool ArraySchema<RM>::dense() const {
   return array_type_ == ArrayType::DENSE;
 }
 
-const DimensionLabel& ArraySchema::dimension_label(
+template <class RM>
+const DimensionLabel& ArraySchema<RM>::dimension_label(
     const dimension_label_size_type i) const {
   return *dimension_labels_[i];
 }
 
-const DimensionLabel& ArraySchema::dimension_label(
+template <class RM>
+const DimensionLabel& ArraySchema<RM>::dimension_label(
     const std::string& name) const {
   auto iter = dimension_label_map_.find(name);
   if (iter == dimension_label_map_.end())
@@ -608,16 +637,19 @@ const DimensionLabel& ArraySchema::dimension_label(
   return *iter->second;
 }
 
-const Dimension* ArraySchema::dimension_ptr(dimension_size_type i) const {
+template <class RM>
+const Dimension* ArraySchema<RM>::dimension_ptr(dimension_size_type i) const {
   return domain_->dimension_ptr(i);
 }
 
-const Dimension* ArraySchema::dimension_ptr(const std::string& name) const {
+template <class RM>
+const Dimension* ArraySchema<RM>::dimension_ptr(const std::string& name) const {
   auto it = dim_map_.find(name);
   return it == dim_map_.end() ? nullptr : it->second;
 }
 
-std::vector<std::string> ArraySchema::dim_names() const {
+template <class RM>
+std::vector<std::string> ArraySchema<RM>::dim_names() const {
   auto dim_num = this->dim_num();
   std::vector<std::string> ret;
   ret.reserve(dim_num);
@@ -627,7 +659,8 @@ std::vector<std::string> ArraySchema::dim_names() const {
   return ret;
 }
 
-std::vector<Datatype> ArraySchema::dim_types() const {
+template <class RM>
+std::vector<Datatype> ArraySchema<RM>::dim_types() const {
   auto dim_num = this->dim_num();
   std::vector<Datatype> ret;
   ret.reserve(dim_num);
@@ -637,15 +670,18 @@ std::vector<Datatype> ArraySchema::dim_types() const {
   return ret;
 }
 
-ArraySchema::dimension_label_size_type ArraySchema::dim_label_num() const {
+template <class RM>
+ArraySchema<RM>::dimension_label_size_type ArraySchema<RM>::dim_label_num() const {
   return static_cast<dimension_label_size_type>(dimension_labels_.size());
 }
 
-ArraySchema::dimension_size_type ArraySchema::dim_num() const {
+template <class RM>
+ArraySchema<RM>::dimension_size_type ArraySchema<RM>::dim_num() const {
   return domain_->dim_num();
 }
 
-void ArraySchema::dump(FILE* out) const {
+template <class RM>
+void ArraySchema<RM>::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
@@ -696,7 +732,8 @@ void ArraySchema::dump(FILE* out) const {
   }
 }
 
-Status ArraySchema::has_attribute(
+template <class RM>
+Status ArraySchema<RM>::has_attribute(
     const std::string& name, bool* has_attr) const {
   *has_attr = false;
 
@@ -710,31 +747,37 @@ Status ArraySchema::has_attribute(
   return Status::Ok();
 }
 
-bool ArraySchema::has_ordered_attributes() const {
+template <class RM>
+bool ArraySchema<RM>::has_ordered_attributes() const {
   return std::any_of(
       attributes_.cbegin(), attributes_.cend(), [](const auto& attr) {
         return attr->order() != DataOrder::UNORDERED_DATA;
       });
 }
 
-bool ArraySchema::is_attr(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::is_attr(const std::string& name) const {
   return this->attribute(name) != nullptr;
 }
 
-bool ArraySchema::is_dim(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::is_dim(const std::string& name) const {
   return this->dimension_ptr(name) != nullptr;
 }
 
-bool ArraySchema::is_dim_label(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::is_dim_label(const std::string& name) const {
   auto it = dimension_label_map_.find(name);
   return it != dimension_label_map_.end();
 }
 
-bool ArraySchema::is_field(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::is_field(const std::string& name) const {
   return is_attr(name) || is_dim(name) || is_special_attribute(name);
 }
 
-bool ArraySchema::is_nullable(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::is_nullable(const std::string& name) const {
   auto attr = this->attribute(name);
   if (attr == nullptr)
     return false;
@@ -760,7 +803,8 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
-void ArraySchema::serialize(Serializer& serializer) const {
+template <class RM>
+void ArraySchema<RM>::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
   // as the latest version.
@@ -829,11 +873,13 @@ void ArraySchema::serialize(Serializer& serializer) const {
   }
 }
 
-Layout ArraySchema::tile_order() const {
+template <class RM>
+Layout ArraySchema<RM>::tile_order() const {
   return tile_order_;
 }
 
-Datatype ArraySchema::type(const std::string& name) const {
+template <class RM>
+Datatype ArraySchema<RM>::type(const std::string& name) const {
   // Special zipped coordinates attribute
   if (name == constants::coords) {
     return domain_->dimension_ptr(0)->type();
@@ -859,7 +905,8 @@ Datatype ArraySchema::type(const std::string& name) const {
   return dim_it->second->type();
 }
 
-bool ArraySchema::var_size(const std::string& name) const {
+template <class RM>
+bool ArraySchema<RM>::var_size(const std::string& name) const {
   // Special case for zipped coordinates
   if (is_special_attribute(name)) {
     return false;
@@ -888,7 +935,8 @@ bool ArraySchema::var_size(const std::string& name) const {
   return false;
 }
 
-Status ArraySchema::add_attribute(
+template <class RM>
+Status ArraySchema<RM>::add_attribute(
     shared_ptr<const Attribute> attr, bool check_special) {
   // Sanity check
   if (attr == nullptr) {
@@ -956,7 +1004,8 @@ Status ArraySchema::add_attribute(
   return Status::Ok();
 }
 
-void ArraySchema::add_dimension_label(
+template <class RM>
+void ArraySchema<RM>::add_dimension_label(
     dimension_size_type dim_id,
     const std::string& name,
     DataOrder label_order,
@@ -1033,7 +1082,8 @@ void ArraySchema::add_dimension_label(
   ++nlabel_internal_;  // WARNING: not atomic
 }
 
-Status ArraySchema::drop_attribute(const std::string& attr_name) {
+template <class RM>
+Status ArraySchema<RM>::drop_attribute(const std::string& attr_name) {
   std::lock_guard<std::mutex> lock(mtx_);
   if (attr_name.empty()) {
     return LOG_STATUS(
@@ -1060,7 +1110,8 @@ Status ArraySchema::drop_attribute(const std::string& attr_name) {
   return Status::Ok();
 }
 
-void ArraySchema::add_enumeration(shared_ptr<const Enumeration> enmr) {
+template <class RM>
+void ArraySchema<RM>::add_enumeration(shared_ptr<const Enumeration> enmr) {
   if (enmr == nullptr) {
     throw ArraySchemaException(
         "Error adding enumeration. Enumeration "
@@ -1077,7 +1128,8 @@ void ArraySchema::add_enumeration(shared_ptr<const Enumeration> enmr) {
   enumeration_path_map_[enmr->name()] = enmr->path_name();
 }
 
-void ArraySchema::extend_enumeration(shared_ptr<const Enumeration> enmr) {
+template <class RM>
+void ArraySchema<RM>::extend_enumeration(shared_ptr<const Enumeration> enmr) {
   if (enmr == nullptr) {
     throw ArraySchemaException(
         "Error adding enumeration. Enumeration must not be nullptr.");
@@ -1122,7 +1174,8 @@ void ArraySchema::extend_enumeration(shared_ptr<const Enumeration> enmr) {
   enumeration_path_map_[enmr->name()] = enmr->path_name();
 }
 
-void ArraySchema::store_enumeration(shared_ptr<const Enumeration> enmr) {
+template <class RM>
+void ArraySchema<RM>::store_enumeration(shared_ptr<const Enumeration> enmr) {
   if (enmr == nullptr) {
     throw ArraySchemaException(
         "Error storing enumeration. Enumeration must not be nullptr.");
@@ -1157,11 +1210,13 @@ void ArraySchema::store_enumeration(shared_ptr<const Enumeration> enmr) {
   name_iter->second = enmr;
 }
 
-bool ArraySchema::has_enumeration(const std::string& enmr_name) const {
+template <class RM>
+bool ArraySchema<RM>::has_enumeration(const std::string& enmr_name) const {
   return enumeration_map_.find(enmr_name) != enumeration_map_.end();
 }
 
-std::vector<std::string> ArraySchema::get_enumeration_names() const {
+template <class RM>
+std::vector<std::string> ArraySchema<RM>::get_enumeration_names() const {
   std::vector<std::string> enmr_names;
   for (auto& entry : enumeration_path_map_) {
     enmr_names.emplace_back(entry.first);
@@ -1169,7 +1224,8 @@ std::vector<std::string> ArraySchema::get_enumeration_names() const {
   return enmr_names;
 }
 
-std::vector<std::string> ArraySchema::get_loaded_enumeration_names() const {
+template <class RM>
+std::vector<std::string> ArraySchema<RM>::get_loaded_enumeration_names() const {
   std::vector<std::string> enmr_names;
   for (auto& entry : enumeration_map_) {
     if (entry.second != nullptr) {
@@ -1179,7 +1235,8 @@ std::vector<std::string> ArraySchema::get_loaded_enumeration_names() const {
   return enmr_names;
 }
 
-bool ArraySchema::is_enumeration_loaded(
+template <class RM>
+bool ArraySchema<RM>::is_enumeration_loaded(
     const std::string& enumeration_name) const {
   auto iter = enumeration_map_.find(enumeration_name);
 
@@ -1193,7 +1250,8 @@ bool ArraySchema::is_enumeration_loaded(
   return iter->second != nullptr;
 }
 
-shared_ptr<const Enumeration> ArraySchema::get_enumeration(
+template <class RM>
+shared_ptr<const Enumeration> ArraySchema<RM>::get_enumeration(
     const std::string& enmr_name) const {
   auto iter = enumeration_map_.find(enmr_name);
   if (iter == enumeration_map_.end()) {
@@ -1205,7 +1263,8 @@ shared_ptr<const Enumeration> ArraySchema::get_enumeration(
   return iter->second;
 }
 
-const std::string& ArraySchema::get_enumeration_path_name(
+template <class RM>
+const std::string& ArraySchema<RM>::get_enumeration_path_name(
     const std::string& enmr_name) const {
   auto iter = enumeration_path_map_.find(enmr_name);
   if (iter == enumeration_path_map_.end()) {
@@ -1217,7 +1276,8 @@ const std::string& ArraySchema::get_enumeration_path_name(
   return iter->second;
 }
 
-void ArraySchema::drop_enumeration(const std::string& enmr_name) {
+template <class RM>
+void ArraySchema<RM>::drop_enumeration(const std::string& enmr_name) {
   std::lock_guard<std::mutex> lock(mtx_);
 
   if (enmr_name.empty()) {
@@ -1250,7 +1310,8 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema ArraySchema::deserialize(
+template <class RM>
+ArraySchema ArraySchema<RM>::deserialize(
     Deserializer& deserializer, const URI& uri) {
   Status st;
   // Load version
@@ -1292,7 +1353,7 @@ ArraySchema ArraySchema::deserialize(
   try {
     ensure_tile_order_is_valid(tile_order_loaded);
   } catch (std::exception& e) {
-    std::throw_with_nested(std::runtime_error("[ArraySchema::deserialize] "));
+    std::throw_with_nested(std::runtime_error("[ArraySchema<RM>::deserialize] "));
   }
   Layout tile_order = Layout(tile_order_loaded);
 
@@ -1301,7 +1362,7 @@ ArraySchema ArraySchema::deserialize(
   try {
     ensure_cell_order_is_valid(cell_order_loaded);
   } catch (std::exception& e) {
-    std::throw_with_nested(std::runtime_error("[ArraySchema::deserialize] "));
+    std::throw_with_nested(std::runtime_error("[ArraySchema<RM>::deserialize] "));
   }
   Layout cell_order = Layout(cell_order_loaded);
 
@@ -1414,7 +1475,8 @@ ArraySchema ArraySchema::deserialize(
           version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
 }
 
-Status ArraySchema::set_allows_dups(bool allows_dups) {
+template <class RM>
+Status ArraySchema<RM>::set_allows_dups(bool allows_dups) {
   if (allows_dups && array_type_ == ArrayType::DENSE)
     return LOG_STATUS(Status_ArraySchemaError(
         "Dense arrays cannot allow coordinate duplicates"));
@@ -1423,15 +1485,18 @@ Status ArraySchema::set_allows_dups(bool allows_dups) {
   return Status::Ok();
 }
 
-void ArraySchema::set_array_uri(const URI& array_uri) {
+template <class RM>
+void ArraySchema<RM>::set_array_uri(const URI& array_uri) {
   array_uri_ = array_uri;
 }
 
-void ArraySchema::set_name(const std::string& name) {
+template <class RM>
+void ArraySchema<RM>::set_name(const std::string& name) {
   name_ = name;
 }
 
-void ArraySchema::set_capacity(uint64_t capacity) {
+template <class RM>
+void ArraySchema<RM>::set_capacity(uint64_t capacity) {
   if (array_type_ == ArrayType::SPARSE && capacity == 0) {
     throw ArraySchemaException(
         "Sparse arrays cannot have their capacity equal to zero.");
@@ -1440,20 +1505,23 @@ void ArraySchema::set_capacity(uint64_t capacity) {
   capacity_ = capacity;
 }
 
-Status ArraySchema::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
+template <class RM>
+Status ArraySchema<RM>::set_coords_filter_pipeline(const FilterPipeline& pipeline) {
   RETURN_NOT_OK(check_string_compressor(pipeline));
   RETURN_NOT_OK(check_double_delta_compressor(pipeline));
   coords_filters_ = pipeline;
   return Status::Ok();
 }
 
-Status ArraySchema::set_cell_var_offsets_filter_pipeline(
+template <class RM>
+Status ArraySchema<RM>::set_cell_var_offsets_filter_pipeline(
     const FilterPipeline& pipeline) {
   cell_var_offsets_filters_ = pipeline;
   return Status::Ok();
 }
 
-Status ArraySchema::set_cell_order(Layout cell_order) {
+template <class RM>
+Status ArraySchema<RM>::set_cell_order(Layout cell_order) {
   if (dense() && cell_order == Layout::HILBERT)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot set cell order; Hilbert order is only "
@@ -1464,13 +1532,15 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
   return Status::Ok();
 }
 
-Status ArraySchema::set_cell_validity_filter_pipeline(
+template <class RM>
+Status ArraySchema<RM>::set_cell_validity_filter_pipeline(
     const FilterPipeline& pipeline) {
   cell_validity_filters_ = pipeline;
   return Status::Ok();
 }
 
-void ArraySchema::set_dimension_label_filter_pipeline(
+template <class RM>
+void ArraySchema<RM>::set_dimension_label_filter_pipeline(
     const std::string& label_name, const FilterPipeline& pipeline) {
   auto& dim_label_ref = dimension_label(label_name);
   if (!dim_label_ref.has_schema()) {
@@ -1483,7 +1553,8 @@ void ArraySchema::set_dimension_label_filter_pipeline(
       ->set_filter_pipeline(pipeline);
 }
 
-void ArraySchema::set_dimension_label_tile_extent(
+template <class RM>
+void ArraySchema<RM>::set_dimension_label_tile_extent(
     const std::string& label_name,
     const Datatype type,
     const void* tile_extent) {
@@ -1505,7 +1576,8 @@ void ArraySchema::set_dimension_label_tile_extent(
   throw_if_not_ok(const_cast<Dimension*>(dim)->set_tile_extent(tile_extent));
 }
 
-Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
+template <class RM>
+Status ArraySchema<RM>::set_domain(shared_ptr<Domain> domain) {
   if (domain == nullptr)
     return LOG_STATUS(
         Status_ArraySchemaError("Cannot set domain; Input domain is nullptr"));
@@ -1548,7 +1620,8 @@ Status ArraySchema::set_domain(shared_ptr<Domain> domain) {
   return Status::Ok();
 }
 
-Status ArraySchema::set_tile_order(Layout tile_order) {
+template <class RM>
+Status ArraySchema<RM>::set_tile_order(Layout tile_order) {
   if (tile_order == Layout::HILBERT)
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot set tile order; Hilbert order is not applicable to tiles"));
@@ -1557,39 +1630,47 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
   return Status::Ok();
 }
 
-void ArraySchema::set_version(format_version_t version) {
+template <class RM>
+void ArraySchema<RM>::set_version(format_version_t version) {
   version_ = version;
 }
 
-format_version_t ArraySchema::write_version() const {
+template <class RM>
+format_version_t ArraySchema<RM>::write_version() const {
   return version_ < constants::back_compat_writes_min_format_version ?
              constants::format_version :
              version_;
 }
 
-format_version_t ArraySchema::version() const {
+template <class RM>
+format_version_t ArraySchema<RM>::version() const {
   return version_;
 }
 
-void ArraySchema::set_timestamp_range(
+template <class RM>
+void ArraySchema<RM>::set_timestamp_range(
     const std::pair<uint64_t, uint64_t>& timestamp_range) {
   timestamp_range_ = timestamp_range;
 }
 
-std::pair<uint64_t, uint64_t> ArraySchema::timestamp_range() const {
+template <class RM>
+std::pair<uint64_t, uint64_t> ArraySchema<RM>::timestamp_range() const {
   return std::pair<uint64_t, uint64_t>(
       timestamp_range_.first, timestamp_range_.second);
 }
 
-uint64_t ArraySchema::timestamp_start() const {
+template <class RM>
+uint64_t ArraySchema<RM>::timestamp_start() const {
   return timestamp_range_.first;
 }
 
-const URI& ArraySchema::uri() const {
+template <class RM>
+const URI& ArraySchema<RM>::uri() const {
   return uri_;
 }
 
-const std::string& ArraySchema::name() const {
+template <class RM>
+const std::string& ArraySchema<RM>::name() const {
   return name_;
 }
 
@@ -1597,7 +1678,8 @@ const std::string& ArraySchema::name() const {
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-void ArraySchema::check_attribute_dimension_label_names() const {
+template <class RM>
+void ArraySchema<RM>::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
   // Check attribute and dimension names are unique.
   auto dim_num = this->dim_num();
@@ -1619,7 +1701,8 @@ void ArraySchema::check_attribute_dimension_label_names() const {
   }
 }
 
-Status ArraySchema::check_double_delta_compressor(
+template <class RM>
+Status ArraySchema<RM>::check_double_delta_compressor(
     const FilterPipeline& coords_filters) const {
   // Check if coordinate filters have DOUBLE DELTA as a compressor
   bool has_double_delta = false;
@@ -1651,7 +1734,8 @@ Status ArraySchema::check_double_delta_compressor(
   return Status::Ok();
 }
 
-Status ArraySchema::check_string_compressor(
+template <class RM>
+Status ArraySchema<RM>::check_string_compressor(
     const FilterPipeline& filters) const {
   // There is no error if only 1 filter is used
   if (filters.size() <= 1 ||
@@ -1688,7 +1772,8 @@ Status ArraySchema::check_string_compressor(
   return Status::Ok();
 }
 
-void ArraySchema::clear() {
+template <class RM>
+void ArraySchema<RM>::clear() {
   array_uri_ = URI();
   uri_ = URI();
   name_.clear();
@@ -1702,7 +1787,8 @@ void ArraySchema::clear() {
   timestamp_range_ = std::make_pair(0, 0);
 }
 
-void ArraySchema::generate_uri(
+template <class RM>
+void ArraySchema<RM>::generate_uri(
     std::optional<std::pair<uint64_t, uint64_t>> timestamp_range) {
   if (timestamp_range == std::nullopt) {
     auto timestamp = utils::time::timestamp_now_ms();
