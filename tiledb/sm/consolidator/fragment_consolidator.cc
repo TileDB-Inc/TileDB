@@ -136,28 +136,40 @@ void FragmentConsolidationWorkspace::resize_buffers(
     total_budget = config.buffer_size_ * buffer_num;
   }
 
-  // Make sure the buffers and sizes vectors are large enough.
-  if (buffer_num > buffers_.size()) {
-    buffers_.resize(buffer_num);
-    sizes_.resize(buffer_num);
-  }
-
-  // Create buffers.
+  // Calculate the size of individual buffers by assigning a weight based
+  // percentage of the total buffer size.
   auto total_weights = std::accumulate(
       buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
 
-  // Allocate space for each buffer.
   uint64_t adjusted_budget = total_budget / total_weights * total_weights;
 
-  if (std::max<uint64_t>(1, adjusted_budget) > backing_buffer_.size()) {
-    backing_buffer_.resize(std::max<uint64_t>(1, adjusted_budget));
+  if (buffer_num > buffers_.size()) {
+    sizes_.resize(buffer_num);
   }
 
-  // Finally allocate spans for the buffers.
   size_t offset = 0;
   for (unsigned i = 0; i < buffer_num; ++i) {
     sizes_[i] = std::max<uint64_t>(
         1, adjusted_budget * buffer_weights[i] / total_weights);
+    offset += sizes_[i];
+  }
+
+  // Total size is the final offset value
+  size_t final_budget = offset;
+
+  // Ensure that our backing buffer is large enough to reference the final
+  // budget number of bytes.
+  if (final_budget > backing_buffer_.size()) {
+    backing_buffer_.resize(final_budget);
+  }
+
+  // Finally, update our spans referencing the backing buffer.
+  if (buffer_num > buffers_.size()) {
+    buffers_.resize(buffer_num);
+  }
+
+  offset = 0;
+  for (unsigned i = 0; i < buffer_num; ++i) {
     buffers_[i] = span(&(backing_buffer_[offset]), sizes_[i]);
     offset += sizes_[i];
   }
