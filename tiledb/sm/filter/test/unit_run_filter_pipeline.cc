@@ -90,6 +90,7 @@
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::sm;
+using resource_manager_type = ContextResources::resource_manager_type;
 
 // A dummy `Stats` instance.
 static tiledb::sm::stats::Stats dummy_stats("test");
@@ -167,7 +168,7 @@ void check_run_pipeline_full(
     ThreadPool& tp,
     WriterTile& tile,
     std::optional<WriterTile>& offsets_tile,
-    FilterPipeline& pipeline,
+    FilterPipeline<resource_manager_type>& pipeline,
     const TileDataGenerator* test_data,
     const FilteredTileChecker& filtered_buffer_checker) {
   // Run the pipeline forward.
@@ -219,7 +220,7 @@ void check_run_pipeline_roundtrip(
     ThreadPool& tp,
     WriterTile& tile,
     std::optional<WriterTile>& offsets_tile,
-    FilterPipeline& pipeline,
+    FilterPipeline<resource_manager_type>& pipeline,
     TileDataGenerator* test_data) {
   // Run the pipeline forward.
   CHECK(pipeline
@@ -266,7 +267,7 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
 
   // Create expected filtered data checker.
   auto filtered_buffer_checker =
@@ -297,7 +298,7 @@ TEST_CASE(
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
 
   // Create  expected filtered data checker.
   auto filtered_buffer_checker =
@@ -328,7 +329,7 @@ TEST_CASE(
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   // Create pipeline to test and expected filtered data checker.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   auto filtered_buffer_checker =
       FilteredTileChecker::create_uncompressed_with_grid_chunks<uint64_t>(
           elements_per_chunk, 0, 1);
@@ -356,7 +357,7 @@ TEST_CASE(
   auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
   std::vector<uint64_t> elements_per_chunk{100};
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
@@ -411,7 +412,7 @@ TEST_CASE(
   auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
@@ -468,7 +469,7 @@ TEST_CASE(
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline to test.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
@@ -521,7 +522,7 @@ TEST_CASE(
   auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
 
   SECTION("- Single stage") {
@@ -576,7 +577,7 @@ TEST_CASE(
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -611,7 +612,7 @@ TEST_CASE(
   auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -645,7 +646,7 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
   const uint64_t expected_checksum = 4950;
 
@@ -710,7 +711,7 @@ TEST_CASE(
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   // Create filter pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
@@ -777,7 +778,7 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -818,7 +819,7 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
       test_data.tile_data_generator().create_writer_tiles();
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -861,7 +862,7 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
 
   const uint64_t expected_checksum = 5350;
 
-  FilterPipeline pipeline;
+  FilterPipeline<resource_manager_type> pipeline;
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
   pipeline.add_filter(AddNInPlace(Datatype::UINT64));
   pipeline.add_filter(Add1InPlace(Datatype::UINT64));
@@ -950,7 +951,7 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
 
     // Construct a random pipeline
-    FilterPipeline pipeline;
+    FilterPipeline<resource_manager_type> pipeline;
     const unsigned max_num_filters = 6;
     std::random_device rd;
     auto pipeline_seed = rd();

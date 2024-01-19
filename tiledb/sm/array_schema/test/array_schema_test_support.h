@@ -194,7 +194,7 @@ class TestDimension {
             type,
             1,                    // cell_val_num
             default_range(type),  // domain
-            FilterPipeline{},
+            FilterPipeline<ContextResources::resource_manager_type>{},
             default_tile_extent(type)  // fill value
             )} {};
 
@@ -311,9 +311,9 @@ class TestArraySchema {
             {},  // dimension labels
             {},  // the first enumeration thing
             {},  // the second enumeration thing
-            FilterPipeline(),
-            FilterPipeline(),
-            FilterPipeline()) {
+            FilterPipeline<ContextResources::resource_manager_type>(),
+            FilterPipeline<ContextResources::resource_manager_type>(),
+            FilterPipeline<ContextResources::resource_manager_type>()) {
   }
 
   /**

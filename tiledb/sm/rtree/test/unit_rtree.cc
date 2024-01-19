@@ -108,7 +108,7 @@ Domain create_domain(
         dim_types[d],
         cell_val_num,
         range,
-        FilterPipeline(),
+        FilterPipeline<ContextResources::resource_manager_type>(),
         tile_extent);
     dimensions.emplace_back(std::move(dim));
   }

@@ -119,8 +119,8 @@ TEST_CASE(
     "C API: tiledb_dimension_set_filter_list argument validation",
     "[capi][dimension]") {
   ordinary_dimension_1 dim;
-  auto fp{
-      tiledb_filter_list_handle_t::make_handle(tiledb::sm::FilterPipeline())};
+  auto fp{tiledb_filter_list_handle_t::make_handle(
+      tiledb::sm::FilterPipeline<tiledb_ctx_t::resource_manager_type>())};
   SECTION("success") {
     capi_return_t rc =
         tiledb_dimension_set_filter_list(dim.ctx.context, dim.dimension, fp);
