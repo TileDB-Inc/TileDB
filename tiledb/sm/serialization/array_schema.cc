@@ -168,7 +168,8 @@ Status filter_to_capnp(
 }
 
 Status filter_pipeline_to_capnp(
-    const FilterPipeline* filter_pipeline,
+    const FilterPipeline<ContextResources::resource_manager_type>*
+        filter_pipeline,
     capnp::FilterPipeline::Builder* filter_pipeline_builder) {
   if (filter_pipeline == nullptr)
     return LOG_STATUS(Status_SerializationError(
@@ -328,11 +329,18 @@ tuple<Status, optional<shared_ptr<Filter>>> filter_from_capnp(
       std::nullopt};
 }
 
-tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
+tuple<
+    Status,
+    optional<
+        shared_ptr<FilterPipeline<ContextResources::resource_manager_type>>>>
+filter_pipeline_from_capnp(
     const capnp::FilterPipeline::Reader& filter_pipeline_reader,
     Datatype datatype) {
   if (!filter_pipeline_reader.hasFilters())
-    return {Status::Ok(), make_shared<FilterPipeline>(HERE())};
+    return {
+        Status::Ok(),
+        make_shared<FilterPipeline<ContextResources::resource_manager_type>>(
+            HERE())};
 
   std::vector<shared_ptr<Filter>> filter_list;
   auto filter_list_reader = filter_pipeline_reader.getFilters();
@@ -348,7 +356,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
 
   return {
       Status::Ok(),
-      make_shared<FilterPipeline>(
+      make_shared<FilterPipeline<ContextResources::resource_manager_type>>(
           HERE(), constants::max_tile_chunk_size, filter_list)};
 }
 
@@ -412,7 +420,7 @@ shared_ptr<Attribute> attribute_from_capnp(
                         DataOrder::UNORDERED_DATA;
 
   // Filter pipelines
-  shared_ptr<FilterPipeline> filters{};
+  shared_ptr<FilterPipeline<ContextResources::resource_manager_type>> filters{};
   if (attribute_reader.hasFilterPipeline()) {
     auto filter_pipeline_reader = attribute_reader.getFilterPipeline();
     auto&& [st_fp, f]{
@@ -420,7 +428,9 @@ shared_ptr<Attribute> attribute_from_capnp(
     throw_if_not_ok(st_fp);
     filters = f.value();
   } else {
-    filters = make_shared<FilterPipeline>(HERE());
+    filters =
+        make_shared<FilterPipeline<ContextResources::resource_manager_type>>(
+            HERE());
   }
 
   // Fill value
@@ -489,7 +499,8 @@ Status dimension_to_capnp(
   }
 
   // Set filters
-  const FilterPipeline& coords_filters = dimension->filters();
+  const FilterPipeline<ContextResources::resource_manager_type>&
+      coords_filters = dimension->filters();
   capnp::FilterPipeline::Builder filters_builder =
       dimension_builder->initFilterPipeline();
   RETURN_NOT_OK(filter_pipeline_to_capnp(&coords_filters, &filters_builder));
@@ -649,7 +660,7 @@ shared_ptr<Dimension> dimension_from_capnp(
 
   // Load filters
   // Note: If there is no FilterPipeline in capnp, a default one is constructed.
-  shared_ptr<FilterPipeline> filters{};
+  shared_ptr<FilterPipeline<ContextResources::resource_manager_type>> filters{};
   if (dimension_reader.hasFilterPipeline()) {
     auto reader = dimension_reader.getFilterPipeline();
     auto&& [st_fp, f]{filter_pipeline_from_capnp(reader, dim_type)};
@@ -660,7 +671,9 @@ shared_ptr<Dimension> dimension_from_capnp(
     }
     filters = f.value();
   } else {
-    filters = make_shared<FilterPipeline>(HERE());
+    filters =
+        make_shared<FilterPipeline<ContextResources::resource_manager_type>>(
+            HERE());
   }
 
   // Load tile extent
@@ -832,22 +845,24 @@ Status array_schema_to_capnp(
   array_schema_builder->setAllowsDuplicates(array_schema.allows_dups());
 
   // Set coordinate filters
-  const FilterPipeline& coords_filters = array_schema.coords_filters();
+  const FilterPipeline<ContextResources::resource_manager_type>&
+      coords_filters = array_schema.coords_filters();
   capnp::FilterPipeline::Builder coords_filters_builder =
       array_schema_builder->initCoordsFilterPipeline();
   RETURN_NOT_OK(
       filter_pipeline_to_capnp(&coords_filters, &coords_filters_builder));
 
   // Set offset filters
-  const FilterPipeline& offsets_filters =
-      array_schema.cell_var_offsets_filters();
+  const FilterPipeline<ContextResources::resource_manager_type>&
+      offsets_filters = array_schema.cell_var_offsets_filters();
   capnp::FilterPipeline::Builder offsets_filters_builder =
       array_schema_builder->initOffsetFilterPipeline();
   RETURN_NOT_OK(
       filter_pipeline_to_capnp(&offsets_filters, &offsets_filters_builder));
 
   // Set validity filters
-  const FilterPipeline& validity_filters = array_schema.cell_validity_filters();
+  const FilterPipeline<ContextResources::resource_manager_type>&
+      validity_filters = array_schema.cell_validity_filters();
   capnp::FilterPipeline::Builder validity_filters_builder =
       array_schema_builder->initValidityFilterPipeline();
   RETURN_NOT_OK(
@@ -1001,7 +1016,7 @@ ArraySchema array_schema_from_capnp(
   // Set coords filter pipelines
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  FilterPipeline coords_filters;
+  FilterPipeline<ContextResources::resource_manager_type> coords_filters;
   if (schema_reader.hasCoordsFilterPipeline()) {
     auto reader = schema_reader.getCoordsFilterPipeline();
     auto&& [st_fp, filters]{filter_pipeline_from_capnp(reader, Datatype::ANY)};
@@ -1016,7 +1031,8 @@ ArraySchema array_schema_from_capnp(
   // Set offsets filter pipelines
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  FilterPipeline cell_var_offsets_filters;
+  FilterPipeline<ContextResources::resource_manager_type>
+      cell_var_offsets_filters;
   if (schema_reader.hasOffsetFilterPipeline()) {
     auto reader = schema_reader.getOffsetFilterPipeline();
     auto&& [st_fp, filters]{
@@ -1032,7 +1048,7 @@ ArraySchema array_schema_from_capnp(
   // Set validity filter pipelines
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
-  FilterPipeline cell_validity_filters;
+  FilterPipeline<ContextResources::resource_manager_type> cell_validity_filters;
   if (schema_reader.hasValidityFilterPipeline()) {
     auto reader = schema_reader.getValidityFilterPipeline();
     auto&& [st_fp, filters]{

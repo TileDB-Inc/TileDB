@@ -63,7 +63,8 @@ void check_byte_vec_values(const ByteVecValue& val1, const ByteVecValue& val2) {
  * the correct type.
  */
 void check_filter_pipelines(
-    const FilterPipeline& pipeline1, const FilterPipeline& pipeline2) {
+    const FilterPipeline<ContextResources::resource_manager_type> pipeline1,
+    const FilterPipeline<ContextResources::resource_manager_type>& pipeline2) {
   CHECK(pipeline1.size() == pipeline2.size());
   CHECK(pipeline1.max_chunk_size() == pipeline2.max_chunk_size());
   for (decltype(pipeline1.size()) index{0}; index < pipeline1.size(); ++index) {
@@ -120,7 +121,7 @@ TEST_CASE("Serialize and deserialize attribute", "[attribute][serialization]") {
   }
   SECTION("Non-default filters pipeline") {
     attr = make_shared<Attribute>(HERE(), "attr1", Datatype::UINT64);
-    FilterPipeline filters;
+    FilterPipeline<ContextResources::resource_manager_type> filters;
     filters.add_filter(CompressionFilter(Compressor::ZSTD, 2, attr->type()));
     filters.add_filter(BitWidthReductionFilter(attr->type()));
     attr->set_filter_pipeline(filters);
