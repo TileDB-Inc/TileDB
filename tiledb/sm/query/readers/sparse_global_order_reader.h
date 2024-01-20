@@ -61,7 +61,7 @@ template <class BitmapType>
 class SparseGlobalOrderReader : public SparseIndexReaderBase,
                                 public IQueryStrategy {
  public:
-  typedef std::list<GlobalOrderResultTile<BitmapType>> ResultTilesList;
+  typedef std::list<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>> ResultTilesList;
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -231,7 +231,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param result_tiles Result tiles per fragment.
    * @return Newly created tiles.
    */
-  std::vector<ResultTile*> create_result_tiles(
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> create_result_tiles(
       std::vector<ResultTilesList>& result_tiles);
 
   /**
@@ -246,7 +246,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @param result_tiles Result tiles to process.
    */
-  void dedup_tiles_with_timestamps(std::vector<ResultTile*>& result_tiles);
+  void dedup_tiles_with_timestamps(std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles);
 
   /**
    * Process fragments with timestamps to deduplicate entries.
@@ -330,7 +330,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @param result_tiles Result tiles to process.
    */
-  void compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
+  void compute_hilbert_values(std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles);
 
   /**
    * Update the fragment index to the larger between current one and the one
@@ -339,7 +339,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param tile Current tile.
    * @param c Current cell index.
    */
-  void update_frag_idx(GlobalOrderResultTile<BitmapType>* tile, uint64_t c);
+  void update_frag_idx(GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>* tile, uint64_t c);
 
   /**
    * Compute the result cell slabs once tiles are loaded.
@@ -510,7 +510,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param aggregate_only Are we generating the list for aggregate only fields?
    * @return vector of result tiles.
    */
-  std::vector<ResultTile*> result_tiles_to_load(
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> result_tiles_to_load(
       std::vector<ResultCellSlab>& result_cell_slabs, bool aggregate_only);
 
   /**
@@ -566,7 +566,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
-      ResultTile& rt);
+      ResultTile<ContextResources::resource_manager_type>& rt);
 
   /**
    * Returns wether or not we can aggregate the tile with only the fragment
@@ -576,7 +576,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @return If we can do the aggregation with the frag md or not.
    */
   inline bool can_aggregate_tile_with_frag_md(ResultCellSlab& rcs) {
-    auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
+    auto rt = static_cast<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>*>(rcs.tile_);
     auto& frag_md = fragment_metadata_[rt->frag_idx()];
 
     // Here we only aggregate a full tile if first of all there are no missing

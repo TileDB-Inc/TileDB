@@ -44,6 +44,7 @@ namespace tiledb {
 namespace sm {
 
 /** The `ResultCellSlabIter` iterator returns cell slabs of this form. */
+// TODO: YEET (EDIT THIS TO TEMPLATE IT)
 struct ResultCellSlab {
   /**
    * The result tile the cell slab belongs to. If `nullptr`, then this is
@@ -54,7 +55,7 @@ struct ResultCellSlab {
    * sparse_read/dense_read, so the lifetime of this struct must not exceed
    * the scope of those functions.
    */
-  ResultTile* tile_;
+  ResultTile<ContextResources::resource_manager_type>* tile_;
   /** The cell position where the slab starts. */
   uint64_t start_;
   /** The length of the slab (i.e., the number of cells in the slab). */
@@ -68,7 +69,7 @@ struct ResultCellSlab {
   }
 
   /** Constructor. */
-  ResultCellSlab(ResultTile* tile, uint64_t start, uint64_t length)
+  ResultCellSlab(ResultTile<ContextResources::resource_manager_type>* tile, uint64_t start, uint64_t length)
       : tile_(tile)
       , start_(start)
       , length_(length) {

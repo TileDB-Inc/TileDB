@@ -383,7 +383,7 @@ class ReaderBase : public StrategyBase {
    */
   void clear_tiles(
       const std::string& name,
-      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       const uint64_t min_result_tile = 0) const;
 
   /**
@@ -456,7 +456,7 @@ class ReaderBase : public StrategyBase {
    * @param rt Result tile.
    * @return fragment timestamp.
    */
-  inline uint64_t fragment_timestamp(ResultTile* rt) const {
+  inline uint64_t fragment_timestamp(ResultTile<ContextResources::resource_manager_type>* rt) const {
     return fragment_metadata_[rt->frag_idx()]->timestamp_range().first;
   }
 
@@ -534,7 +534,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_and_unfilter_attribute_tiles(
       const std::vector<NameToLoad>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Read and unfilter coordinate tiles.
@@ -546,7 +546,7 @@ class ReaderBase : public StrategyBase {
    */
   Status read_and_unfilter_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -562,7 +562,7 @@ class ReaderBase : public StrategyBase {
    */
   std::vector<FilteredData> read_attribute_tiles(
       const std::vector<NameToLoad>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Concurrently executes across each name in `names` and each result tile
@@ -578,7 +578,7 @@ class ReaderBase : public StrategyBase {
    */
   std::vector<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Retrieves the tiles on a list of attribute or dimension and stores it
@@ -595,7 +595,7 @@ class ReaderBase : public StrategyBase {
    */
   std::vector<FilteredData> read_tiles(
       const std::vector<NameToLoad>& names,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Filters the tiles on a particular field from all input
@@ -609,7 +609,7 @@ class ReaderBase : public StrategyBase {
   Status unfilter_tiles(
       const std::string& name,
       const bool validity_only,
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Unfilter a specific range of chunks in tile
@@ -632,7 +632,7 @@ class ReaderBase : public StrategyBase {
   Status unfilter_tile(
       const std::string& name,
       const bool validity_only,
-      ResultTile* const tile,
+      ResultTile<ContextResources::resource_manager_type>* const tile,
       const bool var_size,
       const bool nullable,
       uint64_t range_thread_idx,
@@ -709,7 +709,7 @@ class ReaderBase : public StrategyBase {
   load_tile_chunk_data(
       const std::string& name,
       const bool validity_only,
-      ResultTile* const tile,
+      ResultTile<ContextResources::resource_manager_type>* const tile,
       const bool var_size,
       const bool nullable,
       ChunkData& tile_chunk_data,
@@ -735,7 +735,7 @@ class ReaderBase : public StrategyBase {
   Status post_process_unfiltered_tile(
       const std::string& name,
       const bool validity_only,
-      ResultTile* const tile,
+      ResultTile<ContextResources::resource_manager_type>* const tile,
       const bool var_size,
       const bool nullable) const;
 

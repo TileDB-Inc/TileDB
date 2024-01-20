@@ -45,7 +45,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-template <class BitmapType>
+template <class RM, class BitmapType>
 class GlobalOrderResultTile;
 
 /**
@@ -116,7 +116,7 @@ struct ResultCoordsBase {
   }
 };
 
-struct ResultCoords : public ResultCoordsBase<ResultTile> {
+struct ResultCoords : public ResultCoordsBase<ResultTile<ContextResources::resource_manager_type>> {
   /** Constructor. */
   ResultCoords()
       : ResultCoordsBase()
@@ -124,7 +124,7 @@ struct ResultCoords : public ResultCoordsBase<ResultTile> {
   }
 
   /** Constructor. */
-  ResultCoords(ResultTile* tile, uint64_t pos)
+  ResultCoords(ResultTile<ContextResources::resource_manager_type>* tile, uint64_t pos)
       : ResultCoordsBase(tile, pos)
       , valid_(true) {
   }
@@ -145,8 +145,8 @@ struct ResultCoords : public ResultCoordsBase<ResultTile> {
 
 template <class BitmapType>
 struct GlobalOrderResultCoords
-    : public ResultCoordsBase<GlobalOrderResultTile<BitmapType>> {
-  using base = ResultCoordsBase<GlobalOrderResultTile<BitmapType>>;
+    : public ResultCoordsBase<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>> {
+  using base = ResultCoordsBase<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>>;
 
   /**
    * Set to false when a duplicate was found in the cell following this cell
@@ -155,16 +155,16 @@ struct GlobalOrderResultCoords
   bool has_next_;
 
   /** Constructor. */
-  GlobalOrderResultCoords(GlobalOrderResultTile<BitmapType>* tile, uint64_t pos)
-      : ResultCoordsBase<GlobalOrderResultTile<BitmapType>>(tile, pos)
+  GlobalOrderResultCoords(GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>* tile, uint64_t pos)
+      : ResultCoordsBase<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>>(tile, pos)
       , has_next_(true)
       , init_(false) {
   }
 
   /** Constructor. */
   GlobalOrderResultCoords(
-      GlobalOrderResultTile<BitmapType>* tile, uint64_t pos, bool has_next)
-      : ResultCoordsBase<GlobalOrderResultTile<BitmapType>>(tile, pos)
+      GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>* tile, uint64_t pos, bool has_next)
+      : ResultCoordsBase<GlobalOrderResultTile<ContextResources::resource_manager_type, BitmapType>>(tile, pos)
       , has_next_(has_next)
       , init_(false) {
   }

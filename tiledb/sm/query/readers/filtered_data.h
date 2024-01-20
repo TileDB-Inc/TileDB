@@ -166,7 +166,7 @@ class FilteredData {
       const uint64_t max_batch_size,
       const uint64_t min_batch_gap,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       const std::string& name,
       const bool var_sized,
       const bool nullable,
@@ -289,7 +289,7 @@ class FilteredData {
    * @return Fixed filtered data pointer.
    */
   inline void* fixed_filtered_data(
-      const FragmentMetadata* fragment, const ResultTile* rt) {
+      const FragmentMetadata* fragment, const ResultTile<ContextResources::resource_manager_type>* rt) {
     auto offset{fragment->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
     return current_data_block(TileType::FIXED)->data_at(offset);
@@ -303,7 +303,7 @@ class FilteredData {
    * @return Var filtered data pointer.
    */
   inline void* var_filtered_data(
-      const FragmentMetadata* fragment, const ResultTile* rt) {
+      const FragmentMetadata* fragment, const ResultTile<ContextResources::resource_manager_type>* rt) {
     if (!var_sized_) {
       return nullptr;
     }
@@ -321,7 +321,7 @@ class FilteredData {
    * @return Nullable filtered data pointer.
    */
   inline void* nullable_filtered_data(
-      const FragmentMetadata* fragment, const ResultTile* rt) {
+      const FragmentMetadata* fragment, const ResultTile<ContextResources::resource_manager_type>* rt) {
     if (!nullable_) {
       return nullptr;
     }
@@ -494,7 +494,7 @@ class FilteredData {
       optional<unsigned> current_block_frag_idx,
       storage_size_t& current_block_offset,
       storage_size_t& current_block_size,
-      const ResultTile* rt,
+      const ResultTile<ContextResources::resource_manager_type>* rt,
       const TileType type) {
     const auto tile_idx{rt->tile_idx()};
     storage_size_t offset{file_offset(fragment, type, tile_idx)};
@@ -535,7 +535,7 @@ class FilteredData {
   void ensure_data_block_current(
       const TileType type,
       const FragmentMetadata* fragment,
-      const ResultTile* rt,
+      const ResultTile<ContextResources::resource_manager_type>* rt,
       const storage_size_t offset) {
     storage_size_t size{persisted_tile_size(fragment, type, rt->tile_idx())};
 

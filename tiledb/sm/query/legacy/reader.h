@@ -135,7 +135,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
       std::vector<ResultCoords>& result_coords,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::vector<ResultCellSlab>& result_cell_slabs) const;
 
   /**
@@ -172,7 +172,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
       std::vector<ResultCoords>& result_coords,
       uint64_t* result_coords_pos,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::set<std::pair<unsigned, uint64_t>>& frag_tile_set,
       std::vector<ResultCellSlab>& result_cell_slabs) const;
 
@@ -201,7 +201,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       const Subarray& subarray,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
       std::vector<ResultCoords>& result_coords,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::vector<ResultCellSlab>& result_cell_slabs) const;
 
  private:
@@ -226,7 +226,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   enum ProcessTileFlag { READ = 1, COPY = 2 };
 
   typedef std::
-      unordered_map<ResultTile*, std::vector<std::pair<uint64_t, uint64_t>>>
+      unordered_map<ResultTile<ContextResources::resource_manager_type>*, std::vector<std::pair<uint64_t, uint64_t>>>
           ResultCellSlabsIndex;
 
   /* ********************************* */
@@ -254,7 +254,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    */
   Status apply_query_condition(
       std::vector<ResultCellSlab>& result_cell_slabs,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       Subarray& subarray,
       uint64_t stride = UINT64_MAX);
 
@@ -283,7 +283,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Status compute_range_result_coords(
       Subarray& subarray,
       unsigned frag_idx,
-      ResultTile* tile,
+      ResultTile<ContextResources::resource_manager_type>* tile,
       uint64_t range_idx,
       std::vector<ResultCoords>& result_coords);
 
@@ -305,7 +305,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
       std::vector<std::vector<ResultCoords>>& range_result_coords);
 
   /**
@@ -325,7 +325,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -347,7 +347,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       uint64_t range_idx,
       uint32_t fragment_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::vector<ResultTile>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -382,7 +382,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status
    */
   Status compute_sparse_result_tiles(
-      std::vector<ResultTile>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
       std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
       std::vector<bool>* single_fragment);
 
@@ -391,7 +391,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * It also appropriately cleans up the used result tiles.
    */
   Status copy_coordinates(
-      const std::vector<ResultTile*>& result_tiles,
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
@@ -400,7 +400,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    */
   Status copy_attribute_values(
       uint64_t stride,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::vector<ResultCellSlab>& result_cell_slabs,
       Subarray& subarray);
 
@@ -562,7 +562,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    */
   Status process_tiles(
       const std::unordered_map<std::string, ProcessTileFlags>& names,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       std::vector<ResultCellSlab>& result_cell_slabs,
       Subarray& subarray,
       uint64_t stride);
@@ -574,7 +574,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param result_coords This will store the result coordinates.
    */
   Status compute_result_coords(
-      std::vector<ResultTile>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
       std::vector<ResultCoords>& result_coords);
 
   /**
@@ -606,7 +606,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status
    */
   Status get_all_result_coords(
-      ResultTile* tile, std::vector<ResultCoords>& result_coords);
+      ResultTile<ContextResources::resource_manager_type>* tile, std::vector<ResultCoords>& result_coords);
 
   /**
    * Returns `true` if a coordinate buffer for a separate dimension
@@ -651,7 +651,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * Erases the coordinate tiles (zipped or separate) from the input result
    * tiles.
    */
-  void erase_coord_tiles(std::vector<ResultTile>& result_tiles) const;
+  void erase_coord_tiles(std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles) const;
 
   /** Gets statistics about the result cells. */
   void get_result_cell_stats(
@@ -659,7 +659,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Gets statistics about the result tiles. */
   void get_result_tile_stats(
-      const std::vector<ResultTile*>& result_tiles) const;
+      const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const;
 
   /**
    * Calculates the hilbert values of the result coordinates between

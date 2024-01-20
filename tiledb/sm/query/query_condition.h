@@ -49,6 +49,8 @@ namespace sm {
 
 class FragmentMetadata;
 struct ResultCellSlab;
+
+template <class RM>
 class ResultTile;
 
 enum class QueryConditionCombinationOp : uint8_t;
@@ -220,7 +222,7 @@ class QueryCondition {
    */
   Status apply_dense(
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      ResultTile<ContextResources::resource_manager_type>* result_tile,
       const uint64_t start,
       const uint64_t length,
       const uint64_t src_cell,
@@ -239,7 +241,7 @@ class QueryCondition {
   template <typename BitmapType>
   Status apply_sparse(
       const ArraySchema& array_schema,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       std::vector<BitmapType>& result_bitmap);
 
   /**
@@ -453,7 +455,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      ResultTile<ContextResources::resource_manager_type>* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -483,7 +485,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      ResultTile<ContextResources::resource_manager_type>* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -512,7 +514,7 @@ class QueryCondition {
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      ResultTile<ContextResources::resource_manager_type>* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -538,7 +540,7 @@ class QueryCondition {
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile* result_tile,
+      ResultTile<ContextResources::resource_manager_type>* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
       const uint64_t stride,
@@ -564,7 +566,7 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       const bool var_size,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
@@ -587,7 +589,7 @@ class QueryCondition {
       typename nullable>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       const bool var_size,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
@@ -605,7 +607,7 @@ class QueryCondition {
   template <typename T, typename BitmapType, typename CombinationOp>
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
@@ -626,7 +628,7 @@ class QueryCondition {
   void apply_ast_node_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 
@@ -646,7 +648,7 @@ class QueryCondition {
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
       const ArraySchema& array_schema,
-      ResultTile& result_tile,
+      ResultTile<ContextResources::resource_manager_type>& result_tile,
       CombinationOp combination_op,
       std::vector<BitmapType>& result_bitmap) const;
 };

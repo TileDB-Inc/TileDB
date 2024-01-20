@@ -832,7 +832,7 @@ uint64_t DenseReader::compute_space_tiles_end(
 }
 
 template <class DimType>
-std::vector<ResultTile*> DenseReader::result_tiles_to_load(
+std::vector<ResultTile<ContextResources::resource_manager_type>*> DenseReader::result_tiles_to_load(
     const optional<std::string> name,
     const std::unordered_set<std::string>& condition_names,
     const Subarray& subarray,
@@ -845,7 +845,7 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
   const bool agg_only = name.has_value() && aggregate_only(name.value());
 
   // If the result is already loaded in query condition, return the empty list;
-  std::vector<ResultTile*> ret;
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> ret;
   if (name.has_value() && condition_names.count(name.value()) != 0) {
     return ret;
   }
@@ -862,7 +862,7 @@ std::vector<ResultTile*> DenseReader::result_tiles_to_load(
     }
 
     for (const auto& result_tile : result_space_tile.result_tiles()) {
-      ret.push_back(const_cast<ResultTile*>(&result_tile.second));
+      ret.push_back(const_cast<ResultTile<ContextResources::resource_manager_type>*>(&result_tile.second));
     }
   }
   std::sort(ret.begin(), ret.end(), result_tile_cmp);
@@ -1271,7 +1271,7 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
     const uint64_t cell_size,
     const uint64_t min_cell,
     const uint64_t max_cell,
-    ResultTile::TileTuple* tile_tuple,
+    ResultTile<ContextResources::resource_manager_type>::TileTuple* tile_tuple,
     optional<void*> bitmap_data) {
   void* fixed_data = nullptr;
   optional<char*> var_data = nullopt;
@@ -1425,7 +1425,7 @@ Status DenseReader::copy_fixed_tiles(
   const auto& fill_value_nullable = attribute->fill_value_validity();
 
   // Cache tile tuples.
-  std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
+  std::vector<ResultTile<ContextResources::resource_manager_type>::TileTuple*> tile_tuples(frag_domains.size());
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
@@ -1621,7 +1621,7 @@ Status DenseReader::copy_offset_tiles(
   const auto nullable = attribute->nullable();
 
   // Cache tile tuples.
-  std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
+  std::vector<ResultTile<ContextResources::resource_manager_type>::TileTuple*> tile_tuples(frag_domains.size());
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);
@@ -1880,7 +1880,7 @@ Status DenseReader::aggregate_tiles(
   const bool validity_only = null_count_aggregate_only(name);
 
   // Cache tile tuples.
-  std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
+  std::vector<ResultTile<ContextResources::resource_manager_type>::TileTuple*> tile_tuples(frag_domains.size());
   for (uint32_t fd = 0; fd < frag_domains.size(); ++fd) {
     tile_tuples[fd] =
         result_space_tile.result_tile(frag_domains[fd].fid())->tile_tuple(name);

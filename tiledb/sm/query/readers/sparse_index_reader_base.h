@@ -439,7 +439,7 @@ class SparseIndexReaderBase : public ReaderBase {
      *
      * @param rt Result tile.
      */
-    void add_ignored_tile(ResultTile& rt) {
+    void add_ignored_tile(ResultTile<ContextResources::resource_manager_type>& rt) {
       std::unique_lock<std::mutex> lck(ignored_tiles_mutex_);
       ignored_tiles_.emplace(rt.frag_idx(), rt.tile_idx());
     }
@@ -644,7 +644,7 @@ class SparseIndexReaderBase : public ReaderBase {
    *
    * @return Status.
    */
-  Status read_and_unfilter_coords(const std::vector<ResultTile*>& result_tiles);
+  Status read_and_unfilter_coords(const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles);
 
   /**
    * Compute tile bitmaps.
@@ -652,7 +652,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param result_tiles Result tiles to process.
    */
   template <class BitmapType>
-  void compute_tile_bitmaps(std::vector<ResultTile*>& result_tiles);
+  void compute_tile_bitmaps(std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles);
 
   /**
    * Apply query condition.
@@ -660,7 +660,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param result_tiles Result tiles to process.
    */
   template <class ResultTileType, class BitmapType>
-  void apply_query_condition(std::vector<ResultTile*>& result_tiles);
+  void apply_query_condition(std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles);
 
   /**
    * Read and unfilter as many attributes as can fit in the memory budget and
@@ -679,7 +679,7 @@ class SparseIndexReaderBase : public ReaderBase {
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
-      std::vector<ResultTile*>& result_tiles,
+      std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
       bool agg_only);
 
   /**

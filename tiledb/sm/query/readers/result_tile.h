@@ -65,16 +65,12 @@ class QueryCondition;
 class Subarray;
 
 /**
- * Utilitary function to sort result tiles by fragment first then tile index.
- */
-bool result_tile_cmp(const ResultTile* a, const ResultTile* b);
-
-/**
  * Stores information about a logical dense or sparse result tile. Note that it
  * may store the physical tiles across more than one attributes for the same
  * logical tile (space/data tile for dense, data tile oriented by an MBR for
  * sparse).
  */
+template<class RM>
 class ResultTile {
  public:
   /**
@@ -378,20 +374,20 @@ class ResultTile {
   ~ResultTile() = default;
 
   /** Move constructor. */
-  ResultTile(ResultTile&& tile);
+  ResultTile(ResultTile<RM>&& tile);
 
   /** Move-assign operator. */
-  ResultTile& operator=(ResultTile&& tile);
+  ResultTile& operator=(ResultTile<RM>&& tile);
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(ResultTile& tile);
+  void swap(ResultTile<RM>& tile);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
   /** Equality operator (mainly for debugging purposes). */
-  bool operator==(const ResultTile& rt) const;
+  bool operator==(const ResultTile<RM>& rt) const;
 
   /**
    * Returns the number of cells in the result tile.
@@ -462,7 +458,7 @@ class ResultTile {
    *
    * This checks for two cells in different tiles.
    */
-  bool same_coords(const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const;
+  bool same_coords(const ResultTile<RM>& rt, uint64_t pos_a, uint64_t pos_b) const;
 
   /**
    * Returns true if the coordinates at position `pos_a` and `pos_b` are
@@ -528,7 +524,7 @@ class ResultTile {
    */
   template <class T>
   static void compute_results_dense(
-      const ResultTile* result_tile,
+      const ResultTile<RM>* result_tile,
       unsigned dim_idx,
       const Range& range,
       const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
@@ -544,7 +540,7 @@ class ResultTile {
    */
   template <class T>
   static void compute_results_sparse(
-      const ResultTile* result_tile,
+      const ResultTile<RM>* result_tile,
       unsigned dim_idx,
       const Range& range,
       std::vector<uint8_t>* result_bitmap,
@@ -564,7 +560,7 @@ class ResultTile {
    */
   template <class BitmapType, class T>
   static void compute_results_count_sparse(
-      const ResultTile* result_tile,
+      const ResultTile<RM>* result_tile,
       unsigned dim_idx,
       const NDRange& ranges,
       const std::vector<uint64_t>& range_indexes,
@@ -608,7 +604,7 @@ class ResultTile {
    */
   template <class BitmapType>
   static void compute_results_count_sparse_string(
-      const ResultTile* result_tile,
+      const ResultTile<RM>* result_tile,
       unsigned dim_idx,
       const NDRange& ranges,
       const std::vector<uint64_t>& range_indexes,
@@ -713,7 +709,7 @@ class ResultTile {
    * each dimension, based on the dimension datatype.
    */
   std::vector<std::function<void(
-      const ResultTile*,
+      const ResultTile<RM>*,
       unsigned,
       const Range&,
       const std::vector<shared_ptr<FragmentMetadata>>,
@@ -807,9 +803,15 @@ class ResultTile {
       const std::string_view& range_end);
 };
 
+/**
+ * Utilitary function to sort result tiles by fragment first then tile index.
+ */
+template <class RM>
+bool result_tile_cmp(const ResultTile<RM>* a, const ResultTile<RM>* b);
+
 /** Result tile with bitmap. */
-template <class BitmapType>
-class ResultTileWithBitmap : public ResultTile {
+template <class RM, class BitmapType>
+class ResultTileWithBitmap : public ResultTile<RM> {
  protected:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -818,19 +820,19 @@ class ResultTileWithBitmap : public ResultTile {
 
   ResultTileWithBitmap(
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTile(frag_idx, tile_idx, frag_md)
-      , result_num_(cell_num_) {
+      : ResultTile<RM>(frag_idx, tile_idx, frag_md)
+      , result_num_(this->cell_num_) {
   }
 
   /** Move constructor. */
-  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
+  ResultTileWithBitmap(ResultTileWithBitmap<RM, BitmapType>&& other) noexcept {
     // Swap with the argument
     swap(other);
   }
 
   /** Move-assign operator. */
-  ResultTileWithBitmap<BitmapType>& operator=(
-      ResultTileWithBitmap<BitmapType>&& other) {
+  ResultTileWithBitmap<RM, BitmapType>& operator=(
+      ResultTileWithBitmap<RM, BitmapType>&& other) {
     // Swap with the argument
     swap(other);
 
@@ -874,7 +876,7 @@ class ResultTileWithBitmap : public ResultTile {
    */
   void alloc_bitmap() {
     assert(bitmap_.size() == 0);
-    bitmap_.resize(cell_num_, 1);
+    bitmap_.resize(this->cell_num_, 1);
   }
 
   /**
@@ -939,15 +941,15 @@ class ResultTileWithBitmap : public ResultTile {
     // For non overlapping ranges, if result_num == cell_num, copy full tile.
     const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
     if (non_overlapping) {
-      return cell_num_ == result_num_;
+      return this->cell_num_ == result_num_;
     }
 
     return false;
   }
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(ResultTileWithBitmap<BitmapType>& tile) {
-    ResultTile::swap(tile);
+  void swap(ResultTileWithBitmap<RM, BitmapType>& tile) {
+    ResultTile<RM>::swap(tile);
     std::swap(bitmap_, tile.bitmap_);
     std::swap(result_num_, tile.result_num_);
   }
@@ -964,8 +966,8 @@ class ResultTileWithBitmap : public ResultTile {
 };
 
 /** Global order result tile. */
-template <class BitmapType>
-class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
+template <class RM, class BitmapType>
+class GlobalOrderResultTile : public ResultTileWithBitmap<RM, BitmapType> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -976,7 +978,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       bool dups,
       bool include_delete_meta,
       const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
+      : ResultTileWithBitmap<RM, BitmapType>(frag_idx, tile_idx, frag_md)
       , post_dedup_bitmap_(
             !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
                                            nullopt)
@@ -1005,7 +1007,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(GlobalOrderResultTile& tile) {
-    ResultTileWithBitmap<uint8_t>::swap(tile);
+    ResultTileWithBitmap<RM, uint8_t>::swap(tile);
     std::swap(used_, tile.used_);
     std::swap(hilbert_values_, tile.hilbert_values_);
     std::swap(post_dedup_bitmap_, tile.post_dedup_bitmap_);
@@ -1027,7 +1029,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * tile type, it will either be post_dedup_bitmap_ or the normal bitmap.
    */
   inline bool has_post_dedup_bmp() {
-    return ResultTileWithBitmap<BitmapType>::has_bmp() ||
+    return ResultTileWithBitmap<RM, BitmapType>::has_bmp() ||
            (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0);
   }
 
@@ -1039,15 +1041,15 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    */
   void ensure_bitmap_for_query_condition() {
     if (post_dedup_bitmap_.has_value()) {
-      if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
-        post_dedup_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+      if (ResultTileWithBitmap<RM, BitmapType>::has_bmp()) {
+        post_dedup_bitmap_ = ResultTileWithBitmap<RM, BitmapType>::bitmap_;
       } else {
-        post_dedup_bitmap_->resize(ResultTile::cell_num_, 1);
+        post_dedup_bitmap_->resize(ResultTile<RM>::cell_num_, 1);
       }
     } else {
-      if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
-        ResultTileWithBitmap<BitmapType>::bitmap_.resize(
-            ResultTile::cell_num_, 1);
+      if (ResultTileWithBitmap<RM, BitmapType>::bitmap_.size() == 0) {
+        ResultTileWithBitmap<RM, BitmapType>::bitmap_.resize(
+            ResultTile<RM>::cell_num_, 1);
       }
     }
   }
@@ -1059,7 +1061,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   inline std::vector<BitmapType>& post_dedup_bitmap() {
     return post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0 ?
                post_dedup_bitmap_.value() :
-               ResultTileWithBitmap<BitmapType>::bitmap_;
+               ResultTileWithBitmap<RM, BitmapType>::bitmap_;
   }
 
   /**
@@ -1068,13 +1070,13 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * @param cell_idx Cell index to clear.
    */
   void clear_cell(uint64_t cell_idx) {
-    if (cell_idx > ResultTileWithBitmap<BitmapType>::bitmap_.size()) {
+    if (cell_idx > ResultTileWithBitmap<RM, BitmapType>::bitmap_.size()) {
       throw std::out_of_range("Cell index out of range");
     }
 
-    ResultTileWithBitmap<BitmapType>::result_num_ -=
-        ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx];
-    ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx] = 0;
+    ResultTileWithBitmap<RM, BitmapType>::result_num_ -=
+        ResultTileWithBitmap<RM, BitmapType>::bitmap_[cell_idx];
+    ResultTileWithBitmap<RM, BitmapType>::bitmap_[cell_idx] = 0;
 
     if (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0) {
       post_dedup_bitmap_->at(cell_idx) = 0;
@@ -1083,7 +1085,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(ResultTile::cell_num_);
+    hilbert_values_.resize(ResultTile<RM>::cell_num_);
   }
 
   /** Get the hilbert value at an index. */
@@ -1099,7 +1101,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /** Return first cell index in bitmap. */
   uint64_t first_cell_in_bitmap() {
     uint64_t ret = 0;
-    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
+    while (!ResultTileWithBitmap<RM, BitmapType>::bitmap_[ret]) {
       ret++;
     }
 
@@ -1108,8 +1110,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Return first cell index in bitmap. */
   uint64_t last_cell_in_bitmap() {
-    uint64_t ret = ResultTileWithBitmap<BitmapType>::bitmap_.size() - 1;
-    while (!ResultTileWithBitmap<BitmapType>::bitmap_[ret]) {
+    uint64_t ret = ResultTileWithBitmap<RM, BitmapType>::bitmap_.size() - 1;
+    while (!ResultTileWithBitmap<RM, BitmapType>::bitmap_[ret]) {
       ret--;
     }
 
@@ -1118,14 +1120,14 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Allocate space for the delete condition index vector. */
   inline void allocate_per_cell_delete_condition_vector() {
-    per_cell_delete_condition_.resize(ResultTile::cell_num_, nullptr);
+    per_cell_delete_condition_.resize(ResultTile<RM>::cell_num_, nullptr);
   }
 
   /** Compute the delete condition index. */
   inline void compute_per_cell_delete_condition(QueryCondition* ptr) {
     // Go through all cells, if the delete condition cleared the cell, and the
     // index for this cell is still unset, set it to the current condition.
-    for (uint64_t c = 0; c < ResultTile::cell_num_; c++) {
+    for (uint64_t c = 0; c < ResultTile<RM>::cell_num_; c++) {
       if (post_dedup_bitmap_->at(c) == 0 &&
           per_cell_delete_condition_[c] == nullptr) {
         per_cell_delete_condition_[c] = ptr;
@@ -1184,15 +1186,15 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   bool used_;
 };
 
-template <class BitmapType>
-class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
+template <class RM, class BitmapType>
+class UnorderedWithDupsResultTile : public ResultTileWithBitmap<RM, BitmapType> {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   UnorderedWithDupsResultTile(
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
+      : ResultTileWithBitmap<RM, BitmapType>(frag_idx, tile_idx, frag_md) {
   }
 
   /** Move constructor. */
@@ -1217,7 +1219,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /** Swaps the contents (all field values) of this tile with the given tile. */
   void swap(UnorderedWithDupsResultTile& tile) {
-    ResultTileWithBitmap<BitmapType>::swap(tile);
+    ResultTileWithBitmap<RM, BitmapType>::swap(tile);
   }
 
   /**
@@ -1225,7 +1227,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * tile type, this is stored in the regular bitmap.
    */
   inline bool has_post_dedup_bmp() {
-    return ResultTileWithBitmap<BitmapType>::has_bmp();
+    return ResultTileWithBitmap<RM, BitmapType>::has_bmp();
   }
 
   /**
@@ -1233,9 +1235,9 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * type, this is stored in the regular bitmap.
    */
   void ensure_bitmap_for_query_condition() {
-    if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
-      ResultTileWithBitmap<BitmapType>::bitmap_.resize(
-          ResultTile::cell_num_, 1);
+    if (ResultTileWithBitmap<RM, BitmapType>::bitmap_.size() == 0) {
+      ResultTileWithBitmap<RM, BitmapType>::bitmap_.resize(
+          ResultTile<RM>::cell_num_, 1);
     }
   }
 
@@ -1244,7 +1246,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * type, this is stored in the regular bitmap.
    */
   inline std::vector<BitmapType>& post_dedup_bitmap() {
-    return ResultTileWithBitmap<BitmapType>::bitmap_;
+    return ResultTileWithBitmap<RM, BitmapType>::bitmap_;
   }
 
   /** Not used for this result tile type. */

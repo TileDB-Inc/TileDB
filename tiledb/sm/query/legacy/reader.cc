@@ -326,7 +326,7 @@ Status Reader::load_initial_data() {
 
 Status Reader::apply_query_condition(
     std::vector<ResultCellSlab>& result_cell_slabs,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
   if ((!condition_.has_value() && delete_and_update_conditions_.empty()) ||
@@ -396,7 +396,7 @@ Status Reader::compute_result_cell_slabs(
   }
   uint64_t start_pos = it->pos_;
   uint64_t end_pos = start_pos;
-  ResultTile* tile = it->tile_;
+  ResultTile<ContextResources::resource_manager_type>* tile = it->tile_;
 
   // Scan the coordinates and compute ranges
   it = skip_invalid_elements(++it, coords_end);
@@ -423,7 +423,7 @@ Status Reader::compute_result_cell_slabs(
 Status Reader::compute_range_result_coords(
     Subarray& subarray,
     unsigned frag_idx,
-    ResultTile* tile,
+    ResultTile<ContextResources::resource_manager_type>* tile,
     uint64_t range_idx,
     std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
@@ -492,7 +492,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
     std::vector<std::vector<ResultCoords>>& range_result_coords) {
   auto timer_se = stats_->start_timer("compute_range_result_coords");
 
@@ -547,7 +547,7 @@ Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     uint32_t fragment_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
@@ -603,7 +603,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
@@ -678,7 +678,7 @@ Status Reader::compute_subarray_coords(
 }
 
 Status Reader::compute_sparse_result_tiles(
-    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
@@ -747,7 +747,7 @@ Status Reader::compute_sparse_result_tiles(
 }
 
 Status Reader::copy_coordinates(
-    const std::vector<ResultTile*>& result_tiles,
+    const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) {
   auto timer_se = stats_->start_timer("copy_coordinates");
 
@@ -814,7 +814,7 @@ Status Reader::copy_coordinates(
 
 Status Reader::copy_attribute_values(
     const uint64_t stride,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs,
     Subarray& subarray) {
   auto timer_se = stats_->start_timer("copy_attr_values");
@@ -1356,7 +1356,7 @@ Status Reader::copy_partitioned_var_cells(
 
 Status Reader::process_tiles(
     const std::unordered_map<std::string, ProcessTileFlags>& names,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs,
     Subarray& subarray,
     const uint64_t stride) {
@@ -1474,7 +1474,7 @@ Status Reader::compute_result_cell_slabs(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
     std::vector<ResultCoords>& result_coords,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
   auto timer_se = stats_->start_timer("compute_sparse_result_cell_slabs_dense");
 
@@ -1510,7 +1510,7 @@ Status Reader::compute_result_cell_slabs_row_col(
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
     std::vector<ResultCoords>& result_coords,
     uint64_t* result_coords_pos,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::set<std::pair<unsigned, uint64_t>>& frag_tile_set,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
   // Compute result space tiles. The result space tiles hold all the
@@ -1551,7 +1551,7 @@ Status Reader::compute_result_cell_slabs_global(
     const Subarray& subarray,
     std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
     std::vector<ResultCoords>& result_coords,
-    std::vector<ResultTile*>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles,
     std::vector<ResultCellSlab>& result_cell_slabs) const {
   const auto& tile_coords = subarray.tile_coords();
   auto cell_order = array_schema_.cell_order();
@@ -1580,7 +1580,7 @@ Status Reader::compute_result_cell_slabs_global(
 }
 
 Status Reader::compute_result_coords(
-    std::vector<ResultTile>& result_tiles,
+    std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles,
     std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_result_coords");
 
@@ -1597,11 +1597,11 @@ Status Reader::compute_result_coords(
 
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
-  std::vector<ResultTile*> tmp_result_tiles;
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> tmp_result_tiles;
   for (auto& result_tile : result_tiles) {
     tmp_result_tiles.push_back(&result_tile);
   }
-  std::sort(tmp_result_tiles.begin(), tmp_result_tiles.end(), result_tile_cmp);
+  std::sort(tmp_result_tiles.begin(), tmp_result_tiles.end(), result_tile_cmp<ContextResources::resource_manager_type>);
 
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
@@ -1719,7 +1719,7 @@ Status Reader::dense_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::vector<ResultTile> sparse_result_tiles;
+  std::vector<ResultTile<ContextResources::resource_manager_type>> sparse_result_tiles;
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
@@ -1728,7 +1728,7 @@ Status Reader::dense_read() {
   // final result tiles for both sparse and dense fragments.
   std::map<const T*, ResultSpaceTile<T>> result_space_tiles;
   std::vector<ResultCellSlab> result_cell_slabs;
-  std::vector<ResultTile*> result_tiles;
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> result_tiles;
   auto& subarray = read_state_.partitioner_.current();
 
   RETURN_NOT_OK(subarray.compute_tile_coords<T>());
@@ -1738,7 +1738,7 @@ Status Reader::dense_read() {
       result_coords,
       result_tiles,
       result_cell_slabs));
-  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp<ContextResources::resource_manager_type>);
 
   auto stride = array_schema_.domain().stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
@@ -1771,7 +1771,7 @@ Status Reader::dense_read() {
 }
 
 Status Reader::get_all_result_coords(
-    ResultTile* tile, std::vector<ResultCoords>& result_coords) {
+    ResultTile<ContextResources::resource_manager_type>* tile, std::vector<ResultCoords>& result_coords) {
   auto coords_num = tile->cell_num();
 
   // Apply partial overlap condition, if required.
@@ -1975,14 +1975,14 @@ Status Reader::sparse_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::vector<ResultTile> sparse_result_tiles;
+  std::vector<ResultTile<ContextResources::resource_manager_type>> sparse_result_tiles;
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
-  std::vector<ResultTile*> result_tiles;
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> result_tiles;
   for (auto& srt : sparse_result_tiles) {
     result_tiles.push_back(&srt);
   }
-  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp<ContextResources::resource_manager_type>);
 
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
@@ -2057,7 +2057,7 @@ bool Reader::sparse_tile_overwritten(
   return false;
 }
 
-void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
+void Reader::erase_coord_tiles(std::vector<ResultTile<ContextResources::resource_manager_type>>& result_tiles) const {
   for (auto& tile : result_tiles) {
     auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
@@ -2075,7 +2075,7 @@ void Reader::get_result_cell_stats(
 }
 
 void Reader::get_result_tile_stats(
-    const std::vector<ResultTile*>& result_tiles) const {
+    const std::vector<ResultTile<ContextResources::resource_manager_type>*>& result_tiles) const {
   stats_->add_counter("overlap_tile_num", result_tiles.size());
 
   uint64_t cell_num = 0;

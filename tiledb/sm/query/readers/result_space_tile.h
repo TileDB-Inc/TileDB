@@ -105,7 +105,7 @@ class ResultSpaceTile {
   }
 
   /** Returns the result tiles. */
-  const std::map<unsigned, ResultTile>& result_tiles() const {
+  const std::map<unsigned, ResultTile<ContextResources::resource_manager_type>>& result_tiles() const {
     return result_tiles_;
   }
 
@@ -126,13 +126,13 @@ class ResultSpaceTile {
   }
 
   /** Sets the input result tile for the given fragment. */
-  void set_result_tile(unsigned frag_idx, ResultTile& result_tile) {
+  void set_result_tile(unsigned frag_idx, ResultTile<ContextResources::resource_manager_type>& result_tile) {
     assert(result_tiles_.count(frag_idx) == 0);
     result_tiles_[frag_idx] = std::move(result_tile);
   }
 
   /** Returns the result tile for the input fragment. */
-  ResultTile* result_tile(unsigned frag_idx) {
+  ResultTile<ContextResources::resource_manager_type>* result_tile(unsigned frag_idx) {
     auto it = result_tiles_.find(frag_idx);
     assert(it != result_tiles_.end());
     return &(it->second);
@@ -168,7 +168,7 @@ class ResultSpaceTile {
    * Returns the only result tile in this space tile or throws if there are more
    * than one.
    */
-  inline ResultTile& single_result_tile() {
+  inline ResultTile<ContextResources::resource_manager_type>& single_result_tile() {
     if (result_tiles_.size() != 1) {
       throw std::runtime_error(
           "Shouldn't call single_result_tile on tiles with more than one "
@@ -193,7 +193,7 @@ class ResultSpaceTile {
    * The (dense) result tiles for this space tile, as a map
    * `(fragment id) -> (result tile)`.
    */
-  std::map<unsigned, ResultTile> result_tiles_;
+  std::map<unsigned, ResultTile<ContextResources::resource_manager_type>> result_tiles_;
 
   /** Did the query condition filter any result for this space tile. */
   bool qc_filtered_results_ = false;

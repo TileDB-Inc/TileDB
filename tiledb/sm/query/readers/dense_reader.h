@@ -206,7 +206,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
 
   /** Compute the result tiles to load for a name. */
   template <class DimType>
-  std::vector<ResultTile*> result_tiles_to_load(
+  std::vector<ResultTile<ContextResources::resource_manager_type>*> result_tiles_to_load(
       const optional<std::string> name,
       const std::unordered_set<std::string>& condition_names,
       const Subarray& subarray,
@@ -266,7 +266,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
-      ResultTile::TileTuple* tile_tuple,
+      ResultTile<ContextResources::resource_manager_type>::TileTuple* tile_tuple,
       optional<void*> bitmap_data);
 
   /**

@@ -49,7 +49,8 @@ using namespace tiledb::type;
 namespace tiledb {
 namespace sm {
 
-bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
+template <class RM>
+bool result_tile_cmp(const ResultTile<RM>* a, const ResultTile<RM>* b) {
   if (a->frag_idx() < b->frag_idx()) {
     return true;
   } else if (a->frag_idx() > b->frag_idx()) {
@@ -67,7 +68,8 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ResultTile::ResultTile(
+template <class RM>
+ResultTile<RM>::ResultTile(
     unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
     : domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
@@ -84,24 +86,27 @@ ResultTile::ResultTile(
 
   // Default `coord_func_` to fetch from `coord_tile_` until at least
   // one unzipped coordinate has been initialized.
-  coord_func_ = &ResultTile::zipped_coord;
+  coord_func_ = &ResultTile<RM>::zipped_coord;
 }
 
 /** Move constructor. */
-ResultTile::ResultTile(ResultTile&& other) {
+template <class RM>
+ResultTile<RM>::ResultTile(ResultTile<RM>&& other) {
   // Swap with the argument
   swap(other);
 }
 
 /** Move-assign operator. */
-ResultTile& ResultTile::operator=(ResultTile&& other) {
+template <class RM>
+ResultTile<RM>& ResultTile<RM>::operator=(ResultTile<RM>&& other) {
   // Swap with the argument
   swap(other);
 
   return *this;
 }
 
-void ResultTile::swap(ResultTile& tile) {
+template <class RM>
+void ResultTile<RM>::swap(ResultTile<RM>& tile) {
   std::swap(domain_, tile.domain_);
   std::swap(frag_idx_, tile.frag_idx_);
   std::swap(tile_idx_, tile.tile_idx_);
@@ -126,15 +131,18 @@ void ResultTile::swap(ResultTile& tile) {
 /*               API              */
 /* ****************************** */
 
-bool ResultTile::operator==(const ResultTile& rt) const {
+template <class RM>
+bool ResultTile<RM>::operator==(const ResultTile<RM>& rt) const {
   return frag_idx_ == rt.frag_idx_ && tile_idx_ == rt.tile_idx_;
 }
 
-uint64_t ResultTile::cell_num() const {
+template <class RM>
+uint64_t ResultTile<RM>::cell_num() const {
   return cell_num_;
 }
 
-void ResultTile::erase_tile(const std::string& name) {
+template <class RM>
+void ResultTile<RM>::erase_tile(const std::string& name) {
   // Handle zipped coordinates tiles
   if (name == constants::coords) {
     coords_tile_.reset();
@@ -168,7 +176,8 @@ void ResultTile::erase_tile(const std::string& name) {
   }
 }
 
-void ResultTile::init_attr_tile(
+template <class RM>
+void ResultTile<RM>::init_attr_tile(
     const format_version_t format_version,
     const ArraySchema& array_schema,
     const std::string& name,
@@ -206,7 +215,8 @@ void ResultTile::init_attr_tile(
   }
 }
 
-void ResultTile::init_coord_tile(
+template <class RM>
+void ResultTile<RM>::init_coord_tile(
     const format_version_t format_version,
     const ArraySchema& array_schema,
     const std::string& name,
@@ -219,10 +229,11 @@ void ResultTile::init_coord_tile(
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
-  coord_func_ = &ResultTile::unzipped_coord;
+  coord_func_ = &ResultTile<RM>::unzipped_coord;
 }
 
-ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
+template <class RM>
+ResultTile<RM>::TileTuple* ResultTile<RM>::tile_tuple(const std::string& name) {
   // Handle zipped coordinates tile
   if (coords_tile_.has_value() && name == constants::coords) {
     return &coords_tile_.value();
@@ -260,14 +271,16 @@ ResultTile::TileTuple* ResultTile::tile_tuple(const std::string& name) {
   return nullptr;
 }
 
-const void* ResultTile::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
+template <class RM>
+const void* ResultTile<RM>::unzipped_coord(uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile = coord_tiles_[dim_idx].second->fixed_tile();
   const uint64_t offset = pos * coord_tile.cell_size();
   void* const ret = coord_tile.data_as<char>() + offset;
   return ret;
 }
 
-const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
+template <class RM>
+const void* ResultTile<RM>::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   auto coords_size = coords_tile_->fixed_tile().cell_size();
   auto coord_size =
       coords_size / coords_tile_->fixed_tile().zipped_coords_dim_num();
@@ -276,7 +289,8 @@ const void* ResultTile::zipped_coord(uint64_t pos, unsigned dim_idx) const {
   return ret;
 }
 
-std::string_view ResultTile::coord_string(
+template <class RM>
+std::string_view ResultTile<RM>::coord_string(
     uint64_t pos, unsigned dim_idx) const {
   const auto& coord_tile_off = coord_tiles_[dim_idx].second->fixed_tile();
   const auto& coord_tile_val = coord_tiles_[dim_idx].second->var_tile();
@@ -294,7 +308,8 @@ std::string_view ResultTile::coord_string(
   return std::string_view(buffer, size);
 }
 
-uint64_t ResultTile::coord_size(unsigned dim_idx) const {
+template <class RM>
+uint64_t ResultTile<RM>::coord_size(unsigned dim_idx) const {
   // Handle zipped coordinate tiles
   if (coords_tile_.has_value()) {
     return coords_tile_->fixed_tile().cell_size() /
@@ -306,7 +321,8 @@ uint64_t ResultTile::coord_size(unsigned dim_idx) const {
   return coord_tiles_[dim_idx].second->fixed_tile().cell_size();
 }
 
-bool ResultTile::same_coords(
+template <class RM>
+bool ResultTile<RM>::same_coords(
     const ResultTile& rt, uint64_t pos_a, uint64_t pos_b) const {
   auto dim_num = coord_tiles_.size();
   for (unsigned d = 0; d < dim_num; ++d) {
@@ -322,25 +338,29 @@ bool ResultTile::same_coords(
   return true;
 }
 
-bool ResultTile::same_coords(uint64_t pos_a, uint64_t pos_b) const {
+template <class RM>
+bool ResultTile<RM>::same_coords(uint64_t pos_a, uint64_t pos_b) const {
   return same_coords(*this, pos_a, pos_b);
 }
 
-uint64_t ResultTile::timestamp(uint64_t pos) {
+template <class RM>
+uint64_t ResultTile<RM>::timestamp(uint64_t pos) {
   const auto& tile = this->tile_tuple(constants::timestamps)->fixed_tile();
   return tile.data_as<uint64_t>()[pos];
 }
 
+template <class RM>
 template <typename LabelType>
-LabelType ResultTile::attribute_value(
+LabelType ResultTile<RM>::attribute_value(
     const std::string& label_name, const uint64_t pos) {
   const auto label_data =
       tile_tuple(label_name)->fixed_tile().data_as<LabelType>();
   return label_data[pos];
 }
 
+template <class RM>
 template <>
-std::string_view ResultTile::attribute_value<std::string_view>(
+std::string_view ResultTile<RM>::attribute_value<std::string_view>(
     const std::string& label_name, const uint64_t pos) {
   auto tuple = tile_tuple(label_name);
   auto offsets_data = tuple->fixed_tile().data_as<offsets_t>();
@@ -351,15 +371,18 @@ std::string_view ResultTile::attribute_value<std::string_view>(
   return std::string_view(&var_tile.data_as<char>()[offset], size);
 }
 
-unsigned ResultTile::frag_idx() const {
+template <class RM>
+unsigned ResultTile<RM>::frag_idx() const {
   return frag_idx_;
 }
 
-uint64_t ResultTile::tile_idx() const {
+template <class RM>
+uint64_t ResultTile<RM>::tile_idx() const {
   return tile_idx_;
 }
 
-Status ResultTile::read(
+template <class RM>
+Status ResultTile<RM>::read(
     const std::string& name,
     void* buffer,
     uint64_t buffer_offset,
@@ -438,7 +461,8 @@ Status ResultTile::read(
   return Status::Ok();
 }
 
-Status ResultTile::read_nullable(
+template <class RM>
+Status ResultTile<RM>::read_nullable(
     const std::string& name,
     void* buffer,
     uint64_t buffer_offset,
@@ -466,23 +490,27 @@ Status ResultTile::read_nullable(
   return Status::Ok();
 }
 
-bool ResultTile::stores_zipped_coords() const {
+template <class RM>
+bool ResultTile<RM>::stores_zipped_coords() const {
   return coords_tile_.has_value();
 }
 
-const Tile& ResultTile::zipped_coords_tile() const {
+template <class RM>
+const Tile& ResultTile<RM>::zipped_coords_tile() const {
   assert(stores_zipped_coords());
   return coords_tile_->fixed_tile();
 }
 
-const ResultTile::TileTuple& ResultTile::coord_tile(unsigned dim_idx) const {
+template <class RM>
+const ResultTile<RM>::TileTuple& ResultTile<RM>::coord_tile(unsigned dim_idx) const {
   assert(!stores_zipped_coords());
   assert(!coord_tiles_.empty());
   return coord_tiles_[dim_idx].second.value();
 }
 
+template <class RM>
 template <class T>
-void ResultTile::compute_results_dense(
+void ResultTile<RM>::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
@@ -584,7 +612,8 @@ void ResultTile::compute_results_dense(
   }
 }
 
-inline bool ResultTile::str_coord_intersects(
+template <class RM>
+inline bool ResultTile<RM>::str_coord_intersects(
     const uint64_t c_offset,
     const uint64_t c_size,
     const char* const buff_str,
@@ -594,8 +623,8 @@ inline bool ResultTile::str_coord_intersects(
   return str >= range_start && str <= range_end;
 }
 
-template <>
-void ResultTile::compute_results_sparse<char>(
+template <class RM>
+void ResultTile<RM>::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
@@ -751,8 +780,9 @@ void ResultTile::compute_results_sparse<char>(
   }
 }
 
+template <class RM>
 template <class T>
-void ResultTile::compute_results_sparse(
+void ResultTile<RM>::compute_results_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
@@ -792,8 +822,9 @@ void ResultTile::compute_results_sparse(
   }
 }
 
+template <class RM>
 template <class BitmapType>
-void ResultTile::compute_results_count_sparse_string_range(
+void ResultTile<RM>::compute_results_count_sparse_string_range(
     const std::vector<std::pair<std::string_view, std::string_view>>
         cached_ranges,
     const char* buff_str,
@@ -860,8 +891,9 @@ void ResultTile::compute_results_count_sparse_string_range(
   }
 }
 
+template <class RM>
 template <class BitmapType>
-void ResultTile::compute_results_count_sparse_string(
+void ResultTile<RM>::compute_results_count_sparse_string(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
@@ -1036,8 +1068,9 @@ void ResultTile::compute_results_count_sparse_string(
   }
 }
 
+template <class RM>
 template <class BitmapType, class T>
-void ResultTile::compute_results_count_sparse(
+void ResultTile<RM>::compute_results_count_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const NDRange& ranges,
@@ -1127,7 +1160,8 @@ void ResultTile::compute_results_count_sparse(
   }
 }
 
-Status ResultTile::compute_results_dense(
+template <class RM>
+Status ResultTile<RM>::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
     const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
@@ -1146,7 +1180,8 @@ Status ResultTile::compute_results_dense(
   return Status::Ok();
 }
 
-Status ResultTile::compute_results_sparse(
+template <class RM>
+Status ResultTile<RM>::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
     std::vector<uint8_t>* result_bitmap,
@@ -1157,8 +1192,8 @@ Status ResultTile::compute_results_sparse(
   return Status::Ok();
 }
 
-template <>
-Status ResultTile::compute_results_count_sparse<uint8_t>(
+template <class RM>
+Status ResultTile<RM>::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
     const NDRange& ranges,
     const std::vector<uint64_t>& range_indexes,
@@ -1179,8 +1214,8 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
   return Status::Ok();
 }
 
-template <>
-Status ResultTile::compute_results_count_sparse<uint64_t>(
+template <class RM>
+Status ResultTile<RM>::compute_results_count_sparse<uint64_t>(
     unsigned dim_idx,
     const NDRange& ranges,
     const std::vector<uint64_t>& range_indexes,
@@ -1205,7 +1240,8 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
 /*         PRIVATE METHODS        */
 /* ****************************** */
 
-void ResultTile::set_compute_results_func() {
+template <class RM>
+void ResultTile<RM>::set_compute_results_func() {
   auto dim_num = domain_->dim_num();
   compute_results_dense_func_.resize(dim_num);
   compute_results_sparse_func_.resize(dim_num);
@@ -1238,25 +1274,25 @@ void ResultTile::set_compute_results_func() {
 }
 
 // Explicit template instantiations
-template int8_t ResultTile::attribute_value<int8_t>(
+template int8_t ResultTile<ContextResources::resource_manager_type>::attribute_value<int8_t>(
     const std::string&, const uint64_t);
-template uint8_t ResultTile::attribute_value<uint8_t>(
+template uint8_t ResultTile<ContextResources::resource_manager_type>::attribute_value<uint8_t>(
     const std::string&, const uint64_t);
-template int16_t ResultTile::attribute_value<int16_t>(
+template int16_t ResultTile<ContextResources::resource_manager_type>::attribute_value<int16_t>(
     const std::string&, const uint64_t);
-template uint16_t ResultTile::attribute_value<uint16_t>(
+template uint16_t ResultTile<ContextResources::resource_manager_type>::attribute_value<uint16_t>(
     const std::string&, const uint64_t);
-template int32_t ResultTile::attribute_value<int32_t>(
+template int32_t ResultTile<ContextResources::resource_manager_type>::attribute_value<int32_t>(
     const std::string&, const uint64_t);
-template uint32_t ResultTile::attribute_value<uint32_t>(
+template uint32_t ResultTile<ContextResources::resource_manager_type>::attribute_value<uint32_t>(
     const std::string&, const uint64_t);
-template int64_t ResultTile::attribute_value<int64_t>(
+template int64_t ResultTile<ContextResources::resource_manager_type>::attribute_value<int64_t>(
     const std::string&, const uint64_t);
-template uint64_t ResultTile::attribute_value<uint64_t>(
+template uint64_t ResultTile<ContextResources::resource_manager_type>::attribute_value<uint64_t>(
     const std::string&, const uint64_t);
-template float ResultTile::attribute_value<float>(
+template float ResultTile<ContextResources::resource_manager_type>::attribute_value<float>(
     const std::string&, const uint64_t);
-template double ResultTile::attribute_value<double>(
+template double ResultTile<ContextResources::resource_manager_type>::attribute_value<double>(
     const std::string&, const uint64_t);
 
 }  // namespace sm
