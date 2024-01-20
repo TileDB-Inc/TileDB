@@ -196,7 +196,7 @@ class ReaderBase : public StrategyBase {
    */
   template <class T>
   static void compute_result_space_tiles(
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -278,7 +278,7 @@ class ReaderBase : public StrategyBase {
   std::vector<QueryCondition> timestamped_delete_and_update_conditions_;
 
   /** The fragment metadata that the reader will focus on. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata_;
 
   /**
    * The condition to apply on results when there is partial time overlap
@@ -371,7 +371,7 @@ class ReaderBase : public StrategyBase {
    * @param frag_meta Fragment metadata.
    * @return true if the condition need to be processed.
    */
-  bool process_partial_timestamps(FragmentMetadata& frag_meta) const;
+  bool process_partial_timestamps(FragmentMetadata<ContextResources::resource_manager_type>& frag_meta) const;
 
   /**
    * Deletes the tiles on the input field from the result tiles.

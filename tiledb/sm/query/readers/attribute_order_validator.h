@@ -256,7 +256,7 @@ class AttributeOrderValidator {
       bool increasing_data,
       uint64_t f,
       const std::vector<const void*>& non_empty_domains,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
       const std::vector<uint64_t>& frag_first_array_tile_idx) {
     // For easy reference.
     auto& val_data = per_fragment_validation_data_[f];
@@ -408,7 +408,7 @@ class AttributeOrderValidator {
       bool increasing_data,
       uint64_t f,
       const std::vector<const void*>& non_empty_domains,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata,
       const std::vector<uint64_t>& frag_first_array_tile_idx) {
     auto& val_data = per_fragment_validation_data_[f];
     const IndexType* non_empty_domain =
@@ -554,7 +554,7 @@ class AttributeOrderValidator {
       bool is_lower_bound,
       uint64_t f_to_compare,
       uint64_t t_to_compare,
-      const shared_ptr<FragmentMetadata> fragment_metadata) {
+      const shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> fragment_metadata) {
     auto& val_data = per_fragment_validation_data_[f];
     auto it = result_tiles_to_load_[f].find(t_to_compare);
     if (it == result_tiles_to_load_[f].end()) {

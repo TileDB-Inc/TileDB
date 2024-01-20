@@ -204,7 +204,7 @@ void Array::load_fragments(
 
   // Load the fragment metadata
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
-  set_fragment_metadata(FragmentMetadata::load(
+  set_fragment_metadata(FragmentMetadata<ContextResources::resource_manager_type>::load(
       resources_,
       memory_tracker(),
       opened_array_->array_schema_latest_ptr(),
@@ -1240,7 +1240,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>,
-    std::vector<shared_ptr<FragmentMetadata>>>
+    std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>>
 Array::open_for_reads() {
   auto timer_se = resources_.stats().start_timer(
       "array_open_read_load_schemas_and_fragment_meta");

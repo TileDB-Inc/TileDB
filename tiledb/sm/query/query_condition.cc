@@ -592,7 +592,7 @@ struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::NOT_IN> {
 template <typename T, QueryConditionOp Op, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
@@ -744,7 +744,7 @@ void QueryCondition::apply_ast_node(
 template <typename T, typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     const uint64_t stride,
     const bool var_size,
     const bool nullable,
@@ -862,7 +862,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_ast_node(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     const uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
@@ -1110,7 +1110,7 @@ template <typename CombinationOp>
 void QueryCondition::apply_tree(
     const tdb_unique_ptr<ASTNode>& node,
     const ArraySchema& array_schema,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     uint64_t stride,
     const std::vector<ResultCellSlab>& result_cell_slabs,
     CombinationOp combination_op,
@@ -1216,7 +1216,7 @@ void QueryCondition::apply_tree(
 
 Status QueryCondition::apply(
     const ArraySchema& array_schema,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
   if (!tree_) {

@@ -106,7 +106,7 @@ ReaderBase::ReaderBase(
 
 template <class T>
 void ReaderBase::compute_result_space_tiles(
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata,
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
@@ -203,7 +203,7 @@ bool ReaderBase::skip_field(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
-bool ReaderBase::process_partial_timestamps(FragmentMetadata& frag_meta) const {
+bool ReaderBase::process_partial_timestamps(FragmentMetadata<ContextResources::resource_manager_type>& frag_meta) const {
   return frag_meta.has_timestamps() &&
          frag_meta.partial_time_overlap(
              array_->timestamp_start(), array_->timestamp_end_opened_at());

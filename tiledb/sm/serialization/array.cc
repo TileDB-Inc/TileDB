@@ -307,7 +307,7 @@ Status array_from_capnp(
     auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
     fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
-      auto meta = make_shared<FragmentMetadata>(HERE());
+      auto meta = make_shared<FragmentMetadata<ContextResources::resource_manager_type>>(HERE());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(),
           frag_meta_reader,

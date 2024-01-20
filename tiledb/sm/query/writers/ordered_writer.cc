@@ -176,7 +176,7 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
-  auto frag_meta = make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = make_shared<FragmentMetadata<ContextResources::resource_manager_type>>(HERE());
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   frag_uri_ = frag_meta->fragment_uri();
 
@@ -284,7 +284,7 @@ template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
     std::vector<WriterTileTupleVector>& tile_batches,
-    shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
   auto timer_se = stats_->start_timer("prepare_filter_and_write_tiles");

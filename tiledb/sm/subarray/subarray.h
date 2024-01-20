@@ -73,6 +73,8 @@ class OpenedArray;
 class DimensionLabel;
 class EncryptionKey;
 class FragIdx;
+
+template <class RM>
 class FragmentMetadata;
 
 enum class Layout : uint8_t;
@@ -737,7 +739,7 @@ class Subarray {
       const ArraySchema& array_schema,
       bool all_dims_same_type,
       bool all_dims_fixed,
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_meta,
       const std::vector<std::string>& name,
       const std::vector<bool>& var_sizes,
       const std::vector<bool>& nullable,
@@ -1606,7 +1608,7 @@ class Subarray {
    * @return Status
    */
   Status compute_relevant_fragment_tile_overlap(
-      shared_ptr<FragmentMetadata> meta,
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta,
       unsigned frag_idx,
       bool dense,
       ThreadPool* compute_tp,

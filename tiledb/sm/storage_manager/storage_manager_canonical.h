@@ -73,6 +73,8 @@ class ArraySchemaEvolution;
 class Buffer;
 class Consolidator;
 class EncryptionKey;
+
+template <class RM>
 class FragmentMetadata;
 class FragmentInfo;
 class GroupDetails;

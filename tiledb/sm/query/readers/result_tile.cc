@@ -68,7 +68,7 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /* ****************************** */
 
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+    unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata<ContextResources::resource_manager_type>& frag_md)
     : domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
@@ -486,7 +486,7 @@ void ResultTile::compute_results_dense(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) {
@@ -1130,7 +1130,7 @@ void ResultTile::compute_results_count_sparse(
 Status ResultTile::compute_results_dense(
     unsigned dim_idx,
     const Range& range,
-    const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata,
     unsigned frag_idx,
     std::vector<uint8_t>* result_bitmap,
     std::vector<uint8_t>* overwritten_bitmap) const {

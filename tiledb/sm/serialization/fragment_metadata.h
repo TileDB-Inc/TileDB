@@ -44,6 +44,7 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+template <class RM>
 class FragmentMetadata;
 enum class SerializationType : uint8_t;
 
@@ -64,7 +65,7 @@ namespace serialization {
 Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
     ContextResources* resources = nullptr,
     MemoryTracker* memory_tracker = nullptr);
 
@@ -83,7 +84,7 @@ Status fragment_metadata_from_capnp(
  * @param frag_meta_builder cap'n proto class
  */
 void fragment_meta_sizes_offsets_to_capnp(
-    const FragmentMetadata& frag_meta,
+    const FragmentMetadata<ContextResources::resource_manager_type>& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder);
 
 /**
@@ -94,7 +95,7 @@ void fragment_meta_sizes_offsets_to_capnp(
  * @return Status
  */
 Status fragment_metadata_to_capnp(
-    const FragmentMetadata& frag_meta,
+    const FragmentMetadata<ContextResources::resource_manager_type>& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder);
 
 #endif

@@ -883,7 +883,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   }
 
   // Get the array schemas and fragment metadata.
-  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::vector<std::shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata;
   std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
       load_array_schemas_and_fragment_metadata(
           *resources_, array_dir, nullptr, enc_key_);
@@ -1015,7 +1015,7 @@ load_consolidated_fragment_meta(
 std::tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>,
-    std::vector<shared_ptr<FragmentMetadata>>>
+    std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>>
 FragmentInfo::load_array_schemas_and_fragment_metadata(
     ContextResources& resources,
     const ArrayDirectory& array_dir,
@@ -1066,7 +1066,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
   }
 
   // Load the fragment metadata
-  auto&& fragment_metadata = FragmentMetadata::load(
+  auto&& fragment_metadata = FragmentMetadata<ContextResources::resource_manager_type>::load(
       resources,
       memory_tracker,
       array_schema_latest,
@@ -1150,7 +1150,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   }
 
   // Get fragment non-empty domain
-  auto meta = make_shared<FragmentMetadata>(
+  auto meta = make_shared<FragmentMetadata<ContextResources::resource_manager_type>>(
       HERE(),
       resources_,
       nullptr,

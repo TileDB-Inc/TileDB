@@ -176,7 +176,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Alloc FragmentMetadata object
-  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = make_shared<FragmentMetadata<ContextResources::resource_manager_type>>(HERE());
   // Used in serialization when FragmentMetadata is built from ground up
   global_write_state_->frag_meta_->set_context_resources(
       &storage_manager_->resources());

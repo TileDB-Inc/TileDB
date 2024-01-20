@@ -63,14 +63,14 @@ class CellCmpBase {
   const bool strict_ordering_;
 
   /** Pointer to access fragment metadata. */
-  const std::vector<shared_ptr<FragmentMetadata>>* frag_md_;
+  const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md_;
 
  public:
   explicit CellCmpBase(
       const Domain& domain,
       const bool use_timestamps = false,
       const bool strict_ordering = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md = nullptr)
       : domain_(domain)
       , dim_num_(domain.dim_num())
       , use_timestamps_(use_timestamps)
@@ -169,7 +169,7 @@ class HilbertCmp : public CellCmpBase {
       const Domain& domain,
       const bool use_timestamps = false,
       const bool strict_ordering = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md = nullptr)
       : CellCmpBase(domain, use_timestamps, strict_ordering, frag_md) {
   }
 
@@ -243,7 +243,7 @@ class HilbertCmpReverse {
       const Domain& domain,
       const bool use_timestamps = false,
       const bool strict_ordering = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md = nullptr)
       : cmp_(domain, use_timestamps, strict_ordering, frag_md) {
   }
 
@@ -335,7 +335,7 @@ class GlobalCmp : public CellCmpBase {
       const Domain& domain,
       const bool use_timestamps = false,
       const bool strict_ordering = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md = nullptr)
       : CellCmpBase(domain, use_timestamps, strict_ordering, frag_md) {
     tile_order_ = domain.tile_order();
     cell_order_ = domain.cell_order();
@@ -449,7 +449,7 @@ class GlobalCmpReverse {
       const Domain& domain,
       const bool use_timestamps = false,
       const bool strict_ordering = false,
-      const std::vector<shared_ptr<FragmentMetadata>>* frag_md = nullptr)
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>* frag_md = nullptr)
       : cmp_(domain, use_timestamps, strict_ordering, frag_md) {
   }
 

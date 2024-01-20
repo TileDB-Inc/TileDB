@@ -219,7 +219,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const unsigned f,
       const uint64_t t,
       const uint64_t last_t,
-      const FragmentMetadata& frag_md,
+      const FragmentMetadata<ContextResources::resource_manager_type>& frag_md,
       ResultTilesList& result_tiles);
 
   /** Create the result tiles. */

@@ -2283,7 +2283,7 @@ Status Subarray::compute_relevant_fragment_est_result_sizes(
     const ArraySchema& array_schema,
     bool all_dims_same_type,
     bool all_dims_fixed,
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_meta,
+    const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_meta,
     const std::vector<std::string>& names,
     const std::vector<bool>& var_sizes,
     const std::vector<bool>& nullable,
@@ -2999,7 +2999,7 @@ Status Subarray::compute_relevant_fragment_tile_overlap(
 }
 
 Status Subarray::compute_relevant_fragment_tile_overlap(
-    shared_ptr<FragmentMetadata> meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta,
     unsigned frag_idx,
     bool dense,
     ThreadPool* const compute_tp,

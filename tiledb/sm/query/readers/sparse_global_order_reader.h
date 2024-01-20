@@ -222,7 +222,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const uint64_t memory_budget_coords_tiles,
       const unsigned f,
       const uint64_t t,
-      const FragmentMetadata& frag_md,
+      const FragmentMetadata<ContextResources::resource_manager_type>& frag_md,
       std::vector<ResultTilesList>& result_tiles);
 
   /**

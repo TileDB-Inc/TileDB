@@ -54,6 +54,7 @@ namespace sm {
 
 class Array;
 class DomainBuffersView;
+template <class RM>
 class FragmentMetadata;
 class TileMetadataGenerator;
 
@@ -235,7 +236,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void clear_coord_buffers();
 
   /** Closes all attribute files, flushing their state to storage. */
-  Status close_files(shared_ptr<FragmentMetadata> meta) const;
+  Status close_files(shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta) const;
 
   /**
    * Computes the MBRs.
@@ -263,7 +264,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t end_tile_idx,
       const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
       const std::vector<NDRange>& mbrs,
-      shared_ptr<FragmentMetadata> meta) const;
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta) const;
 
   /**
    * Computes the tiles metadata (min/max/sum/null count).
@@ -293,7 +294,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param frag_meta The fragment metadata to be generated.
    * @return Status
    */
-  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
+  Status create_fragment(bool dense, shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>& frag_meta);
 
   /**
    * Runs the input coordinate and attribute tiles through their
@@ -436,7 +437,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status write_tiles(
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
-      shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
       std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
@@ -457,7 +458,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
       const std::string& name,
-      shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
       uint64_t start_tile_id,
       WriterTileTupleVector* tiles,
       bool close_files = true);
@@ -487,7 +488,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status prepare_filter_and_write_tiles(
       const std::string& name,
       std::vector<WriterTileTupleVector>& tile_batches,
-      tdb_shared_ptr<FragmentMetadata> frag_meta,
+      tdb_shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
 

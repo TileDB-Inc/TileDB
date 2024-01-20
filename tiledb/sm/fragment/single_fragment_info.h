@@ -72,7 +72,7 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      shared_ptr<FragmentMetadata> meta)
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta)
       : uri_(uri)
       , name_(meta->fragment_uri().remove_trailing_slash().last_path_part())
       , version_(meta->format_version())
@@ -184,7 +184,7 @@ class SingleFragmentInfo {
   }
 
   /** Returns a pointer to the fragment's metadata. */
-  shared_ptr<FragmentMetadata> meta() const {
+  shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta() const {
     return meta_;
   }
 
@@ -213,7 +213,7 @@ class SingleFragmentInfo {
   }
 
   /** Accessor to the metadata pointer. */
-  shared_ptr<FragmentMetadata>& meta() {
+  shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>& meta() {
     return meta_;
   }
 
@@ -266,7 +266,7 @@ class SingleFragmentInfo {
   std::string array_schema_name_;
 
   /** The fragment metadata. **/
-  shared_ptr<FragmentMetadata> meta_;
+  shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta_;
 
   /**
    * Returns a deep copy of this FragmentInfo.

@@ -63,6 +63,7 @@ class TileMetadata;
 class MemoryTracker;
 
 /** Stores the metadata structures of a fragment. */
+template <class RM>
 class FragmentMetadata {
  public:
   /* ********************************* */
@@ -101,9 +102,9 @@ class FragmentMetadata {
   ~FragmentMetadata();
 
   // Copy initialization
-  FragmentMetadata(const FragmentMetadata& other);
+  FragmentMetadata(const FragmentMetadata<RM>& other);
 
-  FragmentMetadata& operator=(const FragmentMetadata& other);
+  FragmentMetadata& operator=(const FragmentMetadata<RM>& other);
 
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -480,7 +481,7 @@ class FragmentMetadata {
    * @return Vector of FragmentMetadata is the fragment metadata to be
    * retrieved.
    */
-  static std::vector<shared_ptr<FragmentMetadata>> load(
+  static std::vector<shared_ptr<FragmentMetadata<RM>>> load(
       ContextResources& resources,
       MemoryTracker* memory_tracker,
       const shared_ptr<const ArraySchema> array_schema,
@@ -947,7 +948,7 @@ class FragmentMetadata {
    * Returns `true` if the timestamp of the first operand is smaller,
    * breaking ties based on the URI string.
    */
-  bool operator<(const FragmentMetadata& metadata) const;
+  bool operator<(const FragmentMetadata<RM>& metadata) const;
 
   /** Serializes the fragment metadata footer into the input buffer. */
   void write_footer(Serializer& serializer) const;

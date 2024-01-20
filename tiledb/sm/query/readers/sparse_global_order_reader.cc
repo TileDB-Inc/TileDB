@@ -304,7 +304,7 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
     const uint64_t memory_budget_coords_tiles,
     const unsigned f,
     const uint64_t t,
-    const FragmentMetadata& frag_md,
+    const FragmentMetadata<ContextResources::resource_manager_type>& frag_md,
     std::vector<ResultTilesList>& result_tiles) {
   if (tmp_read_state_.is_ignored_tile(f, t)) {
     return false;

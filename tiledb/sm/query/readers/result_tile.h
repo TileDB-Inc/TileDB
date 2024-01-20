@@ -60,6 +60,7 @@ namespace tiledb {
 namespace sm {
 
 class Domain;
+template <class RM>
 class FragmentMetadata;
 class QueryCondition;
 class Subarray;
@@ -87,7 +88,7 @@ class ResultTile {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
     TileSizes(
-        const std::shared_ptr<tiledb::sm::FragmentMetadata> fragment,
+        const std::shared_ptr<tiledb::sm::FragmentMetadata<ContextResources::resource_manager_type>> fragment,
         std::string name,
         const bool var_size,
         const bool nullable,
@@ -370,7 +371,7 @@ class ResultTile {
    * the separate coordinate tiles.
    */
   ResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md);
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata<ContextResources::resource_manager_type>& frag_md);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
 
@@ -531,7 +532,7 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap);
@@ -631,7 +632,7 @@ class ResultTile {
   Status compute_results_dense(
       unsigned dim_idx,
       const Range& range,
-      const std::vector<shared_ptr<FragmentMetadata>> fragment_metadata,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata,
       unsigned frag_idx,
       std::vector<uint8_t>* result_bitmap,
       std::vector<uint8_t>* overwritten_bitmap) const;
@@ -716,7 +717,7 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const Range&,
-      const std::vector<shared_ptr<FragmentMetadata>>,
+      const std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>,
       unsigned,
       std::vector<uint8_t>*,
       std::vector<uint8_t>*)>>
@@ -817,7 +818,7 @@ class ResultTileWithBitmap : public ResultTile {
   ResultTileWithBitmap() = default;
 
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata<ContextResources::resource_manager_type>& frag_md)
       : ResultTile(frag_idx, tile_idx, frag_md)
       , result_num_(cell_num_) {
   }
@@ -975,7 +976,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       uint64_t tile_idx,
       bool dups,
       bool include_delete_meta,
-      const FragmentMetadata& frag_md)
+      const FragmentMetadata<ContextResources::resource_manager_type>& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
       , post_dedup_bitmap_(
             !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
@@ -1191,7 +1192,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
   UnorderedWithDupsResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata<ContextResources::resource_manager_type>& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
   }
 

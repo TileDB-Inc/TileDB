@@ -56,7 +56,7 @@ namespace serialization {
 
 void generic_tile_offsets_from_capnp(
     const capnp::FragmentMetadata::GenericTileOffsets::Reader& gt_reader,
-    FragmentMetadata::GenericTileOffsets& gt_offsets) {
+    FragmentMetadata<ContextResources::resource_manager_type>::GenericTileOffsets& gt_offsets) {
   gt_offsets.rtree_ = gt_reader.getRtree();
   if (gt_reader.hasTileOffsets()) {
     gt_offsets.tile_offsets_.reserve(gt_reader.getTileOffsets().size());
@@ -119,7 +119,7 @@ void generic_tile_offsets_from_capnp(
 Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
     ContextResources* resources,
     MemoryTracker* memory_tracker) {
   // TODO: consider a new constructor for fragment meta or using the
@@ -172,7 +172,7 @@ Status fragment_metadata_from_capnp(
   frag_meta->set_schema_name(array_schema->name());
   frag_meta->set_dense(array_schema->dense());
 
-  FragmentMetadata::LoadedMetadata loaded_metadata;
+  FragmentMetadata<ContextResources::resource_manager_type>::LoadedMetadata loaded_metadata;
 
   // num_dims_and_attrs() requires a set array schema, so it's important
   // schema is set above on the fragment metadata object.
@@ -409,7 +409,7 @@ Status fragment_metadata_from_capnp(
 }
 
 void generic_tile_offsets_to_capnp(
-    const FragmentMetadata::GenericTileOffsets& gt_offsets,
+    const FragmentMetadata<ContextResources::resource_manager_type>::GenericTileOffsets& gt_offsets,
     capnp::FragmentMetadata::GenericTileOffsets::Builder& gt_offsets_builder) {
   gt_offsets_builder.setRtree(gt_offsets.rtree_);
   auto& gt_tile_offsets = gt_offsets.tile_offsets_;
@@ -482,7 +482,7 @@ void generic_tile_offsets_to_capnp(
 }
 
 void fragment_meta_sizes_offsets_to_capnp(
-    const FragmentMetadata& frag_meta,
+    const FragmentMetadata<ContextResources::resource_manager_type>& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
   auto& tile_offsets = frag_meta.tile_offsets();
   if (!tile_offsets.empty()) {
@@ -529,7 +529,7 @@ void fragment_meta_sizes_offsets_to_capnp(
 }
 
 Status fragment_metadata_to_capnp(
-    const FragmentMetadata& frag_meta,
+    const FragmentMetadata<ContextResources::resource_manager_type>& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
   const auto& relative_fragment_uri =
       serialize_array_uri_to_relative(frag_meta.fragment_uri());

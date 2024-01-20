@@ -249,7 +249,7 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
 }
 
 bool SparseIndexReaderBase::has_post_deduplication_conditions(
-    FragmentMetadata& frag_meta) {
+    FragmentMetadata<ContextResources::resource_manager_type>& frag_meta) {
   return frag_meta.has_delete_meta() || condition_.has_value() ||
          (!delete_and_update_conditions_.empty() &&
           !deletes_consolidation_no_purge_);

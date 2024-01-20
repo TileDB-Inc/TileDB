@@ -98,7 +98,7 @@ class UnorderedWriter : public WriterBase {
   }
 
   /** Returns the fragment metadata. */
-  shared_ptr<FragmentMetadata> frag_meta() {
+  shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta() {
     return frag_meta_;
   }
 
@@ -125,7 +125,7 @@ class UnorderedWriter : public WriterBase {
   std::set<uint64_t> coord_dups_;
 
   /** Pointer to the fragment metadata. */
-  shared_ptr<FragmentMetadata> frag_meta_;
+  shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta_;
 
   /** Already written buffers. */
   std::unordered_set<std::string>& written_buffers_;

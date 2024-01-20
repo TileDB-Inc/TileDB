@@ -55,6 +55,8 @@ namespace sm {
 
 class ArraySchema;
 class SchemaEvolution;
+
+template <class RM>
 class FragmentMetadata;
 enum class QueryType : uint8_t;
 
@@ -170,7 +172,7 @@ class OpenedArray {
   }
 
   /** Gets a reference to the fragment metadata. */
-  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+  inline std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata() {
     return fragment_metadata_;
   }
 
@@ -231,7 +233,7 @@ class OpenedArray {
   NDRange non_empty_domain_;
 
   /** The metadata of the fragments the array was opened with. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata_;
 
   /**
    * The private encryption key used to encrypt the array.
@@ -454,7 +456,7 @@ class Array {
   /**
    * Accessor to the fragment metadata of the array.
    */
-  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+  inline std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>& fragment_metadata() {
     return opened_array_->fragment_metadata();
   }
 
@@ -463,7 +465,7 @@ class Array {
    * @param fragment_metadata The fragment metadata.
    */
   inline void set_fragment_metadata(
-      std::vector<shared_ptr<FragmentMetadata>>&& fragment_metadata) {
+      std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>&& fragment_metadata) {
     opened_array_->fragment_metadata() = fragment_metadata;
   }
 
@@ -962,7 +964,7 @@ class Array {
   tuple<
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>,
-      std::vector<shared_ptr<FragmentMetadata>>>
+      std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>>
   open_for_reads();
 
   /**

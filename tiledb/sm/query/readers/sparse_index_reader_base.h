@@ -591,7 +591,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param frag_meta Fragment metadata.
    * @return true if there is any condition to be applied post deduplication.
    */
-  bool has_post_deduplication_conditions(FragmentMetadata& frag_meta);
+  bool has_post_deduplication_conditions(FragmentMetadata<ContextResources::resource_manager_type>& frag_meta);
 
   /**
    * Return how many cells were copied to the users buffers so far.

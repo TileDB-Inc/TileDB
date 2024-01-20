@@ -583,7 +583,7 @@ std::vector<std::string> WriterBase::buffer_names() const {
   return ret;
 }
 
-Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
+Status WriterBase::close_files(shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta) const {
   // Close attribute and dimension files
   const auto buffer_name = buffer_names();
 
@@ -665,7 +665,7 @@ void WriterBase::set_coords_metadata(
     const uint64_t end_tile_idx,
     const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
     const std::vector<NDRange>& mbrs,
-    shared_ptr<FragmentMetadata> meta) const {
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> meta) const {
   // Applicable only if there are coordinates
   if (!coords_info_.has_coords_) {
     return;
@@ -762,7 +762,7 @@ std::string WriterBase::coords_to_str(uint64_t i) const {
 }
 
 Status WriterBase::create_fragment(
-    bool dense, shared_ptr<FragmentMetadata>& frag_meta) {
+    bool dense, shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>& frag_meta) {
   // Get write version, timestamp array was opened,  and a reference to the
   // array directory.
   auto write_version = array_->array_schema_latest().write_version();
@@ -783,7 +783,7 @@ Status WriterBase::create_fragment(
   const bool has_timestamps = buffers_.count(constants::timestamps) != 0;
   const bool has_delete_metadata =
       buffers_.count(constants::delete_timestamps) != 0;
-  frag_meta = make_shared<FragmentMetadata>(
+  frag_meta = make_shared<FragmentMetadata<ContextResources::resource_manager_type>>(
       HERE(),
       &storage_manager_->resources(),
       nullptr,
@@ -1035,7 +1035,7 @@ Status WriterBase::split_coords_buffer() {
 Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
-    shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
     std::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
@@ -1078,7 +1078,7 @@ Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     const std::string& name,
-    shared_ptr<FragmentMetadata> frag_meta,
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
     uint64_t start_tile_id,
     WriterTileTupleVector* const tiles,
     bool close_files) {

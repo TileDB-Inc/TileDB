@@ -128,7 +128,7 @@ class OrderedWriter : public WriterBase {
   Status prepare_filter_and_write_tiles(
       const std::string& name,
       std::vector<WriterTileTupleVector>& tile_batches,
-      shared_ptr<FragmentMetadata> frag_meta,
+      shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
 };

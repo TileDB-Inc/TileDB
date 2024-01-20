@@ -84,7 +84,7 @@ class GlobalOrderWriter : public WriterBase {
     std::unordered_map<std::string, uint64_t> cells_written_;
 
     /** The fragment metadata that the writer will focus on. */
-    shared_ptr<FragmentMetadata> frag_meta_;
+    shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>> frag_meta_;
 
     /** The last cell written. */
     std::optional<SingleCoord> last_cell_coords_;

@@ -319,7 +319,7 @@ class FragmentInfo {
   static tuple<
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>,
-      std::vector<shared_ptr<FragmentMetadata>>>
+      std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>>>
   load_array_schemas_and_fragment_metadata(
       ContextResources& resources,
       const ArrayDirectory& array_dir,

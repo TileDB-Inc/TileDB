@@ -866,7 +866,7 @@ class Query {
   std::set<std::string> attributes_with_update_value_;
 
   /** The fragment metadata that this query will focus on. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+  std::vector<shared_ptr<FragmentMetadata<ContextResources::resource_manager_type>>> fragment_metadata_;
 
   /** The current serialization state. */
   SerializationState serialization_state_;
