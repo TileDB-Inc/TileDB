@@ -1060,4 +1060,13 @@ configure_file ("${PROJECT_SOURCE_DIR}/cmake/inputs/CustomCPackOptions.cmake.in"
 set (CPACK_PROJECT_CONFIG_FILE
         "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
 
+# Not all options can be set in CustomCPackOptions.cmake
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set(CPACK_SOURCE_GENERATOR "ZIP")
+  set(CPACK_GENERATOR "ZIP")
+else()
+  set(CPACK_SOURCE_GENERATOR "TGZ")
+  set(CPACK_GENERATOR "TGZ")
+endif()
+
 include(CPack)
