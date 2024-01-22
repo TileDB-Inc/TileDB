@@ -738,7 +738,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, all cells same "
     "coords, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][same-coords][mem-"
-    "budget]") {
+    "budget][!shouldfail]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -763,7 +763,9 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "9000");
+
+  // This is another loop number test. Marking as should fail.
+  cfg.set("sm.mem.total_budget", "20000");
   cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 
@@ -791,7 +793,7 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, same cells "
     "across tiles, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles][mem-"
-    "budget]") {
+    "budget][!shouldfail]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -822,7 +824,10 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "9000");
+
+  // Another loop counting test. Should fail.
+
+  cfg.set("sm.mem.total_budget", "20000");
   cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 

@@ -1169,7 +1169,7 @@ TEST_CASE_METHOD(
   // Check that this function throws an exception when attempting to load
   // an enumeration that exceeds the memory budget.
   auto matcher = Catch::Matchers::ContainsSubstring(
-      "Error loading enumeration; Insufficient memory budget;");
+      "Insufficient Enumeration memory budget");
   REQUIRE_THROWS_WITH(
       ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker),
       matcher);

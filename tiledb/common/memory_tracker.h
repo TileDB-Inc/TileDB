@@ -102,10 +102,10 @@ class MemoryTracker : public std::enable_shared_from_this<MemoryTracker> {
   bool set_budget(uint64_t size) {
     std::lock_guard<std::mutex> lg(mutex_);
 
-    std::stringstream ss;
-    ss << "[SetBudget: " << size << "] ";
-    ss << this->to_string();
-    LOG_ERROR(ss.str());
+    // std::stringstream ss;
+    // ss << "[SetBudget: " << size << "] ";
+    // ss << this->to_string();
+    // LOG_ERROR(ss.str());
 
     if (usage_ > size) {
       return false;
