@@ -36,7 +36,7 @@
 * Adds centos stream 9 dockerfile that builds tiledb [#4591](https://github.com/TileDB-Inc/TileDB/pull/4591)
 * Export a `TileDB::tiledb` CMake target regardless of static or dynamic linkage. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
 * Add a document with build instructions. [#4581](https://github.com/TileDB-Inc/TileDB/pull/4581)
-* Remove the `TILEDB_STATIC` option and replace it with `BUILD_SHARED_LIBS` which is disabled by default. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* Remove the `TILEDB_STATIC` option and replace it with `BUILD_SHARED_LIBS`. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
 * The build system supports building only a static or shared library from the same buildtree. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
 * `BUILD_SHARED_LIBS` is enabled by default. [#4569](https://github.com/TileDB-Inc/TileDB/pull/4569)
 * Add packaging tests into linux and mac CI pipelines. [#4567](https://github.com/TileDB-Inc/TileDB/pull/4567)
