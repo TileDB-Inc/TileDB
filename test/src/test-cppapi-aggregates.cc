@@ -1624,12 +1624,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   array.close();
 }
 
-typedef tuple<std::byte> SumByteTypesUnderTest;
+typedef tuple<std::byte> SumBlobTypeUnderTest;
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CppAggregatesFx,
     "C++ API: Aggregates basic sum, std::byte",
     "[cppapi][aggregates][basic][sum][byte]",
-    SumByteTypesUnderTest) {
+    SumBlobTypeUnderTest) {
   typedef TestType T;
   CppAggregatesFx<T>::generate_test_params();
   CppAggregatesFx<T>::create_array_and_write_fragments();

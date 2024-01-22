@@ -1198,6 +1198,73 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
+TEST_CASE(
+    "C++ API: Writing single byte cell with global order",
+    "[cppapi][std::byte]") {
+  bool serialize = false, refactored_query_v2 = false;
+  const std::string array_name = "cpp_unit_array";
+
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 0}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(
+      Attribute::create(ctx, "a", tiledb_datatype_t::TILEDB_BLOB));
+  Array::create(array_name, schema);
+
+  // Write
+  std::byte data_w{1};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("a", &data_w, 1);
+
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 0, 0);
+  std::byte data;
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_subarray(subarray)
+      .set_data_buffer("a", &data, 1);
+  query.submit();
+  array.close();
+
+  REQUIRE(data == data_w);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
 TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;

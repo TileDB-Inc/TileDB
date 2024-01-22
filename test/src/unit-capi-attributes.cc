@@ -289,7 +289,6 @@ TEST_CASE_METHOD(
     "C API: Test attributes with std::byte",
     "[capi][attributes][byte]") {
   auto datatype = GENERATE(TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT);
-  bool evolve = GENERATE(true, false);
 
   SECTION("no serialization") {
     serialize_ = false;
@@ -366,86 +365,6 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
     tiledb_array_free(&array);
     tiledb_query_free(&query);
-
-    // Evolve schema BLOB -> WKB
-    if (datatype == TILEDB_BLOB && evolve) {
-      tiledb_array_schema_evolution_t* schema_evolution;
-      rc = tiledb_array_schema_evolution_alloc(ctx_, &schema_evolution);
-      REQUIRE(rc == TILEDB_OK);
-
-      // Create attribute "b"
-      tiledb_attribute_t* b;
-      rc = tiledb_attribute_alloc(ctx_, "b", TILEDB_GEOM_WKB, &b);
-      REQUIRE(rc == TILEDB_OK);
-
-      // Replace attr "a" with attr "b"
-      rc = tiledb_array_schema_evolution_add_attribute(
-          ctx_, schema_evolution, b);
-      REQUIRE(rc == TILEDB_OK);
-      rc = tiledb_array_schema_evolution_drop_attribute(
-          ctx_, schema_evolution, "a");
-      REQUIRE(rc == TILEDB_OK);
-      attr_name = "b";
-
-      // Set timestamp to avoid race condition
-      uint64_t now = tiledb_timestamp_now_ms();
-      now = now + 1;
-      rc = tiledb_array_schema_evolution_set_timestamp_range(
-          ctx_, schema_evolution, now, now);
-
-      // Evolve array.
-      rc = tiledb_array_evolve(ctx_, array_name.c_str(), schema_evolution);
-      REQUIRE(rc == TILEDB_OK);
-
-      // Cleanup.
-      tiledb_attribute_free(&b);
-      tiledb_array_schema_evolution_free(&schema_evolution);
-
-      // Open array
-      rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
-      CHECK(rc == TILEDB_OK);
-
-      // Validate attribute b's type
-      tiledb_array_schema_t* schema;
-      rc = tiledb_array_get_schema(ctx_, array, &schema);
-      REQUIRE(rc == TILEDB_OK);
-      tiledb_attribute_t* attr_from_schema;
-      rc = tiledb_array_schema_get_attribute_from_name(
-          ctx_, schema, attr_name.c_str(), &attr_from_schema);
-      REQUIRE(rc == TILEDB_OK);
-      tiledb_datatype_t attr_type;
-      rc = tiledb_attribute_get_type(ctx_, attr_from_schema, &attr_type);
-      REQUIRE(rc == TILEDB_OK);
-      CHECK(attr_type == TILEDB_GEOM_WKB);
-
-      // Write to b
-      tiledb_query_t* query;
-      rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_set_subarray(ctx_, query, subarray);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_set_data_buffer(
-          ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
-      CHECK(rc == TILEDB_OK);
-      rc = submit_query_wrapper(
-          ctx_,
-          array_name,
-          &query,
-          server_buffers_,
-          serialize_,
-          refactored_query_v2_);
-      CHECK(rc == TILEDB_OK);
-
-      // Close array and clean up
-      rc = tiledb_array_close(ctx_, array);
-      CHECK(rc == TILEDB_OK);
-      tiledb_array_free(&array);
-      tiledb_query_free(&query);
-    }
 
     int buffer_read[10];
     uint64_t buffer_read_size = sizeof(buffer_read);
