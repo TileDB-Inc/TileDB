@@ -71,7 +71,7 @@ class FragmentMetadata {
   /* ********************************* */
 
   /** Constructor. */
-  FragmentMetadata();
+  FragmentMetadata(shared_ptr<MemoryTracker> tracker);
 
   /**
    * Constructor.
@@ -102,9 +102,9 @@ class FragmentMetadata {
   ~FragmentMetadata();
 
   // Copy initialization
-  FragmentMetadata(const FragmentMetadata& other);
+  FragmentMetadata(const FragmentMetadata& other) = delete;
 
-  FragmentMetadata& operator=(const FragmentMetadata& other);
+  FragmentMetadata& operator=(const FragmentMetadata& other) = delete;
 
   /* ********************************* */
   /*          TYPE DEFINITIONS         */

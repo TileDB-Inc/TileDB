@@ -51,9 +51,13 @@ class vector : public cpp17::pmr::vector<Tp> {
   // which is quite easy to do.
   //
   // If these constructors look confusing, just know that all we're doing is
-  // copying the current definitions from [1] and then adjusting types to
-  // require the PMR based allocator.
+  // copying the current definitions from cppreference and then adjusting types
+  // to require the PMR based allocator.
 
+  // I have absolutely no idea if all of these aliases are required. The
+  // allocator_type is the important one. I've copied the others just in
+  // case since I do know that PMR aware containers at least require
+  // allocator_type.
   using allocator_type = typename cpp17::pmr::vector<Tp>::allocator_type;
   using size_type = typename cpp17::pmr::vector<Tp>::size_type;
 

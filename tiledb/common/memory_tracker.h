@@ -92,6 +92,12 @@ class MemoryTracker : public std::enable_shared_from_this<MemoryTracker> {
 
   tdb::pmr::memory_resource* get_resource(MemoryType type);
 
+  inline static void validate(shared_ptr<MemoryTracker> tracker) {
+    if (!tracker) {
+      throw std::runtime_error("Invalid memory tracker");
+    }
+  }
+
   void leak_memory(MemoryType type, size_t bytes);
 
   /**
