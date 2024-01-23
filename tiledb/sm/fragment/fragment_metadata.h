@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
@@ -68,9 +69,6 @@ class FragmentMetadata {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-
-  /** Constructor. */
-  FragmentMetadata();
 
   /**
    * Constructor.
@@ -328,7 +326,8 @@ class FragmentMetadata {
   }
 
   /** Returns the tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_offsets() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets()
+      const {
     return tile_offsets_;
   }
 
@@ -1114,7 +1113,7 @@ class FragmentMetadata {
   }
 
   /** tile_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets() {
     return tile_offsets_;
   }
 
@@ -1362,7 +1361,7 @@ class FragmentMetadata {
    * The tile offsets in their corresponding attribute files. Meaningful only
    * when there is compression.
    */
-  std::vector<std::vector<uint64_t>> tile_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_offsets_;
 
   /**
    * The variable tile offsets in their corresponding attribute files.
