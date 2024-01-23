@@ -96,6 +96,7 @@ Array::Array(
     , resources_(storage_manager_->resources())
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
+    , memory_tracker_(storage_manager->resources().create_memory_tracker())
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }
@@ -1057,10 +1058,6 @@ const NDRange Array::non_empty_domain() {
   }
 
   return loaded_non_empty_domain();
-}
-
-MemoryTracker* Array::memory_tracker() {
-  return &memory_tracker_;
 }
 
 bool Array::serialize_non_empty_domain() const {
