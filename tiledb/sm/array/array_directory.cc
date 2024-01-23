@@ -1324,8 +1324,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
   auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
   resources_.get().stats().add_counter("read_enumeration_size", tile.size());
 
-  if (!memory_tracker.take_memory(
-          tile.size(), MemoryTracker::MemoryType::ENUMERATION)) {
+  if (!memory_tracker.take_memory(tile.size(), MemoryType::ENUMERATION)) {
     throw ArrayDirectoryException(
         "Error loading enumeration; Insufficient memory budget; Needed " +
         std::to_string(tile.size()) + " but only had " +
