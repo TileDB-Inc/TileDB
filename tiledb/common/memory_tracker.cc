@@ -34,9 +34,9 @@
 #include <sstream>
 #include <string>
 
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/common/exception/exception.h"
 
 namespace tiledb::sm {
 
@@ -76,8 +76,8 @@ void MemoryTrackingResource::do_deallocate(
 
 bool MemoryTrackingResource::do_is_equal(
     const tdb::pmr::memory_resource& other) const noexcept {
-
-  const MemoryTrackingResource* rhs = dynamic_cast<const MemoryTrackingResource*>(&other);
+  const MemoryTrackingResource* rhs =
+      dynamic_cast<const MemoryTrackingResource*>(&other);
   if (rhs == nullptr) {
     return false;
   }
@@ -86,9 +86,9 @@ bool MemoryTrackingResource::do_is_equal(
 }
 
 MemoryTracker::MemoryTracker(tdb::pmr::memory_resource* upstream)
-  : budget_(std::numeric_limits<uint64_t>::max())
-  , usage_(0)
-  , usage_hwm_(0) {
+    : budget_(std::numeric_limits<uint64_t>::max())
+    , usage_(0)
+    , usage_hwm_(0) {
   if (upstream == nullptr) {
     upstream_ = cpp17::pmr::get_default_resource();
   } else {
@@ -105,7 +105,8 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
   std::lock_guard<std::mutex> lg(mutex_);
   auto iter = trackers_.find(type);
   if (iter == trackers_.end()) {
-    auto ret = make_shared<MemoryTrackingResource>(HERE(), shared_from_this(), type);
+    auto ret =
+        make_shared<MemoryTrackingResource>(HERE(), shared_from_this(), type);
     trackers_[type] = ret;
     return ret.get();
   } else {
@@ -143,7 +144,8 @@ void* MemoryTracker::allocate(MemoryType type, size_t bytes, size_t alignment) {
   return ret;
 }
 
-void MemoryTracker::deallocate(MemoryType type, void* ptr, size_t bytes, size_t alignment) {
+void MemoryTracker::deallocate(
+    MemoryType type, void* ptr, size_t bytes, size_t alignment) {
   std::lock_guard<std::mutex> lg(mutex_);
 
   // std::stringstream ss;
@@ -158,7 +160,7 @@ void MemoryTracker::deallocate(MemoryType type, void* ptr, size_t bytes, size_t 
 
 std::string MemoryTracker::to_string() const {
   std::stringstream ss;
-  ss << "[This: " << (void*) this << "]";
+  ss << "[This: " << (void*)this << "]";
   ss << " [Budget: " << budget_ << "]";
   ss << " [Usage: " << usage_ << "]";
   ss << " [Usage HWM: " << usage_hwm_ << "]";
@@ -175,8 +177,7 @@ void MemoryTracker::check_budget(MemoryType type, size_t bytes) {
         "Insufficient " + type_str + " memory budget; Need " +
         std::to_string(bytes) + " bytes but only had " +
         std::to_string(budget_ - usage_) +
-        " bytes remaining from original budget of "
-        + std::to_string(budget_));
+        " bytes remaining from original budget of " + std::to_string(budget_));
   }
 }
 

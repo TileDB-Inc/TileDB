@@ -68,7 +68,8 @@ class RTree {
   RTree(MemoryTracker* tracker = nullptr);
 
   /** Constructor. */
-  RTree(const Domain* domain, unsigned fanout, MemoryTracker* tracker = nullptr);
+  RTree(
+      const Domain* domain, unsigned fanout, MemoryTracker* tracker = nullptr);
 
   /** Destructor. */
   ~RTree();

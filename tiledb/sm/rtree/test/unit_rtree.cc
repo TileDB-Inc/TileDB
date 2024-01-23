@@ -228,8 +228,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   // Float datatype
   float dim_dom_f[] = {1.0, 1000.0};
   float dim_extent_f = 10.0;
-  auto mbrs_f =
-      create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f});
+  auto mbrs_f = create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f});
   Domain dom2f =
       create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
   const Domain d2f{dom2f};
@@ -389,8 +388,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
       {&dim_extent, &dim_extent});
-  auto mbrs =
-      create_mbrs<int32_t, 2>({1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15});
+  auto mbrs = create_mbrs<int32_t, 2>({1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15});
   const Domain d2{dom2};
   RTree rtree(&d2, 3);
   CHECK(rtree.set_leaves(mbrs).ok());
@@ -521,8 +519,7 @@ TEST_CASE(
       {Datatype::UINT8, Datatype::INT32},
       {uint8_dom, int32_dom},
       {&uint8_extent, &int32_extent});
-  auto mbrs =
-      create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9});
+  auto mbrs = create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9});
   const Domain d1{dom};
   RTree rtree(&d1, 5);
   CHECK(rtree.set_leaves(mbrs).ok());
@@ -577,8 +574,7 @@ TEST_CASE(
       {Datatype::UINT64, Datatype::FLOAT32},
       {uint64_dom, float_dom},
       {&uint64_extent, &float_extent});
-  auto mbrs =
-      create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f});
+  auto mbrs = create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f});
   const Domain d1{dom};
   RTree rtree(&d1, 5);
   CHECK(rtree.set_leaves(mbrs).ok());
@@ -788,7 +784,8 @@ TEST_CASE(
 // `mbrs` contains a flattened vector of values (low, high)
 // per dimension per MBR
 template <unsigned D>
-tdb::pmr::vector<NDRange> create_str_mbrs(const std::vector<std::string>& mbrs) {
+tdb::pmr::vector<NDRange> create_str_mbrs(
+    const std::vector<std::string>& mbrs) {
   assert(mbrs.size() % 2 * D == 0);
 
   uint64_t mbr_num = (uint64_t)(mbrs.size() / (2 * D));
@@ -838,8 +835,7 @@ TEST_CASE(
   std::vector<bool> is_default(1, false);
   Domain dom1 =
       create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
-  auto mbrs =
-      create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"});
+  auto mbrs = create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"});
 
   const Domain d1{dom1};
   RTree rtree(&d1, 3);

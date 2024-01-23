@@ -58,7 +58,8 @@ class MemoryTracker;
 
 class MemoryTrackingResource : public tdb::pmr::memory_resource {
  public:
-  explicit MemoryTrackingResource(shared_ptr<MemoryTracker> tracker, MemoryType type)
+  explicit MemoryTrackingResource(
+      shared_ptr<MemoryTracker> tracker, MemoryType type)
       : tracker_(tracker)
       , type_(type) {
   }

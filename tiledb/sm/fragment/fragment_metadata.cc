@@ -78,7 +78,8 @@ class FragmentMetadataStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-tdb::pmr::memory_resource* get_resource(shared_ptr<MemoryTracker> tracker, MemoryType type) {
+tdb::pmr::memory_resource* get_resource(
+    shared_ptr<MemoryTracker> tracker, MemoryType type) {
   if (!tracker) {
     return cpp17::pmr::get_default_resource();
   }
@@ -117,12 +118,17 @@ FragmentMetadata::FragmentMetadata(
     , tile_var_offsets_(get_resource(tracker, MemoryType::TILE_OFFSETS))
     , tile_var_sizes_(get_resource(tracker, MemoryType::TILE_OFFSETS))
     , tile_validity_offsets_(get_resource(tracker, MemoryType::TILE_OFFSETS))
-    , tile_min_buffer_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
-    , tile_min_var_buffer_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
-    , tile_max_buffer_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
-    , tile_max_var_buffer_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
+    , tile_min_buffer_(
+          get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
+    , tile_min_var_buffer_(
+          get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
+    , tile_max_buffer_(
+          get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
+    , tile_max_var_buffer_(
+          get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
     , tile_sums_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
-    , tile_null_counts_(get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
+    , tile_null_counts_(
+          get_resource(tracker, MemoryType::MIN_MAX_SUM_NULL_COUNTS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {

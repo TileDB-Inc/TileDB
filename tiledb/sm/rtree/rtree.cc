@@ -62,9 +62,9 @@ tdb::pmr::memory_resource* get_resource(MemoryTracker* tracker) {
 }
 
 RTree::RTree(MemoryTracker* tracker)
-  : domain_(nullptr)
-  , fanout_(0)
-  , levels_(get_resource(tracker)) {
+    : domain_(nullptr)
+    , fanout_(0)
+    , levels_(get_resource(tracker)) {
 }
 
 RTree::RTree(const Domain* domain, unsigned fanout, MemoryTracker* tracker)
@@ -364,7 +364,6 @@ RTree RTree::clone() const {
 
 void RTree::deserialize_v1_v4(
     Deserializer& deserializer, const Domain* domain) {
-
   // For backwards compatibility, ignored
   (void)deserializer.read<unsigned>();
 
