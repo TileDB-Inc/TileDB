@@ -51,11 +51,6 @@ namespace tiledb::sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-FragmentInfo::FragmentInfo()
-    : resources_(nullptr)
-    , unconsolidated_metadata_num_(0) {
-}
-
 FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
     : array_uri_(array_uri)
     , config_(resources.config())
@@ -64,28 +59,6 @@ FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
 }
 
 FragmentInfo::~FragmentInfo() = default;
-
-FragmentInfo::FragmentInfo(const FragmentInfo& fragment_info)
-    : FragmentInfo() {
-  auto clone = fragment_info.clone();
-  swap(clone);
-}
-
-FragmentInfo::FragmentInfo(FragmentInfo&& fragment_info)
-    : FragmentInfo() {
-  swap(fragment_info);
-}
-
-FragmentInfo& FragmentInfo::operator=(const FragmentInfo& fragment_info) {
-  auto clone = fragment_info.clone();
-  swap(clone);
-  return *this;
-}
-
-FragmentInfo& FragmentInfo::operator=(FragmentInfo&& fragment_info) {
-  swap(fragment_info);
-  return *this;
-}
 
 /* ********************************* */
 /*                API                */
@@ -1219,38 +1192,6 @@ Status FragmentInfo::replace(
   (void)old_fragment_num;  // When running in release mode, this is not used
 
   return Status::Ok();
-}
-
-FragmentInfo FragmentInfo::clone() const {
-  FragmentInfo clone;
-  clone.array_uri_ = array_uri_;
-  clone.array_schema_latest_ = array_schema_latest_;
-  clone.array_schemas_all_ = array_schemas_all_;
-  clone.config_ = config_;
-  clone.single_fragment_info_vec_ = single_fragment_info_vec_;
-  clone.resources_ = resources_;
-  clone.to_vacuum_ = to_vacuum_;
-  clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
-  clone.anterior_ndrange_ = anterior_ndrange_;
-  clone.timestamp_start_ = timestamp_start_;
-  clone.timestamp_end_ = timestamp_end_;
-
-  return clone;
-}
-
-void FragmentInfo::swap(FragmentInfo& fragment_info) {
-  std::swap(array_uri_, fragment_info.array_uri_);
-  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
-  std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
-  std::swap(config_, fragment_info.config_);
-  std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
-  std::swap(resources_, fragment_info.resources_);
-  std::swap(to_vacuum_, fragment_info.to_vacuum_);
-  std::swap(
-      unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
-  std::swap(anterior_ndrange_, fragment_info.anterior_ndrange_);
-  std::swap(timestamp_start_, fragment_info.timestamp_start_);
-  std::swap(timestamp_end_, fragment_info.timestamp_end_);
 }
 
 }  // namespace tiledb::sm
