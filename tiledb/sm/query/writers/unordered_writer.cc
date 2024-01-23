@@ -167,7 +167,7 @@ std::string UnorderedWriter::name() {
 
 Status UnorderedWriter::alloc_frag_meta() {
   // Alloc FragmentMetadata object.
-  frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up.
   frag_meta_->set_context_resources(&storage_manager_->resources());
 
@@ -653,7 +653,7 @@ Status UnorderedWriter::unordered_write() {
     }
 
     // Create new fragment
-    frag_meta_ = make_shared<FragmentMetadata>(HERE());
+    frag_meta_ = this->create_fragment_metadata();
     RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
   }
 

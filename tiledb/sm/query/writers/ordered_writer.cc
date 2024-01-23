@@ -176,7 +176,7 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
-  auto frag_meta = make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = this->create_fragment_metadata();
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   frag_uri_ = frag_meta->fragment_uri();
 
