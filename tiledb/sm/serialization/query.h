@@ -276,7 +276,7 @@ Status query_from_capnp(
     CopyState* const copy_state,
     Query* const query,
     ThreadPool* compute_tp,
-    const bool query_plan = false);
+    const bool allocate_buffers);
 
 #endif
 
