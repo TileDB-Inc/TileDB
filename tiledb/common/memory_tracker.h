@@ -39,16 +39,16 @@
 namespace tiledb {
 namespace sm {
 
+enum class MemoryType {
+  RTREE,
+  FOOTER,
+  TILE_OFFSETS,
+  MIN_MAX_SUM_NULL_COUNT,
+  ENUMERATION
+};
+
 class MemoryTracker {
  public:
-  enum class MemoryType {
-    RTREE,
-    FOOTER,
-    TILE_OFFSETS,
-    MIN_MAX_SUM_NULL_COUNT,
-    ENUMERATION
-  };
-
   /** Constructor. */
   MemoryTracker() {
     memory_usage_ = 0;
