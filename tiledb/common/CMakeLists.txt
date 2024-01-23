@@ -54,11 +54,20 @@ set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)
 # `baseline` object library
 #
 commence(object_library baseline)
-    this_target_sources(logger.cc governor/governor.cc
-        dynamic_memory/dynamic_memory.cc heap_profiler.cc heap_memory.cc
-        exception/exception.cc exception/status.cc)
+    this_target_sources(
+        logger.cc
+        dynamic_memory/dynamic_memory.cc
+        exception/exception.cc
+        exception/status.cc
+        governor/governor.cc
+        heap_profiler.cc
+        heap_memory.cc
+        pmr.cc
+    )
     find_package(Spdlog_EP REQUIRED)
+    find_package(Boost REQUIRED COMPONENTS container)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
+    target_link_libraries(baseline PUBLIC Boost::container)
     target_link_libraries(baseline PUBLIC common)
 conclude(object_library)
 
