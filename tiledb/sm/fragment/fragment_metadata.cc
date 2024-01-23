@@ -2052,8 +2052,7 @@ void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
   if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(
-          tile.size(), MemoryTracker::MemoryType::RTREE)) {
+      !memory_tracker_->take_memory(tile.size(), MemoryType::RTREE)) {
     throw FragmentMetadataStatusException(
         "Cannot load R-tree; Insufficient memory budget; Needed " +
         std::to_string(tile.size()) + " but only had " +
@@ -2070,7 +2069,7 @@ void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 void FragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
   if (memory_tracker_ != nullptr) {
-    memory_tracker_->release_memory(freed, MemoryTracker::MemoryType::RTREE);
+    memory_tracker_->release_memory(freed, MemoryType::RTREE);
   }
   loaded_metadata_.rtree_ = false;
 }
@@ -2080,8 +2079,7 @@ void FragmentMetadata::free_tile_offsets() {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
-          tile_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          tile_offsets_[i].size() * sizeof(uint64_t), MemoryType::TILE_OFFSETS);
     }
     tile_offsets_[i].clear();
     loaded_metadata_.tile_offsets_[i] = false;
@@ -2092,7 +2090,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_var_offsets_[i].clear();
     loaded_metadata_.tile_var_offsets_[i] = false;
@@ -2102,8 +2100,7 @@ void FragmentMetadata::free_tile_offsets() {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
-          tile_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          tile_offsets_[i].size() * sizeof(uint64_t), MemoryType::TILE_OFFSETS);
     }
     tile_offsets_[i].clear();
     loaded_metadata_.tile_offsets_[i] = false;
@@ -2114,7 +2111,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_validity_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_validity_offsets_[i].clear();
     loaded_metadata_.tile_validity_offsets_[i] = false;
@@ -2125,7 +2122,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_sizes_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_var_sizes_[i].clear();
     loaded_metadata_.tile_var_sizes_[i] = false;
@@ -2891,8 +2888,7 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
 
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -2921,8 +2917,7 @@ void FragmentMetadata::load_tile_offsets(
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -2963,8 +2958,7 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
@@ -2994,8 +2988,7 @@ void FragmentMetadata::load_tile_var_offsets(
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
@@ -3034,8 +3027,7 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
@@ -3064,8 +3056,7 @@ void FragmentMetadata::load_tile_var_sizes(
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
@@ -3095,8 +3086,7 @@ void FragmentMetadata::load_tile_validity_offsets(
   if (tile_validity_offsets_num != 0) {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile validity offsets; Insufficient memory budget; "
           "Needed " +
@@ -3141,7 +3131,7 @@ void FragmentMetadata::load_tile_min_values(
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
         !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
       throw FragmentMetadataStatusException(
           "Cannot load min values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3186,7 +3176,7 @@ void FragmentMetadata::load_tile_max_values(
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
         !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
       throw FragmentMetadataStatusException(
           "Cannot load max values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3225,7 +3215,7 @@ void FragmentMetadata::load_tile_sum_values(
     auto size = tile_sum_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
         !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
       throw FragmentMetadataStatusException(
           "Cannot load sum values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3258,7 +3248,7 @@ void FragmentMetadata::load_tile_null_count_values(
     auto size = tile_null_count_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
         !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
       throw FragmentMetadataStatusException(
           "Cannot load null count values; Insufficient memory budget; "
           "Needed " +
@@ -3944,8 +3934,7 @@ void FragmentMetadata::read_file_footer(
   resources_->stats().add_counter("read_frag_meta_size", *footer_size);
 
   if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(
-          *footer_size, MemoryTracker::MemoryType::FOOTER)) {
+      !memory_tracker_->take_memory(*footer_size, MemoryType::FOOTER)) {
     throw FragmentMetadataStatusException(
         "Cannot load file footer; Insufficient memory budget; Needed " +
         std::to_string(*footer_size) + " but only had " +
