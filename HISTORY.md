@@ -1,3 +1,49 @@
+# TileDB v2.20.0 Release Notes
+
+## Breaking behavior
+
+* The minimum supported macOS version on x64 is 11. [#4561](https://github.com/TileDB-Inc/TileDB/pull/4561)
+
+## New features
+
+* Add internal definitions for S3 ls recursive [#4467](https://github.com/TileDB-Inc/TileDB/pull/4467)
+* Add experimental C API for ls_recursive. [#4615](https://github.com/TileDB-Inc/TileDB/pull/4615)
+* Add experimental CPP API for ls_recursive. [#4625](https://github.com/TileDB-Inc/TileDB/pull/4625)
+
+## Improvements
+
+* Keep opened array resources alive until query ends. [#4601](https://github.com/TileDB-Inc/TileDB/pull/4601)
+* Avoid needless buffer reallocations when consolidating fragments. [#4614](https://github.com/TileDB-Inc/TileDB/pull/4614)
+* Update the AWS SDK to version 1.11.215. [#4551](https://github.com/TileDB-Inc/TileDB/pull/4551)
+* Fix consolidation plan to print relative paths in output. [#4604](https://github.com/TileDB-Inc/TileDB/pull/4604)
+* Fix traversal limit in array deserialization. [#4606](https://github.com/TileDB-Inc/TileDB/pull/4606)
+* Add function random_label to utilize PRNG for random string generation. [#4564](https://github.com/TileDB-Inc/TileDB/pull/4564)
+* Remove uuid in favor of random_label. [#4589](https://github.com/TileDB-Inc/TileDB/pull/4589)
+* Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
+
+## Defects removed
+
+* Fix regression when libraries were sometimes installed in the `lib64` directory. [#4562](https://github.com/TileDB-Inc/TileDB/pull/4562)
+* Don't segfault in ArraySchema::dump when enums are not loaded. [#4583](https://github.com/TileDB-Inc/TileDB/pull/4583)
+* Fix out of order consolidation. [#4597](https://github.com/TileDB-Inc/TileDB/pull/4597)
+* Finalize should error out for remote global order writes. [#4600](https://github.com/TileDB-Inc/TileDB/pull/4600)
+* Fix aggregate leak when field doesn't exist. [#4610](https://github.com/TileDB-Inc/TileDB/pull/4610)
+* Fix HTTP requests for AWS assume role not honoring config options. [#4616](https://github.com/TileDB-Inc/TileDB/pull/4616)
+* Fix recursively dumping a group with a nonexistent subgroup. [#4582](https://github.com/TileDB-Inc/TileDB/pull/4582)
+* Fix HTTP requests for AWS assume role with web identity not honoring config options. [#4641](https://github.com/TileDB-Inc/TileDB/pull/4641)
+
+## Build System Changes
+
+* Adds centos stream 9 dockerfile that builds tiledb [#4591](https://github.com/TileDB-Inc/TileDB/pull/4591)
+* Export a `TileDB::tiledb` CMake target regardless of static or dynamic linkage. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* Add a document with build instructions. [#4581](https://github.com/TileDB-Inc/TileDB/pull/4581)
+* Remove the `TILEDB_STATIC` option and replace it with `BUILD_SHARED_LIBS`. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* The build system supports building only a static or shared library from the same buildtree. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* `BUILD_SHARED_LIBS` is enabled by default. [#4569](https://github.com/TileDB-Inc/TileDB/pull/4569)
+* Add packaging tests into linux and mac CI pipelines. [#4567](https://github.com/TileDB-Inc/TileDB/pull/4567)
+* Add vcpkg triplets for Address Sanitizer. [#4515](https://github.com/TileDB-Inc/TileDB/pull/4515)
+* Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+
 # TileDB v2.19.0 Release Notes
 
 ## Announcements
