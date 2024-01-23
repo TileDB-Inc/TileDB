@@ -1,5 +1,9 @@
 # TileDB v2.19.1 Release Notes
 
+## Improvements
+
+* Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
+
 ## Defects removed
 
 * Fix HTTP requests for AWS assume role with web identity not honoring config options. [#4641](https://github.com/TileDB-Inc/TileDB/pull/4641)
