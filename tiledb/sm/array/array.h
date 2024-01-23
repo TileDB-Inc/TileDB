@@ -784,7 +784,9 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
@@ -926,7 +928,7 @@ class Array {
   bool remote_;
 
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;

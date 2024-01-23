@@ -66,6 +66,7 @@ class StrategyParams {
   /* ********************************* */
 
   StrategyParams(
+      shared_ptr<MemoryTracker> memory_tracker,
       StorageManager* storage_manager,
       shared_ptr<OpenedArray> array,
       Config& config,
@@ -75,9 +76,9 @@ class StrategyParams {
       Layout layout,
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization,
-      MemoryTracker* memory_tracker)
-      : storage_manager_(storage_manager)
+      bool skip_checks_serialization)
+      : memory_tracker_(memory_tracker)
+      , storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
       , buffers_(buffers)
@@ -86,13 +87,16 @@ class StrategyParams {
       , layout_(layout)
       , condition_(condition)
       , default_channel_aggregates_(default_channel_aggregates)
-      , skip_checks_serialization_(skip_checks_serialization)
-      , memory_tracker_(memory_tracker) {
+      , skip_checks_serialization_(skip_checks_serialization) {
   }
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /** Return the storage manager. */
   inline StorageManager* storage_manager() {
@@ -144,14 +148,13 @@ class StrategyParams {
     return skip_checks_serialization_;
   }
 
-  inline MemoryTracker* memory_tracker() {
-    return memory_tracker_;
-  }
-
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /** Memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** Storage manager. */
   StorageManager* storage_manager_;
@@ -182,9 +185,6 @@ class StrategyParams {
 
   /** Skip checks for serialization. */
   bool skip_checks_serialization_;
-
-  /** Memory tracker. */
-  MemoryTracker* memory_tracker_;
 };
 
 /** Processes read or write queries. */
@@ -205,8 +205,15 @@ class StrategyBase {
   /*                 API               */
   /* ********************************* */
 
+  /** Returns `memory_tracker_`. */
+  inline shared_ptr<MemoryTracker> memory_tracker() const {
+    return memory_tracker_;
+  }
+
   /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  inline stats::Stats* stats() const {
+    return stats_;
+  }
 
   /**
    * Populate the owned stats instance with data.
@@ -238,6 +245,9 @@ class StrategyBase {
   /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
+
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The class stats. */
   stats::Stats* stats_;

@@ -992,7 +992,7 @@ std::tuple<
 FragmentInfo::load_array_schemas_and_fragment_metadata(
     ContextResources& resources,
     const ArrayDirectory& array_dir,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const EncryptionKey& enc_key) {
   auto timer_se = resources.stats().start_timer(
       "sm_load_array_schemas_and_fragment_metadata");

@@ -396,9 +396,8 @@ Status StorageManager::array_evolve_schema(
       enmr_paths.emplace_back(path);
     }
 
-    MemoryTracker tracker;
     auto loaded_enmrs = array_dir.load_enumerations_from_paths(
-        enmr_paths, encryption_key, tracker);
+        enmr_paths, encryption_key, resources_.create_memory_tracker());
 
     for (auto enmr : loaded_enmrs) {
       array_schema->store_enumeration(enmr);
