@@ -915,7 +915,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   std::lock_guard<std::mutex> lock{object_create_mtx_};
 
   if (uri.is_tiledb()) {
-    Group group(uri, this);
+    Group group(resources_, uri, this);
     RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
   }
@@ -1504,44 +1504,6 @@ StorageManagerCanonical::group_open_for_writes(Group* group) {
   // Return ok because having no members is acceptable if the group has never
   // been written to.
   return {Status::Ok(), std::nullopt};
-}
-
-void StorageManagerCanonical::load_group_metadata(
-    const shared_ptr<GroupDirectory>& group_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
-  auto timer_se = stats()->start_timer("sm_load_group_metadata");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
-
-  // Determine which group metadata to load
-  const auto& group_metadata_to_load = group_dir->group_meta_uris();
-
-  auto metadata_num = group_metadata_to_load.size();
-  // TBD: Might use DynamicArray when it is more capable.
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
-    const auto& uri = group_metadata_to_load[m].uri_;
-
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
-
-    return Status::Ok();
-  }));
-
-  // Compute array metadata size for the statistics
-  uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles) {
-    meta_size += t->size();
-  }
-  stats()->add_counter("read_array_meta_size", meta_size);
-
-  // Copy the deserialized metadata into the original Metadata object
-  *metadata = Metadata::deserialize(metadata_tiles);
-  metadata->set_loaded_metadata_uris(group_metadata_to_load);
 }
 
 /* ****************************** */

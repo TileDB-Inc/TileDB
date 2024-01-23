@@ -49,6 +49,8 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class ContextResources;
+
 class GroupDetailsException : public StatusException {
  public:
   explicit GroupDetailsException(const std::string& message)
@@ -58,7 +60,10 @@ class GroupDetailsException : public StatusException {
 
 class Group {
  public:
-  Group(const URI& group_uri, StorageManager* storage_manager);
+  Group(
+      ContextResources& resources,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~Group() = default;
@@ -425,6 +430,9 @@ class Group {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
+  /** The ContextResources class. */
+  std::reference_wrapper<ContextResources> resources_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -433,6 +441,14 @@ class Group {
    * Load group metadata, handles remote groups vs non-remote groups
    */
   void load_metadata();
+
+  /**
+   * Load group metadata from disk
+   */
+  void load_metadata_from_storage(
+      const shared_ptr<GroupDirectory>& group_dir,
+      const EncryptionKey& encryption_key,
+      Metadata* metadata);
 };
 }  // namespace tiledb::sm
 

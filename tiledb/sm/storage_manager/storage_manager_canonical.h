@@ -167,15 +167,6 @@ class StorageManagerCanonical {
   Status group_close_for_writes(tiledb::sm::Group* group);
 
   /**
-   * Loads the group metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_group_metadata(
-      const tdb_shared_ptr<GroupDirectory>& group_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
    * Load a group detail from URI
    *
    * @param group_uri group uri
