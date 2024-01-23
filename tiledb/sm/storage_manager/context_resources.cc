@@ -30,6 +30,7 @@
  * This file implements class ContextResources.
  */
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -77,6 +78,10 @@ ContextResources::ContextResources(
       rest_client_ = client;
     }
   }
+}
+
+shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
+  return make_shared<MemoryTracker>(HERE());
 }
 
 }  // namespace tiledb::sm

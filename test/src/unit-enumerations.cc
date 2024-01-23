@@ -1114,7 +1114,7 @@ TEST_CASE_METHOD(
 
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  MemoryTracker tracker;
+  auto tracker = ctx_.resources().create_memory_tracker();
   auto loaded =
       ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker);
   REQUIRE(loaded.size() == 1);
@@ -1138,7 +1138,7 @@ TEST_CASE_METHOD(
 
   auto schema = get_array_schema_latest();
   auto ad = get_array_directory();
-  MemoryTracker tracker;
+  auto tracker = ctx_.resources().create_memory_tracker();
 
   // Check that this function throws an exception when attempting to load
   // an unknown enumeration
@@ -1163,8 +1163,8 @@ TEST_CASE_METHOD(
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  MemoryTracker tracker;
-  tracker.set_budget(1);
+  auto tracker = ctx_.resources().create_memory_tracker();
+  tracker->set_budget(1);
 
   // Check that this function throws an exception when attempting to load
   // an enumeration that exceeds the memory budget.
@@ -1175,7 +1175,7 @@ TEST_CASE_METHOD(
       matcher);
 
   // Check that the fix is to increase the memory budget.
-  tracker.set_budget(std::numeric_limits<uint64_t>::max());
+  tracker->set_budget(std::numeric_limits<uint64_t>::max());
   REQUIRE_NOTHROW(
       ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker));
 }

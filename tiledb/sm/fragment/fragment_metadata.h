@@ -78,6 +78,16 @@ class FragmentMetadata {
    * @param resources A context resources instance.
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
+   */
+  FragmentMetadata(
+      ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker);
+
+  /**
+   * Constructor.
+   *
+   * @param resources A context resources instance.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    * @param array_schema The schema of the array the fragment belongs to.
    * @param fragment_uri The fragment URI.
    * @param timestamp_range The timestamp range of the fragment.
@@ -89,7 +99,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       ContextResources* resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -480,7 +490,7 @@ class FragmentMetadata {
    */
   static std::vector<shared_ptr<FragmentMetadata>> load(
       ContextResources& resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema> array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
@@ -1218,11 +1228,6 @@ class FragmentMetadata {
     resources_ = cr;
   }
 
-  /** set the memory tracker pointer during deserialization*/
-  void set_memory_tracker(MemoryTracker* memory_tracker) {
-    memory_tracker_ = memory_tracker;
-  }
-
   /** loaded_metadata_.rtree_ accessor */
   void set_rtree_loaded() {
     loaded_metadata_.rtree_ = true;
@@ -1264,7 +1269,7 @@ class FragmentMetadata {
   /**
    * The memory tracker of the array this fragment metadata corresponds to.
    */
-  MemoryTracker* memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The array schema */
   shared_ptr<const ArraySchema> array_schema_;

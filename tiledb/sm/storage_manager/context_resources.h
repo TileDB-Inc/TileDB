@@ -44,6 +44,7 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class MemoryTracker;
 class RestClient;
 
 /**
@@ -108,6 +109,13 @@ class ContextResources {
   [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
     return rest_client_;
   }
+
+  /**
+   * Create a new MemoryTracker
+   *
+   * @return The created MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> create_memory_tracker() const;
 
  private:
   /* ********************************* */

@@ -81,8 +81,14 @@ FragmentMetadata::FragmentMetadata() {
 }
 
 FragmentMetadata::FragmentMetadata(
+    ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
+    : resources_(resources)
+    , memory_tracker_(memory_tracker) {
+}
+
+FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -732,7 +738,7 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
 
 std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     ContextResources& resources,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema> array_schema_latest,
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
