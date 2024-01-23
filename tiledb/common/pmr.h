@@ -43,7 +43,59 @@ namespace tiledb::common::pmr {
 using memory_resource = cpp17::pmr::memory_resource;
 
 template <class Tp>
-using vector = cpp17::pmr::vector<Tp>;
+class vector : public cpp17::pmr::vector<Tp> {
+ public:
+  // This class exists to ensure that all uses of it are provided with a
+  // valid std::pmr based allocator. This is so that as we switch from
+  // std::vector to using this class we don't forget to provide the allocator
+  // which is quite easy to do.
+  //
+  // If these constructors look confusing, just know that all we're doing is
+  // copying the current definitions from [1] and then adjusting types to
+  // require the PMR based allocator.
+
+  using allocator_type = typename cpp17::pmr::vector<Tp>::allocator_type;
+  using size_type = typename cpp17::pmr::vector<Tp>::size_type;
+
+  // Delete all default constructors because they don't require an allocator
+  constexpr vector() noexcept(noexcept(allocator_type())) = delete;
+  constexpr vector(const vector& other) = delete;
+  constexpr vector(vector&& other) noexcept = delete;
+
+  // Delete non-allocator aware copy and move assign.
+  constexpr vector& operator=(const vector& other) = delete;
+  constexpr vector& operator=(vector&& other) noexcept = delete;
+
+  constexpr explicit vector(const allocator_type& alloc) noexcept
+      : cpp17::pmr::vector<Tp>(alloc) {
+  }
+
+  constexpr vector(
+      size_type count, const Tp& value, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(count, value, alloc) {
+  }
+
+  constexpr explicit vector(size_type count, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(count, alloc) {
+  }
+
+  template <class InputIt>
+  constexpr vector(InputIt first, InputIt last, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(first, last, alloc) {
+  }
+
+  constexpr vector(const vector& other, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(other, alloc) {
+  }
+
+  constexpr vector(vector&& other, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(other, alloc) {
+  }
+
+  constexpr vector(std::initializer_list<Tp> init, const allocator_type& alloc)
+      : cpp17::pmr::vector<Tp>(init, alloc) {
+  }
+};
 
 }  // namespace tiledb::common::pmr
 
