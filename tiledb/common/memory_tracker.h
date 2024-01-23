@@ -34,6 +34,7 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 
 namespace tiledb {
@@ -60,6 +61,21 @@ class MemoryTracker {
 
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
+
+  /**
+   * Create a memory resource instance.
+   *
+   * For now, this is only a shim to using the default memory resources
+   * as defined by the standard library. Eventually this will be replaced with
+   * a custom memory resource type similar to what exists on the branch
+   * `pd/experiment/pmr-vectors`.
+   *
+   * @param type The type of memory that is being tracked.
+   * @return A memory resource derived from std::pmr::memory_resource.
+   */
+  tdb::pmr::memory_resource* get_resource(MemoryType) {
+    return tdb::pmr::get_default_resource();
+  }
 
   /**
    * Take memory from the budget.
