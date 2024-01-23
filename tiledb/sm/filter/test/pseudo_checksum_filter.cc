@@ -46,10 +46,10 @@ void PseudoChecksumFilter::dump(FILE* out) const {
 Status PseudoChecksumFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<resource_manager_type>* input_metadata,
+    FilterBuffer<resource_manager_type>* input,
+    FilterBuffer<resource_manager_type>* output_metadata,
+    FilterBuffer<resource_manager_type>* output) const {
   auto input_size = input->size();
   auto nelts = input_size / sizeof(uint64_t);
 
@@ -77,10 +77,10 @@ Status PseudoChecksumFilter::run_forward(
 Status PseudoChecksumFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<resource_manager_type>* input_metadata,
+    FilterBuffer<resource_manager_type>* input,
+    FilterBuffer<resource_manager_type>* output_metadata,
+    FilterBuffer<resource_manager_type>* output,
     const tiledb::sm::Config& config) const {
   (void)config;
 

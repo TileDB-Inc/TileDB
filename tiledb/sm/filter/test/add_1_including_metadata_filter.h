@@ -50,6 +50,8 @@ namespace tiledb::sm {
  */
 class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
+  using resource_manager_type = ContextResources::resource_manager_type;
+
   Add1IncludingMetadataFilter(Datatype filter_data_type);
 
   void dump(FILE* out) const override;
@@ -57,18 +59,18 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output) const override;
+      FilterBuffer<resource_manager_type>* input_metadata,
+      FilterBuffer<resource_manager_type>* input,
+      FilterBuffer<resource_manager_type>* output_metadata,
+      FilterBuffer<resource_manager_type>* output) const override;
 
   Status run_reverse(
       const Tile&,
       Tile*,
-      FilterBuffer* input_metadata,
-      FilterBuffer* input,
-      FilterBuffer* output_metadata,
-      FilterBuffer* output,
+      FilterBuffer<resource_manager_type>* input_metadata,
+      FilterBuffer<resource_manager_type>* input,
+      FilterBuffer<resource_manager_type>* output_metadata,
+      FilterBuffer<resource_manager_type>* output,
       const tiledb::sm::Config& config) const override;
 
   Add1IncludingMetadataFilter* clone_impl() const override;

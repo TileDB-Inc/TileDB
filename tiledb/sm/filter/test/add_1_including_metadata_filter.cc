@@ -47,10 +47,10 @@ void Add1IncludingMetadataFilter::dump(FILE* out) const {
 Status Add1IncludingMetadataFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output) const {
+    FilterBuffer<resource_manager_type>* input_metadata,
+    FilterBuffer<resource_manager_type>* input,
+    FilterBuffer<resource_manager_type>* output_metadata,
+    FilterBuffer<resource_manager_type>* output) const {
   auto input_size = static_cast<uint32_t>(input->size()),
        input_md_size = static_cast<uint32_t>(input_metadata->size());
   auto nelts = input_size / sizeof(uint64_t),
@@ -102,10 +102,10 @@ Status Add1IncludingMetadataFilter::run_forward(
 Status Add1IncludingMetadataFilter::run_reverse(
     const Tile&,
     Tile*,
-    FilterBuffer* input_metadata,
-    FilterBuffer* input,
-    FilterBuffer* output_metadata,
-    FilterBuffer* output,
+    FilterBuffer<resource_manager_type>* input_metadata,
+    FilterBuffer<resource_manager_type>* input,
+    FilterBuffer<resource_manager_type>* output_metadata,
+    FilterBuffer<resource_manager_type>* output,
     const tiledb::sm::Config& config) const {
   (void)config;
 
