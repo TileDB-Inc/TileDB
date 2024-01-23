@@ -83,13 +83,11 @@ inline shared_ptr<MemoryTracker> verify_tracker(shared_ptr<MemoryTracker> mt) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-FragmentMetadata::FragmentMetadata() {
-}
-
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
     : resources_(resources)
-    , memory_tracker_(verify_tracker(memory_tracker)) {
+    , memory_tracker_(verify_tracker(memory_tracker))
+    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS)) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -116,6 +114,7 @@ FragmentMetadata::FragmentMetadata(
     , meta_file_size_(0)
     , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
     , tile_index_base_(0)
+    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
