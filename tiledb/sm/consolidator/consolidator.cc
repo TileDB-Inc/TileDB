@@ -123,7 +123,7 @@ Status Consolidator::consolidate(
 }
 
 void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
-  throw Status_ConsolidatorError("Cannot vacuum; Invalid object");
+  throw ConsolidatorException("Cannot vacuum; Invalid object");
 }
 
 void Consolidator::array_consolidate(
@@ -136,8 +136,7 @@ void Consolidator::array_consolidate(
   // Check array URI
   URI array_uri(array_name);
   if (array_uri.is_invalid()) {
-    throw StatusException(
-        Status_ConsolidatorError("Cannot consolidate array; Invalid URI"));
+    throw ConsolidatorException("Cannot consolidate array; Invalid URI");
   }
 
   // Check if array exists
@@ -145,8 +144,8 @@ void Consolidator::array_consolidate(
   throw_if_not_ok(storage_manager->object_type(array_uri, &obj_type));
 
   if (obj_type != ObjectType::ARRAY) {
-    throw StatusException(Status_ConsolidatorError(
-        "Cannot consolidate array; Array does not exist"));
+    throw ConsolidatorException(
+        "Cannot consolidate array; Array does not exist");
   }
 
   if (array_uri.is_tiledb()) {
@@ -190,7 +189,8 @@ void Consolidator::array_consolidate(
 
 void Consolidator::check_array_uri(const char* array_name) {
   if (URI(array_name).is_tiledb()) {
-    throw std::logic_error("Consolidation is not supported for remote arrays.");
+    throw ConsolidatorException(
+        "Consolidation is not supported for remote arrays.");
   }
 }
 

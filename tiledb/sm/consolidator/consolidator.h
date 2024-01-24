@@ -46,6 +46,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class ConsolidatorException : public StatusException {
+ public:
+  explicit ConsolidatorException(const std::string& msg)
+      : StatusException("Consolidator", msg) {
+  }
+};
+
 class ArraySchema;
 class Config;
 class Query;
@@ -136,6 +143,7 @@ class Consolidator {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
+   * @param storage_manager The storage manager.
    */
   static void array_consolidate(
       const char* array_name,
@@ -168,13 +176,6 @@ class Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit Consolidator(StorageManager* storage_manager);
-
-  /**
-   * Constructor.
-   *
-   * @param resources ContextResources.
-   */
-  explicit Consolidator(ContextResources& resources);
 
   /**
    * Checks if the array is remote.

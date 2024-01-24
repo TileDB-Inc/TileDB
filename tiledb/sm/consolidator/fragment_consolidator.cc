@@ -184,7 +184,7 @@ FragmentConsolidator::FragmentConsolidator(
     : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
-    throw std::logic_error(st.message());
+    throw FragmentConsolidatorException(st.message());
   }
 }
 
