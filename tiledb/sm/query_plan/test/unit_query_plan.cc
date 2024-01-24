@@ -30,6 +30,7 @@
  * This file tests the QueryPlan class
  */
 
+#include <test/support/src/temporary_local_directory.h>
 #include <test/support/tdb_catch.h>
 #include "../query_plan.h"
 #include "external/include/nlohmann/json.hpp"
@@ -54,6 +55,10 @@ struct QueryPlanFx {
   tdb_unique_ptr<Array> create_array(const URI uri);
 
   void destroy_array(const std::shared_ptr<Array>& array);
+
+  URI array_uri(const std::string& uri);
+
+  TemporaryLocalDirectory temp_dir_;
 
   Config cfg_;
   shared_ptr<Logger> logger_;
@@ -97,7 +102,10 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
 
 void QueryPlanFx::destroy_array(const std::shared_ptr<Array>& array) {
   REQUIRE(array->close().ok());
-  REQUIRE(sm_->vfs()->remove_dir(array->array_uri()).ok());
+}
+
+URI QueryPlanFx::array_uri(const std::string& array_name) {
+  return URI(temp_dir_.path() + array_name);
 }
 
 QueryPlanFx::QueryPlanFx()
@@ -107,7 +115,7 @@ QueryPlanFx::QueryPlanFx()
 }
 
 TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
-  const URI uri = URI("query_plan_array");
+  const URI uri = array_uri("query_plan_array");
 
   auto array = create_array(uri);
 
