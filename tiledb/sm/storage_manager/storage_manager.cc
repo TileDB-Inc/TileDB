@@ -132,19 +132,12 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::group_close_for_reads(Group* group) {
-  assert(open_groups_.find(group) != open_groups_.end());
-
-  // Remove entry from open groups
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.erase(group);
-
+Status StorageManagerCanonical::group_close_for_reads(Group*) {
+  // Closing a group does nothing at present
   return Status::Ok();
 }
 
 Status StorageManagerCanonical::group_close_for_writes(Group* group) {
-  assert(open_groups_.find(group) != open_groups_.end());
-
   // Flush the group metadata
   RETURN_NOT_OK(store_metadata(
       group->group_uri(), *group->encryption_key(), group->unsafe_metadata()));
@@ -159,11 +152,6 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
         group->group_details(),
         *group->encryption_key()));
   }
-
-  // Remove entry from open groups
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.erase(group);
-
   return Status::Ok();
 }
 
@@ -1738,10 +1726,6 @@ StorageManagerCanonical::group_open_for_reads(Group* group) {
       load_group_details(group->group_directory(), *group->encryption_key());
   RETURN_NOT_OK_TUPLE(st, std::nullopt);
 
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.insert(group);
-
   if (group_deserialized.has_value()) {
     return {Status::Ok(), group_deserialized.value()};
   }
@@ -1759,10 +1743,6 @@ StorageManagerCanonical::group_open_for_writes(Group* group) {
   auto&& [st, group_deserialized] =
       load_group_details(group->group_directory(), *group->encryption_key());
   RETURN_NOT_OK_TUPLE(st, std::nullopt);
-
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.insert(group);
 
   if (group_deserialized.has_value()) {
     return {Status::Ok(), group_deserialized.value()};
