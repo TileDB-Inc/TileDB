@@ -2748,14 +2748,14 @@ int32_t tiledb_array_consolidate_fragments(
     uris.emplace_back(fragment_uris[i]);
   }
 
-  throw_if_not_ok(ctx->storage_manager()->fragments_consolidate(
+  tiledb::sm::Consolidator::fragments_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }

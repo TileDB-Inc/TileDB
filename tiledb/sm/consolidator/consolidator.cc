@@ -187,6 +187,65 @@ void Consolidator::array_consolidate(
   }
 }
 
+void Consolidator::fragments_consolidate(
+    const char* array_name,
+    EncryptionType encryption_type,
+    const void* encryption_key,
+    uint32_t key_length,
+    const std::vector<std::string> fragment_uris,
+    const Config& config,
+    StorageManager* storage_manager) {
+  // Check array URI
+  URI array_uri(array_name);
+  if (array_uri.is_invalid()) {
+    throw ConsolidatorException("Cannot consolidate array; Invalid URI");
+  }
+
+  // Check if array exists
+  ObjectType obj_type;
+  throw_if_not_ok(storage_manager->object_type(array_uri, &obj_type));
+
+  if (obj_type != ObjectType::ARRAY) {
+    throw ConsolidatorException(
+        "Cannot consolidate array; Array does not exist");
+  }
+
+  // Get encryption key from config
+  std::string encryption_key_from_cfg;
+  if (!encryption_key) {
+    bool found = false;
+    encryption_key_from_cfg = config.get("sm.encryption_key", &found);
+    assert(found);
+  }
+
+  if (!encryption_key_from_cfg.empty()) {
+    encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+    std::string encryption_type_from_cfg;
+    bool found = false;
+    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
+    assert(found);
+    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+    throw_if_not_ok(st);
+    encryption_type = et.value();
+
+    if (!EncryptionKey::is_valid_key_length(
+            encryption_type,
+            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+      encryption_key = nullptr;
+      key_length = 0;
+    }
+  }
+
+  // Consolidate
+  auto consolidator = Consolidator::create(
+      ConsolidationMode::FRAGMENT, config, storage_manager);
+  auto fragment_consolidator =
+      dynamic_cast<FragmentConsolidator*>(consolidator.get());
+  throw_if_not_ok(fragment_consolidator->consolidate_fragments(
+      array_name, encryption_type, encryption_key, key_length, fragment_uris));
+}
+
 void Consolidator::check_array_uri(const char* array_name) {
   if (URI(array_name).is_tiledb()) {
     throw ConsolidatorException(
