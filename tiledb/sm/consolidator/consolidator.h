@@ -190,6 +190,20 @@ class Consolidator {
       const std::vector<URI>& commit_uris,
       StorageManager* storage_manager);
 
+  /**
+   * Cleans up the array, such as its consolidated fragments and array
+   * metadata. Note that this will coarsen the granularity of time traveling
+   * (see docs for more information).
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param config Configuration parameters for vacuuming.
+   * @param storage_manager The storage manager.
+   */
+  static void array_vacuum(
+      const char* array_name,
+      const Config& config,
+      StorageManager* storage_manager);
+
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
   /* ********************************* */

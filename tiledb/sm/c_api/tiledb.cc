@@ -2762,10 +2762,10 @@ int32_t tiledb_array_consolidate_fragments(
 
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  ctx->storage_manager()->array_vacuum(
+  tiledb::sm::Consolidator::array_vacuum(
       array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config());
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }

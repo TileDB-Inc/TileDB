@@ -306,6 +306,22 @@ void Consolidator::write_consolidated_commits_file(
   throw_if_not_ok(storage_manager->vfs()->close_file(consolidated_commits_uri));
 }
 
+void Consolidator::array_vacuum(
+    const char* array_name,
+    const Config& config,
+    StorageManager* storage_manager) {
+  URI array_uri(array_name);
+  if (array_uri.is_tiledb()) {
+    throw_if_not_ok(
+        storage_manager->rest_client()->post_vacuum_to_rest(array_uri, config));
+    return;
+  }
+
+  auto mode = Consolidator::mode_from_config(config, true);
+  auto consolidator = Consolidator::create(mode, config, storage_manager);
+  consolidator->vacuum(array_name);
+}
+
 void Consolidator::check_array_uri(const char* array_name) {
   if (URI(array_name).is_tiledb()) {
     throw ConsolidatorException(

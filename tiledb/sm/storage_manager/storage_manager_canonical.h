@@ -272,16 +272,6 @@ class StorageManagerCanonical {
   void delete_group(const char* group_name);
 
   /**
-   * Cleans up the array, such as its consolidated fragments and array
-   * metadata. Note that this will coarsen the granularity of time traveling
-   * (see docs for more information).
-   *
-   * @param array_name The name of the array to be vacuumed.
-   * @param config Configuration parameters for vacuuming.
-   */
-  void array_vacuum(const char* array_name, const Config& config);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.

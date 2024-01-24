@@ -267,19 +267,6 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
   vfs()->remove_dirs(compute_tp(), dirs);
 }
 
-void StorageManagerCanonical::array_vacuum(
-    const char* array_name, const Config& config) {
-  URI array_uri(array_name);
-  if (array_uri.is_tiledb()) {
-    throw_if_not_ok(rest_client()->post_vacuum_to_rest(array_uri, config));
-    return;
-  }
-
-  auto mode = Consolidator::mode_from_config(config, true);
-  auto consolidator = Consolidator::create(mode, config, this);
-  consolidator->vacuum(array_name);
-}
-
 Status StorageManagerCanonical::array_create(
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
