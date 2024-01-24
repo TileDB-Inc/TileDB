@@ -125,6 +125,26 @@ class Consolidator {
    */
   virtual void vacuum(const char* array_name);
 
+  /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void array_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const Config& config,
+      StorageManager* storage_manager);
+
   /* ********************************* */
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
@@ -148,6 +168,13 @@ class Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit Consolidator(StorageManager* storage_manager);
+
+  /**
+   * Constructor.
+   *
+   * @param resources ContextResources.
+   */
+  explicit Consolidator(ContextResources& resources);
 
   /**
    * Checks if the array is remote.
