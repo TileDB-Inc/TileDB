@@ -282,27 +282,6 @@ class StorageManagerCanonical {
   void array_vacuum(const char* array_name, const Config& config);
 
   /**
-   * Consolidates the metadata of an array into a single file.
-   *
-   * @param array_name The name of the array whose metadata will be
-   *     consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_metadata_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config& config);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.
