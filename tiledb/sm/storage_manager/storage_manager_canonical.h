@@ -248,18 +248,6 @@ class StorageManagerCanonical {
   group_open_for_writes(Group* group);
 
   /**
-   * Writes a consolidated commits file.
-   *
-   * @param write_version Write version.
-   * @param array_dir ArrayDirectory where the data is stored.
-   * @param commit_uris Commit files to include.
-   */
-  void write_consolidated_commits_file(
-      format_version_t write_version,
-      ArrayDirectory array_dir,
-      const std::vector<URI>& commit_uris);
-
-  /**
    * Cleans up the array data.
    *
    * @param array_name The name of the array whose data is to be deleted.

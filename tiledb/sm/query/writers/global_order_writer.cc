@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -713,8 +714,11 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     commit_uris.emplace_back(commit_uri);
 
     auto write_version = array_->array_schema_latest().write_version();
-    storage_manager_->write_consolidated_commits_file(
-        write_version, array_->array_directory(), commit_uris);
+    Consolidator::write_consolidated_commits_file(
+        write_version,
+        array_->array_directory(),
+        commit_uris,
+        storage_manager_);
   }
 
   // Delete global write state
