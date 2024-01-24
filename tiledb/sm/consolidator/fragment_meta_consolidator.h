@@ -83,14 +83,14 @@ class FragmentMetaConsolidator : public Consolidator {
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
    */
-  void vacuum(const char* array_name);
+  void vacuum(const char* array_name) override;
 };
 
 }  // namespace tiledb::sm
