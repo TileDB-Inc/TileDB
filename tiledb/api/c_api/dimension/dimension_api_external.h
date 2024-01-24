@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -62,9 +62,9 @@ typedef struct tiledb_dimension_handle_t tiledb_dimension_t;
  *
  * Note: as laid out in the Storage Format,
  * the following Datatypes are not valid for Dimension:
- * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
- * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT, TILEDB_BOOL,
+ * TILEDB_STRING_UTF8, TILEDB_STRING_UTF16, TILEDB_STRING_UTF32,
+ * TILEDB_STRING_UCS2, TILEDB_STRING_UCS4, TILEDB_ANY
  *
  * @param ctx The TileDB context.
  * @param name The dimension name.

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Compute the number of bits required to represent a signed integral value. */
 template <typename T>
@@ -100,7 +99,7 @@ void BitWidthReductionFilter::dump(FILE* out) const {
 
 bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
   if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
-      datatype_is_time(datatype) || datatype == Datatype::BLOB) {
+      datatype_is_time(datatype) || datatype_is_byte(datatype)) {
     return true;
   }
   return false;
@@ -164,6 +163,8 @@ Status BitWidthReductionFilter::run_forward(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
     default:
@@ -337,6 +338,8 @@ Status BitWidthReductionFilter::run_reverse(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
     case Datatype::INT8:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::UINT8:
     default:
@@ -564,5 +567,4 @@ void BitWidthReductionFilter::serialize_impl(Serializer& serializer) const {
   serializer.write<uint32_t>(max_window_size_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

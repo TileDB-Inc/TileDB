@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -221,6 +221,8 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
     std::vector<Datatype> valid_unsupported_datatypes = {
         Datatype::CHAR,
         Datatype::BLOB,
+        Datatype::GEOM_WKB,
+        Datatype::GEOM_WKT,
         Datatype::BOOL,
         Datatype::STRING_UTF8,
         Datatype::STRING_UTF16,
@@ -241,7 +243,8 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 
   SECTION("- invalid Datatypes") {
-    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {42, 100};
+    // Note: Ensure this test is updated each time a new datatype is added.
+    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {44, 100};
 
     for (auto type : invalid_datatypes) {
       try {

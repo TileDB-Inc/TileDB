@@ -48,9 +48,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace tiledb {
-
-namespace impl {
+namespace tiledb::impl {
 
 /** Used to defer compilation of static_assert until type is known. **/
 template <typename T>
@@ -181,6 +179,20 @@ struct tiledb_to_type<TILEDB_BLOB> {
   using type = std::byte;
   static const tiledb_datatype_t tiledb_type = TILEDB_BLOB;
   static constexpr const char* name = "BLOB";
+};
+
+template <>
+struct tiledb_to_type<TILEDB_GEOM_WKB> {
+  using type = std::byte;
+  static const tiledb_datatype_t tiledb_type = TILEDB_GEOM_WKB;
+  static constexpr const char* name = "GEOM_WKB";
+};
+
+template <>
+struct tiledb_to_type<TILEDB_GEOM_WKT> {
+  using type = std::byte;
+  static const tiledb_datatype_t tiledb_type = TILEDB_GEOM_WKT;
+  static constexpr const char* name = "GEOM_WKT";
 };
 
 template <>
@@ -500,7 +512,6 @@ struct TypeHandler<T[N], enable_trivial<T>> {
   }
 };
 
-}  // namespace impl
-}  // namespace tiledb
+}  // namespace tiledb::impl
 
 #endif  // TILEDB_CPP_API_TYPE_H

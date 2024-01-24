@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -275,7 +275,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -577,7 +579,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));
@@ -780,7 +784,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -1118,7 +1124,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));

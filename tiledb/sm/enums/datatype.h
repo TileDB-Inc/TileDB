@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 #if defined(_WIN32) && defined(TIME_MS)
 #pragma message("WARNING: Windows.h may have already been included before")
@@ -77,6 +76,10 @@ inline uint64_t datatype_size(Datatype type) noexcept {
     case Datatype::CHAR:
       return sizeof(char);
     case Datatype::BLOB:
+      return sizeof(std::byte);
+    case Datatype::GEOM_WKB:
+      return sizeof(std::byte);
+    case Datatype::GEOM_WKT:
       return sizeof(std::byte);
     case Datatype::BOOL:
       return sizeof(uint8_t);
@@ -150,6 +153,10 @@ inline const std::string& datatype_str(Datatype type) {
       return constants::char_str;
     case Datatype::BLOB:
       return constants::blob_str;
+    case Datatype::GEOM_WKB:
+      return constants::geom_wkb_str;
+    case Datatype::GEOM_WKT:
+      return constants::geom_wkt_str;
     case Datatype::BOOL:
       return constants::bool_str;
     case Datatype::INT8:
@@ -242,6 +249,10 @@ inline Status datatype_enum(
     *datatype = Datatype::CHAR;
   else if (datatype_str == constants::blob_str)
     *datatype = Datatype::BLOB;
+  else if (datatype_str == constants::geom_wkb_str)
+    *datatype = Datatype::GEOM_WKB;
+  else if (datatype_str == constants::geom_wkt_str)
+    *datatype = Datatype::GEOM_WKT;
   else if (datatype_str == constants::bool_str)
     *datatype = Datatype::BOOL;
   else if (datatype_str == constants::int8_str)
@@ -397,28 +408,36 @@ inline bool datatype_is_time(Datatype type) {
       type == Datatype::TIME_AS);
 }
 
+/** Returns true if the input datatype is a std::byte type. */
+inline bool datatype_is_byte(Datatype type) {
+  return (
+      type == Datatype::BOOL || type == Datatype::GEOM_WKB ||
+      type == Datatype::GEOM_WKT);
+}
+
 /** Returns true if the input datatype is a boolean type. */
 inline bool datatype_is_boolean(Datatype type) {
   return (type == Datatype::BOOL);
 }
 
-/** Throws error if the input Datatype's enum is not between 0 and 41. */
+/** Throws error if the input Datatype's enum is not between 0 and 43. */
 inline void ensure_datatype_is_valid(uint8_t datatype_enum) {
-  if (datatype_enum > 41) {
+  if (datatype_enum > 43) {
     throw std::runtime_error(
         "Invalid Datatype (" + std::to_string(datatype_enum) + ")");
   }
 }
 
-/** Throws error if the input Datatype's enum is not between 0 and 41. */
+/** Throws error if the input Datatype's enum is not between 0 and 43. */
 inline void ensure_datatype_is_valid(Datatype type) {
   ensure_datatype_is_valid(::stdx::to_underlying(type));
 }
 
-/** Throws error if:
+/**
+ * Throws error if:
  *
  * the datatype string is not valid as a datatype.
- * the datatype string's enum is not between 0 and 41.
+ * the datatype string's enum is not between 0 and 43.
  **/
 inline void ensure_datatype_is_valid(const std::string& datatype_str) {
   Datatype datatype_type;
@@ -521,7 +540,6 @@ inline void ensure_ordered_attribute_datatype_is_valid(Datatype type) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_DATATYPE_H
