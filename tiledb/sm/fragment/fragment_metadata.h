@@ -332,48 +332,55 @@ class FragmentMetadata {
   }
 
   /** Returns the variable tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_var_offsets() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets()
+      const {
     return tile_var_offsets_;
   }
 
   /** Returns the sizes of the uncompressed variable tiles. */
-  inline const std::vector<std::vector<uint64_t>>& tile_var_sizes() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes()
+      const {
     return tile_var_sizes_;
   }
 
   /** Returns the validity tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_validity_offsets()
-      const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  tile_validity_offsets() const {
     return tile_validity_offsets_;
   }
 
   /** Returns the tile min buffers. */
-  inline const std::vector<std::vector<uint8_t>>& tile_min_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer()
+      const {
     return tile_min_buffer_;
   }
 
   /** Returns the tile min buffers variable length data. */
-  inline const std::vector<std::vector<char>>& tile_min_var_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer()
+      const {
     return tile_min_var_buffer_;
   }
 
   /** Returns the tile max buffers. */
-  inline const std::vector<std::vector<uint8_t>>& tile_max_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer()
+      const {
     return tile_max_buffer_;
   }
 
   /** Returns the tile max buffers variable length data. */
-  inline const std::vector<std::vector<char>>& tile_max_var_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer()
+      const {
     return tile_max_var_buffer_;
   }
 
   /** Returns the tile sum values for fixed sized data. */
-  inline const std::vector<std::vector<uint8_t>>& tile_sums() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums() const {
     return tile_sums_;
   }
 
   /** Returns the tile null count values for attributes/dimensions. */
-  inline const std::vector<std::vector<uint64_t>>& tile_null_counts() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts()
+      const {
     return tile_null_counts_;
   }
 
@@ -1123,7 +1130,7 @@ class FragmentMetadata {
   }
 
   /** tile_var_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_var_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
   }
 
@@ -1133,42 +1140,42 @@ class FragmentMetadata {
   }
 
   /** tile_var_sizes  accessor */
-  std::vector<std::vector<uint64_t>>& tile_var_sizes() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
     return tile_var_sizes_;
   }
 
   /** tile_validity_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_validity_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_validity_offsets() {
     return tile_validity_offsets_;
   }
 
   /** tile_min_buffer accessor */
-  std::vector<std::vector<uint8_t>>& tile_min_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
     return tile_min_buffer_;
   }
 
   /** tile_min_var_buffer accessor */
-  std::vector<std::vector<char>>& tile_min_var_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer() {
     return tile_min_var_buffer_;
   }
 
   /** tile_max_buffer accessor */
-  std::vector<std::vector<uint8_t>>& tile_max_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer() {
     return tile_max_buffer_;
   }
 
   /** tile_max_var_buffer accessor */
-  std::vector<std::vector<char>>& tile_max_var_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer() {
     return tile_max_var_buffer_;
   }
 
   /** tile_sums accessor */
-  std::vector<std::vector<uint8_t>>& tile_sums() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums() {
     return tile_sums_;
   }
 
   /** tile_null_counts accessor */
-  std::vector<std::vector<uint64_t>>& tile_null_counts() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts() {
     return tile_null_counts_;
   }
 
@@ -1367,51 +1374,51 @@ class FragmentMetadata {
    * The variable tile offsets in their corresponding attribute files.
    * Meaningful only for variable-sized tiles.
    */
-  std::vector<std::vector<uint64_t>> tile_var_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_offsets_;
 
   /**
    * The sizes of the uncompressed variable tiles.
    * Meaningful only when there is compression for variable tiles.
    */
-  std::vector<std::vector<uint64_t>> tile_var_sizes_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_sizes_;
 
   /**
    * The validity tile offsets in their corresponding attribute files.
    * Meaningful only when there is compression.
    */
-  std::vector<std::vector<uint64_t>> tile_validity_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_validity_offsets_;
 
   /**
    * The tile min buffers, for variable attributes/dimensions, this will store
    * offsets.
    */
-  std::vector<std::vector<uint8_t>> tile_min_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_min_buffer_;
 
   /**
    * The tile min buffers variable length data.
    */
-  std::vector<std::vector<char>> tile_min_var_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<char>> tile_min_var_buffer_;
 
   /**
    * The tile max buffers, for variable attributes/dimensions, this will store
    * offsets.
    */
-  std::vector<std::vector<uint8_t>> tile_max_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_max_buffer_;
 
   /**
    * The tile max buffers variable length data.
    */
-  std::vector<std::vector<char>> tile_max_var_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<char>> tile_max_var_buffer_;
 
   /**
    * The tile sum values, ignored for var sized attributes/dimensions.
    */
-  std::vector<std::vector<uint8_t>> tile_sums_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_sums_;
 
   /**
    * The tile null count values for attributes/dimensions.
    */
-  std::vector<std::vector<uint64_t>> tile_null_counts_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_null_counts_;
 
   /**
    * Fragment min values.

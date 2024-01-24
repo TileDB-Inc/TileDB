@@ -87,7 +87,23 @@ FragmentMetadata::FragmentMetadata(
     ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
     : resources_(resources)
     , memory_tracker_(verify_tracker(memory_tracker))
-    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS)) {
+    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_validity_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_min_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_max_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_sums_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_null_counts_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -115,6 +131,22 @@ FragmentMetadata::FragmentMetadata(
     , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
     , tile_index_base_(0)
     , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_validity_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_min_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_max_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_sums_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_null_counts_(
+          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
