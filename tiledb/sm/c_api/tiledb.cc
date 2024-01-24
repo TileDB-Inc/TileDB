@@ -2708,7 +2708,7 @@ int32_t tiledb_array_consolidate(
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->resources().config() : config->config(),
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
       ctx->storage_manager());
   return TILEDB_OK;
 }
@@ -2727,7 +2727,7 @@ int32_t tiledb_array_consolidate_with_key(
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
       key_length,
-      (config == nullptr) ? ctx->resources().config() : config->config(),
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
