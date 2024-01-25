@@ -845,24 +845,11 @@ class StorageManagerCanonical {
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
 
-  /**
-   * The condition variable for exlcusively locking arrays. This is used
-   * to wait for an array to be closed, before being exclusively locked
-   * by `array_xlock`.
-   */
-  std::condition_variable xlock_cv_;
-
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
-
-  /** Keeps track of which groups are open. */
-  std::set<Group*> open_groups_;
-
-  /** Mutex for managing open groups. */
-  std::mutex open_groups_mtx_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;
