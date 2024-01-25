@@ -66,7 +66,9 @@ if(TILEDB_SANITIZER STREQUAL "address")
 endif()
 
 get_cmake_property(is_multi_config GENERATOR_IS_MULTI_CONFIG)
-if(NOT is_multi_config AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" AND NOT VCPKG_TARGET_TRIPLET)
+# On Windows vcpkg always builds dependencies with symbols.
+# https://github.com/microsoft/vcpkg/blob/master/scripts/toolchains/windows.cmake
+if(NOT WIN32 AND NOT is_multi_config AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" AND NOT VCPKG_TARGET_TRIPLET)
     if(TILEDB_SANITIZER STREQUAL "address")
         message(FATAL_ERROR "Cannot enable both RelWithDebInfo and ASAN at the same time.")
     endif()

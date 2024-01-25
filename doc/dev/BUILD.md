@@ -153,7 +153,7 @@ make && make check
 
 ### Building with optimizations and debug symbols
 
-TileDB supports configuring in `RelWithDebInfo` mode, which compiles code with optimizations while also emitting debug symbols. However the dependencies built by vcpkg do not build by default with symbols. To enable that you have to do either of the following:
+TileDB supports configuring in `RelWithDebInfo` mode, which compiles code with optimizations while also emitting debug symbols. However on non-Windows platforms the dependencies built by vcpkg do not build by default with symbols. To enable that you have to do either of the following:
 
 * [Specify a vcpkg base triplet](#configuration-options).
 * Configure by directly calling CMake and setting a vcpkg triplet with the `VCPKG_DEFAULT_TRIPLET` variable. In this case you are responsible to ensure the appropriate options are passed to the triplet file.
