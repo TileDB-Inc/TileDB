@@ -1177,8 +1177,8 @@ Status VFS::read_impl(
         std::placeholders::_4,
         std::placeholders::_5,
         std::placeholders::_6);
-    read_ahead_impl(read_fn, uri, offset, buffer, nbytes, use_read_ahead);
-    return Status::Ok();
+    return read_ahead_impl(
+        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
 #else
     throw BuiltWithout("S3");
 #endif
@@ -1224,9 +1224,9 @@ Status VFS::read_impl(
   throw UnsupportedURI(uri.to_string());
 }
 
-void VFS::read_ahead_impl(
-    const std::function<
-        void(const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
+Status VFS::read_ahead_impl(
+    const std::function<Status(
+        const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
     const URI& uri,
     const uint64_t offset,
     void* const buffer,
@@ -1236,9 +1236,8 @@ void VFS::read_ahead_impl(
   uint64_t nbytes_read = 0;
 
   // Do not use the read-ahead cache if disabled by the caller.
-  if (!use_read_ahead) {
+  if (!use_read_ahead)
     return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
-  }
 
   // Only perform a read-ahead if the requested read size
   // is smaller than the size of the buffers in the read-ahead
@@ -1249,9 +1248,8 @@ void VFS::read_ahead_impl(
   //    to a future small read.
   // 3. It saves us a copy. We must make a copy of the buffer at
   //    some point (one for the user, one for the cache).
-  if (nbytes >= vfs_params_.read_ahead_size_) {
+  if (nbytes >= vfs_params_.read_ahead_size_)
     return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
-  }
 
   // Avoid a read if the requested buffer can be read from the
   // read cache. Note that we intentionally do not use a read
@@ -1259,24 +1257,23 @@ void VFS::read_ahead_impl(
   // system's file system to cache readahead data in memory.
   // Additionally, we do not perform readahead with HDFS.
   bool success;
-  throw_if_not_ok(
-      read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
-  if (success) {
-    return;
-  }
+  RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
+  if (success)
+    return Status::Ok();
 
   // We will read directly into the read-ahead buffer and then copy
   // the subrange of this buffer back to the user to satisfy the
   // read request.
   Buffer ra_buffer;
-  throw_if_not_ok(ra_buffer.realloc(vfs_params_.read_ahead_size_));
+  RETURN_NOT_OK(ra_buffer.realloc(vfs_params_.read_ahead_size_));
 
   // Calculate the exact number of bytes to populate `ra_buffer`
   // with `vfs_params_.read_ahead_size_` bytes.
   const uint64_t ra_nbytes = vfs_params_.read_ahead_size_ - nbytes;
 
   // Read into `ra_buffer`.
-  read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read);
+  RETURN_NOT_OK(
+      read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read));
 
   // Copy the requested read range back into the caller's output `buffer`.
   assert(nbytes_read >= nbytes);
@@ -1284,7 +1281,9 @@ void VFS::read_ahead_impl(
 
   // Cache `ra_buffer` at `offset`.
   ra_buffer.set_size(nbytes_read);
-  throw_if_not_ok(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
+  RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
+
+  return Status::Ok();
 }
 
 bool VFS::supports_fs(Filesystem fs) const {

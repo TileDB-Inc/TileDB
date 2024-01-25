@@ -417,7 +417,7 @@ void S3::read(
     uint64_t nbytes,
     bool) const {
   uint64_t nbytes_read = 0;
-  read_impl(uri, offset, buffer, nbytes, 0, &nbytes_read);
+  throw_if_not_ok(read_impl(uri, offset, buffer, nbytes, 0, &nbytes_read));
 }
 
 void S3::remove_bucket(const URI& bucket) const {
@@ -740,13 +740,13 @@ void S3::finalize_and_flush_object(const URI& uri) {
     throw_if_not_ok(parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
           uint64_t length_returned;
-          read_impl(
+          throw_if_not_ok(read_impl(
               URI(intermediate_chunks[i].uri),
               0,
               merged.data() + offsets[i],
               intermediate_chunks[i].size,
               0,
-              &length_returned);
+              &length_returned));
           return Status::Ok();
         }));
 
@@ -964,17 +964,18 @@ Status S3::object_size(const URI& uri, uint64_t* nbytes) const {
   return Status::Ok();
 }
 
-void S3::read_impl(
+Status S3::read_impl(
     const URI& uri,
     const off_t offset,
     void* const buffer,
     const uint64_t length,
     const uint64_t read_ahead_length,
     uint64_t* const length_returned) const {
-  throw_if_not_ok(init_client());
+  RETURN_NOT_OK(init_client());
 
   if (!uri.is_s3()) {
-    throw S3Exception(std::string("URI is not an S3 URI: " + uri.to_string()));
+    return LOG_STATUS(Status_S3Error(
+        std::string("URI is not an S3 URI: " + uri.to_string())));
   }
 
   Aws::Http::URI aws_uri = uri.c_str();
@@ -998,18 +999,20 @@ void S3::read_impl(
 
   auto get_object_outcome = client_->GetObject(get_object_request);
   if (!get_object_outcome.IsSuccess()) {
-    throw S3Exception(
+    return LOG_STATUS(Status_S3Error(
         std::string("Failed to read S3 object ") + uri.c_str() +
-        outcome_error_message(get_object_outcome));
+        outcome_error_message(get_object_outcome)));
   }
 
   *length_returned =
       static_cast<uint64_t>(get_object_outcome.GetResult().GetContentLength());
   if (*length_returned < length) {
-    throw S3Exception(
+    return LOG_STATUS(Status_S3Error(
         std::string("Read operation returned different size of bytes ") +
-        std::to_string(*length_returned) + " vs " + std::to_string(length));
+        std::to_string(*length_returned) + " vs " + std::to_string(length)));
   }
+
+  return Status::Ok();
 }
 
 Status S3::remove_object(const URI& uri) const {
@@ -1143,13 +1146,13 @@ void S3::global_order_write(
   throw_if_not_ok(parallel_for(
       vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
         uint64_t length_returned;
-        read_impl(
+        throw_if_not_ok(read_impl(
             URI(intermediate_chunks[i].uri),
             0,
             merged.data() + offsets[i],
             intermediate_chunks[i].size,
             0,
-            &length_returned);
+            &length_returned));
         return Status::Ok();
       }));
   std::memcpy(merged.data() + offsets.back(), buffer, length);

@@ -975,14 +975,15 @@ class S3 : FilesystemBase {
    * @param length The size of the data to be read from the object.
    * @param read_ahead_length The additional length to read ahead.
    * @param length_returned Returns the total length read into `buffer`.
+   * @return Status
    */
-  void read_impl(
+  Status read_impl(
       const URI& uri,
-      off_t offset,
-      void* buffer,
-      uint64_t length,
-      uint64_t read_ahead_length,
-      uint64_t* length_returned) const;
+      const off_t offset,
+      void* const buffer,
+      const uint64_t length,
+      const uint64_t read_ahead_length,
+      uint64_t* const length_returned) const;
 
   /**
    * Deletes an object with a given URI.
