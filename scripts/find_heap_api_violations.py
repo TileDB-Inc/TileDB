@@ -17,6 +17,7 @@ ignored_files = frozenset(
         "heap_profiler.cc",
         "heap_memory.h",
         "heap_memory.cc",
+        "stop_token.h",
     ]
 )
 
@@ -24,7 +25,10 @@ ignored_files = frozenset(
 regex_malloc = re.compile(r"malloc\(")
 
 # Contains per-file exceptions to violations of "malloc".
-malloc_exceptions = {"*": ["tdb_malloc", "tiledb_malloc"]}
+malloc_exceptions = {
+    "*": ["tdb_malloc", "tiledb_malloc"],
+    "context_api.cc": ["*stats_json = static_cast<char*>(std::malloc(str.size() + 1));"]
+}
 
 # Match C API calloc:
 regex_calloc = re.compile(r"calloc\(")
@@ -154,7 +158,9 @@ def iter_file_violations(file_path: str) -> Iterable[Violation]:
 
 def iter_dir_violations(dir_path: str) -> Iterable[Violation]:
     for directory, subdirlist, file_names in os.walk(dir_path):
-        if os.path.basename(directory) not in ignored_dirs:
+        if os.path.basename(directory) in ignored_dirs:
+            subdirlist.clear()
+        else:
             for file_name in file_names:
                 if file_name not in ignored_files and file_name.endswith((".h", ".cc")):
                     yield from iter_file_violations(os.path.join(directory, file_name))

@@ -46,6 +46,7 @@
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -53,7 +54,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 
 /** Processes sparse global order read queries. */
 
@@ -61,6 +61,8 @@ template <class BitmapType>
 class SparseGlobalOrderReader : public SparseIndexReaderBase,
                                 public IQueryStrategy {
  public:
+  typedef std::list<GlobalOrderResultTile<BitmapType>> ResultTilesList;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -69,15 +71,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   SparseGlobalOrderReader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
-      QueryCondition& condition,
-      bool consolidation_with_timestamps,
-      bool skip_checks_serialization = false);
+      StrategyParams& params,
+      bool consolidation_with_timestamps);
 
   /** Destructor. */
   ~SparseGlobalOrderReader() = default;
@@ -114,10 +109,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /**
    * Initialize the memory budget variables.
-   *
-   * @return Status.
    */
-  Status initialize_memory_budget();
+  void refresh_config();
 
   /**
    * Performs a read query using its set members.
@@ -129,6 +122,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** Resets the reader object. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -137,20 +133,17 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
 
-  /** The result tiles currently loaded. */
-  std::vector<std::list<GlobalOrderResultTile<BitmapType>>> result_tiles_;
+  /**
+   * Result tiles currently for which we loaded coordinates but couldn't
+   * process in the previous iteration.
+   */
+  std::vector<ResultTilesList> result_tiles_leftover_;
 
   /** Memory used for coordinates tiles per fragment. */
   std::vector<uint64_t> memory_used_for_coords_;
 
   /** Memory budget per fragment. */
   double per_fragment_memory_;
-
-  /** Memory used for qc tiles per fragment. */
-  std::vector<uint64_t> memory_used_for_qc_tiles_;
-
-  /** Memory budget per fragment for qc tiles. */
-  double per_fragment_qc_memory_;
 
   /** Enables consolidation with timestamps or not. */
   bool consolidation_with_timestamps_;
@@ -160,6 +153,25 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
 
   /** Stores last cell for fragments consolidated with timestamps. */
   std::vector<FragIdx> last_cells_;
+
+  // Are we doing purge deletes consolidation. The consolidation with
+  // timestamps flag will be set and we will have a post query condition
+  // bitmap. The later is only true in consolidation when delete conditions
+  // are present.
+  bool purge_deletes_consolidation_;
+
+  // For purge deletes consolidation and no duplicates, we read in a different
+  // mode. We will first sort cells in the tile queue with the same coordinates
+  // using timestamps (where the cell with the greater timestamp comes first).
+  // Then when adding cells for a fragment consolidated with timestamps, we
+  // will add all the dups at once. Finally, when creating cell slabs, we will
+  // stop creating cell slabs once a cell is deleted. This will enable cells
+  // created after the last delete time to go through, but the cells created
+  // before to be purged.
+  bool purge_deletes_no_dups_mode_;
+
+  /** Are tile offsets loaded? */
+  bool tile_offsets_loaded_;
 
   /* ********************************* */
   /*       PRIVATE DECLARATIONS        */
@@ -173,12 +185,14 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       CompType>;
 
   /** Tile list iterator. */
-  using TileListIt =
-      typename std::list<GlobalOrderResultTile<BitmapType>>::iterator;
+  using TileListIt = typename ResultTilesList::iterator;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Load all tile offsets required for the read operation. */
+  void load_all_tile_offsets();
 
   /**
    * Get the coordinate tiles size for a dimension.
@@ -187,64 +201,68 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param f Fragment index.
    * @param t Tile index.
    *
-   * @return Status, tiles_size, tiles_size_qc.
+   * @return Tiles size.
    */
-  tuple<Status, optional<std::pair<uint64_t, uint64_t>>> get_coord_tiles_size(
-      unsigned dim_num, unsigned f, uint64_t t);
+  uint64_t get_coord_tiles_size(unsigned dim_num, unsigned f, uint64_t t);
 
   /**
    * Add a result tile to process, making sure maximum budget is respected.
    *
    * @param dim_num Number of dimensions.
    * @param memory_budget_coords_tiles Memory budget for coordinate tiles.
-   * @param memory_budget_qc_tiles Memory budget for query condition tiles.
    * @param f Fragment index.
    * @param t Tile index.
    * @param frag_md Fragment metadata.
+   * @param result_tiles Result tiles per fragment.
    *
-   * @return buffers_full, new_var_buffer_size, new_result_tiles_size.
+   * @return buffers_full.
    */
-  tuple<Status, optional<bool>> add_result_tile(
+  bool add_result_tile(
       const unsigned dim_num,
       const uint64_t memory_budget_coords_tiles,
-      const uint64_t memory_budget_qc_tiles,
       const unsigned f,
       const uint64_t t,
-      const FragmentMetadata& frag_md);
+      const FragmentMetadata& frag_md,
+      std::vector<ResultTilesList>& result_tiles);
 
   /**
    * Create the result tiles.
    *
-   * @return Status, tiles_found.
+   * @param result_tiles Result tiles per fragment.
+   * @return Newly created tiles.
    */
-  tuple<Status, optional<bool>> create_result_tiles();
+  std::vector<ResultTile*> create_result_tiles(
+      std::vector<ResultTilesList>& result_tiles);
+
+  /**
+   * Clean tiles that have 0 results from the tile lists.
+   *
+   * @param result_tiles Result tiles vector.
+   */
+  void clean_tile_list(std::vector<ResultTilesList>& result_tiles);
 
   /**
    * Process tiles with timestamps to deduplicate entries.
    *
    * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
    */
-  Status dedup_tiles_with_timestamps(std::vector<ResultTile*>& result_tiles);
+  void dedup_tiles_with_timestamps(std::vector<ResultTile*>& result_tiles);
 
   /**
    * Process fragments with timestamps to deduplicate entries.
    * This removes cells across tiles.
    *
-   * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
+   * @param result_tiles Result tiles per fragment.
    */
-  Status dedup_fragments_with_timestamps();
+  void dedup_fragments_with_timestamps(
+      std::vector<ResultTilesList>& result_tiles);
 
   /**
-   * Populate a result cell slab to process.
+   * Compute the number of cells possible to merge from user buffers.
    *
-   * @return Status, result_cell_slab.
+   * @return Number of cells possible to merge from user buffers.
    */
-  tuple<Status, optional<std::vector<ResultCellSlab>>>
-  compute_result_cell_slab();
+  uint64_t max_num_cells_to_copy();
 
   /**
    * Is the result coord the last cell of a consolidated fragment with
@@ -252,66 +270,88 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @param frag_idx Fragment index for the result coords.
    * @param rc Result coords.
+   * @param result_tiles Result tiles per fragment.
    *
    * @return true if the result coords is the last cell of a consolidated
    * fragment with timestamps.
    */
   inline bool last_in_memory_cell_of_consolidated_fragment(
       const unsigned int frag_idx,
-      const GlobalOrderResultCoords<BitmapType>& rc) const {
-    return !all_tiles_loaded_[frag_idx] &&
+      const GlobalOrderResultCoords<BitmapType>& rc,
+      const std::vector<ResultTilesList>& result_tiles) const {
+    return !tmp_read_state_.all_tiles_loaded(frag_idx) &&
            fragment_metadata_[frag_idx]->has_timestamps() &&
+           rc.tile_ == &result_tiles[frag_idx].back() &&
            rc.tile_->tile_idx() == last_cells_[frag_idx].tile_idx_ &&
            rc.pos_ == last_cells_[frag_idx].cell_idx_;
   }
 
   /**
+   * Add, for a fragment with timestamps, all duplicates of a certain cell.
+   *
+   * @param rc Current result coords for the fragment.
+   * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
+   * @param result_tiles Result tiles per fragment.
+   * @param tile_queue Queue of one result coords, per fragment, sorted.
+   * @param to_delete List of tiles to delete.
+   *
+   * @return If more tiles are needed.
+   */
+  template <class CompType>
+  bool add_all_dups_to_queue(
+      GlobalOrderResultCoords<BitmapType>& rc,
+      std::vector<TileListIt>& result_tiles_it,
+      const std::vector<ResultTilesList>& result_tiles,
+      TileMinHeap<CompType>& tile_queue,
+      std::vector<TileListIt>& to_delete);
+
+  /**
    * Add a cell (for a specific fragment) to the queue of cells currently being
    * processed.
    *
-   * @param dups Are we returning dups or not.
    * @param rc Current result coords for the fragment.
    * @param result_tiles_it Iterator, per frag, in the list of retult tiles.
+   * @param result_tiles Result tiles per fragment.
    * @param tile_queue Queue of one result coords, per fragment, sorted.
+   * @param to_delete List of tiles to delete.
    *
-   * @return Status, more_tiles.
+   * @return If more tiles are needed.
    */
   template <class CompType>
-  tuple<Status, optional<bool>> add_next_cell_to_queue(
-      bool dups,
+  bool add_next_cell_to_queue(
       GlobalOrderResultCoords<BitmapType>& rc,
       std::vector<TileListIt>& result_tiles_it,
-      TileMinHeap<CompType>& tile_queue);
+      const std::vector<ResultTilesList>& result_tiles,
+      TileMinHeap<CompType>& tile_queue,
+      std::vector<TileListIt>& to_delete);
 
   /**
    * Computes a tile's Hilbert values for a tile.
    *
    * @param result_tiles Result tiles to process.
-   *
-   * @return Status.
    */
-  Status compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
+  void compute_hilbert_values(std::vector<ResultTile*>& result_tiles);
 
   /**
-   * Get the timestamp value for a result coords.
+   * Update the fragment index to the larger between current one and the one
+   * passed in.
    *
-   * @param rc Result coords.
-   *
-   * @return timestamp.
+   * @param tile Current tile.
+   * @param c Current cell index.
    */
-  uint64_t get_timestamp(const GlobalOrderResultCoords<BitmapType>& rc) const;
+  void update_frag_idx(GlobalOrderResultTile<BitmapType>* tile, uint64_t c);
 
   /**
    * Compute the result cell slabs once tiles are loaded.
    *
    * @param num_cells Number of cells that can be copied in the user buffer.
-   * @param cmp Comparator used to merge cells.
+   * @param result_tiles Result tiles per fragment.
    *
-   * @return Status, result_cell_slabs.
+   * @return user_buffers_full, result_cell_slabs.
    */
   template <class CompType>
-  tuple<Status, optional<std::vector<ResultCellSlab>>> merge_result_cell_slabs(
-      uint64_t num_cells, CompType cmp);
+  tuple<bool, std::vector<ResultCellSlab>> merge_result_cell_slabs(
+      uint64_t num_cells, std::vector<ResultTilesList>& result_tiles);
 
   /**
    * Compute parallelization parameters for a tile copy operation.
@@ -342,11 +382,9 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    * @param var_data Stores pointers to var data cell values.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_offsets_tiles(
+  void copy_offsets_tiles(
       const std::string& name,
       const uint64_t num_range_threads,
       const bool nullable,
@@ -354,7 +392,7 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy var data tiles.
@@ -366,18 +404,16 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    * @param var_data Stores pointers to var data cell values.
-   *
-   * @return Status.
    */
   template <class OffType>
-  Status copy_var_data_tiles(
+  void copy_var_data_tiles(
       const uint64_t num_range_threads,
       const OffType offset_div,
       const uint64_t var_buffer_size,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer,
-      const std::vector<void*>& var_data);
+      std::vector<const void*>& var_data);
 
   /**
    * Copy fixed size data tiles.
@@ -391,10 +427,8 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param result_cell_slabs Result cell slabs to process.
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
-   *
-   * @return Status.
    */
-  Status copy_fixed_data_tiles(
+  void copy_fixed_data_tiles(
       const std::string& name,
       const uint64_t num_range_threads,
       const bool is_dim,
@@ -412,10 +446,22 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param result_cell_slabs Result cell slabs to process.
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
-   *
-   * @return Status.
    */
-  Status copy_timestamps_tiles(
+  void copy_timestamps_tiles(
+      const uint64_t num_range_threads,
+      const std::vector<ResultCellSlab>& result_cell_slabs,
+      const std::vector<uint64_t>& cell_offsets,
+      QueryBuffer& query_buffer);
+
+  /**
+   * Copy delete metadata tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param result_cell_slabs Result cell slabs to process.
+   * @param cell_offsets Cell offset per result tile.
+   * @param query_buffer Query buffer to operate on.
+   */
+  void copy_delete_meta_tiles(
       const uint64_t num_range_threads,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       const std::vector<uint64_t>& cell_offsets,
@@ -427,15 +473,17 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * the budget.
    *
    * @param names Attribute/dimensions to compute for.
-   * @param memory_budget Memory budget allowed for copy operation.
    * @param result_cell_slabs Result cell slabs to process, might be truncated.
+   * @param user_buffers_full Boolean that indicates if the user buffers are
+   * full or not. If this comes in as `true`, it might be reset to `false` if
+   * the results were truncated.
    *
-   * @return Status, total_mem_usage_per_attr.
+   * @return total_mem_usage_per_attr.
    */
-  tuple<Status, optional<std::vector<uint64_t>>> respect_copy_memory_budget(
+  std::vector<uint64_t> respect_copy_memory_budget(
       const std::vector<std::string>& names,
-      const uint64_t memory_budget,
-      std::vector<ResultCellSlab>& result_cell_slabs);
+      std::vector<ResultCellSlab>& result_cell_slabs,
+      bool& user_buffers_full);
 
   /**
    * Compute the var size offsets and make sure all the data can fit in the
@@ -446,26 +494,118 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    * @param cell_offsets Cell offset per result tile.
    * @param query_buffer Query buffer to operate on.
    *
-   * @return new_var_buffer_size.
+   * @return caused_overflow, new_var_buffer_size.
    */
   template <class OffType>
-  uint64_t compute_var_size_offsets(
+  tuple<bool, uint64_t> compute_var_size_offsets(
       stats::Stats* stats,
       std::vector<ResultCellSlab>& result_cell_slabs,
       std::vector<uint64_t>& cell_offsets,
       QueryBuffer& query_buffer);
 
   /**
+   * Get the sorted unique result tile list from the result cell slabs.
+   *
+   * @param result_cell_slabs Result cell slabs.
+   * @param aggregate_only Are we generating the list for aggregate only fields?
+   * @return vector of result tiles.
+   */
+  std::vector<ResultTile*> result_tiles_to_load(
+      std::vector<ResultCellSlab>& result_cell_slabs, bool aggregate_only);
+
+  /**
    * Copy cell slabs.
    *
    * @param names Attribute/dimensions to compute for.
    * @param result_cell_slabs The result cell slabs to process.
-   *
-   * @return Status.
+   * @param user_buffers_full Boolean that indicates if the user buffers are
+   * full or not.
    */
   template <class OffType>
-  Status process_slabs(
+  void process_slabs(
       std::vector<std::string>& names,
+      std::vector<ResultCellSlab>& result_cell_slabs,
+      bool& user_buffers_full);
+
+  /**
+   * Copy tiles.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to copy.
+   * @param is_dim Is the field a dimension.
+   * @param cell_offsets Cell offset per result tile.
+   * @param result_cell_slabs The result cell slabs to process.
+   * @param last_field_to_overflow Last field that caused an overflow.
+   *
+   * @return user_buffers_full.
+   */
+  template <class OffType>
+  bool copy_tiles(
+      const uint64_t num_range_threads,
+      const std::string name,
+      const bool is_dim,
+      std::vector<uint64_t>& cell_offsets,
+      std::vector<ResultCellSlab>& result_cell_slabs,
+      std::optional<std::string>& last_field_to_overflow);
+
+  /**
+   * Make an aggregate buffer.
+   *
+   * @param name Field to aggregate.
+   * @param var_sized Is the field var sized?
+   * @param nullable Is the field nullable?
+   * @param cell_size Cell size.
+   * @param min_cell Min cell to aggregate.
+   * @param min_cell Max cell to aggregate.
+   * @param rt Result tile.
+   */
+  AggregateBuffer make_aggregate_buffer(
+      const std::string name,
+      const bool var_sized,
+      const bool nullable,
+      const uint64_t cell_size,
+      const uint64_t min_cell,
+      const uint64_t max_cell,
+      ResultTile& rt);
+
+  /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rcs Result cell slab.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(ResultCellSlab& rcs) {
+    auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'. Second,
+    // we only do it when a full tile is used in the result cell slab structure
+    // by making sure that the cell slab starts at 0 and ends at the end of the
+    // tile. When we perform the merge to order everything in global order for
+    // this reader, we might end up not using a cell in a tile at all because it
+    // has a duplicate entry (with the same coordinates) written at a later
+    // timestamp. There is no way to know that this happened in a tile at the
+    // moment so the best we can do for now is to use fragment metadata only
+    // when a full tile was merged in the cell slab structure. Finally, we check
+    // the fragment metadata has indeed tile metadata.
+    return rt->copy_full_tile() && rcs.start_ == 0 &&
+           rcs.length_ == rt->cell_num() && frag_md->has_tile_metadata();
+  }
+
+  /**
+   * Process aggregates.
+   *
+   * @param num_range_threads Total number of range threads.
+   * @param name Field to aggregate.
+   * @param cell_offsets Cell offset per result tile.
+   * @param result_cell_slabs The result cell slabs to process.
+   */
+  void process_aggregates(
+      const uint64_t num_range_threads,
+      const std::string name,
+      std::vector<uint64_t>& cell_offsets,
       std::vector<ResultCellSlab>& result_cell_slabs);
 
   /**
@@ -473,18 +613,20 @@ class SparseGlobalOrderReader : public SparseIndexReaderBase,
    *
    * @param frag_idx Fragment index.
    * @param rt Iterator to the result tile to remove.
-   *
-   * @return Status.
+   * @param result_tiles Result tiles per fragment.
    */
-  Status remove_result_tile(const unsigned frag_idx, TileListIt rt);
+  void remove_result_tile(
+      const unsigned frag_idx,
+      TileListIt rt,
+      std::vector<ResultTilesList>& result_tiles);
 
   /**
    * Clean up processed data after copying and get ready for the next
    * iteration.
    *
-   * @return Status.
+   * @param result_tiles Result tiles per fragment.
    */
-  Status end_iteration();
+  void end_iteration(std::vector<ResultTilesList>& result_tiles);
 };
 
 }  // namespace sm

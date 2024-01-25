@@ -86,7 +86,7 @@ void Watchdog::watchdog_thread(Watchdog* watchdog) {
 
     if (SignalHandlers::signal_received()) {
       for (auto* sm : GlobalState::GetGlobalState().storage_managers()) {
-        sm->cancel_all_tasks();
+        throw_if_not_ok(sm->cancel_all_tasks());
       }
     }
 

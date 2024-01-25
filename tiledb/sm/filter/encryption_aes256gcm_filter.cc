@@ -44,20 +44,20 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-EncryptionAES256GCMFilter::EncryptionAES256GCMFilter()
-    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
+EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(Datatype filter_data_type)
+    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM, filter_data_type) {
   set_key(nullptr);
 }
 
 EncryptionAES256GCMFilter::EncryptionAES256GCMFilter(
-    const EncryptionKey& encryption_key)
-    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM) {
+    const EncryptionKey& encryption_key, Datatype filter_data_type)
+    : Filter(FilterType::INTERNAL_FILTER_AES_256_GCM, filter_data_type) {
   auto buff = encryption_key.key();
   set_key(buff.data());
 }
 
 EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
-  auto clone = new EncryptionAES256GCMFilter;
+  auto clone = tdb_new(EncryptionAES256GCMFilter, filter_data_type_);
   // Copy key bytes buffer.
   clone->key_bytes_ = key_bytes_;
   return clone;
@@ -71,8 +71,8 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
 }
 
 Status EncryptionAES256GCMFilter::run_forward(
-    const Tile&,
-    Tile* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -141,13 +141,12 @@ Status EncryptionAES256GCMFilter::encrypt_part(
 
 Status EncryptionAES256GCMFilter::run_reverse(
     const Tile&,
-    Tile* const,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
+    const Config&) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 
@@ -212,27 +211,27 @@ Status EncryptionAES256GCMFilter::decrypt_part(
   return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
+void EncryptionAES256GCMFilter::set_key(const EncryptionKey& key) {
   auto key_buff = key.key();
 
-  if (key.encryption_type() != EncryptionType::AES_256_GCM)
-    return LOG_STATUS(
+  if (key.encryption_type() != EncryptionType::AES_256_GCM) {
+    throw LOG_STATUS(
         Status_FilterError("Encryption error; invalid key encryption type."));
+    return;
+  }
 
   if (key_buff.data() == nullptr ||
-      key_buff.size() != Crypto::AES256GCM_KEY_BYTES)
-    return LOG_STATUS(
+      key_buff.size() != Crypto::AES256GCM_KEY_BYTES) {
+    throw LOG_STATUS(
         Status_FilterError("Encryption error; invalid key for AES-256-GCM."));
+    return;
+  }
 
   key_bytes_ = key_buff.data();
-
-  return Status::Ok();
 }
 
-Status EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
+void EncryptionAES256GCMFilter::set_key(const void* key_bytes) {
   key_bytes_ = key_bytes;
-
-  return Status::Ok();
 }
 
 Status EncryptionAES256GCMFilter::get_key(const void** key_bytes) const {

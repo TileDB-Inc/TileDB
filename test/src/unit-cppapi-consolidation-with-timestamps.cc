@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -41,7 +41,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-/** Tests for C API consolidation with timestamps. */
+/** Tests for CPP API consolidation with timestamps. */
 struct ConsolidationWithTimestampsFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_consolidate_sparse_array";
@@ -52,6 +52,12 @@ struct ConsolidationWithTimestampsFx {
   Context ctx_;
   VFS vfs_;
   sm::StorageManager* sm_;
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
@@ -130,7 +136,7 @@ void ConsolidationWithTimestampsFx::create_sparse_array(bool allows_dups) {
   // Create attributes.
   auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
-  // Create array schmea.
+  // Create array schema.
   ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
@@ -176,9 +182,15 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d1", dim1);
   query.set_data_buffer("d2", dim2);
 
-  // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
@@ -207,9 +219,15 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d1", buffer_coords_dim1);
   query.set_data_buffer("d2", buffer_coords_dim2);
 
-  // Submit/finalize the query.
-  query.submit();
-  query.finalize();
+  // Submit query
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Close array.
   array.close();
@@ -305,7 +323,15 @@ void ConsolidationWithTimestampsFx::read_sparse(
   }
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -341,7 +367,15 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
   }
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -371,6 +405,16 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps",
     "[cppapi][consolidation-with-timestamps][write-check]") {
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -401,6 +445,15 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array(true);
 
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -411,60 +464,40 @@ TEST_CASE_METHOD(
   consolidate_sparse();
 
   sm::URI array_uri(SPARSE_ARRAY_NAME);
-  ThreadPool tp(2);
-  // Partial coverage of lower timestamp.
-  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2);
-  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
 
-  // Check that only the consolidated fragment is visible.
-  auto fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  auto ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 3);
-  // Partial coverage of upper timestamp.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the consolidated fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 3);
+  std::vector<std::array<uint64_t, 4>> test_timestamps = {
+      {0, 2, 1, 3},   // Partial coverage of lower timestamp.
+      {2, 10, 1, 3},  // Partial coverage of upper timestamp.
+      {0, 5, 1, 3},   // Full coverage.
+      {3, 5, 1, 3}    // Boundary case.
+  };
 
-  // Full coverage.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the consolidated fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 3);
+  for (auto& ts : test_timestamps) {
+    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
 
-  // Boundary case.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the consolidated fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 3);
+    // Check that only the consolidated fragment is visible.
+    auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
+    auto fragments = filtered_fragment_uris.fragment_uris();
+    CHECK(fragments.size() == 1);
 
-  // No coverage - later read.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that no fragment is visible
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 0);
+    auto ts_range = fragments[0].timestamp_range_;
+    CHECK(ts_range.first == ts[2]);
+    CHECK(ts_range.second == ts[3]);
+  }
 
-  // No coverage - earlier read.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that no fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 0);
+  test_timestamps = {
+      {4, 5, 0, 0},  // No coverage - later read.
+      {0, 0, 0, 0}   // No coverage - earlier read.
+  };
+
+  for (auto& ts : test_timestamps) {
+    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+
+    // Check that no fragment is visible
+    auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
+    auto fragments = filtered_fragment_uris.fragment_uris();
+    CHECK(fragments.size() == 0);
+  }
 
   remove_sparse_array();
 }
@@ -473,6 +506,13 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read",
     "[cppapi][consolidation-with-timestamps][global-read]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -513,6 +553,7 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+// TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
 #ifndef _WIN32
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
@@ -522,6 +563,16 @@ TEST_CASE_METHOD(
   if constexpr (is_experimental_build) {
     return;
   }
+
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   remove_sparse_array();
   create_sparse_array_v11();
@@ -535,61 +586,40 @@ TEST_CASE_METHOD(
   consolidate_sparse();
 
   sm::URI array_uri(SPARSE_ARRAY_NAME);
-  ThreadPool tp(2);
 
-  // Partial coverage of lower timestamp.
-  sm::ArrayDirectory array_dir(sm_->vfs(), &tp, array_uri, 0, 2);
-  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the first fragment is visible on an old array.
-  auto fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  auto ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 1);
+  std::vector<std::array<uint64_t, 4>> test_timestamps = {
+      {0, 2, 1, 1},   // Partial coverage of lower timestamp.
+      {2, 10, 3, 3},  // Partial coverage of upper timestamp.
+      {0, 4, 1, 3},   // Full coverage
+      {3, 5, 3, 3}    // Boundary case.
+  };
 
-  // Partial coverage of upper timestamp.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 2, 10);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the second fragment is visible on an old array.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 3);
-  CHECK(ts_range.second == 3);
+  for (auto& ts : test_timestamps) {
+    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
 
-  // Full coverage
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the consolidated fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 1);
-  CHECK(ts_range.second == 3);
+    // Check that only the first fragment is visible on an old array.
+    auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
+    auto fragments = filtered_fragment_uris.fragment_uris();
+    CHECK(fragments.size() == 1);
 
-  // Boundary case.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 3, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that only the second fragment is visible.
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 1);
-  ts_range = fragments[0].timestamp_range_;
-  CHECK(ts_range.first == 3);
-  CHECK(ts_range.second == 3);
+    auto ts_range = fragments[0].timestamp_range_;
+    CHECK(ts_range.first == ts[2]);
+    CHECK(ts_range.second == ts[3]);
+  }
 
-  // No coverage - later read.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 4, 5);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that no fragment is visible
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 0);
+  test_timestamps = {
+      {4, 5, 0, 0},  // No coverage - later read.
+      {0, 0, 0, 0}   // No coverage - earlier read.
+  };
 
-  // No coverage - earlier read.
-  array_dir = sm::ArrayDirectory(sm_->vfs(), &tp, array_uri, 0, 0);
-  filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
-  // Check that no fragment is visible
-  fragments = filtered_fragment_uris.fragment_uris();
-  CHECK(fragments.size() == 0);
+  for (auto& ts : test_timestamps) {
+    sm::ArrayDirectory array_dir(sm_->resources(), array_uri, ts[0], ts[1]);
+
+    // Check that no fragment is visible
+    auto filtered_fragment_uris = array_dir.filtered_fragment_uris(false);
+    auto fragments = filtered_fragment_uris.fragment_uris();
+    CHECK(fragments.size() == 0);
+  }
 
   remove_sparse_array();
 }
@@ -600,6 +630,13 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, all cells same "
     "coords",
     "[cppapi][consolidation-with-timestamps][global-read][same-coords]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
   create_sparse_array();
 
@@ -639,8 +676,16 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, same coords "
     "across tiles",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
-  create_sparse_array();
+  bool allow_dups = GENERATE(true, false);
+  create_sparse_array(allow_dups);
 
   // Write fragments.
   // We write 8 cells per fragments for 6 fragments. Then it gets consolidated
@@ -660,7 +705,7 @@ TEST_CASE_METHOD(
 
   // Test read for both refactored and legacy.
   bool legacy = GENERATE(true, false);
-  uint64_t buffer_size = 8;
+  uint64_t buffer_size = allow_dups ? 48 : 8;
   if (legacy) {
     set_legacy();
     buffer_size = 100;
@@ -675,9 +720,15 @@ TEST_CASE_METHOD(
   std::vector<int> c_a1 = {1, 2, 3, 4, 5, 6, 7, 8};
   std::vector<uint64_t> c_dim1 = {1, 1, 2, 2, 1, 1, 2, 2};
   std::vector<uint64_t> c_dim2 = {1, 2, 1, 2, 3, 4, 3, 4};
-  CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
-  CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
-  CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
+  for (uint64_t i = 0; i < 8; i++) {
+    uint64_t max_j = allow_dups ? 6 : 1;
+    for (uint64_t j = 0; j < max_j; j++) {
+      uint64_t idx = i * max_j + j;
+      CHECK(a1[idx] == c_a1[i]);
+      CHECK(dim1[idx] == c_dim1[i]);
+      CHECK(dim2[idx] == c_dim2[i]);
+    }
+  }
 
   remove_sparse_array();
 }
@@ -691,6 +742,15 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   // Write fragments.
   for (uint64_t i = 0; i < 50; i++) {
     std::vector<int> a(1);
@@ -703,7 +763,7 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "10000");
+  cfg.set("sm.mem.total_budget", "9000");
   cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 
@@ -719,7 +779,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -734,6 +795,15 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   create_sparse_array();
 
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   // Write fragments.
   // We write 8 cells per fragment for 6 fragments. Then it gets consolidated
   // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
@@ -752,7 +822,7 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "10000");
+  cfg.set("sm.mem.total_budget", "9000");
   cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
   ctx_ = Context(cfg);
 
@@ -771,7 +841,8 @@ TEST_CASE_METHOD(
 
   // Make sure there was an internal loop on the reader.
   CHECK(
-      stats.find("\"Context.StorageManager.Query.Reader.loop_num\": 2") !=
+      stats.find(
+          "\"Context.StorageManager.Query.Reader.internal_loop_num\": 2") !=
       std::string::npos);
 
   remove_sparse_array();
@@ -784,6 +855,13 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -872,6 +950,13 @@ TEST_CASE_METHOD(
   // No duplicates.
   create_sparse_array();
 
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -902,9 +987,11 @@ TEST_CASE_METHOD(
     std::vector<int> c_a = {0, 1, 8, 2, 9, 10, 11};
     std::vector<uint64_t> c_dim1 = {1, 1, 2, 1, 2, 3, 3};
     std::vector<uint64_t> c_dim2 = {1, 2, 2, 4, 3, 2, 3};
-    CHECK(!memcmp(c_a.data(), a.data(), sizeof(c_a)));
-    CHECK(!memcmp(c_dim1.data(), dim1.data(), sizeof(c_dim1)));
-    CHECK(!memcmp(c_dim2.data(), dim2.data(), sizeof(c_dim2)));
+    CHECK(!memcmp(c_a.data(), a.data(), c_a.size() * sizeof(int)));
+    CHECK(
+        !memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
+    CHECK(
+        !memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
     if (timestamps_ptr != nullptr) {
       std::vector<uint64_t> exp_ts = {1, 1, 3, 1, 3, 3, 3};
       CHECK(!memcmp(
@@ -941,6 +1028,13 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1088,6 +1182,13 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1196,6 +1297,13 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1289,6 +1397,27 @@ TEST_CASE_METHOD(
   // Enable duplicates.
   create_sparse_array(true);
 
+  // Disable merge overlapping sparse ranges.
+  // Support for returning multiplicities for overlapping ranges will be
+  // deprecated in a few releases. Turning off this setting allows to still
+  // test that the feature functions properly until we do so. Once support is
+  // fully removed for overlapping ranges, this test case can be deleted.
+  tiledb::Config cfg;
+  cfg.set("sm.merge_overlapping_ranges_experimental", "false");
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  ctx_ = Context(cfg);
+  sm_ = ctx_.ptr().get()->storage_manager();
+  vfs_ = VFS(ctx_);
+
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1327,7 +1456,15 @@ TEST_CASE_METHOD(
   query.add_range<uint64_t>(1, 2, 3);
 
   // Submit/finalize the query
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Expect to read what the first 2 writes wrote: each element will
@@ -1389,6 +1526,13 @@ TEST_CASE_METHOD(
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
+
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(true, false);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1574,6 +1718,15 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
+    SECTION("no serialization") {
+      serialize_ = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
+    }
+#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1593,6 +1746,15 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
+    SECTION("no serialization") {
+      serialize_ = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
+    }
+#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1625,6 +1787,12 @@ TEST_CASE_METHOD(
     " fragment with timestamps",
     "[cppapi][consolidation-with-timestamps][frag-w-timestamps]") {
   remove_sparse_array();
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
 
   bool dups = GENERATE(true, false);
 
@@ -1669,7 +1837,7 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> c_dim2 = {
         1, 2, 1, 2, 3, 4, 3, 4, 1, 2, 1, 2, 3, 3, 4, 4};
     std::vector<uint64_t> c_ts = {
-        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 3, 7, 7, 7};
+        1, 1, 5, 3, 5, 1, 1, 3, 5, 3, 5, 7, 7, 3, 7, 7};
     CHECK(
         (!memcmp(c_a_1.data(), a.data(), c_a_1.size() * sizeof(int)) ||
          !memcmp(c_a_2.data(), a.data(), c_a_2.size() * sizeof(int))));
@@ -1702,6 +1870,13 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, ts tiles kept in memory",
     "[cppapi][consolidation-with-timestamps][ts-tile-in-memory]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = GENERATE(false, true);
+  if (serialize_) {
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   remove_sparse_array();
 
   // Enable duplicates.
@@ -1733,7 +1908,15 @@ TEST_CASE_METHOD(
   query.set_data_buffer(tiledb_timestamps(), timestamps);
 
   // Submit the query.
-  query.submit();
+  auto rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::INCOMPLETE);
 
   // Validate.
@@ -1748,7 +1931,15 @@ TEST_CASE_METHOD(
       !memcmp(c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
 
   // Submit again.
-  query.submit();
+  rc = test::submit_query_wrapper(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Validate.

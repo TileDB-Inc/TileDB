@@ -1,4 +1,4 @@
-/**
+/*
  * @file   tiledb_experimental.h
  *
  * @section LICENSE
@@ -38,6 +38,18 @@
 
 #include "tiledb.h"
 
+/*
+ * API sections
+ */
+#include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
+#include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
+#include "tiledb/api/c_api/group/group_api_external_experimental.h"
+#include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+#include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
+#include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+#include "tiledb/api/c_api/vfs/vfs_api_experimental.h"
+#include "tiledb_dimension_label_experimental.h"
+
 /* ********************************* */
 /*               MACROS              */
 /* ********************************* */
@@ -46,12 +58,52 @@
 extern "C" {
 #endif
 
-/** A TileDB array schema. */
-typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
+/* ********************************* */
+/*             LOGGING               */
+/* ********************************* */
+
+/**
+ * Log a message at WARN level using TileDB's internal logging mechanism
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_log_warn(ctx, "This is a log message.");
+ * @endcode
+ *
+ * @param ctx The TileDB Context.
+ * @param message The message to log
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) TILEDB_NOEXCEPT;
+
+/* ********************************* */
+/*              AS BUILT             */
+/* ********************************* */
+
+/**
+ * Dumps the TileDB build configuration to a string.
+ *
+ * **Example**
+ * @code{.c}
+ * tiledb_string_t* out;
+ * tiledb_as_built_dump(&out);
+ * tiledb_string_free(&out);
+ * @endcode
+ *
+ * @param out The output.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_as_built_dump(tiledb_string_t** out)
+    TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*      ARRAY SCHEMA EVOLUTION       */
 /* ********************************* */
+
+/** A TileDB array schema. */
+typedef struct tiledb_array_schema_evolution_t tiledb_array_schema_evolution_t;
 
 /**
  * Creates a TileDB schema evolution object.
@@ -97,9 +149,9 @@ TILEDB_EXPORT void tiledb_array_schema_evolution_free(
  * attr);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
- * @param attr The attribute to be added.
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_schema_evolution The schema evolution.
+ * @param[in] attribute The attribute to be added.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_add_attribute(
@@ -127,6 +179,95 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_drop_attribute(
     tiledb_ctx_t* ctx,
     tiledb_array_schema_evolution_t* array_schema_evolution,
     const char* attribute_name) TILEDB_NOEXCEPT;
+
+/**
+ * Adds an enumeration to an array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enmr;
+ * void* data = get_data();
+ * uint64_t data_size = get_data_size();
+ * tiledb_enumeration_alloc(
+ *     ctx,
+ *     TILEDB_INT64,
+ *     cell_val_num,
+ *     FALSE,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &enumeration);
+ * tiledb_array_schema_evolution_add_enumeration(ctx, array_schema_evolution,
+ * enmr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration The enumeration to be added.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Extends an enumeration during array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* original_enmr = get_existing_enumeration();
+ * const void* data = get_new_data();
+ * uint64_t data_size = get_new_data_size();
+ * tiledb_enumeration_t* new_enmr;
+ * tiledb_enumeration_extend(
+ *     ctx,
+ *     original_enmr,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &new_enmr);
+ * tiledb_array_schema_evolution_extend_enumeration(
+ *     ctx,
+ *     array_schema_evolution,
+ *     new_enmr);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration The enumeration to be extended. This should be the result
+ *        of a call to tiledb_enumeration_extend.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_extend_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Drops an enumeration from an array schema evolution.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* enumeration_name = "enumeration_1";
+ * tiledb_array_schema_evolution_drop_enumeration(ctx, array_schema_evolution,
+ * enumeration_name);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema_evolution The schema evolution.
+ * @param enumeration_name The name of the enumeration to be dropped.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_schema_evolution_drop_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    const char* enumeration_name) TILEDB_NOEXCEPT;
 
 /**
  * Sets timestamp range in an array schema evolution
@@ -172,7 +313,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param array_schema_evolution The schema evolution.
+ * @param array_schema The array schema object.
  * @param lo The lower bound of timestamp range.
  * @param hi The upper bound of timestamp range.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
@@ -183,9 +324,75 @@ TILEDB_EXPORT int32_t tiledb_array_schema_timestamp_range(
     uint64_t* lo,
     uint64_t* hi) TILEDB_NOEXCEPT;
 
+/**
+ * Adds an enumeration to an array schema.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_enumeration_t* enumeration;
+ * tiledb_enumeration_alloc(
+ *     ctx,
+ *     "enumeration_name",
+ *     TILEDB_INT64,
+ *     1,
+ *     FALSE,
+ *     data,
+ *     data_size,
+ *     nullptr,
+ *     0,
+ *     &enumeration);
+ * tiledb_array_schema_add_enumeration(ctx, array_schema, enumeration);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param enumeration The enumeration to add with the attribute
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_enumeration_t* enumeration) TILEDB_NOEXCEPT;
+
 /* ********************************* */
 /*               ARRAY               */
 /* ********************************* */
+
+/**
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
+    TILEDB_NOEXCEPT;
+
+/**
+ * Note: This API is deprecated and replaced with tiledb_array_delete (above).
+ *
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the data from.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
 
 /**
  * Evolve array schema of an array.
@@ -206,6 +413,50 @@ TILEDB_EXPORT int32_t tiledb_array_evolve(
     tiledb_ctx_t* ctx,
     const char* array_uri,
     tiledb_array_schema_evolution_t* array_schema_evolution) TILEDB_NOEXCEPT;
+
+/**
+ * Retrieves an attribute's enumeration given the attribute name (key).
+ *
+ * **Example:**
+ *
+ * The following retrieves the first attribute in the schema.
+ *
+ * @code{.c}
+ * tiledb_attribute_t* attr;
+ * tiledb_array_schema_get_enumeration(
+ *     ctx, array_schema, "attr_0", &enumeration);
+ * // Make sure to delete the retrieved attribute in the end.
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB array.
+ * @param name The name (key) of the attribute from which to
+ * retrieve the enumeration.
+ * @param enumeration The enumeration object to retrieve.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_t* array,
+    const char* name,
+    tiledb_enumeration_t** enumeration) TILEDB_NOEXCEPT;
+
+/**
+ * Load all enumerations for the array.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_load_all_enumerations(ctx, array);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB array.
+ * @param latest_only If non-zero, only load enumerations for the latest schema.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
+    tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
 
 /**
  * Upgrades an array to the latest format version.
@@ -231,6 +482,30 @@ TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
 /* ********************************* */
 /*               QUERY               */
 /* ********************************* */
+
+/**
+ * Adds a query update values to be applied on an update.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint32_t value = 5;
+ * tiledb_query_add_update_value(
+ *   ctx, query, "longitude", &value, sizeof(value), &update_value);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param query The TileDB query.
+ * @param field_name The attribute name.
+ * @param update_value The value to set.
+ * @param update_value_size The byte size of `update_value`.
+ */
+TILEDB_EXPORT int32_t tiledb_query_add_update_value(
+    tiledb_ctx_t* ctx,
+    tiledb_query_t* query,
+    const char* field_name,
+    const void* update_value,
+    uint64_t update_value_size) TILEDB_NOEXCEPT;
 
 /**
  * Adds point ranges to the given dimension index of the subarray
@@ -293,11 +568,79 @@ TILEDB_EXPORT int32_t tiledb_query_get_relevant_fragment_num(
     uint64_t* relevant_fragment_num) TILEDB_NOEXCEPT;
 
 /* ********************************* */
-/*        QUERY STATUS DETAILS       */
+/*          QUERY CONDITION          */
 /* ********************************* */
 
-/** This should move to c_api/tiledb.h when stabilized */
-typedef struct tiledb_query_status_details_t tiledb_query_status_details_t;
+/**
+ * Initializes a TileDB query condition set membership object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* cond
+ * tiledb_query_condition_alloc_set_membership(
+ *   ctx,
+ *   "some_name",
+ *   data,
+ *   data_size,
+ *   offsets,
+ *   offsets_size,
+ *   TILEDB_QUERY_CONDITION_OP_IN,
+ *   &cond);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param field_name The field name.
+ * @param data A pointer to the set member data.
+ * @param data_size The length of the data buffer.
+ * @param offsets A pointer to the array of offsets of members.
+ * @param offsets_size The length of the offsets array in bytes.
+ * @param op The set membership operator to use.
+ * @param cond The allocated query condition object.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_query_condition_alloc_set_membership(
+    tiledb_ctx_t* ctx,
+    const char* field_name,
+    const void* data,
+    uint64_t data_size,
+    const void* offsets,
+    uint64_t offests_size,
+    tiledb_query_condition_op_t op,
+    tiledb_query_condition_t** cond) TILEDB_NOEXCEPT;
+
+/**
+ * Disable the use of enumerations on the given QueryCondition
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_query_condition_t* query_condition;
+ * tiledb_query_condition_alloc(ctx, &query_condition);
+ * uint32_t value = 5;
+ * tiledb_query_condition_init(
+ *   ctx,
+ *   query_condition,
+ *   "longitude",
+ *   &value,
+ *   sizeof(value),
+ *   TILEDB_LT);
+ * tiledb_query_condition_set_use_enumeration(ctx, query_condition, 0);
+ * @endcode
+ *
+ * @param[in] ctx The TileDB context.
+ * @param[in] cond The query condition
+ * @param[in] use_enumeration Non-zero to use the associated enumeration
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_query_condition_set_use_enumeration(
+    tiledb_ctx_t* ctx,
+    const tiledb_query_condition_t* cond,
+    int use_enumeration) TILEDB_NOEXCEPT;
+
+/* ********************************* */
+/*        QUERY STATUS DETAILS       */
+/* ********************************* */
 
 /** TileDB query status details type. */
 typedef enum {
@@ -308,9 +651,10 @@ typedef enum {
 } tiledb_query_status_details_reason_t;
 
 /** This should move to c_api/tiledb_struct_defs.h when stabilized */
-struct tiledb_query_status_details_t {
-  tiledb_query_status_details_reason_t incomplete_reason;
-};
+typedef struct tiledb_experimental_query_status_details_t {
+  tiledb_query_status_details_reason_t
+      incomplete_reason;  ///< Reason enum for the incomplete query.
+} tiledb_query_status_details_t;
 
 /**
  * Get extended query status details.
@@ -335,7 +679,7 @@ struct tiledb_query_status_details_t {
 TILEDB_EXPORT int32_t tiledb_query_get_status_details(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
-    tiledb_query_status_details_t* status) TILEDB_NOEXCEPT;
+    tiledb_query_status_details_t* status_details) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*              CONTEXT              */
@@ -373,7 +717,7 @@ TILEDB_EXPORT int32_t tiledb_query_get_status_details(
  *     no error).
  * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
+TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
     tiledb_config_t* config,
     tiledb_ctx_t** ctx,
     tiledb_error_t** error) TILEDB_NOEXCEPT;
@@ -396,14 +740,16 @@ TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
 
  * const char* uris[2]={"__0_0_0807b1428b6c4ff48b3cdb3283ca7903_10",
  *                      "__1_1_d9d965753d224194965575c1e9cdeeda_10"};
- * tiledb_array_consolidate(ctx, "my_array", uris, 2);
+ * tiledb_array_consolidate_fragments(ctx, "my_array", uris, 2, nullptr);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param array_uri The name of the TileDB array whose metadata will
+ * @param[in] ctx The TileDB context.
+ * @param[in] array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
- * @param fragment_uris URIs of the fragments to consolidate.
- * @param num_fragments Number of URIs to consolidate.
+ * @param[in] fragment_uris URIs of the fragments to consolidate.
+ * @param[in] num_fragments Number of URIs to consolidate.
+ * @param config Configuration parameters for the consolidation
+ *     (`nullptr` means default, which will use the config from \p ctx).
  *
  * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
  */
@@ -412,536 +758,6 @@ TILEDB_EXPORT int32_t tiledb_array_consolidate_fragments(
     const char* array_uri,
     const char** fragment_uris,
     const uint64_t num_fragments,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/* ********************************* */
-/*                GROUP              */
-/* ********************************* */
-
-/**
- * Creates a new TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "my_group", &group);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group_uri The group URI.
- * @param group The TileDB group to be allocated
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_alloc(
-    tiledb_ctx_t* ctx,
-    const char* group_uri,
-    tiledb_group_t** group) TILEDB_NOEXCEPT;
-
-/**
- * Opens a TileDB group. The group is opened using a query type as input.
- * This is to indicate that queries created for this `tiledb_group_t`
- * object will inherit the query type. In other words, `tiledb_group_t`
- * objects are opened to receive only one type of queries.
- * They can always be closed and be re-opened with another query type.
- * Also there may be many different `tiledb_group_t`
- * objects created and opened with different query types.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group The group object to be opened.
- * @param query_type The type of queries the group object will be receiving.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the same group object is opened again without being closed,
- *     an error will be set and TILEDB_ERR returned.
- * @note The config should be set before opening an group.
- * @note If the group is to be opened at a specfic time interval, the
- *      `timestamp{start, end}` values should be set to a config that's set to
- *       the group object before opening the group.
- */
-TILEDB_EXPORT int32_t tiledb_group_open(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    tiledb_query_type_t query_type) TILEDB_NOEXCEPT;
-
-/**
- * Closes a TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "hdfs:///tiledb_groups/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * tiledb_group_close(ctx, group);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group The group object to be closed.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the group object has already been closed, the function has
- *     no effect.
- */
-TILEDB_EXPORT int32_t
-tiledb_group_close(tiledb_ctx_t* ctx, tiledb_group_t* group) TILEDB_NOEXCEPT;
-
-/**
- * Creates a new TileDB group.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "my_group", &group);
- * tiledb_group_free(&group);
- * @endcode
- *
- * @param group The TileDB group to be freed
- */
-TILEDB_EXPORT void tiledb_group_free(tiledb_group_t** group) TILEDB_NOEXCEPT;
-
-/**
- * Sets the group config.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * // Set the config for the given group.
- * tiledb_config_t* config;
- * tiledb_group_set_config(ctx, group, config);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group The group to set the config for.
- * @param config The config to be set.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The group does not need to be opened via `tiledb_group_open_at` to use
- *      this function.
- * @note The config should be set before opening an group.
- */
-TILEDB_EXPORT int32_t tiledb_group_set_config(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/**
- * Gets the group config.
- *
- * **Example:**
- *
- * @code{.c}
- * // Retrieve the config for the given group.
- * tiledb_config_t* config;
- * tiledb_group_get_config(ctx, group, config);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group The group to set the config for.
- * @param config Set to the retrieved config.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_config(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    tiledb_config_t** config) TILEDB_NOEXCEPT;
-
-/**
- * It puts a metadata key-value item to an open group. The group must
- * be opened in WRITE mode, otherwise the function will error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in WRITE mode.
- * @param key The key of the metadata item to be added. UTF-8 encodings
- *     are acceptable.
- * @param value_type The datatype of the value.
- * @param value_num The value may consist of more than one items of the
- *     same datatype. This argument indicates the number of items in the
- *     value component of the metadata.
- * @param value The metadata value in binary form.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The writes will take effect only upon closing the group.
- */
-TILEDB_EXPORT int32_t tiledb_group_put_metadata(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* key,
-    tiledb_datatype_t value_type,
-    uint32_t value_num,
-    const void* value) TILEDB_NOEXCEPT;
-
-/**
- * It deletes a metadata key-value item from an open group. The group must
- * be opened in WRITE mode, otherwise the function will error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in WRITE mode.
- * @param key The key of the metadata item to be deleted.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note The writes will take effect only upon closing the group.
- *
- * @note If the key does not exist, this will take no effect
- *     (i.e., the function will not error out).
- */
-TILEDB_EXPORT int32_t tiledb_group_delete_metadata(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* key) TILEDB_NOEXCEPT;
-
-/**
- * It gets a metadata key-value item from an open group. The group must
- * be opened in READ mode, otherwise the function will error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param key The key of the metadata item to be retrieved. UTF-8 encodings
- *     are acceptable.
- * @param value_type The datatype of the value.
- * @param value_num The value may consist of more than one items of the
- *     same datatype. This argument indicates the number of items in the
- *     value component of the metadata. Keys with empty values are indicated
- *     by value_num == 1 and value == NULL.
- * @param value The metadata value in binary form.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the key does not exist, then `value` will be NULL.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) TILEDB_NOEXCEPT;
-
-/**
- * It gets then number of metadata items in an open group. The group must
- * be opened in READ mode, otherwise the function will error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param num The number of metadata items to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata_num(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* num) TILEDB_NOEXCEPT;
-
-/**
- * It gets a metadata item from an open group using an index.
- * The group must be opened in READ mode, otherwise the function will
- * error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param index The index used to get the metadata.
- * @param key The metadata key.
- * @param key_len The metadata key length.
- * @param value_type The datatype of the value.
- * @param value_num The value may consist of more than one items of the
- *     same datatype. This argument indicates the number of items in the
- *     value component of the metadata.
- * @param value The metadata value in binary form.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_metadata_from_index(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    uint64_t index,
-    const char** key,
-    uint32_t* key_len,
-    tiledb_datatype_t* value_type,
-    uint32_t* value_num,
-    const void** value) TILEDB_NOEXCEPT;
-
-/**
- * Checks whether a key exists in metadata from an open group. The group must
- * be opened in READ mode, otherwise the function will error out.
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param key The key to be checked. UTF-8 encoding are acceptable.
- * @param value_type The datatype of the value, if any.
- * @param has_key Set to `1` if the metadata with given key exists, else `0`.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- *
- * @note If the key does not exist, then `value` will be NULL.
- */
-TILEDB_EXPORT int32_t tiledb_group_has_metadata_key(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* key,
-    tiledb_datatype_t* value_type,
-    int32_t* has_key) TILEDB_NOEXCEPT;
-
-/**
- * Add a member to a group
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in WRITE mode.
- * @param uri URI of member to add
- * @param relative is the URI relative to the group
- * @param name optional name group member can be given to be looked up by. Set
- * to NULL if wishing to remain unset.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_add_member(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* uri,
-    const uint8_t relative,
-    const char* name) TILEDB_NOEXCEPT;
-
-/**
- * Remove a member from a group
- *
- * * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_remove_member(ctx, group, "s3://tiledb_bucket/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in WRITE mode.
- * @param uri URI of member to remove. Passing a name is also supported if the
- * group member was assigned a name.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_remove_member(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, const char* uri) TILEDB_NOEXCEPT;
-
-/**
- * Get the count of members in a group
- *
- * * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
- *
- * tiledb_group_close(ctx, group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * uint64_t count = 0;
- * tiledb_group_get_member_count(ctx, group, &count);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param count number of members in group
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_member_count(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
-
-/**
- * Get a member of a group by index and details of group
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2");
- *
- * tiledb_group_close(ctx, group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * char *uri;
- * tiledb_object_t type;
- * tiledb_group_get_member_by_index(ctx, group, 0, &uri, &type);
- *
- * free(uri);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param index index of member to fetch
- * @param uri URI of member, The caller takes ownership
- *   of the c-string.
- * @param type type of member
- * @param name name of member, The caller takes ownership
- *   of the c-string. NULL if name was not set
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_member_by_index(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    uint64_t index,
-    char** uri,
-    tiledb_object_t* type,
-    char** name) TILEDB_NOEXCEPT;
-
-/**
- * Get a member of a group by index and details of group
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_bucket/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_WRITE);
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_array", "array1");
- * tiledb_group_add_member(ctx, group, "s3://tiledb_bucket/my_group_2",
- * "group2");
- *
- * tiledb_group_close(ctx, group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * char *uri;
- * tiledb_object_t type;
- * tiledb_group_get_member_by_name(ctx, group, "array1", &uri, &type);
- *
- * free(uri);
- *
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group An group opened in READ mode.
- * @param name name of member to fetch
- * @param uri URI of member, The caller takes ownership
- *   of the c-string.
- * @param type type of member
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_member_by_name(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char* name,
-    char** uri,
-    tiledb_object_t* type) TILEDB_NOEXCEPT;
-
-/**
- * Checks if the group is open.
- *
- * @param ctx The TileDB context.
- * @param group The group to be checked.
- * @param is_open `1` if the group is open and `0` otherwise.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_is_open(
-    tiledb_ctx_t* ctx, tiledb_group_t* group, int32_t* is_open) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the URI the group was opened with. It outputs an error
- * if the group is not open.
- *
- * @param ctx The TileDB context.
- * @param group The input group.
- * @param group_uri The group URI to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_uri(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    const char** group_uri) TILEDB_NOEXCEPT;
-
-/**
- * Retrieves the query type with which the group was opened.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_t* group;
- * tiledb_group_alloc(ctx, "s3://tiledb_groups/my_group", &group);
- * tiledb_group_open(ctx, group, TILEDB_READ);
- * tiledb_query_type_t query_type;
- * tiledb_group_get_type(ctx, group, &query_type);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group The group.
- * @param query_type The query type to be retrieved.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_get_query_type(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    tiledb_query_type_t* query_type) TILEDB_NOEXCEPT;
-
-/**
- * Dump a string representation of a group
- *
- * @param ctx The TileDB context.
- * @param group The group.
- * @param dump_ascii The output string. The caller takes ownership
- *   of the c-string.
- * @param recursive should we recurse into sub-groups
- * @return  `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_group_dump_str(
-    tiledb_ctx_t* ctx,
-    tiledb_group_t* group,
-    char** dump_ascii,
-    const uint8_t recursive) TILEDB_NOEXCEPT;
-
-/**
- * Consolidates the group metadata into a single group metadata file.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_consolidate_metadata(
- *     ctx, "tiledb:///groups/mygroup", nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group_uri The name of the TileDB group whose metadata will
- *     be consolidated.
- * @param config Configuration parameters for the consolidation
- *     (`nullptr` means default, which will use the config from `ctx`).
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_EXPORT int32_t tiledb_group_consolidate_metadata(
-    tiledb_ctx_t* ctx,
-    const char* group_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
-
-/**
- * Cleans up the group metadata
- * Note that this will coarsen the granularity of time traveling (see docs
- * for more information).
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_group_vacuum_metadata(
- *     ctx, "tiledb:///groups/mygroup", nullptr);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param group_uri The name of the TileDB group to vacuum.
- * @param config Configuration parameters for the vacuuming
- *     (`nullptr` means default, which will use the config from `ctx`).
- * @return `TILEDB_OK` on success, and `TILEDB_ERR` on error.
- */
-TILEDB_EXPORT int32_t tiledb_group_vacuum_metadata(
-    tiledb_ctx_t* ctx,
-    const char* group_uri,
     tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /* ********************************* */
@@ -1001,14 +817,14 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_import(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The file URI.
- * @param uri The array URI.
+ * @param file_uri The file URI.
+ * @param filestore_array_uri The array URI.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
     tiledb_ctx_t* ctx,
     const char* file_uri,
-    const char* filstore_array_uri) TILEDB_NOEXCEPT;
+    const char* filestore_array_uri) TILEDB_NOEXCEPT;
 
 /**
  * Writes size bytes starting at address buf into filestore array
@@ -1023,7 +839,7 @@ TILEDB_EXPORT int32_t tiledb_filestore_uri_export(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param uri The array URI.
+ * @param filestore_array_uri The array URI.
  * @param buf The input buffer
  * @param size Number of bytes to be imported
  * @param mime_type The mime type of the data
@@ -1072,9 +888,9 @@ TILEDB_EXPORT int32_t tiledb_filestore_buffer_export(
  * free(buf);
  * @endcode
  *
- * @param ctx The TileDB context.
- * @param uri The array URI.
- * @param size The returned uncompressed size of the filestore array
+ * @param[in] ctx The TileDB context.
+ * @param[in] filestore_array_uri The array URI.
+ * @param[in] size The returned uncompressed size of the filestore array
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_filestore_size(
@@ -1128,15 +944,162 @@ TILEDB_EXPORT int32_t tiledb_mime_type_from_str(
  * tiledb_fragment_info_get_total_cell_num(ctx, fragment_info, &cell_num);
  * @endcode
  *
- * @param ctx The TileDB context
- * @param fragment_info The fragment info object.
- * @param cell_num The number of cells to be retrieved.
+ * @param[in]  ctx The TileDB context
+ * @param[in]  fragment_info The fragment info object.
+ * @param[out] count The number of cells to be retrieved.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
     tiledb_ctx_t* ctx,
     tiledb_fragment_info_t* fragment_info,
     uint64_t* count) TILEDB_NOEXCEPT;
+
+/**
+ * Creates a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_consolidation_plan_t* consolidation_plan;
+ * tiledb_consolidation_plan_create_with_mbr(ctx, array, 1024*1024*1024,
+ * &consolidation_plan);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param array The array to create the plan for.
+ * @param fragment_size The desired fragment size.
+ * @param consolidation_plan The consolidation plan object to be created and
+ * populated.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_create_with_mbr(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    uint64_t fragment_size,
+    tiledb_consolidation_plan_t** consolidation_plan) TILEDB_NOEXCEPT;
+
+/**
+ * Frees a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_consolidation_plan_free(&consolidation_plan);
+ * @endcode
+ *
+ * @param consolidation_plan The consolidation plan object to be freed.
+ */
+TILEDB_EXPORT void tiledb_consolidation_plan_free(
+    tiledb_consolidation_plan_t** consolidation_plan) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of nodes of a consolidation plan object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_nodes;
+ * tiledb_consolidation_plan_get_num_nodes(ctx, consolidation_plan, &num_nodes);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param num_nodes The number of nodes to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_num_nodes(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t* num_nodes) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of fragments for a specific node of a consolidation plan
+ * object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_fragments;
+ * tiledb_consolidation_plan_get_num_fragments(ctx, consolidation_plan, 0,
+ * &num_fragments);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param node_index The node index.
+ * @param num_fragments The number of fragments to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_num_fragments(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t* num_fragments) TILEDB_NOEXCEPT;
+
+/**
+ * Get the number of fragments for a specific node of a consolidation plan
+ * object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * uint64_t num_fragments;
+ * tiledb_consolidation_plan_get_num_fragments(ctx, consolidation_plan, 0,
+ * &num_fragments);
+ * @endcode
+ *
+ * @param ctx TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param node_index The node index.
+ * @param fragment_index The fragment index.
+ * @param uri The fragment uri to be retreived.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_get_fragment_uri(
+    tiledb_ctx_t* ctx,
+    tiledb_consolidation_plan_t* consolidation_plan,
+    uint64_t node_index,
+    uint64_t fragment_index,
+    const char** uri) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the consolidation plan in JSON format to a null terminated string. The
+ * string needs to be freed with tiledb_consolidation_plan_free_json_str.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* str;
+ * tiledb_consolidation_plan_dump_json_str(ctx, consolidation_plan, str);
+ * tiledb_consolidation_plan_free_json_str(str);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param consolidation_plan The consolidation plan.
+ * @param str The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_dump_json_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_consolidation_plan_t* consolidation_plan,
+    char** str) TILEDB_NOEXCEPT;
+
+/**
+ * Frees a string created by tiledb_consolidation_plan_dump_json_str.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * char* str;
+ * tiledb_consolidation_plan_dump_json_str(ctx, consolidation_plan, str);
+ * tiledb_consolidation_plan_free_json_str(str);
+ * @endcode
+ *
+ * @param str The string to be freed.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_consolidation_plan_free_json_str(char** str)
+    TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

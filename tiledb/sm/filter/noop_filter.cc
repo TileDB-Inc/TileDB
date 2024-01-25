@@ -40,12 +40,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-NoopFilter::NoopFilter()
-    : Filter(FilterType::FILTER_NONE) {
+NoopFilter::NoopFilter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
 NoopFilter* NoopFilter::clone_impl() const {
-  return new NoopFilter;
+  return tdb_new(NoopFilter, filter_data_type_);
 }
 
 void NoopFilter::dump(FILE* out) const {
@@ -56,8 +56,8 @@ void NoopFilter::dump(FILE* out) const {
 }
 
 Status NoopFilter::run_forward(
-    const Tile&,
-    Tile* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -69,14 +69,12 @@ Status NoopFilter::run_forward(
 
 Status NoopFilter::run_reverse(
     const Tile&,
-    Tile* const,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
+    const Config&) const {
   RETURN_NOT_OK(output->append_view(input));
   RETURN_NOT_OK(output_metadata->append_view(input_metadata));
   return Status::Ok();

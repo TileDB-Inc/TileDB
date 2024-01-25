@@ -29,6 +29,8 @@ if(NOT TILEDB_EXPERIMENTAL_FEATURES)
     return()
 endif()
 
+message("TileDB is compiled with experimental features enabled")
+
 include(common NO_POLICY_SCOPE)
 
 add_subdirectory(tiledb)
@@ -37,6 +39,7 @@ add_subdirectory(tiledb)
 # Test-compile of object library ensures link-completeness
 #
 add_executable(compile_experimental EXCLUDE_FROM_ALL)
+add_dependencies(all_link_complete compile_experimental)
 target_sources(compile_experimental PRIVATE
         test/compile_experimental_main.cc
 )

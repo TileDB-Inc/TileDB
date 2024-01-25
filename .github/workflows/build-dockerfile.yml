@@ -1,21 +1,20 @@
 name: Build-Dockerfile
 
 on:
-  pull_request:
-    paths-ignore:
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_call:
 
 jobs:
   build-dockerfile:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
 
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+            submodules: true
+            fetch-depth: 0
+
+
 
       - name: Build the Dockerfile
         run: docker build -f examples/Dockerfile/Dockerfile -t tiledb:dev .

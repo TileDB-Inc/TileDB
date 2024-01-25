@@ -273,3 +273,160 @@ TEMPLATE_LIST_TEST_CASE(
   // Check results
   CHECK(dict == dictionary_ref);
 }
+
+TEST_CASE(
+    "Compression-Dictionary: Test compression of empty strings",
+    "[compression][dict]") {
+  std::vector<std::string> uncompressed_v = {""};
+  std::vector<std::string_view> uncompressed;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+  }
+
+  // Allocate the compressed array - we know the size will be equal to input
+  std::vector<std::byte> compressed(uncompressed.size());
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict == uncompressed);
+
+  std::vector<uint8_t> exp_compressed{0};
+  CHECK(
+      memcmp(
+          exp_compressed.data(),
+          reinterpret_cast<uint8_t*>(compressed.data()),
+          exp_compressed.size()) == 0);
+
+  // Decompress the previously compressed array
+  const char* exp_decompressed = "";
+
+  // In this test we allocate atleast 1 byte to avoid empty input buffer
+  std::vector<std::byte> decompressed(1);
+  const auto num_strings = 1;
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(
+      compressed, uncompressed_v, decompressed, decompressed_offsets);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          exp_decompressed,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets{0};
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
+}
+
+TEST_CASE(
+    "Compression-Dictionary: Test compression of mixed empty strings",
+    "[compression][dict]") {
+  std::vector<std::string> uncompressed_v = {"", "a"};
+  std::vector<std::string_view> uncompressed;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+  }
+
+  // Allocate the compressed array - we know the size will be equal to input
+  std::vector<std::byte> compressed(uncompressed.size());
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict == uncompressed);
+
+  std::vector<uint8_t> exp_compressed{0, 1};
+  CHECK(
+      memcmp(
+          exp_compressed.data(),
+          reinterpret_cast<uint8_t*>(compressed.data()),
+          exp_compressed.size()) == 0);
+
+  // Decompress the previously compressed array
+  const char* exp_decompressed =
+      ""
+      "a";
+
+  const auto exp_decomp_size = strlen(exp_decompressed);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  const auto num_strings = 2;
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(
+      compressed, uncompressed_v, decompressed, decompressed_offsets);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          exp_decompressed,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets{0, 0};
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
+}
+
+TEST_CASE(
+    "Compression-Dictionary: Test compression of UTF-8 strings",
+    "[compression][dict][utf-8]") {
+  std::vector<std::string> uncompressed_v = {
+      "föö", "föö", "fööbär", "bär", "bär", "bär", "bär"};
+  std::vector<std::string_view> uncompressed;
+  // the reference here is crucial, otherwise a temp string is created and
+  // therefore string_view will outlive it
+  for (const std::string& str : uncompressed_v) {
+    uncompressed.emplace_back(str);
+  }
+
+  // The dictionary is created sequentially in order of appearance
+  std::vector<std::string_view> dict_expected{
+      uncompressed_v[0], uncompressed_v[2], uncompressed_v[3]};
+
+  // Allocate the compressed array - we know the size will be 7
+  std::vector<std::byte> compressed(7);
+  auto dict =
+      tiledb::sm::DictEncoding::compress<uint8_t>(uncompressed, compressed);
+  CHECK(dict == dict_expected);
+
+  std::vector<uint8_t> exp_compressed{0, 0, 1, 2, 2, 2, 2};
+  CHECK(
+      memcmp(
+          exp_compressed.data(),
+          reinterpret_cast<uint8_t*>(compressed.data()),
+          exp_compressed.size()) == 0);
+
+  // Decompress the previously compressed array
+  const char* exp_decompressed =
+      "föö"
+      "föö"
+      "fööbär"
+      "bär"
+      "bär"
+      "bär"
+      "bär";
+
+  std::vector<std::string> dict_orig = {"föö", "fööbär", "bär"};
+
+  const auto exp_decomp_size = strlen(exp_decompressed);
+  std::vector<std::byte> decompressed(exp_decomp_size);
+  const auto num_strings = 7;
+  std::vector<uint64_t> decompressed_offsets(num_strings);
+  tiledb::sm::DictEncoding::decompress<uint8_t>(
+      compressed, dict_orig, decompressed, decompressed_offsets);
+
+  // In decompressed array there are only chars, so compare using memcpy
+  CHECK(
+      memcmp(
+          exp_decompressed,
+          reinterpret_cast<const char*>(decompressed.data()),
+          decompressed.size()) == 0);
+
+  std::vector<uint64_t> expected_offsets{0, 5, 10, 19, 23, 27, 31};
+  for (uint32_t i = 0; i < expected_offsets.size(); i++) {
+    CHECK(expected_offsets[i] == decompressed_offsets[i]);
+  }
+}

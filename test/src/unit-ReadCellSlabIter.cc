@@ -30,8 +30,8 @@
  * Tests the `ReadCellSlabIter` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -166,23 +166,32 @@ void ReadCellSlabIterFx::create_result_space_tiles(
 }
 
 void set_result_tile_dim(
+    const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::string dim,
     uint64_t dim_idx,
     std::vector<uint64_t> v) {
-  result_tile.init_coord_tile(dim, false, dim_idx);
-
-  uint64_t* data =
-      static_cast<uint64_t*>(tdb_malloc(v.size() * sizeof(uint64_t)));
+  ResultTile::TileSizes tile_sizes(
+      v.size() * sizeof(uint64_t),
+      0,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_coord_tile(
+      constants::format_version,
+      array_schema,
+      dim,
+      tile_sizes,
+      tile_data,
+      dim_idx);
+  auto tile_tuple = result_tile.tile_tuple(dim);
+  REQUIRE(tile_tuple != nullptr);
+  uint64_t* data = tile_tuple->fixed_tile().data_as<uint64_t>();
   for (uint64_t i = 0; i < v.size(); i++) {
     data[i] = v[i];
   }
-
-  Tile tile(
-      Datatype::UINT64, sizeof(uint64_t), 0, data, v.size() * sizeof(uint64_t));
-  auto tile_tuple = result_tile.tile_tuple(dim);
-  REQUIRE(tile_tuple != nullptr);
-  tile_tuple->fixed_tile() = std::move(tile);
 }
 
 /* ********************************* */
@@ -228,11 +237,12 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 100};
@@ -240,7 +250,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
@@ -301,11 +311,12 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {20, 30};
@@ -313,7 +324,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
@@ -374,11 +385,12 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice_1 = {5, 12};
@@ -389,7 +401,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -458,11 +470,12 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{3, 15, 18, 20}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 12};
@@ -471,7 +484,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -497,13 +510,16 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(1, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
+  ResultTile result_tile_2_0(1, 0, *fragments[0]);
+  ResultTile result_tile_3_0(2, 0, *fragments[0]);
+  ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
-  set_result_tile_dim(result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
-  set_result_tile_dim(result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
-  set_result_tile_dim(result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
+  set_result_tile_dim(
+      array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
 
   result_coords.emplace_back(&result_tile_2_0, 1);
   result_coords.emplace_back(&result_tile_2_0, 3);
@@ -676,10 +692,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 6, 1, 6};
@@ -688,7 +705,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
@@ -861,10 +878,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {6, 6, 6, 6};
@@ -873,7 +891,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
@@ -1059,10 +1077,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{2, 3}, {2, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 6, 5, 6};
@@ -1071,7 +1090,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
@@ -1301,10 +1320,11 @@ TEST_CASE_METHOD(
 
   // Create subarray
   open_array(ctx_, array_, TILEDB_READ);
+  auto& array_schema = array_->array_->array_schema_latest();
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {{3, 5}, {2, 4, 5, 6}};
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   // Create result space tiles
   std::vector<uint64_t> slice_1 = {3, 5, 2, 4};
@@ -1315,7 +1335,7 @@ TEST_CASE_METHOD(
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
-  auto& dom{array_->array_->array_schema_latest().domain()};
+  auto& dom{array_schema.domain()};
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < 2; i++) {
@@ -1341,13 +1361,17 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(2, 0, array_->array_->array_schema_latest());
-  ResultTile result_tile_3_1(2, 1, array_->array_->array_schema_latest());
+  ResultTile result_tile_3_0(2, 0, *fragments[0]);
+  ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
-  set_result_tile_dim(result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
-  set_result_tile_dim(result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
-  set_result_tile_dim(result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
-  set_result_tile_dim(result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
+  set_result_tile_dim(
+      array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
 
   result_coords.emplace_back(&result_tile_3_0, 1);
   result_coords.emplace_back(&result_tile_3_1, 0);

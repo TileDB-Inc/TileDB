@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,7 +30,7 @@
  * Tests the `QueryCondition` class.
  */
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -40,11 +40,17 @@
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/readers/result_cell_slab.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
 
 using namespace tiledb::sm;
+
+void check_ast_str(QueryCondition qc, std::string expect) {
+  std::string ast_str = tiledb::test::ast_node_to_str(qc.ast());
+  CHECK(ast_str == expect);
+}
 
 TEST_CASE(
     "QueryCondition: Test default constructor",
@@ -53,11 +59,11 @@ TEST_CASE(
   REQUIRE(query_condition.empty());
   REQUIRE(query_condition.field_names().empty());
 
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -175,9 +181,35 @@ TEST_CASE(
   REQUIRE(!query_condition.empty());
   REQUIRE(!query_condition.field_names().empty());
   REQUIRE(query_condition.field_names().count(field_name) == 1);
-  REQUIRE(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "foo LT 62 61 72");
+  check_ast_str(query_condition, "foo LT 62 61 72");
+  check_ast_str(query_condition.negated_condition(), "foo GE 62 61 72");
+}
+
+TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
+  std::string field_name = "blob_attr";
+  std::byte value{5};
+
+  QueryCondition query_condition;
+  REQUIRE(query_condition
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
+
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<Attribute> attr =
+      make_shared<Attribute>(HERE(), "blob_attr", Datatype::BLOB);
+  REQUIRE(array_schema->add_attribute(attr).ok());
+  std::vector<ResultCellSlab> result_cell_slabs;
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+
+  REQUIRE_THROWS_WITH(
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot perform query comparison; Unsupported datatype " +
+          datatype_str(Datatype::BLOB)));
 }
 
 TEST_CASE(
@@ -191,9 +223,8 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 78 56 34 12");
+  check_ast_str(query_condition, "x LT 78 56 34 12");
+  check_ast_str(query_condition.negated_condition(), "x GE 78 56 34 12");
 }
 
 TEST_CASE(
@@ -207,9 +238,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -221,9 +250,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -231,9 +258,10 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(
+      combined_and.negated_condition(),
+      "(x GE 12 ef cd ab OR y LE 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -248,9 +276,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -262,9 +288,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -272,9 +296,10 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(
+      combined_or.negated_condition(),
+      "(x GE 12 ef cd ab AND y LE 33 33 33 33)");
 }
 
 TEST_CASE(
@@ -283,14 +308,12 @@ TEST_CASE(
   char e[] = "eve";
   QueryCondition query_condition;
   REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+  check_ast_str(query_condition, "x LT 65 76 65");
 
   char b[] = "bob";
   QueryCondition query_condition1;
   REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+  check_ast_str(query_condition1, "x GT 62 6f 62");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -298,9 +321,9 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 65 76 65 AND x GT 62 6f 62)");
+  check_ast_str(combined_and, "(x LT 65 76 65 AND x GT 62 6f 62)");
+  check_ast_str(
+      combined_and.negated_condition(), "(x GE 65 76 65 OR x LE 62 6f 62)");
 }
 
 TEST_CASE(
@@ -309,14 +332,12 @@ TEST_CASE(
   char e[] = "eve";
   QueryCondition query_condition;
   REQUIRE(query_condition.init("x", &e, strlen(e), QueryConditionOp::LT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) == "x LT 65 76 65");
+  check_ast_str(query_condition, "x LT 65 76 65");
 
   char b[] = "bob";
   QueryCondition query_condition1;
   REQUIRE(query_condition1.init("x", &b, strlen(b), QueryConditionOp::GT).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) == "x GT 62 6f 62");
+  check_ast_str(query_condition1, "x GT 62 6f 62");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -324,9 +345,9 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 65 76 65 OR x GT 62 6f 62)");
+  check_ast_str(combined_or, "(x LT 65 76 65 OR x GT 62 6f 62)");
+  check_ast_str(
+      combined_or.negated_condition(), "(x GE 65 76 65 AND x LE 62 6f 62)");
 }
 
 TEST_CASE(
@@ -341,9 +362,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -355,9 +374,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -365,9 +382,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
@@ -380,9 +395,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -394,9 +407,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -404,19 +415,21 @@ TEST_CASE(
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(combined_or1, "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_and;
   REQUIRE(combined_or
               .combine(
                   combined_or1, QueryConditionCombinationOp::AND, &combined_and)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "((x LT 12 ef cd ab OR y GT 33 33 33 33) AND (a EQ 12 12 12 12 OR b NE "
-      "34 34 34 34))");
+  check_ast_str(
+      combined_and,
+      "((x LT 12 ef cd ab OR y GT 33 33 33 33) "
+      "AND (a EQ 12 12 12 12 OR b NE 34 34 34 34))");
+  check_ast_str(
+      combined_and.negated_condition(),
+      "((x GE 12 ef cd ab AND y LE 33 33 33 33) "
+      "OR (a NE 12 12 12 12 AND b EQ 34 34 34 34))");
 }
 
 TEST_CASE(
@@ -431,9 +444,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -445,9 +456,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -455,9 +464,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
@@ -470,9 +477,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -484,9 +489,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -495,19 +498,21 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(combined_and1, "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_or;
   REQUIRE(
       combined_and
           .combine(combined_and1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "((x LT 12 ef cd ab AND y GT 33 33 33 33) OR (a EQ 12 12 12 12 AND b NE "
-      "34 34 34 34))");
+  check_ast_str(
+      combined_or,
+      "((x LT 12 ef cd ab AND y GT 33 33 33 33) "
+      "OR (a EQ 12 12 12 12 AND b NE 34 34 34 34))");
+  check_ast_str(
+      combined_or.negated_condition(),
+      "((x GE 12 ef cd ab OR y LE 33 33 33 33) "
+      "AND (a NE 12 12 12 12 OR b EQ 34 34 34 34))");
 }
 
 TEST_CASE(
@@ -523,9 +528,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -537,9 +540,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_or;
   REQUIRE(
@@ -547,9 +548,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::OR, &combined_or)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
+  check_ast_str(combined_or, "(x LT 12 ef cd ab OR y GT 33 33 33 33)");
 
   // Second OR compound AST.
   std::string field_name2 = "a";
@@ -562,9 +561,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -576,9 +573,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -586,19 +581,21 @@ TEST_CASE(
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(combined_or1, "(a EQ 12 12 12 12 OR b NE 34 34 34 34)");
 
   QueryCondition combined_or2;
   REQUIRE(
       combined_or
           .combine(combined_or1, QueryConditionCombinationOp::OR, &combined_or2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(x LT 12 ef cd ab OR y GT 33 33 33 33 OR a EQ 12 12 12 12 OR b NE 34 34 "
-      "34 34)");
+  check_ast_str(
+      combined_or2,
+      "(x LT 12 ef cd ab OR y GT 33 33 33 33 "
+      "OR a EQ 12 12 12 12 OR b NE 34 34 34 34)");
+  check_ast_str(
+      combined_or2.negated_condition(),
+      "(x GE 12 ef cd ab AND y LE 33 33 33 33 "
+      "AND a NE 12 12 12 12 AND b EQ 34 34 34 34)");
 }
 
 TEST_CASE(
@@ -614,9 +611,7 @@ TEST_CASE(
           .init(
               std::string(field_name), &val, sizeof(int), QueryConditionOp::LT)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition.ast()) ==
-      "x LT 12 ef cd ab");
+  check_ast_str(query_condition, "x LT 12 ef cd ab");
 
   std::string field_name1 = "y";
   int val1 = 0x33333333;
@@ -628,9 +623,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::GT)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "y GT 33 33 33 33");
+  check_ast_str(query_condition1, "y GT 33 33 33 33");
 
   QueryCondition combined_and;
   REQUIRE(
@@ -638,9 +631,7 @@ TEST_CASE(
           .combine(
               query_condition1, QueryConditionCombinationOp::AND, &combined_and)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
+  check_ast_str(combined_and, "(x LT 12 ef cd ab AND y GT 33 33 33 33)");
 
   // Second AND compound AST.
   std::string field_name2 = "a";
@@ -653,9 +644,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::EQ)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "a EQ 12 12 12 12");
+  check_ast_str(query_condition2, "a EQ 12 12 12 12");
 
   std::string field_name3 = "b";
   int val3 = 0x34343434;
@@ -667,9 +656,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "b NE 34 34 34 34");
+  check_ast_str(query_condition3, "b NE 34 34 34 34");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition2
@@ -678,9 +665,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(combined_and1, "(a EQ 12 12 12 12 AND b NE 34 34 34 34)");
 
   QueryCondition combined_and2;
   REQUIRE(
@@ -688,10 +673,14 @@ TEST_CASE(
           .combine(
               combined_and1, QueryConditionCombinationOp::AND, &combined_and2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(x LT 12 ef cd ab AND y GT 33 33 33 33 AND a EQ 12 12 12 12 AND b NE 34 "
-      "34 34 34)");
+  check_ast_str(
+      combined_and2,
+      "(x LT 12 ef cd ab AND y GT 33 33 33 33 "
+      "AND a EQ 12 12 12 12 AND b NE 34 34 34 34)");
+  check_ast_str(
+      combined_and2.negated_condition(),
+      "(x GE 12 ef cd ab OR y LE 33 33 33 33 "
+      "OR a NE 12 12 12 12 OR b EQ 34 34 34 34)");
 }
 
 TEST_CASE(
@@ -709,9 +698,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo NE aa aa aa aa");
+  check_ast_str(query_condition1, "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
   int val2 = 0xbbbbbbbb;
@@ -723,9 +710,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo NE bb bb bb bb");
+  check_ast_str(query_condition2, "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
   int val3 = 0xcccccccc;
@@ -737,9 +722,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo NE cc cc cc cc");
+  check_ast_str(query_condition3, "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
   int val4 = 0xdddddddd;
@@ -751,9 +734,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo NE dd dd dd dd");
+  check_ast_str(query_condition4, "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
   int val5 = 0xeeeeeeee;
@@ -765,9 +746,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo NE ee ee ee ee");
+  check_ast_str(query_condition5, "foo NE ee ee ee ee");
 
   QueryCondition combined_and1;
   REQUIRE(query_condition1
@@ -776,9 +755,8 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and1)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and1.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb)");
+  check_ast_str(combined_and1, "(foo NE aa aa aa aa AND foo NE bb bb bb bb)");
+
   QueryCondition combined_and2;
   REQUIRE(combined_and1
               .combine(
@@ -786,9 +764,11 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and2)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and2.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc)");
+  check_ast_str(
+      combined_and2,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc)");
+
   QueryCondition combined_and3;
   REQUIRE(combined_and2
               .combine(
@@ -796,10 +776,11 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and3)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and3.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
-      "foo NE dd dd dd dd)");
+  check_ast_str(
+      combined_and3,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc AND foo NE dd dd dd dd)");
+
   QueryCondition combined_and4;
   REQUIRE(combined_and3
               .combine(
@@ -807,10 +788,15 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &combined_and4)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_and4.ast()) ==
-      "(foo NE aa aa aa aa AND foo NE bb bb bb bb AND foo NE cc cc cc cc AND "
-      "foo NE dd dd dd dd AND foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_and4,
+      "(foo NE aa aa aa aa AND foo NE bb bb bb bb "
+      "AND foo NE cc cc cc cc AND foo NE dd dd dd dd AND foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_and4.negated_condition(),
+      "(foo EQ aa aa aa aa "
+      "OR foo EQ bb bb bb bb OR foo EQ cc cc cc cc OR foo EQ dd dd dd dd "
+      "OR foo EQ ee ee ee ee)");
 }
 
 TEST_CASE(
@@ -828,9 +814,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition1.ast()) ==
-      "foo NE aa aa aa aa");
+  check_ast_str(query_condition1, "foo NE aa aa aa aa");
 
   std::string field_name2 = "foo";
   int val2 = 0xbbbbbbbb;
@@ -842,9 +826,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition2.ast()) ==
-      "foo NE bb bb bb bb");
+  check_ast_str(query_condition2, "foo NE bb bb bb bb");
 
   std::string field_name3 = "foo";
   int val3 = 0xcccccccc;
@@ -856,9 +838,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition3.ast()) ==
-      "foo NE cc cc cc cc");
+  check_ast_str(query_condition3, "foo NE cc cc cc cc");
 
   std::string field_name4 = "foo";
   int val4 = 0xdddddddd;
@@ -870,9 +850,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition4.ast()) ==
-      "foo NE dd dd dd dd");
+  check_ast_str(query_condition4, "foo NE dd dd dd dd");
 
   std::string field_name5 = "foo";
   int val5 = 0xeeeeeeee;
@@ -884,9 +862,7 @@ TEST_CASE(
                   sizeof(int),
                   QueryConditionOp::NE)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(query_condition5.ast()) ==
-      "foo NE ee ee ee ee");
+  check_ast_str(query_condition5, "foo NE ee ee ee ee");
 
   QueryCondition combined_or1;
   REQUIRE(
@@ -894,38 +870,45 @@ TEST_CASE(
           .combine(
               query_condition2, QueryConditionCombinationOp::OR, &combined_or1)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or1.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb)");
+  check_ast_str(combined_or1, "(foo NE aa aa aa aa OR foo NE bb bb bb bb)");
+
   QueryCondition combined_or2;
   REQUIRE(
       combined_or1
           .combine(
               query_condition3, QueryConditionCombinationOp::OR, &combined_or2)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or2.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc)");
+  check_ast_str(
+      combined_or2,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc)");
+
   QueryCondition combined_or3;
   REQUIRE(
       combined_or2
           .combine(
               query_condition4, QueryConditionCombinationOp::OR, &combined_or3)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or3.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
-      "foo NE dd dd dd dd)");
+  check_ast_str(
+      combined_or3,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc OR foo NE dd dd dd dd)");
+
   QueryCondition combined_or4;
   REQUIRE(
       combined_or3
           .combine(
               query_condition5, QueryConditionCombinationOp::OR, &combined_or4)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(combined_or4.ast()) ==
-      "(foo NE aa aa aa aa OR foo NE bb bb bb bb OR foo NE cc cc cc cc OR "
-      "foo NE dd dd dd dd OR foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_or4,
+      "(foo NE aa aa aa aa OR foo NE bb bb bb bb "
+      "OR foo NE cc cc cc cc OR foo NE dd dd dd dd OR foo NE ee ee ee ee)");
+  check_ast_str(
+      combined_or4.negated_condition(),
+      "(foo EQ aa aa aa aa "
+      "AND foo EQ bb bb bb bb AND foo EQ cc cc cc cc "
+      "AND foo EQ dd dd dd dd AND foo EQ ee ee ee ee)");
 }
 
 TEST_CASE(
@@ -936,25 +919,21 @@ TEST_CASE(
   for (int i = 0; i < 7; ++i) {
     QueryCondition qc;
     REQUIRE(qc.init("x", &vals[i], sizeof(vals[i]), QueryConditionOp::EQ).ok());
-    CHECK(
-        tiledb::test::ast_node_to_str(qc.ast()) ==
-        "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
+    check_ast_str(qc, "x EQ 0" + std::to_string(vals[i]) + " 00 00 00");
     qc_value_vector.push_back(qc);
   }
 
   for (int i = 7; i < 9; ++i) {
     QueryCondition qc;
     REQUIRE(qc.init("x", &vals[i], sizeof(vals[i]), QueryConditionOp::NE).ok());
-    CHECK(
-        tiledb::test::ast_node_to_str(qc.ast()) ==
-        "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
+    check_ast_str(qc, "x NE 0" + std::to_string(vals[i]) + " 00 00 00");
     qc_value_vector.push_back(qc);
   }
 
   int x = 6;
   QueryCondition x_neq_six;
   REQUIRE(x_neq_six.init("x", &x, sizeof(x), QueryConditionOp::NE).ok());
-  CHECK(tiledb::test::ast_node_to_str(x_neq_six.ast()) == "x NE 06 00 00 00");
+  check_ast_str(x_neq_six, "x NE 06 00 00 00");
 
   QueryCondition one_or_two;
   REQUIRE(
@@ -962,9 +941,7 @@ TEST_CASE(
           .combine(
               qc_value_vector[1], QueryConditionCombinationOp::OR, &one_or_two)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(one_or_two.ast()) ==
-      "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
+  check_ast_str(one_or_two, "(x EQ 01 00 00 00 OR x EQ 02 00 00 00)");
 
   QueryCondition three_or_four;
   REQUIRE(qc_value_vector[2]
@@ -973,9 +950,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::OR,
                   &three_or_four)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(three_or_four.ast()) ==
-      "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
+  check_ast_str(three_or_four, "(x EQ 03 00 00 00 OR x EQ 04 00 00 00)");
 
   QueryCondition six_or_seven;
   REQUIRE(qc_value_vector[5]
@@ -984,9 +959,7 @@ TEST_CASE(
                   QueryConditionCombinationOp::OR,
                   &six_or_seven)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(six_or_seven.ast()) ==
-      "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
+  check_ast_str(six_or_seven, "(x EQ 06 00 00 00 OR x EQ 07 00 00 00)");
 
   QueryCondition eight_and_nine;
   REQUIRE(qc_value_vector[7]
@@ -995,29 +968,27 @@ TEST_CASE(
                   QueryConditionCombinationOp::AND,
                   &eight_and_nine)
               .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(eight_and_nine.ast()) ==
-      "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
+  check_ast_str(eight_and_nine, "(x NE 08 00 00 00 AND x NE 09 00 00 00)");
 
   QueryCondition subtree_a;
   REQUIRE(
       one_or_two
           .combine(three_or_four, QueryConditionCombinationOp::AND, &subtree_a)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_a.ast()) ==
-      "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
-      "04 00 00 00))");
+  check_ast_str(
+      subtree_a,
+      "((x EQ 01 00 00 00 OR x EQ 02 00 00 00) "
+      "AND (x EQ 03 00 00 00 OR x EQ 04 00 00 00))");
 
   QueryCondition subtree_d;
   REQUIRE(
       eight_and_nine
           .combine(six_or_seven, QueryConditionCombinationOp::AND, &subtree_d)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_d.ast()) ==
-      "(x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ 07 "
-      "00 00 00))");
+  check_ast_str(
+      subtree_d,
+      "(x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00))");
 
   QueryCondition subtree_c;
   REQUIRE(
@@ -1025,29 +996,38 @@ TEST_CASE(
           .combine(
               qc_value_vector[4], QueryConditionCombinationOp::OR, &subtree_c)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_c.ast()) ==
-      "((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
-      "07 00 00 00)) OR x EQ 05 00 00 00)");
+  check_ast_str(
+      subtree_c,
+      "((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00)");
 
   QueryCondition subtree_b;
   REQUIRE(
       subtree_c.combine(x_neq_six, QueryConditionCombinationOp::AND, &subtree_b)
           .ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(subtree_b.ast()) ==
-      "(((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 00 00 00 OR x EQ "
-      "07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 00)");
+  check_ast_str(
+      subtree_b,
+      "(((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) "
+      "AND x NE 06 00 00 00)");
 
   QueryCondition qc;
   REQUIRE(
       subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc).ok());
-  CHECK(
-      tiledb::test::ast_node_to_str(qc.ast()) ==
-      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) AND (x EQ 03 00 00 00 OR x EQ "
-      "04 00 00 00)) OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 AND (x EQ 06 "
-      "00 00 00 OR x EQ 07 00 00 00)) OR x EQ 05 00 00 00) AND x NE 06 00 00 "
-      "00))");
+  check_ast_str(
+      qc,
+      "(((x EQ 01 00 00 00 OR x EQ 02 00 00 00) "
+      "AND (x EQ 03 00 00 00 OR x EQ 04 00 00 00)) "
+      "OR (((x NE 08 00 00 00 AND x NE 09 00 00 00 "
+      "AND (x EQ 06 00 00 00 OR x EQ 07 00 00 00)) "
+      "OR x EQ 05 00 00 00) AND x NE 06 00 00 00))");
+  check_ast_str(
+      qc.negated_condition(),
+      "(((x NE 01 00 00 00 AND x NE 02 00 00 00) "
+      "OR (x NE 03 00 00 00 AND x NE 04 00 00 00)) "
+      "AND (((x EQ 08 00 00 00 OR x EQ 09 00 00 00 "
+      "OR (x NE 06 00 00 00 AND x NE 07 00 00 00)) "
+      "AND x NE 05 00 00 00) OR x EQ 06 00 00 00))");
 }
 
 /**
@@ -1056,6 +1036,7 @@ TEST_CASE(
  * @param op The relational query condition operator.
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
+ * @param array_schema The array schema.
  * @param result_tile The result tile.
  * @param values The values written to the tile.
  */
@@ -1064,7 +1045,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1076,7 +1057,7 @@ void test_apply_cells<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1085,9 +1066,9 @@ void test_apply_cells<char*>(
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool nullable = array_schema->attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1136,9 +1117,17 @@ void test_apply_cells<char*>(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1159,15 +1148,23 @@ void test_apply_cells<char*>(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
       // Run Check for query_condition_eq_null
-      REQUIRE(query_condition_eq_null.check(array_schema).ok());
+      REQUIRE(query_condition_eq_null.check(*array_schema).ok());
 
       ResultCellSlab result_cell_slab_eq_null(result_tile, 0, cells);
       std::vector<ResultCellSlab> result_cell_slabs_eq_null;
       result_cell_slabs_eq_null.emplace_back(
           std::move(result_cell_slab_eq_null));
-      std::vector<shared_ptr<FragmentMetadata>> frag_md;
+      std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+      frag_md[0] = make_shared<FragmentMetadata>(
+          HERE(),
+          nullptr,
+          nullptr,
+          array_schema,
+          URI(),
+          std::make_pair<uint64_t, uint64_t>(0, 0),
+          true);
       REQUIRE(query_condition_eq_null
-                  .apply(array_schema, frag_md, result_cell_slabs_eq_null, 1)
+                  .apply(*array_schema, frag_md, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -1181,9 +1178,9 @@ void test_apply_cells<char*>(
   }
 
   // Fetch the fill value.
-  const void* fill_value;
-  uint64_t fill_value_size;
-  array_schema.attribute(field_name)
+  const void* fill_value{nullptr};
+  uint64_t fill_value_size{0};
+  array_schema->attribute(field_name)
       ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == 2 * sizeof(char));
 
@@ -1233,7 +1230,7 @@ void test_apply_cells<char*>(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
           .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
@@ -1257,7 +1254,7 @@ void test_apply_cells(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -1266,7 +1263,7 @@ void test_apply_cells(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1306,9 +1303,17 @@ void test_apply_cells(
   ResultCellSlab result_cell_slab(result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1321,9 +1326,9 @@ void test_apply_cells(
   }
 
   // Fetch the fill value.
-  const void* fill_value;
-  uint64_t fill_value_size;
-  array_schema.attribute(field_name)
+  const void* fill_value{nullptr};
+  uint64_t fill_value_size{0};
+  array_schema->attribute(field_name)
       ->get_fill_value(&fill_value, &fill_value_size);
   REQUIRE(fill_value_size == sizeof(T));
 
@@ -1367,7 +1372,7 @@ void test_apply_cells(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, fill_result_cell_slabs, 1)
+      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
           .ok());
 
   // Verify the fill result cell slabs contain the expected cells.
@@ -1388,6 +1393,7 @@ void test_apply_cells(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
+ * @param array_schema The array schema.
  * @param result_tile The result tile.
  * @param values The values written to the tile.
  */
@@ -1395,7 +1401,7 @@ template <typename T>
 void test_apply_operators(
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells<T>(
@@ -1448,7 +1454,6 @@ void test_apply_operators(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
- * @param type The TILEDB data type of the attribute.
  * @param array_schema The array schema.
  * @param result_tile The result tile.
  */
@@ -1456,8 +1461,7 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     uint64_t cells,
-    Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -1467,69 +1471,42 @@ template <>
 void test_apply_tile<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema.attribute(field_name)->var_size();
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool var_size = array_schema->attribute(field_name)->var_size();
+  bool nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * cells * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
 
   std::vector<char> values(2 * cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators<char*>(
@@ -1547,21 +1524,15 @@ template <typename T>
 void test_apply_tile(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
-
-  REQUIRE(
-      tile->init_unfiltered(
-              constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
-          .ok());
   std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators<T>(
       field_name,
@@ -1588,37 +1559,62 @@ void test_apply(
  */
 template <>
 void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
-      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
-  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * cells * sizeof(char),
+      0,
+      var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile<char*>(field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile<char*>(field_name, cells, array_schema, &result_tile);
 }
 
 /**
@@ -1626,32 +1622,53 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  */
 template <typename T>
 void test_apply(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
-      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
-  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      cells * sizeof(T),
+      0,
+      var_size ? std::optional(0) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile<T>(field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile<T>(field_name, cells, array_schema, &result_tile);
 }
 
 TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
@@ -1679,9 +1696,21 @@ TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
   test_apply<int64_t>(Datatype::DATETIME_PS);
   test_apply<int64_t>(Datatype::DATETIME_FS);
   test_apply<int64_t>(Datatype::DATETIME_AS);
+  test_apply<int64_t>(Datatype::TIME_HR);
+  test_apply<int64_t>(Datatype::TIME_MIN);
+  test_apply<int64_t>(Datatype::TIME_SEC);
+  test_apply<int64_t>(Datatype::TIME_MS);
+  test_apply<int64_t>(Datatype::TIME_US);
+  test_apply<int64_t>(Datatype::TIME_NS);
+  test_apply<int64_t>(Datatype::TIME_PS);
+  test_apply<int64_t>(Datatype::TIME_FS);
+  test_apply<int64_t>(Datatype::TIME_AS);
   test_apply<char*>(Datatype::STRING_ASCII);
   test_apply<char*>(Datatype::STRING_ASCII, true);
   test_apply<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply<char*>(Datatype::STRING_UTF8);
+  test_apply<char*>(Datatype::STRING_UTF8, true);
+  test_apply<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -1690,7 +1719,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -1700,49 +1729,65 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * (cells - 2) * sizeof(char),
+      0,
+      var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, *frag_md[0]);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
-  var_size = array_schema.attribute(field_name)->var_size();
-  nullable = array_schema.attribute(field_name)->nullable();
+  var_size = array_schema->attribute(field_name)->var_size();
+  nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * (cells - 2) * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
-
   std::vector<char> values(2 * (cells - 2));
 
   // Empty strings are at idx 8 and 9
@@ -1751,20 +1796,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -1772,27 +1809,19 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -1802,7 +1831,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1840,9 +1869,8 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md;
   REQUIRE(
-      query_condition.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1870,7 +1898,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -1882,7 +1910,7 @@ void test_apply_cells_dense<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -1891,9 +1919,9 @@ void test_apply_cells_dense<char*>(
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool nullable = array_schema->attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -1942,7 +1970,14 @@ void test_apply_cells_dense<char*>(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -1962,18 +1997,19 @@ void test_apply_cells_dense<char*>(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
       // Run Check for query_condition_eq_null
-      REQUIRE(query_condition_eq_null.check(array_schema).ok());
+      REQUIRE(query_condition_eq_null.check(*array_schema).ok());
 
       // Apply the query condition.
       std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
       REQUIRE(query_condition_eq_null
                   .apply_dense(
-                      array_schema,
+                      *array_schema,
                       result_tile,
                       0,
                       10,
                       0,
                       1,
+                      nullptr,
                       result_bitmap_eq_null.data())
                   .ok());
 
@@ -1995,7 +2031,7 @@ void test_apply_cells_dense(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2004,7 +2040,7 @@ void test_apply_cells_dense(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -2044,7 +2080,14 @@ void test_apply_cells_dense(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  array_schema, result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2062,6 +2105,7 @@ void test_apply_cells_dense(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
+ * @param array_schema The array schema.
  * @param result_tile The result tile.
  * @param values The values written to the tile.
  */
@@ -2069,7 +2113,7 @@ template <typename T>
 void test_apply_operators_dense(
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_dense<T>(
@@ -2122,7 +2166,6 @@ void test_apply_operators_dense(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
- * @param type The TILEDB data type of the attribute.
  * @param array_schema The array schema.
  * @param result_tile The result tile.
  */
@@ -2130,8 +2173,7 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     uint64_t cells,
-    Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2141,69 +2183,41 @@ template <>
 void test_apply_tile_dense<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema.attribute(field_name)->var_size();
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool var_size = array_schema->attribute(field_name)->var_size();
+  bool nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * cells * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
-
   std::vector<char> values(2 * cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_dense<char*>(
@@ -2221,21 +2235,15 @@ template <typename T>
 void test_apply_tile_dense(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
-
-  REQUIRE(
-      tile->init_unfiltered(
-              constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
-          .ok());
   std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_dense<T>(
       field_name,
@@ -2263,43 +2271,65 @@ void test_apply_dense(
 template <>
 void test_apply_dense<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
-          .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * cells * sizeof(char),
+      0,
+      var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile_dense<char*>(
-      field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile_dense<char*>(field_name, cells, array_schema, &result_tile);
 }
 
 /**
@@ -2307,37 +2337,56 @@ void test_apply_dense<char*>(
  */
 template <typename T>
 void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
-          .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      cells * sizeof(T),
+      0,
+      var_size ? std::optional(0) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile_dense<T>(field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile_dense<T>(field_name, cells, array_schema, &result_tile);
 }
 
 TEST_CASE(
@@ -2366,9 +2415,21 @@ TEST_CASE(
   test_apply_dense<int64_t>(Datatype::DATETIME_PS);
   test_apply_dense<int64_t>(Datatype::DATETIME_FS);
   test_apply_dense<int64_t>(Datatype::DATETIME_AS);
+  test_apply_dense<int64_t>(Datatype::TIME_HR);
+  test_apply_dense<int64_t>(Datatype::TIME_MIN);
+  test_apply_dense<int64_t>(Datatype::TIME_SEC);
+  test_apply_dense<int64_t>(Datatype::TIME_MS);
+  test_apply_dense<int64_t>(Datatype::TIME_US);
+  test_apply_dense<int64_t>(Datatype::TIME_NS);
+  test_apply_dense<int64_t>(Datatype::TIME_PS);
+  test_apply_dense<int64_t>(Datatype::TIME_FS);
+  test_apply_dense<int64_t>(Datatype::TIME_AS);
   test_apply_dense<char*>(Datatype::STRING_ASCII);
   test_apply_dense<char*>(Datatype::STRING_ASCII, true);
   test_apply_dense<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, true);
+  test_apply_dense<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -2377,7 +2438,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -2387,49 +2448,63 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
-      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * (cells - 2) * sizeof(char),
+      0,
+      var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
-  var_size = array_schema.attribute(field_name)->var_size();
-  nullable = array_schema.attribute(field_name)->nullable();
+  var_size = array_schema->attribute(field_name)->var_size();
+  nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * (cells - 2) * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
-
   std::vector<char> values(2 * (cells - 2));
   // Empty strings are at idx 8 and 9
   for (uint64_t i = 0; i < (cells - 2); ++i) {
@@ -2437,20 +2512,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -2458,27 +2525,19 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -2488,7 +2547,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -2526,7 +2585,14 @@ TEST_CASE(
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
               .apply_dense(
-                  array_schema, &result_tile, 0, 10, 0, 1, result_bitmap.data())
+                  *array_schema,
+                  &result_tile,
+                  0,
+                  10,
+                  0,
+                  1,
+                  nullptr,
+                  result_bitmap.data())
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2545,6 +2611,7 @@ TEST_CASE(
  * @param op The relational query condition operator.
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
+ * @param array_schema The array schema.
  * @param result_tile The result tile.
  * @param values The values written to the tile.
  */
@@ -2553,7 +2620,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values);
 
@@ -2565,7 +2632,7 @@ void test_apply_cells_sparse<char*>(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const char* const cmp_value = "ae";
@@ -2574,9 +2641,9 @@ void test_apply_cells_sparse<char*>(
               .init(std::string(field_name), cmp_value, 2 * sizeof(char), op)
               .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool nullable = array_schema->attribute(field_name)->nullable();
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -2624,7 +2691,7 @@ void test_apply_cells_sparse<char*>(
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(array_schema, *result_tile, result_bitmap)
+              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2644,13 +2711,13 @@ void test_apply_cells_sparse<char*>(
           query_condition_eq_null.init(std::string(field_name), nullptr, 0, op)
               .ok());
       // Run Check for query_condition_eq_null
-      REQUIRE(query_condition_eq_null.check(array_schema).ok());
+      REQUIRE(query_condition_eq_null.check(*array_schema).ok());
 
       // Apply the query condition.
       std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
       REQUIRE(query_condition_eq_null
                   .apply_sparse<uint8_t>(
-                      array_schema, *result_tile, result_bitmap_eq_null)
+                      *array_schema, *result_tile, result_bitmap_eq_null)
                   .ok());
 
       // Verify the result bitmap contain the expected cells.
@@ -2671,7 +2738,7 @@ void test_apply_cells_sparse(
     const QueryConditionOp op,
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   const T cmp_value = 5;
@@ -2680,7 +2747,7 @@ void test_apply_cells_sparse(
       query_condition.init(std::string(field_name), &cmp_value, sizeof(T), op)
           .ok());
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -2719,7 +2786,7 @@ void test_apply_cells_sparse(
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(array_schema, *result_tile, result_bitmap)
+              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.
@@ -2737,6 +2804,7 @@ void test_apply_cells_sparse(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
+ * @param array_schema The array schema.
  * @param result_tile The result tile.
  * @param values The values written to the tile.
  */
@@ -2744,7 +2812,7 @@ template <typename T>
 void test_apply_operators_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
   test_apply_cells_sparse<T>(
@@ -2797,7 +2865,6 @@ void test_apply_operators_sparse(
  *
  * @param field_name The attribute name in the tile.
  * @param cells The number of cells in the tile.
- * @param type The TILEDB data type of the attribute.
  * @param array_schema The array schema.
  * @param result_tile The result tile.
  */
@@ -2805,8 +2872,7 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     uint64_t cells,
-    Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* result_tile);
 
 /**
@@ -2816,69 +2882,41 @@ template <>
 void test_apply_tile_sparse<char*>(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
 
-  bool var_size = array_schema.attribute(field_name)->var_size();
-  bool nullable = array_schema.attribute(field_name)->nullable();
+  bool var_size = array_schema->attribute(field_name)->var_size();
+  bool nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * cells * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
-
   std::vector<char> values(cells * 2);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i * 2] = 'a';
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, 2 * cells * sizeof(char)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, 2 * cells * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
-    for (uint64_t i = 0; i < cells; ++i) {
+    for (uint64_t i = 0; i <= cells; ++i) {
       offsets[i] = offset;
       offset += 2;
     }
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   test_apply_operators_sparse<char*>(
@@ -2896,22 +2934,15 @@ template <typename T>
 void test_apply_tile_sparse(
     const std::string& field_name,
     const uint64_t cells,
-    const Datatype type,
-    const ArraySchema& array_schema,
+    shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile) {
   ResultTile::TileTuple* const tile_tuple = result_tile->tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
-
-  REQUIRE(
-      tile->init_unfiltered(
-              constants::format_version, type, cells * sizeof(T), sizeof(T), 0)
-          .ok());
-
   std::vector<T> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = static_cast<T>(i);
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(T)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(T)));
 
   test_apply_operators_sparse<T>(
       field_name,
@@ -2939,43 +2970,65 @@ void test_apply_sparse(
 template <>
 void test_apply_sparse<char*>(
     const Datatype type, bool var_size, bool nullable) {
-  REQUIRE(type == Datatype::STRING_ASCII);
+  REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
-          .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * cells * sizeof(char),
+      0,
+      var_size ? std::optional(2 * cells * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile_sparse<char*>(
-      field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile_sparse<char*>(field_name, cells, array_schema, &result_tile);
 }
 
 /**
@@ -2983,38 +3036,56 @@ void test_apply_sparse<char*>(
  */
 template <typename T>
 void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
-  (void)var_size;
-  (void)nullable;
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_cell_val_num(1).ok());
-  REQUIRE(attr.set_fill_value(&fill_value, sizeof(T)).ok());
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  attr.set_cell_val_num(1);
+  attr.set_fill_value(&fill_value, sizeof(T));
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
-          .ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      cells * sizeof(T),
+      0,
+      var_size ? std::optional(0) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
-  test_apply_tile_sparse<T>(
-      field_name, cells, type, array_schema, &result_tile);
+  test_apply_tile_sparse<T>(field_name, cells, array_schema, &result_tile);
 }
 
 TEST_CASE(
@@ -3043,29 +3114,79 @@ TEST_CASE(
   test_apply_sparse<int64_t>(Datatype::DATETIME_PS);
   test_apply_sparse<int64_t>(Datatype::DATETIME_FS);
   test_apply_sparse<int64_t>(Datatype::DATETIME_AS);
+  test_apply_sparse<int64_t>(Datatype::TIME_HR);
+  test_apply_sparse<int64_t>(Datatype::TIME_MIN);
+  test_apply_sparse<int64_t>(Datatype::TIME_SEC);
+  test_apply_sparse<int64_t>(Datatype::TIME_MS);
+  test_apply_sparse<int64_t>(Datatype::TIME_US);
+  test_apply_sparse<int64_t>(Datatype::TIME_NS);
+  test_apply_sparse<int64_t>(Datatype::TIME_PS);
+  test_apply_sparse<int64_t>(Datatype::TIME_FS);
+  test_apply_sparse<int64_t>(Datatype::TIME_AS);
   test_apply_sparse<char*>(Datatype::STRING_ASCII);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, true);
   test_apply_sparse<char*>(Datatype::STRING_ASCII, false, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, true);
+  test_apply_sparse<char*>(Datatype::STRING_UTF8, false, true);
 }
 
 /**
  * @brief Test parameters structure that contains the query condition
  * object, and the expected results of running the query condition on
  * an size 10 array containing {0, 1, 2, 3, 4, 5, 6, 7, 8, 9}.
- *
  */
 struct TestParams {
   QueryCondition qc_;
   std::vector<uint8_t> expected_bitmap_;
+  std::vector<uint8_t> neg_expected_bitmap_;
   std::vector<ResultCellSlab> expected_slabs_;
 
   TestParams(
-      QueryCondition&& qc,
-      std::vector<uint8_t>&& expected_bitmap,
-      std::vector<ResultCellSlab>&& expected_slabs)
-      : qc_(std::move(qc))
+      ResultTile* result_tile,
+      QueryCondition qc,
+      std::vector<uint8_t> expected_bitmap,
+      std::vector<uint8_t> neg_expected_bitmap = {})
+      : qc_(qc)
       , expected_bitmap_(std::move(expected_bitmap))
-      , expected_slabs_(expected_slabs) {
+      , neg_expected_bitmap_(std::move(neg_expected_bitmap)) {
+    if (neg_expected_bitmap_.size() == 0) {
+      neg_expected_bitmap_.resize(expected_bitmap_.size());
+      for (size_t i = 0; i < expected_bitmap_.size(); i++) {
+        neg_expected_bitmap_[i] = expected_bitmap_[i] ? 0 : 1;
+      }
+    }
+
+    // Calculate expected_slabs_
+    using signed_size_t = std::make_signed_t<size_t>;
+    signed_size_t start{-1};
+    signed_size_t length{-1};
+    for (signed_size_t i = 0;
+         i < static_cast<signed_size_t>(expected_bitmap_.size());
+         i++) {
+      if (expected_bitmap_[i] && start < 0) {
+        start = i;
+        length = 1;
+      } else if (expected_bitmap_[i] && start >= 0) {
+        length += 1;
+      } else if (!expected_bitmap_[i] && start >= 0) {
+        expected_slabs_.emplace_back(result_tile, start, length);
+        start = -1;
+        length = -1;
+      }
+    }
+    if (start > 0) {
+      expected_slabs_.emplace_back(result_tile, start, length);
+    }
+  }
+
+  TestParams negate(ResultTile* result_tile) {
+    TestParams tp(
+        result_tile,
+        qc_.negated_condition(),
+        neg_expected_bitmap_,
+        expected_bitmap_);
+    return tp;
   }
 };
 
@@ -3077,22 +3198,37 @@ struct TestParams {
  * and the expected results.
  * @param cells The number of cells in the array we're running the query on.
  * @param array_schema The array schema of the array we're running the query on.
+ * @param result_tile The result tile.
  */
 void validate_qc_apply(
     TestParams& tp,
     uint64_t cells,
-    const ArraySchema& array_schema,
-    ResultTile& result_tile) {
+    shared_ptr<const ArraySchema> array_schema,
+    ResultTile& result_tile,
+    bool negated = false) {
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  std::vector<shared_ptr<FragmentMetadata>> frag_md;
-  REQUIRE(tp.qc_.apply(array_schema, frag_md, result_cell_slabs, 1).ok());
+  std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
+  frag_md[0] = make_shared<FragmentMetadata>(
+      HERE(),
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
   uint64_t result_cell_slabs_size = result_cell_slabs.size();
   for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
     CHECK(result_cell_slabs[i].start_ == tp.expected_slabs_[i].start_);
     CHECK(result_cell_slabs[i].length_ == tp.expected_slabs_[i].length_);
+  }
+
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3109,12 +3245,13 @@ void validate_qc_apply(
 void validate_qc_apply_sparse(
     TestParams& tp,
     uint64_t cells,
-    const ArraySchema& array_schema,
-    ResultTile& result_tile) {
+    shared_ptr<const ArraySchema> array_schema,
+    ResultTile& result_tile,
+    bool negated = false) {
   std::vector<uint8_t> sparse_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_sparse<uint8_t>(
-                  array_schema, result_tile, sparse_result_bitmap)
+                  *array_schema, result_tile, sparse_result_bitmap)
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
@@ -3123,10 +3260,15 @@ void validate_qc_apply_sparse(
   std::vector<uint64_t> sparse_result_bitmap1(cells, 2);
   REQUIRE(tp.qc_
               .apply_sparse<uint64_t>(
-                  array_schema, result_tile, sparse_result_bitmap1)
+                  *array_schema, result_tile, sparse_result_bitmap1)
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
+  }
+
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3143,21 +3285,28 @@ void validate_qc_apply_sparse(
 void validate_qc_apply_dense(
     TestParams& tp,
     uint64_t cells,
-    const ArraySchema& array_schema,
-    ResultTile& result_tile) {
+    shared_ptr<const ArraySchema> array_schema,
+    ResultTile& result_tile,
+    bool negated = false) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
   REQUIRE(tp.qc_
               .apply_dense(
-                  array_schema,
+                  *array_schema,
                   &result_tile,
                   0,
                   10,
                   0,
                   1,
+                  nullptr,
                   dense_result_bitmap.data())
               .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(dense_result_bitmap[i] == tp.expected_bitmap_[i]);
+  }
+
+  if (!negated) {
+    auto neg_tp = tp.negate(&result_tile);
+    validate_qc_apply(neg_tp, cells, array_schema, result_tile, true);
   }
 }
 
@@ -3201,12 +3350,10 @@ void populate_test_params_vector(
                     &query_condition_3)
                 .ok());
 
-    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 1, 1, 1, 0, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 4, 3}};
     TestParams tp(
+        result_tile,
         std::move(query_condition_3),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        {0, 0, 0, 0, 1, 1, 1, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3240,13 +3387,10 @@ void populate_test_params_vector(
                     &query_condition_3)
                 .ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 0, 0, 0, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 4},
-                                                  {result_tile, 7, 3}};
     TestParams tp(
+        result_tile,
         std::move(query_condition_3),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        {1, 1, 1, 1, 0, 0, 0, 1, 1, 1});
     tp_vec.push_back(tp);
   }
   // Construct query condition `(foo >= 3 AND foo <= 6) OR (foo > 5 AND foo <
@@ -3315,12 +3459,8 @@ void populate_test_params_vector(
                 combined_and1, QueryConditionCombinationOp::OR, &combined_or)
             .ok());
 
-    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 1, 1, 1, 1, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 3, 6}};
     TestParams tp(
-        std::move(combined_or),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        result_tile, std::move(combined_or), {0, 0, 0, 1, 1, 1, 1, 1, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3390,13 +3530,8 @@ void populate_test_params_vector(
                 combined_or1, QueryConditionCombinationOp::AND, &combined_and)
             .ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 0, 0, 0, 0, 0, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 3},
-                                                  {result_tile, 9, 1}};
     TestParams tp(
-        std::move(combined_and),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        result_tile, std::move(combined_and), {1, 1, 1, 0, 0, 0, 0, 0, 0, 1});
     tp_vec.push_back(tp);
   }
 
@@ -3488,11 +3623,7 @@ void populate_test_params_vector(
     REQUIRE(subtree_a.combine(subtree_b, QueryConditionCombinationOp::OR, &qc)
                 .ok());
 
-    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 1, 0, 1, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 5, 1},
-                                                  {result_tile, 7, 1}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3581,16 +3712,8 @@ void populate_test_params_vector(
                     &combined_and4)
                 .ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
     TestParams tp(
-        std::move(combined_and4),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        result_tile, std::move(combined_and4), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3675,16 +3798,9 @@ void populate_test_params_vector(
                     QueryConditionCombinationOp::OR,
                     &combined_or4)
                 .ok());
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
+
     TestParams tp(
-        std::move(combined_or4),
-        std::move(expected_bitmap),
-        std::move(expected_slabs));
+        result_tile, std::move(combined_or4), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 }
@@ -3697,43 +3813,56 @@ TEST_CASE(
   const Datatype type = Datatype::UINT64;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, false, false);
+  ResultTile::TileSizes tile_sizes(
+      cells * sizeof(uint64_t),
+      0,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt,
+      std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
-  // Initialize and populate the data tile.
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  cells * sizeof(uint64_t),
-                  sizeof(uint64_t),
-                  0)
-              .ok());
-
+  // Populate the data tile.
   std::vector<uint64_t> values(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     values[i] = i;
   }
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_test_params_vector(field_name, &result_tile, tp_vec);
@@ -3777,10 +3906,8 @@ void populate_string_test_params_vector(
     REQUIRE(
         qc.init(std::string(field_name), &e, strlen(e), QueryConditionOp::LT)
             .ok());
-    std::vector<uint8_t> expected_bitmap = {1, 1, 1, 1, 1, 0, 0, 0, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 5}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+
+    TestParams tp(result_tile, std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
   // Construct basic AND query condition `foo >= "bob" AND foo <= "eve"`.
@@ -3799,10 +3926,8 @@ void populate_string_test_params_vector(
 
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 0, 0, 0, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 4}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3823,11 +3948,7 @@ void populate_string_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
 
-    std::vector<uint8_t> expected_bitmap = {1, 1, 0, 0, 0, 1, 1, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 2},
-                                                  {result_tile, 5, 5}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1});
     tp_vec.push_back(tp);
   }
 
@@ -3863,10 +3984,7 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
 
-    std::vector<uint8_t> expected_bitmap = {0, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 9}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 1, 1, 1, 1, 1});
     tp_vec.push_back(tp);
   }
 
@@ -3902,10 +4020,7 @@ void populate_string_test_params_vector(
     REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
     REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
 
-    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 0, 0, 0, 0, 1, 0, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 7, 1}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -3938,14 +4053,7 @@ void populate_string_test_params_vector(
       REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
                   .ok());
 
-      std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                    {result_tile, 3, 1},
-                                                    {result_tile, 5, 1},
-                                                    {result_tile, 7, 1},
-                                                    {result_tile, 9, 1}};
-      TestParams tp(
-          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+      TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
       tp_vec.push_back(tp);
     }
 
@@ -3975,14 +4083,7 @@ void populate_string_test_params_vector(
       REQUIRE(
           qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
 
-      std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-      std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                    {result_tile, 2, 1},
-                                                    {result_tile, 4, 1},
-                                                    {result_tile, 6, 1},
-                                                    {result_tile, 8, 1}};
-      TestParams tp(
-          std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+      TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
       tp_vec.push_back(tp);
     }
   }
@@ -3994,61 +4095,477 @@ TEST_CASE(
   // Setup.
   const std::string field_name = "foo";
   const uint64_t cells = 10;
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(false).ok());
-  REQUIRE(attr.set_cell_val_num(constants::var_num).ok());
-  REQUIRE(attr.set_fill_value("ac", 2 * sizeof(char)).ok());
+  attr.set_nullable(false);
+  attr.set_cell_val_num(constants::var_num);
+  attr.set_fill_value("ac", 2 * sizeof(char));
 
   REQUIRE(
-      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
-  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, true, false);
+  std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
+  ResultTile::TileSizes tile_sizes(
+      (cells + 1) * constants::cell_var_offset_size,
+      0,
+      data.size(),
+      0,
+      std::nullopt,
+      std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
 
-  std::string data = "alicebobcraigdaveerinfrankgraceheidiivanjudy";
-  std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40};
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  data.size(),
-                  constants::var_num,
-                  0)
-              .ok());
-
-  REQUIRE(tile->write(data.c_str(), 0, data.size()).ok());
+  std::vector<uint64_t> offsets = {0, 5, 8, 13, 17, 21, 26, 31, 36, 40, 44};
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
 
   // Write the tile offsets.
   Tile* const tile_offsets = &tile_tuple->fixed_tile();
-  REQUIRE(tile_offsets
-              ->init_unfiltered(
-                  constants::format_version,
-                  constants::cell_var_offset_type,
-                  10 * constants::cell_var_offset_size,
-                  constants::cell_var_offset_size,
-                  0)
-              .ok());
-
-  REQUIRE(
-      tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
 
   std::vector<TestParams> tp_vec;
   populate_string_test_params_vector(field_name, &result_tile, tp_vec);
+
+  SECTION("Validate apply.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_sparse.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_sparse(elem, cells, array_schema, result_tile);
+    }
+  }
+
+  SECTION("Validate apply_dense.") {
+    for (auto& elem : tp_vec) {
+      validate_qc_apply_dense(elem, cells, array_schema, result_tile);
+    }
+  }
+}
+
+/**
+ * @brief Function that takes a selection of QueryConditions, with their
+ * expected results, and combines them together. This function is
+ * exclusively for UTF-8 string query conditions.
+ *
+ * @param field_name The field name of the query condition.
+ * @param result_tile The result tile of the array we're running the query on.
+ * @param tp_vec The vector that stores the test parameter structs.
+ */
+void populate_utf8_string_test_params_vector(
+    const std::string& field_name,
+    ResultTile* result_tile,
+    std::vector<TestParams>& tp_vec) {
+  // UTF-8 String data sorted according to raw byte comparisons.
+  std::string upper_a = "\x41";
+  std::string upper_aa = "\x41\x41";
+  std::string lower_a = "\x61";
+  std::string lower_a0 = "\x61\x30";
+  std::string lower_aa = "\x61\x61";
+  std::string n_plus_tilda = "\x6e\xcc\x83";
+  std::string n_with_tilda = "\xc3\xb1";
+  std::string u_with_umlaut = "\xc3\xbc";
+  std::string infinity = "\xe2\x88\x9e";
+  std::string snowman = "\xe2\x98\x83\xef\xb8\x8f";
+  std::string mahjong = "\xf0\x9f\x80\x84";
+  std::string yarn = "\xf0\x9f\xa7\xb6";
+  std::string flag_gr = "\xf0\x9f\x87\xac\xf0\x9f\x87\xb7";
+  std::string icecream = "\xf0\x9f\x8d\xa8";
+  std::string doughnut = "\xf0\x9f\x8d\xa9";
+
+  // N.B. This is a cop-pasta of populate_string_test_params_vector
+  // updated to use different string data. The equivalency table is:
+  //
+  // alice -> upper_a
+  // ask -> uper_aa
+  // bob -> lower_a
+  // bye -> lower_a0
+  // craig -> lower_aa
+  // dave -> n_plus_tilda
+  // erin -> n_with_tilda
+  // eve -> u_with_umlaut
+  // frank -> infinity
+  // grace -> snowman
+  // heidi -> mahjong
+  // hi -> yarn
+  // ivan -> flag_gr
+  // judy -> icecream
+  // just -> doughnut
+
+  // $val < u_with_umlaut
+  {
+    QueryCondition qc;
+    REQUIRE(qc.init(
+                  std::string(field_name),
+                  u_with_umlaut.data(),
+                  u_with_umlaut.size(),
+                  QueryConditionOp::LT)
+                .ok());
+
+    TestParams tp(result_tile, std::move(qc), {1, 1, 1, 1, 1, 0, 0, 0, 0, 0});
+    tp_vec.push_back(tp);
+  }
+
+  // $val >= lower_a && $val <= u_with_umlaut
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   lower_a.data(),
+                   lower_a.size(),
+                   QueryConditionOp::GE)
+                .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc).ok());
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 0, 0, 0, 0, 0});
+    tp_vec.push_back(tp);
+    tp_vec.push_back(tp);
+  }
+
+  // $val >= u_with_umlaut || $val <= lower_a
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::GE)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   lower_a.data(),
+                   lower_a.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
+
+    TestParams tp(result_tile, std::move(qc), {1, 1, 0, 0, 0, 1, 1, 1, 1, 1});
+  }
+
+  // ($val > upper_aa && $val <= yarn) || ($val > lower_a0 && $val < doughnut)
+  // I.e., OR of 2 AND ASTs
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   upper_aa.data(),
+                   upper_aa.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   yarn.data(),
+                   yarn.size(),
+                   QueryConditionOp::LE)
+                .ok());
+
+    QueryCondition qc3;
+    REQUIRE(qc3.init(
+                   std::string(field_name),
+                   lower_a0.data(),
+                   lower_a0.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc4;
+    REQUIRE(qc4.init(
+                   std::string(field_name),
+                   doughnut.data(),
+                   doughnut.size(),
+                   QueryConditionOp::LT)
+                .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::AND, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::AND, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::OR, &qc).ok());
+
+    TestParams tp(result_tile, std::move(qc), {0, 1, 1, 1, 1, 1, 1, 1, 1, 1});
+    tp_vec.push_back(tp);
+  }
+
+  // ($val == lower_aa || $val == mahjong) &&
+  //    ($val > u_with_umlaut || $val < lower_a0)
+  // I.e., AND of 2 OR ASTs
+  {
+    QueryCondition qc1;
+    REQUIRE(qc1.init(
+                   std::string(field_name),
+                   lower_aa.data(),
+                   lower_aa.size(),
+                   QueryConditionOp::EQ)
+                .ok());
+
+    QueryCondition qc2;
+    REQUIRE(qc2.init(
+                   std::string(field_name),
+                   mahjong.data(),
+                   mahjong.size(),
+                   QueryConditionOp::EQ)
+                .ok());
+
+    QueryCondition qc3;
+    REQUIRE(qc3.init(
+                   std::string(field_name),
+                   u_with_umlaut.data(),
+                   u_with_umlaut.size(),
+                   QueryConditionOp::GT)
+                .ok());
+
+    QueryCondition qc4;
+    REQUIRE(qc4.init(
+                   std::string(field_name),
+                   lower_a0.data(),
+                   lower_a0.size(),
+                   QueryConditionOp::LT)
+                .ok());
+
+    QueryCondition qc5, qc6, qc;
+    REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc5).ok());
+    REQUIRE(qc3.combine(qc4, QueryConditionCombinationOp::OR, &qc6).ok());
+    REQUIRE(qc5.combine(qc6, QueryConditionCombinationOp::AND, &qc).ok());
+
+    TestParams tp(result_tile, std::move(qc), {0, 0, 0, 0, 0, 0, 0, 1, 0, 0});
+    tp_vec.push_back(tp);
+  }
+
+  {
+    std::vector<std::string> vec = {
+        upper_a, lower_aa, n_with_tilda, snowman, flag_gr};
+    // $val != upper_a && $val != lower_a && $val != n_with_tilda &&
+    //    $val != snowman && $val != flag_gr
+    // I.e., combine multiple simple AND clauses
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::NE)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::AND, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::AND, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::AND, &qc3)
+                  .ok());
+      REQUIRE(qc3.combine(val_nodes[4], QueryConditionCombinationOp::AND, &qc)
+                  .ok());
+
+      TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
+      tp_vec.push_back(tp);
+    }
+
+    // $val == $upper_a || $val == lower_a || $val == n_with_tilda ||
+    //    $ val == snowman || $val == flag_gr
+    // I.e., combine multiple simple OR clauses
+    {
+      std::vector<QueryCondition> val_nodes;
+      for (uint64_t i = 0; i < 5; ++i) {
+        QueryCondition temp;
+        REQUIRE(temp.init(
+                        std::string(field_name),
+                        vec[i].c_str(),
+                        vec[i].size(),
+                        QueryConditionOp::EQ)
+                    .ok());
+        val_nodes.push_back(temp);
+      }
+
+      QueryCondition qc1, qc2, qc3, qc;
+      REQUIRE(val_nodes[0]
+                  .combine(val_nodes[1], QueryConditionCombinationOp::OR, &qc1)
+                  .ok());
+      REQUIRE(qc1.combine(val_nodes[2], QueryConditionCombinationOp::OR, &qc2)
+                  .ok());
+      REQUIRE(qc2.combine(val_nodes[3], QueryConditionCombinationOp::OR, &qc3)
+                  .ok());
+      REQUIRE(
+          qc3.combine(val_nodes[4], QueryConditionCombinationOp::OR, &qc).ok());
+
+      TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
+      tp_vec.push_back(tp);
+    }
+  }
+}
+
+TEST_CASE(
+    "QueryCondition: Test combinations, string with UTF-8 data",
+    "[QueryCondition][combinations][string][utf-8]") {
+  // Setup.
+  const std::string field_name = "foo";
+  const uint64_t cells = 10;
+  const Datatype type = Datatype::STRING_UTF8;
+
+  // Initialize the array schema.
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  Attribute attr(field_name, type);
+  attr.set_nullable(false);
+  attr.set_cell_val_num(constants::var_num);
+  attr.set_fill_value("ac", 2 * sizeof(char));
+
+  REQUIRE(
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
+  Domain domain;
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  uint32_t bounds[2] = {1, cells};
+  Range range(bounds, 2 * sizeof(uint32_t));
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+
+  // For pasting into a Python shell:
+  //
+  // To install pyicu on MacOS:
+  // $ brew install icu4c
+  // $ python3 -m venv venv
+  // $ source venv/bin/activate
+  // $ PATH="$(brew --prefix icu4c)/bin:$PATH" pip install pyicu
+  //
+  // If you run the snippet below you'll see that the sort order
+  // changes drastically using the ICU collator. Specifically, you
+  // should see the following orders for without and with ICU collation:
+  //
+  //   A a aa n-yay n-yay :infinity: :snowman: :mahjong: :flag-gr: :icecream:
+  //   :infinity: :snowman: :flag-gr: :mahjong: :icecream: a A aa n-yay n-yay
+  //
+  // data = [
+  //   b"\x41".decode("utf-8"),
+  //   b"\x61".decode("utf-8"),
+  //   b"\x61\x61".decode("utf-8"),
+  //   b"\x6e\xcc\x83".decode("utf-8"),
+  //   b"\xc3\xb1".decode("utf-8"),
+  //   b"\xe2\x88\x9e".decode("utf-8"),
+  //   b"\xe2\x98\x83\xef\xb8\x8f".decode("utf-8"),
+  //   b"\xf0\x9f\x80\x84".decode("utf-8"),
+  //   b"\xf0\x9f\x87\xac\xf0\x9f\x87\xb7".decode("utf-8"),
+  //   b"\xf0\x9f\x8d\xa8".decode("utf-8")
+  // ]
+  // sorted(data)
+  // import icu
+  // coll = icu.Collator.createInstance()
+  // sorted(data, key=coll.getSortKey)
+
+  // UTF-8 String Data
+  //
+  // These strings are sorted according to raw byte comparisons
+  // without the use of ICU collation. The Python snippet above shows
+  // the difference between the two sort methods.
+  std::vector<std::string> utf8_data = {
+      "\x41",                              // "A"
+      "\x61",                              // "a"
+      "\x61\x61",                          // "aa"
+      "\x6e\xcc\x83",                      // n-plus-tilda
+      "\xc3\xb1",                          // n-with-tilda
+      "\xe2\x88\x9e",                      // :infinity:
+      "\xe2\x98\x83\xef\xb8\x8f",          // :snowman:
+      "\xf0\x9f\x80\x84",                  // :mahjong:
+      "\xf0\x9f\x87\xac\xf0\x9f\x87\xb7",  // :flag-gr:
+      "\xf0\x9f\x8d\xa8"                   // :icecream:
+  };
+
+  std::string data;
+  std::vector<uint64_t> offsets;
+  uint64_t curr_offset = 0;
+  for (auto& elem : utf8_data) {
+    data += elem;
+    offsets.push_back(curr_offset);
+    curr_offset += elem.size();
+  }
+
+  // Initialize the result tile.
+  ResultTile::TileSizes tile_sizes(
+      (cells + 1) * constants::cell_var_offset_size,
+      0,
+      data.size(),
+      0,
+      std::nullopt,
+      std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
+
+  ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
+  Tile* const tile = &tile_tuple->var_tile();
+
+  REQUIRE_NOTHROW(tile->write(data.c_str(), 0, data.size()));
+
+  // Write the tile offsets.
+  Tile* const tile_offsets = &tile_tuple->fixed_tile();
+  REQUIRE_NOTHROW(
+      tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
+
+  std::vector<TestParams> tp_vec;
+  populate_utf8_string_test_params_vector(field_name, &result_tile, tp_vec);
 
   SECTION("Validate apply.") {
     for (auto& elem : tp_vec) {
@@ -4087,14 +4604,7 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::EQ)
                 .ok());
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 0, 1, 0, 1, 0, 1, 0};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 1},
-                                                  {result_tile, 4, 1},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 1}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {1, 0, 1, 0, 1, 0, 1, 0, 1, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4103,14 +4613,7 @@ void populate_nullable_test_params_vector(
     QueryCondition qc;
     REQUIRE(qc.init(std::string(field_name), nullptr, 0, QueryConditionOp::NE)
                 .ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
-    TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+    TestParams tp(result_tile, std::move(qc), {0, 1, 0, 1, 0, 1, 0, 1, 0, 1});
     tp_vec.push_back(tp);
   }
 
@@ -4124,13 +4627,11 @@ void populate_nullable_test_params_vector(
                   sizeof(float),
                   QueryConditionOp::GT)
                 .ok());
-    std::vector<uint8_t> expected_bitmap = {0, 0, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {0, 0, 0, 1, 0, 1, 0, 1, 0, 1},
+        {0, 1, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4155,11 +4656,12 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 0, 0, 0, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {
-        {result_tile, 1, 1}, {result_tile, 3, 1}, {result_tile, 9, 1}};
+
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {0, 1, 0, 1, 0, 0, 0, 0, 0, 1},
+        {0, 0, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4179,13 +4681,11 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 3},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 2}};
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
+        {0, 1, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4205,13 +4705,12 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {1, 0, 1, 1, 1, 0, 1, 0, 1, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 0, 1},
-                                                  {result_tile, 2, 3},
-                                                  {result_tile, 6, 1},
-                                                  {result_tile, 8, 2}};
+
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {1, 0, 1, 1, 1, 0, 1, 0, 1, 1},
+        {0, 1, 0, 0, 0, 1, 0, 1, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4231,14 +4730,12 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc2.combine(qc1, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 
@@ -4258,14 +4755,12 @@ void populate_nullable_test_params_vector(
                 .ok());
     QueryCondition qc;
     REQUIRE(qc1.combine(qc2, QueryConditionCombinationOp::OR, &qc).ok());
-    std::vector<uint8_t> expected_bitmap = {0, 1, 0, 1, 0, 1, 0, 1, 0, 1};
-    std::vector<ResultCellSlab> expected_slabs = {{result_tile, 1, 1},
-                                                  {result_tile, 3, 1},
-                                                  {result_tile, 5, 1},
-                                                  {result_tile, 7, 1},
-                                                  {result_tile, 9, 1}};
+
     TestParams tp(
-        std::move(qc), std::move(expected_bitmap), std::move(expected_slabs));
+        result_tile,
+        std::move(qc),
+        {0, 1, 0, 1, 0, 1, 0, 1, 0, 1},
+        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0});
     tp_vec.push_back(tp);
   }
 }
@@ -4279,59 +4774,63 @@ TEST_CASE(
   const Datatype type = Datatype::FLOAT32;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(true).ok());
-  REQUIRE(array_schema.add_attribute(tdb::make_shared<Attribute>(HERE(), &attr))
+  attr.set_nullable(true);
+  REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{
+      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
   REQUIRE(
-      domain
-          .add_dimension(tdb::make_shared<tiledb::sm::Dimension>(HERE(), &dim))
-          .ok());
-  REQUIRE(
-      array_schema.set_domain(make_shared<tiledb::sm::Domain>(HERE(), &domain))
+      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
           .ok());
 
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, false, true);
+  ResultTile::TileSizes tile_sizes(
+      cells * sizeof(float),
+      0,
+      std::nullopt,
+      std::nullopt,
+      cells * constants::cell_validity_size,
+      0);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
-  // Initialize and populate the data tile.
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  cells * sizeof(float),
-                  sizeof(float),
-                  0)
-              .ok());
-
+  // Populate the data tile.
   std::vector<float> values = {
-      3.4, 1.3, 2.2, 4.5, 2.8, 2.1, 1.7, 3.3, 1.9, 4.2};
-  REQUIRE(tile->write(values.data(), 0, cells * sizeof(float)).ok());
+      3.4f, 1.3f, 2.2f, 4.5f, 2.8f, 2.1f, 1.7f, 3.3f, 1.9f, 4.2f};
+  REQUIRE_NOTHROW(tile->write(values.data(), 0, cells * sizeof(float)));
 
   Tile* const tile_validity = &tile_tuple->validity_tile();
-  REQUIRE(tile_validity
-              ->init_unfiltered(
-                  constants::format_version,
-                  constants::cell_validity_type,
-                  10 * constants::cell_validity_size,
-                  constants::cell_validity_size,
-                  0)
-              .ok());
-
   std::vector<uint8_t> validity(cells);
   for (uint64_t i = 0; i < cells; ++i) {
     validity[i] = i % 2;
   }
-  REQUIRE(
-      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+  REQUIRE_NOTHROW(
+      tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
 
   std::vector<TestParams> tp_vec;
   populate_nullable_test_params_vector(field_name, &result_tile, tp_vec);
@@ -4361,7 +4860,7 @@ TEST_CASE(
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
-  const Datatype type = Datatype::STRING_ASCII;
+  const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
   bool var_size = true;
   bool nullable = GENERATE(true, false);
   bool null_cmp = GENERATE(true, false);
@@ -4371,44 +4870,60 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  ArraySchema array_schema;
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
   Attribute attr(field_name, type);
-  REQUIRE(attr.set_nullable(nullable).ok());
-  REQUIRE(attr.set_cell_val_num(var_size ? constants::var_num : 2).ok());
+  attr.set_nullable(nullable);
+  attr.set_cell_val_num(var_size ? constants::var_num : 2);
 
   if (!nullable) {
-    REQUIRE(attr.set_fill_value(fill_value, 2 * sizeof(char)).ok());
+    attr.set_fill_value(fill_value, 2 * sizeof(char));
   }
 
   REQUIRE(
-      array_schema.add_attribute(make_shared<Attribute>(HERE(), &attr)).ok());
+      array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  Dimension dim("dim1", Datatype::UINT32);
+  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
-  REQUIRE(dim.set_domain(range).ok());
-  REQUIRE(domain.add_dimension(make_shared<Dimension>(HERE(), &dim)).ok());
-  REQUIRE(array_schema.set_domain(make_shared<Domain>(HERE(), &domain)).ok());
+  REQUIRE(dim->set_domain(range).ok());
+  uint32_t tile_extent = 10;
+  REQUIRE(dim->set_tile_extent(&tile_extent).ok());
+  REQUIRE(domain.add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_schema,
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, array_schema);
-  result_tile.init_attr_tile(field_name, var_size, nullable);
+  ResultTile::TileSizes tile_sizes(
+      var_size ? (cells + 1) * constants::cell_var_offset_size :
+                 2 * (cells - 2) * sizeof(char),
+      0,
+      var_size ? std::optional(2 * (cells - 2) * sizeof(char)) : std::nullopt,
+      var_size ? std::optional(0) : std::nullopt,
+      nullable ? std::optional(cells * constants::cell_validity_size) :
+                 std::nullopt,
+      nullable ? std::optional(0) : std::nullopt);
+  ResultTile result_tile(0, 0, frag_md);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  result_tile.init_attr_tile(
+      constants::format_version,
+      *array_schema,
+      field_name,
+      tile_sizes,
+      tile_data);
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
-  var_size = array_schema.attribute(field_name)->var_size();
-  nullable = array_schema.attribute(field_name)->nullable();
+  var_size = array_schema->attribute(field_name)->var_size();
+  nullable = array_schema->attribute(field_name)->nullable();
   Tile* const tile =
       var_size ? &tile_tuple->var_tile() : &tile_tuple->fixed_tile();
-
-  REQUIRE(tile->init_unfiltered(
-                  constants::format_version,
-                  type,
-                  2 * (cells - 2) * sizeof(char),
-                  2 * sizeof(char),
-                  0)
-              .ok());
-
   std::vector<char> values(2 * (cells - 2));
   // Empty strings are at idx 8 and 9
   for (uint64_t i = 0; i < (cells - 2); ++i) {
@@ -4416,20 +4931,12 @@ TEST_CASE(
     values[(i * 2) + 1] = 'a' + static_cast<char>(i);
   }
 
-  REQUIRE(tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)).ok());
+  REQUIRE_NOTHROW(
+      tile->write(values.data(), 0, 2 * (cells - 2) * sizeof(char)));
 
   if (var_size) {
     Tile* const tile_offsets = &tile_tuple->fixed_tile();
-    REQUIRE(tile_offsets
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_var_offset_type,
-                    10 * constants::cell_var_offset_size,
-                    constants::cell_var_offset_size,
-                    0)
-                .ok());
-
-    std::vector<uint64_t> offsets(cells);
+    std::vector<uint64_t> offsets(cells + 1);
     uint64_t offset = 0;
     for (uint64_t i = 0; i < cells - 2; ++i) {
       offsets[i] = offset;
@@ -4437,27 +4944,19 @@ TEST_CASE(
     }
     offsets[cells - 2] = offset;
     offsets[cells - 1] = offset;
-    REQUIRE(
-        tile_offsets->write(offsets.data(), 0, cells * sizeof(uint64_t)).ok());
+    offsets[cells] = offset;
+    REQUIRE_NOTHROW(
+        tile_offsets->write(offsets.data(), 0, (cells + 1) * sizeof(uint64_t)));
   }
 
   if (nullable) {
     Tile* const tile_validity = &tile_tuple->validity_tile();
-    REQUIRE(tile_validity
-                ->init_unfiltered(
-                    constants::format_version,
-                    constants::cell_validity_type,
-                    10 * constants::cell_validity_size,
-                    constants::cell_validity_size,
-                    0)
-                .ok());
-
     std::vector<uint8_t> validity(cells);
     for (uint64_t i = 0; i < cells; ++i) {
       validity[i] = i % 2;
     }
-    REQUIRE(
-        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)).ok());
+    REQUIRE_NOTHROW(
+        tile_validity->write(validity.data(), 0, cells * sizeof(uint8_t)));
   }
 
   // Empty string or null string as condition value
@@ -4467,7 +4966,7 @@ TEST_CASE(
   REQUIRE(query_condition.init(std::string(field_name), cmp_value, 0, op).ok());
 
   // Run Check for query_condition
-  REQUIRE(query_condition.check(array_schema).ok());
+  REQUIRE(query_condition.check(*array_schema).ok());
 
   // Build expected indexes of cells that meet the query condition
   // criteria.
@@ -4504,7 +5003,7 @@ TEST_CASE(
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
   REQUIRE(query_condition
-              .apply_sparse<uint8_t>(array_schema, result_tile, result_bitmap)
+              .apply_sparse<uint8_t>(*array_schema, result_tile, result_bitmap)
               .ok());
 
   // Verify the result bitmap contain the expected cells.

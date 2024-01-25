@@ -57,6 +57,23 @@ struct Array {
 
   arrayMetadata @7 :ArrayMetadata;
   # array metadata
+
+  arrayDirectory @8 :ArrayDirectory;
+  # array directory (for reads)
+
+  fragmentMetadataAll @9 :List(FragmentMetadata);
+  # metadata for all fragments (for reads)
+
+  openedAtEndTimestamp @10 :UInt64;
+  # The ending timestamp that the array was last opened at
+}
+
+struct ArrayOpen {
+  config @0 :Config;
+  # Config
+
+  queryType @1 :Text;
+  # Query type to open the array for
 }
 
 struct ArraySchema {
@@ -103,6 +120,48 @@ struct ArraySchema {
 
     timestampRange @13 :List(UInt64);
     # Timestamp range of array schema
+
+    dimensionLabels @14 :List(DimensionLabel);
+    # Dimension labels of the array
+
+    enumerations @15: List(Enumeration);
+    # Enumerations of the array
+
+    enumerationPathMap @16: List(KV);
+    # Enumeration name to path map
+}
+
+struct DimensionLabel {
+# A label of a dimension
+    dimensionId @0 :UInt32;
+    # Index of the dimension the label is attached to
+
+    name @1 :Text;
+    # Name of the dimension label
+
+    uri @2 :Text;
+    # URI of the existing dimension label
+
+    attributeName @3 :Text;
+    # Name of the attribute that stores the label data
+
+    order @4 :Text;
+    # Order of the dimension label
+
+    type @5 :Text;
+    # Datatype of label data
+
+    cellValNum @6 :UInt32;
+    # Number of cells per label value
+
+    external @7 :Bool;
+    # Is label stored in array's label directory or externally
+
+    relative @8 :Bool;
+    # Is URI relative or absolute to array directory
+
+    schema @9 :ArraySchema;
+    # Label schema
 }
 
 struct ArraySchemaEvolution {
@@ -111,10 +170,19 @@ struct ArraySchemaEvolution {
     # Attribute names to be dropped
 
     attributesToAdd @1 :List(Attribute);
-    # Attributes to be added    
+    # Attributes to be added
 
     timestampRange @2 :List(UInt64);
     # Timestamp range of array schema
+
+    enumerationsToAdd @3 :List(Enumeration);
+    # Enumerations to be added
+
+    enumerationsToDrop @4 :List(Text);
+    # Enumeration names to be dropped
+
+    enumerationsToExtend @5 :List(Enumeration);
+    # Enumerations to be extended.
 }
 
 struct Attribute {
@@ -139,6 +207,36 @@ struct Attribute {
 
     fillValueValidity @6 :Bool;
     # Default validity fill value for nullable attributes
+
+    order @7 :Text;
+    # The prescribed order of the data stored in the attribute
+
+    enumerationName @8 :Text;
+    # Name of the enumeration for this attribute, if it has one
+}
+
+struct Enumeration {
+# Enumeration of values for use by Attributes
+    name @0 :Text;
+    # Enumeration name
+
+    pathName @1 :Text;
+    # Enumeration path name
+
+    type @2 :Text;
+    # Type of the Enumeration values
+
+    cellValNum @3 :UInt32;
+    # Enumeration number of values per cell
+
+    ordered @4 :Bool;
+    # Whether the enumeration is considered orderable
+
+    data @5 :Data;
+    # The contents of the enumeration values
+
+    offsets @6 :Data;
+    # The contents of the enumeration offsets buffer
 }
 
 struct AttributeBufferHeader {
@@ -225,6 +323,19 @@ struct FloatScaleConfig {
   byteWidth @2 :UInt64;
 }
 
+struct WebpConfig {
+  quality @0 :Float32;
+  # WebP lossless quality; Valid range from 0.0f-1.0f
+  format @1 :UInt8;
+  # WebP colorspace format.
+  lossless @2 :Bool;
+  # True if compression is lossless, false if lossy.
+  extentX @3: UInt16;
+  # Tile extent along X axis.
+  extentY @4: UInt16;
+  # Tile extent along Y axis.
+}
+
 struct Filter {
   type @0 :Text;
   # filter type
@@ -246,6 +357,8 @@ struct Filter {
   # filter data
 
   floatScaleConfig @13 :FloatScaleConfig;
+
+  webpConfig @14 :WebpConfig;
 }
 
 struct FilterPipeline {
@@ -302,6 +415,20 @@ struct Stats {
   # counters
 }
 
+struct UnorderedWriterState {
+  isCoordsPass @0 :Bool;
+  # Coordinate pass boolean for partial attribute write
+
+  cellPos @1 : List(UInt64);
+  # Cell positions for partial attribute writes
+
+  coordDups @2 : List(UInt64);
+  # Coordinate duplicates for partial attribute writes
+
+  fragMeta @3 : FragmentMetadata;
+  # Fragment metadata for partial attribute writes
+}
+
 struct Writer {
   # Write struct
   checkCoordDups @0 :Bool;
@@ -318,6 +445,12 @@ struct Writer {
 
   stats @5 :Stats;
   # Stats object
+
+  globalWriteStateV1 @6 :GlobalWriteState;
+  # All the state necessary for global writes to work in TileDB Cloud
+
+  unorderedWriterState @7 :UnorderedWriterState;
+  # Unordered writer state
 }
 
 struct SubarrayRanges {
@@ -339,6 +472,19 @@ struct SubarrayRanges {
   # The list of start sizes per range
 }
 
+struct LabelSubarrayRanges {
+  # A set of label 1D ranges for a subarray
+
+  dimensionId @0 :UInt32;
+  # Index of the dimension the label is attached to
+
+  name @1 :Text;
+  # Name of the dimension label
+
+  ranges @2 :SubarrayRanges;
+  # A set of 1D ranges for a subarray
+}
+
 struct Subarray {
   # A Subarray
 
@@ -353,6 +499,15 @@ struct Subarray {
 
   relevantFragments @3 :List(UInt32);
   # Relevant fragments
+
+  labelRanges @4 :List(LabelSubarrayRanges);
+  # List of 1D ranges for dimensions that have labels
+
+  attributeRanges @5 :Map(Text, SubarrayRanges);
+  # List of 1D ranges for each attribute
+
+  coalesceRanges @6 :Bool = true;
+  # True if Subarray should coalesce overlapping ranges.
 }
 
 struct SubarrayPartitioner {
@@ -422,6 +577,9 @@ struct ConditionClause {
 
   op @2 :Text;
   # The comparison operation
+
+  useEnumeration @3 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
 }
 
 struct ASTNode {
@@ -434,17 +592,23 @@ struct ASTNode {
   # The name of the field this clause applies to
 
   value @2 :Data;
-  # The comparison value
+  # The comparison value or set membership data
 
   op @3 :Text;
   # The comparison operation
 
   # Expression node fields
   children @4 :List(ASTNode);
-  # A list of children 
+  # A list of children
 
   combinationOp @5 :Text;
   # The combination logical operator
+
+  useEnumeration @6 :Bool;
+  # Whether or not to use the associated attribute's Enumeration
+
+  offsets @7 :Data;
+  # The offsets for set membership data
 }
 
 struct Condition {
@@ -476,6 +640,19 @@ struct QueryReader {
   # The query condition
 
   stats @4 :Stats;
+  # Stats object
+
+  dimLabelIncreasing @5 :Bool;
+  # True if dim label query is using increasing order, false if decreasing order.
+}
+
+struct Delete {
+  # Delete struct
+
+  condition @0 :Condition;
+  # The delete condition
+
+  stats @1 :Stats;
   # Stats object
 }
 
@@ -586,6 +763,23 @@ struct Query {
 
     denseReader @16 :QueryReader;
     # denseReader contains data needed for continuation of incomplete dense reads with dense reader
+
+    delete @17 :Delete;
+    # delete contains QueryCondition representing deletion expression
+
+    writtenFragmentInfo @18 :List(WrittenFragmentInfo);
+    # Needed in global order writes when WrittenFragmentInfo gets updated
+    # during finalize, but doesn't end up back on the client Query object
+
+    writtenBuffers @19 : List(Text);
+    # written buffers for partial attribute writes
+
+    orderedDimLabelReader @20 :QueryReader;
+    # orderedDimLabelReader contains data needed for dense dimension label reads.
+
+    channels @21 :List(QueryChannel);
+    # channels contains the list of channels (streams of data) within a read
+    # query. It always contains at least one element, the default channel.
 }
 
 struct NonEmptyDomain {
@@ -642,15 +836,76 @@ struct ArrayMetadata {
   # list of metadata values
 }
 
+struct ArrayDirectory {
+  # object representing an array directory
+
+  struct TimestampedURI {
+    uri @0 :Text;
+    timestampStart @1 :UInt64;
+    timestampEnd @2 :UInt64;
+  }
+
+  struct DeleteAndUpdateTileLocation {
+    uri @0 :Text;
+    conditionMarker @1 :Text;
+    offset @2 :UInt64;
+  }
+
+  unfilteredFragmentUris @0 :List(Text);
+  # fragment URIs
+
+  consolidatedCommitUris @1 :List(Text);
+  # consolidated commit URI set
+
+  arraySchemaUris @2 :List(Text);
+  # URIs of all the array schema files
+
+  latestArraySchemaUri @3 :Text;
+  # latest array schema URI.
+
+  arrayMetaUrisToVacuum @4 :List(Text);
+  # the array metadata files to vacuum
+
+  arrayMetaVacUrisToVacuum @5 :List(Text);
+  # the array metadata vac files to vacuum
+
+  commitUrisToConsolidate @6 :List(Text);
+  # the commit files to consolidate
+
+  commitUrisToVacuum @7 :List(Text);
+  # the commit files to vacuum
+
+  consolidatedCommitUrisToVacuum @8 :List(Text);
+  # the consolidated commit files to vacuum
+
+  arrayMetaUris @9 :List(TimestampedURI);
+  # the timestamped filtered array metadata URIs, after removing
+  # the ones that need to be vacuumed and those that do not fall within
+  # [timestamp_start, timestamp_end]
+
+  fragmentMetaUris @10 :List(Text);
+  # the URIs of the consolidated fragment metadata files
+
+  deleteAndUpdateTileLocation @11 :List(DeleteAndUpdateTileLocation);
+  # the location of delete tiles
+
+  timestampStart @12 :UInt64;
+   # Only the files created after timestamp_start are listed
+
+  timestampEnd @13 :UInt64;
+  # Only the files created before timestamp_end are listed
+}
+
+
 struct EstimatedResultSize {
   # object representing estimated
   struct ResultSize {
-    # Result size 
+    # Result size
     sizeFixed @0 :Float64;
     sizeVar @1 :Float64;
     sizeValidity @2 :Float64;
   }
-  
+
   struct MemorySize {
     # Memory Size
     sizeFixed @0 :UInt64;
@@ -660,6 +915,36 @@ struct EstimatedResultSize {
 
   resultSizes @0 :Map(Text, ResultSize);
   memorySizes @1 :Map(Text, MemorySize);
+}
+
+struct FragmentInfoRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct SingleFragmentInfo {
+  arraySchemaName @0 :Text;
+  # array schema name
+
+  meta @1 :FragmentMetadata;
+  # fragment metadata
+
+  fragmentSize @2 : UInt64;
+  # the size of the entire fragment directory
+}
+
+struct FragmentInfo {
+  arraySchemaLatest @0 :ArraySchema;
+  # latest array schema
+
+  arraySchemasAll @1 :Map(Text, ArraySchema);
+  # map of all array schemas
+
+  fragmentInfo @2 :List(SingleFragmentInfo);
+  # information about fragments in the array
+
+  toVacuum @3 :List(Text);
+  # the URIs of the fragments to vacuum
 }
 
 struct GroupMetadata {
@@ -731,4 +1016,313 @@ struct GroupCreate {
   # Config
 
   groupDetails @1 :GroupCreateDetails $Json.name("group_details");
+}
+
+struct GlobalWriteState {
+  cellsWritten @0 :MapUInt64;
+  # number of cells written for each attribute/dimension
+
+  fragMeta @1 :FragmentMetadata;
+  # metadata of the global write fragment
+
+  lastCellCoords @2 :SingleCoord;
+  # the last cell written;
+
+  lastHilbertValue @3 :UInt64;
+  # last hilbert value written
+
+  multiPartUploadStates@4 :Map(Text, MultiPartUploadState);
+  # A mapping of URIs to multipart upload states
+  # Each file involved in a remote global order write (attr files,
+  # offsets files, etc) is partially written as a multipart upload part
+  # with each partial global order write operation (submit,
+  # submit_and_finalize). This mapping makes the multipart upload info
+  # available between partile global order write operations on the cloud side.
+}
+
+struct SingleCoord {
+  coords @0 :List(List(UInt8));
+  # coordinate data per dimension
+
+  sizes @1 :List(UInt64);
+  # sizes of data per dimension
+
+  singleOffset @2 :List(UInt64);
+  # offsets buffer for a var sized  attribute
+}
+
+struct FragmentMetadata {
+  struct GenericTileOffsets {
+      rtree @0 :UInt64;
+      # RTree serialized as a blob
+      tileOffsets @1 :List(UInt64);
+      # tile offsets
+      tileVarOffsets @2 :List(UInt64);
+      # variable tile offsets
+      tileVarSizes @3 :List(UInt64);
+      # sizes of the uncompressed variable tiles offsets
+      tileValidityOffsets @4 :List(UInt64);
+      # tile validity offsets
+      tileMinOffsets @5 :List(UInt64);
+      # min tile offsets
+      tileMaxOffsets @6 :List(UInt64);
+      # max tile offsets
+      tileSumOffsets @7 :List(UInt64);
+      # tile sum offsets
+      tileNullCountOffsets @8 :List(UInt64);
+      # null count offsets
+      fragmentMinMaxSumNullCountOffset @9 :UInt64;
+      # fragment min/max/sum/nullcount offsets
+      processedConditionsOffsets @10 :UInt64;
+      # processed conditions offsets
+  }
+
+  fileSizes @0 :List(UInt64);
+  # The size of each attribute file
+
+  fileVarSizes @1 :List(UInt64);
+  # The size of each var attribute file
+
+  fileValiditySizes @2 :List(UInt64);
+  # The size of each validity attribute file
+
+  fragmentUri @3 :Text;
+  # The uri of the fragment this metadata belongs to
+
+  hasTimestamps @4 :Bool;
+  # True if the fragment has timestamps
+
+  hasDeleteMeta @5 :Bool;
+  # True if the fragment has delete metadata
+
+  sparseTileNum @6 :UInt64;
+  # The number of sparse tiles
+
+  tileIndexBase@7 :UInt64;
+  # Used to track the tile index base between global order writes
+
+  tileOffsets @8 :List(List(UInt64));
+  # Tile offsets in their attribute files
+
+  tileVarOffsets @9 :List(List(UInt64));
+  # Variable tile offsets in their attribute files
+
+  tileVarSizes @10 :List(List(UInt64));
+  # The sizes of the uncompressed variable tiles
+
+  tileValidityOffsets @11 :List(List(UInt64));
+  # Validity tile offests in their attribute files
+
+  tileMinBuffer @12 :List(List(UInt8));
+  # tile min buffers
+
+  tileMinVarBuffer @13 :List(List(UInt8));
+  # tile min buffers for var length data
+
+  tileMaxBuffer @14 :List(List(UInt8));
+  # tile max buffers
+
+  tileMaxVarBuffer @15 :List(List(UInt8));
+  # tile max buffers for var length data
+
+  tileSums @16 :List(List(UInt8));
+  # tile sum values
+
+  tileNullCounts @17 :List(List(UInt64));
+  # tile null count values
+
+  fragmentMins @18 :List(List(UInt8));
+  # fragment min values
+
+  fragmentMaxs @19 :List(List(UInt8));
+  # fragment max values
+
+  fragmentSums @20 :List(UInt64);
+  # fragment sum values
+
+  fragmentNullCounts @21 :List(UInt64);
+  # fragment null count values
+
+  version @22 :UInt32;
+  # the format version of this metadata
+
+  timestampRange @23 :List(UInt64);
+  # A pair of timestamps for fragment
+
+  lastTileCellNum @24 :UInt64;
+  # The number of cells in the last tile
+
+  nonEmptyDomain @25 :NonEmptyDomainList;
+  # The non empty domain of the fragment
+
+  rtree @26 :Data;
+  # The RTree for the MBRs serialized as a blob
+
+  hasConsolidatedFooter @27 :Bool;
+  # if the fragment metadata footer appears in a consolidated file
+
+  gtOffsets @28 :GenericTileOffsets;
+  # the start offsets of the generic tiles stored in the metadata file
+}
+
+struct MultiPartUploadState {
+  partNumber@0 :UInt64;
+  # The index of the next part in a multipart upload process
+
+  uploadId@1 :Text;
+  # S3 specific ID identifying a multipart upload process for a file
+
+  status@2 :Text;
+  # Status field used to signal an error in a multipart upload process
+
+  completedParts@3 :List(CompletedPart);
+  # A list of parts that are already uploaded
+
+  bufferedChunks@4 :List(BufferedChunk);
+  # S3 specific field. A partial remote global order write might not be
+  # result in a direct multipart part upload, s3 does not permit parts to be
+  # smaller than 5mb (except the last one). We buffer directly on S3 using
+  # intermediate files until we can deliver a big enough multipart part.
+  # This list helps us keep track of these intermediate buffering files.
+}
+struct CompletedPart {
+  eTag@0 :Text;
+  # S3 specific hash for the uploaded part
+
+  partNumber@1 :UInt64;
+  # The index of the uploaded part
+}
+
+struct WrittenFragmentInfo {
+  uri @0 :Text;
+  timestampRange @1 :List(UInt64);
+}
+
+struct BufferedChunk {
+  uri@0 :Text;
+  # path to intermediate chunk which buffers
+  # a <5mb remote global order write operation
+
+  size@1 :UInt64;
+  # the size in bytes of the intermediate chunk
+}
+
+struct ArrayDeleteFragmentsListRequest {
+  config @0 :Config;
+  # Config
+
+  entries @1 :List(Text);
+  # Fragment list to delete
+}
+
+struct ArrayDeleteFragmentsTimestampsRequest {
+  config @0 :Config;
+  # Config
+
+  startTimestamp @1 :UInt64;
+  # Start timestamp for the delete
+
+  endTimestamp @2 :UInt64;
+  # End timestamp for the delete
+}
+
+struct ArrayConsolidationRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct ArrayVacuumRequest {
+  config @0 :Config;
+  # Config
+}
+
+struct LoadEnumerationsRequest {
+  config @0 :Config;
+  # Config
+
+  enumerations @1 :List(Text);
+  # Enumeration names to load
+}
+
+struct LoadEnumerationsResponse {
+  enumerations @0 :List(Enumeration);
+  # The loaded enumerations
+}
+
+struct LoadArraySchemaRequest {
+  config @0 :Config;
+  # Config
+
+  includeEnumerations @1 :Bool;
+  # When true, include all enumeration data in the returned ArraySchema
+}
+
+struct LoadArraySchemaResponse {
+  schema @0 :ArraySchema;
+  # The loaded ArraySchema
+}
+
+struct QueryPlanRequest {
+  config @0 :Config;
+  # Config
+
+  query @1 :Query;
+  # the query for which we request the plan
+}
+
+struct QueryPlanResponse {
+  queryLayout @0 :Text;
+  # query layout
+
+  strategyName @1 :Text;
+  # name of strategy used by the query
+
+  arrayType @2 :Text;
+  # type of array
+
+  attributeNames @3 :List(Text);
+  # names of attributes in the query
+
+  dimensionNames @4 :List(Text);
+  # names of dimensions in the query
+}
+
+struct ConsolidationPlanRequest {
+  config @0 :Config;
+  # Config
+
+  fragmentSize @1 :UInt64;
+  # Maximum fragment size
+}
+
+struct ConsolidationPlanResponse {
+  fragmentUrisPerNode @0 :List(List(Text));
+  # The uris for each node of the consolidation plan
+}
+
+struct QueryChannel {
+  # structure representing a query channel, that is a stream of data within
+  # a TileDB query. Such channels can be generated for the purpose of avoiding
+  # processing result items multiple times in more complex queries such as e.g.
+  # grouping queries.
+
+  default @0 :Bool;
+  # True if a channel is the default query channel
+
+  aggregates @1 :List(Aggregate);
+  # a list of the aggregate operations applied on this channel
+}
+
+struct Aggregate {
+  # structure representing a query aggregate operation
+
+  outputFieldName @0 :Text;
+  # name of the result query buffers
+
+  inputFieldName @1 :Text;
+  # name of the input field the aggregate is applied on
+
+  name @2 :Text;
+  # the name of aggregate, e.g. COUNT, MEAN, SUM used for constructing the
+  # correct object during deserialization
 }

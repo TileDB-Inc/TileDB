@@ -33,6 +33,7 @@
 #define TILEDB_QUERY_DOMAIN_BUFFER_H
 
 #include <new>
+
 #include "../query_buffer.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -147,12 +148,57 @@ class SingleCoord {
   }
 
   /**
+   * Construct a SingleCoord object from deserialized data.
+   *
+   * @param schema The array schema
+   * @param coords Deserialized coordinates vector
+   * @param sizes Deserialized sizes vector
+   * @param single_offset Deserialized offset vector
+   */
+  SingleCoord(
+      const ArraySchema& schema,
+      std::vector<std::vector<uint8_t>> coords,
+      std::vector<uint64_t> sizes,
+      std::vector<uint64_t> single_offset)
+      : coords_(schema.dim_num())
+      , qb_(schema.dim_num())
+      , sizes_(schema.dim_num() + 1)
+      , single_offset_(1) {
+    sizes_[schema.dim_num()] = sizeof(uint64_t);
+    single_offset_ = single_offset;
+    for (unsigned d = 0; d < schema.dim_num(); ++d) {
+      bool var_size = schema.dimension_ptr(d)->var_size();
+      sizes_[d] = sizes[d];
+      coords_[d].resize(sizes[d]);
+      memcpy(coords_[d].data(), coords[d].data(), sizes[d]);
+
+      if (var_size) {
+        qb_[d].set_offsets_buffer(
+            single_offset_.data(), sizes_.data() + schema.dim_num());
+        qb_[d].set_data_var_buffer(coords_[d].data(), sizes_.data() + d);
+      } else {
+        qb_[d].set_data_buffer(coords_[d].data(), sizes_.data() + d);
+      }
+    }
+  }
+
+  /**
    * Get the QueryBuffer object for a specific dimension.
    *
    * @param d Dimension index.
    */
   inline QueryBuffer* get_qb(const unsigned d) {
     return &qb_[d];
+  }
+
+  inline const std::vector<std::vector<uint8_t>>& get_coords() const {
+    return coords_;
+  }
+  inline const std::vector<uint64_t>& get_sizes() const {
+    return sizes_;
+  }
+  inline const std::vector<uint64_t>& get_single_offset() const {
+    return single_offset_;
   }
 
  private:
@@ -221,6 +267,23 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
   /**
    * Constructor
    *
+   * @param domain the domain of an open array
+   * @param buffers a buffer map for each dimension of the domain
+   */
+  DomainBuffersView(
+      const Domain& domain,
+      const std::unordered_map<std::string, QueryBuffer>& buffers)
+      : qb_(domain.dim_num()) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      const auto& name{domain.dimension_ptr(i)->name()};
+      qb_[i] = &buffers.at(name);
+    }
+  }
+
+  /**
+   * Constructor
+   *
    * TODO: Change argument from `ArraySchema` to `Domain`. The current type is
    * the result of code refactoring.
    *
@@ -232,6 +295,20 @@ class DomainBuffersView : public detail::DomainBuffersTypes {
     auto n_dimensions{schema.dim_num()};
     for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
       qb_[i] = coord.get_qb(i);
+    }
+  }
+
+  /**
+   * Constructor
+   *
+   * @param domain the domain of an open array
+   * @param buffers a buffer vector for each dimension of the domain
+   */
+  DomainBuffersView(const Domain& domain, std::vector<QueryBuffer>& qb_vector)
+      : qb_(domain.dim_num()) {
+    auto n_dimensions{domain.dim_num()};
+    for (decltype(n_dimensions) i = 0; i < n_dimensions; ++i) {
+      qb_[i] = &qb_vector[i];
     }
   }
 

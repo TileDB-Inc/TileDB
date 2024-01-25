@@ -46,23 +46,16 @@ namespace sm {
 /* ****************************** */
 
 StrategyBase::StrategyBase(
-    stats::Stats* stats,
-    shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout)
+    stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : stats_(stats)
     , logger_(logger)
-    , array_(array)
-    , array_schema_(array->array_schema_latest())
-    , config_(config)
-    , buffers_(buffers)
-    , layout_(layout)
-    , storage_manager_(storage_manager)
-    , subarray_(subarray)
+    , array_(params.array())
+    , array_schema_(params.array()->array_schema_latest())
+    , config_(params.config())
+    , buffers_(params.buffers())
+    , layout_(params.layout())
+    , storage_manager_(params.storage_manager())
+    , subarray_(params.subarray())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
@@ -103,19 +96,6 @@ void StrategyBase::get_dim_attr_stats() const {
       }
     }
   }
-}
-
-tuple<Status, optional<std::string>> StrategyBase::new_fragment_name(
-    uint64_t timestamp, uint32_t format_version) const {
-  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
-
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-  std::stringstream ss;
-  ss << "/__" << timestamp << "_" << timestamp << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
 }
 
 std::string StrategyBase::offsets_mode() const {

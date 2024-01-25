@@ -61,6 +61,9 @@ void LOG_ERROR(const std::string& msg);
 /** Logs a status. */
 Status LOG_STATUS(const Status& st);
 
+/** Logs a status without returning it. */
+void LOG_STATUS_NO_RETURN_VALUE(const Status& st);
+
 /** Logs a status exception. */
 void LOG_STATUS(const StatusException& st);
 

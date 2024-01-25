@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/coords_workaround.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
@@ -253,7 +254,7 @@ TEST_CASE(
   Query query(ctx, array, TILEDB_READ);
   CHECK_THROWS(query.set_subarray(subarray));
   std::vector<int32_t> buff = {1, 2, 4};
-  CHECK_THROWS(query.set_data_buffer(TILEDB_COORDS, buff));
+  CHECK_THROWS(query.set_data_buffer(tiledb::test::TILEDB_COORDS, buff));
 
   // Close array
   array.close();
@@ -293,8 +294,9 @@ TEST_CASE(
   }
 
   SECTION("int32 domain [min, max]") {
-    int32_t domain[2] = {std::numeric_limits<int32_t>::lowest(),
-                         std::numeric_limits<int32_t>::max()};
+    int32_t domain[2] = {
+        std::numeric_limits<int32_t>::lowest(),
+        std::numeric_limits<int32_t>::max()};
     const int32_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -323,8 +325,9 @@ TEST_CASE(
   }
 
   SECTION("int64 domain [min, max]") {
-    int64_t domain[2] = {std::numeric_limits<int64_t>::lowest(),
-                         std::numeric_limits<int64_t>::max()};
+    int64_t domain[2] = {
+        std::numeric_limits<int64_t>::lowest(),
+        std::numeric_limits<int64_t>::max()};
     const int64_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -339,8 +342,9 @@ TEST_CASE(
   }
 
   SECTION("uint32 domain [min, max]") {
-    uint32_t domain[2] = {std::numeric_limits<uint32_t>::lowest(),
-                          std::numeric_limits<uint32_t>::max()};
+    uint32_t domain[2] = {
+        std::numeric_limits<uint32_t>::lowest(),
+        std::numeric_limits<uint32_t>::max()};
     const uint32_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
@@ -355,309 +359,12 @@ TEST_CASE(
   }
 
   SECTION("uint64 domain [min, max]") {
-    uint64_t domain[2] = {std::numeric_limits<uint64_t>::lowest(),
-                          std::numeric_limits<uint64_t>::max()};
+    uint64_t domain[2] = {
+        std::numeric_limits<uint64_t>::lowest(),
+        std::numeric_limits<uint64_t>::max()};
     const uint64_t tile_extent = 5;
     domain[1] -= tile_extent;
     CHECK_NOTHROW(tiledb::Dimension::create(
         ctx, "d1", TILEDB_UINT64, domain, &tile_extent));
-  }
-}
-
-TEST_CASE(
-    "C++ API: SchemaEvolution, add and drop attributes",
-    "[cppapi][schema][evolution][add][drop]") {
-  using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
-
-  std::string array_uri = "test_schema_evolution_array";
-
-  Domain domain(ctx);
-  auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
-  auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-  CHECK_THROWS(id1.set_cell_val_num(4));
-  CHECK_NOTHROW(id1.set_cell_val_num(1));
-  domain.add_dimension(id1).add_dimension(id2);
-
-  auto a1 = Attribute::create<int>(ctx, "a1");
-  auto a2 = Attribute::create<int>(ctx, "a2");
-
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain);
-  schema.add_attribute(a1);
-  schema.add_attribute(a2);
-  schema.set_cell_order(TILEDB_ROW_MAJOR);
-  schema.set_tile_order(TILEDB_COL_MAJOR);
-
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
-
-  Array::create(array_uri, schema);
-
-  auto evolution = ArraySchemaEvolution(ctx);
-
-  // add a new attribute a3
-  auto a3 = Attribute::create<int>(ctx, "a3");
-  evolution.add_attribute(a3);
-
-  // drop attribute a1
-  evolution.drop_attribute("a1");
-
-  uint64_t now = tiledb_timestamp_now_ms();
-  now = now + 1;
-  evolution.set_timestamp_range({now, now});
-
-  // evolve array
-  evolution.array_evolve(array_uri);
-
-  // read schema
-  auto read_schema = Array::load_schema(ctx, array_uri);
-
-  auto attrs = read_schema.attributes();
-  CHECK(attrs.count("a1") == 0);
-  CHECK(attrs.count("a2") == 1);
-  CHECK(attrs.count("a3") == 1);
-
-  // Clean up
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
-  }
-}
-
-TEST_CASE(
-    "C++ API: SchemaEvolution, add attributes and read",
-    "[cppapi][schema][evolution][add]") {
-  using namespace tiledb;
-  Context ctx;
-  VFS vfs(ctx);
-
-  std::string array_uri = "test_schema_evolution_array_read";
-
-  // Create
-  {
-    Domain domain(ctx);
-    auto id1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, 10);
-    auto id2 = Dimension::create<int>(ctx, "d2", {{0, 100}}, 5);
-    domain.add_dimension(id1).add_dimension(id2);
-
-    auto a = Attribute::create<int>(ctx, "a");
-
-    ArraySchema schema(ctx, TILEDB_SPARSE);
-    schema.set_domain(domain);
-    schema.add_attribute(a);
-    schema.set_cell_order(TILEDB_ROW_MAJOR);
-    schema.set_tile_order(TILEDB_COL_MAJOR);
-
-    if (vfs.is_dir(array_uri)) {
-      vfs.remove_dir(array_uri);
-    }
-
-    Array::create(array_uri, schema);
-  }
-
-  // Write data
-  {
-    // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-    std::vector<int> d1_data = {1, 2, 2};
-    std::vector<int> d2_data = {1, 4, 3};
-    std::vector<int> data = {1, 2, 3};
-
-    // Open the array for writing and create the query.
-    Array array(ctx, array_uri, TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    query.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a", data)
-        .set_data_buffer("d1", d1_data)
-        .set_data_buffer("d2", d2_data);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  }
-
-  // Read
-  {
-    // Prepare the array for reading
-    Array array(ctx, array_uri, TILEDB_READ);
-
-    // Prepare the vector that will hold the result.
-    // We take an upper bound on the result size, as we do not
-    // know a priori how big it is (since the array is sparse)
-    std::vector<int> data(3);
-    std::vector<int> d1_data(3);
-    std::vector<int> d2_data(3);
-
-    // Prepare the query
-    Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", data)
-        .set_data_buffer("d1", d1_data)
-        .set_data_buffer("d2", d2_data);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Compare the results.
-    auto result_num = (int)query.result_buffer_elements()["a"].second;
-    CHECK(result_num == 3);
-    CHECK_THAT(data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2}));
-    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2}));
-    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4}));
-  }
-
-  // Evolve
-  {
-    uint64_t now = tiledb_timestamp_now_ms() + 1;
-    ArraySchemaEvolution schemaEvolution = ArraySchemaEvolution(ctx);
-    schemaEvolution.set_timestamp_range(std::make_pair(now, now));
-
-    // Add attribute b
-    Attribute b = Attribute::create<uint32_t>(ctx, "b");
-    uint32_t fill_value = 1;
-    b.set_fill_value(&fill_value, sizeof(fill_value));
-    schemaEvolution.add_attribute(b);
-
-    Attribute c = Attribute::create<uint32_t>(ctx, "c");
-    uint32_t fill_value_c = 2;
-    c.set_nullable(true);
-    c.set_fill_value(&fill_value_c, sizeof(fill_value_c), false);
-    schemaEvolution.add_attribute(c);
-
-    Attribute d = Attribute::create<std::string>(ctx, "d");
-    std::string fill_value_d = "test";
-    d.set_fill_value(fill_value_d.c_str(), fill_value_d.size());
-    schemaEvolution.add_attribute(d);
-
-    Attribute e = Attribute::create<std::string>(ctx, "e");
-    std::string fill_value_e = "n";
-    e.set_nullable(true);
-    e.set_fill_value(fill_value_e.c_str(), fill_value_e.size(), false);
-    schemaEvolution.add_attribute(e);
-
-    // evolve array
-    schemaEvolution.array_evolve(array_uri);
-
-    // read schema
-    auto read_schema = Array::load_schema(ctx, array_uri);
-
-    auto attrs = read_schema.attributes();
-    CHECK(attrs.count("a") == 1);
-    CHECK(attrs.count("b") == 1);
-    CHECK(attrs.count("c") == 1);
-    CHECK(attrs.count("d") == 1);
-    CHECK(attrs.count("e") == 1);
-  }
-
-  // Write again
-  {
-    // Write some simple data to cells (1, 1), (2, 4) and (2, 3).
-    std::vector<int> d1_data = {3};
-    std::vector<int> d2_data = {1};
-    std::vector<int> a_data = {4};
-    std::vector<uint32_t> b_data = {4};
-    std::vector<uint32_t> c_data = {40};
-    std::vector<uint8_t> c_validity = {1};
-    std::vector<char> d_data = {'d'};
-    std::vector<uint64_t> d_offsets = {0};
-    std::vector<char> e_data = {'e'};
-    std::vector<uint64_t> e_offsets = {0};
-    std::vector<uint8_t> e_validity = {1};
-
-    // Open the array for writing and create the query.
-    Array array(ctx, array_uri, TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    query.set_layout(TILEDB_UNORDERED)
-        .set_data_buffer("a", a_data)
-        .set_data_buffer("b", b_data)
-        .set_data_buffer("c", c_data)
-        .set_validity_buffer("c", c_validity)
-        .set_data_buffer("d", d_data)
-        .set_offsets_buffer("d", d_offsets)
-        .set_data_buffer("e", e_data)
-        .set_validity_buffer("e", e_validity)
-        .set_offsets_buffer("e", e_offsets)
-        .set_data_buffer("d1", d1_data)
-        .set_data_buffer("d2", d2_data);
-
-    // Perform the write and close the array.
-    query.submit();
-    array.close();
-  }
-
-  // Read Again
-  {
-    // Prepare the array for reading
-    Array array(ctx, array_uri, TILEDB_READ);
-
-    // Prepare the vector that will hold the result.
-    // We take an upper bound on the result size, as we do not
-    // know a priori how big it is (since the array is sparse)
-    std::vector<int> a_data(4);
-    std::vector<uint32_t> b_data(4);
-    std::vector<uint32_t> c_data(4);
-    std::vector<uint8_t> c_validity(4);
-    std::vector<char> d_data(13);
-    std::vector<uint64_t> d_offsets(4);
-    std::vector<char> e_data(4);
-    std::vector<uint8_t> e_validity(4);
-    std::vector<uint64_t> e_offsets(4);
-    std::vector<int> d1_data(4);
-    std::vector<int> d2_data(4);
-
-    // Prepare the query
-    Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
-        .set_layout(TILEDB_ROW_MAJOR)
-        .set_data_buffer("a", a_data)
-        .set_data_buffer("b", b_data)
-        .set_data_buffer("c", c_data)
-        .set_validity_buffer("c", c_validity)
-        .set_data_buffer("d", d_data)
-        .set_offsets_buffer("d", d_offsets)
-        .set_data_buffer("e", e_data)
-        .set_offsets_buffer("e", e_offsets)
-        .set_validity_buffer("e", e_validity)
-        .set_data_buffer("d1", d1_data)
-        .set_data_buffer("d2", d2_data);
-
-    // Submit the query and close the array.
-    query.submit();
-    array.close();
-
-    // Compare the results.
-    auto result_num = (int)query.result_buffer_elements()["a"].second;
-    CHECK(result_num == 4);
-    CHECK_THAT(a_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 2, 4}));
-    CHECK_THAT(
-        b_data, Catch::Matchers::Equals(std::vector<uint32_t>{1, 1, 1, 4}));
-    CHECK_THAT(
-        c_data, Catch::Matchers::Equals(std::vector<uint32_t>{2, 2, 2, 40}));
-    CHECK_THAT(
-        c_validity, Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
-    CHECK_THAT(
-        d_data,
-        Catch::Matchers::Equals(std::vector<char>{
-            't', 'e', 's', 't', 't', 'e', 's', 't', 't', 'e', 's', 't', 'd'}));
-    CHECK_THAT(
-        d_offsets, Catch::Matchers::Equals(std::vector<uint64_t>{0, 4, 8, 12}));
-    CHECK_THAT(
-        e_data, Catch::Matchers::Equals(std::vector<char>{'n', 'n', 'n', 'e'}));
-    CHECK_THAT(
-        e_offsets, Catch::Matchers::Equals(std::vector<uint64_t>{0, 1, 2, 3}));
-    CHECK_THAT(
-        e_validity, Catch::Matchers::Equals(std::vector<uint8_t>{0, 0, 0, 1}));
-    CHECK_THAT(d1_data, Catch::Matchers::Equals(std::vector<int>{1, 2, 2, 3}));
-    CHECK_THAT(d2_data, Catch::Matchers::Equals(std::vector<int>{1, 3, 4, 1}));
-  }
-
-  // Clean up
-  if (vfs.is_dir(array_uri)) {
-    vfs.remove_dir(array_uri);
   }
 }

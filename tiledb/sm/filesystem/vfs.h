@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+#include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -59,42 +61,259 @@
 
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
-#endif
+#endif  // HAVE_GCS
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
-#endif
+#endif  // HAVE_S3
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
+#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
-#endif
+#endif  // HAVE_AZURE
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+namespace filesystem {
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& message)
+      : StatusException("VFS", message) {
+  }
+};
+
+class BuiltWithout : public VFSException {
+ public:
+  explicit BuiltWithout(const std::string& filesystem)
+      : VFSException("TileDB was built without " + filesystem + "support") {
+  }
+};
+
+class UnsupportedOperation : public VFSException {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : VFSException(operation + " across filesystems is not supported yet") {
+  }
+};
+
+class UnsupportedURI : public VFSException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : VFSException("Unsupported URI scheme: " + uri) {
+  }
+};
+
+// Local filesystem is always enabled
+static constexpr bool local_enabled = true;
+
+#ifdef _WIN32
+static constexpr bool windows_enabled = true;
+static constexpr bool posix_enabled = false;
+#else
+static constexpr bool windows_enabled = false;
+static constexpr bool posix_enabled = true;
+#endif
+
+#ifdef HAVE_GCS
+static constexpr bool gcs_enabled = true;
+#else
+static constexpr bool gcs_enabled = false;
+#endif  // HAVE_GCS
+
+#ifdef HAVE_S3
+static constexpr bool s3_enabled = true;
+#else
+static constexpr bool s3_enabled = false;
+#endif  // HAVE_S3
+
+#ifdef HAVE_HDFS
+static constexpr bool hdfs_enabled = true;
+#else
+static constexpr bool hdfs_enabled = false;
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_AZURE
+static constexpr bool azure_enabled = true;
+#else
+static constexpr bool azure_enabled = false;
+#endif  // HAVE_AZURE
+}  // namespace filesystem
 
 class Tile;
 
 enum class Filesystem : uint8_t;
 enum class VFSMode : uint8_t;
 
+/** The VFS configuration parameters. */
+struct VFSParameters {
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  enum struct ReadLoggingMode {
+    DISABLED,
+    FRAGMENTS,
+    FRAGMENT_FILES,
+    ALL_FILES,
+    ALL_READS,
+    ALL_READS_ALWAYS
+  };
+
+  VFSParameters() = delete;
+
+  VFSParameters(const Config& config)
+      : min_parallel_size_(
+            config.get<uint64_t>("vfs.min_parallel_size").value())
+      , read_ahead_cache_size_(
+            config.get<uint64_t>("vfs.read_ahead_cache_size").value())
+      , read_ahead_size_(config.get<uint64_t>("vfs.read_ahead_size").value())
+      , read_logging_mode_(ReadLoggingMode::DISABLED) {
+    auto log_mode = config.get<std::string>("vfs.read_logging_mode").value();
+    if (log_mode == "") {
+      read_logging_mode_ = ReadLoggingMode::DISABLED;
+    } else if (log_mode == "fragments") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENTS;
+    } else if (log_mode == "fragment_files") {
+      read_logging_mode_ = ReadLoggingMode::FRAGMENT_FILES;
+    } else if (log_mode == "all_files") {
+      read_logging_mode_ = ReadLoggingMode::ALL_FILES;
+    } else if (log_mode == "all_reads") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS;
+    } else if (log_mode == "all_reads_always") {
+      read_logging_mode_ = ReadLoggingMode::ALL_READS_ALWAYS;
+    } else {
+      std::stringstream ss;
+      ss << "Invalid read logging mode '" << log_mode << "'. "
+         << "Use one of 'fragments', 'fragment_files', 'all_files', "
+         << "'all_reads', or 'all_reads_always'. Read logging is currently "
+         << "disabled.";
+      LOG_WARN(ss.str());
+    }
+  };
+
+  ~VFSParameters() = default;
+
+  /** The minimum number of bytes in a parallel operation. */
+  uint64_t min_parallel_size_;
+
+  /** The byte size of the read-ahead cache. */
+  uint64_t read_ahead_cache_size_;
+
+  /** The byte size to read-ahead for each read. */
+  uint64_t read_ahead_size_;
+
+  /** The read logging mode to use. */
+  ReadLoggingMode read_logging_mode_;
+};
+
+/** The base parameters for class VFS. */
+struct VFSBase {
+  VFSBase() = delete;
+
+  VFSBase(stats::Stats* const parent_stats)
+      : stats_(parent_stats->create_child("VFS")){};
+
+  ~VFSBase() = default;
+
+ protected:
+  /** The class stats. */
+  stats::Stats* stats_;
+};
+
+/** The S3 filesystem. */
+#ifdef HAVE_S3
+class S3_within_VFS {
+  /** Private member variable */
+  S3 s3_;
+
+ protected:
+  template <typename... Args>
+  S3_within_VFS(Args&&... args)
+      : s3_(std::forward<Args>(args)...) {
+  }
+
+  /** Protected accessor for the S3 object. */
+  inline tiledb::sm::S3& s3() {
+    return s3_;
+  }
+
+  /** Protected accessor for the const S3 object. */
+  inline const tiledb::sm::S3& s3() const {
+    return s3_;
+  }
+};
+#else
+class S3_within_VFS {
+ protected:
+  template <typename... Args>
+  S3_within_VFS(Args&&...) {
+  }  // empty constructor
+};
+#endif
+
 /**
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS {
+class VFS : private VFSBase, protected S3_within_VFS {
  public:
+  /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  struct BufferedChunk {
+    std::string uri;
+    uint64_t size;
+
+    BufferedChunk()
+        : uri("")
+        , size(0) {
+    }
+    BufferedChunk(std::string chunk_uri, uint64_t chunk_size)
+        : uri(chunk_uri)
+        , size(chunk_size) {
+    }
+  };
+
+  /**
+   * Multipart upload state definition used in the serialization of remote
+   * global order writes. This state is a generalization of
+   * the multipart upload state types currently defined independently by each
+   * backend implementation.
+   */
+  struct MultiPartUploadState {
+    struct CompletedParts {
+      optional<std::string> e_tag;
+      uint64_t part_number;
+    };
+
+    uint64_t part_number;
+    optional<std::string> upload_id;
+    optional<std::vector<BufferedChunk>> buffered_chunks;
+    std::vector<CompletedParts> completed_parts;
+    Status status;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  VFS();
+  /** Constructor.
+   * @param parent_stats The parent stats to inherit from.
+   * @param compute_tp Thread pool for compute-bound tasks.
+   * @param io_tp Thread pool for io-bound tasks.
+   * @param config Configuration parameters.
+   **/
+  VFS(stats::Stats* parent_stats,
+      ThreadPool* compute_tp,
+      ThreadPool* io_tp,
+      const Config& config);
 
   /** Destructor. */
   ~VFS() = default;
@@ -192,12 +411,37 @@ class VFS {
   Status remove_dir(const URI& uri) const;
 
   /**
+   * Deletes directories in parallel from the given vector of directories.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The URIs of the directories.
+   */
+  void remove_dirs(ThreadPool* compute_tp, const std::vector<URI>& uris) const;
+
+  /**
    * Deletes a file.
    *
    * @param uri The URI of the file.
    * @return Status
    */
   Status remove_file(const URI& uri) const;
+
+  /**
+   * Deletes files in parallel from the given vector of files.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The URIs of the files.
+   */
+  void remove_files(ThreadPool* compute_tp, const std::vector<URI>& uris) const;
+
+  /**
+   * Deletes files in parallel from the given vector of timestamped files.
+   *
+   * @param compute_tp The compute-bound ThreadPool.
+   * @param uris The TimestampedURIs of the files.
+   */
+  void remove_files(
+      ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const;
 
   /**
    * Retrieves the size of a file.
@@ -248,29 +492,6 @@ class VFS {
   Status is_empty_bucket(const URI& uri, bool* is_empty) const;
 
   /**
-   * Initializes the virtual filesystem with the given configuration.
-   *
-   * @param parent_stats The parent stats to inherit from.
-   * @param config Configuration parameters
-   * @return Status
-   */
-  Status init(
-      stats::Stats* parent_stats,
-      ThreadPool* compute_tp,
-      ThreadPool* io_tp,
-      const Config* ctx_config,
-      const Config* vfs_config);
-
-  /**
-   * Terminates the virtual system. Must only be called if init() returned
-   * successfully. The behavior is undefined if not successfully invoked prior
-   * to destructing this object.
-   *
-   * @return Status
-   */
-  Status terminate();
-
-  /**
    * Retrieves all the URIs that have the first input as parent.
    *
    * @param parent The target directory to list.
@@ -285,8 +506,49 @@ class VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const;
+  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
+      const URI& parent) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * Currently only S3 is supported for ls_recursive.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
+    LsObjects results;
+    try {
+      if (parent.is_s3()) {
+#ifdef HAVE_S3
+        results = s3().ls_filtered(parent, f, d, true);
+#else
+        throw filesystem::VFSException("TileDB was built without S3 support");
+#endif
+      } else {
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+      }
+    } catch (LsStopTraversal& e) {
+      // Do nothing, callback signaled to stop traversal.
+    } catch (...) {
+      // Rethrow exception thrown by the callback.
+      throw;
+    }
+    return results;
+  }
 
   /**
    * Renames a file.
@@ -341,24 +603,6 @@ class VFS {
       uint64_t nbytes,
       bool use_read_ahead = true);
 
-  /**
-   * Reads multiple regions from a file.
-   *
-   * @param uri The URI of the file.
-   * @param regions The list of regions to read. Each region is a tuple
-   *    `(file_offset, dest_buffer, nbytes)`.
-   * @param thread_pool Thread pool to execute async read tasks to.
-   * @param tasks Vector to which new async read tasks are pushed.
-   * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
-   */
-  Status read_all(
-      const URI& uri,
-      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-      ThreadPool* thread_pool,
-      std::vector<ThreadPool::Task>* tasks,
-      bool use_read_ahead = true);
-
   /** Checks if a given filesystem is supported. */
   bool supports_fs(Filesystem fs) const;
 
@@ -403,43 +647,68 @@ class VFS {
   Status close_file(const URI& uri);
 
   /**
+   * Closes a file, flushing its contents to persistent storage.
+   * This function has special S3 logic tailored to work best with remote
+   * global order writes.
+   *
+   * @param uri The URI of the file.
+   */
+  void finalize_and_close_file(const URI& uri);
+
+  /**
    * Writes the contents of a buffer into a file.
    *
    * @param uri The URI of the file.
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
+   * @param remote_global_order_write Remote global order write
    * @return Status
    */
-  Status write(const URI& uri, const void* buffer, uint64_t buffer_size);
+  Status write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write = false);
+
+  /**
+   * Used in serialization to share the multipart upload state
+   * among cloud executors during global order writes
+   *
+   * @param uri The file uri used as key in the internal map of the backend
+   * @return A pair of status and VFS::MultiPartUploadState object.
+   */
+  std::pair<Status, std::optional<MultiPartUploadState>> multipart_upload_state(
+      const URI& uri);
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends during deserialization
+   *
+   * @param uri The file uri used as key in the internal map of the backend
+   * @param state The multipart upload state info
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const URI& uri, const MultiPartUploadState& state);
+
+  /**
+   * Used in remote global order writes to flush the internal
+   * in-memory buffer for an URI that backends maintain to modulate the
+   * frequency of multipart upload requests.
+   *
+   * @param uri The file uri identifying the backend file buffer
+   * @return Status
+   */
+  Status flush_multipart_file_buffer(const URI& uri);
+
+  inline stats::Stats* stats() const {
+    return stats_;
+  }
 
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */
   /* ********************************* */
-
-  /**
-   * Helper type holding information about a batched read operation.
-   */
-  struct BatchedRead {
-    /** Construct a BatchedRead consisting of the single given region. */
-    BatchedRead(const tuple<uint64_t, Tile*, uint64_t>& region) {
-      offset = std::get<0>(region);
-      nbytes = std::get<2>(region);
-      regions.push_back(region);
-    }
-
-    /** Offset of the batch. */
-    uint64_t offset;
-
-    /** Number of bytes in the batch. */
-    uint64_t nbytes;
-
-    /**
-     * Original regions making up the batch. Vector of tuples of the form
-     * (offset, dest_buffer, nbytes).
-     */
-    std::vector<tuple<uint64_t, Tile*, uint64_t>> regions;
-  };
 
   /**
    * Represents a sub-range of data within a URI file at a
@@ -606,10 +875,6 @@ class VFS {
   GCS gcs_;
 #endif
 
-#ifdef HAVE_S3
-  S3 s3_;
-#endif
-
 #ifdef _WIN32
   Win win_;
 #else
@@ -620,20 +885,17 @@ class VFS {
   tdb_unique_ptr<hdfs::HDFS> hdfs_;
 #endif
 
-  /** The class stats. */
-  stats::Stats* stats_;
-
   /** The in-memory filesystem which is always supported */
   MemFilesystem memfs_;
 
-  /** Config. */
+  /**
+   * Config.
+   *
+   * Note: This object is stored on the VFS for:
+   * use of API 'tiledb_vfs_get_config'.
+   * pass-by-reference initialization of filesystems' config_ member variables.
+   **/
   Config config_;
-
-  /** `true` if the VFS object has been initialized. */
-  bool init_;
-
-  /** The byte size to read-ahead for each read. */
-  uint64_t read_ahead_size_;
 
   /** The set with the supported filesystems. */
   std::set<Filesystem> supported_fs_;
@@ -650,22 +912,15 @@ class VFS {
   /** The read-ahead cache. */
   tdb_unique_ptr<ReadAheadCache> read_ahead_cache_;
 
+  /** The VFS configuration parameters. */
+  VFSParameters vfs_params_;
+
+  /** The URIs previously read by this instance. */
+  std::unordered_set<std::string> reads_logged_;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-
-  /**
-   * Groups the given vector of regions to be read into a possibly smaller
-   * vector of batched reads.
-   *
-   * @param regions Vector of individual regions to be read. Each region is a
-   *    tuple `(file_offset, dest_buffer, nbytes)`.
-   * @param batches Vector storing the batched read information.
-   * @return Status
-   */
-  Status compute_read_batches(
-      const std::vector<tuple<uint64_t, Tile*, uint64_t>>& regions,
-      std::vector<BatchedRead>* batches) const;
 
   /**
    * Reads from a file by calling the specific backend read function.
@@ -709,9 +964,18 @@ class VFS {
    * read.
    */
   Status max_parallel_ops(const URI& uri, uint64_t* ops) const;
+
+  /**
+   * Log a read operation. The format of the log message depends on the
+   * config value `vfs.read_logging_mode`.
+   *
+   * @param uri The URI being read.
+   * @param offset The offset being read from.
+   * @param nbytes The number of bytes requested.
+   */
+  void log_read(const URI& uri, uint64_t offset, uint64_t nbytes);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_VFS_H

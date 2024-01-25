@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,7 @@ class Buffer;
 class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
+class FilterPipeline;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -82,15 +83,8 @@ class Domain {
       const std::vector<shared_ptr<Dimension>> dimensions,
       Layout tile_order);
 
-  /**
-   * Constructor that clones the input domain.
-   *
-   * @param domain The object to clone.
-   */
-  explicit Domain(const Domain* domain);
-
   /** Copy constructor. */
-  DISABLE_COPY(Domain);
+  Domain(const Domain&) = default;
 
   /** Move constructor. */
   Domain(Domain&& rhs);
@@ -189,13 +183,17 @@ class Domain {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param version The array schema version.
+   * @param cell_order Cell order.
+   * @param tile_order Tile order.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Layout cell_order,
-      Layout tile_order);
+      Layout tile_order,
+      FilterPipeline& coords_filters);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -236,8 +234,41 @@ class Domain {
     return dimension_ptrs_[i];
   }
 
+  /**
+   * Return a copy of the shared pointer to the dimension given by the argument
+   * index.
+   *
+   * This function does not return null pointers.
+   *
+   * This function is intended for use with the C API for initializing handles,
+   * and in life cycle management generally. Ordinary functions within the
+   * library should use `dimension_ptr`.
+   *
+   * @param i index of the dimension within the domain
+   * @return non-null pointer to the dimension
+   */
+  inline shared_ptr<Dimension> shared_dimension(dimension_size_type i) const {
+    if (i >= dim_num_) {
+      throw std::invalid_argument("invalid dimension index");
+    }
+    return dimensions_[i];
+  }
+
   /** Returns the dimension given a name (nullptr upon error). */
   const Dimension* dimension_ptr(const std::string& name) const;
+
+  /**
+   * A copy of the storage pointer to a dimension given a name.
+   *
+   * This function is intended for use with the C API for initializing handles,
+   * and in life cycle management generally. Ordinary functions within the
+   * library should use `dimension_ptr`.
+   *
+   * @param name candidate name of a dimension
+   * @return copy of the storage pointer to the dimension with matching name,
+   * a null pointer otherwise.
+   */
+  shared_ptr<Dimension> shared_dimension(const std::string& name) const;
 
   /** Dumps the domain in ASCII format in the selected output. */
   void dump(FILE* out) const;
@@ -377,15 +408,6 @@ class Domain {
    * @return Status
    */
   Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
-
-  /**
-   * Initializes the domain.
-   *
-   * @param cell_order The cell order of the array the domain belongs to.
-   * @param tile_order The cell order of the array the domain belongs to.
-   * @return Status
-   */
-  Status init(Layout cell_order, Layout tile_order);
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;

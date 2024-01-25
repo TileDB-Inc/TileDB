@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/filter/filter_internal.h
+ * @file tiledb/api/c_api/filter/filter_api_internal.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C API for TileDB.
+ * This file declares the internals of the filter section of the C API.
  */
 
 #ifndef TILEDB_CAPI_FILTER_INTERNAL_H
@@ -35,14 +35,13 @@
 
 #include <memory>
 #include "filter_api_external.h"
-#include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/filter/filter_create.h"
 
 /**
- * Handle `struct` for API filter objects.
+ * Handle `struct` for API filter list objects.
  *
  * This class has responsibility for maintaining an allocation. For practical
  * reasons, detailed below, its constructor takes a pointer to allocated
@@ -77,6 +76,11 @@
  */
 struct tiledb_filter_handle_t
     : public tiledb::api::CAPIHandle<tiledb_filter_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"filter"};
+
  private:
   using filter_type = tiledb::sm::Filter;
   std::shared_ptr<filter_type> value_;
@@ -114,12 +118,7 @@ namespace tiledb::api {
  * @param filter_list Possibly-valid pointer to a filter
  */
 inline void ensure_filter_is_valid(const tiledb_filter_t* filter) {
-  if (filter == nullptr) {
-    action_invalid_object("filter");
-  }
-  if (filter != &filter->get()) {
-    throw CAPIStatusException("filter object is not self-consistent");
-  }
+  ensure_handle_is_valid(filter);
 }
 
 }  // namespace tiledb::api

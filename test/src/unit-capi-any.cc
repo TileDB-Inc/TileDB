@@ -31,6 +31,7 @@
  * Tests for TileDB's ANY datatype at the C API level.
  */
 
+#include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
@@ -42,6 +43,12 @@ struct AnyFx {
   const uint64_t C2 = 100;
   const float C3 = 1.2f;
   const double C4 = 2.3;
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  tiledb::test::ServerQueryBuffers server_buffers_;
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
@@ -163,12 +170,17 @@ void AnyFx::write_array(const std::string& array_name) {
       ctx, query, attributes[0], (uint64_t*)buffers[0], &buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
 
-  // Submit query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb::test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);  // Second time must create no problem
+  // Second finalize must create no problem
+  rc =
+      tiledb::test::finalize_query_wrapper(ctx, array_name, &query, serialize_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -218,9 +230,13 @@ void AnyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb::test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -273,6 +289,16 @@ void AnyFx::delete_array(const std::string& array_name) {
 }
 
 TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any]") {
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);

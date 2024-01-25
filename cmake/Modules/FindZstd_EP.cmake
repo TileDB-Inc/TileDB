@@ -30,10 +30,20 @@
 #   - ZSTD_INCLUDE_DIR, directory containing headers
 #   - ZSTD_LIBRARIES, the Zstd library path
 #   - ZSTD_FOUND, whether Zstd has been found
-#   - The Zstd::Zstd imported target
+#   - The ${ZSTD_TARGET} imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
+
+if (TILEDB_VCPKG)
+  find_package(zstd CONFIG REQUIRED)
+  if (TARGET zstd::libzstd_static)
+    set(ZSTD_TARGET zstd::libzstd_static)
+  else()
+    set(ZSTD_TARGET zstd::libzstd_shared)
+  endif()
+  return()
+endif()
 
 # First check for a static version in the EP prefix.
 find_library(ZSTD_LIBRARIES
@@ -98,6 +108,11 @@ if (NOT ZSTD_FOUND)
         -DCMAKE_BUILD_TYPE=Release
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
+	# Disable building ZSTD shared library as this is not used by superbuild
+	# When using superbuild for zstd + curl the shared library was being selected
+	# on some envs due to ordering of search paths.
+	# This caused linker errors for projects using libtiledb because of missing shared zstd library.
+	-DZSTD_BUILD_SHARED=OFF
         ${TILEDB_EP_BASE}/src/ep_zstd/build/cmake
       UPDATE_COMMAND ""
       LOG_DOWNLOAD TRUE
@@ -107,20 +122,17 @@ if (NOT ZSTD_FOUND)
       LOG_OUTPUT_ON_FAILURE ${TILEDB_LOG_OUTPUT_ON_FAILURE}
     )
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_zstd)
+    set(TILEDB_ZSTD_DIR "${TILEDB_EP_INSTALL_PREFIX}")
   else()
     message(FATAL_ERROR "Unable to find Zstd")
   endif()
 endif()
 
-if (ZSTD_FOUND AND NOT TARGET Zstd::Zstd)
-  add_library(Zstd::Zstd UNKNOWN IMPORTED)
-  set_target_properties(Zstd::Zstd PROPERTIES
+if (ZSTD_FOUND AND NOT ZSTD_TARGET)
+  add_library(zstd::libzstd UNKNOWN IMPORTED)
+  set_target_properties(zstd::libzstd PROPERTIES
     IMPORTED_LOCATION "${ZSTD_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZSTD_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (ZSTD_STATIC_EP_FOUND AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Zstd::Zstd)
+  set(ZSTD_TARGET zstd::libzstd)
 endif()

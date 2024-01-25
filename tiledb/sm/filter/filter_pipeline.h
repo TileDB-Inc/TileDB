@@ -81,6 +81,9 @@ class FilterPipeline {
   /** Copy constructor. */
   FilterPipeline(const FilterPipeline& other);
 
+  /** Copy constructor. */
+  FilterPipeline(const FilterPipeline& other, const Datatype on_disk_type);
+
   /** Move constructor. */
   FilterPipeline(FilterPipeline&& other);
 
@@ -93,13 +96,26 @@ class FilterPipeline {
   /**
    * Adds a copy of the given filter to the end of this pipeline.
    *
-   * @param filter Filter to add
-   * @return Status
+   * @param filter Filter to add.
    */
-  Status add_filter(const Filter& filter);
+  void add_filter(const Filter& filter);
+
+  /**
+   * Adds a copy of the given filter to the end of this pipeline with the given
+   * internal type.
+   *
+   * @param filter Filter to add.
+   */
+  void add_filter(const Filter& filter, const Datatype new_type);
 
   /** Clears the pipeline (removes all filters. */
   void clear();
+
+  /** Checks that all filters in a pipeline have compatible types */
+  static void check_filter_types(
+      const FilterPipeline& pipeline,
+      const Datatype first_input_type,
+      bool is_var = false);
 
   /**
    * Populates the filter pipeline from the data in the input binary buffer.
@@ -109,13 +125,21 @@ class FilterPipeline {
    * @return FilterPipeline
    */
   static FilterPipeline deserialize(
-      Deserializer& deserializer, const uint32_t version);
+      Deserializer& deserializer, const uint32_t version, Datatype datatype);
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
    * output.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Checks that two filters have compatible input / output types.
+   * Checks fail if the first filter outputs a type not accepted by the second
+   * filter as input.
+   */
+  static void ensure_compatible(
+      const Filter& first, const Filter& second, Datatype first_input_type);
 
   /**
    * Returns pointer to the first instance of a filter in the pipeline with the
@@ -202,73 +226,39 @@ class FilterPipeline {
    */
   Status run_forward(
       stats::Stats* writer_stats,
-      Tile* tile,
-      Tile* offsets_tile,
+      WriterTile* tile,
+      WriterTile* offsets_tile,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
   /**
-   * Runs the pipeline in reverse on the given filtered tile. This is used
-   * during reads, and processes filtered Tile data (e.g. compressed) into
-   * unfiltered Tile data.
+   * Runs the pipeline in reverse on the given generic tile.
    *
-   * This expects as input a Tile in the following byte format:
-   *
-   *   number_of_chunks (uint64_t)
-   *   chunk0_orig_len (uint32_t)
-   *   chunk0_data_len (uint32_t)
-   *   chunk0_metadata_len (uint32_t)
-   *   chunk0_metadata (uint8_t[])
-   *   chunk0_data (uint8_t[])
-   *   chunk1_orig_len (uint32_t)
-   *   chunk1_data_len (uint32_t)
-   *   chunk1_metadata_len (uint32_t)
-   *   chunk1_metadata (uint8_t[])
-   *   chunk1_data (uint8_t[])
-   *   ...
-   *   chunkN_orig_len (uint32_t)
-   *   chunkN_data_len (uint32_t)
-   *   chunkN_metadata_len (uint32_t)
-   *   chunkN_metadata (uint8_t[])
-   *   chunkN_data (uint8_t[])
-   *
-   * And modifies the Tile's buffer to contain the unfiltered byte array:
-   *
-   *   tile_data (uint8_t[])
-   *
-   * The length of tile_data will be the sum of all chunkI_orig_len for I in 0
-   * to N.
-   *
-   * @param reader_stats Reader stats
-   * @param tile Tile to unfilter
-   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
-   * separately
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
+   * @param reader_stats Stats to record in the function.
+   * @param tile Current tile on which the filter pipeline is being run.
+   * @param config Global config.
    */
-  Status run_reverse(
-      stats::Stats* reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      ThreadPool* compute_tp,
-      const Config& config) const;
+  void run_reverse_generic_tile(
+      stats::Stats* stats, Tile& tile, const Config& config) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.
    *
-   * @param reader_stats Stats to record in the function
-   * @param tile Current tile on which the filter pipeline is being run
-   * @param chunk_data The tile chunk info, buffers and offsets
-   * @param min_chunk_index The chunk range index to start from
-   * @param max_chunk_index The chunk range index to end at
-   * @param concurrency_level The maximum level of concurrency
+   * @param reader_stats Stats to record in the function.
+   * @param tile Current tile on which the filter pipeline is being run.
+   * @param offsets_tile Offsets tile to unfilter, null if it will be unfilered
+   * separately.
+   * @param chunk_data The tile chunk info, buffers and offsets.
+   * @param min_chunk_index The chunk range index to start from.
+   * @param max_chunk_index The chunk range index to end at.
+   * @param concurrency_level The maximum level of concurrency.
    * @param config The global config.
-   * @return Status
+   * @return Status.
    */
-  Status run_reverse_chunk_range(
+  Status run_reverse(
       stats::Stats* const reader_stats,
       Tile* const tile,
+      Tile* const offsets_tile,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,
@@ -315,7 +305,7 @@ class FilterPipeline {
    */
   bool skip_offsets_filtering(
       const Datatype type,
-      const uint32_t version = constants::format_version) const;
+      const format_version_t version = constants::format_version) const;
 
   /**
    * Checks if an attribute/dimension needs to be filtered in chunks or as a
@@ -355,7 +345,9 @@ class FilterPipeline {
    * @return Status, chunk offsets vector.
    */
   tuple<Status, optional<std::vector<uint64_t>>> get_var_chunk_sizes(
-      uint32_t chunk_size, Tile* const tile, Tile* const offsets_tile) const;
+      uint32_t chunk_size,
+      WriterTile* const tile,
+      WriterTile* const offsets_tile) const;
 
   /**
    * Run the given buffer forward through the pipeline.
@@ -371,48 +363,12 @@ class FilterPipeline {
    * @return Status
    */
   Status filter_chunks_forward(
-      const Tile& tile,
-      Tile* const offsets_tile,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       uint32_t chunk_size,
       std::vector<uint64_t>& chunk_offsets,
       FilteredBuffer& output,
       ThreadPool* const compute_tp) const;
-
-  /**
-   * Run the given list of chunks in reverse through the pipeline.
-   *
-   * @param tile Current tile on which the filter pipeline is being run
-   * @param offsets_tile Current offsets tile for var sized
-   * attributes/dimensions.
-   * @param input Filtered chunk buffers to reverse.
-   * @param output Chunked buffer where output of the last stage
-   *    will be written.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
-   */
-  Status filter_chunks_reverse(
-      Tile& tile,
-      Tile* const offsets_tile,
-      const std::vector<tuple<void*, uint32_t, uint32_t, uint32_t>>& input,
-      ThreadPool* const compute_tp,
-      const Config& config) const;
-
-  /**
-   * The internal work routine for `run_reverse`.
-   *
-   * @param tile Tile to filter
-   * @param offsets_tile Offsets tile for var sized tile to filter.
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param config The global config.
-   * @return Status
-   */
-  Status run_reverse_internal(
-      stats::Stats* reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
-      ThreadPool* compute_tp,
-      const Config& config) const;
 };
 
 }  // namespace sm

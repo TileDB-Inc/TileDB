@@ -68,8 +68,10 @@ class ByteshuffleFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  ByteshuffleFilter();
+  ByteshuffleFilter(Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -78,8 +80,8 @@ class ByteshuffleFilter : public Filter {
    * Shuffle the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -90,7 +92,7 @@ class ByteshuffleFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -110,7 +112,7 @@ class ByteshuffleFilter : public Filter {
    * @return Status
    */
   Status shuffle_part(
-      const Tile& tile, const ConstBuffer* part, Buffer* output) const;
+      const WriterTile& tile, const ConstBuffer* part, Buffer* output) const;
 
   /**
    * Perform byte unshuffling on the given input buffer.

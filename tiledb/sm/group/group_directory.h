@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,8 +42,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Mode for the GroupDirectory class. */
 enum class GroupDirectoryMode {
@@ -99,6 +98,9 @@ class GroupDirectory {
   /** Returns the group URI. */
   const URI& uri() const;
 
+  /** Returns the URIs of all group files. */
+  const std::vector<URI>& group_file_uris() const;
+
   /** Returns the URIs of the group metadata files to vacuum. */
   const std::vector<URI>& group_meta_uris_to_vacuum() const;
 
@@ -120,13 +122,6 @@ class GroupDirectory {
   /** Return the latest group details URI. */
   const URI& latest_group_details_uri() const;
 
-  /**
-   * The new fragment name is computed
-   * as `__<first_URI_timestamp>_<last_URI_timestamp>_<uuid>`.
-   */
-  tuple<Status, optional<std::string>> compute_new_fragment_name(
-      const URI& first, const URI& last, uint32_t format_version) const;
-
   /** Returns `true` if `load` has been run. */
   bool loaded() const;
 
@@ -143,6 +138,9 @@ class GroupDirectory {
 
   /** A thread pool used for parallelism. */
   ThreadPool* tp_;
+
+  /** The URIs of all group files. */
+  std::vector<URI> group_file_uris_;
 
   /** Latest group details URI. */
   URI latest_group_details_uri_;
@@ -188,9 +186,6 @@ class GroupDirectory {
    *     fetching URIs.
    */
   uint64_t timestamp_end_;
-
-  /** Mode for the group directory. */
-  GroupDirectoryMode mode_;
 
   /** True if `load` has been run. */
   bool loaded_;
@@ -240,7 +235,6 @@ class GroupDirectory {
   bool is_vacuum_file(const URI& uri) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_DIRECTORY_H

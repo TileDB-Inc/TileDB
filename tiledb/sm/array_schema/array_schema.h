@@ -42,7 +42,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/misc/uuid.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -53,14 +53,14 @@ class Attribute;
 class Buffer;
 class ConstBuffer;
 class Dimension;
-class DimensionLabelReference;
-class DimensionLabelSchema;
+class DimensionLabel;
 class Domain;
+class Enumeration;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
-enum class LabelOrder : uint8_t;
+enum class DataOrder : uint8_t;
 enum class Layout : uint8_t;
 
 /** Specifies the array schema. */
@@ -109,6 +109,9 @@ class ArraySchema {
    * @param tile_order The tile order.
    * @param capacity The tile capacity for the case of sparse fragments.
    * @param attributes The array attributes.
+   * @param dimension_labels The array dimension labels.
+   * @param enumerations The array enumerations
+   * @param enumeration_path_map The array enumeration path map
    * @param cell_var_offsets_filters
    *    The filter pipeline run on offset tiles for var-length attributes.
    * @param cell_validity_filters
@@ -127,7 +130,9 @@ class ArraySchema {
       Layout tile_order,
       uint64_t capacity,
       std::vector<shared_ptr<const Attribute>> attributes,
-      std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels,
+      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
+      std::vector<shared_ptr<const Enumeration>> enumerations,
+      std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
@@ -140,11 +145,21 @@ class ArraySchema {
   explicit ArraySchema(const ArraySchema& array_schema);
 
   /** Destructor. */
-  ~ArraySchema();
+  ~ArraySchema() = default;
 
   /* ********************************* */
   /*               API                 */
   /* ********************************* */
+
+  /**
+   * Returns true if the name is a special attribute.
+   */
+  static inline bool is_special_attribute(const std::string& name) {
+    return name == constants::coords || name == constants::timestamps ||
+           name == constants::delete_timestamps ||
+           name == constants::delete_condition_index ||
+           name == constants::count_of_rows;
+  }
 
   /**
    * Returns true if the array allows coordinate duplicates. Applicable
@@ -165,13 +180,26 @@ class ArraySchema {
   const Attribute* attribute(attribute_size_type id) const;
 
   /**
+   * Returns a shared pointer to the selected attribute.
+   */
+  shared_ptr<const Attribute> shared_attribute(attribute_size_type id) const;
+
+  /**
    * Returns a constant pointer to the selected attribute (nullptr if it
    * does not exist).
    */
   const Attribute* attribute(const std::string& name) const;
 
+  /**
+   * Returns a shared pointer to the selected attribute if found. Returns an
+   * empty pointer otherwise.
+   */
+  shared_ptr<const Attribute> shared_attribute(const std::string& name) const;
+
   /** Returns the number of attributes. */
-  attribute_size_type attribute_num() const;
+  inline attribute_size_type attribute_num() const {
+    return static_cast<attribute_size_type>(attributes_.size());
+  }
 
   /** Returns the attributes. */
   const std::vector<shared_ptr<const Attribute>>& attributes() const;
@@ -197,18 +225,24 @@ class ArraySchema {
   /**
    * Checks the correctness of the array schema.
    *
-   * @return Status
+   * Throws if validation fails
    */
-  Status check() const;
+  void check(const Config& cfg) const;
 
   /**
-   * Throws an error if there is an attribute in the input that does not
-   * exist in the schema.
-   *
-   * @param attributes The attributes to be checked.
-   * @return Status
+   * Checks the correctness of the array schema without config access.
    */
-  Status check_attributes(const std::vector<std::string>& attributes) const;
+  void check_without_config() const;
+
+  /**
+   * Throws an error if the provided schema does not match the definition given
+   * in the dimension label reference.
+   *
+   * @param name The name of the dimension label.
+   * @param schema The dimension label schema to check.
+   */
+  void check_dimension_label_schema(
+      const std::string& name, const ArraySchema& schema) const;
 
   /**
    * Return the filter pipeline for the given attribute/dimension (can be
@@ -223,16 +257,14 @@ class ArraySchema {
   bool dense() const;
 
   /** Returns the i-th dimension label. */
-  const DimensionLabelReference& dimension_label_reference(
-      dimension_label_size_type i) const;
+  const DimensionLabel& dimension_label(dimension_label_size_type i) const;
 
   /**
    * Returns the selected dimension label.
    *
    * A status exception is thrown if the dimension label does not exist.
    */
-  const DimensionLabelReference& dimension_label_reference(
-      const std::string& name) const;
+  const DimensionLabel& dimension_label(const std::string& name) const;
 
   /** Returns the i-th dimension. */
   const Dimension* dimension_ptr(dimension_size_type i) const;
@@ -267,6 +299,8 @@ class ArraySchema {
    * @return Status
    */
   Status has_attribute(const std::string& name, bool* has_attr) const;
+
+  bool has_ordered_attributes() const;
 
   /** Returns true if the input name is an attribute. */
   bool is_attr(const std::string& name) const;
@@ -325,18 +359,17 @@ class ArraySchema {
    *
    * @param dim_id The index of the dimension the label applied to.
    * @param name The name of the dimension label.
-   * @param dimension_label_schema The schema of the dimension label.
+   * @param label_order The order of the label data.
+   * @param label_type The datda type of the label data.
    * @param check_name If ``true``, check the name does not conflict with other
-   * labels, attributes, or dimensions.
-   * @param check_is_compatible If ``true``, check the schema of the dimension
-   * label is compatible with the defintion of the dimension.
+   *     labels, attributes, or dimensions.
    **/
-  Status add_dimension_label(
+  void add_dimension_label(
       dimension_size_type dim_id,
       const std::string& name,
-      shared_ptr<const DimensionLabelSchema> dimension_label_schema,
-      bool check_name = true,
-      bool check_is_compatible = true);
+      DataOrder label_order,
+      Datatype label_type,
+      bool check_name = true);
 
   /**
    * Drops an attribute.
@@ -345,6 +378,88 @@ class ArraySchema {
    * @return Status
    */
   Status drop_attribute(const std::string& attr_name);
+
+  /**
+   * Add an Enumeration to this ArraySchema.
+   *
+   * @param enmr The enumeration to add.
+   */
+  void add_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Extend an Enumeration on this ArraySchema.
+   *
+   * N.B., this method is intended to be called via ArraySchemaEvolution.
+   * Calling it from anywhere else is likely incorrect.
+   *
+   * @param enmr The extended enumeration.
+   */
+  void extend_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Check if an enumeration exists with the given name.
+   *
+   * @param enmr_name The name to check
+   * @return bool Whether the enumeration exists.
+   */
+  bool has_enumeration(const std::string& enmr_name) const;
+
+  /**
+   * Store a known enumeration on this ArraySchema after the schema
+   * was loaded. This allows for only incuring the cost of loading an
+   * enumeration when it is needed. An exception is thrown if the
+   * Enumeration is unknown to this ArraySchema.
+   *
+   * @param enmr The Enumeration to store.
+   */
+  void store_enumeration(shared_ptr<const Enumeration> enmr);
+
+  /**
+   * Get a vector of Enumeration names.
+   *
+   * @return A vector of enumeration names.
+   */
+  std::vector<std::string> get_enumeration_names() const;
+
+  /**
+   * Get a vector of loaded Enumeration names.
+   *
+   * @return A vector of loaded enumeration names.
+   */
+  std::vector<std::string> get_loaded_enumeration_names() const;
+
+  /**
+   * Check if a given enumeration has already been loaded.
+   *
+   * @param enumeration_name The name of the enumeration to check
+   * @return bool Whether the enumeration has been loaded or not.
+   */
+  bool is_enumeration_loaded(const std::string& enumeration_name) const;
+
+  /**
+   * Get an Enumeration by name. Throws if the enumeration is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return shared_ptr<Enumeration>
+   */
+  shared_ptr<const Enumeration> get_enumeration(
+      const std::string& enmr_name) const;
+
+  /**
+   * Get an Enumeration's object name. Throws if the enumeration is unknown.
+   *
+   * @param enmr_name The name of the Enumeration.
+   * @return The path name of the enumeration on disk
+   */
+  const std::string& get_enumeration_path_name(
+      const std::string& enmr_name) const;
+
+  /**
+   * Drop an enumeration
+   *
+   * @param enumeration_name The enumeration to drop.
+   */
+  void drop_enumeration(const std::string& enmr_name);
 
   /**
    * It assigns values to the members of the object from the input buffer.
@@ -361,12 +476,11 @@ class ArraySchema {
   }
 
   /**
-   * Initializes the ArraySchema object. It also performs a check to see if
-   * all the member attributes have been properly set.
-   *
-   * @return Status
+   * Return a copy of the shared_pointer to the domain.
    */
-  Status init();
+  inline shared_ptr<Domain> shared_domain() const {
+    return domain_;
+  };
 
   /**
    * Sets whether the array allows coordinate duplicates.
@@ -378,19 +492,40 @@ class ArraySchema {
   void set_array_uri(const URI& array_uri);
 
   /** Sets the filter pipeline for the variable cell offsets. */
-  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_cell_var_offsets_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the validity cell offsets. */
-  Status set_cell_validity_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_cell_validity_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the filter pipeline for the coordinates. */
-  Status set_coords_filter_pipeline(const FilterPipeline* pipeline);
+  Status set_coords_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile capacity. */
   void set_capacity(uint64_t capacity);
 
   /** Sets the cell order. */
   Status set_cell_order(Layout cell_order);
+
+  /**
+   * Sets a filter on a dimension label filter in an array schema.
+   *
+   * @param label_name The dimension label name.
+   * @param filter_list The filter_list to be set.
+   */
+  void set_dimension_label_filter_pipeline(
+      const std::string& label_name, const FilterPipeline& pipeline);
+
+  /**
+   * Sets the tile extent on a dimension label in an array schema.
+   *
+   * @param label_name The dimension label name.
+   * @param tile_extent The tile extent for the dimension of the dimension
+   * label.
+   */
+  void set_dimension_label_tile_extent(
+      const std::string& label_name,
+      const Datatype type,
+      const void* tile_extent);
 
   /**
    * Sets the domain. The function returns an error if the array has been
@@ -402,16 +537,16 @@ class ArraySchema {
   Status set_tile_order(Layout tile_order);
 
   /** Set version of schema, only used for serialization */
-  void set_version(uint32_t version);
+  void set_version(format_version_t version);
 
   /** Returns the version to write in. */
-  uint32_t write_version() const;
+  format_version_t write_version() const;
 
   /** Returns the array schema version. */
-  uint32_t version() const;
+  format_version_t version() const;
 
   /** Set a timestamp range for the array schema */
-  Status set_timestamp_range(
+  void set_timestamp_range(
       const std::pair<uint64_t, uint64_t>& timestamp_range);
 
   /** Returns the timestamp range. */
@@ -429,11 +564,10 @@ class ArraySchema {
   /** Set the schema name. */
   void set_name(const std::string& name);
 
-  /** Generates a new array schema URI. */
-  Status generate_uri();
-
-  /** Generates a new array schema URI with specified timestamp range. */
-  Status generate_uri(const std::pair<uint64_t, uint64_t>& timestamp_range);
+  /** Generates a new array schema URI with optional timestamp range. */
+  void generate_uri(
+      std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
+          std::nullopt);
 
  private:
   /* ********************************* */
@@ -447,7 +581,7 @@ class ArraySchema {
   URI array_uri_;
 
   /** The format version of this array schema. */
-  uint32_t version_;
+  format_version_t version_;
 
   /**
    * The timestamp the array schema was written.
@@ -494,20 +628,46 @@ class ArraySchema {
    */
   uint64_t capacity_;
 
-  /** It maps each attribute name to the corresponding attribute object.
-   * Lifespan is maintained by the shared_ptr in attributes_. */
-  std::unordered_map<std::string, const Attribute*> attribute_map_;
-
-  /** The array attributes.
-   * Maintains lifespan for elements in both attributes_ and attribute_map_. */
+  /**
+   * Container of `shared_ptr<Attribute>` maintains lifespan for all attributes
+   * within this array schema. Other member variables reference objects within
+   * this container.
+   */
   std::vector<shared_ptr<const Attribute>> attributes_;
 
+  /**
+   * Type for the range of the map that is member `attribute_map_`. See the
+   * invariants of that variable for the meaning of the members of this
+   * `struct`.
+   */
+  struct attribute_reference {
+    const Attribute* pointer;
+    attribute_size_type index;
+  };
+
+  /**
+   * Map from an attribute name to its corresponding Attribute object. Lifespan
+   * is maintained by the shared_ptr in `attributes_`.
+   *
+   * Invariant: For each entry `{p,i}` in `attribute_map_`,
+   *   `attributes_[i].get() == p`
+   * Invariant: The number of entries in `attribute_map_` is the same as the
+   *   number of entries in `attributes_`
+   */
+  std::unordered_map<std::string, attribute_reference> attribute_map_;
+
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabelReference>> dimension_labels_;
+  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabelReference*>
-      dimension_label_map_;
+  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
+
+  /** A map of Enumeration names to Enumeration pointers. */
+  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+      enumeration_map_;
+
+  /** A map of Enumeration names to Enumeration URIs */
+  std::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
@@ -534,10 +694,10 @@ class ArraySchema {
   /* ********************************* */
 
   /**
-   * Returns false if the union of attribute and dimension names contain
-   * duplicates.
+   * Throws an error if the union of attribute, dimension, and dimension label
+   * names contain duplicates.
    */
-  Status check_attribute_dimension_label_names() const;
+  void check_attribute_dimension_label_names() const;
 
   /**
    * Returns error if double delta compression is used in the zipped
@@ -551,6 +711,11 @@ class ArraySchema {
    * dimensions but it is not the only filter in the filter list.
    */
   Status check_string_compressor(const FilterPipeline& coords_filters) const;
+
+  void check_webp_filter() const;
+
+  // Check enumeration sizes are below the configured maximums.
+  void check_enumerations(const Config& cfg) const;
 
   /** Clears all members. Use with caution! */
   void clear();

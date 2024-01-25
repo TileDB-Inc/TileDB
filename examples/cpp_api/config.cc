@@ -60,8 +60,8 @@ void set_get_config() {
   config["vfs."]["s3."]["endpoint_override"] = "localhost:8888";
 
   // Get value
-  std::string tile_cache_size = config["sm.tile_cache_size"];
-  std::cout << "Tile cache size: " << tile_cache_size << "\n\n";
+  std::string memory_budget = config["sm.memory_budget"];
+  std::cout << "Memory budget: " << memory_budget << "\n\n";
 }
 
 void print_default() {
@@ -86,13 +86,13 @@ void iter_config_with_prefix() {
 void save_load_config() {
   // Save to file
   Config config;
-  config["sm.tile_cache_size"] = 0;
+  config["sm.memory_budget"] = 0;
   config.save_to_file("tiledb_config.txt");
 
   // Load from file
   Config config_load("tiledb_config.txt");
-  std::string tile_cache_size = config_load["sm.tile_cache_size"];
-  std::cout << "\nTile cache size after loading from file: " << tile_cache_size
+  std::string memory_budget = config_load["sm.memory_budget"];
+  std::cout << "\nMemory budget after loading from file: " << memory_budget
             << "\n";
 }
 

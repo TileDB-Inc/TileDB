@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,13 +33,19 @@
 #ifdef _WIN32
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 
 #include <cassert>
+#include <filesystem>
+#include "tiledb/common/random/prng.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/crypto/crypto.h"
 #include "tiledb/sm/filesystem/path_win.h"
 #include "tiledb/sm/filesystem/win.h"
+
+#include <Windows.h>
 
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -57,36 +63,26 @@ static bool ends_with(const std::string& value, const std::string& suffix) {
 }
 
 struct WinFx {
-  const std::string TEMP_DIR = Win::current_dir() + "/";
   Win win_;
-  ThreadPool thread_pool_{4};
   Config vfs_config_;
+  TemporaryLocalDirectory temp_dir_;
 
   WinFx() {
-    // Make sure parallel reads/writes are tested.
-    vfs_config_.set("vfs.min_parallel_size", "100");
-    REQUIRE(win_.init(vfs_config_, &thread_pool_).ok());
-
-    if (path_exists(TEMP_DIR + "tiledb_test_dir"))
-      REQUIRE(win_.remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
-    if (path_exists(TEMP_DIR + "tiledb_test_file"))
-      REQUIRE(win_.remove_file(TEMP_DIR + "tiledb_test_file").ok());
+    REQUIRE(win_.init(vfs_config_).ok());
   }
 
-  ~WinFx() {
-    REQUIRE(win_.remove_dir(TEMP_DIR + "tiledb_test_dir").ok());
-  }
+  ~WinFx() = default;
 
   bool path_exists(std::string path) {
     return win_.is_file(path) || win_.is_dir(path);
   }
 };
 
-TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
+TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows][filesystem]") {
   using tiledb::sm::path_win::is_win_path;
-  const std::string test_dir_path = win_.current_dir() + "/tiledb_test_dir";
+  const std::string test_dir_path = temp_dir_.path() + "/win_tests";
   const std::string test_file_path =
-      win_.current_dir() + "/tiledb_test_dir/tiledb_test_file";
+      temp_dir_.path() + "/win_tests/tiledb_test_file";
   URI test_dir(test_dir_path);
   URI test_file(test_file_path);
   Status st;
@@ -143,6 +139,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
       Win::abs_path("path1\\path2\\..\\path3") ==
       Win::current_dir() + "\\path1\\path3");
 
+  CHECK(win_.is_dir(temp_dir_.path()));
   CHECK(!win_.is_dir(test_dir.to_path()));
   st = win_.create_dir(test_dir.to_path());
   CHECK(st.ok());
@@ -180,17 +177,19 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
 
   const unsigned buffer_size = 100000;
-  auto write_buffer = new char[buffer_size];
+  std::vector<char> write_buffer(buffer_size);
   for (unsigned i = 0; i < buffer_size; i++) {
     write_buffer[i] = 'a' + (i % 26);
   }
-  st = win_.write(test_file.to_path(), write_buffer, buffer_size);
+  st =
+      win_.write(test_file.to_path(), write_buffer.data(), write_buffer.size());
   CHECK(st.ok());
   st = win_.sync(test_file.to_path());
   CHECK(st.ok());
 
-  auto read_buffer = new char[26];
-  st = win_.read(test_file.to_path(), 0, read_buffer, 26);
+  std::vector<char> read_buffer(26);
+  st =
+      win_.read(test_file.to_path(), 0, read_buffer.data(), read_buffer.size());
   CHECK(st.ok());
 
   bool allok = true;
@@ -202,7 +201,8 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   }
   CHECK(allok == true);
 
-  st = win_.read(test_file.to_path(), 11, read_buffer, 26);
+  st = win_.read(
+      test_file.to_path(), 11, read_buffer.data(), read_buffer.size());
   CHECK(st.ok());
 
   allok = true;
@@ -219,7 +219,7 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
   CHECK(paths.size() == 1);
   CHECK(!starts_with(paths[0], "file:///"));
-  CHECK(ends_with(paths[0], "tiledb_test_dir\\tiledb_test_file"));
+  CHECK(ends_with(paths[0], "win_tests\\tiledb_test_file"));
   CHECK(win_.is_file(paths[0]));
 
   uint64_t nbytes = 0;
@@ -235,6 +235,78 @@ TEST_CASE_METHOD(WinFx, "Test Windows filesystem", "[windows]") {
   CHECK(st.ok());
   CHECK(!win_.is_file(test_file.to_path()));
   CHECK(win_.is_file(URI(test_file_path + "2").to_path()));
+}
+
+TEST_CASE_METHOD(
+    WinFx, "Test writing large files", "[.nightly_only][windows][large-file]") {
+  const uint64_t five_gigabytes = static_cast<uint64_t>(5) << 30;
+  std::string file = temp_dir_.path() + "\\large-file";
+  std::vector<uint8_t> buffer(five_gigabytes);
+
+  // We use a prime period to catch errors where the 4GB buffer chunks are
+  // written in the wrong place.
+  const uint8_t sequence_period = 59;
+
+  uint8_t i = 0;
+  std::generate(buffer.begin(), buffer.end(), [&]() {
+    auto val = i;
+    i = (i + 1) % sequence_period;
+    return val;
+  });
+
+  Buffer expected_buffer;
+  REQUIRE(expected_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
+  REQUIRE(win_.write(file, buffer.data(), buffer.size()).ok());
+
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &expected_buffer).ok());
+
+  std::fill(buffer.begin(), buffer.end(), 0);
+
+  REQUIRE(win_.read(file, 0, buffer.data(), buffer.size()).ok());
+
+  Buffer actual_buffer;
+  REQUIRE(actual_buffer.realloc(Crypto::MD5_DIGEST_BYTES).ok());
+
+  REQUIRE(Crypto::md5(buffer.data(), buffer.size(), &actual_buffer).ok());
+
+  REQUIRE(
+      std::memcmp(
+          expected_buffer.data(),
+          actual_buffer.data(),
+          Crypto::MD5_DIGEST_BYTES) == 0);
+}
+
+// Uses RAII to temporarily change the Win32 thread UI language.
+class ChangeThreadUILanguage {
+ public:
+  ChangeThreadUILanguage(LANGID langid) {
+    old_langid_ = ::GetThreadUILanguage();
+    ::SetThreadUILanguage(langid);
+  }
+  ~ChangeThreadUILanguage() {
+    ::SetThreadUILanguage(old_langid_);
+  }
+
+ private:
+  LANGID old_langid_;
+};
+
+// This test requires the Greek language pack to be installed.
+TEST_CASE("Test UTF-8 error messages", "[.hide][windows][utf8-msgs]") {
+  // Change the thread UI language to Greek, to test that an error message with
+  // Unicode characters is received correctly.
+  ChangeThreadUILanguage change_langid(
+      MAKELANGID(LANG_GREEK, SUBLANG_GREEK_GREECE));
+
+  Win win;
+  REQUIRE(win.init(Config()).ok());
+  // NUL is a special file on Windows; deleting it should always fail.
+  Status st = win.remove_file("NUL");
+  REQUIRE(!st.ok());
+  auto message = st.message();
+  auto expected = u8"Δεν επιτρέπεται η πρόσβαση.";  // Access denied.
+  REQUIRE(message.find((char*)expected) != std::string::npos);
 }
 
 #endif  // _WIN32

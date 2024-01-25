@@ -38,9 +38,11 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/subarray/subarray.h"
 
 #ifdef TILEDB_SERIALIZATION
-#include "tiledb/sm/serialization/tiledb-rest.h"
+#include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #endif
 
 using namespace tiledb::common;
@@ -52,6 +54,9 @@ class Array;
 class Buffer;
 class BufferList;
 class Query;
+class GlobalOrderWriter;
+class UnorderedWriter;
+class OrderedDimLabelReader;
 
 enum class SerializationType : uint8_t;
 
@@ -127,10 +132,25 @@ using CopyState =
     std::unordered_map<std::string, serialization::QueryBufferCopyState>;
 
 /**
+ * Deserialize an array from a buffer containing a serialized query
+ *
+ * @param serialized_buffer Buffer containing serialized query
+ * @param serialize_type Serialization type of serialized query
+ * @param array Array object to deserialize into
+ */
+Status array_from_query_deserialize(
+    const Buffer& serialized_buffer,
+    SerializationType serialize_type,
+    Array& array,
+    StorageManager* storage_manager);
+
+/**
  * Serialize a query
  *
  * @param query Query to serialize
  * @param serialize_type format to serialize to
+ * @param clientside Whether serialization should be performed from a client
+ *      or server perspective
  * @param serialized_buffer Buffer to store serialized query
  */
 Status query_serialize(
@@ -193,6 +213,32 @@ Status query_est_result_size_deserialize(
     const Buffer& serialized_buffer);
 
 #ifdef TILEDB_SERIALIZATION
+
+enum class SerializationContext { CLIENT, SERVER, BACKUP };
+
+Status global_write_state_to_capnp(
+    const Query& query,
+    GlobalOrderWriter& global_writer,
+    capnp::GlobalWriteState::Builder* state_builder,
+    bool client);
+
+Status global_write_state_from_capnp(
+    const Query& query,
+    const capnp::GlobalWriteState::Reader& state_reader,
+    GlobalOrderWriter* global_writer,
+    SerializationContext context);
+
+Status unordered_write_state_to_capnp(
+    const Query& query,
+    UnorderedWriter& unordered_writer,
+    capnp::UnorderedWriterState::Builder* state_builder);
+
+Status unordered_write_state_from_capnp(
+    const Query& query,
+    const capnp::UnorderedWriterState::Reader& state_reader,
+    UnorderedWriter* runordered_writer,
+    SerializationContext context);
+
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
     QueryCondition* const condition);
@@ -200,6 +246,38 @@ Status condition_from_capnp(
 Status condition_to_capnp(
     const QueryCondition& condition,
     capnp::Condition::Builder* condition_builder);
+
+Status subarray_to_capnp(
+    const ArraySchema& schema,
+    const Subarray* subarray,
+    capnp::Subarray::Builder* builder);
+
+Status subarray_from_capnp(
+    const capnp::Subarray::Reader& reader, Subarray* subarray);
+
+void ordered_dim_label_reader_to_capnp(
+    const Query& query,
+    const OrderedDimLabelReader& reader,
+    capnp::QueryReader::Builder* reader_builder);
+
+void ordered_dim_label_reader_from_capnp(
+    const capnp::QueryReader::Reader& reader_reader,
+    Query* query,
+    OrderedDimLabelReader* reader,
+    ThreadPool* compute_tp);
+
+Status query_to_capnp(
+    Query& query, capnp::Query::Builder* query_builder, const bool client_side);
+
+Status query_from_capnp(
+    const capnp::Query::Reader& query_reader,
+    const SerializationContext context,
+    void* buffer_start,
+    CopyState* const copy_state,
+    Query* const query,
+    ThreadPool* compute_tp,
+    const bool allocate_buffers);
+
 #endif
 
 }  // namespace serialization

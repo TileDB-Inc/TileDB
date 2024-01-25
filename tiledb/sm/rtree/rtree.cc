@@ -361,14 +361,12 @@ void RTree::deserialize_v1_v4(
   deserialized_buffer_size_ = deserializer.size();
 
   // For backwards compatibility, ignored
-  auto dim_num_i = deserializer.read<unsigned>();
-  (void)dim_num_i;
+  (void)deserializer.read<unsigned>();
 
   fanout_ = deserializer.read<unsigned>();
 
   // For backwards compatibility, ignored
-  auto type_i = deserializer.read<uint8_t>();
-  (void)type_i;
+  (void)deserializer.read<uint8_t>();
 
   auto level_num = deserializer.read<unsigned>();
   levels_.clear();
@@ -382,7 +380,7 @@ void RTree::deserialize_v1_v4(
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         auto data = deserializer.get_ptr<void>(r_size);
-        levels_[l][m][d].set_range(data, r_size);
+        levels_[l][m][d] = Range(data, r_size);
       }
     }
   }
@@ -411,13 +409,13 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d].set_range(data, r_size);
+          levels_[l][m][d] = Range(data, r_size);
         } else {  // Var-sized
           // range_size | start_size | range
           auto r_size = deserializer.read<uint64_t>();
           auto start_size = deserializer.read<uint64_t>();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d].set_range(data, r_size, start_size);
+          levels_[l][m][d] = Range(data, r_size, start_size);
         }
       }
     }

@@ -61,14 +61,17 @@ TEST_CASE(
   f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
   f.get_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &get_byte_width);
   CHECK(get_byte_width == byte_width);
+  CHECK(get_byte_width == f.get_option<uint64_t>(TILEDB_SCALE_FLOAT_BYTEWIDTH));
 
   f.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
   f.get_option(TILEDB_SCALE_FLOAT_FACTOR, &get_scale);
   CHECK(get_scale == scale);
+  CHECK(get_scale == f.get_option<double>(TILEDB_SCALE_FLOAT_FACTOR));
 
   f.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
   f.get_option(TILEDB_SCALE_FLOAT_OFFSET, &get_offset);
   CHECK(get_offset == offset);
+  CHECK(get_offset == f.get_option<double>(TILEDB_SCALE_FLOAT_OFFSET));
 }
 
 template <typename T, typename W>

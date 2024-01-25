@@ -39,6 +39,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 using namespace tiledb::common;
 
@@ -66,7 +67,8 @@ class GroupMember {
       const ObjectType& type,
       const bool& relative,
       uint32_t version,
-      const std::optional<std::string>& name);
+      const std::optional<std::string>& name,
+      const bool& deleted);
 
   /** Destructor. */
   virtual ~GroupMember() = default;
@@ -80,8 +82,20 @@ class GroupMember {
   /** Return the Name. */
   const std::optional<std::string> name() const;
 
+  /**
+   * Return the discriminating key of the member within a group. No
+   * multiple members with the same key may exist in a group.
+   *
+   * This method returns the member's name, or its URI if it does not exist.
+   */
+  const std::string key() const {
+    return name_ ? *name_ : uri_.to_string();
+  }
+
   /** Return if object is relative. */
-  const bool& relative() const;
+  bool relative() const;
+
+  bool deleted() const;
 
   /**
    * Serializes the object members into a binary buffer.
@@ -89,7 +103,7 @@ class GroupMember {
    * @param buff The buffer to serialize the data into.
    * @return Status
    */
-  virtual Status serialize(Buffer* buff);
+  virtual void serialize(Serializer& serializer);
 
   /**
    * Returns a Group object from the data in the input binary buffer.
@@ -98,8 +112,13 @@ class GroupMember {
    * @param version The format spec version.
    * @return Status and Attribute
    */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-  deserialize(ConstBuffer* buff);
+  static shared_ptr<GroupMember> deserialize(Deserializer& deserializer);
+
+  /**
+   * Return format version
+   * @return format version
+   */
+  format_version_t version() const;
 
  protected:
   /* ********************************* */
@@ -119,6 +138,9 @@ class GroupMember {
 
   /* Format version. */
   const uint32_t version_;
+
+  /** Is group member deleted from group. */
+  bool deleted_;
 };
 }  // namespace sm
 }  // namespace tiledb

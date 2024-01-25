@@ -55,16 +55,11 @@ class OrderedWriter : public WriterBase {
   OrderedWriter(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
+      StrategyParams& params,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""),
-      bool skip_checks_serialization = false);
+      bool remote_query,
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~OrderedWriter();
@@ -85,14 +80,23 @@ class OrderedWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Fragment URI. */
+  std::optional<URI> frag_uri_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Invoked on error. It removes the directory of the input URI. */
+  void clean_up();
 
   /**
    * Writes in an ordered layout (col- or row-major order). Applicable only
@@ -123,7 +127,7 @@ class OrderedWriter : public WriterBase {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<WriterTileVector>& tile_batches,
+      std::vector<WriterTileTupleVector>& tile_batches,
       shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);

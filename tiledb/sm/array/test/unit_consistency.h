@@ -43,6 +43,7 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
@@ -57,23 +58,26 @@ class ConsistencySentry;
 
 namespace tiledb::sm {
 
-using entry_type = std::multimap<const URI, Array&>::const_iterator;
+using array_entry = std::tuple<Array&, const QueryType>;
+using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
  public:
   WhiteboxConsistencyController() = default;
   ~WhiteboxConsistencyController() = default;
 
-  entry_type register_array(const URI uri, Array& array) {
-    return ConsistencyController::register_array(uri, array);
+  entry_type register_array(
+      const URI uri, Array& array, const QueryType query_type) {
+    return ConsistencyController::register_array(uri, array, query_type);
   }
 
   void deregister_array(entry_type entry) {
     ConsistencyController::deregister_array(entry);
   }
 
-  ConsistencySentry make_sentry(const URI uri, Array& array) {
-    return ConsistencyController::make_sentry(uri, array);
+  ConsistencySentry make_sentry(
+      const URI uri, Array& array, const QueryType query_type) {
+    return ConsistencyController::make_sentry(uri, array, query_type);
   }
 
   bool is_open(const URI uri) {
@@ -84,14 +88,18 @@ class WhiteboxConsistencyController : public ConsistencyController {
     return ConsistencyController::array_registry_.size();
   }
 
-  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+  /*
+   * Warning: This does not clean up leftovers from previous failed runs.
+   * Manual intervention may be required in the build tree.
+   */
+  tdb_unique_ptr<Array> create_array(const URI uri, StorageManager* sm) {
     // Create Domain
-    std::vector<uint64_t> dim_dom = {0, 1};
+    uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
     shared_ptr<Dimension> dim =
         make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
-    dim->set_domain(&dim_dom);
-    dim->set_tile_extent(&tile_extent);
+    throw_if_not_ok(dim->set_domain(&dim_dom));
+    throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
     std::vector<shared_ptr<Dimension>> dims = {dim};
     shared_ptr<Domain> domain =
@@ -100,13 +108,13 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create the ArraySchema
     shared_ptr<ArraySchema> schema =
         make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
-    schema->set_domain(domain);
-    schema->add_attribute(
+    throw_if_not_ok(schema->set_domain(domain));
+    throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(
             HERE(), std::string("attr"), Datatype::UINT64, false),
-        false);
+        false));
     EncryptionKey key;
-    key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0);
+    throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
     Status st = sm->array_create(uri, schema, key);
@@ -116,8 +124,15 @@ class WhiteboxConsistencyController : public ConsistencyController {
     }
     tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
 
+    return array;
+  }
+
+  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+    // Create array
+    tdb_unique_ptr<Array> array{create_array(uri, sm)};
+
     // Open the array
-    st =
+    Status st =
         array->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
     if (!st.ok()) {
       throw std::runtime_error(

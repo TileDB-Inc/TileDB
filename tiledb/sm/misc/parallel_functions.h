@@ -150,12 +150,11 @@ void parallel_sort(
     }
 
     // Wait for the sorted partitions.
-    tp->wait_all(tasks);
-    return Status::Ok();
+    return tp->wait_all(tasks);
   };
 
   // Start the quicksort from the entire range.
-  quick_sort(0, begin, end);
+  throw_if_not_ok(quick_sort(0, begin, end));
 }
 
 /**
@@ -180,26 +179,67 @@ Status parallel_for(
 
   assert(tp);
 
+  /*
+   * Mutex protects atomicity of `failed*` local variables together. The first
+   * subrange to fail determines the return or exception value.
+   */
+  std::mutex failed_mutex;
+  /*
+   * If we were checking this variable inside either the main loop or the one in
+   * `execute_subrange`, then it would be better to use `atomic_bool` to lessen
+   * the lock overhead on the mutex. As it is, we do not prematurely stop any
+   * loop that is not the first to fail.
+   */
   bool failed = false;
-  Status return_st = Status::Ok();
-  std::mutex return_st_mutex;
+  optional<std::exception_ptr> failed_exception{nullopt};
+  optional<Status> failed_status{nullopt};
 
-  // Executes subrange [subrange_start, subrange_end) that exists
-  // within the range [begin, end).
+  /*
+   * Executes subrange [subrange_start, subrange_end) that exists within the
+   * range [begin, end).
+   *
+   * If all the functions `F` return OK, then so does this function. If a
+   * function fails but is not the first do so in this `parallel_for`
+   * invocation, then this function returns OK. If a first function to fail
+   * returns not OK, then this function returns that value. If a first function
+   * to fail throws, then this function throws that value.
+   */
   std::function<Status(uint64_t, uint64_t)> execute_subrange =
-      [&failed, &return_st, &return_st_mutex, &F](
+      [&failed, &failed_exception, &failed_status, &failed_mutex, &F](
           const uint64_t subrange_start,
           const uint64_t subrange_end) -> Status {
     for (uint64_t i = subrange_start; i < subrange_end; ++i) {
-      const Status st = F(i);
-      if (!st.ok() && !failed) {
-        failed = true;
-        std::lock_guard<std::mutex> lock(return_st_mutex);
-        return_st = st;
+      Status st;
+      try {
+        st = F(i);
+        if (st.ok()) {
+          continue;
+        }
+        std::lock_guard<std::mutex> lock(failed_mutex);
+        if (!failed) {
+          failed_status = st;
+          failed = true;
+          return st;
+        }
+      } catch (...) {
+        std::lock_guard<std::mutex> lock(failed_mutex);
+        if (!failed) {
+          auto ce{std::current_exception()};
+          failed_exception = ce;
+          failed = true;
+          std::rethrow_exception(ce);
+        }
       }
+      /*
+       * If we reach this line, then either the status was not OK or `F` threw.
+       * Now you'd think that we'd do something other than continue the loop in
+       * this case, like `break` and end the function. Nope. That's not the
+       * legacy behavior of this function. Nor is checking failure status in the
+       * loop that kicks off this function. Regardless, we are leaving the
+       * behavior exactly the same for now.
+       */
     }
-
-    return Status::Ok();
+    return Status{};
   };
 
   // Calculate the length of the subrange that each thread will
@@ -230,9 +270,17 @@ Status parallel_for(
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  tp->wait_all(tasks);
+  // This is ignoring the wait status as we use failed_exception for propagating
+  // the tasks exceptions.
+  (void)tp->wait_all(tasks);
 
-  return return_st;
+  if (failed_exception.has_value()) {
+    std::rethrow_exception(failed_exception.value());
+  }
+  if (failed_status.has_value()) {
+    return failed_status.value();
+  }
+  return Status{};  // otherwise return OK
 }
 
 /**
@@ -347,8 +395,9 @@ Status parallel_for_2d(
   }
 
   // Wait for all instances of `execute_subrange` to complete.
-  tp->wait_all(tasks);
-
+  auto wait_status = tp->wait_all(tasks);
+  if (!wait_status.ok())
+    return wait_status;
   return return_st;
 }
 

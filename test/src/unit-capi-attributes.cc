@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,19 +30,20 @@
  * Tests of C API for attributes.
  */
 
+#include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <iostream>
 
-#include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include <Windows.h>
 #include "tiledb/sm/filesystem/win.h"
 #else
 #include "tiledb/sm/filesystem/posix.h"
 #endif
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -61,6 +62,12 @@ struct Attributesfx {
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  tiledb::test::ServerQueryBuffers server_buffers_;
+
   // Functions
   Attributesfx();
   ~Attributesfx();
@@ -70,7 +77,6 @@ struct Attributesfx {
       const std::string& path,
       const std::string& attr_name,
       tiledb_datatype_t attr_type);
-  static std::string random_name(const std::string& prefix);
 };
 
 Attributesfx::Attributesfx()
@@ -96,13 +102,6 @@ void Attributesfx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string Attributesfx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void Attributesfx::create_dense_vector(
@@ -165,10 +164,25 @@ TEST_CASE_METHOD(
       "miles?hour",  "miles@hour", "miles[hour", "miles]hour",  "miles[hour",
       "miles\"hour", "miles<hour", "miles>hour", "miles\\hour", "miles|hour"};
 
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   for (const auto& attr_name : attr_names) {
     for (const auto& fs : fs_vec_) {
       std::string temp_dir = fs->temp_dir();
       std::string array_name = temp_dir + "array-illegal-char";
+      // serialization is not supported for memfs arrays
+      if (serialize_ &&
+          tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
+        continue;
+      }
 
       // Create new TileDB context with file lock config disabled, rest the
       // same.
@@ -211,10 +225,13 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
       CHECK(rc == TILEDB_OK);
-
-      rc = tiledb_query_submit(ctx_, query);
-      CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_finalize(ctx_, query);
+      rc = tiledb::test::submit_query_wrapper(
+          ctx_,
+          array_name,
+          &query,
+          server_buffers_,
+          serialize_,
+          refactored_query_v2_);
       CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
@@ -242,7 +259,13 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb_query_submit(ctx_, query);
+      rc = submit_query_wrapper(
+          ctx_,
+          array_name,
+          &query,
+          server_buffers_,
+          serialize_,
+          refactored_query_v2_);
       CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
@@ -263,12 +286,29 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     Attributesfx,
-    "C API: Test attributes with tiledb_blob datatype",
-    "[capi][attributes][tiledb_blob]") {
+    "C API: Test attributes with std::byte",
+    "[capi][attributes][byte]") {
+  auto datatype = GENERATE(TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT);
+
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;
-    std::string attr_name = "attr";
+    // serialization is not supported for memfs arrays
+    if (serialize_ &&
+        tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
+      continue;
+    }
+
+    std::string attr_name = "a";
 
     // Create new TileDB context with file lock config disabled, rest the
     // same.
@@ -286,7 +326,7 @@ TEST_CASE_METHOD(
 
     create_temp_dir(temp_dir);
 
-    create_dense_vector(array_name, attr_name, TILEDB_BLOB);
+    create_dense_vector(array_name, attr_name, datatype);
 
     // Prepare cell buffers
     uint8_t buffer_write[] = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
@@ -311,10 +351,13 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
+    rc = submit_query_wrapper(
+        ctx_,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -342,7 +385,14 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_submit(ctx_, query);
+
+    rc = submit_query_wrapper(
+        ctx_,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -368,9 +418,24 @@ TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with tiledb_bool datatype",
     "[capi][attributes][tiledb_bool]") {
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;
+    // serialization is not supported for memfs arrays
+    if (serialize_ &&
+        tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
+      continue;
+    }
+
     std::string attr_name = "attr";
 
     // Create new TileDB context with file lock config disabled, rest the
@@ -414,10 +479,13 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-
-    rc = tiledb_query_submit(ctx_, query);
-    CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_finalize(ctx_, query);
+    rc = submit_query_wrapper(
+        ctx_,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -445,7 +513,13 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-    rc = tiledb_query_submit(ctx_, query);
+    rc = submit_query_wrapper(
+        ctx_,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up

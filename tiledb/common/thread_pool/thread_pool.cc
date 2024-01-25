@@ -156,7 +156,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
     if (!task.valid()) {
       statuses[task_id] = Status_ThreadPoolError("Invalid task future");
-      LOG_STATUS(statuses[task_id]);
+      LOG_STATUS_NO_RETURN_VALUE(statuses[task_id]);
     } else if (
         task.wait_for(std::chrono::milliseconds(0)) ==
         std::future_status::ready) {
@@ -178,7 +178,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       }();
 
       if (!st.ok()) {
-        LOG_STATUS(st);
+        LOG_STATUS_NO_RETURN_VALUE(st);
       }
       statuses[task_id] = st;
 
@@ -203,6 +203,47 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   }
 
   return statuses;
+}
+
+Status ThreadPool::wait(Task& task) {
+  while (true) {
+    if (!task.valid()) {
+      return Status_ThreadPoolError("Invalid task future");
+    } else if (
+        task.wait_for(std::chrono::milliseconds(0)) ==
+        std::future_status::ready) {
+      // Task is completed, get result, handling possible exceptions
+
+      Status st = [&task] {
+        try {
+          return task.get();
+        } catch (const std::exception& e) {
+          return Status_TaskError(
+              "Caught std::exception: " + std::string(e.what()));
+        } catch (const std::string& msg) {
+          return Status_TaskError("Caught msg: " + msg);
+        } catch (const Status& stat) {
+          return stat;
+        } catch (...) {
+          return Status_TaskError("Unknown exception");
+        }
+      }();
+
+      if (!st.ok()) {
+        LOG_STATUS_NO_RETURN_VALUE(st);
+      }
+
+      return st;
+    } else {
+      // In the meantime, try to do something useful to make progress (and avoid
+      // deadlock)
+      if (auto val = task_queue_.try_pop()) {
+        (*(*val))();
+      } else {
+        std::this_thread::yield();
+      }
+    }
+  }
 }
 
 }  // namespace tiledb::common

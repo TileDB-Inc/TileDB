@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/error/error_external.h
+ * @file tiledb/api/c_api/error/error_api_external.h
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file declares the C API for TileDB.
+ * This file declares the error section of the C API for TileDB.
  */
 
 #ifndef TILEDB_CAPI_ERROR_EXTERNAL_H
@@ -42,7 +42,48 @@ extern "C" {
 /**
  * C API carrier for a TileDB error
  */
-typedef struct tiledb_error_t tiledb_error_t;
+typedef struct tiledb_error_handle_t tiledb_error_t;
+
+/**
+ * Returns the error message associated with a TileDB error object.
+ *
+ * **Example:**
+ *
+ * The following shows how to get the last error from a TileDB context. If the
+ * error does not contain an error message ``errmsg`` is set to ``NULL``.
+ *
+ * @code{.c}
+ * tiledb_error_t* err = NULL;
+ * tiledb_ctx_get_last_error(ctx, &err);
+ * const char* msg;
+ * tiledb_error_message(err, &msg);
+ * printf("%s\n", msg);
+ * @endcode
+ *
+ * @param err A TileDB error object.
+ * @param errmsg A constant pointer to the error message.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_error_message(tiledb_error_t* err, const char** errmsg) TILEDB_NOEXCEPT;
+
+/**
+ * Frees the resources associated with a TileDB error object.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_error_t* err = NULL;
+ * tiledb_ctx_get_last_error(ctx, &err);
+ * const char* msg;
+ * tiledb_error_message(err, &msg);
+ * printf("%s\n", msg);
+ * tiledb_error_free(&err);
+ * @endcode
+ *
+ * @param err The TileDB error object.
+ */
+TILEDB_EXPORT void tiledb_error_free(tiledb_error_t** err) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

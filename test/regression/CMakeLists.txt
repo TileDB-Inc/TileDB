@@ -26,6 +26,7 @@
 #
 
 set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+list(APPEND TILEDB_CORE_INCLUDE_DIR "${CMAKE_BINARY_DIR}/tiledb/")
 
 find_package(Catch_EP REQUIRED)
 
@@ -33,6 +34,7 @@ set(SOURCES
   targets/sc-12024.cc
   targets/sc-15387.cc
   targets/sc-18836.cc
+  targets/sc-23712.cc
 )
 
 if (TILEDB_SERIALIZATION)
@@ -41,6 +43,13 @@ endif()
 
 if (TILEDB_CPP_API)
   list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
+  list(APPEND SOURCES targets/sc-24079.cc)
+  list(APPEND SOURCES targets/sc-25116.cc)
+  list(APPEND SOURCES targets/sc-29682.cc)
+  list(APPEND SOURCES targets/sc-33480.cc)
+  list(APPEND SOURCES targets/sc-35424.cc)
+  list(APPEND SOURCES targets/sc-36372.cc)
+  list(APPEND SOURCES targets/sc-38300.cc)
 endif()
 
 add_executable(tiledb_regression
@@ -49,21 +58,26 @@ add_executable(tiledb_regression
   ${SOURCES}
 )
 
+target_compile_definitions(tiledb_regression PRIVATE
+  -DTILEDB_TEST_INPUTS_DIR="${CMAKE_SOURCE_DIR}/test/inputs/"
+)
+
 if (NOT MSVC)
   target_compile_options(tiledb_regression PRIVATE -Wno-deprecated-declarations)
 endif()
 
 target_link_libraries(tiledb_regression
   PUBLIC
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     local_install
-    tiledb_shared
+    tiledb
 )
 
 target_include_directories(tiledb_regression
   PRIVATE
     ${CMAKE_INSTALL_PREFIX}/include
     "${TILEDB_CORE_INCLUDE_DIR}"
+    ${TILEDB_EP_INSTALL_PREFIX}/include
 )
 
 add_test(

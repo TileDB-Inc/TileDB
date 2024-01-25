@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/context/context_internal.h
+ * @file tiledb/api/c_api/context/context_api_internal.h
  *
  * @section LICENSE
  *
@@ -33,60 +33,69 @@
 #ifndef TILEDB_CAPI_CONTEXT_INTERNAL_H
 #define TILEDB_CAPI_CONTEXT_INTERNAL_H
 
-#include "../api_external_common.h"
-#include "../config/config_api_external.h"
-#include "../error/error_api_external.h"
-#include "context_api_external.h"
+#include "../../c_api_support/handle/handle.h"
+#include "../config/config_api_internal.h"
+#include "../error/error_api_internal.h"
 #include "tiledb/sm/storage_manager/context.h"
 
-/**
- * Forward declarations for context carrier.
- */
-namespace tiledb::api {
-void ensure_context_is_valid_enough_for_errors(tiledb_ctx_t*);
-void ensure_context_is_fully_valid(tiledb_ctx_t*);
-}  // namespace tiledb::api
-namespace tiledb::common::detail {
-int32_t tiledb_ctx_alloc(tiledb_config_t*, tiledb_ctx_t**);
-void tiledb_ctx_free(tiledb_ctx_t**);
-int32_t tiledb_ctx_get_stats(tiledb_ctx_t*, char**);
-}  // namespace tiledb::common::detail
-extern "C" {
-TILEDB_EXPORT int32_t tiledb_ctx_alloc_with_error(
-    tiledb_config_t*, tiledb_ctx_t**, tiledb_error_t**) noexcept;
-}
-
-struct tiledb_ctx_handle_t {
-  friend void tiledb::api::ensure_context_is_valid_enough_for_errors(
-      tiledb_ctx_t*);
-  friend void tiledb::api::ensure_context_is_fully_valid(tiledb_ctx_t*);
-  friend bool save_error(tiledb_ctx_t*, const Status&);
-  friend int32_t tiledb::common::detail::tiledb_ctx_alloc(
-      tiledb_config_t*, tiledb_ctx_t**);
-  friend void tiledb::common::detail::tiledb_ctx_free(tiledb_ctx_t**);
-  friend int32_t tiledb::common::detail::tiledb_ctx_get_stats(
-      tiledb_ctx_t*, char**);
-  friend int32_t tiledb_ctx_alloc_with_error(
-      tiledb_config_t*, tiledb_ctx_t**, tiledb_error_t**) noexcept;
+struct tiledb_ctx_handle_t
+    : public tiledb::api::CAPIHandle<tiledb_ctx_handle_t> {
+  /**
+   * Type name
+   */
+  static constexpr std::string_view object_type_name{"context"};
 
  private:
-  tiledb::sm::Context* ctx_ = nullptr;
+  tiledb::sm::Context ctx_;
 
  public:
-  inline tiledb::sm::StorageManager* storage_manager() {
-    return ctx_->storage_manager();
+  tiledb_ctx_handle_t() = delete;
+
+  tiledb_ctx_handle_t(const tiledb::sm::Config& config)
+      : ctx_(config) {
   }
+
+  inline tiledb::sm::Context& context() {
+    return ctx_;
+  }
+
+  inline tiledb::sm::ContextResources& resources() {
+    return ctx_.resources();
+  }
+
+  inline tiledb::sm::StorageManager* storage_manager() {
+    return ctx_.storage_manager();
+  }
+
   inline optional<std::string> last_error() {
-    return ctx_->last_error();
+    return ctx_.last_error();
   }
 };
 
-#ifdef __cplusplus
-extern "C" {
-#endif
+namespace tiledb::api {
+/**
+ * Saves a status inside the context object.
+ *
+ * Note that even though a function called `save_error` is defined here, it's
+ * not about a C API error object, the kind that's wrapped in a handle. It's a
+ * a wrapper for the "last error" facility within a `Context` object.
+ */
+bool save_error(tiledb_ctx_handle_t* ctx, const tiledb::common::Status& st);
 
-#ifdef __cplusplus
+/**
+ * Returns if the argument is a valid context: non-null, valid as a handle
+ *
+ * @tparam E Exception type to throw if context is not valid
+ * @param ctx A context of unknown validity
+ */
+template <class E = CAPIException>
+inline void ensure_context_is_valid(const tiledb_ctx_handle_t* ctx) {
+  ensure_handle_is_valid<tiledb_ctx_handle_t, E>(ctx);
 }
-#endif
 
+inline bool is_context_valid(const tiledb_ctx_handle_t* ctx) {
+  return is_handle_valid(ctx);
+}
+
+}  // namespace tiledb::api
 #endif  // TILEDB_CAPI_CONTEXT_INTERNAL_H

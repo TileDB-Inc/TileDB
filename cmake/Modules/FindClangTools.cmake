@@ -51,18 +51,8 @@ else()
 endif()
 
 find_program(CLANG_FORMAT_BIN
-  NAMES clang-format-11
-  clang-format-10
-  clang-format-9
-  clang-format-8
-  clang-format-7
-  clang-format-6
-  clang-format-5.0
-  clang-format-4.0
-  clang-format-3.9
-  clang-format-3.8
-  clang-format-3.7
-  clang-format-3.6
+  NAMES
+  clang-format-16
   clang-format
   PATHS ${ClangTools_PATH} $ENV{CLANG_TOOLS_PATH} /usr/local/bin /usr/bin
         NO_DEFAULT_PATH

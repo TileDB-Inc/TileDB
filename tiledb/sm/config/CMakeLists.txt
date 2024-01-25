@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2022 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,17 +25,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `config` object library
 #
-add_library(config OBJECT config.cc)
-target_link_libraries(config PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(config PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(config PUBLIC parse_argument $<TARGET_OBJECTS:parse_argument>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_config EXCLUDE_FROM_ALL)
-target_link_libraries(compile_config PRIVATE config)
-target_sources(compile_config PRIVATE test/compile_config_main.cc)
+commence(object_library config)
+    this_target_sources(config.cc config_iter.cc)
+    this_target_object_libraries(baseline constants parse_argument)
+conclude(object_library)
+
+add_test_subdirectory()

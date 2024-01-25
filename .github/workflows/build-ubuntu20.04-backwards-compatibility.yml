@@ -1,30 +1,10 @@
 name: build-ubuntu-20.04-backwards-compatibility
 on:
-  push:
-    branches:
-      - dev
-      - release-*
-      - refs/tags/*
-    paths-ignore:
-      - '.github/workflows/quarto-render.yml'
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
-  pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
-    paths-ignore:
-      - '.github/workflows/quarto-render.yml'
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'doc/source/conf.py'
-      - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_call:
 
 env:
-  CXX: g++
+  CXX: g++-10
+  CC: gcc-10
 
 jobs:
   build:
@@ -34,58 +14,17 @@ jobs:
       matrix:
         os:
           - ubuntu-20.04
-        # Note: v2_1_0 arrays were never created so its currently skipped
-        # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
-        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1"]
     timeout-minutes: 120
-    name: Ubuntu-20.04-back-comp
+    name: Build tiledb_unit
     steps:
-      - name: 'prep ubuntu for core dumps'
-        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          ulimit -c unlimited     # Enable core dumps to be captured (must be in same run block)
-          ulimit -c
-          sudo apt-get update
-          sudo apt-get -y install gdb
-          if [[ -f $(which gdb) ]]; then
-            echo found $(which gdb)
-          else
-            echo tried to install gdb, but gdb not found!
-          fi
-          echo "core_pattern follows..."
-          cat /proc/sys/kernel/core_pattern
-          echo "...core_pattern above"
+      - uses: actions/checkout@v3
 
-      - name: cpuprocinfo
-        shell: bash
-        run: |
-          set -x
-          cat /proc/cpuinfo
-
-      - name: ubuntu lscpu
-        shell: bash
-        run: |
-          set -x
-          if [[ $(which lscpu) ]] ; then
-            lscpu
-          fi
-
-      - uses: actions/checkout@v2
       - name: 'Print env'
-        run: |
-          echo "'uname -s' is:"
-          echo "uname: " $(uname)
-          echo "uname -m: " $(uname -m)
-          echo "uname -r:" $(uname -r)
-          echo "uname -s: " $(uname -s)
-          echo "uname -v: " $(uname -v)
-          printenv
+        run: ./scripts/ci/posix/print-env.sh
         shell: bash
-        env:
-          TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
 
       # Need this for virtualenv and arrow tests if enabled
-      - uses: actions/setup-python@v2
+      - uses: actions/setup-python@v4
         with:
           python-version: '3.8'
       - run: |
@@ -93,17 +32,59 @@ jobs:
           python -m pip install --upgrade pip virtualenv
         shell: bash
 
-      - name: 'Build and test libtiledb'
+      - name: 'Build tiledb_unit'
+        id: build
+        shell: bash
+        run: |
+          bootstrap_args="${bootstrap_args}";
+          bootstrap_args="${bootstrap_args} --enable-release-symbols";
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+      # Save the tiledb_unit binary for use in the next step
+      - name: 'Upload Artifact'
+        uses: actions/upload-artifact@v3
+        with:
+          name: tiledb_unit
+          path: ${{ github.workspace }}/build/tiledb/test/tiledb_unit
+          retention-days: 1
+
+  test:
+    needs: build
+    runs-on: ${{matrix.os}}
+    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    strategy:
+      matrix:
+        os:
+          - ubuntu-20.04
+        # Note: v2_1_0 arrays were never created so its currently skipped
+        # Note: This matrix is used to set the value of TILEDB_COMPATIBILITY_VERSION
+        tiledb_version: ["v1_4_0", "v1_5_0", "v1_6_0", "v1_7_0", "v2_0_0", "v2_2_0", "v2_2_3", "v2_3_0", "v2_4_0", "v2_5_0", "v2_6_0", "v2_7_0", "v2_8_3", "v2_9_1", "v2_10_0", "v2_11_0", "v2_12_3", "v2_13_2", "v2_14_0", "v2_15_0", "v2_16_3", "v2_17_5", "v2_18_3", "v2_19_1"]
+    timeout-minutes: 30
+    name: ${{ matrix.tiledb_version }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download a single artifact
+        uses: actions/download-artifact@v3
+        with:
+          name: tiledb_unit
+          path: ${{ github.workspace }}/build/tiledb/test/
+
+      - name: Update tiledb_unit permissions
+        run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
+
+      - name: 'Test backward compatibility'
+        id: test
         env:
           TILEDB_COMPATIBILITY_VERSION: ${{ matrix.tiledb_version }}
-        id: test
         run: |
           ulimit -c unlimited
           ulimit -c
 
           # we clone the latest version, because we are specifying the
           # test target version in the TILEDB_COMPATIBILITY_VERSION variable
-          git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch main test/inputs/arrays/read_compatibility_test
+          git clone --depth=1 https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch main test/inputs/arrays/read_compatibility_test
 
           # Remove all arrays besides the current matrix version
           ls test/inputs/arrays/read_compatibility_test/ | grep -v ${TILEDB_COMPATIBILITY_VERSION} | grep -v "__tiledb_group.tdb" | xargs -I{} echo "rm -r test/inputs/arrays/read_compatibility_test/{}"
@@ -113,70 +94,9 @@ jobs:
           ls -lah test/inputs/arrays/read_compatibility_test/
           ls -lah test/inputs/arrays/read_compatibility_test/${TILEDB_COMPATIBILITY_VERSION}/
 
-          #   name: 'Clone Unit-Test-Arrays'
-
-          bootstrap_args="${bootstrap_args}";
-          bootstrap_args="${bootstrap_args} --enable-release-symbols";
-          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          # make check | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-          ./tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
-
-      - name: 'dump  core stacks'
-        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        run: |
-          # following contains answers with various possibilities for locating core files on various systems
-          # https://stackoverflow.com/questions/2065912/core-dumped-but-core-file-is-not-in-the-current-directory
-          pwd
-          if [[ ! $(find /var/lib/apport/coredump -name 'core.*') ]]; then
-            # if we don't find the core files where/as expected, then
-            # the artifacts won't get uploaded (haven't figured out how to
-            # dynamically specify location to upload action), but we
-            # can still present stack traces for the ones we find.
-            echo "core files not found where expected!"
-            if [[ $(find . -name 'core.*') ]]; then
-              echo "core files found at/under $(pwd)"
-              corefiles=$(find . -name 'core.*')
-            elif [[ $(find / -name 'core.*') ]]; then
-              echo "core founds found!"
-              corefiles=$(find / -name 'core.*')
-            else
-              echo "core files expected but not found!"
-              corefiles=
-            fi
-          else
-            corefiles=$(find /var/lib/apport/coredump -name 'core.*')
-          fi
-          ulimit -c
-          echo "ls -l /var/lib/apport/coredump"
-          ls -l /var/lib/apport/coredump
-          for f in $corefiles;
-            do
-              echo "stack trace for $f"
-              if [[ -f $(which gdb) ]]; then
-                dbgr=$(which gdb)
-                sudo $dbgr -q --core $f -ex "thread apply all bt" -ex "info registers" -ex "disassemble" -ex "quit"
-              #fi
-              # lldb ref'd here located by doing trial in runner with find / -name "*lldb*" and sifting through the results.
-              elif [[ -f /usr/lib/llvm-11/bin/lldb ]]; then
-                dbgr="/usr/lib/llvm-11/bin/lldb"
-                sudo $dbgr -c $f --batch -o 'bt all' -o 'image list' -o 're r -a' -o 'di -F intel -f -m' -o 'quit'
-              else
-                echo "debugger not found in previously seen location!"
-                exit 1
-              fi
-            done;
-
-      - name: 'upload any core artifacts' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ always() == true && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v2
-        with:
-          retention-days: 10
-          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}.${{matrix.tiledb_version}}"
-          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
-          path: |
-            /var/lib/apport/coredump/
+          $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit -d yes "[backwards-compat]"| awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |

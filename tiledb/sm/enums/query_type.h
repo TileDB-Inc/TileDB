@@ -44,8 +44,12 @@ namespace sm {
 /** Defines the query type. */
 enum class QueryType : uint8_t {
 #define TILEDB_QUERY_TYPE_ENUM(id) id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+// Use token-pasting _CONCAT_ID version for precarious symbols
+// (such as DELETE, see `query_api_enum.h`)
+#define TILEDB_QUERY_TYPE_ENUM_CONCAT_ID(id, id2) id##id2
+#include "tiledb/api/c_api/query/query_api_enum.h"
 #undef TILEDB_QUERY_TYPE_ENUM
+#undef TILEDB_QUERY_TYPE_ENUM_CONCAT_ID
 };
 
 /** Returns the string representation of the input query type. */
@@ -57,6 +61,10 @@ inline const std::string& query_type_str(QueryType query_type) {
       return constants::query_type_write_str;
     case QueryType::DELETE:
       return constants::query_type_delete_str;
+    case QueryType::UPDATE:
+      return constants::query_type_update_str;
+    case QueryType::MODIFY_EXCLUSIVE:
+      return constants::query_type_modify_exclusive_str;
     default:
       return constants::empty_str;
   }
@@ -71,10 +79,21 @@ inline Status query_type_enum(
     *query_type = QueryType::WRITE;
   else if (query_type_str == constants::query_type_delete_str)
     *query_type = QueryType::DELETE;
+  else if (query_type_str == constants::query_type_update_str)
+    *query_type = QueryType::UPDATE;
+  else if (query_type_str == constants::query_type_modify_exclusive_str)
+    *query_type = QueryType::MODIFY_EXCLUSIVE;
   else {
     return Status_Error("Invalid QueryType " + query_type_str);
   }
   return Status::Ok();
+}
+
+/* Throws error if cell order's enumeration is greater than 4. */
+inline void ensure_query_type_is_valid(QueryType type) {
+  if (type > QueryType::MODIFY_EXCLUSIVE)
+    throw std::runtime_error(
+        "Invalid query type " + std::to_string(static_cast<uint8_t>(type)));
 }
 
 }  // namespace sm

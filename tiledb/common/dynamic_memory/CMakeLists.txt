@@ -26,46 +26,12 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    dynamic_memory.cc
-)
-gather_sources(${SOURCES})
-
 list(APPEND DEPENDENT_SOURCES
     ../governor/governor.cc
     ../heap_profiler.cc
 )
 
-if (TILEDB_TESTS)
-    find_package(Catch_EP REQUIRED)
-
-    add_executable(unit_dynamic_memory EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_dynamic_memory PUBLIC Catch2::Catch2)
-    # Link to Threads::Threads if library or flag needed to enable threading.
-    # The heap_profiler dependency requires threads. The dependency should be
-    # moved to heap_profiler if/when it is added to its own object library.
-    if (CMAKE_THREAD_LIBS_INIT)
-        target_link_libraries(unit_dynamic_memory PUBLIC Threads::Threads)
-    endif()
-
-    # Sources for code under test
-    target_sources(unit_dynamic_memory PUBLIC ${SOURCES})
-
-    # Sources for required code
-    target_sources(unit_dynamic_memory PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_dynamic_memory PUBLIC
-        test/main.cc
-        test/unit_dynamic_memory.cc
-    )
-
-    add_test(
-        NAME "unit_dynamic_memory"
-        COMMAND $<TARGET_FILE:unit_dynamic_memory>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()
 
 # TODO: Implementation of allocator_unique
 

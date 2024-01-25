@@ -94,8 +94,8 @@ class Benchmark : public BenchmarkBase {
     const unsigned skip = 2;
     for (uint32_t i = 1; i < sparse_max_row; i += skip) {
       for (uint32_t j = 1; j < sparse_max_col; j += skip) {
-        sparse_coords_.push_back(i);
-        sparse_coords_.push_back(j);
+        d1_.push_back(i);
+        d2_.push_back(j);
       }
     }
   }
@@ -115,7 +115,10 @@ class Benchmark : public BenchmarkBase {
     // Write the dense array 1 time.
     Array d_write_array(ctx_, dense_array_uri_, TILEDB_WRITE);
     Query d_write_query(ctx_, d_write_array, TILEDB_WRITE);
-    d_write_query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
+    d_write_query
+        .set_subarray(
+            Subarray(ctx_, d_write_array)
+                .set_subarray({1u, dense_array_rows, 1u, dense_array_cols}))
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", data_a_)
         .set_data_buffer("b", data_b_)
@@ -132,7 +135,8 @@ class Benchmark : public BenchmarkBase {
         .set_data_buffer("b", data_b_)
         .set_data_buffer("c", data_c_)
         .set_offsets_buffer("c", off_c_)
-        .set_coordinates(sparse_coords_);
+        .set_data_buffer("d1", d1_)
+        .set_data_buffer("d2", d2_);
     s_write_query.submit();
     s_write_array.close();
 
@@ -140,7 +144,10 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 2; ++i) {
       Array array(ctx_, dense_array_uri_, TILEDB_READ);
       Query query(ctx_, array);
-      query.set_subarray({1u, dense_array_rows, 1u, dense_array_cols})
+      query
+          .set_subarray(
+              Subarray(ctx_, array)
+                  .set_subarray({1u, dense_array_rows, 1u, dense_array_cols}))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)
           .set_data_buffer("b", data_b_)
@@ -154,23 +161,24 @@ class Benchmark : public BenchmarkBase {
     for (int i = 0; i < 2; ++i) {
       Array array(ctx_, sparse_array_uri_, TILEDB_READ);
       auto non_empty = array.non_empty_domain<uint32_t>();
-      std::vector<uint32_t> subarray = {non_empty[0].second.first,
-                                        non_empty[0].second.second,
-                                        non_empty[1].second.first,
-                                        non_empty[1].second.second};
-
-      auto max_elements = array.max_buffer_elements(subarray);
-      data_a_.resize(max_elements["a"].second);
-      sparse_coords_.resize(max_elements[TILEDB_COORDS].second);
+      std::vector<uint32_t> subarray = {
+          non_empty[0].second.first,
+          non_empty[0].second.second,
+          non_empty[1].second.first,
+          non_empty[1].second.second};
 
       Query query(ctx_, array);
-      query.set_subarray(subarray)
+      data_a_.resize(query.est_result_size("a"));
+      d1_.resize(query.est_result_size("d1"));
+      d2_.resize(query.est_result_size("d2"));
+      query.set_subarray(Subarray(ctx_, array).set_subarray(subarray))
           .set_layout(TILEDB_ROW_MAJOR)
           .set_data_buffer("a", data_a_)
           .set_data_buffer("b", data_b_)
           .set_data_buffer("c", data_c_)
           .set_offsets_buffer("c", off_c_)
-          .set_coordinates(sparse_coords_);
+          .set_data_buffer("d1", d1_)
+          .set_data_buffer("d2", d2_);
       query.submit();
       array.close();
     }
@@ -190,7 +198,8 @@ class Benchmark : public BenchmarkBase {
   std::vector<uint64_t> off_c_;
   std::vector<int> data_c_;
 
-  std::vector<uint32_t> sparse_coords_;
+  std::vector<uint32_t> d1_;
+  std::vector<uint32_t> d2_;
 };
 
 int main(int argc, char** argv) {

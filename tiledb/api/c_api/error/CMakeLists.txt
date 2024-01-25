@@ -25,20 +25,17 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
     error_api.cc
 )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_error OBJECT ${SOURCES})
-target_link_libraries(capi_error PUBLIC export)
+commence(object_library capi_error)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline exception_wrapper)
+conclude(object_library)
 
-#
-# UNFINISHED
-#
-# This will support a future `capi_config` library.
-#
+add_test_subdirectory()

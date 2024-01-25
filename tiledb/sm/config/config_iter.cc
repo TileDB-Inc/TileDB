@@ -40,8 +40,8 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ConfigIter::ConfigIter(const Config* config, const std::string& prefix)
-    : param_values_(config->param_values())
+ConfigIter::ConfigIter(const Config& config, const std::string& prefix)
+    : param_values_(config.param_values())
     , prefix_(prefix)
     , config_(config) {
   it_ = param_values_.get().begin();
@@ -68,9 +68,9 @@ const std::string& ConfigIter::param() const {
   return param_;
 }
 
-void ConfigIter::reset(const Config* config, const std::string& prefix) {
+void ConfigIter::reset(const Config& config, const std::string& prefix) {
   prefix_ = prefix;
-  param_values_ = config->param_values();
+  param_values_ = config.param_values();
   it_ = param_values_.get().begin();
   next_while_not_prefix();
 }
@@ -92,7 +92,7 @@ void ConfigIter::next_while_not_prefix() {
   if (it_ != param_values_.get().end()) {
     param_ = it_->first.substr(prefix_.size());
     bool found;
-    value_ = config_->get(param_, &found);
+    value_ = config_.get(param_, &found);
     // If for some reason the param is missing from the config, use the original
     // one from values map
     if (!found)

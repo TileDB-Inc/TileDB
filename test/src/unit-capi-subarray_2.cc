@@ -34,7 +34,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <climits>
@@ -308,7 +308,7 @@ void Subarray2Fx::create_sparse_array(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -376,7 +376,7 @@ void Subarray2Fx::create_sparse_array_1d(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -449,7 +449,7 @@ void Subarray2Fx::create_sparse_array_2d(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -514,7 +514,7 @@ void Subarray2Fx::create_sparse_array_real(const std::string& array_name) {
   rc = tiledb_attribute_set_cell_val_num(ctx_, a, 1);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);

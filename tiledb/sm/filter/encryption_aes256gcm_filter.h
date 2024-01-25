@@ -80,15 +80,19 @@ class EncryptionAES256GCMFilter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  EncryptionAES256GCMFilter();
+  EncryptionAES256GCMFilter(Datatype filter_data_type);
 
   /**
    * Constructor with explicit key.
    *
    * @param key Key to use for the filter.
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  explicit EncryptionAES256GCMFilter(const EncryptionKey& key);
+  explicit EncryptionAES256GCMFilter(
+      const EncryptionKey& key, Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -97,8 +101,8 @@ class EncryptionAES256GCMFilter : public Filter {
    * Encrypt the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -109,7 +113,7 @@ class EncryptionAES256GCMFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -128,17 +132,15 @@ class EncryptionAES256GCMFilter : public Filter {
    * Sets the secret key on this filter to a pointer to the given key.
    *
    * @param key Encryption key, expected to hold `uint8_t[32]`.
-   * @return Status
    */
-  Status set_key(const EncryptionKey& key);
+  void set_key(const EncryptionKey& key);
 
   /**
    * Sets the secret key on this filter to a pointer to the given key.
    *
    * @param key_bytes Buffer holding the key, expected to be `uint8_t[32]`.
-   * @return Status
    */
-  Status set_key(const void* key_bytes);
+  void set_key(const void* key_bytes);
 
  private:
   /** Pointer to a buffer storing the secret key. */

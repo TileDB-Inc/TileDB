@@ -1,5 +1,5 @@
 #
-# tiledb/api/proxy/test/CMakeLists.txt
+# tiledb/api/c_api_support/handle/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -26,7 +26,7 @@
 
 add_executable(unit_capi_handle EXCLUDE_FROM_ALL)
 find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_handle PUBLIC Catch2::Catch2)
+target_link_libraries(unit_capi_handle PUBLIC Catch2::Catch2WithMain)
 
 # Sources for code under test
 target_link_libraries(unit_capi_handle PUBLIC handle)

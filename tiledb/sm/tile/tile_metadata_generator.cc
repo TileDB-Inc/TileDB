@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 WriterTileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,29 +31,25 @@
  */
 
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*    STRUCTURED BINDINGS APIS    */
 /* ****************************** */
 
 template <typename T>
-ByteVec Sum<T, int64_t>::sum(const Tile& tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, int64_t>::sum(
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<int64_t*>(ret.data());
+  auto sum_data = reinterpret_cast<int64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     auto value = static_cast<int64_t>(values[c]);
     if (*sum_data > 0 && value > 0 &&
         (*sum_data > std::numeric_limits<int64_t>::max() - value)) {
@@ -69,22 +65,17 @@ ByteVec Sum<T, int64_t>::sum(const Tile& tile) {
 
     *sum_data += value;
   }
-
-  return ret;
 }
 
 template <typename T>
-ByteVec Sum<T, uint64_t>::sum(const Tile& tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, uint64_t>::sum(
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<uint64_t*>(ret.data());
+  auto sum_data = reinterpret_cast<uint64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     auto value = static_cast<uint64_t>(values[c]);
     if (*sum_data > std::numeric_limits<uint64_t>::max() - value) {
       *sum_data = std::numeric_limits<uint64_t>::max();
@@ -93,22 +84,17 @@ ByteVec Sum<T, uint64_t>::sum(const Tile& tile) {
 
     *sum_data += value;
   }
-
-  return ret;
 }
 
 template <typename T>
-ByteVec Sum<T, double>::sum(const Tile& tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, double>::sum(
+    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<double*>(ret.data());
+  auto sum_data = reinterpret_cast<double*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     auto value = static_cast<double>(values[c]);
     if ((*sum_data < 0.0) == (value < 0.0) &&
         std::abs(*sum_data) >
@@ -120,24 +106,22 @@ ByteVec Sum<T, double>::sum(const Tile& tile) {
 
     *sum_data += value;
   }
-
-  return ret;
 }
 
 template <typename T>
-ByteVec Sum<T, int64_t>::sum_nullable(
-    const Tile& tile, const Tile& validity_tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, int64_t>::sum_nullable(
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto validity_values = validity_tile.data_as<uint8_t>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<int64_t*>(ret.data());
+  auto sum_data = reinterpret_cast<int64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     if (validity_values[c] != 0) {
       auto value = static_cast<int64_t>(values[c]);
       if (*sum_data > 0 && value > 0 &&
@@ -155,24 +139,22 @@ ByteVec Sum<T, int64_t>::sum_nullable(
       *sum_data += value;
     }
   }
-
-  return ret;
 }
 
 template <typename T>
-ByteVec Sum<T, uint64_t>::sum_nullable(
-    const Tile& tile, const Tile& validity_tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, uint64_t>::sum_nullable(
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto validity_values = validity_tile.data_as<uint8_t>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<uint64_t*>(ret.data());
+  auto sum_data = reinterpret_cast<uint64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     if (validity_values[c] != 0) {
       auto value = static_cast<uint64_t>(values[c]);
       if (*sum_data > std::numeric_limits<uint64_t>::max() - value) {
@@ -183,24 +165,22 @@ ByteVec Sum<T, uint64_t>::sum_nullable(
       *sum_data += value;
     }
   }
-
-  return ret;
 }
 
 template <typename T>
-ByteVec Sum<T, double>::sum_nullable(
-    const Tile& tile, const Tile& validity_tile) {
-  // Zero sum.
-  ByteVec ret(8, 0);
-
+void Sum<T, double>::sum_nullable(
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
   auto values = tile.data_as<T>();
   auto validity_values = validity_tile.data_as<uint8_t>();
-  auto cell_num = tile.size_as<T>();
-  auto sum_data = reinterpret_cast<double*>(ret.data());
+  auto sum_data = reinterpret_cast<double*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
-  for (uint64_t c = 0; c < cell_num; c++) {
+  for (uint64_t c = start; c < end; c++) {
     if (validity_values[c] != 0) {
       auto value = static_cast<double>(values[c]);
       if ((*sum_data < 0.0) == (value < 0.0) &&
@@ -214,8 +194,6 @@ ByteVec Sum<T, double>::sum_nullable(
       *sum_data += value;
     }
   }
-
-  return ret;
 }
 
 /* ****************************** */
@@ -243,10 +221,12 @@ bool TileMetadataGenerator::has_min_max_metadata(
     return false;
   }
 
-  // No min max for any, blob, or non ascii strings.
+  // No min max for any, byte-type, or non ascii strings.
   switch (type) {
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -265,10 +245,12 @@ bool TileMetadataGenerator::has_sum_metadata(
   if (var_size || cell_val_num != 1)
     return false;
 
-  // No sum for any, blob, or non ascii strings.
+  // No sum for any, byte-type, or non ascii strings.
   switch (type) {
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -282,111 +264,6 @@ bool TileMetadataGenerator::has_sum_metadata(
   }
 }
 
-template <class T>
-const tuple<void*, void*> TileMetadataGenerator::min_max(
-    const Tile& tile, const uint64_t cell_size) {
-  // Initialize defaults.
-  void* min = (void*)&metadata_generator_type_data<T>::min;
-  void* max = (void*)&metadata_generator_type_data<T>::max;
-
-  // Get pointer to the data and cell num.
-  auto values = tile.data_as<T>();
-  auto cell_num = tile.size() / cell_size;
-
-  // Process cell by cell.
-  for (uint64_t c = 0; c < cell_num; c++) {
-    min = *static_cast<T*>(min) < values[c] ? min : &values[c];
-    max = *static_cast<T*>(max) > values[c] ? max : &values[c];
-  }
-
-  return {min, max};
-}
-
-template <>
-const tuple<void*, void*> TileMetadataGenerator::min_max<char>(
-    const Tile& tile, const uint64_t cell_size) {
-  // For strings, return null for empty tiles.
-  auto size = tile.size();
-  if (size == 0)
-    return {nullptr, nullptr};
-
-  // Get pointer to the data, set the min max to the first value.
-  auto data = tile.data_as<char>();
-  void* min = data;
-  void* max = data;
-
-  // Process all cells, starting at the second value.
-  auto value = data + cell_size;
-  auto cell_num = size / cell_size;
-  for (uint64_t c = 1; c < cell_num; c++) {
-    min = strncmp((const char*)min, (const char*)value, size) > 0 ? value : min;
-    max = strncmp((const char*)max, (const char*)value, size) < 0 ? value : max;
-    value += cell_size;
-  }
-
-  return {min, max};
-}
-
-template <class T>
-const tuple<void*, void*, uint64_t> TileMetadataGenerator::min_max_nullable(
-    const Tile& tile, const Tile& validity_tile, const uint64_t cell_size) {
-  // Initialize defaults.
-  void* min = (void*)&metadata_generator_type_data<T>::min;
-  void* max = (void*)&metadata_generator_type_data<T>::max;
-  uint64_t null_count = 0;
-
-  // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
-  auto cell_num = tile.size() / cell_size;
-
-  // Process cell by cell.
-  for (uint64_t c = 0; c < cell_num; c++) {
-    const bool is_null = validity_values[c] == 0;
-    min = (is_null || (*static_cast<T*>(min) < values[c])) ? min : &values[c];
-    max = (is_null || (*static_cast<T*>(max) > values[c])) ? max : &values[c];
-    null_count += is_null;
-  }
-
-  return {min, max, null_count};
-}
-
-template <>
-const tuple<void*, void*, uint64_t>
-TileMetadataGenerator::min_max_nullable<char>(
-    const Tile& tile, const Tile& validity_tile, const uint64_t cell_size) {
-  // Initialize to null.
-  void* min = nullptr;
-  void* max = nullptr;
-  uint64_t null_count = 0;
-
-  // Get pointers to the data and cell num.
-  auto value = tile.data_as<char>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
-  auto cell_num = tile.size() / cell_size;
-
-  // Process cell by cell.
-  for (uint64_t c = 0; c < cell_num; c++) {
-    const bool is_null = validity_values[c] == 0;
-    min =
-        !is_null &&
-                (min == nullptr ||
-                 strncmp((const char*)min, (const char*)value, cell_size) > 0) ?
-            value :
-            min;
-    max =
-        !is_null &&
-                (max == nullptr ||
-                 strncmp((const char*)max, (const char*)value, cell_size) < 0) ?
-            value :
-            max;
-    value += cell_size;
-    null_count += is_null;
-  }
-
-  return {min, max, null_count};
-}
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -397,63 +274,63 @@ TileMetadataGenerator::TileMetadataGenerator(
     const bool var_size,
     const uint64_t cell_size,
     const uint64_t cell_val_num)
-    : type_(type)
+    : var_size_(var_size)
+    , type_(type)
     , min_(nullptr)
     , min_size_(0)
     , max_(nullptr)
     , max_size_(0)
+    , sum_(sizeof(uint64_t))
     , null_count_(0)
-    , cell_size_(cell_size) {
-  has_min_max_ = has_min_max_metadata(type, is_dim, var_size, cell_val_num);
-  has_sum_ = has_sum_metadata(type, var_size, cell_val_num);
-
-  sum_.resize(sizeof(uint64_t));
+    , cell_size_(cell_size)
+    , has_min_max_(has_min_max_metadata(type, is_dim, var_size, cell_val_num))
+    , has_sum_(has_sum_metadata(type, var_size, cell_val_num)) {
 }
 
 /* ****************************** */
 /*               API              */
 /* ****************************** */
 
-void TileMetadataGenerator::process_tile(WriterTile& tile) {
-  min_ = nullptr;
-  min_size_ = 0;
-  max_ = nullptr;
-  max_size_ = 0;
-  null_count_ = 0;
+void TileMetadataGenerator::process_full_tile(const WriterTileTuple& tile) {
+  uint64_t cell_num = tile.cell_num();
+  process_cell_slab(tile, 0, cell_num);
+}
 
-  if (!tile.var_size()) {
+void TileMetadataGenerator::process_cell_slab(
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
+  if (!var_size_) {
     // Switch depending on datatype.
     switch (type_) {
       case Datatype::INT8:
-        process_tile<int8_t>(tile);
+        process_cell_range<int8_t>(tile, start, end);
         break;
       case Datatype::INT16:
-        process_tile<int16_t>(tile);
+        process_cell_range<int16_t>(tile, start, end);
         break;
       case Datatype::INT32:
-        process_tile<int32_t>(tile);
+        process_cell_range<int32_t>(tile, start, end);
         break;
       case Datatype::INT64:
-        process_tile<int64_t>(tile);
+        process_cell_range<int64_t>(tile, start, end);
         break;
       case Datatype::BOOL:
       case Datatype::UINT8:
-        process_tile<uint8_t>(tile);
+        process_cell_range<uint8_t>(tile, start, end);
         break;
       case Datatype::UINT16:
-        process_tile<uint16_t>(tile);
+        process_cell_range<uint16_t>(tile, start, end);
         break;
       case Datatype::UINT32:
-        process_tile<uint32_t>(tile);
+        process_cell_range<uint32_t>(tile, start, end);
         break;
       case Datatype::UINT64:
-        process_tile<uint64_t>(tile);
+        process_cell_range<uint64_t>(tile, start, end);
         break;
       case Datatype::FLOAT32:
-        process_tile<float>(tile);
+        process_cell_range<float>(tile, start, end);
         break;
       case Datatype::FLOAT64:
-        process_tile<double>(tile);
+        process_cell_range<double>(tile, start, end);
         break;
       case Datatype::DATETIME_YEAR:
       case Datatype::DATETIME_MONTH:
@@ -477,21 +354,27 @@ void TileMetadataGenerator::process_tile(WriterTile& tile) {
       case Datatype::TIME_PS:
       case Datatype::TIME_FS:
       case Datatype::TIME_AS:
-        process_tile<int64_t>(tile);
+        process_cell_range<int64_t>(tile, start, end);
         break;
       case Datatype::STRING_ASCII:
       case Datatype::CHAR:
-        process_tile<char>(tile);
+        process_cell_range<char>(tile, start, end);
         break;
       case Datatype::BLOB:
-        process_tile<std::byte>(tile);
+      case Datatype::GEOM_WKB:
+      case Datatype::GEOM_WKT:
+        process_cell_range<std::byte>(tile, start, end);
         break;
       default:
         break;
     }
   } else {
-    process_tile_var(tile);
+    process_cell_range_var(tile, start, end);
   }
+}
+
+void TileMetadataGenerator::set_tile_metadata(WriterTileTuple& tile) {
+  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
 /* ****************************** */
@@ -499,31 +382,131 @@ void TileMetadataGenerator::process_tile(WriterTile& tile) {
 /* ****************************** */
 
 template <class T>
-void TileMetadataGenerator::process_tile(WriterTile& tile) {
+void TileMetadataGenerator::min_max(
+    const WriterTile& tile, uint64_t start, uint64_t end) {
+  // Get pointer to the data and cell num.
+  auto values = tile.data_as<T>();
+
+  // Initialize defaults.
+  if (min_ == nullptr) {
+    min_ = static_cast<const void*>(&metadata_generator_type_data<T>::min);
+    max_ = static_cast<const void*>(&metadata_generator_type_data<T>::max);
+  }
+
+  // Process cell by cell.
+  for (uint64_t c = start; c < end; c++) {
+    min_ = *static_cast<const T*>(min_) < values[c] ? min_ : &values[c];
+    max_ = *static_cast<const T*>(max_) > values[c] ? max_ : &values[c];
+  }
+}
+
+template <>
+void TileMetadataGenerator::min_max<char>(
+    const WriterTile& tile, uint64_t start, uint64_t end) {
+  // For strings, return null for empty tiles.
+  auto size = tile.size();
+  if (size == 0) {
+    return;
+  }
+
+  // Get pointer to the data, set the min max to the first value.
+  auto data = tile.data_as<char>();
+  if (min_ == nullptr) {
+    min_ = data + start * cell_size_;
+    max_ = data + start * cell_size_;
+    start++;
+  }
+
+  // Process all cells, starting at the second value.
+  auto value = data + start * cell_size_;
+  for (uint64_t c = start; c < end; c++) {
+    min_ = strncmp((const char*)min_, (const char*)value, cell_size_) > 0 ?
+               value :
+               min_;
+    max_ = strncmp((const char*)max_, (const char*)value, cell_size_) < 0 ?
+               value :
+               max_;
+    value += cell_size_;
+  }
+}
+
+template <class T>
+void TileMetadataGenerator::min_max_nullable(
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end) {
+  auto values = tile.data_as<T>();
+  auto validity_values = validity_tile.data_as<uint8_t>();
+
+  // Initialize defaults.
+  if (min_ == nullptr) {
+    min_ = (void*)&metadata_generator_type_data<T>::min;
+    max_ = (void*)&metadata_generator_type_data<T>::max;
+  }
+
+  // Process cell by cell.
+  for (uint64_t c = start; c < end; c++) {
+    const bool is_null = validity_values[c] == 0;
+    min_ = (is_null || (*static_cast<const T*>(min_) < values[c])) ? min_ :
+                                                                     &values[c];
+    max_ = (is_null || (*static_cast<const T*>(max_) > values[c])) ? max_ :
+                                                                     &values[c];
+    null_count_ += is_null;
+  }
+}
+
+template <>
+void TileMetadataGenerator::min_max_nullable<char>(
+    const WriterTile& tile,
+    const WriterTile& validity_tile,
+    uint64_t start,
+    uint64_t end) {
+  // Get pointers to the data and cell num.
+  auto value = tile.data_as<char>() + cell_size_ * start;
+  auto validity_values = validity_tile.data_as<uint8_t>();
+
+  // Process cell by cell.
+  for (uint64_t c = start; c < end; c++) {
+    const bool is_null = validity_values[c] == 0;
+    min_ = !is_null &&
+                   (min_ == nullptr ||
+                    strncmp((const char*)min_, (const char*)value, cell_size_) >
+                        0) ?
+               value :
+               min_;
+    max_ = !is_null &&
+                   (max_ == nullptr ||
+                    strncmp((const char*)max_, (const char*)value, cell_size_) <
+                        0) ?
+               value :
+               max_;
+    value += cell_size_;
+    null_count_ += is_null;
+  }
+}
+
+template <class T>
+void TileMetadataGenerator::process_cell_range(
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   min_size_ = max_size_ = cell_size_;
   const auto& fixed_tile = tile.fixed_tile();
 
   // Fixed size attribute, non nullable
   if (!tile.nullable()) {
     if (has_min_max_) {
-      auto&& [min, max] = min_max<T>(fixed_tile, cell_size_);
-      min_ = min;
-      max_ = max;
+      min_max<T>(fixed_tile, start, end);
     }
 
     if (has_sum_) {
-      sum_ = Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum(
-          fixed_tile);
+      Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum(
+          fixed_tile, start, end, sum_);
     }
   } else {  // Fixed size attribute, nullable.
     const auto& validity_tile = tile.validity_tile();
     auto validity_value = validity_tile.data_as<uint8_t>();
     if (has_min_max_) {
-      auto&& [min, max, nc] =
-          min_max_nullable<T>(fixed_tile, validity_tile, cell_size_);
-      min_ = min;
-      max_ = max;
-      null_count_ = nc;
+      min_max_nullable<T>(fixed_tile, validity_tile, start, end);
     } else {
       auto cell_num = tile.cell_num();
       for (uint64_t c = 0; c < cell_num; c++) {
@@ -534,15 +517,14 @@ void TileMetadataGenerator::process_tile(WriterTile& tile) {
     }
 
     if (has_sum_) {
-      sum_ = Sum<T, typename metadata_generator_type_data<T>::sum_type>::
-          sum_nullable(fixed_tile, validity_tile);
+      Sum<T, typename metadata_generator_type_data<T>::sum_type>::sum_nullable(
+          fixed_tile, validity_tile, start, end, sum_);
     }
   }
-
-  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
-void TileMetadataGenerator::process_tile_var(WriterTile& tile) {
+void TileMetadataGenerator::process_cell_range_var(
+    const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   assert(tile.var_size());
 
   const auto& offset_tile = tile.offset_tile();
@@ -550,23 +532,27 @@ void TileMetadataGenerator::process_tile_var(WriterTile& tile) {
 
   // Handle empty tile.
   if (!has_min_max_ || offset_tile.size() == 0) {
-    tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
     return;
   }
 
   // Get pointers to the data and cell num.
-  auto offset_value = offset_tile.data_as<uint64_t>();
+  auto offset_value = offset_tile.data_as<offsets_t>() + start;
   auto var_data = var_tile.data_as<char>();
   auto cell_num = tile.cell_num();
 
   // Var size attribute, non nullable.
   if (!tile.nullable()) {
-    offset_value++;
-    min_ = var_data;
-    max_ = var_data;
-    min_size_ = max_size_ = cell_num == 1 ? var_tile.size() : *offset_value;
+    if (min_ == nullptr) {
+      min_ = &var_data[*offset_value];
+      max_ = &var_data[*offset_value];
+      min_size_ = max_size_ = start == cell_num - 1 ?
+                                  var_tile.size() - *offset_value :
+                                  offset_value[1] - *offset_value;
+      offset_value++;
+      start++;
+    }
 
-    for (uint64_t c = 1; c < cell_num; c++) {
+    for (uint64_t c = start; c < end; c++) {
       auto value = var_data + *offset_value;
       auto size = c == cell_num - 1 ? var_tile.size() - *offset_value :
                                       offset_value[1] - *offset_value;
@@ -577,7 +563,7 @@ void TileMetadataGenerator::process_tile_var(WriterTile& tile) {
     const auto& validity_tile = tile.validity_tile();
     auto validity_value = validity_tile.data_as<uint8_t>();
 
-    for (uint64_t c = 0; c < cell_num; c++) {
+    for (uint64_t c = start; c < end; c++) {
       auto is_null = *validity_value == 0;
       if (!is_null) {
         auto value = var_data + *offset_value;
@@ -598,8 +584,6 @@ void TileMetadataGenerator::process_tile_var(WriterTile& tile) {
       validity_value++;
     }
   }
-
-  tile.set_metadata(min_, min_size_, max_, max_size_, sum_, null_count_);
 }
 
 inline void TileMetadataGenerator::min_max_var(
@@ -637,5 +621,4 @@ inline void TileMetadataGenerator::min_max_var(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

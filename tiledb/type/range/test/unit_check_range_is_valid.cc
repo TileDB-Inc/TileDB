@@ -55,8 +55,9 @@ TEMPLATE_TEST_CASE(
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test full typeset is valid") {
-    TestType fullset[2]{std::numeric_limits<TestType>::min(),
-                        std::numeric_limits<TestType>::max()};
+    TestType fullset[2]{
+        std::numeric_limits<TestType>::min(),
+        std::numeric_limits<TestType>::max()};
     Range range{&fullset[0], 2 * sizeof(TestType)};
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
@@ -89,8 +90,9 @@ TEMPLATE_TEST_CASE(
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test full typeset is valid") {
-    TestType fullset[2]{std::numeric_limits<TestType>::min(),
-                        std::numeric_limits<TestType>::max()};
+    TestType fullset[2]{
+        std::numeric_limits<TestType>::min(),
+        std::numeric_limits<TestType>::max()};
     Range range{&fullset[0], 2 * sizeof(TestType)};
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
@@ -121,14 +123,16 @@ TEMPLATE_TEST_CASE(
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test the full typeset is valid") {
-    TestType data[2]{std::numeric_limits<TestType>::min(),
-                     std::numeric_limits<TestType>::max()};
+    TestType data[2]{
+        std::numeric_limits<TestType>::min(),
+        std::numeric_limits<TestType>::max()};
     Range range{&data[0], 2 * sizeof(TestType)};
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with lower infinite bound is valid") {
-    TestType data[2]{-std::numeric_limits<TestType>::infinity(),
-                     std::numeric_limits<TestType>::infinity()};
+    TestType data[2]{
+        -std::numeric_limits<TestType>::infinity(),
+        std::numeric_limits<TestType>::infinity()};
     Range range{&data[0], 2 * sizeof(TestType)};
     REQUIRE_NOTHROW(check_range_is_valid<TestType>(range));
   }
@@ -147,8 +151,9 @@ TEMPLATE_TEST_CASE(
     REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }
   SECTION("Test range with NaN values is invalid") {
-    TestType data[2]{std::numeric_limits<TestType>::quiet_NaN(),
-                     std::numeric_limits<TestType>::quiet_NaN()};
+    TestType data[2]{
+        std::numeric_limits<TestType>::quiet_NaN(),
+        std::numeric_limits<TestType>::quiet_NaN()};
     Range range{&data[0], 2 * sizeof(TestType)};
     REQUIRE_THROWS(check_range_is_valid<TestType>(range));
   }

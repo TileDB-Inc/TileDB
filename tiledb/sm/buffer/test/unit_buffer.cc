@@ -115,8 +115,7 @@ TEST_CASE("Buffer: Test swap", "[buffer]") {
   CHECK(buff2.owns_data());
   CHECK(std::memcmp(buff2.data(), &data2, sizeof(data2)) == 0);
 
-  st = buff1.swap(buff2);
-  REQUIRE(st.ok());
+  buff1.swap(buff2);
   CHECK(buff1.owns_data());
   CHECK(buff1.offset() == 5);
   CHECK(buff1.size() == sizeof(data2));
@@ -131,8 +130,7 @@ TEST_CASE("Buffer: Test swap", "[buffer]") {
   char data3[] = {9};
   Buffer buff3(data3, sizeof(data3));
   CHECK(!buff3.owns_data());
-  st = buff1.swap(buff3);
-  REQUIRE(st.ok());
+  buff1.swap(buff3);
   CHECK(!buff1.owns_data());
   CHECK(buff1.data() == &data3[0]);
   CHECK(buff1.offset() == 0);

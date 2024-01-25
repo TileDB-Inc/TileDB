@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,10 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
@@ -47,6 +50,12 @@ struct Point {
 struct CPPArrayFx {
   static const unsigned d1_tile = 10;
   static const unsigned d2_tile = 5;
+
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  test::ServerQueryBuffers server_buffers_;
 
   CPPArrayFx()
       : vfs(ctx) {
@@ -115,9 +124,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 
   SECTION("Make Buffer") {
     Array array(ctx, "cpp_unit_array", TILEDB_WRITE);
-    Query query(ctx, array, TILEDB_WRITE);
-    CHECK_THROWS(query.set_subarray<unsigned>({1, 2}));  // Wrong type
-    CHECK_THROWS(query.set_subarray<int>({1, 2}));       // Wrong num
+    Subarray subarray(ctx, array);
+    CHECK_THROWS(subarray.set_subarray<unsigned>({1, 2}));  // Wrong type
+    CHECK_THROWS(subarray.set_subarray<int>({1, 2}));       // Wrong num
     array.close();
   }
 
@@ -136,9 +145,11 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     CHECK((std::string)array.config()["b"] == "10");
 
     // Create a config for the array
+    array.close();
     tiledb::Config cfg2;
     cfg2["b"] = "5";
     array.set_config(cfg2);
+    array.open(TILEDB_READ);
 
     // Check that the config values are correct
     CHECK((std::string)array.config()["a"] == "1");
@@ -345,8 +356,26 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
     query.set_data_buffer("a5", a5);
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    CHECK(query.submit() == tiledb::Query::Status::COMPLETE);
-    REQUIRE_NOTHROW(query.finalize());
+
+    SECTION("no serialization") {
+      serialize_ = false;
+    }
+#ifdef TILEDB_SERIALIZATION
+    SECTION("serialization enabled global order write") {
+      serialize_ = true;
+      refactored_query_v2_ = GENERATE(true, false);
+    }
+#endif
+
+    // Submit query
+    auto rc = submit_query_wrapper(
+        ctx,
+        "cpp_unit_array",
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
+    REQUIRE(rc == TILEDB_OK);
 
     // Check non-empty domain while array open in write mode
     CHECK_THROWS(array.non_empty_domain<int>(1));
@@ -405,6 +434,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic]") {
 }
 
 TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name_1d = "cpp_unit_array_1d";
   Context ctx;
   VFS vfs(ctx);
@@ -425,6 +455,15 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
       SECTION("NON_NULL_PTR") {
         null_pointer = false;
       }
+      SECTION("no serialization") {
+        serialize = false;
+      }
+#ifdef TILEDB_SERIALIZATION
+      SECTION("serialization enabled global order write") {
+        serialize = true;
+        refactored_query_v2 = GENERATE(true, false);
+      }
+#endif
     }
 
     SECTION("UNORDERED") {
@@ -477,8 +516,17 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length]") {
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
-    q.submit();
-    q.finalize();
+
+    // Submit query
+    test::ServerQueryBuffers server_buffers_;
+    auto rc = submit_query_wrapper(
+        ctx,
+        array_name_1d,
+        &q,
+        server_buffers_,
+        serialize,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
 
     array.close();
   }
@@ -554,10 +602,9 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets]") {
 }
 
 TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
-  const std::vector<tiledb_layout_t> tile_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR},
-                                     cell_layouts = {TILEDB_ROW_MAJOR,
-                                                     TILEDB_COL_MAJOR};
+  const std::vector<tiledb_layout_t>
+      tile_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR},
+      cell_layouts = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR};
   const std::vector<int> tile_extents = {1, 2, 3, 4};
 
   for (auto tile_layout : tile_layouts) {
@@ -587,7 +634,7 @@ TEST_CASE("C++ API: Read subarray with expanded domain", "[cppapi][dense]") {
             1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
         Array array_w(ctx, array_name, TILEDB_WRITE);
         Query query_w(ctx, array_w);
-        query_w.set_subarray({0, 3, 0, 3})
+        query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
             .set_layout(TILEDB_ROW_MAJOR)
             .set_data_buffer("a", data_w);
         query_w.submit();
@@ -646,7 +693,9 @@ TEST_CASE("C++ API: Consolidation of empty arrays", "[cppapi][consolidation]") {
 TEST_CASE(
     "C++ API: Consolidation of sequential fragment writes",
     "[cppapi][consolidation][sequential]") {
-  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
 
@@ -662,16 +711,26 @@ TEST_CASE(
 
   tiledb::Array::create(array_name, schema);
   auto array_w = tiledb::Array(ctx, array_name, TILEDB_WRITE);
-  auto query_w = tiledb::Query(ctx, array_w, TILEDB_WRITE);
   std::vector<int> data = {0, 1};
 
-  query_w.set_data_buffer("a", data).set_subarray({0, 1}).submit();
-  query_w.set_data_buffer("a", data).set_subarray({2, 3}).submit();
+  auto query_1 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_1.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({0, 1}))
+      .submit();
+
+  auto query_2 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_2.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({2, 3}))
+      .submit();
+
   // this fragment write caused crash during consolidation
   //   https://github.com/TileDB-Inc/TileDB/issues/1205
   //   https://github.com/TileDB-Inc/TileDB/issues/1212
-  query_w.set_data_buffer("a", data).set_subarray({4, 5}).submit();
-  query_w.finalize();
+  auto query_3 = tiledb::Query(ctx, array_w, TILEDB_WRITE);
+  query_3.set_data_buffer("a", data)
+      .set_subarray(Subarray(ctx, array_w).set_subarray({4, 5}))
+      .submit();
+
   array_w.close();
   CHECK(tiledb::test::num_fragments(array_name) == 3);
   Array::consolidate(ctx, array_name);
@@ -686,6 +745,7 @@ TEST_CASE(
 TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption]") {
   const char key[] = "0123456789abcdeF0123456789abcdeF";
   tiledb::Config cfg;
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = key;
   Context ctx(cfg);
@@ -770,6 +830,7 @@ TEST_CASE("C++ API: Encrypted array, std::string key", "[cppapi][encryption]") {
   tiledb::Config cfg;
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = key.c_str();
+  cfg["sm.consolidation.total_buffer_size"] = "1048576";
   Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -1072,6 +1133,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Writing single cell with global order",
     "[cppapi][sparse][global]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1096,8 +1158,27 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1112,6 +1193,73 @@ TEST_CASE(
   array.close();
 
   REQUIRE(data[0] == 1);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+}
+
+TEST_CASE(
+    "C++ API: Writing single byte cell with global order",
+    "[cppapi][std::byte]") {
+  bool serialize = false, refactored_query_v2 = false;
+  const std::string array_name = "cpp_unit_array";
+
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 0}}, 1));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(
+      Attribute::create(ctx, "a", tiledb_datatype_t::TILEDB_BLOB));
+  Array::create(array_name, schema);
+
+  // Write
+  std::byte data_w{1};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("a", &data_w, 1);
+
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 0, 0);
+  std::byte data;
+  query.set_layout(TILEDB_ROW_MAJOR)
+      .set_subarray(subarray)
+      .set_data_buffer("a", &data, 1);
+  query.submit();
+  array.close();
+
+  REQUIRE(data == data_w);
 
   if (vfs.is_dir(array_name))
     vfs.remove_dir(array_name);
@@ -1444,6 +1592,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Sparse global order, dimension only read",
     "[cppapi][sparse][global][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1468,8 +1617,28 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1492,6 +1661,7 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Unordered with dups, dimension only read",
     "[cppapi][sparse][unordered][dups][read][dimension-only]") {
+  bool serialize = false, refactored_query_v2 = false;
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1517,8 +1687,29 @@ TEST_CASE(
   query_w.set_coordinates(coords_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
-  query_w.submit();
-  query_w.finalize();
+
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialize,
+      refactored_query_v2);
+
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 
   // Read
@@ -1562,7 +1753,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1615,7 +1806,7 @@ TEST_CASE(
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_subarray({0, 3, 0, 3})
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_w);
   query_w.submit();
@@ -1632,14 +1823,14 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
@@ -1689,20 +1880,157 @@ TEST_CASE(
   std::string stats;
   Stats::dump(&stats);
 
-  // Expect ls on:
+  // Expect read_ops on:
   // cpp_unit_array/
   // cpp_unit_array/__commits
   // cpp_unit_array/__schema
   // cpp_unit_array/__meta
   // cpp_unit_array/__fragment_meta
   CHECK(
-      stats.find("\"Context.StorageManager.VFS.ls_num\": 5") !=
+      stats.find("\"Context.StorageManager.VFS.read_ops_num\": 5") !=
       std::string::npos);
 
   // Expect file_size on the fragment.
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
+}
+
+TEST_CASE("C++ API: Array write and read from MemFS", "[cppapi][memfs]") {
+  const std::string array_name = "mem://cpp_unit_array";
+  Context ctx;
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Try writing on a non-process-global Context
+  Context ctx_non_global;
+  REQUIRE_THROWS_WITH(
+      Array(ctx_non_global, array_name, TILEDB_WRITE),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot open array; Array does not exist"));
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Read
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+  std::vector<int> data(6);
+  query.add_range(0, 1, 2)
+      .add_range(1, 2, 4)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data);
+  query.submit();
+  array.close();
+  std::vector<int> data_expected = {2, 3, 4, 6, 7, 8};
+  for (int i = 0; i < 6; i++) {
+    REQUIRE(data[i] == data_expected[i]);
+  }
+
+  // Try removing on a different VFS instance
+  VFS vfs(ctx);
+  REQUIRE_THROWS_WITH(
+      vfs.remove_dir(array_name),
+      Catch::Matchers::ContainsSubstring("File not found, remove failed"));
+}
+
+TEST_CASE(
+    "C++ API: Array on s3 with empty subfolders",
+    "[cppapi][s3][empty_subfolders]") {
+  const std::string array_bucket = "s3://tiledb-" + random_label() + "/";
+  const std::string array_name = array_bucket + "cpp_unit_array/";
+
+  tiledb::Config cfg;
+  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
+  cfg["vfs.s3.scheme"] = "https";
+  cfg["vfs.s3.use_virtual_addressing"] = "false";
+  cfg["vfs.s3.verify_ssl"] = "false";
+
+  Context ctx(cfg);
+  if (!ctx.is_supported_fs(TILEDB_S3))
+    return;
+
+  // Create bucket on s3
+  VFS vfs(ctx);
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  vfs.create_bucket(array_bucket);
+  REQUIRE(vfs.is_bucket(array_bucket));
+
+  // Create array with only a __schema folder
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  schema.add_attribute(attr);
+  Array::create(array_name, schema);
+  REQUIRE(vfs.ls(array_name).size() == 1);
+
+  // Ensure the array can be opened and write to it
+  std::vector<int> a_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array(ctx, array_name, TILEDB_WRITE);
+  REQUIRE(array.is_open());
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", a_w);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Read from the array
+  array.open(TILEDB_READ);
+  REQUIRE(array.is_open());
+  REQUIRE(array.metadata_num() == 0);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+  std::vector<int> a_r(16);
+  Query query_r(ctx, array, TILEDB_READ);
+  query_r.set_subarray(subarray)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_r);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+  array.close();
+
+  // Validate write / read
+  for (int i = 0; i < 16; i++) {
+    CHECK(a_r[i] == a_w[i]);
+  }
+
+  // Add a file to the array with the same name as an existing folder
+  std::string commits_uri = array_name + "__commits";
+  vfs.touch(commits_uri);
+  CHECK(vfs.file_size(commits_uri) == 0);
+
+  // Try to read from the array with empty files
+  // Note: MinIO will delete the actual commits if commits_uri is deleted,
+  // per the s3 implementation limitation, making the array invalid
+  try {
+    array.open(TILEDB_READ);
+  } catch (std::exception& e) {
+    REQUIRE_THAT(
+        e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
+  }
+
+  // Clean up
+  if (vfs.is_bucket(array_bucket)) {
+    vfs.remove_bucket(array_bucket);
+  }
+  REQUIRE(!vfs.is_bucket(array_bucket));
 }
 
 TEST_CASE(
@@ -1721,8 +2049,9 @@ TEST_CASE(
   // Try writing to an older-versioned array
   REQUIRE_THROWS_WITH(
       Array(ctx, old_array_name, TILEDB_WRITE),
-      Catch::Contains("Array format version") &&
-          Catch::Contains("is not the library format version"));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring(
+              "is not the library format version"));
 
   // Read from an older-versioned array
   Array array(ctx, old_array_name, TILEDB_READ);
@@ -1750,6 +2079,28 @@ TEST_CASE(
 
   FragmentInfo fragment_info(ctx, old_array_name);
   fragment_info.load();
+
+  bool serialized_load = false;
+  SECTION("no serialization") {
+    serialized_load = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled fragment info load") {
+    serialized_load = true;
+  }
+#endif
+
+  if (serialized_load) {
+    FragmentInfo deserialized_fragment_info(ctx, old_array_name);
+    tiledb_fragment_info_serialize(
+        ctx.ptr().get(),
+        old_array_name.c_str(),
+        fragment_info.ptr().get(),
+        deserialized_fragment_info.ptr().get(),
+        tiledb_serialization_type_t(0));
+    fragment_info = deserialized_fragment_info;
+  }
+
   std::string fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
@@ -1787,16 +2138,69 @@ TEST_CASE(
   // Try writing to a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_WRITE),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring(
+              "is newer than the library format version"));
 
   // Try reading from a newer-versioned (UINT32_MAX) array
   REQUIRE_THROWS_WITH(
       Array(ctx, new_array_name, TILEDB_READ),
-      Catch::Contains("Incompatible format version."));
+      Catch::Matchers::ContainsSubstring("Array format version") &&
+          Catch::Matchers::ContainsSubstring(
+              "is newer than the library format version"));
 
   // Clean up
   VFS vfs(ctx);
   vfs.remove_dir(get_fragment_dir(array_read.uri()));
   vfs.remove_dir(get_commit_dir(array_read.uri()));
   vfs.remove_dir(array_read.uri() + "/__schema");
+}
+
+TEST_CASE(
+    "C++ API: Close array with running query", "[cppapi][close-before-read]") {
+  const std::string array_name = "cpp_unit_array";
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name))
+    vfs.remove_dir(array_name);
+
+  // Create
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
+  ArraySchema schema(ctx, TILEDB_DENSE);
+  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
+  Array::create(array_name, schema);
+
+  // Write
+  std::vector<int> data_w = {
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+  Array array_w(ctx, array_name, TILEDB_WRITE);
+  Query query_w(ctx, array_w);
+  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", data_w);
+  query_w.submit();
+  array_w.close();
+
+  // Open for read.
+  Array array(ctx, array_name, TILEDB_READ);
+  std::vector<int> subarray_read = {0, 3, 0, 3};
+  std::vector<int> a_read(16);
+
+  Query query(ctx, array);
+  query.set_subarray(subarray_read)
+      .set_layout(TILEDB_ROW_MAJOR)
+      .set_data_buffer("a", a_read);
+  query.submit_async();
+  array.close();
+
+  uint64_t i = 0;
+  while (query.query_status() != Query::Status::COMPLETE) {
+    i++;
+  }
+
+  CHECK(i > 0);
 }

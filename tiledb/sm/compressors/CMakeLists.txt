@@ -25,70 +25,41 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `compressors` object library
 #
-add_library(compressors OBJECT bzip_compressor.cc dd_compressor.cc dict_compressor.cc gzip_compressor.cc lz4_compressor.cc rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
-target_link_libraries(compressors PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(compressors PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-find_package(Bzip2_EP REQUIRED)
-find_package(LZ4_EP REQUIRED)
-find_package(Zlib_EP REQUIRED)
-find_package(Zstd_EP REQUIRED)
-target_link_libraries(compressors PUBLIC Bzip2::Bzip2 LZ4::LZ4 Zlib::Zlib Zstd::Zstd)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_compressors EXCLUDE_FROM_ALL)
-target_link_libraries(compile_compressors PRIVATE compressors)
-target_sources(compile_compressors PRIVATE
-        test/compile_compressors_main.cc
-)
+commence(object_library compressors)
+    this_target_sources(
+        bzip_compressor.cc dd_compressor.cc delta_compressor.cc
+        dict_compressor.cc gzip_compressor.cc lz4_compressor.cc
+        rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
+    this_target_object_libraries(baseline buffer)
+    find_package(Bzip2_EP REQUIRED)
+    find_package(LZ4_EP REQUIRED)
+    find_package(Zlib_EP REQUIRED)
+    find_package(Zstd_EP REQUIRED)
+    this_target_link_libraries(BZip2::BZip2 lz4::lz4 ZLIB::ZLIB ${ZSTD_TARGET})
+conclude(object_library)
 
 #
 # tiledb crude gzip archiver initially for embedding magic.mgc
 #
 add_executable(tdb_gzip_embedded_data)
 target_sources(tdb_gzip_embedded_data PRIVATE
-        util/tdb_gzip_embedded_data.cc 
+        util/tdb_gzip_embedded_data.cc
 )
 
 target_link_libraries(
-    tdb_gzip_embedded_data PUBLIC 
+    tdb_gzip_embedded_data PUBLIC
     filter
     compressors
     )
-    
+
 target_include_directories(tdb_gzip_embedded_data PRIVATE
         $<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>
 )
-
-if (TILEDB_WEBP)
-  #
-  # perform webp build and link test for some webp routines
-  #
-  find_package(Webp_EP REQUIRED)
-  add_executable(unit_link_webp)
-  if (WIN32)
-    target_link_libraries(unit_link_webp PRIVATE WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux)
-  else() #if (NOT WIN32)
-    # On Linux, must explicitly link -lpthread -ldl in order for static linking
-    # to libzstd or libcurl to work.
-    target_link_libraries(unit_link_webp WebP::webp WebP::webpdecoder WebP::webpdemux WebP::webpmux pthread dl)
-  endif()
-  target_sources(
-      unit_link_webp
-      PRIVATE
-      test/link_webp_test1.cc
-      )
-      
-  add_test(NAME "unit_link_webp" 
-    COMMAND "$<TARGET_FILE:unit_link_webp>" 
-    WORKING_DIRECTORY  ${CMAKE_CURRENT_SOURCE_DIR}
-  )
-endif()
 
 # Link to Threads::Threads if library or flag needed to enable threading.
 find_package(Threads REQUIRED)
@@ -101,18 +72,4 @@ if (NOT WIN32)
   target_link_libraries(tdb_gzip_embedded_data PRIVATE dl)
 endif()
 
-if (TILEDB_TESTS)
-    add_executable(unit_compressors EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_compressors PRIVATE compressors)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_compressors PUBLIC Catch2::Catch2)
-
-    # Sources for tests
-    target_sources(unit_compressors PUBLIC test/main.cc test/unit_dict_compressor.cc)
-
-    add_test(
-        NAME "unit_compressors"
-        COMMAND $<TARGET_FILE:unit_compressors>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

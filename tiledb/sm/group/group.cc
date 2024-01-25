@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,19 +37,27 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
+#include "tiledb/sm/group/group_details_v1.h"
+#include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/sm/group/group_member_v1.h"
-#include "tiledb/sm/group/group_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-Group::Group(
-    const URI& group_uri, StorageManager* storage_manager, uint32_t version)
+namespace tiledb::sm {
+
+class GroupStatusException : public StatusException {
+ public:
+  explicit GroupStatusException(const std::string& message)
+      : StatusException("Group", message) {
+  }
+};
+
+Group::Group(const URI& group_uri, StorageManager* storage_manager)
     : group_uri_(group_uri)
     , storage_manager_(storage_manager)
     , config_(storage_manager_->config())
@@ -59,9 +67,7 @@ Group::Group(
     , query_type_(QueryType::READ)
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
-    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
-    , version_(version)
-    , changes_applied_(false) {
+    , encryption_key_(tdb::make_shared<EncryptionKey>(HERE())) {
 }
 
 Status Group::open(
@@ -71,7 +77,8 @@ Status Group::open(
     return Status_GroupError("Cannot open group; Group already open");
   }
 
-  if (query_type != QueryType::READ && query_type != QueryType::WRITE) {
+  if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
+      query_type != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError("Cannot open group; Unsupported query type");
   }
 
@@ -79,7 +86,9 @@ Status Group::open(
     if (query_type == QueryType::READ) {
       timestamp_end = utils::time::timestamp_now_ms();
     } else {
-      assert(query_type == QueryType::WRITE);
+      assert(
+          query_type == QueryType::WRITE ||
+          query_type == QueryType::MODIFY_EXCLUSIVE);
       timestamp_end = 0;
     }
   }
@@ -99,6 +108,7 @@ Status Group::open(
 
   if (!encryption_key_from_cfg.empty()) {
     encryption_key = encryption_key_from_cfg.c_str();
+    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
     std::string encryption_type_from_cfg;
     encryption_type_from_cfg = config_.get("sm.encryption_type", &found);
     assert(found);
@@ -106,16 +116,9 @@ Status Group::open(
     RETURN_NOT_OK(st);
     encryption_type = et.value();
 
-    if (EncryptionKey::is_valid_key_length(
+    if (!EncryptionKey::is_valid_key_length(
             encryption_type,
             static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      const UnitTestConfig& unit_test_cfg = UnitTestConfig::instance();
-      if (unit_test_cfg.array_encryption_key_length.is_set()) {
-        key_length = unit_test_cfg.array_encryption_key_length.get();
-      } else {
-        key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-      }
-    } else {
       encryption_key = nullptr;
       key_length = 0;
     }
@@ -132,17 +135,16 @@ Status Group::open(
   metadata_.clear();
   metadata_loaded_ = false;
 
-  // Make sure to reset any values
-  changes_applied_ = false;
-  members_to_remove_.clear();
-  members_to_add_.clear();
-  members_.clear();
-
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return Status_GroupError(
           "Cannot open group; remote group with no REST client.");
+    }
+
+    // Set initial group details to be deserialized into
+    group_details_ = tdb::make_shared<GroupDetailsV2>(HERE(), group_uri_);
+
     RETURN_NOT_OK(rest_client->post_group_from_rest(group_uri_, this));
   } else if (query_type == QueryType::READ) {
     try {
@@ -157,19 +159,10 @@ Status Group::open(
       return Status_GroupDirectoryError(le.what());
     }
 
-    auto&& [st, members] = storage_manager_->group_open_for_reads(this);
+    auto&& [st, group_details] = storage_manager_->group_open_for_reads(this);
     RETURN_NOT_OK(st);
-    if (members.has_value()) {
-      members_ = members.value();
-      members_by_name_.clear();
-      members_vec_.clear();
-      members_vec_.reserve(members_.size());
-      for (auto& it : members_) {
-        members_vec_.emplace_back(it.second);
-        if (it.second->name().has_value()) {
-          members_by_name_.emplace(it.second->name().value(), it.second);
-        }
-      }
+    if (group_details.has_value()) {
+      group_details_ = group_details.value();
     }
   } else {
     try {
@@ -185,23 +178,19 @@ Status Group::open(
       return Status_GroupDirectoryError(le.what());
     }
 
-    auto&& [st, members] = storage_manager_->group_open_for_writes(this);
+    auto&& [st, group_details] = storage_manager_->group_open_for_writes(this);
     RETURN_NOT_OK(st);
 
-    if (members.has_value()) {
-      members_ = members.value();
-      members_by_name_.clear();
-      members_vec_.clear();
-      members_vec_.reserve(members_.size());
-      for (auto& it : members_) {
-        members_vec_.emplace_back(it.second);
-        if (it.second->name().has_value()) {
-          members_by_name_.emplace(it.second->name().value(), it.second);
-        }
-      }
+    if (group_details.has_value()) {
+      group_details_ = group_details.value();
     }
 
     metadata_.reset(timestamp_end);
+  }
+
+  // Handle new empty group
+  if (!group_details_) {
+    group_details_ = tdb::make_shared<GroupDetailsV2>(HERE(), group_uri_);
   }
 
   query_type_ = query_type;
@@ -230,7 +219,8 @@ Status Group::close() {
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
     // user
-    if (query_type_ == QueryType::WRITE) {
+    if (query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       if (metadata_.num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
@@ -242,30 +232,28 @@ Status Group::close() {
         RETURN_NOT_OK(
             rest_client->put_group_metadata_to_rest(group_uri_, this));
       }
-      if (!members_to_remove_.empty() || !members_to_add_.empty() ||
-          changes_applied_) {
+      if (!members_to_modify().empty()) {
         auto rest_client = storage_manager_->rest_client();
         if (rest_client == nullptr)
           return Status_GroupError(
               "Error closing group; remote group with no REST client.");
         RETURN_NOT_OK(rest_client->patch_group_to_rest(group_uri_, this));
-
-        changes_applied_ = true;
-        members_to_remove_.clear();
-        members_to_add_.clear();
       }
     }
-
     // Storage manager does not own the group schema for remote groups.
   } else {
     if (query_type_ == QueryType::READ) {
       RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
-    } else if (query_type_ == QueryType::WRITE) {
-      // If changes haven't been applied, apply them
-      if (!changes_applied_) {
-        RETURN_NOT_OK(apply_pending_changes());
+    } else if (
+        query_type_ == QueryType::WRITE ||
+        query_type_ == QueryType::MODIFY_EXCLUSIVE) {
+      try {
+        throw_if_not_ok(storage_manager_->group_close_for_writes(this));
+      } catch (StatusException& exc) {
+        std::string msg = exc.what();
+        msg += " : Was storage for the group moved or deleted before closing?";
+        throw GroupStatusException(msg);
       }
-      RETURN_NOT_OK(storage_manager_->group_close_for_writes(this));
     }
   }
 
@@ -273,7 +261,6 @@ Status Group::close() {
   metadata_loaded_ = false;
   is_open_ = false;
   clear();
-
   return Status::Ok();
 }
 
@@ -283,6 +270,14 @@ bool Group::is_open() const {
 
 bool Group::is_remote() const {
   return remote_;
+}
+
+shared_ptr<GroupDetails> Group::group_details() {
+  return group_details_;
+}
+
+const shared_ptr<GroupDetails> Group::group_details() const {
+  return group_details_;
 }
 
 Status Group::get_query_type(QueryType* query_type) const {
@@ -296,83 +291,126 @@ Status Group::get_query_type(QueryType* query_type) const {
   return Status::Ok();
 }
 
-Status Group::delete_metadata(const char* key) {
+void Group::delete_group(const URI& uri, bool recursive) {
+  // Check that group is open
+  if (!is_open_) {
+    throw GroupStatusException("[delete_group] Group is not open");
+  }
+
+  // Check that query type is MODIFY_EXCLUSIVE
+  if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw GroupStatusException(
+        "[delete_group] Query type must be MODIFY_EXCLUSIVE");
+  }
+
+  // Delete group data
+  if (remote_) {
+    auto rest_client = storage_manager_->rest_client();
+    if (rest_client == nullptr)
+      throw GroupStatusException(
+          "[delete_group] Remote group with no REST client.");
+    rest_client->delete_group_from_rest(uri, recursive);
+  } else {
+    // Delete group members within the group when deleting recursively
+    if (recursive) {
+      for (auto member_entry : members()) {
+        const auto& member = member_entry.second;
+        URI member_uri = member->uri();
+        if (member->relative()) {
+          member_uri = group_uri_.join_path(member->uri().to_string());
+        }
+
+        if (member->type() == ObjectType::ARRAY) {
+          storage_manager_->delete_array(member_uri.to_string().c_str());
+        } else if (member->type() == ObjectType::GROUP) {
+          Group group_rec(member_uri, storage_manager_);
+          throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
+          group_rec.delete_group(member_uri, true);
+        }
+      }
+    }
+    storage_manager_->delete_group(uri.c_str());
+  }
+  // Clear metadata and other pending changes to avoid patching a deleted group.
+  metadata_.clear();
+  group_details_->clear();
+
+  // Close the deleted group
+  throw_if_not_ok(this->close());
+}
+
+void Group::delete_metadata(const char* key) {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot delete metadata. Group is not open");
+    throw GroupStatusException("Cannot delete metadata. Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
-    return Status_GroupError(
-        "Cannot delete metadata. Group was "
-        "not opened in write mode");
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
+    throw GroupStatusException(
+        "Cannot delete metadata. Group was not opened in write or "
+        "modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
-    return Status_GroupError("Cannot delete metadata. Key cannot be null");
+    throw GroupStatusException("Cannot delete metadata. Key cannot be null");
 
-  RETURN_NOT_OK(metadata_.del(key));
-
-  return Status::Ok();
+  metadata_.del(key);
 }
 
-Status Group::put_metadata(
+void Group::put_metadata(
     const char* key,
     Datatype value_type,
     uint32_t value_num,
     const void* value) {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot put metadata; Group is not open");
+    throw GroupStatusException("Cannot put metadata; Group is not open");
 
   // Check mode
-  if (query_type_ != QueryType::WRITE)
-    return Status_GroupError(
-        "Cannot put metadata; Group was "
-        "not opened in write mode");
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE)
+    throw GroupStatusException(
+        "Cannot put metadata; Group was not opened in write or "
+        "modify_exclusive mode");
 
   // Check if key is null
   if (key == nullptr)
-    return Status_GroupError("Cannot put metadata; Key cannot be null");
+    throw GroupStatusException("Cannot put metadata; Key cannot be null");
 
   // Check if value type is ANY
   if (value_type == Datatype::ANY)
-    return Status_GroupError("Cannot put metadata; Value type cannot be ANY");
+    throw GroupStatusException("Cannot put metadata; Value type cannot be ANY");
 
-  RETURN_NOT_OK(metadata_.put(key, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.put(key, value_type, value_num, value);
 }
 
-Status Group::get_metadata(
+void Group::get_metadata(
     const char* key,
     Datatype* value_type,
     uint32_t* value_num,
     const void** value) {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupStatusException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    return Status_GroupError(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+    throw GroupStatusException(
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)
-    return Status_GroupError("Cannot get metadata; Key cannot be null");
+    throw GroupStatusException("Cannot get metadata; Key cannot be null");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
-    RETURN_NOT_OK(load_metadata());
+    load_metadata();
 
-  RETURN_NOT_OK(metadata_.get(key, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.get(key, value_type, value_num, value);
 }
 
-Status Group::get_metadata(
+void Group::get_metadata(
     uint64_t index,
     const char** key,
     uint32_t* key_len,
@@ -381,68 +419,57 @@ Status Group::get_metadata(
     const void** value) {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupStatusException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    return Status_GroupError(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+    throw GroupStatusException(
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
-    RETURN_NOT_OK(load_metadata());
+    load_metadata();
 
-  RETURN_NOT_OK(
-      metadata_.get(index, key, key_len, value_type, value_num, value));
-
-  return Status::Ok();
+  metadata_.get(index, key, key_len, value_type, value_num, value);
 }
 
-Status Group::get_metadata_num(uint64_t* num) {
+uint64_t Group::get_metadata_num() {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError(
+    throw GroupStatusException(
         "Cannot get number of metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    return Status_GroupError(
-        "Cannot get number of metadata; Group was "
-        "not opened in read mode");
+    throw GroupStatusException(
+        "Cannot get number of metadata; Group was not opened in read mode");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
-    RETURN_NOT_OK(load_metadata());
+    load_metadata();
 
-  *num = metadata_.num();
-
-  return Status::Ok();
+  return metadata_.num();
 }
 
-Status Group::has_metadata_key(
-    const char* key, Datatype* value_type, bool* has_key) {
+std::optional<Datatype> Group::metadata_type(const char* key) {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot get metadata; Group is not open");
+    throw GroupStatusException("Cannot get metadata; Group is not open");
 
   // Check mode
   if (query_type_ != QueryType::READ)
-    return Status_GroupError(
-        "Cannot get metadata; Group was "
-        "not opened in read mode");
+    throw GroupStatusException(
+        "Cannot get metadata; Group was not opened in read mode");
 
   // Check if key is null
   if (key == nullptr)
-    return Status_GroupError("Cannot get metadata; Key cannot be null");
+    throw GroupStatusException("Cannot get metadata; Key cannot be null");
 
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
-    RETURN_NOT_OK(load_metadata());
+    load_metadata();
 
-  RETURN_NOT_OK(metadata_.has_key(key, value_type, has_key));
-
-  return Status::Ok();
+  return metadata_.metadata_type(key);
 }
 
 Metadata* Group::unsafe_metadata() {
@@ -456,7 +483,7 @@ const Metadata* Group::metadata() const {
 Status Group::metadata(Metadata** metadata) {
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
-    RETURN_NOT_OK(load_metadata());
+    load_metadata();
 
   *metadata = &metadata_;
 
@@ -475,36 +502,29 @@ QueryType Group::query_type() const {
   return query_type_;
 }
 
-const Config* Group::config() const {
-  return &config_;
+const Config& Group::config() const {
+  return config_;
 }
 
-Status Group::set_config(Config config) {
-  config_ = config;
-  return Status::Ok();
-}
-
-Status Group::clear() {
-  members_.clear();
-  members_by_name_.clear();
-  members_vec_.clear();
-  members_to_remove_.clear();
-  members_to_add_.clear();
-  changes_applied_ = false;
-
-  return Status::Ok();
-}
-
-Status Group::add_member(const tdb_shared_ptr<GroupMember>& group_member) {
-  std::lock_guard<std::mutex> lck(mtx_);
-  const std::string& uri = group_member->uri().to_string();
-  members_.emplace(uri, group_member);
-  members_vec_.emplace_back(group_member);
-  if (group_member->name().has_value()) {
-    members_by_name_.emplace(group_member->name().value(), group_member);
+void Group::set_config(Config config) {
+  if (is_open()) {
+    throw GroupStatusException("[set_config] Cannot set config; Group is open");
   }
+  config_.inherit(config);
+}
 
-  return Status::Ok();
+void Group::clear() {
+  group_details_->clear();
+}
+
+void Group::add_member(const shared_ptr<GroupMember> group_member) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_details_->add_member(group_member);
+}
+
+void Group::delete_member(const shared_ptr<GroupMember> group_member) {
+  std::lock_guard<std::mutex> lck(mtx_);
+  group_details_->delete_member(group_member);
 }
 
 Status Group::mark_member_for_addition(
@@ -518,67 +538,18 @@ Status Group::mark_member_for_addition(
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
-
-  const std::string& uri = group_member_uri.to_string();
-  if (members_to_remove_.find(uri) != members_to_remove_.end()) {
-    return Status_GroupError(
-        "Cannot add group member " + uri + ", member already set for removal.");
-  }
-
-  // If the name is set, validate its unique
-  if (name.has_value()) {
-    if (members_to_remove_.find(*name) != members_to_remove_.end()) {
-      return Status_GroupError(
-          "Cannot add group member " + *name +
-          ", member already set for removal.");
-    }
-
-    for (const auto& it : members_to_add_) {
-      if (it.second->name() == name) {
-        return Status_GroupError(
-            "Cannot add group member " + *name +
-            ", member already set for addition.");
-      }
-    }
-
-    if (members_by_name_.find(*name) != members_by_name_.end()) {
-      return Status_GroupError(
-          "Cannot add group member " + *name +
-          ", member already exists in group.");
-    }
-  }
-
-  URI absolute_group_member_uri = group_member_uri;
-  if (relative) {
-    absolute_group_member_uri =
-        group_uri_.join_path(group_member_uri.to_string());
-  }
-  ObjectType type = ObjectType::INVALID;
-  RETURN_NOT_OK(
-      storage_manager_->object_type(absolute_group_member_uri, &type));
-  if (type == ObjectType::INVALID) {
-    return Status_GroupError(
-        "Cannot add group member " + absolute_group_member_uri.to_string() +
-        ", type is INVALID. The member likely does not exist.");
-  }
-
-  auto group_member = tdb::make_shared<GroupMemberV1>(
-      HERE(), group_member_uri, type, relative, name);
-
-  members_to_add_.emplace(uri, group_member);
-
+  group_details_->mark_member_for_addition(
+      group_member_uri, relative, name, storage_manager_);
   return Status::Ok();
 }
 
-Status Group::mark_member_for_removal(const URI& uri) {
-  return mark_member_for_removal(uri.to_string());
-}
-
-Status Group::mark_member_for_removal(const std::string& uri) {
+Status Group::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
@@ -587,87 +558,26 @@ Status Group::mark_member_for_removal(const std::string& uri) {
   }
 
   // Check mode
-  if (query_type_ != QueryType::WRITE) {
+  if (query_type_ != QueryType::WRITE &&
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     return Status_GroupError(
-        "Cannot get member; Group was not opened in write mode");
-  }
-  if (members_to_add_.find(uri) != members_to_add_.end()) {
-    return Status_GroupError(
-        "Cannot remove group member " + uri +
-        ", member already set for adding.");
+        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "mode");
   }
 
-  // If the group is remote don't check if the member actually exists client
-  // side There is a number of "acceptable" URIs for remote objects We leave it
-  // to the server to validate the request later.
-  if (remote_) {
-    members_to_remove_.emplace(uri);
-    return Status::Ok();
-    // If it's not remote check to validate the URI to remove actually exists in
-    // the group
-  } else {
-    if (members_.find(uri) != members_.end()) {
-      members_to_remove_.emplace(uri);
-      return Status::Ok();
-    } else if (members_by_name_.find(uri) != members_by_name_.end()) {
-      // If the user passed the name, convert it to the URI for removal
-      members_to_remove_.emplace(
-          members_by_name_.find(uri)->second->uri().to_string());
-      return Status::Ok();
-    } else {
-      // try URI to see if we need to convert the local file to file://
-      URI uri_uri(uri);
-      if (members_.find(uri_uri.to_string()) != members_.end()) {
-        members_to_remove_.emplace(uri_uri.to_string());
-        return Status::Ok();
-      } else {
-        return Status_GroupError(
-            "Cannot remove group member " + uri +
-            ", member does not exist in group.");
-      }
-    }
-  }
-
+  group_details_->mark_member_for_removal(name);
   return Status::Ok();
 }
 
-const std::unordered_set<std::string>& Group::members_to_remove() const {
+const std::vector<shared_ptr<GroupMember>>& Group::members_to_modify() const {
   std::lock_guard<std::mutex> lck(mtx_);
-  return members_to_remove_;
+  return group_details_->members_to_modify();
 }
 
-const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-Group::members_to_add() const {
+const std::unordered_map<std::string, shared_ptr<GroupMember>>& Group::members()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
-  return members_to_add_;
-}
-
-const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-Group::members() const {
-  std::lock_guard<std::mutex> lck(mtx_);
-  return members_;
-}
-
-Status Group::serialize(Buffer*) {
-  return Status_GroupError("Invalid call to Group::serialize");
-}
-
-Status Group::apply_and_serialize(Buffer* buff) {
-  RETURN_NOT_OK(apply_pending_changes());
-  return serialize(buff);
-}
-
-std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> Group::deserialize(
-    ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager) {
-  uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
-  if (version == 1) {
-    return GroupV1::deserialize(buff, group_uri, storage_manager);
-  }
-
-  return {
-      Status_GroupError("Unsupported group version " + std::to_string(version)),
-      std::nullopt};
+  return group_details_->members();
 }
 
 const URI& Group::group_uri() const {
@@ -682,127 +592,64 @@ const shared_ptr<GroupDirectory> Group::group_directory() const {
   return group_dir_;
 }
 
-tuple<Status, optional<URI>> Group::generate_detail_uri() const {
-  auto&& [st, name] = generate_name();
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
+URI Group::generate_detail_uri() const {
+  auto ts_name = tiledb::storage_format::generate_timestamped_name(
+      timestamp_end_, group_details_->version());
 
-  URI uri = group_uri_.join_path(constants::group_detail_dir_name)
-                .join_path(name.value());
-
-  return {Status::Ok(), uri};
+  return group_uri_.join_path(constants::group_detail_dir_name)
+      .join_path(ts_name);
 }
 
-bool Group::changes_applied() const {
-  return changes_applied_;
-}
-
-void Group::set_changes_applied(const bool changes_applied) {
-  changes_applied_ = changes_applied;
-}
-
-tuple<Status, optional<uint64_t>> Group::member_count() const {
+uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member count; Group is not open"),
-            std::nullopt};
+    throw Status_GroupError("Cannot get member count; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
-  return {Status::Ok(), members_.size()};
+  return group_details_->member_count();
 }
 
-tuple<
-    Status,
-    optional<std::string>,
-    optional<ObjectType>,
-    optional<std::string>>
-Group::member_by_index(uint64_t index) {
+tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
+    uint64_t index) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by index; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    throw Status_GroupError("Cannot get member by index; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
-  if (index >= members_vec_.size()) {
-    return {
-        Status_GroupError(
-            "index " + std::to_string(index) + " is larger than member count " +
-            std::to_string(members_vec_.size())),
-        std::nullopt,
-        std::nullopt,
-        std::nullopt};
-  }
-
-  auto member = members_vec_[index];
-
-  std::string uri = member->uri().to_string();
-  if (member->relative()) {
-    uri = group_uri_.join_path(member->uri().to_string()).to_string();
-  }
-
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return group_details_->member_by_index(index);
 }
 
-tuple<
-    Status,
-    optional<std::string>,
-    optional<ObjectType>,
-    optional<std::string>>
+tuple<std::string, ObjectType, optional<std::string>, bool>
 Group::member_by_name(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
 
   // Check if group is open
   if (!is_open_) {
-    return {Status_GroupError("Cannot get member by name; Group is not open"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    throw Status_GroupError("Cannot get member by name; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    return {Status_GroupError(
-                "Cannot get member; Group was not opened in read mode"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
+    throw Status_GroupError(
+        "Cannot get member; Group was not opened in read mode");
   }
 
-  auto it = members_by_name_.find(name);
-  if (it == members_by_name_.end()) {
-    return {Status_GroupError(name + " does not exist in group"),
-            std::nullopt,
-            std::nullopt,
-            std::nullopt};
-  }
-
-  auto member = it->second;
-  std::string uri = member->uri().to_string();
-  if (member->relative()) {
-    uri = group_uri_.join_path(member->uri().to_string()).to_string();
-  }
-
-  return {Status::Ok(), uri, member->type(), member->name()};
+  return group_details_->member_by_name(name);
 }
 
 std::string Group::dump(
@@ -820,18 +667,33 @@ std::string Group::dump(
        << object_type_str(ObjectType::GROUP) << std::endl;
   }
 
-  for (const auto& it : members_vec_) {
-    ss << "|" << indent << l_indent << " " << *it << std::endl;
-    if (it->type() == ObjectType::GROUP && recursive) {
-      URI uri = it->uri();
-      if (it->relative()) {
-        uri = group_uri_.join_path(it->uri().to_string());
-      }
+  for (const auto& member_entry : members()) {
+    const auto& it = member_entry.second;
+    URI member_uri = it->uri();
+    if (it->relative()) {
+      member_uri = group_uri_.join_path(it->uri().to_string());
+    }
 
-      GroupV1 group_rec(uri, storage_manager_);
-      group_rec.open(QueryType::READ);
+    ss << "|" << indent << l_indent << " " << *it;
+    bool do_recurse = false;
+    if (it->type() == ObjectType::GROUP && recursive) {
+      // Before listing the group's members, check if the group exists in
+      // storage. If it does not, leave a message in the string.
+      ObjectType member_type = ObjectType::INVALID;
+      throw_if_not_ok(storage_manager_->object_type(member_uri, &member_type));
+      if (member_type == ObjectType::GROUP) {
+        do_recurse = true;
+      } else {
+        ss << " (does not exist)";
+      }
+    }
+    ss << std::endl;
+
+    if (do_recurse) {
+      Group group_rec(member_uri, storage_manager_);
+      throw_if_not_ok(group_rec.open(QueryType::READ));
       ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      group_rec.close();
+      throw_if_not_ok(group_rec.close());
     }
   }
 
@@ -842,69 +704,20 @@ std::string Group::dump(
 /*         PROTECTED METHODS         */
 /* ********************************* */
 
-tuple<Status, optional<std::string>> Group::generate_name() const {
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), std::nullopt);
-
-  auto timestamp =
-      (timestamp_end_ != 0) ? timestamp_end_ : utils::time::timestamp_now_ms();
-  std::stringstream ss;
-  ss << "__" << timestamp << "_" << timestamp << "_" << uuid;
-
-  return {Status::Ok(), ss.str()};
-}
-
-Status Group::load_metadata() {
+void Group::load_metadata() {
   if (remote_) {
     auto rest_client = storage_manager_->rest_client();
     if (rest_client == nullptr)
-      return Status_GroupError(
+      throw GroupStatusException(
           "Cannot load metadata; remote group with no REST client.");
-    RETURN_NOT_OK(rest_client->post_group_metadata_from_rest(group_uri_, this));
+    throw_if_not_ok(
+        rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    RETURN_NOT_OK(storage_manager_->load_group_metadata(
-        group_dir_, *encryption_key_, &metadata_));
+    storage_manager_->load_group_metadata(
+        group_dir_, *encryption_key_, &metadata_);
   }
   metadata_loaded_ = true;
-  return Status::Ok();
 }
 
-Status Group::apply_pending_changes() {
-  std::lock_guard<std::mutex> lck(mtx_);
-
-  // Remove members first
-  for (const auto& uri : members_to_remove_) {
-    members_.erase(uri);
-    // Check to remove relative URIs
-    if (uri.find(group_uri_.add_trailing_slash().to_string()) !=
-        std::string::npos) {
-      // Get the substring relative path
-      auto relative_uri = uri.substr(
-          group_uri_.add_trailing_slash().to_string().size(), uri.size());
-      members_.erase(relative_uri);
-    }
-  }
-
-  for (const auto& it : members_to_add_) {
-    members_.emplace(it);
-  }
-
-  changes_applied_ = !members_to_add_.empty() || !members_to_remove_.empty();
-  members_to_remove_.clear();
-  members_to_add_.clear();
-
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
-    }
-  }
-
-  return Status::Ok();
-}
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

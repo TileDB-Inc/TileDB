@@ -25,12 +25,14 @@
 #
 
 # Check test formatting - linux ONLY
+
 set -e pipefail
-# Install clang-format (v9)
+
+# Install clang-format
 ls -la
 sudo ./scripts/install-clangformat.sh
+
 src=$GITHUB_WORKSPACE
 cd $src
-$src/scripts/run-clang-format.sh $src clang-format-9 0 \
-  $(find $src/tiledb $src/test/src $src/examples $src/tools \
-    -name "*.cc" -or -name "*.c" -or -name "*.h")
+
+$src/scripts/run-clang-format.sh $src clang-format-16 0

@@ -135,6 +135,14 @@ class URI {
   bool is_file() const;
 
   /**
+   * Checks if the URI contains a string.
+   *
+   * @param str the string to search for in the URI
+   * @return The result of the check.
+   */
+  bool contains(const std::string_view& str) const;
+
+  /**
    * Checks if the input path is HDFS.
    *
    * @param path The path to be checked.
@@ -235,6 +243,17 @@ class URI {
       std::string* array_namespace, std::string* array_uri) const;
 
   /**
+   * Return the fragment name from the URI if one can be found.
+   *
+   * The logic for this parsing is that first we locate a '/__fragments/' path
+   * component in the string and then take everything up to the next possibly
+   * non-existent '/' separator.
+   *
+   * @return The fragment name URI if one is found, else std::nullopt.
+   */
+  std::optional<URI> get_fragment_name() const;
+
+  /**
    * Joins the URI with the input path.
    *
    * @param path The path to append.
@@ -242,8 +261,20 @@ class URI {
    */
   URI join_path(const std::string& path) const;
 
+  /**
+   * Joins the URI with the input URI.
+   *
+   * @param uri The URI to append.
+   * @return The resulting URI.
+   */
+  URI join_path(const URI& uri) const;
+
   /** Returns the last part of the URI (i.e., excluding the parent). */
   std::string last_path_part() const;
+
+  /** Returns the two last parts of the URI (i.e., after the penultimate `/`).
+   */
+  std::string last_two_path_parts() const;
 
   /**
    * Returns the URI path for the current platform, stripping the resource. For
@@ -267,6 +298,12 @@ class URI {
 
   /** Returns the URI string. */
   std::string to_string() const;
+
+  /** Returns the parent dir URI */
+  URI parent_path() const;
+
+  /** Returns the backend name given by backend://my/path */
+  std::string backend_name() const;
 
   /** For comparing URIs alphanumerically. */
   bool operator==(const URI& uri) const;
@@ -305,6 +342,19 @@ struct TimestampedURI {
 
   bool operator<(const TimestampedURI& uri) const {
     return timestamp_range_.first < uri.timestamp_range_.first;
+  }
+
+  const URI& uri() const {
+    return uri_;
+  }
+
+  const std::pair<uint64_t, uint64_t>& timestamp_range() const {
+    return timestamp_range_;
+  }
+
+  bool operator==(const TimestampedURI& other) const {
+    return (
+        uri() == other.uri() && timestamp_range() == other.timestamp_range());
   }
 
   bool has_unary_timestamp_range() const {

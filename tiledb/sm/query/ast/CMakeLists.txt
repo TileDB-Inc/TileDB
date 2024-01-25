@@ -24,76 +24,22 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
+
+set(TILEDB_CORE_INCLUDE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../..")
+
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   query_ast.cc
 )
 
 #
-# Object library for other units to depend upon
+# `query_ast` object library
 #
-add_library(query_ast OBJECT ${SOURCES})
-target_link_libraries(query_ast PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library query_ast)
+    this_target_sources(${SOURCES})
+    this_target_object_libraries(array_schema generic_tile_io baseline)
+conclude(object_library)
 
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_query_ast EXCLUDE_FROM_ALL)
-target_sources(compile_query_ast PRIVATE test/compile_query_ast_main.cc)
-
-target_link_libraries(compile_query_ast PRIVATE query_ast)
-target_link_libraries(compile_query_ast PRIVATE array_schema)
-
-if (TILEDB_TESTS)
-    add_executable(unit_ast EXCLUDE_FROM_ALL)
-    target_sources(unit_ast PUBLIC test/main.cc test/unit-query-ast.cc)
-    target_link_libraries(unit_ast PRIVATE query_ast)
-    target_link_libraries(unit_ast PRIVATE array_schema)
-
-    ################################################################
-    #
-    # Define test support library for ast.
-    #
-    ################################################################
-
-    set(AST_TEST_SUPPORT_SOURCES
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.h
-      ${CMAKE_SOURCE_DIR}/test/src/ast_helpers.cc
-      )
-
-    add_library(ast_test_support_lib EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOURCES})
-
-    find_package(Catch_EP REQUIRED)
-
-    target_include_directories(ast_test_support_lib
-      PUBLIC
-	$<TARGET_PROPERTY:Catch2::Catch2,INTERFACE_INCLUDE_DIRECTORIES>
-    )
-
-    # We want tests to continue as normal even as the API is changing,
-    # so don't warn for deprecations, since they'll be escalated to errors.
-    if (NOT MSVC)
-      target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
-    endif()
-
-    target_link_libraries(unit_ast PRIVATE ast_test_support_lib)
-
-    ################################################################
-    #
-    # End ast_test_support_lib
-    #
-    ################################################################
-
-    # We want tests to continue as normal even as the API is changing,
-    # so don't warn for deprecations, since they'll be escalated to errors.
-    if (NOT MSVC)
-      target_compile_options(unit_ast PRIVATE -Wno-deprecated-declarations)
-    endif()
-
-    add_test(
-        NAME "query_ast"
-        COMMAND $<TARGET_FILE:unit_ast>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

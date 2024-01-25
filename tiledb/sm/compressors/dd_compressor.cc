@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,8 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 const uint64_t DoubleDelta::OVERHEAD = 17;
 
@@ -56,6 +55,8 @@ Status DoubleDelta::compress(
     Datatype type, ConstBuffer* input_buffer, Buffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::compress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::compress<int8_t>(input_buffer, output_buffer);
@@ -109,14 +110,14 @@ Status DoubleDelta::compress(
       return DoubleDelta::compress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status_CompressionError(
-          "Cannot compress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+      return LOG_STATUS(
+          Status_CompressionError("DoubleDelta tile compression is not yet "
+                                  "supported for float types."));
   }
 
   assert(false);
   return LOG_STATUS(Status_CompressionError(
-      "Cannot compress tile with DoubleDelta; Not supported datatype"));
+      "Cannot compress tile with DoubleDelta; Unsupported datatype"));
 }
 
 Status DoubleDelta::decompress(
@@ -125,6 +126,8 @@ Status DoubleDelta::decompress(
     PreallocatedBuffer* output_buffer) {
   switch (type) {
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return DoubleDelta::decompress<std::byte>(input_buffer, output_buffer);
     case Datatype::INT8:
       return DoubleDelta::decompress<int8_t>(input_buffer, output_buffer);
@@ -178,19 +181,18 @@ Status DoubleDelta::decompress(
       return DoubleDelta::decompress<uint8_t>(input_buffer, output_buffer);
     case Datatype::FLOAT32:
     case Datatype::FLOAT64:
-      return LOG_STATUS(Status_CompressionError(
-          "Cannot decompress tile with DoubleDelta; Float "
-          "datatypes are not supported"));
+      return LOG_STATUS(
+          Status_CompressionError("DoubleDelta tile decompression is not yet "
+                                  "supported for float types."));
   }
 
   assert(false);
   return LOG_STATUS(Status_CompressionError(
-      "Cannot decompress tile with DoubleDelta; Not supported datatype"));
+      "Cannot decompress tile with DoubleDelta; Unupported datatype"));
 }
 
-uint64_t DoubleDelta::overhead(uint64_t nbytes) {
+uint64_t DoubleDelta::overhead(uint64_t) {
   // DoubleDelta has a fixed size overhead
-  (void)nbytes;
   return DoubleDelta::OVERHEAD;
 }
 
@@ -470,5 +472,4 @@ template Status DoubleDelta::decompress<int64_t>(
 template Status DoubleDelta::decompress<uint64_t>(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
-};  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

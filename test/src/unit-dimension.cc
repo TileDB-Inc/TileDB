@@ -30,7 +30,7 @@
  * Tests the `Dimension` class.
  */
 
-#include "test/src/helpers-dimension.h"
+#include "test/support/src/helpers-dimension.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -49,10 +49,10 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::INT32);
   int32_t dom1[] = {0, 100};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
   Dimension d2("d2", Datatype::INT32);
   int32_t dom2[] = {0, 200};
-  d2.set_domain(dom2);
+  CHECK(d2.set_domain(dom2).ok());
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -163,10 +163,10 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::INT32);
   int32_t dom1[] = {-50, 50};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
   Dimension d2("d2", Datatype::INT32);
   int32_t dom2[] = {-100, 100};
-  d2.set_domain(dom2);
+  CHECK(d2.set_domain(dom2).ok());
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -277,10 +277,10 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::FLOAT32);
   float dom1[] = {0.0f, 1.0f};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
   Dimension d2("d2", Datatype::FLOAT32);
   float dom2[] = {0.0f, 2.0f};
-  d2.set_domain(dom2);
+  CHECK(d2.set_domain(dom2).ok());
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);
@@ -519,7 +519,7 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::INT32);
   int32_t dom1[] = {0, 100};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
 
   // Set number of buckets
   Hilbert h(2);
@@ -540,7 +540,7 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::INT32);
   int32_t dom1[] = {-50, 50};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
 
   // Set number of buckets
   Hilbert h(2);
@@ -561,7 +561,7 @@ TEST_CASE(
   // Create dimensions
   Dimension d1("d1", Datatype::FLOAT32);
   float dom1[] = {0.0f, 1.0f};
-  d1.set_domain(dom1);
+  CHECK(d1.set_domain(dom1).ok());
 
   // Set number of buckets
   Hilbert h(2);

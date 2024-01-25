@@ -32,10 +32,14 @@
 #include "unit_pseudo_nodes.h"
 #include <future>
 #include <vector>
-#include "../fsm.h"
 #include "../ports.h"
-#include "helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 #include "pseudo_nodes.h"
+
+#include "experimental/tiledb/common/dag/edge/edge.h"
 
 using namespace tiledb::common;
 
@@ -51,7 +55,7 @@ TEST_CASE(
     "[pseudo_nodes]") {
   size_t N = 37;
 
-  generator g(N);
+  generators g(N);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
@@ -74,10 +78,10 @@ TEST_CASE(
   }
 
   SECTION("Construct Producer and Consumer pseudo nodes") {
-    ConsumerNode<size_t, AsyncStateMachine<size_t>> r(c);
+    ConsumerNode<AsyncMover2, size_t> r(c);
 
-    ProducerNode<size_t, AsyncStateMachine<size_t>> p(g);
-    ProducerNode<size_t, AsyncStateMachine<size_t>> q([]() { return 0UL; });
+    ProducerNode<AsyncMover2, size_t> p(g);
+    ProducerNode<AsyncMover2, size_t> q([]() { return 0UL; });
   }
 }
 
@@ -88,11 +92,13 @@ TEST_CASE(
     "Pseudo Nodes: Attach producer and consumer nodes", "[pseudo_nodes]") {
   size_t N = 41;
 
+  using Producer = ProducerNode<AsyncMover2, size_t>;
+
+  using Consumer = ConsumerNode<AsyncMover2, size_t>;
+
   SECTION("Attach trivial lambdas") {
-    ProducerNode<int, DebugStateMachine<std::optional<int>>> left(
-        []() -> int { return 0; });
-    ConsumerNode<int, DebugStateMachine<std::optional<int>>> right(
-        [](int) -> void { return; });
+    Producer left([]() -> size_t { return 0UL; });
+    Consumer right([](size_t) -> void { return; });
 
     SECTION("left to right") {
       attach(left, right);
@@ -102,24 +108,22 @@ TEST_CASE(
     }
 
     SECTION("Attach 2") {
-      ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> foo{
-          []() { return 0UL; }};
-      ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> bar{
-          [](size_t) {}};
+      Producer foo{[]() { return 0UL; }};
+      Consumer bar{[](size_t) {}};
 
       attach(foo, bar);
     }
   }
 
   SECTION("Attach generator and consumer") {
-    generator g(N);
+    generators g(N);
 
     std::vector<size_t> v;
     std::back_insert_iterator<std::vector<size_t>> w(v);
     consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
-    ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
-    ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
+    Consumer r(c);
+    Producer p(g);
 
     SECTION("Attach generator to consumer") {
       attach(p, r);
@@ -138,14 +142,14 @@ TEST_CASE(
     "Pseudo Nodes: Pass some data, two attachment orders", "[pseudo_nodes]") {
   size_t rounds = 43;
 
-  generator g(rounds);
+  generators g(rounds);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
   consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
+  ConsumerNode<AsyncMover2, size_t> r(c);
+  ProducerNode<AsyncMover2, size_t> p(g);
 
   SECTION("Attach p to r") {
     attach(p, r);
@@ -181,14 +185,14 @@ TEST_CASE(
 TEST_CASE("Pseudo Nodes: Asynchronously pass some data", "[pseudo_nodes]") {
   size_t rounds = 423;
 
-  generator g(rounds);
+  generators g(rounds);
 
   std::vector<size_t> v;
   std::back_insert_iterator<std::vector<size_t>> w(v);
   consumer<std::back_insert_iterator<std::vector<size_t>>> c(w);
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(c);
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p(g);
+  ConsumerNode<AsyncMover2, size_t> r(c);
+  ProducerNode<AsyncMover2, size_t> p(g);
 
   attach(p, r);
 
@@ -253,12 +257,11 @@ TEST_CASE(
   std::vector<size_t> v;
   size_t i{0};
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(
-      [&](size_t i) {
-        v.push_back(i);
-        std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
-      });
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> p([&]() {
+  ConsumerNode<AsyncMover2, size_t> r([&](size_t i) {
+    v.push_back(i);
+    std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
+  });
+  ProducerNode<AsyncMover2, size_t> p([&]() {
     std::this_thread::sleep_for(std::chrono::microseconds(random_us(1234)));
     return i++;
   });
@@ -320,14 +323,11 @@ TEST_CASE(
  * function node.
  */
 TEST_CASE("Pseudo Nodes: Attach to function node", "[pseudo_nodes]") {
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q(
-      []() { return 0UL; });
+  ProducerNode<AsyncMover2, size_t> q([]() { return 0UL; });
 
-  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
-      [](size_t) { return 0UL; });
+  FunctionNode<AsyncMover2, size_t> r([](size_t) { return 0UL; });
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
-      [](size_t) {});
+  ConsumerNode<AsyncMover2, size_t> s([](size_t) {});
 
   attach(q, r);
   attach(r, s);
@@ -341,15 +341,12 @@ TEST_CASE(
     "Pseudo Nodes: Manuallay pass some data in a chain with function node",
     "[pseudo_nodes]") {
   size_t i{0UL};
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q(
-      [&]() { return i++; });
+  ProducerNode<AsyncMover2, size_t> q([&]() { return i++; });
 
-  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
-      [&](size_t i) { return 2 * i; });
+  FunctionNode<AsyncMover2, size_t> r([&](size_t i) { return 2 * i; });
 
   std::vector<size_t> v;
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
-      [&](size_t i) { v.push_back(i); });
+  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) { v.push_back(i); });
 
   attach(q, r);
   attach(r, s);
@@ -397,7 +394,7 @@ void asynchronous_with_function_node(
   std::vector<size_t> v;
   size_t i{0};
 
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
+  ProducerNode<AsyncMover2, size_t> q([&]() {
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
           static_cast<size_t>(qwt * random_us(1234))));
@@ -405,23 +402,21 @@ void asynchronous_with_function_node(
     return i++;
   });
 
-  FunctionNode<size_t, size_t, AsyncStateMachine<std::optional<size_t>>> r(
-      [&](size_t i) {
-        if constexpr (delay) {
-          std::this_thread::sleep_for(std::chrono::microseconds(
-              static_cast<size_t>(rwt * random_us(1234))));
-        }
-        return 3 * i;
-      });
+  FunctionNode<AsyncMover2, size_t> r([&](size_t i) {
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(rwt * random_us(1234))));
+    }
+    return 3 * i;
+  });
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> s(
-      [&](size_t i) {
-        v.push_back(i);
-        if constexpr (delay) {
-          std::this_thread::sleep_for(std::chrono::microseconds(
-              static_cast<size_t>(swt * random_us(1234))));
-        }
-      });
+  ConsumerNode<AsyncMover2, size_t> s([&](size_t i) {
+    v.push_back(i);
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(swt * random_us(1234))));
+    }
+  });
 
   attach(q, r);
   attach(r, s);
@@ -539,7 +534,7 @@ void asynchronous_with_function_node_4(
   std::vector<size_t> v;
   size_t i{0};
 
-  ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
+  ProducerNode<AsyncMover2, size_t> q([&]() {
     if constexpr (delay) {
       std::this_thread::sleep_for(std::chrono::microseconds(
           static_cast<size_t>(qwt * random_us(1234))));
@@ -547,40 +542,29 @@ void asynchronous_with_function_node_4(
     return i++;
   });
 
-  FunctionNode<
-      size_t,
-      size_t,
-      AsyncStateMachine<std::optional<size_t>>,
-      AsyncStateMachine<std::optional<size_t>>>
-      r([&](size_t i) {
-        if constexpr (delay) {
-          std::this_thread::sleep_for(std::chrono::microseconds(
-              static_cast<size_t>(rwt * random_us(1234))));
-        }
-        return 3 * i;
-      });
+  FunctionNode<AsyncMover2, size_t> r([&](size_t i) {
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(rwt * random_us(1234))));
+    }
+    return 3 * i;
+  });
 
-  FunctionNode<
-      size_t,
-      size_t,
-      AsyncStateMachine<std::optional<size_t>>,
-      AsyncStateMachine<std::optional<size_t>>>
-      s([&](size_t i) {
-        if constexpr (delay) {
-          std::this_thread::sleep_for(std::chrono::microseconds(
-              static_cast<size_t>(swt * random_us(1234))));
-        }
-        return i + 17;
-      });
+  FunctionNode<AsyncMover2, size_t> s([&](size_t i) {
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(swt * random_us(1234))));
+    }
+    return i + 17;
+  });
 
-  ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> t(
-      [&](size_t i) {
-        v.push_back(i);
-        if constexpr (delay) {
-          std::this_thread::sleep_for(std::chrono::microseconds(
-              static_cast<size_t>(twt * random_us(1234))));
-        }
-      });
+  ConsumerNode<AsyncMover2, size_t> t([&](size_t i) {
+    v.push_back(i);
+    if constexpr (delay) {
+      std::this_thread::sleep_for(std::chrono::microseconds(
+          static_cast<size_t>(twt * random_us(1234))));
+    }
+  });
 
   attach(q, r);
   attach(r, s);

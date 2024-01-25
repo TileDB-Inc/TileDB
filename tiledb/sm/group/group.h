@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,24 +39,29 @@
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/group/group_details.h"
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-class StorageManager;
+class GroupDetailsException : public StatusException {
+ public:
+  explicit GroupDetailsException(const std::string& message)
+      : StatusException("Group Details", message) {
+  }
+};
+
 class Group {
  public:
-  Group(
-      const URI& group_uri, StorageManager* storage_manager, uint32_t version);
+  Group(const URI& group_uri, StorageManager* storage_manager);
 
   /** Destructor. */
-  virtual ~Group() = default;
+  ~Group() = default;
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -90,18 +95,25 @@ class Group {
 
   /**
    * Clear a group
-   *
-   * @return
    */
-  Status clear();
+  void clear();
+
+  /**
+   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
+   *
+   * Note: if recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The address of the group to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   */
+  void delete_group(const URI& uri, bool recursive = false);
 
   /**
    * Deletes metadata from an group opened in WRITE mode.
    *
    * @param key The key of the metadata item to be deleted.
-   * @return Status
    */
-  Status delete_metadata(const char* key);
+  void delete_metadata(const char* key);
 
   /**
    * Puts metadata into an group opened in WRITE mode.
@@ -113,9 +125,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status put_metadata(
+  void put_metadata(
       const char* key,
       Datatype value_type,
       uint32_t value_num,
@@ -132,9 +143,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       const char* key,
       Datatype* value_type,
       uint32_t* value_num,
@@ -151,9 +161,8 @@ class Group {
    *     same datatype. This argument indicates the number of items in the
    *     value component of the metadata.
    * @param value The metadata value in binary form.
-   * @return Status
    */
-  Status get_metadata(
+  void get_metadata(
       uint64_t index,
       const char** key,
       uint32_t* key_len,
@@ -162,10 +171,10 @@ class Group {
       const void** value);
 
   /** Returns the number of group metadata items. */
-  Status get_metadata_num(uint64_t* num);
+  uint64_t get_metadata_num();
 
-  /** Sets has_key == 1 and corresponding value_type if the group has key. */
-  Status has_metadata_key(const char* key, Datatype* value_type, bool* has_key);
+  /** Gets the type of the given metadata or nullopt if it does not exist. */
+  std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
   Status metadata(Metadata** metadata);
@@ -205,15 +214,29 @@ class Group {
    * Return config
    * @return Config
    */
-  const Config* config() const;
+  const Config& config() const;
 
   /**
    * Set the config on the group
    *
    * @param config
-   * @return status
+   *
+   * @pre The Group must be closed
    */
-  Status set_config(Config config);
+  void set_config(Config config);
+
+  /**
+   * Set the config on the group
+   *
+   * @param config
+   *
+   * @note This is a potentially unsafe operation. Groups should be closed when
+   * setting a config. Until C.41 compliance, this is necessary for
+   * serialization.
+   */
+  inline void unsafe_set_config(Config config) {
+    config_.inherit(config);
+  }
 
   /**
    * Add a member to a group, this will be flushed to disk on close
@@ -231,74 +254,40 @@ class Group {
   /**
    * Remove a member from a group, this will be flushed to disk on close
    *
-   * @param uri of member to remove
+   * @param name Name of member to remove. If the member has no name,
+   * this parameter should be set to the URI of the member. In that case, only
+   * the unnamed member with the given URI will be removed.
    * @return Status
    */
-  Status mark_member_for_removal(const URI& uri);
+  Status mark_member_for_removal(const std::string& name);
 
   /**
-   * Remove a member from a group, this will be flushed to disk on close
-   *
-   * @param uri of member to remove
-   * @return Status
+   * Get the vector of members to modify, used in serialization only
+   * @return members_to_modify
    */
-  Status mark_member_for_removal(const std::string& uri);
-
-  /**
-   * Get the unordered map of members to remove, used in serialization only
-   * @return members_to_add
-   */
-  const std::unordered_set<std::string>& members_to_remove() const;
-
-  /**
-   * Get the unordered map of members to add, used in serialization only
-   * @return members_to_add
-   */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>&
-  members_to_add() const;
+  const std::vector<shared_ptr<GroupMember>>& members_to_modify() const;
 
   /**
    * Get the unordered map of members
    * @return members
    */
-  const std::unordered_map<std::string, tdb_shared_ptr<GroupMember>>& members()
+  const std::unordered_map<std::string, shared_ptr<GroupMember>>& members()
       const;
 
   /**
-   * Add a member to a group, this will be flushed to disk on close
+   * Add a member to a group
    *
    * @param group_member to add
-   * @return Status
+   * @return void
    */
-  Status add_member(const tdb_shared_ptr<GroupMember>& group_member);
+  void add_member(const shared_ptr<GroupMember> group_member);
 
   /**
-   * Serializes the object members into a binary buffer.
+   * Delete a member from the group
    *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
-   * @return Status
+   * @param group_member
    */
-  virtual Status serialize(Buffer* buff);
-
-  /**
-   * Applies and pending changes and then calls serialize
-   *
-   * @param buff The buffer to serialize the data into.
-   * @param version The format spec version.
-   * @return Status
-   */
-  Status apply_and_serialize(Buffer* buff);
-
-  /**
-   * Returns a Group object from the data in the input binary buffer.
-   *
-   * @param buff The buffer to deserialize from.
-   * @param version The format spec version.
-   * @return Status and Attribute
-   */
-  static std::tuple<Status, std::optional<tdb_shared_ptr<Group>>> deserialize(
-      ConstBuffer* buff, const URI& group_uri, StorageManager* storage_manager);
+  void delete_member(const shared_ptr<GroupMember> group_member);
 
   /** Returns the group URI. */
   const URI& group_uri() const;
@@ -309,56 +298,35 @@ class Group {
   /**
    * Function to generate a URL of a detail file
    *
-   * @return tuple of status and uri
+   * @return uri
    */
-  tuple<Status, optional<URI>> generate_detail_uri() const;
-
-  /**
-   * Have changes been applied to a group in write mode
-   * @return changes_applied_
-   */
-  bool changes_applied() const;
-
-  /**
-   * Set changes applied, only used in serialization
-   * @param changes_applied should changes be considered to be applied? If so
-   * then this will enable writes from a deserialized group
-   *
-   */
-  void set_changes_applied(bool changes_applied);
+  URI generate_detail_uri() const;
 
   /**
    * Get count of members
    *
-   * @return tuple of Status and optional member count
+   * @return member count
    */
-  tuple<Status, optional<uint64_t>> member_count() const;
+  uint64_t member_count() const;
 
   /**
    * Get a member by index
    *
    * @param index of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
-  member_by_index(uint64_t index);
+  tuple<std::string, ObjectType, optional<std::string>> member_by_index(
+      uint64_t index);
 
   /**
    * Get a member by name
    *
    * @param name of member
-   * @return Tuple of Status, URI string, ObjectType, optional name
+   * @return Tuple of URI string, ObjectType, optional GroupMember name,
+   * bool which is true if the URI is relative to the group.
    */
-  tuple<
-      Status,
-      optional<std::string>,
-      optional<ObjectType>,
-      optional<std::string>>
-  member_by_name(const std::string& name);
+  tuple<std::string, ObjectType, optional<std::string>, bool> member_by_name(
+      const std::string& name);
 
   /** Returns `true` if the group is open. */
   bool is_open() const;
@@ -382,6 +350,20 @@ class Group {
       bool recursive = false,
       bool print_self = true) const;
 
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  shared_ptr<GroupDetails> group_details();
+
+  /**
+   * Group Details
+   *
+   * @return GroupDetails
+   */
+  const shared_ptr<GroupDetails> group_details() const;
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -390,7 +372,7 @@ class Group {
   URI group_uri_;
 
   /** The group directory object for listing URIs. */
-  std::shared_ptr<GroupDirectory> group_dir_;
+  shared_ptr<GroupDirectory> group_dir_;
 
   /** TileDB storage manager. */
   StorageManager* storage_manager_;
@@ -435,32 +417,13 @@ class Group {
    * bytes should be stored. Whenever a key is needed, a pointer to this
    * memory region should be passed instead of a copy of the bytes.
    */
-  tdb_shared_ptr<EncryptionKey> encryption_key_;
+  shared_ptr<EncryptionKey> encryption_key_;
 
-  /** The mapping of all members of this group. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_;
-
-  /** Vector for index based lookup. */
-  std::vector<tdb_shared_ptr<GroupMember>> members_vec_;
-
-  /** Unordered map of members by their name, if the member doesn't have a name,
-   * it will not be in the map. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_by_name_;
-
-  /** Mapping of members slated for removal. */
-  std::unordered_set<std::string> members_to_remove_;
-
-  /** Mapping of members slated for adding. */
-  std::unordered_map<std::string, tdb_shared_ptr<GroupMember>> members_to_add_;
+  /** Group Details. */
+  shared_ptr<GroupDetails> group_details_;
 
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
-
-  /* Format version. */
-  const uint32_t version_;
-
-  /* Were changes applied and is a write required */
-  bool changes_applied_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -468,27 +431,9 @@ class Group {
 
   /**
    * Load group metadata, handles remote groups vs non-remote groups
-   * @return  Status
    */
-  Status load_metadata();
-
-  /**
-   * Apply any pending member additions or removals
-   *
-   * mutates members_ and clears members_to_add_ and members_to_remove_
-   *
-   * @return Status
-   */
-  Status apply_pending_changes();
-
-  /**
-   * Generate new name in the form of timestmap_timestamp_uuid
-   *
-   * @return tuple of status and optional string
-   */
-  tuple<Status, optional<std::string>> generate_name() const;
+  void load_metadata();
 };
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_H

@@ -30,8 +30,8 @@
  * Tests the `Reader` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_memory.h"
@@ -155,21 +155,27 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> buffers;
   buffers.emplace(
       "a", tiledb::sm::QueryBuffer(nullptr, nullptr, &tmp_size, &tmp_size));
-  QueryCondition condition;
+  std::unordered_map<std::string, tiledb::sm::QueryBuffer> aggregate_buffers;
+  std::optional<QueryCondition> condition;
   ThreadPool tp_cpu(4), tp_io(4);
   Array array(URI(array_name_), context.storage_manager());
-  array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
+            .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());
-  Reader reader(
-      &g_helper_stats,
-      g_helper_logger(),
+  DefaultChannelAggregates default_channel_aggregates;
+  auto params = StrategyParams(
       context.storage_manager(),
-      &array,
+      array.opened_array(),
       config,
       buffers,
+      aggregate_buffers,
       subarray,
       Layout::ROW_MAJOR,
-      condition);
+      condition,
+      default_channel_aggregates,
+      false,
+      array.memory_tracker());
+  Reader reader(&g_helper_stats, g_helper_logger(), params);
   unsigned dim_num = 2;
   auto size = 2 * sizeof(int32_t);
   int32_t domain_vec[] = {1, 10, 1, 15};
@@ -211,12 +217,12 @@ TEST_CASE_METHOD(
   std::vector<int32_t> domain_slice_2 = {4, 5, 2, 4};
   std::vector<int32_t> domain_slice_3 = {5, 7, 1, 9};
 
-  NDRange ds1 = {Range(&domain_slice_1[0], size),
-                 Range(&domain_slice_1[2], size)};
-  NDRange ds2 = {Range(&domain_slice_2[0], size),
-                 Range(&domain_slice_2[2], size)};
-  NDRange ds3 = {Range(&domain_slice_3[0], size),
-                 Range(&domain_slice_3[2], size)};
+  NDRange ds1 = {
+      Range(&domain_slice_1[0], size), Range(&domain_slice_1[2], size)};
+  NDRange ds2 = {
+      Range(&domain_slice_2[0], size), Range(&domain_slice_2[2], size)};
+  NDRange ds3 = {
+      Range(&domain_slice_3[0], size), Range(&domain_slice_3[2], size)};
   NDRange dsd = domain;
 
   std::vector<TileDomain<int32_t>> frag_tile_domains;
@@ -229,18 +235,18 @@ TEST_CASE_METHOD(
   TileDomain<int32_t> array_tile_domain(
       UINT32_MAX, domain, dsd, tile_extents, layout);
 
-  Dimension d1("d1", Datatype::INT32);
-  d1.set_domain(domain_vec);
-  d1.set_tile_extent(&tile_extents_vec[0]);
-  Dimension d2("d2", Datatype::INT32);
-  d2.set_domain(&domain_vec[2]);
-  d2.set_tile_extent(&tile_extents_vec[1]);
-  Domain dom;
-  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d1)).ok());
-  CHECK(dom.add_dimension(make_shared<Dimension>(HERE(), &d2)).ok());
+  auto d1{make_shared<Dimension>(HERE(), "d1", Datatype::INT32)};
+  CHECK(d1->set_domain(domain_vec).ok());
+  CHECK(d1->set_tile_extent(&tile_extents_vec[0]).ok());
+  auto d2{make_shared<Dimension>(HERE(), "d2", Datatype::INT32)};
+  CHECK(d2->set_domain(&domain_vec[2]).ok());
+  CHECK(d2->set_tile_extent(&tile_extents_vec[1]).ok());
+  auto dom{make_shared<Domain>(HERE())};
+  CHECK(dom->add_dimension(d1).ok());
+  CHECK(dom->add_dimension(d2).ok());
 
   auto schema = make_shared<ArraySchema>(HERE());
-  CHECK(schema->set_domain(make_shared<Domain>(HERE(), &dom)).ok());
+  CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
   for (uint64_t i = 0; i < frag_tile_domains.size() + 1; i++) {
@@ -266,15 +272,15 @@ TEST_CASE_METHOD(
   CHECK(result_space_tiles.size() == 6);
 
   // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, *(schema.get()));
-  ResultTile result_tile_1_2_1(1, 2, *(schema.get()));
+  ResultTile result_tile_1_0_1(1, 0, *fragments[0]);
+  ResultTile result_tile_1_2_1(1, 2, *fragments[0]);
 
   // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, *(schema.get()));
+  ResultTile result_tile_1_0_2(2, 0, *fragments[1]);
 
   // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, *(schema.get()));
-  ResultTile result_tile_3_0_3(3, 2, *(schema.get()));
+  ResultTile result_tile_2_0_3(3, 0, *fragments[2]);
+  ResultTile result_tile_3_0_3(3, 2, *fragments[2]);
 
   // Initialize result_space_tiles
   ResultSpaceTile<int32_t> rst_1_0;

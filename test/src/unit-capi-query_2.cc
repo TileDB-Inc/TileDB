@@ -34,7 +34,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 
@@ -310,7 +310,7 @@ void Query2Fx::create_sparse_array(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -378,7 +378,7 @@ void Query2Fx::create_sparse_array_1d(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -451,7 +451,7 @@ void Query2Fx::create_sparse_array_2d(
   rc = tiledb_attribute_set_cell_val_num(ctx_, b, TILEDB_VAR_NUM);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -516,7 +516,7 @@ void Query2Fx::create_sparse_array_real(const std::string& array_name) {
   rc = tiledb_attribute_set_cell_val_num(ctx_, a, 1);
   CHECK(rc == TILEDB_OK);
 
-  // Create array schmea
+  // Create array schema
   tiledb_array_schema_t* array_schema;
   rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
   CHECK(rc == TILEDB_OK);
@@ -984,12 +984,13 @@ TEST_CASE_METHOD(
   uint64_t domain[] = {1, 100};
   std::vector<uint64_t> coords = {2, 4, 5, 10, 12, 18};
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
@@ -1092,9 +1093,8 @@ TEST_CASE_METHOD(
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
       CHECK(
-          size_val ==
-          (uint64_t)(
-              (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (6 * sizeof(int))));
+          size_val == (uint64_t)((2.0 / 3) * (3 * sizeof(int)) +
+                                 (2.0 / 6) * (6 * sizeof(int))));
     }
 
     SECTION("-- Partial overlap, 2 ranges") {
@@ -1223,9 +1223,8 @@ TEST_CASE_METHOD(
       CHECK(
           size_off == (uint64_t)((2.0 / 3 + 2.0 / 6) * (2 * sizeof(uint64_t))));
       CHECK(
-          size_val ==
-          (uint64_t)(
-              (2.0 / 3) * (3 * sizeof(int)) + (2.0 / 6) * (6 * sizeof(int))));
+          size_val == (uint64_t)((2.0 / 3) * (3 * sizeof(int)) +
+                                 (2.0 / 6) * (6 * sizeof(int))));
     }
 
     SECTION("-- Partial overlap, 2 ranges") {
@@ -1280,16 +1279,17 @@ TEST_CASE_METHOD(
   uint64_t domain[] = {1, 100};
   std::vector<uint64_t> coords = {2, 4, 5, 10, 12, 18, 20, 23, 24, 27};
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 5 * sizeof(int),
-                                 7 * sizeof(int),
-                                 10 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int),
-                                 16 * sizeof(int),
-                                 18 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      5 * sizeof(int),
+      7 * sizeof(int),
+      10 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int),
+      16 * sizeof(int),
+      18 * sizeof(int)};
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 4, 4, 5, 5, 5, 6, 6, 6, 6, 7, 8, 9, 9, 10};
   tiledb_array_t* array = nullptr;
@@ -1699,12 +1699,13 @@ TEST_CASE_METHOD(
   uint64_t domain[] = {1, 10, 1, 10};
   std::vector<uint64_t> coords = {1, 2, 2, 5, 3, 3, 3, 9, 4, 1, 4, 7};
   std::vector<int> a = {1, 2, 3, 4, 5, 6};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6};
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
@@ -2340,14 +2341,15 @@ TEST_CASE_METHOD(
   remove_array(array_name);
 
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
   uint64_t size, size_off, size_val;
   std::vector<uint64_t> domain = {1, 2, 1, 4};
@@ -2408,14 +2410,15 @@ TEST_CASE_METHOD(
   remove_array(array_name);
 
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
   uint64_t size, size_off, size_val;
   std::vector<uint64_t> domain = {1, 2, 1, 4};
@@ -2476,14 +2479,15 @@ TEST_CASE_METHOD(
   remove_array(array_name);
 
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
   uint64_t size, size_off, size_val;
   std::vector<uint64_t> domain = {1, 2, 1, 4};
@@ -2550,14 +2554,15 @@ TEST_CASE_METHOD(
   remove_array(array_name);
 
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
   uint64_t size, size_off, size_val;
   std::vector<uint64_t> domain = {2, 3, 1, 4};
@@ -2624,14 +2629,15 @@ TEST_CASE_METHOD(
   remove_array(array_name);
 
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8};
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 14 * sizeof(int),
-                                 15 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      14 * sizeof(int),
+      15 * sizeof(int)};
   std::vector<int> b_val = {1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 7, 8};
   uint64_t size, size_off, size_val;
   std::vector<uint64_t> domain1 = {1, 2, 1, 4};

@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2021 TileDB, Inc.
+# Copyright (c) 2017-2023 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,6 +32,18 @@
 
 cmake_minimum_required(VERSION 3.21)
 
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
+list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
+
+include(CIConfig)
+include(BuildOptions)
+include(global-policies NO_POLICY_SCOPE)
+include(Sanitizer)
+include(TileDBToolchain)
+include(Doxygen)
+include(Format)
+
 ############################################################
 # Parse version file
 # credit: https://stackoverflow.com/a/47084079
@@ -49,6 +61,7 @@ string(REGEX MATCH "TILEDB_VERSION_PATCH ([0-9]+)*" _ ${VERFILE})
 set(TILEDB_VERSION_PATCH ${CMAKE_MATCH_1})
 
 set(TILEDB_VERSION "${TILEDB_VERSION_MAJOR}.${TILEDB_VERSION_MINOR}.${TILEDB_VERSION_PATCH}")
+
 ############################################################
 # Check for regex characters in the most important paths
 # fixes https://github.com/TileDB-Inc/TileDB/issues/1799
@@ -68,9 +81,6 @@ if (NOT TILEDB_ALLOW_REGEX_CHAR_PATH)
 endif()
 
 ############################################################
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules")
-list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Options")
 
 set(TILEDB_CMAKE_INPUTS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake/inputs")
 
@@ -85,8 +95,8 @@ if(APPLE)
   set(CMAKE_FIND_FRAMEWORK NEVER)
 endif()
 
-# Set C++17 as required standard for all C++ targets.
-set(CMAKE_CXX_STANDARD 17)
+# Set C++20 as default required standard for all C++ targets.
+set(CMAKE_CXX_STANDARD 20 CACHE STRING "C++ Standard")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 if(CMAKE_SYSTEM_NAME MATCHES "CYGWIN")
   # Use GNU extensions under Cygwin
@@ -98,58 +108,6 @@ endif()
 # Set -fvisibility=hidden (or equivalent) flags by default.
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
-
-############################################################
-# Build options
-############################################################
-
-# Note: when adding options, make sure to forward them via INHERITED_CMAKE_ARGS
-# in TileDB-Superbuild.cmake.
-
-option(TILEDB_SUPERBUILD "If true, perform a superbuild (builds all missing dependencies)." ON)
-option(TILEDB_FORCE_ALL_DEPS "If true, force superbuild to download and build all dependencies, even those installed on the system." OFF)
-option(TILEDB_VERBOSE "Prints TileDB errors with verbosity" OFF)
-option(TILEDB_S3 "Enables S3/minio support using aws-cpp-sdk" OFF)
-option(TILEDB_AZURE "Enables Azure Storage support using azure-storage-cpp" OFF)
-option(TILEDB_GCS "Enables GCS Storage support using google-cloud-cpp" OFF)
-option(TILEDB_HDFS "Enables HDFS support using the official Hadoop JNI bindings" OFF)
-option(TILEDB_WERROR "Enables the -Werror flag during compilation." ON)
-option(TILEDB_ASSERTIONS "Build with assertions enabled (default off for release, on for debug build)." OFF)
-option(TILEDB_CPP_API "Enables building of the TileDB C++ API." ON)
-option(TILEDB_CMAKE_IDE "(Used for CLion builds). Disables superbuild and sets the EP install dir." OFF)
-option(TILEDB_STATS "Enables internal TileDB statistics gathering." ON)
-option(TILEDB_STATIC "Enables building TileDB as a static library." OFF)
-option(TILEDB_TESTS "If true, enables building the TileDB unit test suite" ON)
-option(TILEDB_TOOLS "If true, enables building the TileDB tools" OFF)
-option(TILEDB_SERIALIZATION "If true, enables building with support for query serialization" OFF)
-option(TILEDB_CCACHE "If true, enables use of 'ccache' (if present)" OFF)
-option(TILEDB_ARROW_TESTS "If true, enables building the arrow adapter unit tests" OFF)
-option(TILEDB_WEBP "If true, enables building webp and a simple linkage test" OFF)
-option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub-project build fails" ON)
-option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
-option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
-
-set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
-
-# early WIN32 audit of path length for aws sdk build where
-# insufficient available path length causes sdk build failure.
-if (WIN32 AND NOT TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK)
-  if (TILEDB_SUPERBUILD)
-    if (TILEDB_S3)
-      string(LENGTH ${CMAKE_CURRENT_BINARY_DIR} LENGTH_CMAKE_CURRENT_BINARY_DIR)
-      if ( NOT (LENGTH_CMAKE_CURRENT_BINARY_DIR LESS 61))
-        message(FATAL_ERROR " build directory path likely too long for building awssdk/dependencies!")
-      return()
-      endif()
-    endif()
-  endif()
-endif()
-
-# enable assertions by default for debug builds
-if (CMAKE_BUILD_TYPE EQUAL "Debug")
-  set(TILEDB_ASSERTIONS TRUE)
-endif()
-include(TileDBAssertions)
 
 ############################################################
 # Superbuild setup
@@ -171,10 +129,6 @@ if (TILEDB_CMAKE_IDE)
   set(TILEDB_EP_BASE "${CMAKE_CURRENT_BINARY_DIR}/externals")
 endif()
 
-# When building static TileDB, we also need to install any static dependencies
-# built as external projects.
-set(TILEDB_INSTALL_STATIC_DEPS ${TILEDB_STATIC})
-
 # Set main TileDB Source
 set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
 # Set experimental TileDB Source
@@ -183,6 +137,13 @@ set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
 # Perform superbuild config and exit.
 if (TILEDB_SUPERBUILD)
   project(TileDB-Superbuild)
+
+  # Override default install prefix if not set
+  if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    message(STATUS "Setting CMAKE_INSTALL_PREFIX to: '${PROJECT_BINARY_DIR}/dist'")
+    set(CMAKE_INSTALL_PREFIX "${PROJECT_BINARY_DIR}/dist" CACHE PATH "..." FORCE)
+  endif()
+
   message(STATUS "Starting TileDB superbuild.")
   include("cmake/TileDB-Superbuild.cmake")
   message(STATUS "Install prefix is ${CMAKE_INSTALL_PREFIX}")
@@ -194,6 +155,7 @@ endif()
 
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
+message(STATUS "  CMake version: ${CMAKE_VERSION}")
 # Paths to locate the installed external projects.
 set(TILEDB_EP_SOURCE_DIR "${TILEDB_EP_BASE}/src")
 set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
@@ -202,8 +164,19 @@ set(TILEDB_EP_INSTALL_PREFIX "${TILEDB_EP_BASE}/install")
 # Compile options/definitions for all targets
 ############################################################
 
+# NOTE: Config-specific options must use the $<CONFIG> generator expression
+#       and not check the value of CMAKE_BUILD_TYPE. The reason is that
+#       the latter is not set when using multi-config generators like
+#       Visual Studio or Xcode.
+
 # Set compiler flags
 if (MSVC)
+  # Turn on standards-conformance mode
+  add_compile_options("/permissive-")
+  # /EH: Enables standard C++ stack unwinding.
+  # s: Catches only standard C++ exceptions when you use catch(...) syntax.
+  # c: The compiler assumes that functions declared as extern "C" never throw a C++ exception
+  add_compile_options($<$<COMPILE_LANGUAGE:CXX>:/EHsc>)
   # We disable some warnings that are not present in gcc/clang -Wall:
   #   C4101: unreferenced local variable
   #   C4146: unary minus operator applied to unsigned type
@@ -213,43 +186,59 @@ if (MSVC)
   #   C4457: local variable hiding function parameter
   #   C4702: unreachable code
   #   C4800: warning implicit cast int to bool
-  #   C4996: deprecation warning about e.g. sscanf.
-  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800 /wd4996)
+  add_compile_options(/W4 /wd4101 /wd4146 /wd4244 /wd4251 /wd4456 /wd4457 /wd4702 /wd4800)
   # Warnings as errors:
   if (TILEDB_WERROR)
     add_compile_options(/WX)
   endif()
+  # Turn off MSVC deprecation of certain standard library functions. This allows
+  # other deprecations to remain visible.
+  add_compile_definitions("_CRT_SECURE_NO_WARNINGS")
+  # We currently need to suppress warnings about deprecation (C4996) for two cases:
+  #   1. C++ API functions that call deprecated C API functions
+  #   2. two warnings in `test/src/helpers.cc` that call deprecated C API functions
+  add_compile_options(/wd4996)
   # Disable GDI (which we don't need, and causes some macro
   # re-definition issues if wingdi.h is included)
-  add_compile_options(/DNOGDI)
+  add_compile_definitions("NOGDI")
   # Add /MPn flag from CMake invocation (if defined).
   add_compile_options(${MSVC_MP_FLAG})
   # Build-specific flags
+  add_compile_definitions("$<IF:$<CONFIG:Debug>,DEBUG,NDEBUG>")
   add_compile_options(
-                      "$<$<CONFIG:Debug>:/DDEBUG /Od /Zi /bigobj>"
-                      "$<$<CONFIG:Release>:/DNDEBUG /Ox>"
-                      "$<$<CONFIG:RelWithDebInfo>:/DNDEBUG /Ox /Zi>"
-                      )
+    # /Od: Disable optimizations
+    # /bigobj: Increase number of sections in .obj file
+    "$<$<CONFIG:Debug>:/Od;/bigobj>"
+    # /Ox: Enable most speed optimizations
+    "$<$<CONFIG:Release,RelWithDebInfo>:/Ox>"
+    # /Zi: Generate debug info in a separate .pdb file
+    "$<$<CONFIG:Debug,RelWithDebInfo>:/Zi>")
 else()
   add_compile_options(-Wall -Wextra)
   if (TILEDB_WERROR)
     add_compile_options(-Werror)
   endif()
   # Build-specific flags
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-O3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "RelWithDebInfo")
-    add_compile_options(-DNDEBUG -O3 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Coverage")
-    add_compile_options(-DDEBUG -g3 -gdwarf-3 --coverage)
+  add_compile_definitions("$<IF:$<CONFIG:Debug,Coverage>,DEBUG,NDEBUG>")
+  add_compile_options(
+    "$<$<CONFIG:Debug>:-O0;-g3;-ggdb3;-gdwarf-3>"
+    "$<$<CONFIG:Coverage>:-g3;-gdwarf-3;--coverage>"
+    "$<$<CONFIG:Release,RelWithDebInfo>:-O3>"
+    "$<$<CONFIG:RelWithDebInfo>:-g3;-ggdb3;-gdwarf-3>")
+  if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    add_compile_options(
+      "$<$<CONFIG:Debug>:-fstandalone-debug>"
+      "$<$<CONFIG:Coverage>:-fprofile-instr-generate;-fcoverage-mapping>")
+    add_link_options("$<$<CONFIG:Coverage>:--coverage;-fprofile-instr-generate;-fcoverage-mapping>")
   endif()
 
-  # Use -Wno-literal-suffix on Linux with C++ sources.
-  if (NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-literal-suffix>)
+  # Disable newer Clang warnings about unqualified calls to std::move
+  if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+    if (${CMAKE_CXX_COMPILER_VERSION} VERSION_GREATER_EQUAL "14.0.3")
+      add_compile_options($<$<COMPILE_LANGUAGE:CXX>:-Wno-unqualified-std-cast-call>)
+    endif()
   endif()
+
 endif()
 
 # Definitions for all targets
@@ -260,6 +249,10 @@ include(CheckAVX2Support)
 CheckAVX2Support()
 if (COMPILER_SUPPORTS_AVX2)
   add_compile_options(${COMPILER_AVX2_FLAG})
+endif()
+
+if(TILEDB_SANITIZER)
+  validate_sanitizer_options()
 endif()
 
 #######################################################
@@ -316,14 +309,50 @@ list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_dimension_label_experimental.h"
 )
+
+if (TILEDB_SERIALIZATION)
+    list(APPEND TILEDB_C_API_FILENAME_HEADERS
+        "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_serialization.h"
+    )
+endif()
+
 list(APPEND TILEDB_C_API_RELATIVE_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer/buffer_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/buffer_list/buffer_list_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/config/config_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/context/context_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/data_order/data_order_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/datatype/datatype_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension/dimension_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/dimension_label/dimension_label_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/domain/domain_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/error/error_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filesystem/filesystem_api_external.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter/filter_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/filter_list/filter_list_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/group/group_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/object/object_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query/query_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/string/string_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_enum.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_external.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/vfs_api_experimental.h"
 )
 set(TILEDB_C_API_RELATIVE_HEADER_BASE "${CMAKE_CURRENT_SOURCE_DIR}")
 
@@ -338,6 +367,31 @@ set(TILEDB_EXPORT_HEADER_DIR "${CMAKE_BINARY_DIR}/tiledb")
 set(TILEDB_EXPORT_HEADER_NAME "tiledb_export.h")
 set(TILEDB_EXPORT_HEADER "${TILEDB_EXPORT_HEADER_DIR}/${TILEDB_EXPORT_HEADER_NAME}")
 set(TILEDB_EXPORT_HEADER_LOCALINSTALL_PATH "tiledb/api/c_api/${TILEDB_EXPORT_HEADER_NAME}")
+
+##################################
+# VFS Object Storage Configuration
+##################################
+# Create an interface library for use in passing the
+# appropriate compiler definitions for the set of
+# configured object storage backends.
+
+add_library(object_store_definitions INTERFACE)
+
+if (TILEDB_AZURE)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_AZURE)
+endif()
+
+if (TILEDB_GCS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_GCS)
+endif()
+
+if (TILEDB_HDFS)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_HDFS)
+endif()
+
+if (TILEDB_S3)
+  target_compile_definitions(object_store_definitions INTERFACE -DHAVE_S3)
+endif()
 
 ##################################
 # Local install
@@ -392,6 +446,7 @@ endforeach()
 #####################
 add_library(local_install INTERFACE)
 target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE})
+target_include_directories(local_install INTERFACE ${CMAKE_SOURCE_DIR})
 
 ############################################################
 # Enable testing and add subdirectories
@@ -400,8 +455,57 @@ target_include_directories(local_install INTERFACE ${TILEDB_LOCALINSTALL_INCLUDE
 # Enable testing
 enable_testing()
 
+# -------------------------------------------------------
+# Accumulators for object libraries and unit tests
+# -------------------------------------------------------
+#
+# All link-completeness targets from object libraries are aggregated onto a
+# single target.
+#
+# 1. Before any subdirectories are added:
+#    a) Declare a target for all link-completeness checks. It's a phantom target
+#       having only dependencies and with no build actions of its own.
+#    b) Declare an accumulator for link-completeness targets.
+# 2. For each object library within the various subdirectories, add a
+#    link-completeness target, either
+#    a) manually, as an explicit dependency of the `all_link_complete` target.
+#    b) automatically, as an implicit part of an object library environment.
+#       The environment puts the link-completess target into the accumulator.
+# 3. After all the subdirectories are added:
+#    a) The list of all targets from the accumulator is added as a dependency
+#       of `all_link_complete`.
+#
+# All unit tests are similarly aggregated onto the target `all_unit_tests`.
+#
+include(accumulator)
+
+add_custom_target(all_link_complete)
+define_accumulator(object_library_compile_targets)
+
+define_accumulator(unit_test_targets)
+#
+# This is the legacy position of this target declaration; it should appear in
+# test section below. It cannot right now because certain tests are declaring
+# dependencies on it directly. It should be initialized only through
+# accumulators that gather the names of unit test targets.
+#
+add_custom_target(all_unit_tests)
+
+# -------------------------------------------------------
+# Subdirectories
+# -------------------------------------------------------
+
 # Build the TileDB library experimental features
 add_subdirectory(experimental)
+if (TILEDB_TESTS)
+  # Isolate the experimental unit tests into their own target
+  add_custom_target(experimental_unit_tests)
+  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+  if (${Unit_Tests})
+    add_dependencies(experimental_unit_tests ${Unit_Tests})
+  endif()
+  reset_accumulator(ACCUMULATOR unit_test_targets)
+endif()
 
 # Build the TileDB library
 add_subdirectory(tiledb)
@@ -409,29 +513,58 @@ add_subdirectory(tiledb)
 # Build examples
 add_subdirectory(examples)
 
-# Build unit tests
+add_subdirectory(experimental/experimental_examples)
+
+# Build tools
+if (TILEDB_TOOLS)
+  if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
+    message(FATAL_ERROR "Building tools with Azure enabled requires enabling TILEDB_VCPKG")
+  endif()
+  add_subdirectory(tools)
+endif()
+
+# -------------------------------------------------------
+# Tests
+# -------------------------------------------------------
 if (TILEDB_TESTS)
+  add_subdirectory(test/support)
   add_subdirectory(test)
 
-  # Add cmake target for "tests" to build all unit tests executables
+  # ----------------------------------
+  # All unit test executables from `unit_test` environments are dependencies of
+  # the `all_unit_tests` phantom target.
+  #
+  retrieve_from(Unit_Tests ACCUMULATOR unit_test_targets)
+  add_custom_target(ordinary_unit_tests)
+  add_dependencies(ordinary_unit_tests ${Unit_Tests})
+  add_dependencies(all_unit_tests ordinary_unit_tests)
+  add_dependencies(all_unit_tests experimental_unit_tests)
+
+  # ----------------------------------
+  # Target `tests` build and runs all test executables
   add_custom_target(tests)
+  add_dependencies(tests all_unit_tests)
+
+  # ----------------------------------
+  # Test targets added explicitly
   add_dependencies(tests tiledb_unit)
+  add_dependencies(tests tiledb_regression)
+  add_dependencies(tests test_assert)
 
-  add_dependencies(tests unit_buffer unit_datum unit_dynamic_memory)
-  add_dependencies(tests unit_exception unit_interval unit_thread_pool unit_experimental)
-  add_dependencies(tests unit_array_schema unit_filter_create unit_filter_pipeline unit_metadata)
-  add_dependencies(tests unit_compressors unit_query unit_misc unit_vfs unit_array)
-  add_dependencies(tests unit_range_subset)
-  add_dependencies(tests unit_consistency)
-  add_dependencies(tests unit_range)
-  add_dependencies(tests unit_capi_handle unit_capi_filter)
-  add_dependencies(tests unit_delete_condition)
-  add_dependencies(tests unit_ast)
-  add_dependencies(tests unit_serializers)
-
-  if (TILEDB_WEBP)
-    add_dependencies(tests unit_link_webp)
-  endif()
+  # C API support
+  add_dependencies(tests unit_capi_handle unit_capi_exception_wrapper)
+  # C API basics
+  add_dependencies(tests unit_capi_config unit_capi_context)
+  add_dependencies(tests unit_capi_array)
+  add_dependencies(tests unit_capi_buffer)
+  add_dependencies(tests unit_capi_buffer_list)
+  add_dependencies(tests unit_capi_data_order)
+  add_dependencies(tests unit_capi_datatype)
+  add_dependencies(tests unit_capi_filesystem)
+  add_dependencies(tests unit_capi_query_type)
+  add_dependencies(tests unit_capi_vfs)
+  # C API array schema
+  add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)
 
   if (ENABLE_MAGIC_TEST)
     add_dependencies(tests unit_mgc_dict)
@@ -440,10 +573,13 @@ if (TILEDB_TESTS)
   add_subdirectory(test/regression)
 endif()
 
-# Build tools
-if (TILEDB_TOOLS)
-  add_subdirectory(tools)
-endif()
+# -------------------------------------------------------
+#
+# All the compile-targets from object library definitions are dependencies of
+# the `all_link_complete` phantom target.
+#
+retrieve_from(Compile_Targets ACCUMULATOR object_library_compile_targets)
+add_dependencies(all_link_complete ${Compile_Targets})
 
 ###########################################################
 # Uninstall
@@ -458,3 +594,16 @@ add_custom_target(
    COMMAND rmdir "${CMAKE_INSTALL_PREFIX}/include/tiledb"
    COMMAND echo "TileDB uninstalled"
 )
+
+###########################################################
+# Run the optional extra cmake include
+###########################################################
+
+if(TILEDB_EXTRA_CMAKE_INCLUDE)
+  get_filename_component(
+    EXTRA_INCLUDE_ABSPATH
+    "${TILEDB_EXTRA_CMAKE_INCLUDE}"
+    ABSOLUTE
+  )
+  include("${EXTRA_INCLUDE_ABSPATH}")
+endif()

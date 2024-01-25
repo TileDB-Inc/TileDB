@@ -45,12 +45,12 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-ChecksumSHA256Filter::ChecksumSHA256Filter()
-    : Filter(FilterType::FILTER_CHECKSUM_SHA256) {
+ChecksumSHA256Filter::ChecksumSHA256Filter(Datatype filter_data_type)
+    : Filter(FilterType::FILTER_CHECKSUM_SHA256, filter_data_type) {
 }
 
 ChecksumSHA256Filter* ChecksumSHA256Filter::clone_impl() const {
-  return tdb_new(ChecksumSHA256Filter);
+  return tdb_new(ChecksumSHA256Filter, filter_data_type_);
 }
 
 void ChecksumSHA256Filter::dump(FILE* out) const {
@@ -61,8 +61,8 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
 }
 
 Status ChecksumSHA256Filter::run_forward(
-    const Tile&,
-    Tile* const,
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -70,7 +70,7 @@ Status ChecksumSHA256Filter::run_forward(
   // Set output buffer to input buffer
   RETURN_NOT_OK(output->append_view(input));
   // Add original input metadata as a view to the output metadata
-  output_metadata->append_view(input_metadata);
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
 
   // Compute and write the metadata
   std::vector<ConstBuffer> data_parts = input->buffers(),
@@ -97,7 +97,7 @@ Status ChecksumSHA256Filter::run_forward(
 
 Status ChecksumSHA256Filter::run_reverse(
     const Tile&,
-    Tile* const,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
@@ -132,7 +132,7 @@ Status ChecksumSHA256Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      throw_if_not_ok(buff.realloc(Crypto::SHA256_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
       metadata_checksums[i] = std::make_pair(metadata_checksummed_bytes, buff);
@@ -149,7 +149,7 @@ Status ChecksumSHA256Filter::run_reverse(
     // Only fetch and store checksum if we are not going to skip it
     if (!skip_validation) {
       Buffer buff;
-      buff.realloc(Crypto::SHA256_DIGEST_BYTES);
+      throw_if_not_ok(buff.realloc(Crypto::SHA256_DIGEST_BYTES));
       RETURN_NOT_OK(
           input_metadata->read(buff.data(), Crypto::SHA256_DIGEST_BYTES));
       data_checksums[i] = std::make_pair(data_checksummed_bytes, buff);
@@ -199,7 +199,7 @@ Status ChecksumSHA256Filter::checksum_part(
   // Allocate an initial output buffer.
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES);
+  throw_if_not_ok(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
   RETURN_NOT_OK(Crypto::sha256(part, computed_hash.get()));
 
   // Write metadata.
@@ -224,7 +224,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   if (!part->get_const_buffer(bytes_to_compare, buffer_to_compare.get()).ok()) {
     // If the bytes we need to compare span multiple buffers we will have to
     // copy them out
-    byte_buffer_to_compare->realloc(bytes_to_compare);
+    throw_if_not_ok(byte_buffer_to_compare->realloc(bytes_to_compare));
     RETURN_NOT_OK(part->read(byte_buffer_to_compare->data(), bytes_to_compare));
     // Set the buffer back
     buffer_to_compare = tdb_unique_ptr<ConstBuffer>(
@@ -238,7 +238,7 @@ Status ChecksumSHA256Filter::compare_checksum_part(
   // Buffer to store the newly computed hash value for comparison
   tdb_unique_ptr<Buffer> computed_hash =
       tdb_unique_ptr<Buffer>(tdb_new(Buffer));
-  computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES);
+  throw_if_not_ok(computed_hash->realloc(Crypto::SHA256_DIGEST_BYTES));
 
   RETURN_NOT_OK(Crypto::sha256(
       buffer_to_compare->data(), bytes_to_compare, computed_hash.get()));
@@ -250,14 +250,17 @@ Status ChecksumSHA256Filter::compare_checksum_part(
         reinterpret_cast<unsigned char*>(computed_hash->data());
     char shastring[65];
     for (uint64_t i = 0; i < computed_hash->alloced_size(); ++i) {
-      sprintf(&shastring[i * 2], "%02x", (unsigned int)digest[i]);
+      snprintf(&shastring[i * 2], 3, "%02x", (unsigned int)digest[i]);
     }
 
     unsigned char* existing_digest = reinterpret_cast<unsigned char*>(checksum);
     char shastring_existing[65];
     for (uint64_t i = 0; i < Crypto::SHA256_DIGEST_BYTES; ++i) {
-      sprintf(
-          &shastring_existing[i * 2], "%02x", (unsigned int)existing_digest[i]);
+      snprintf(
+          &shastring_existing[i * 2],
+          3,
+          "%02x",
+          (unsigned int)existing_digest[i]);
     }
 
     std::stringstream message;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -39,8 +39,8 @@
 #include <thread>
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -79,8 +79,8 @@ struct ArraySchemaFx {
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const char* DIM_TYPE_STR = "INT64";
   const int64_t DIM_DOMAIN[4] = {0, 99, 20, 60};
-  const char* DIM1_DOMAIN_STR = "[0,99]";
-  const char* DIM2_DOMAIN_STR = "[20,60]";
+  const char* DIM1_DOMAIN_STR = "[0, 99]";
+  const char* DIM2_DOMAIN_STR = "[20, 60]";
   const uint64_t DIM_DOMAIN_SIZE = sizeof(DIM_DOMAIN) / DIM_NUM;
   const uint32_t FILL_VALUE = 10;
   const char* FILL_VALUE_STR = "10";
@@ -123,7 +123,6 @@ struct ArraySchemaFx {
   void delete_array(const std::string& path);
   bool is_array(const std::string& path);
   void load_and_check_array_schema(const std::string& path);
-  static std::string random_name(const std::string& prefix);
 
   int array_create_wrapper(
       const std::string& path, tiledb_array_schema_t* array_schema);
@@ -781,7 +780,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals(ATTR_NAME));
   tiledb_attribute_free(&attr);
 
   // get first attribute by name
@@ -790,7 +789,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_attribute_get_name(ctx_, attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals(ATTR_NAME));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals(ATTR_NAME));
 
   tiledb_datatype_t attr_type;
   rc = tiledb_attribute_get_type(ctx_, attr, &attr_type);
@@ -837,7 +836,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   const char* dim_name;
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM1_NAME));
 
   tiledb_dimension_free(&dim);
 
@@ -846,7 +845,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM1_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM1_NAME));
 
   const void* dim_domain;
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
@@ -866,7 +865,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM2_NAME));
   tiledb_dimension_free(&dim);
 
   // get from index
@@ -875,7 +874,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
 
   rc = tiledb_dimension_get_name(ctx_, dim, &dim_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(dim_name, Catch::Equals(DIM2_NAME));
+  CHECK_THAT(dim_name, Catch::Matchers::Equals(DIM2_NAME));
 
   rc = tiledb_dimension_get_domain(ctx_, dim, &dim_domain);
   REQUIRE(rc == TILEDB_OK);
@@ -909,10 +908,11 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "  > RLE: COMPRESSION_LEVEL=-1\n\n" + "### Dimension ###\n" +
       "- Name: " + DIM1_NAME + "\n" + "- Type: INT64\n" +
       "- Cell val num: 1\n" + "- Domain: " + DIM1_DOMAIN_STR + "\n" +
-      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters: 0\n\n" +
-      "### Dimension ###\n" + "- Name: " + DIM2_NAME + "\n" +
-      "- Type: INT64\n" + "- Cell val num: 1\n" +
-      "- Domain: " + DIM2_DOMAIN_STR + "\n" +
+      "- Tile extent: " + DIM1_TILE_EXTENT_STR + "\n" + "- Filters: 1\n" +
+      "  > ZSTD: COMPRESSION_LEVEL=-1\n\n"
+      "### Dimension ###\n" +
+      "- Name: " + DIM2_NAME + "\n" + "- Type: INT64\n" +
+      "- Cell val num: 1\n" + "- Domain: " + DIM2_DOMAIN_STR + "\n" +
       "- Tile extent: " + DIM2_TILE_EXTENT_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n\n" +
@@ -944,13 +944,6 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   tiledb_array_schema_free(&array_schema);
 }
 
-std::string ArraySchemaFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
-}
-
 int ArraySchemaFx::get_schema_file_struct(const char* path, void* data) {
   auto data_struct = (ArraySchemaFx::schema_file_struct*)data;
   auto ctx = data_struct->ctx;
@@ -959,7 +952,10 @@ int ArraySchemaFx::get_schema_file_struct(const char* path, void* data) {
   int rc = tiledb_vfs_is_dir(ctx, vfs, path, &is_dir);
   CHECK(rc == TILEDB_OK);
 
-  data_struct->path = path;
+  if (!is_dir) {
+    data_struct->path = path;
+  }
+
   return 1;
 }
 
@@ -1027,7 +1023,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_dimension_get_name(ctx_, get_dim, &get_name);
   CHECK(rc == TILEDB_OK);
-  CHECK_THAT(get_name, Catch::Equals("d2"));
+  CHECK_THAT(get_name, Catch::Matchers::Equals("d2"));
   tiledb_dimension_free(&get_dim);
 
   // Clean up
@@ -1065,6 +1061,23 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test sparse array schema with invalid capacity",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that zero capacity fails
+  rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 0);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
   tiledb_array_schema_free(&array_schema);
 }
 
@@ -2128,6 +2141,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_t* read_schema;
@@ -2146,7 +2161,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2271,6 +2286,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_t* read_schema;
@@ -2289,7 +2306,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   tiledb_attribute_t* read_attr1;
   rc = tiledb_array_schema_get_attribute_from_index(
@@ -2298,7 +2315,7 @@ TEST_CASE_METHOD(
   const char* attr_name1;
   rc = tiledb_attribute_get_name(ctx_, read_attr1, &attr_name1);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name1, Catch::Equals("a3"));
+  CHECK_THAT(attr_name1, Catch::Matchers::Equals("a3"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2363,6 +2380,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_uri.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_t* read_schema;
@@ -2381,7 +2400,7 @@ TEST_CASE_METHOD(
   const char* attr_name;
   rc = tiledb_attribute_get_name(ctx_, read_attr, &attr_name);
   REQUIRE(rc == TILEDB_OK);
-  CHECK_THAT(attr_name, Catch::Equals("a2"));
+  CHECK_THAT(attr_name, Catch::Matchers::Equals("a2"));
 
   // Close array
   rc = tiledb_array_close(ctx_, array);

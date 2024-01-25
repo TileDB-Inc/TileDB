@@ -68,8 +68,8 @@ void set_get_config() {
 
   // Get value
   const char* value;
-  tiledb_config_get(config, "sm.tile_cache_size", &value, &error);
-  printf("\nTile cache size: %s\n\n", value);
+  tiledb_config_get(config, "sm.memory_budget", &value, &error);
+  printf("\nMemory budget: %s\n\n", value);
 
   // Clean up
   tiledb_config_free(&config);
@@ -134,7 +134,7 @@ void save_load_config() {
   tiledb_config_alloc(&config, &error);
 
   // Set value
-  tiledb_config_set(config, "sm.tile_cache_size", "0", &error);
+  tiledb_config_set(config, "sm.memory_budget", "0", &error);
 
   // Save to file
   tiledb_config_save_to_file(config, "tiledb_config.txt", &error);
@@ -146,8 +146,8 @@ void save_load_config() {
 
   // Get value
   const char* value;
-  tiledb_config_get(config_load, "sm.tile_cache_size", &value, &error);
-  printf("\nTile cache size: %s\n", value);
+  tiledb_config_get(config_load, "sm.memory_budget", &value, &error);
+  printf("\nMemory budget: %s\n\n", value);
 
   // Clean up
   tiledb_config_free(&config);

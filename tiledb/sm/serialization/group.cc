@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,6 +39,7 @@
 #endif
 // clang-format on
 
+#include "tiledb/sm/group/group.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
@@ -48,7 +49,6 @@
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/group/group.h"
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array.h"
@@ -65,12 +65,20 @@ namespace serialization {
 #ifdef TILEDB_SERIALIZATION
 
 Status group_metadata_to_capnp(
-    const Group* group, capnp::GroupMetadata::Builder* group_metadata_builder) {
+    Group* group,
+    capnp::GroupMetadata::Builder* group_metadata_builder,
+    bool load) {
   // Set config
   auto config_builder = group_metadata_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata;
+  if (load) {
+    RETURN_NOT_OK(group->metadata(&metadata));
+  } else {
+    metadata = const_cast<Metadata*>(group->metadata());
+  }
+
   if (metadata->num()) {
     auto metadata_builder = group_metadata_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
@@ -104,9 +112,10 @@ Status group_member_to_capnp(
 std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
 group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
   if (!group_member_reader->hasUri()) {
-    return {Status_SerializationError(
-                "Incomplete group member type in deserialization, missing uri"),
-            std::nullopt};
+    return {
+        Status_SerializationError(
+            "Incomplete group member type in deserialization, missing uri"),
+        std::nullopt};
   }
 
   if (!group_member_reader->hasType()) {
@@ -134,26 +143,35 @@ group_member_from_capnp(capnp::GroupMember::Reader* group_member_reader) {
 }
 
 Status group_details_to_capnp(
-    const Group* group,
-    capnp::Group::GroupDetails::Builder* group_details_builder) {
+    Group* group, capnp::Group::GroupDetails::Builder* group_details_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
 
-  const auto& group_members = group->members();
-  if (!group_members.empty()) {
-    auto group_members_builder =
-        group_details_builder->initMembers(group_members.size());
-    uint64_t i = 0;
-    for (const auto& it : group_members) {
-      auto group_member_builder = group_members_builder[i];
-      RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
-      // Increment index
-      ++i;
+  auto group_details = group->group_details();
+
+  if (group_details != nullptr) {
+    const auto& group_members = group->members();
+    if (!group_members.empty()) {
+      auto group_members_builder =
+          group_details_builder->initMembers(group_members.size());
+      uint64_t i = 0;
+      for (const auto& it : group_members) {
+        auto group_member_builder = group_members_builder[i];
+        RETURN_NOT_OK(group_member_to_capnp(it.second, &group_member_builder));
+        // Increment index
+        ++i;
+      }
     }
   }
 
-  const Metadata* metadata = group->metadata();
+  Metadata* metadata;
+  if (group->group_uri().is_tiledb()) {
+    metadata = const_cast<Metadata*>(group->metadata());
+  } else {
+    RETURN_NOT_OK(group->metadata(&metadata));
+  }
+
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
@@ -169,7 +187,7 @@ Status group_details_from_capnp(
     for (auto member : group_details_reader.getMembers()) {
       auto&& [st, group_member] = group_member_from_capnp(&member);
       RETURN_NOT_OK(st);
-      RETURN_NOT_OK(group->add_member(group_member.value()));
+      group->add_member(group_member.value());
     }
   }
 
@@ -179,13 +197,12 @@ Status group_details_from_capnp(
     group->set_metadata_loaded(true);
   }
 
-  group->set_changes_applied(true);
+  group->group_details()->set_modified();
 
   return Status::Ok();
 }
 
-Status group_to_capnp(
-    const Group* group, capnp::Group::Builder* group_builder) {
+Status group_to_capnp(Group* group, capnp::Group::Builder* group_builder) {
   if (group == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error serializing group; group is null."));
@@ -205,7 +222,7 @@ Status group_from_capnp(
   if (group_reader.hasConfig()) {
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(group->set_config(*decoded_config));
+    group->unsafe_set_config(*decoded_config);
   }
 
   if (group_reader.hasGroup()) {
@@ -225,7 +242,16 @@ Status group_update_details_to_capnp(
         "Error serializing group details; group is null."));
   }
 
-  const auto& group_members_to_add = group->members_to_add();
+  const auto& members_to_modify = group->members_to_modify();
+  std::vector<shared_ptr<GroupMember>> group_members_to_add;
+  std::vector<shared_ptr<GroupMember>> group_members_to_remove;
+  for (const auto& member : members_to_modify) {
+    if (member->deleted()) {
+      group_members_to_remove.emplace_back(member);
+    } else {
+      group_members_to_add.emplace_back(member);
+    }
+  }
   if (!group_members_to_add.empty()) {
     auto group_members_to_add_builder =
         group_update_details_builder->initMembersToAdd(
@@ -233,21 +259,19 @@ Status group_update_details_to_capnp(
     uint64_t i = 0;
     for (const auto& it : group_members_to_add) {
       auto group_member_to_add_builder = group_members_to_add_builder[i];
-      RETURN_NOT_OK(
-          group_member_to_capnp(it.second, &group_member_to_add_builder));
+      RETURN_NOT_OK(group_member_to_capnp(it, &group_member_to_add_builder));
       // Increment index
       ++i;
     }
   }
 
-  const auto& group_members_to_remove = group->members_to_remove();
   if (!group_members_to_remove.empty()) {
     auto group_members_to_remove_builder =
         group_update_details_builder->initMembersToRemove(
             group_members_to_remove.size());
     uint64_t i = 0;
     for (const auto& it : group_members_to_remove) {
-      group_members_to_remove_builder.set(i, it.c_str());
+      group_members_to_remove_builder.set(i, it->uri().c_str());
       // Increment index
       ++i;
     }
@@ -270,7 +294,7 @@ Status group_update_from_capnp(
 
   if (group_update_details_reader.hasMembersToRemove()) {
     for (auto uri : group_update_details_reader.getMembersToRemove()) {
-      group->mark_member_for_removal(uri.cStr());
+      throw_if_not_ok(group->mark_member_for_removal(uri.cStr()));
     }
   }
 
@@ -300,7 +324,7 @@ Status group_update_from_capnp(
   if (group_reader.hasConfig()) {
     tdb_unique_ptr<Config> decoded_config = nullptr;
     RETURN_NOT_OK(config_from_capnp(group_reader.getConfig(), &decoded_config));
-    RETURN_NOT_OK(group->set_config(*decoded_config));
+    group->unsafe_set_config(*decoded_config);
   }
 
   if (group_reader.hasGroupUpdate()) {
@@ -352,9 +376,7 @@ Status group_create_to_capnp(
 }
 
 Status group_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::Builder groupBuilder = message.initRoot<capnp::Group>();
@@ -452,9 +474,7 @@ Status group_deserialize(
 }
 
 Status group_details_serialize(
-    const Group* group,
-    SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Group* group, SerializationType serialize_type, Buffer* serialized_buffer) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::Group::GroupDetails::Builder groupDetailsBuilder =
@@ -712,14 +732,16 @@ Status group_create_serialize(
 }
 
 Status group_metadata_serialize(
-    const Group* group,
+    Group* group,
     SerializationType serialize_type,
-    Buffer* serialized_buffer) {
+    Buffer* serialized_buffer,
+    bool load) {
   try {
     ::capnp::MallocMessageBuilder message;
     capnp::GroupMetadata::Builder group_metadata_builder =
         message.initRoot<capnp::GroupMetadata>();
-    RETURN_NOT_OK(group_metadata_to_capnp(group, &group_metadata_builder));
+    RETURN_NOT_OK(
+        group_metadata_to_capnp(group, &group_metadata_builder, load));
 
     serialized_buffer->reset_size();
     serialized_buffer->reset_offset();
@@ -767,7 +789,7 @@ Status group_metadata_serialize(
 
 #else
 
-Status group_serialize(const Group*, SerializationType, Buffer*) {
+Status group_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -777,7 +799,7 @@ Status group_deserialize(Group*, SerializationType, const Buffer&) {
       "Cannot deserialize; serialization not enabled."));
 }
 
-Status group_details_serialize(const Group*, SerializationType, Buffer*) {
+Status group_details_serialize(Group*, SerializationType, Buffer*) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -802,7 +824,7 @@ Status group_create_serialize(const Group*, SerializationType, Buffer*) {
       "Cannot serialize; serialization not enabled."));
 }
 
-Status group_metadata_serialize(const Group*, SerializationType, Buffer*) {
+Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

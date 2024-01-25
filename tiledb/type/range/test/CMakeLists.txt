@@ -24,21 +24,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-find_package(Catch_EP REQUIRED)
 
-add_executable(unit_range EXCLUDE_FROM_ALL
-  main.cc
-  unit_check_range_is_subset.cc
-  unit_check_range_is_valid.cc
-  unit_crop_range.cc
-  unit_range_str.cc
-)
-target_link_libraries(unit_range
-  PRIVATE range
-  PUBLIC Catch2::Catch2
-)
-add_test(
-  NAME "unit_range"
-  COMMAND $<TARGET_FILE:unit_range>
-  WORKING_DIRECTORY ${CMAKE_CURRENT_BUILD_DIR}
-)
+include(unit_test)
+
+commence(unit_test range)
+    this_target_object_libraries(range)
+    this_target_sources(main.cc
+        unit_check_range_is_subset.cc
+        unit_check_range_is_valid.cc
+        unit_crop_range.cc
+        unit_range.cc
+        unit_range_str.cc
+        )
+conclude(unit_test)

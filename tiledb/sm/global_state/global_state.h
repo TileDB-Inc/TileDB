@@ -39,13 +39,13 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class URI;
 
 namespace global_state {
@@ -88,13 +88,6 @@ class GlobalState {
    */
   std::set<StorageManager*> storage_managers();
 
-  /**
-   * Getter for cert file
-   * @return detected cert file or empty if no cert file detected. Always empty
-   * string on non-linux platforms
-   */
-  const std::string& cert_file();
-
  private:
   /** The TileDB configuration parameters. */
   Config config_;
@@ -110,9 +103,6 @@ class GlobalState {
 
   /** Mutex protecting list of StorageManagers. */
   std::mutex storage_managers_mtx_;
-
-  /** Detected certificate file, currently only used on linux */
-  std::string cert_file_;
 
   /** Constructor. */
   GlobalState();

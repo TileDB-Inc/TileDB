@@ -210,6 +210,30 @@ class QueryCondition {
     return QueryCondition(ctx_, combined_qc);
   }
 
+  /**
+   * Return a query condition representing a negation of this query condition.
+   * Currently this is performed by applying De Morgan's theorem recursively
+   * to the query condition's internal representation.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * int qc1_cmp_value = 10;
+   * tiledb::QueryCondition qc1;
+   * qc1.init("a1", &qc1_cmp_value, sizeof(int), TILEDB_LT);
+   * tiledb::QueryCondition qc2 = qc1.negate();
+   * query.set_condition(qc2);
+   * @endcode
+   */
+  QueryCondition negate() const {
+    auto& ctx = ctx_.get();
+    tiledb_query_condition_t* negated_qc;
+    ctx.handle_error(tiledb_query_condition_negate(
+        ctx.ptr().get(), query_condition_.get(), &negated_qc));
+
+    return QueryCondition(ctx_, negated_qc);
+  }
+
   /* ********************************* */
   /*          STATIC FUNCTIONS         */
   /* ********************************* */

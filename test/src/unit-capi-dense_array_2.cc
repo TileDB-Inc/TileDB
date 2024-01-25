@@ -30,8 +30,8 @@
  * Tests the C API for dense arrays.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
@@ -148,37 +148,39 @@ void CDenseArrayFx::write_default_array_1d() {
   tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(char),
-                                 3 * sizeof(char),
-                                 6 * sizeof(char),
-                                 9 * sizeof(char),
-                                 11 * sizeof(char),
-                                 15 * sizeof(char),
-                                 16 * sizeof(char),
-                                 17 * sizeof(char),
-                                 18 * sizeof(char)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(char),
+      3 * sizeof(char),
+      6 * sizeof(char),
+      9 * sizeof(char),
+      11 * sizeof(char),
+      15 * sizeof(char),
+      16 * sizeof(char),
+      17 * sizeof(char),
+      18 * sizeof(char)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<char> b_val;
-  b_val = {'a',
-           'b',
-           'b',
-           'c',
-           'c',
-           'c',
-           'd',
-           'd',
-           'd',
-           'e',
-           'e',
-           'f',
-           'f',
-           'f',
-           'f',
-           'g',
-           'h',
-           'i',
-           'j'};
+  b_val = {
+      'a',
+      'b',
+      'b',
+      'c',
+      'c',
+      'c',
+      'd',
+      'd',
+      'd',
+      'e',
+      'e',
+      'f',
+      'f',
+      'f',
+      'f',
+      'g',
+      'h',
+      'i',
+      'j'};
   uint64_t b_val_size = b_val.size() * sizeof(char);
   std::vector<float> c = {1.1f, 1.2f, 2.1f, 2.2f, 3.1f,  3.2f, 4.1f,
                           4.2f, 5.1f, 5.2f, 6.1f, 6.2f,  7.1f, 7.2f,
@@ -194,22 +196,23 @@ void CDenseArrayFx::write_default_array_1d() {
 void CDenseArrayFx::write_default_array_2d() {
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(char),
-                                 3 * sizeof(char),
-                                 6 * sizeof(char),
-                                 9 * sizeof(char),
-                                 11 * sizeof(char),
-                                 15 * sizeof(char),
-                                 16 * sizeof(char),
-                                 17 * sizeof(char),
-                                 18 * sizeof(char),
-                                 19 * sizeof(char),
-                                 21 * sizeof(char),
-                                 22 * sizeof(char),
-                                 23 * sizeof(char),
-                                 24 * sizeof(char),
-                                 27 * sizeof(char)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(char),
+      3 * sizeof(char),
+      6 * sizeof(char),
+      9 * sizeof(char),
+      11 * sizeof(char),
+      15 * sizeof(char),
+      16 * sizeof(char),
+      17 * sizeof(char),
+      18 * sizeof(char),
+      19 * sizeof(char),
+      21 * sizeof(char),
+      22 * sizeof(char),
+      23 * sizeof(char),
+      24 * sizeof(char),
+      27 * sizeof(char)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<char> b_val = {'a', 'b', 'b', 'c', 'c', 'c', 'd', 'd', 'd', 'e',
                              'e', 'f', 'f', 'f', 'f', 'g', 'h', 'i', 'j', 'k',
@@ -269,36 +272,38 @@ TEST_CASE_METHOD(
 
   // Check results
   std::vector<int> c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
-  std::vector<uint64_t> c_b_off = {0,
-                                   sizeof(char),
-                                   3 * sizeof(char),
-                                   6 * sizeof(char),
-                                   9 * sizeof(char),
-                                   11 * sizeof(char),
-                                   15 * sizeof(char),
-                                   16 * sizeof(char),
-                                   17 * sizeof(char),
-                                   18 * sizeof(char)};
+  std::vector<uint64_t> c_b_off = {
+      0,
+      sizeof(char),
+      3 * sizeof(char),
+      6 * sizeof(char),
+      9 * sizeof(char),
+      11 * sizeof(char),
+      15 * sizeof(char),
+      16 * sizeof(char),
+      17 * sizeof(char),
+      18 * sizeof(char)};
   std::vector<char> c_b_val;
-  c_b_val = {'a',
-             'b',
-             'b',
-             'c',
-             'c',
-             'c',
-             'd',
-             'd',
-             'd',
-             'e',
-             'e',
-             'f',
-             'f',
-             'f',
-             'f',
-             'g',
-             'h',
-             'i',
-             'j'};
+  c_b_val = {
+      'a',
+      'b',
+      'b',
+      'c',
+      'c',
+      'c',
+      'd',
+      'd',
+      'd',
+      'e',
+      'e',
+      'f',
+      'f',
+      'f',
+      'f',
+      'g',
+      'h',
+      'i',
+      'j'};
   std::vector<float> c_c = {1.1f, 1.2f, 2.1f, 2.2f, 3.1f,  3.2f, 4.1f,
                             4.2f, 5.1f, 5.2f, 6.1f, 6.2f,  7.1f, 7.2f,
                             8.1f, 8.2f, 9.1f, 9.2f, 10.1f, 10.2f};
@@ -357,22 +362,23 @@ TEST_CASE_METHOD(
   SECTION("- subarray: row") {
     subarray_layout = TILEDB_ROW_MAJOR;
     c_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-    c_b_off = {0,
-               sizeof(char),
-               3 * sizeof(char),
-               6 * sizeof(char),
-               9 * sizeof(char),
-               11 * sizeof(char),
-               15 * sizeof(char),
-               16 * sizeof(char),
-               17 * sizeof(char),
-               18 * sizeof(char),
-               19 * sizeof(char),
-               21 * sizeof(char),
-               22 * sizeof(char),
-               23 * sizeof(char),
-               24 * sizeof(char),
-               27 * sizeof(char)};
+    c_b_off = {
+        0,
+        sizeof(char),
+        3 * sizeof(char),
+        6 * sizeof(char),
+        9 * sizeof(char),
+        11 * sizeof(char),
+        15 * sizeof(char),
+        16 * sizeof(char),
+        17 * sizeof(char),
+        18 * sizeof(char),
+        19 * sizeof(char),
+        21 * sizeof(char),
+        22 * sizeof(char),
+        23 * sizeof(char),
+        24 * sizeof(char),
+        27 * sizeof(char)};
     c_b_val = {'a', 'b', 'b', 'c', 'c', 'c', 'd', 'd', 'd', 'e',
                'e', 'f', 'f', 'f', 'f', 'g', 'h', 'i', 'j', 'k',
                'k', 'l', 'm', 'n', 'o', 'o', 'o', 'p', 'p'};
@@ -387,22 +393,23 @@ TEST_CASE_METHOD(
   SECTION("- subarray: col") {
     subarray_layout = TILEDB_COL_MAJOR;
     c_a = {1, 5, 9, 13, 2, 6, 10, 14, 3, 7, 11, 15, 4, 8, 12, 16};
-    c_b_off = {0,
-               sizeof(char),
-               3 * sizeof(char),
-               4 * sizeof(char),
-               5 * sizeof(char),
-               7 * sizeof(char),
-               11 * sizeof(char),
-               12 * sizeof(char),
-               13 * sizeof(char),
-               16 * sizeof(char),
-               17 * sizeof(char),
-               19 * sizeof(char),
-               22 * sizeof(char),
-               25 * sizeof(char),
-               26 * sizeof(char),
-               27 * sizeof(char)};
+    c_b_off = {
+        0,
+        sizeof(char),
+        3 * sizeof(char),
+        4 * sizeof(char),
+        5 * sizeof(char),
+        7 * sizeof(char),
+        11 * sizeof(char),
+        12 * sizeof(char),
+        13 * sizeof(char),
+        16 * sizeof(char),
+        17 * sizeof(char),
+        19 * sizeof(char),
+        22 * sizeof(char),
+        25 * sizeof(char),
+        26 * sizeof(char),
+        27 * sizeof(char)};
     c_b_val = {'a', 'e', 'e', 'i', 'm', 'b', 'b', 'f', 'f', 'f',
                'f', 'j', 'n', 'c', 'c', 'c', 'g', 'k', 'k', 'o',
                'o', 'o', 'd', 'd', 'd', 'h', 'l', 'p', 'p'};
@@ -417,22 +424,23 @@ TEST_CASE_METHOD(
   SECTION("- subarray: global") {
     subarray_layout = TILEDB_GLOBAL_ORDER;
     c_a = {1, 2, 5, 6, 3, 4, 7, 8, 9, 10, 13, 14, 11, 12, 15, 16};
-    c_b_off = {0,
-               sizeof(char),
-               3 * sizeof(char),
-               5 * sizeof(char),
-               9 * sizeof(char),
-               12 * sizeof(char),
-               15 * sizeof(char),
-               16 * sizeof(char),
-               17 * sizeof(char),
-               18 * sizeof(char),
-               19 * sizeof(char),
-               20 * sizeof(char),
-               21 * sizeof(char),
-               23 * sizeof(char),
-               24 * sizeof(char),
-               27 * sizeof(char)};
+    c_b_off = {
+        0,
+        sizeof(char),
+        3 * sizeof(char),
+        5 * sizeof(char),
+        9 * sizeof(char),
+        12 * sizeof(char),
+        15 * sizeof(char),
+        16 * sizeof(char),
+        17 * sizeof(char),
+        18 * sizeof(char),
+        19 * sizeof(char),
+        20 * sizeof(char),
+        21 * sizeof(char),
+        23 * sizeof(char),
+        24 * sizeof(char),
+        27 * sizeof(char)};
     c_b_val = {'a', 'b', 'b', 'e', 'e', 'f', 'f', 'f', 'f', 'c',
                'c', 'c', 'd', 'd', 'd', 'g', 'h', 'i', 'j', 'm',
                'n', 'k', 'k', 'l', 'o', 'o', 'o', 'p', 'p'};
@@ -488,6 +496,10 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_add_range(ctx_, query, 0, &start, &end, nullptr);
+  CHECK(rc == TILEDB_OK);
+
+  // Submit
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up

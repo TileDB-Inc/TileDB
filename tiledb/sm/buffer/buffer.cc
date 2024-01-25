@@ -42,6 +42,12 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+class BufferStatusException : public StatusException {
+ public:
+  explicit BufferStatusException(const std::string& msg)
+      : StatusException("Buffer", msg) {
+  }
+};
 
 /* ****************************** */
 /*          BufferBase            */
@@ -151,6 +157,15 @@ Buffer::Buffer()
     , alloced_size_(0) {
 }
 
+Buffer::Buffer(uint64_t size)
+    : BufferBase((void*)nullptr, size)
+    , owns_data_(true)
+    , alloced_size_(0) {
+  throw_if_not_ok(ensure_alloced_size(size_));
+  preallocated_ = true;
+  size_ = 0;
+}
+
 Buffer::Buffer(void* data, const uint64_t size)
     : BufferBase(data, size)
     , owns_data_(false)
@@ -162,6 +177,7 @@ Buffer::Buffer(const Buffer& buff)
   offset_ = buff.offset_;
   owns_data_ = buff.owns_data_;
   alloced_size_ = buff.alloced_size_;
+  preallocated_ = buff.preallocated_;
 
   if (buff.owns_data_ && buff.data_ != nullptr) {
     data_ = tdb_malloc(alloced_size_);
@@ -258,13 +274,13 @@ void Buffer::set_size(const uint64_t size) {
   size_ = size;
 }
 
-Status Buffer::swap(Buffer& other) {
+void Buffer::swap(Buffer& other) {
   std::swap(alloced_size_, other.alloced_size_);
   std::swap(data_, other.data_);
   std::swap(offset_, other.offset_);
   std::swap(owns_data_, other.owns_data_);
   std::swap(size_, other.size_);
-  return Status::Ok();
+  std::swap(preallocated_, other.preallocated_);
 }
 
 Status Buffer::write(ConstBuffer* buff) {
@@ -347,8 +363,12 @@ Buffer& Buffer::operator=(Buffer&& buff) {
 }
 
 Status Buffer::ensure_alloced_size(const uint64_t nbytes) {
-  if (alloced_size_ >= nbytes)
+  if (preallocated_ && nbytes > alloced_size_) {
+    throw BufferStatusException(
+        "Failed to reallocate. Buffer is preallocated to a fixed size.");
+  } else if (preallocated_ || alloced_size_ >= nbytes) {
     return Status::Ok();
+  }
 
   auto new_alloc_size = alloced_size_ == 0 ? nbytes : alloced_size_;
   while (new_alloc_size < nbytes)

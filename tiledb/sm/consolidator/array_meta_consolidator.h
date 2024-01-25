@@ -39,13 +39,11 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
-class StorageManager;
+namespace tiledb::sm {
 
 /** Handles array metadata consolidation. */
 class ArrayMetaConsolidator : public Consolidator {
@@ -61,7 +59,7 @@ class ArrayMetaConsolidator : public Consolidator {
    * @param storage_manager Storage manager.
    */
   explicit ArrayMetaConsolidator(
-      const Config* config, StorageManager* storage_manager);
+      const Config& config, StorageManager* storage_manager);
 
   /** Destructor. */
   ~ArrayMetaConsolidator() = default;
@@ -93,9 +91,8 @@ class ArrayMetaConsolidator : public Consolidator {
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
-   * @return Status
    */
-  Status vacuum(const char* array_name);
+  void vacuum(const char* array_name);
 
  private:
   /* ********************************* */
@@ -103,7 +100,7 @@ class ArrayMetaConsolidator : public Consolidator {
   /* ********************************* */
 
   /** Checks and sets the input configuration parameters. */
-  Status set_config(const Config* config);
+  Status set_config(const Config& config);
 
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -113,7 +110,6 @@ class ArrayMetaConsolidator : public Consolidator {
   Consolidator::ConsolidationConfigBase config_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_META_CONSOLIDATOR_H

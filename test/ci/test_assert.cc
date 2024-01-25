@@ -34,22 +34,33 @@
 #define CATCH_CONFIG_MAIN
 #include <test/support/tdb_catch.h>
 
+#include <algorithm>
 #include <cassert>
 #include <iostream>
+#include <list>
 
 #ifdef _WIN32
-constexpr int assert_exit_code = 3;
+std::vector<int> assert_exit_codes{3};
 #else
-constexpr int assert_exit_code = 6;
+std::vector<int> assert_exit_codes{
+    0x6,   /* SIGABRT */
+    0x8600 /* core dump, which may be caused by SIGABRT */
+};
 #endif
 
 TEST_CASE("CI: Test assertions configuration", "[ci][assertions]") {
-  int retval = system(TILEDB_PATH_TO_TRY_ASSERT "/try_assert");
+  int retval = system(TILEDB_PATH_TO_TRY_ASSERT);
+
+  // in case value is one not currently accepted, report what was returned.
+  std::cout << "retval is " << retval << " (0x" << std::hex << retval
+            << ") from " << TILEDB_PATH_TO_TRY_ASSERT << std::endl;
 
 #ifdef TILEDB_ASSERTIONS
-  REQUIRE(retval == assert_exit_code);
+  REQUIRE(
+      std::find(assert_exit_codes.begin(), assert_exit_codes.end(), retval) !=
+      assert_exit_codes.end());
 #else
-  (void)assert_exit_code;
+  (void)assert_exit_codes;
   REQUIRE(retval == 0);
 #endif
 }

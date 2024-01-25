@@ -30,18 +30,25 @@ The filter has internal format:
 | Filter metadata size | `uint32_t` | Number of bytes in filter metadata — may be 0. |
 | Filter metadata | [Filter Metadata](#filter-metadata) | Filter metadata, specific to each filter. E.g. compression level for compression filters. |
 
+TileDB supports the following filters:
+* [Float Scaling Filter](./filters/float_scale.md)
+* [XOR Filter](./filters/xor.md)
+* [Dictionary Encoding Filter](./filters/dictionary_encoding.md)
+* [WEBP Filter](./filters/webp.md)
+
 ## Filter Options
 
-The filter options are configuration parameters for the filters that do not change once the array schema has been created. 
+The filter options are configuration parameters for the filters that do not change once the array schema has been created.
 
 ### Main Compressor Options
 
-For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DICTIONARY}`\) the filter options have internal format:
+For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DELTA,DICTIONARY}`\) the filter options have internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Compressor type | `uint8_t` | Type of compression \(e.g. `TILEDB_BZIP2`\) |
 | Compression level | `int32_t` | Compression level used \(ignored by some compressors\). |
+| Reinterpret datatype | `uint8_t` | Type to reinterpret data prior to compression. Used for DOUBLE_DELTA and DELTA only. |
 
 ### Bit-width Reduction Options
 
@@ -50,6 +57,16 @@ The filter options for `TILEDB_FILTER_BIT_WIDTH_REDUCTION` has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Max window size | `uint32_t` | Maximum window size in bytes |
+
+### Float Scale Filter Reduction Options
+
+The filter options for `TILEDB_FILTER_SCALE_FLOAT` has internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Scale | `double` | Scale parameter used for float scaling filter conversion |
+| Offset | `double` | Offset parameter used for float scaling filter conversion |
+| Byte width | `uint64_t` | Width of the stored integer data in bytes |
 
 ### Positive Delta Options
 
@@ -61,4 +78,4 @@ The filter options for `TILEDB_FILTER_POSITIVE_DELTA` has internal format:
 
 ### Other Filter Options
 
-The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256}` do not serialize any options.
+The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR,DICTIONARY}`\) do not serialize any options.

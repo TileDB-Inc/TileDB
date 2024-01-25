@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/group/group_member_v1.h"
+#include "tiledb/sm/group/group_member_v2.h"
 
 using namespace tiledb::common;
 
@@ -42,12 +43,14 @@ GroupMember::GroupMember(
     const ObjectType& type,
     const bool& relative,
     uint32_t version,
-    const std::optional<std::string>& name)
+    const std::optional<std::string>& name,
+    const bool& deleted)
     : uri_(uri)
     , type_(type)
     , name_(name)
     , relative_(relative)
-    , version_(version) {
+    , version_(version)
+    , deleted_(deleted) {
 }
 
 const URI& GroupMember::uri() const {
@@ -62,25 +65,33 @@ const std::optional<std::string> GroupMember::name() const {
   return name_;
 }
 
-const bool& GroupMember::relative() const {
+bool GroupMember::relative() const {
   return relative_;
 }
 
-Status GroupMember::serialize(Buffer*) {
-  return Status_GroupMemberError("Invalid call to GroupMember::serialize");
+bool GroupMember::deleted() const {
+  return deleted_;
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-GroupMember::deserialize(ConstBuffer* buff) {
-  uint32_t version = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&version, sizeof(uint32_t)), std::nullopt);
-  if (version == 1) {
-    return GroupMemberV1::deserialize(buff);
-  }
+format_version_t GroupMember::version() const {
+  return version_;
+}
 
-  return {Status_GroupError(
-              "Unsupported group member version " + std::to_string(version)),
-          std::nullopt};
+void GroupMember::serialize(Serializer&) {
+  throw StatusException(
+      Status_GroupMemberError("Invalid call to GroupMember::serialize"));
+}
+
+shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
+  uint32_t version = 0;
+  version = deserializer.read<uint32_t>();
+  if (version == 1) {
+    return GroupMemberV1::deserialize(deserializer);
+  } else if (version == 2) {
+    return GroupMemberV2::deserialize(deserializer);
+  }
+  throw StatusException(Status_GroupError(
+      "Unsupported group member version " + std::to_string(version)));
 }
 }  // namespace sm
 }  // namespace tiledb

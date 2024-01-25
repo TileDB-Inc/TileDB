@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,8 +31,8 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
 #else
@@ -59,7 +59,11 @@ struct SparseHeterFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
+  // Serialization parameters
   bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   // Functions
   SparseHeterFx();
@@ -114,7 +118,6 @@ struct SparseHeterFx {
       const std::vector<int64_t>& buff_d1,
       const std::vector<float>& buff_d2,
       const std::vector<int32_t>& buff_a);
-  static std::string random_name(const std::string& prefix);
   int tiledb_array_get_non_empty_domain_from_index_wrapper(
       tiledb_ctx_t* ctx,
       tiledb_array_t* array,
@@ -316,13 +319,6 @@ void SparseHeterFx::remove_temp_dir(const std::string& path) {
   REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir)
     REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-std::string SparseHeterFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 void SparseHeterFx::check_non_empty_domain_float_int64(
@@ -531,9 +527,15 @@ void SparseHeterFx::write_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+
+  // Submit query
+  rc = submit_query_wrapper(
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -726,7 +728,10 @@ TEST_CASE_METHOD(
     serialize_ = false;
   }
   SECTION("- Serialization") {
+#ifdef TILEDB_SERIALIZATION
     serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+#endif
   }
 
   SupportedFsLocal local_fs;
@@ -975,8 +980,21 @@ TEST_CASE_METHOD(
 
   // ####### CONSOLIDATE #######
 
-  int rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  auto rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Check non-empty domain
   c_dom_f = {1.1f, 1.5f};
@@ -1080,6 +1098,7 @@ TEST_CASE_METHOD(
   }
   SECTION("- Serialization") {
     serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
   }
 
   SupportedFsLocal local_fs;
@@ -1328,8 +1347,21 @@ TEST_CASE_METHOD(
 
   // ####### CONSOLIDATE #######
 
-  int rc = tiledb_array_consolidate(ctx_, array_name.c_str(), nullptr);
+  // Consolidate fragments
+  tiledb_config_t* config = nullptr;
+  tiledb_error_t* error = nullptr;
+  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  int rc = tiledb_config_set(
+      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+
+  rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);
   CHECK(rc == TILEDB_OK);
+
+  tiledb_config_free(&config);
 
   // Check non-empty domain
   c_dom_i = {1, 6};

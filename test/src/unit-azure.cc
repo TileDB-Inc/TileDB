@@ -33,6 +33,7 @@
 #ifdef HAVE_AZURE
 
 #include <test/support/tdb_catch.h>
+#include <azure/storage/blobs.hpp>
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
@@ -54,12 +55,12 @@ static ConfList test_settings = {
      {"vfs.azure.storage_account_key",
       "Eby8vdM02xNOcqFlqUwJPLlmEtlCDXJ1OUzFT50uSRZ6IFsuFq2UVErCz4I6tq/"
       "K1SZFPTOtr/KBHBeksoGMGw=="},
-     {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount1"}},
+     {"vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount1"}},
     // Currently disabled because it does not work with the Azurite emulator
     // The SAS path was manually tested against the Azure Blob Service.
     //{{"vfs.azure.storage_account_name", "devstoreaccount2"},
     // {"vfs.azure.storage_sas_token", ""},
-    // {"vfs.azure.blob_endpoint", "127.0.0.1:10000/devstoreaccount2"}}
+    // {"vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount2"}}
 };
 
 struct AzureFx {
@@ -102,7 +103,6 @@ void AzureFx::init_azure(Config&& config, ConfMap settings) {
 
   // Set provided config settings for connection
   std::for_each(settings.begin(), settings.end(), set_conf);
-  REQUIRE(config.set("vfs.azure.use_https", "false").ok());
 
   // Initialize
   REQUIRE(azure_.init(config, &thread_pool_).ok());
@@ -133,7 +133,7 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
 
 TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
   Config config;
-  config.set("vfs.azure.use_block_list_upload", "true");
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));
@@ -270,10 +270,15 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
-  config.set("vfs.azure.use_block_list_upload", "true");
-  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set(
-      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
+  REQUIRE(
+      config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config
+              .set(
+                  "vfs.azure.block_list_block_size",
+                  std::to_string(block_list_block_size))
+              .ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));
@@ -327,7 +332,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(azure_.read(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
   bool allok = true;
@@ -360,10 +365,15 @@ TEST_CASE_METHOD(
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
-  config.set("vfs.azure.use_block_list_upload", "false");
-  config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops));
-  config.set(
-      "vfs.azure.block_list_block_size", std::to_string(block_list_block_size));
+  REQUIRE(config.set("vfs.azure.use_block_list_upload", "false").ok());
+  REQUIRE(
+      config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops))
+          .ok());
+  REQUIRE(config
+              .set(
+                  "vfs.azure.block_list_block_size",
+                  std::to_string(block_list_block_size))
+              .ok());
 
   auto settings =
       GENERATE(from_range(test_settings.begin(), test_settings.end()));
@@ -442,7 +452,7 @@ TEST_CASE_METHOD(
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  uint64_t bytes_read;
+  uint64_t bytes_read = 0;
   REQUIRE(
       azure_.read(URI(large_file), 0, read_buffer, 26, 0, &bytes_read).ok());
   CHECK(26 == bytes_read);
@@ -467,6 +477,45 @@ TEST_CASE_METHOD(
     }
   }
   REQUIRE(allok);
+}
+
+TEST_CASE(
+    "Test constructing Azure Blob Storage endpoint URIs", "[azure][uri]") {
+  std::string sas_token, custom_endpoint, expected_endpoint;
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  SECTION("SAS token without leading question mark") {
+    sas_token = "baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token with leading question mark") {
+    sas_token = "?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token in both endpoint and config option") {
+    sas_token = "baz=qux&foo=bar";
+    custom_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  Config config;
+  REQUIRE(
+      config.set("vfs.azure.storage_account_name", "devstoreaccount1").ok());
+  REQUIRE(config.set("vfs.azure.blob_endpoint", custom_endpoint).ok());
+  REQUIRE(config.set("vfs.azure.storage_sas_token", sas_token).ok());
+  tiledb::sm::Azure azure;
+  ThreadPool thread_pool(1);
+  REQUIRE(azure.init(config, &thread_pool).ok());
+  REQUIRE(azure.client().GetUrl() == expected_endpoint);
 }
 
 #endif

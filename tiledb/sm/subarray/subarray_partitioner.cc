@@ -45,6 +45,13 @@
 
 #include <iomanip>
 
+class SubarrayPartitionerStatusException : public StatusException {
+ public:
+  explicit SubarrayPartitionerStatusException(const std::string& message)
+      : StatusException("SubarrayPartitioner", message) {
+  }
+};
+
 /* ****************************** */
 /*             MACROS             */
 /* ****************************** */
@@ -86,8 +93,14 @@ SubarrayPartitioner::SubarrayPartitioner(
   state_.end_ = (range_num > 0) ? range_num - 1 : 0;
 
   bool found = false;
-  config_->get<bool>(
-      "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found);
+  throw_if_not_ok(config_->get<bool>(
+      "sm.skip_est_size_partitioning", &skip_split_on_est_size_, &found));
+  assert(found);
+
+  throw_if_not_ok(config_->get<bool>(
+      "sm.skip_unary_partitioning_budget_check",
+      &skip_unary_partitioning_budget_check_,
+      &found));
   (void)found;
   assert(found);
 }
@@ -167,8 +180,7 @@ Status SubarrayPartitioner::get_result_budget(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot get result budget; Invalid attribute/dimension '") +
         name + "'"));
@@ -433,8 +445,7 @@ Status SubarrayPartitioner::set_result_budget(
   bool is_attr = array_schema.is_attr(name);
 
   // Check if attribute/dimension exists
-  if (name != constants::coords && name != constants::timestamps &&
-      name != constants::delete_timestamps && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     return logger_->status(Status_SubarrayPartitionerError(
         std::string("Cannot set result budget; Invalid attribute/dimension '") +
         name + "'"));
@@ -594,7 +605,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
     if (state_.multi_range_.empty())
       state_.start_ = current_.start_;
     state_.multi_range_.push_front(current_.partition_);
-    split_top_multi_range(unsplittable);
+    throw_if_not_ok(split_top_multi_range(unsplittable));
     return next_from_multi_range(unsplittable);
   }
 
@@ -620,7 +631,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
       if (state_.multi_range_.empty())
         state_.start_ = current_.start_;
       state_.multi_range_.push_front(current_.partition_);
-      split_top_multi_range(unsplittable);
+      throw_if_not_ok(split_top_multi_range(unsplittable));
       return next_from_multi_range(unsplittable);
     }
 
@@ -635,7 +646,7 @@ Status SubarrayPartitioner::split_current(bool* unsplittable) {
   if (state_.single_range_.empty())
     state_.start_--;
   state_.single_range_.push_front(current_.partition_);
-  split_top_single_range(unsplittable);
+  throw_if_not_ok(split_top_single_range(unsplittable));
   return next_from_single_range(unsplittable);
 }
 
@@ -769,6 +780,8 @@ SubarrayPartitioner SubarrayPartitioner::clone() const {
   clone.memory_budget_var_ = memory_budget_var_;
   clone.memory_budget_validity_ = memory_budget_validity_;
   clone.skip_split_on_est_size_ = skip_split_on_est_size_;
+  clone.skip_unary_partitioning_budget_check_ =
+      skip_unary_partitioning_budget_check_;
   clone.compute_tp_ = compute_tp_;
 
   return clone;
@@ -915,7 +928,7 @@ void SubarrayPartitioner::compute_splitting_value_on_tiles(
   const Range* r;
   for (auto d : dims) {
     auto dim{array_schema.domain().dimension_ptr(d)};
-    range.get_range(d, 0, &r);
+    throw_if_not_ok(range.get_range(d, 0, &r));
     auto tiles_apart = dim->tile_num(*r) - 1;
     if (tiles_apart != 0) {
       *splitting_dim = d;
@@ -988,7 +1001,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range(
   const Range* r;
   for (auto d : dims) {
     auto dim{array_schema.dimension_ptr(d)};
-    range.get_range(d, 0, &r);
+    throw_if_not_ok(range.get_range(d, 0, &r));
     if (!r->unary()) {
       *splitting_dim = d;
       dim->splitting_value(*r, splitting_value, unsplittable);
@@ -1033,7 +1046,7 @@ void SubarrayPartitioner::compute_splitting_value_single_range_hilbert(
   // Check for unsplittable again
   auto dim{array_schema.dimension_ptr(*splitting_dim)};
   const Range* r;
-  range.get_range(*splitting_dim, 0, &r);
+  throw_if_not_ok(range.get_range(*splitting_dim, 0, &r));
   if (dim->smaller_than(*splitting_value, *r)) {
     *unsplittable = true;
     return;
@@ -1104,7 +1117,7 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
     }
 
     // Check if we need to split single range
-    partition.get_range(d, 0, &r);
+    throw_if_not_ok(partition.get_range(d, 0, &r));
     auto dim{array_schema.dimension_ptr(d)};
     if (!r->unary()) {
       *splitting_dim = d;
@@ -1143,34 +1156,38 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     // Compute max memory sizes
     if (var_size) {
       if (!nullable) {
-        partition->get_max_memory_size(
+        throw_if_not_ok(partition->get_max_memory_size(
             b.first.c_str(),
             &mem_size_fixed,
             &mem_size_var,
             config_,
-            compute_tp_);
+            compute_tp_));
       } else {
-        partition->get_max_memory_size_nullable(
+        throw_if_not_ok(partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
             &mem_size_var,
             &mem_size_validity,
             config_,
-            compute_tp_);
+            compute_tp_));
       }
     } else {
       if (!nullable) {
-        partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
+        throw_if_not_ok(partition->get_max_memory_size(
+            b.first.c_str(), &mem_size_fixed, config_, compute_tp_));
       } else {
-        partition->get_est_result_size_nullable(
-            b.first.c_str(), &size_fixed, &size_validity, config_, compute_tp_);
-        partition->get_max_memory_size_nullable(
+        throw_if_not_ok(partition->get_est_result_size_nullable(
+            b.first.c_str(),
+            &size_fixed,
+            &size_validity,
+            config_,
+            compute_tp_));
+        throw_if_not_ok(partition->get_max_memory_size_nullable(
             b.first.c_str(),
             &mem_size_fixed,
             &mem_size_validity,
             config_,
-            compute_tp_);
+            compute_tp_));
       }
     }
 
@@ -1178,29 +1195,47 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
     if (!skip_split_on_est_size_) {
       if (var_size) {
         if (!nullable) {
-          partition->get_est_result_size(
-              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
+          throw_if_not_ok(partition->get_est_result_size(
+              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_));
         } else {
-          partition->get_est_result_size_nullable(
+          throw_if_not_ok(partition->get_est_result_size_nullable(
               b.first.c_str(),
               &size_fixed,
               &size_var,
               &size_validity,
               config_,
-              compute_tp_);
+              compute_tp_));
         }
       } else {
         if (!nullable) {
-          partition->get_est_result_size_internal(
-              b.first.c_str(), &size_fixed, config_, compute_tp_);
+          throw_if_not_ok(partition->get_est_result_size_internal(
+              b.first.c_str(), &size_fixed, config_, compute_tp_));
         } else {
-          partition->get_est_result_size_nullable(
+          throw_if_not_ok(partition->get_est_result_size_nullable(
               b.first.c_str(),
               &size_fixed,
               &size_validity,
               config_,
-              compute_tp_);
+              compute_tp_));
         }
+      }
+    }
+
+    // If we try to split a unary range because of memory budgets, throw an
+    // error. This can happen when the memory budget cannot fit even one tile.
+    // It will cause the reader to process the query cell by cell, which will
+    // make it very slow.
+    if (!skip_unary_partitioning_budget_check_ &&
+        (mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
+         mem_size_validity > memory_budget_validity_)) {
+      if (partition->is_unary()) {
+        throw SubarrayPartitionerStatusException(
+            "Trying to partition a unary range because of memory budget, this "
+            "will cause the query to run very slow. Increase "
+            "`sm.memory_budget` and `sm.memory_budget_var` through the "
+            "configuration settings to avoid this issue. To override and run "
+            "the query with the same budget, set "
+            "`sm.skip_unary_partitioning_budget_check` to `true`.");
       }
     }
 
@@ -1223,7 +1258,7 @@ Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {
   if (state_.multi_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
     state_.multi_range_.push_front(std::move(s));
-    split_top_multi_range(unsplittable);
+    throw_if_not_ok(split_top_multi_range(unsplittable));
   }
 
   // Loop until you find a partition that fits or unsplittable
@@ -1252,7 +1287,7 @@ Status SubarrayPartitioner::next_from_single_range(bool* unsplittable) {
   if (state_.single_range_.empty()) {
     auto s = subarray_.get_subarray(current_.start_, current_.end_);
     state_.single_range_.push_front(std::move(s));
-    split_top_single_range(unsplittable);
+    throw_if_not_ok(split_top_single_range(unsplittable));
   }
 
   // Loop until you find a partition that fits or unsplittable
@@ -1369,6 +1404,9 @@ void SubarrayPartitioner::swap(SubarrayPartitioner& partitioner) {
   std::swap(memory_budget_var_, partitioner.memory_budget_var_);
   std::swap(memory_budget_validity_, partitioner.memory_budget_validity_);
   std::swap(skip_split_on_est_size_, partitioner.skip_split_on_est_size_);
+  std::swap(
+      skip_unary_partitioning_budget_check_,
+      partitioner.skip_unary_partitioning_budget_check_);
   std::swap(compute_tp_, partitioner.compute_tp_);
 }
 
@@ -1394,7 +1432,7 @@ void SubarrayPartitioner::compute_range_uint64(
   for (uint32_t d = 0; d < dim_num; ++d) {
     auto dim{array_schema.dimension_ptr(d)};
     auto var = dim->var_size();
-    range.get_range(d, 0, &r);
+    throw_if_not_ok(range.get_range(d, 0, &r));
     empty_start = var ? (r->start_size() == 0) : r->empty();
     empty_end = var ? (r->end_size() == 0) : r->empty();
     auto max_default =
@@ -1405,7 +1443,7 @@ void SubarrayPartitioner::compute_range_uint64(
       auto start_str = r->start_str();
       (*range_uint64)[d][0] =
           empty_start ? 0 :  // min default
-              dim->map_to_uint64(
+                        dim->map_to_uint64(
                   start_str.data(), start_str.size(), bits, max_bucket_val);
       auto end_str = r->end_str();
       (*range_uint64)[d][1] =

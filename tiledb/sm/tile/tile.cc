@@ -31,9 +31,11 @@
  */
 
 #include "tiledb/sm/tile/tile.h"
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/storage_format/serialization/serializers.h"
 
 #include <iostream>
 
@@ -42,39 +44,57 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-void nop_free(void* const) {
-}
-
+/** Class for locally generated status exceptions. */
+class TileException : public StatusException {
+ public:
+  explicit TileException(const std::string& msg)
+      : StatusException("Tile", msg) {
+  }
+};
 /* ****************************** */
 /*           STATIC INIT          */
 /* ****************************** */
-uint64_t Tile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
+uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 
 /* ****************************** */
 /*           STATIC API           */
 /* ****************************** */
 
-Status Tile::compute_chunk_size(
-    const uint64_t tile_size,
-    const uint32_t tile_dim_num,
-    const uint64_t tile_cell_size,
-    uint32_t* const chunk_size) {
-  const uint32_t dim_num = tile_dim_num > 0 ? tile_dim_num : 1;
-  const uint64_t dim_tile_size = tile_size / dim_num;
-  const uint64_t dim_cell_size = tile_cell_size / dim_num;
+Tile Tile::from_generic(storage_size_t tile_size) {
+  return {
+      0,
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      0,
+      tile_size,
+      nullptr,
+      0};
+}
+
+WriterTile WriterTile::from_generic(storage_size_t tile_size) {
+  return {
+      0,
+      constants::generic_tile_datatype,
+      constants::generic_tile_cell_size,
+      tile_size};
+}
+
+uint32_t WriterTile::compute_chunk_size(
+    const uint64_t tile_size, const uint64_t tile_cell_size) {
+  const uint64_t dim_tile_size = tile_size;
+  const uint64_t dim_cell_size = tile_cell_size;
 
   uint64_t chunk_size64 = std::min(max_tile_chunk_size_, dim_tile_size);
   chunk_size64 = chunk_size64 / dim_cell_size * dim_cell_size;
   chunk_size64 = std::max(chunk_size64, dim_cell_size);
   if (chunk_size64 > std::numeric_limits<uint32_t>::max()) {
-    return LOG_STATUS(Status_TileError("Chunk size exceeds uint32_t"));
+    throw TileException("Chunk size exceeds uint32_t");
   }
 
-  *chunk_size = chunk_size64;
-  return Status::Ok();
+  return static_cast<uint32_t>(chunk_size64);
 }
 
-void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
+void WriterTile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
   max_tile_chunk_size_ = max_tile_chunk_size;
 }
 
@@ -82,38 +102,84 @@ void Tile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-Tile::Tile()
-    : data_(nullptr, tiledb_free)
-    , size_(0)
-    , cell_size_(0)
-    , zipped_coords_dim_num_(0)
-    , format_version_(0)
-    , type_(Datatype::INT32)
-    , filtered_buffer_(0) {
+TileBase::TileBase(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const uint64_t size)
+    : data_(static_cast<char*>(tdb_malloc(size)), tiledb_free)
+    , size_(size)
+    , cell_size_(cell_size)
+    , format_version_(format_version)
+    , type_(type) {
+  /*
+   * We can check for a bad allocation after initialization without risk
+   * because none of the other member variables use its value for their own
+   * initialization.
+   */
+  if (!data_) {
+    throw std::bad_alloc();
+  }
+}
+
+TileBase::TileBase(TileBase&& tile)
+    : data_(std::move(tile.data_))
+    , size_(std::move(tile.size_))
+    , cell_size_(std::move(tile.cell_size_))
+    , format_version_(std::move(tile.format_version_))
+    , type_(std::move(tile.type_)) {
+}
+
+TileBase& TileBase::operator=(TileBase&& tile) {
+  // Swap with the argument
+  swap(tile);
+
+  return *this;
 }
 
 Tile::Tile(
+    const format_version_t format_version,
     const Datatype type,
     const uint64_t cell_size,
     const unsigned int zipped_coords_dim_num,
-    void* const buffer,
-    uint64_t size)
-    : data_(static_cast<char*>(buffer), nop_free)
-    , size_(size)
-    , cell_size_(cell_size)
+    const uint64_t size,
+    void* filtered_data,
+    uint64_t filtered_size)
+    : TileBase(format_version, type, cell_size, size)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
-    , format_version_(0)
-    , type_(type)
-    , filtered_buffer_(0) {
+    , filtered_data_(filtered_data)
+    , filtered_size_(filtered_size) {
 }
 
 Tile::Tile(Tile&& tile)
-    : Tile() {
-  // Swap with the argument
-  swap(tile);
+    : TileBase(std::move(tile))
+    , zipped_coords_dim_num_(std::move(tile.zipped_coords_dim_num_))
+    , filtered_data_(std::move(tile.filtered_data_))
+    , filtered_size_(std::move(tile.filtered_size_)) {
 }
 
 Tile& Tile::operator=(Tile&& tile) {
+  // Swap with the argument
+  swap(tile);
+
+  return *this;
+}
+
+WriterTile::WriterTile(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const uint64_t size)
+    : TileBase(format_version, type, cell_size, size)
+    , filtered_buffer_(0) {
+}
+
+WriterTile::WriterTile(WriterTile&& tile)
+    : TileBase(std::move(tile))
+    , filtered_buffer_(std::move(tile.filtered_buffer_)) {
+}
+
+WriterTile& WriterTile::operator=(WriterTile&& tile) {
   // Swap with the argument
   swap(tile);
 
@@ -124,119 +190,32 @@ Tile& Tile::operator=(Tile&& tile) {
 /*               API              */
 /* ****************************** */
 
-uint64_t Tile::cell_num() const {
-  return size() / cell_size_;
+void TileBase::swap(TileBase& tile) {
+  std::swap(size_, tile.size_);
+  std::swap(data_, tile.data_);
+  std::swap(cell_size_, tile.cell_size_);
+  std::swap(format_version_, tile.format_version_);
+  std::swap(type_, tile.type_);
 }
 
-Status Tile::init_unfiltered(
-    uint32_t format_version,
-    Datatype type,
-    uint64_t tile_size,
-    uint64_t cell_size,
-    unsigned int dim_num,
-    bool fill_with_zeros) {
-  cell_size_ = cell_size;
-  zipped_coords_dim_num_ = dim_num;
-  type_ = type;
-  format_version_ = format_version;
-
-  if (tile_size > 0) {
-    data_.reset(static_cast<char*>(tdb_malloc(tile_size)));
-    if (data_ == nullptr)
-      return LOG_STATUS(
-          Status_TileError("Cannot initialize tile; Buffer allocation failed"));
-  } else {
-    data_ = nullptr;
-  }
-
-  if (fill_with_zeros && tile_size > 0) {
-    memset(data_.get(), 0, tile_size);
-  }
-  size_ = tile_size;
-
-  return Status::Ok();
-}
-
-Status Tile::init_filtered(
-    uint32_t format_version,
-    Datatype type,
-    uint64_t cell_size,
-    unsigned int zipped_coords_dim_num) {
-  cell_size_ = cell_size;
-  zipped_coords_dim_num_ = zipped_coords_dim_num;
-  type_ = type;
-  format_version_ = format_version;
-  size_ = 0;
-
-  return Status::Ok();
-}
-
-void Tile::clear_data() {
-  data_ = nullptr;
-  size_ = 0;
-}
-
-Status Tile::alloc_data(uint64_t size) {
-  assert(data_ == nullptr);
-  data_.reset(static_cast<char*>(tdb_malloc(size)));
-  if (data_ == nullptr) {
-    return LOG_STATUS(
-        Status_TileError("Cannot allocate buffer; Memory allocation failed"));
-  }
-  size_ = size;
-
-  return Status::Ok();
-}
-
-bool Tile::empty() const {
-  assert(!filtered());
-  return data_ == nullptr;
-}
-
-Status Tile::read(
+void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
-  assert(!filtered());
   if (nbytes > size_ - offset) {
-    return LOG_STATUS(Status_TileError(
-        "Read tile overflow; may not read beyond buffer size"));
+    throw TileException("Read tile overflow; may not read beyond buffer size");
   }
   std::memcpy(buffer, data_.get() + offset, nbytes);
-  return Status::Ok();
 }
 
-Status Tile::write(const void* data, uint64_t offset, uint64_t nbytes) {
-  assert(!filtered());
+void TileBase::write(const void* data, uint64_t offset, uint64_t nbytes) {
   if (nbytes > size_ - offset) {
-    return LOG_STATUS(
-        Status_TileError("Write tile overflow; would write out of bounds"));
+    throw TileException("Write tile overflow; would write out of bounds");
   }
 
   std::memcpy(data_.get() + offset, data, nbytes);
   size_ = std::max(offset + nbytes, size_);
-
-  return Status::Ok();
 }
 
-Status Tile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
-  if (size_ - offset < nbytes) {
-    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
-    while (new_alloc_size < offset + nbytes)
-      new_alloc_size *= 2;
-
-    auto new_data =
-        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
-    if (new_data == nullptr) {
-      return LOG_STATUS(Status_TileError(
-          "Cannot reallocate buffer; Memory allocation failed"));
-    }
-    data_.reset(new_data);
-    size_ = new_alloc_size;
-  }
-
-  return write(data, offset, nbytes);
-}
-
-Status Tile::zip_coordinates() {
+void Tile::zip_coordinates() {
   assert(zipped_coords_dim_num_ > 0);
 
   // For easy reference
@@ -262,19 +241,93 @@ Status Tile::zip_coordinates() {
 
   // Clean up
   tdb_free((void*)tile_tmp);
+}
 
-  return Status::Ok();
+uint64_t Tile::load_chunk_data(ChunkData& chunk_data) {
+  return load_chunk_data(chunk_data, size());
+}
+
+uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
+  auto s = size();
+  if (s < 8) {
+    throw TileException("Offsets tile should at least be 8 bytes.");
+  }
+
+  return load_chunk_data(chunk_data, s - 8);
 }
 
 void Tile::swap(Tile& tile) {
-  // Note swapping buffer pointers here.
-  std::swap(filtered_buffer_, tile.filtered_buffer_);
-  std::swap(size_, tile.size_);
-  std::swap(data_, tile.data_);
-  std::swap(cell_size_, tile.cell_size_);
+  TileBase::swap(tile);
+  std::swap(filtered_data_, tile.filtered_data_);
+  std::swap(filtered_size_, tile.filtered_size_);
   std::swap(zipped_coords_dim_num_, tile.zipped_coords_dim_num_);
-  std::swap(format_version_, tile.format_version_);
-  std::swap(type_, tile.type_);
+}
+
+void WriterTile::clear_data() {
+  data_ = nullptr;
+  size_ = 0;
+}
+
+void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
+  if (size_ - offset < nbytes) {
+    auto new_alloc_size = size_ == 0 ? offset + nbytes : size_;
+    while (new_alloc_size < offset + nbytes)
+      new_alloc_size *= 2;
+
+    auto new_data =
+        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
+    if (new_data == nullptr) {
+      throw TileException("Cannot reallocate buffer; Memory allocation failed");
+    }
+    data_.reset(new_data);
+    size_ = new_alloc_size;
+  }
+
+  write(data, offset, nbytes);
+}
+
+void WriterTile::swap(WriterTile& tile) {
+  TileBase::swap(tile);
+  std::swap(filtered_buffer_, tile.filtered_buffer_);
+}
+
+/* ********************************* */
+/*         PRIVATE FUNCTIONS         */
+/* ********************************* */
+
+uint64_t Tile::load_chunk_data(
+    ChunkData& unfiltered_tile, uint64_t expected_original_size) {
+  assert(filtered());
+
+  Deserializer deserializer(filtered_data(), filtered_size());
+
+  // Make a pass over the tile to get the chunk information.
+  uint64_t num_chunks = deserializer.read<uint64_t>();
+
+  auto& filtered_chunks = unfiltered_tile.filtered_chunks_;
+  auto& chunk_offsets = unfiltered_tile.chunk_offsets_;
+  filtered_chunks.resize(num_chunks);
+  chunk_offsets.resize(num_chunks);
+  uint64_t total_orig_size = 0;
+  for (uint64_t i = 0; i < num_chunks; i++) {
+    auto& chunk = filtered_chunks[i];
+    chunk.unfiltered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_data_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_size_ = deserializer.read<uint32_t>();
+    chunk.filtered_metadata_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_metadata_size_));
+    chunk.filtered_data_ = const_cast<void*>(
+        deserializer.get_ptr<void>(chunk.filtered_data_size_));
+
+    chunk_offsets[i] = total_orig_size;
+    total_orig_size += chunk.unfiltered_data_size_;
+  }
+
+  if (total_orig_size != expected_original_size) {
+    throw TileException("Incorrect unfiltered tile size allocated.");
+  }
+
+  return total_orig_size;
 }
 
 }  // namespace sm

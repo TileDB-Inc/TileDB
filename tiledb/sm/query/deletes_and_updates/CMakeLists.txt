@@ -24,23 +24,4 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
-
-if (TILEDB_TESTS)
-    add_executable(unit_delete_condition EXCLUDE_FROM_ALL)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_delete_condition PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_delete_condition PUBLIC ast_test_support_lib)
-
-    # Sources for tests
-    target_sources(unit_delete_condition PUBLIC test/main.cc test/unit_delete_condition.cc)
-
-    # The dependencies can't yet be factored into separate object libraries
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS)
-    target_link_libraries(unit_delete_condition PUBLIC TILEDB_CORE_OBJECTS_ILIB)
-
-    add_test(
-        NAME "unit_delete_condition"
-        COMMAND $<TARGET_FILE:unit_delete_condition>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

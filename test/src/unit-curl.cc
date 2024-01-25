@@ -73,6 +73,7 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   // Initialize data that in real life scenario would be initialized by
   // RestClient
   char res_data_s3[] = "Location: tiledb://my_username/s3://my_bucket/my_array";
+  count = sizeof(res_data_s3);
   ns_array = "my_bucket:my_array";
   userdata.uri = &ns_array;
   result = write_header_callback(&res_data_s3, size, count, &userdata);

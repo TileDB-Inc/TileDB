@@ -25,31 +25,13 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `datum` object library
 #
-add_library(datum OBJECT untyped_datum.cc dynamic_typed_datum.cc)
+commence(object_library datum)
+    this_target_sources(untyped_datum.cc dynamic_typed_datum.cc)
+conclude(object_library)
 
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_datum EXCLUDE_FROM_ALL)
-target_link_libraries(compile_datum PRIVATE datum)
-target_sources(compile_datum PRIVATE test/compile_datum_main.cc)
-
-if (TILEDB_TESTS)
-    add_executable(unit_datum EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_datum PRIVATE datum)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_datum PUBLIC Catch2::Catch2)
-
-    # Sources for tests
-    target_sources(unit_datum PUBLIC test/main.cc test/unit_dynamic_untyped_datum.cc)
-
-    add_test(
-            NAME "unit_datum"
-            COMMAND $<TARGET_FILE:unit_datum>
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
-endif()
+add_test_subdirectory()

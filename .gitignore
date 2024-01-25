@@ -11,8 +11,11 @@ core/src/temp
 coverage.info
 test/benchmarking/build/*
 test/bin/*
+test/cpp_unit_webp.png
 test/inputs/arrays/read_compatibility_test*
 test/obj/*
+test/regression/foo1
+test/regression/reading_incomplete_array
 test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc
@@ -22,7 +25,6 @@ examples/bin/*
 examples/obj/*
 scripts/deps-staging/*
 .idea
-*temp*
 *.DS_Store
 doc/venv
 doc/source/__pycache__
@@ -31,9 +33,13 @@ doc/source/_sidebar.rst.inc
 doc/source/gensidebar.pyc
 examples/cmake_project/build
 CMakeUserPresets.json
+.vs/
 
 # Quarto dev-cache
 /.quarto/
 docs/.quarto
 # Let CI build this
 /docs
+
+vcpkg
+external/vcpkg

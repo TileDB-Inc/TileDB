@@ -33,7 +33,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/query/readers/sparse_index_reader_base.h"
 
 #ifdef _WIN32
@@ -185,42 +185,62 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  ResultTile rt(0, 0, array_->array_->array_schema_latest());
+  auto& array_schema = array_->array_->array_schema_latest();
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  ResultTile rt(0, 0, frag_md);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", true, 0);
-    auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &tile_tuple->fixed_tile();
-    t->init_unfiltered(
+    ResultTile::TileSizes tile_sizes(
+        (num_cells + 1) * constants::cell_var_offset_size,
+        0,
+        0,
+        0,
+        std::nullopt,
+        std::nullopt);
+    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+    rt.init_coord_tile(
         constants::format_version,
-        constants::cell_var_offset_type,
-        num_cells * constants::cell_var_offset_size,
-        constants::cell_var_offset_size,
+        array_schema,
+        "d1",
+        tile_sizes,
+        tile_data,
         0);
   }
 
-  rt.init_coord_tile(dim_name, true, dim_idx);
+  ResultTile::TileSizes tile_sizes(
+      (num_cells + 1) * constants::cell_var_offset_size,
+      0,
+      num_cells,
+      0,
+      std::nullopt,
+      std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  rt.init_coord_tile(
+      constants::format_version,
+      array_schema,
+      dim_name,
+      tile_sizes,
+      tile_data,
+      dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  t->init_unfiltered(
-      constants::format_version,
-      constants::cell_var_offset_type,
-      num_cells * constants::cell_var_offset_size,
-      constants::cell_var_offset_size,
-      dim_idx);
-  uint64_t* offsets = (uint64_t*)t->data();
-  for (uint64_t i = 0; i < num_cells; i++) {
+  offsets_t* offsets = t->data_as<offsets_t>();
+  for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  t_var->init_unfiltered(
-      constants::format_version, Datatype::STRING_ASCII, num_cells, 1, 0);
-  char* var = (char*)t_var->data();
+  char* var = t_var->data_as<char>();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;
   }
@@ -275,42 +295,62 @@ TEST_CASE_METHOD(
   uint64_t dim_idx = first_dim ? 0 : 1;
   uint64_t num_cells = 8;
 
-  ResultTile rt(0, 0, array_->array_->array_schema_latest());
+  auto& array_schema = array_->array_->array_schema_latest();
+  FragmentMetadata frag_md(
+      nullptr,
+      nullptr,
+      array_->array_->array_schema_latest_ptr(),
+      URI(),
+      std::make_pair<uint64_t, uint64_t>(0, 0),
+      true);
+  ResultTile rt(0, 0, frag_md);
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
-    rt.init_coord_tile("d1", true, 0);
-    auto tile_tuple = rt.tile_tuple("d1");
-    Tile* const t = &tile_tuple->fixed_tile();
-    t->init_unfiltered(
+    ResultTile::TileSizes tile_sizes(
+        (num_cells + 1) * constants::cell_var_offset_size,
+        0,
+        0,
+        0,
+        std::nullopt,
+        std::nullopt);
+    ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+    rt.init_coord_tile(
         constants::format_version,
-        constants::cell_var_offset_type,
-        num_cells * constants::cell_var_offset_size,
-        constants::cell_var_offset_size,
+        array_schema,
+        "d1",
+        tile_sizes,
+        tile_data,
         0);
   }
 
-  rt.init_coord_tile(dim_name, true, dim_idx);
+  ResultTile::TileSizes tile_sizes(
+      (num_cells + 1) * constants::cell_var_offset_size,
+      0,
+      num_cells,
+      0,
+      std::nullopt,
+      std::nullopt);
+  ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
+  rt.init_coord_tile(
+      constants::format_version,
+      array_schema,
+      dim_name,
+      tile_sizes,
+      tile_data,
+      dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
-  t->init_unfiltered(
-      constants::format_version,
-      constants::cell_var_offset_type,
-      num_cells * constants::cell_var_offset_size,
-      constants::cell_var_offset_size,
-      dim_idx);
-  uint64_t* offsets = (uint64_t*)t->data();
-  for (uint64_t i = 0; i < num_cells; i++) {
+  offsets_t* offsets = t->data_as<offsets_t>();
+  for (uint64_t i = 0; i < num_cells + 1; i++) {
     offsets[i] = i;
   }
 
   // Initialize data, use incrementing single string values starting with 'a'.
-  t_var->init_unfiltered(
-      constants::format_version, Datatype::STRING_ASCII, num_cells, 1, 0);
-  char* var = (char*)t_var->data();
+  char* var = t_var->data_as<char>();
   for (uint64_t i = 0; i < num_cells; i++) {
     var[i] = 'a' + i;
   }
@@ -318,7 +358,7 @@ TEST_CASE_METHOD(
   // Initialize ranges.
   NDRange ranges;
   char temp[2];
-  std::vector<uint64_t> exp_result_count;
+  std::vector<uint64_t> exp_result_count{8};
   SECTION("- First and last cell included multiple times") {
     ranges.resize(5);
     temp[0] = temp[1] = 'a';

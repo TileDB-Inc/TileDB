@@ -1,0 +1,261 @@
+name: CI (Linux and macOS)
+on:
+  workflow_call:
+    inputs:
+      ci_backend:
+        description: 'Name of the job backend/target'
+        default: ''
+        required: false
+        type: string
+      ci_option:
+        description: 'Name of the job option for display'
+        default: ''
+        required: false
+        type: string
+      bootstrap_args:
+        default: ''
+        required: false
+        type: string
+      matrix_image:
+        default: ''
+        required: true
+        type: string
+      matrix_compiler_cc:
+        default: 'gcc'
+        required: false
+        type: string
+      matrix_compiler_cxx:
+        default: 'g++'
+        required: false
+        type: string
+      matrix_compiler_cflags:
+        default: ''
+        required: false
+        type: string
+      matrix_compiler_cxxflags:
+        default: ''
+        required: false
+        type: string
+      timeout:
+        default: 90
+        description: 'Job timeout (minutes)'
+        required: false
+        type: number
+      asan:
+        default: false
+        description: 'Enable Address Sanitizer'
+        required: false
+        type: boolean
+      manylinux:
+        default: false
+        description: 'Enable manylinux builds'
+        required: false
+        type: boolean
+
+env:
+  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
+  TILEDB_CI_OS: runner.os
+  # Installing Python does not work on manylinux.
+  TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
+  TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
+  CXX: ${{ inputs.matrix_compiler_cxx }}
+  CC: ${{ inputs.matrix_compiler_cc }}
+  CFLAGS: ${{ inputs.matrix_compiler_cflags }}
+  CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
+  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - ${{ inputs.matrix_image }}
+    runs-on: ${{matrix.os}}
+    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || ''}}
+
+    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
+    timeout-minutes: ${{ inputs.timeout || 90 }}
+    name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            submodules: true
+            fetch-depth: 0
+
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Prevent vpckg from building debug variants
+        run: python ./scripts/ci/patch_vcpkg_triplets.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: 'Ubuntu Prelim'
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }}
+        run: ./scripts/ci/posix/prelim.sh
+        shell: bash
+
+      - name: Install manylinux prerequisites
+        if: inputs.manylinux
+        run: |
+          set -e pipefail
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+
+      # Need this for virtualenv and arrow tests if enabled
+      - name: 'Install Python'
+        uses: actions/setup-python@v4
+        if: ${{ !inputs.manylinux }}
+        with:
+          python-version: '3.8'
+          cache: 'pip'
+
+      - name: 'Set up Python dependencies'
+        if: ${{ !inputs.manylinux }}
+        run: |
+          set -e pipefail
+          python -m pip install --upgrade pip virtualenv
+          pip install pyarrow pybind11 numpy
+
+      - name: 'Brew setup on macOS' # x-ref c8e49ba8f8b9ce
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        run: |
+          set -e pipefail
+          brew install automake pkg-config
+
+      - name: 'Configure libtiledb'
+        id: configure
+        shell: bash
+        run: |
+          set -e pipefail
+
+          # Show CMake Version
+          cmake --version
+
+          #####################################################
+          # We want to run bootstrap in an isolated step in order to
+          # cache vcpkg deps across runs if the libtiledb build fails.
+
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+
+      - name: 'Build libtiledb'
+        id: build
+        shell: bash
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # Build libtiledb using previous bootstrap
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+      - name: 'Test libtiledb'
+        id: test
+        shell: bash
+        env:
+          ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
+          LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
+          VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
+        run: |
+          set -e pipefail
+
+          ###################################################
+          # Start helper processes, such as backend emulator
+          # if applicable.
+
+          #  ** NOTE: most tests must run in the same shell **
+          #  **       as build-services, especially tests   **
+          #  **       requiring a backend emulator.         **
+
+          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-start.sh
+
+          #####################################################
+          # Jump to our build directory after starting object
+          # store mock servers
+
+          cd $GITHUB_WORKSPACE/build
+
+          ###################################################
+          # Run tests
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          ./tiledb/test/regression/tiledb_regression -d yes
+          ./tiledb/test/ci/test_assert -d yes
+          ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+          ###################################################
+          # Stop helper processes, if applicable
+
+          source $GITHUB_WORKSPACE/scripts/ci/posix/build-services-stop.sh
+
+          # Skip examples and benchmarks if ASAN is enabled
+          if [[ "${{ inputs.asan }}" == "true" ]]; then
+            exit 0
+          fi
+
+          ###################################################
+          # Build and run Examples
+          # The following script must not be sourced.
+          # It relies on finding its source directory.
+          $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+
+          ###################################################
+          # Build benchmark code
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
+          
+          ###################################################
+          # Perform package test
+
+          cmake --build $GITHUB_WORKSPACE/build/tiledb --target check-package
+
+      - name: 'Dump core stacks on failure'
+        if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        run: ./scripts/ci/posix/dump-core-stacks.sh
+
+      - name: List files in build directory on failure
+        run: du --exclude _deps -h $GITHUB_WORKSPACE/build
+        if: ${{ failure() }}
+
+      - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /var/lib/apport/coredump/
+
+      - name: 'Upload failure artifacts (macOS)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /cores/
+
+      - name: 'Test status check'
+        run: |
+          # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            exit 1;
+          fi
+
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: ${{ failure() }} # only run this job if the build step failed

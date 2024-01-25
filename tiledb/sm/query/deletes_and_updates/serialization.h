@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/query/query_condition.h"
+#include "tiledb/sm/query/update_value.h"
 
 namespace tiledb::sm::deletes_and_updates::serialization {
 
@@ -45,13 +46,14 @@ enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
  * Serializes the condition.
  *
  * @param query_condition Query condition to serialize.
- * @return Serialized query condition.
+ * @return Serialized query condition tile.
  */
-std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
+WriterTile serialize_condition(const QueryCondition& query_condition);
 
 /**
  * Deserializes the condition.
  *
+ * @param condition_index Index for this condition.
  * @param condition_marker Marker used to know which file the condition came
  * from.
  * @param buff Pointer to the serialized data.
@@ -59,6 +61,35 @@ std::vector<uint8_t> serialize_condition(const QueryCondition& query_condition);
  * @return Deserialized query condition.
  */
 QueryCondition deserialize_condition(
+    const uint64_t condition_index,
+    const std::string& condition_marker,
+    const void* buff,
+    const storage_size_t size);
+
+/**
+ * Serializes an update condition and values.
+ *
+ * @param query_condition Query condition to serialize.
+ * @param update_values Update values to serialize.
+ * @return Serialized condition and update values tile.
+ */
+WriterTile serialize_update_condition_and_values(
+    const QueryCondition& query_condition,
+    const std::vector<UpdateValue>& update_values);
+
+/**
+ * Deserializes a condition and update values.
+ *
+ * @param condition_index Index for this condition.
+ * @param condition_marker Marker used to know which file the condition came
+ * from.
+ * @param buff Pointer to the serialized data.
+ * @param size Size of the serialized data.
+ * @return Deserialized query condition and update values.
+ */
+tuple<QueryCondition, std::vector<UpdateValue>>
+deserialize_update_condition_and_values(
+    const uint64_t condition_index,
     const std::string& condition_marker,
     const void* buff,
     const storage_size_t size);

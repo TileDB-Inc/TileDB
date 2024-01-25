@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -32,9 +32,11 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/serialization_wrappers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <chrono>
@@ -134,7 +136,7 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/dense_array_v1_3_0");
   REQUIRE_THROWS_WITH(
       Array(ctx, array_uri, TILEDB_READ),
-      "[TileDB::Array] Error: [TileDB::StorageManager] Error: Reading data "
+      "[TileDB::Array] Error: [TileDB::ArrayDirectory] Error: Reading data "
       "past end of serialized data size.");
 }
 
@@ -183,10 +185,8 @@ TEST_CASE(
   std::string array_uri(arrays_dir + "/non_split_coords_v1_4_0");
   Array array(ctx, array_uri, TILEDB_READ);
   std::vector<int> subarray = {1, 4, 10, 10};
-  std::vector<int> a_read;
-  a_read.resize(4);
-  std::vector<int> coords_read;
-  coords_read.resize(8);
+  std::vector<int> a_read(4);
+  std::vector<int> coords_read(8);
 
   Query query_r(ctx, array);
   query_r.set_subarray(subarray)
@@ -210,28 +210,33 @@ TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "
     "version of tiledb",
     "[backwards-compat][coords]") {
-  Context ctx;
-  std::string compat_folder(arrays_dir + "/read_compatibility_test");
-  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
-    return;
-
   std::string encryption_key = "unittestunittestunittestunittest";
+
+  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key.c_str();
+  Context ctx_encrypt(cfg);
+  std::string compat_folder(arrays_dir + "/read_compatibility_test");
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
+    return;
+  }
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      tiledb::Config cfg;
-      cfg["sm.encryption_type"] = "AES_256_GCM";
-      cfg["sm.encryption_key"] = encryption_key.c_str();
-      Context ctx_cfg(cfg);
       bool encrypted = false;
       Array* array;
+
+      if (object.type() != Object::Type::Array) {
+        continue;
+      }
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         encrypted = true;
-        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
+        array = new Array(ctx_encrypt, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
@@ -248,15 +253,16 @@ TEST_CASE(
         }
       }
 
-      if (heterogeneous)
+      if (heterogeneous) {
         continue;
+      }
 
       // Skip domain types that are unsupported with zipped coordinates.
       if (domain.type() == TILEDB_STRING_ASCII) {
         continue;
       }
 
-      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
+      auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
 
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -269,7 +275,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -571,7 +579,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));
@@ -732,32 +742,38 @@ TEST_CASE(
     "Backwards compatibility: Test reading arrays written with previous "
     "version of tiledb using split buffers",
     "[backwards-compat][split-buffers]") {
-  Context ctx;
-  std::string compat_folder(arrays_dir + "/read_compatibility_test");
-  if (Object::object(ctx, compat_folder).type() != Object::Type::Group)
-    return;
   std::string encryption_key = "unittestunittestunittestunittest";
+
+  Context ctx;
+  tiledb::Config cfg;
+  cfg["sm.encryption_type"] = "AES_256_GCM";
+  cfg["sm.encryption_key"] = encryption_key.c_str();
+  Context ctx_encrypt(cfg);
+  std::string compat_folder(arrays_dir + "/read_compatibility_test");
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
+    return;
+  }
 
   tiledb::ObjectIter versions_iter(ctx, compat_folder);
   for (const auto& group_versions : versions_iter) {
     tiledb::ObjectIter obj_iter(ctx, group_versions.uri());
     for (const auto& object : obj_iter) {
-      tiledb::Config cfg;
-      cfg["sm.encryption_type"] = "AES_256_GCM";
-      cfg["sm.encryption_key"] = encryption_key.c_str();
-      Context ctx_cfg(cfg);
       bool encrypted = false;
       Array* array;
+
+      if (object.type() != Object::Type::Array) {
+        continue;
+      }
 
       // Check for if array is encrypted based on name for now
       if (object.uri().find("_encryption_AES_256_GCM") != std::string::npos) {
         encrypted = true;
-        array = new Array(ctx_cfg, object.uri(), TILEDB_READ);
+        array = new Array(ctx_encrypt, object.uri(), TILEDB_READ);
       } else {
         array = new Array(ctx, object.uri(), TILEDB_READ);
       }
 
-      auto query = new Query(encrypted ? ctx_cfg : ctx, *array);
+      auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
 
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -768,7 +784,9 @@ TEST_CASE(
         uint8_t* validity = static_cast<uint8_t*>(malloc(sizeof(uint8_t)));
 
         switch (attr.second.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             set_buffer_wrapper<std::byte>(
                 query,
                 attribute_name,
@@ -1106,7 +1124,9 @@ TEST_CASE(
 
         Attribute attribute = array->schema().attribute(buff.first);
         switch (attribute.type()) {
-          case TILEDB_BLOB: {
+          case TILEDB_BLOB:
+          case TILEDB_GEOM_WKB:
+          case TILEDB_GEOM_WKT: {
             REQUIRE(
                 static_cast<std::byte*>(std::get<1>(buffer))[0] ==
                 static_cast<std::byte>(1));
@@ -1221,6 +1241,17 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
+  bool serialize = false, refactored_query_v2 = false;
+  SECTION("no serialization") {
+    serialize = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled") {
+    serialize = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
   std::string array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string schema_folder;
@@ -1232,12 +1263,9 @@ TEST_CASE(
   // Read using upgraded version
   Array array_read1(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray_read1 = {1, 4, 10, 10};
-  std::vector<int> a_read1;
-  a_read1.resize(4);
-  std::vector<int> d1_read1;
-  d1_read1.resize(4);
-  std::vector<int> d2_read1;
-  d2_read1.resize(4);
+  std::vector<int> a_read1(4);
+  std::vector<int> d1_read1(4);
+  std::vector<int> d2_read1(4);
 
   Query query_read1(ctx, array_read1);
   query_read1.set_subarray(subarray_read1)
@@ -1246,7 +1274,14 @@ TEST_CASE(
       .set_data_buffer("d1", d1_read1)
       .set_data_buffer("d2", d2_read1);
 
-  query_read1.submit();
+  ServerQueryBuffers server_buffers;
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_read1,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read1.close();
 
   for (int i = 0; i < 4; i++) {
@@ -1267,12 +1302,30 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  query_write.submit();
-  query_write.finalize();
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_write,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
+
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
+
+  if (serialize) {
+    FragmentInfo deserialized_fragment_info(ctx, array_name);
+    tiledb_fragment_info_serialize(
+        ctx.ptr().get(),
+        array_name.c_str(),
+        fragment_info.ptr().get(),
+        deserialized_fragment_info.ptr().get(),
+        tiledb_serialization_type_t(0));
+    fragment_info = deserialized_fragment_info;
+  }
+
   fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
@@ -1283,12 +1336,9 @@ TEST_CASE(
   // Read again
   Array array_read2(ctx, array_name, TILEDB_READ);
   std::vector<int> subarray_read2 = {1, 4, 10, 10};
-  std::vector<int> a_read2;
-  a_read2.resize(4);
-  std::vector<int> d1_read2;
-  d1_read2.resize(4);
-  std::vector<int> d2_read2;
-  d2_read2.resize(4);
+  std::vector<int> a_read2(4);
+  std::vector<int> d1_read2(4);
+  std::vector<int> d2_read2(4);
 
   Query query_read2(ctx, array_read2);
   query_read2.set_subarray(subarray_read2)
@@ -1297,7 +1347,13 @@ TEST_CASE(
       .set_data_buffer("d1", d1_read2)
       .set_data_buffer("d2", d2_read2);
 
-  query_read2.submit();
+  submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_read2,
+      server_buffers,
+      serialize,
+      refactored_query_v2);
   array_read2.close();
 
   for (int i = 0; i < 2; i++) {
@@ -1314,4 +1370,61 @@ TEST_CASE(
   vfs.remove_dir(get_fragment_dir(array_read2.uri()));
   vfs.remove_dir(get_commit_dir(array_read2.uri()));
   vfs.remove_dir(schema_folder);
+}
+
+template <class T>
+void assert_group_metadata(
+    Group& g,
+    const std::string& key,
+    tiledb_datatype_t expected_datatype,
+    T expected_value) {
+  tiledb_datatype_t datatype;
+  uint32_t value_num;
+  const void* value;
+
+  g.get_metadata(key, &datatype, &value_num, &value);
+  REQUIRE(datatype == expected_datatype);
+  REQUIRE(value_num == 1);
+  REQUIRE(value != nullptr);
+  REQUIRE(*static_cast<const T*>(value) == expected_value);
+
+  std::vector<T> expected_values(7);
+  std::fill(expected_values.begin(), expected_values.end(), expected_value);
+  g.get_metadata(key + "_multi", &datatype, &value_num, &value);
+  REQUIRE(datatype == expected_datatype);
+  REQUIRE(value != nullptr);
+  const T* valueT = static_cast<const T*>(value);
+  REQUIRE(std::vector<T>(valueT, valueT + value_num) == expected_values);
+}
+
+TEST_CASE(
+    "Backwards compatibility: Test reading group metadata written with "
+    "previous version of tiledb",
+    "[backwards-compat][group][metadata]") {
+  Context ctx;
+  std::string compat_folder(arrays_dir + "/read_compatibility_test");
+  if (Object::object(ctx, compat_folder).type() != Object::Type::Group) {
+    return;
+  }
+
+  std::string encryption_key = "unittestunittestunittestunittest";
+
+  tiledb::ObjectIter versions_iter(ctx, compat_folder);
+  for (const auto& group_versions : versions_iter) {
+    if (group_versions.type() != Object::Type::Group) {
+      continue;
+    }
+
+    Group g{ctx, group_versions.uri(), TILEDB_READ};
+
+    if (g.metadata_num() == 0) {
+      continue;
+    }
+
+    assert_group_metadata<uint8_t>(g, "u8", TILEDB_UINT8, 0x77);
+    assert_group_metadata<uint16_t>(g, "u16", TILEDB_UINT16, 0x7777);
+    assert_group_metadata<uint32_t>(g, "u32", TILEDB_UINT32, 0x77777777);
+    assert_group_metadata<uint64_t>(
+        g, "u64", TILEDB_UINT64, 0x7777777777777777);
+  }
 }

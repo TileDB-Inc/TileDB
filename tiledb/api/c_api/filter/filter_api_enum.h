@@ -54,6 +54,17 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_TYPE_ENUM(FILTER_DICTIONARY) = 14,
     /** Float scaling filter. */
     TILEDB_FILTER_TYPE_ENUM(FILTER_SCALE_FLOAT) = 15,
+    /** XOR filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_XOR) = 16,
+    /**
+     * Previously used by bitsort filter. Can be re-used by next filter
+     * implemented.
+     */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_DEPRECATED) = 17,
+    /** WEBP filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_WEBP) = 18,
+    /** Delta filter. */
+    TILEDB_FILTER_TYPE_ENUM(FILTER_DELTA) = 19,
 #endif
 
 #ifdef TILEDB_FILTER_OPTION_ENUM
@@ -69,4 +80,20 @@ TILEDB_FILTER_TYPE_ENUM(FILTER_NONE) = 0,
     TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_FACTOR) = 4,
     /** Offset for float-scaling filter. Type: float64. */
     TILEDB_FILTER_OPTION_ENUM(SCALE_FLOAT_OFFSET) = 5,
+    /** Quality for webp compression. Ranges from 0.0 to 100.0 Type: float32. */
+    TILEDB_FILTER_OPTION_ENUM(WEBP_QUALITY) = 6,
+    /** Set input format to for webp Type: uint8_t */
+    TILEDB_FILTER_OPTION_ENUM(WEBP_INPUT_FORMAT) = 7,
+    /** Enable lossless WebP compression Type: uint8_t */
+    TILEDB_FILTER_OPTION_ENUM(WEBP_LOSSLESS) = 8,
+    /** Set type to reinterpret data prior to compression : uint8_t */
+    TILEDB_FILTER_OPTION_ENUM(COMPRESSION_REINTERPRET_DATATYPE) = 9,
+#endif
+
+#ifdef TILEDB_FILTER_WEBP_FORMAT
+    TILEDB_FILTER_WEBP_FORMAT(WEBP_NONE) = 0,
+    TILEDB_FILTER_WEBP_FORMAT(WEBP_RGB) = 1,
+    TILEDB_FILTER_WEBP_FORMAT(WEBP_BGR) = 2,
+    TILEDB_FILTER_WEBP_FORMAT(WEBP_RGBA) = 3,
+    TILEDB_FILTER_WEBP_FORMAT(WEBP_BGRA) = 4,
 #endif

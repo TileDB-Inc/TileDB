@@ -1,0 +1,25 @@
+name: "CI Placeholder (docs only)"
+on:
+  pull_request:
+    branches:
+      - '*'  # must quote since "*" is a YAML reserved character; we want a string
+
+    ##############################################################################
+    #                                                                            #
+    #   This section must be synchronized with 'paths-ignore' in full-ci.yml     #
+    #                                                                            #
+    ##############################################################################
+
+    paths:
+      - '.github/workflows/quarto-render.yml'
+      - '_quarto.yml'
+      - 'quarto-materials/*'
+      - '**/.md'
+      - 'tiledb/doxygen/source/*'
+      - 'tiledb/sm/c_api/tiledb_version.h'
+
+jobs:
+  full_ci_passed:
+    runs-on: ubuntu-latest
+    steps:
+      - run: 'echo "No build required" '

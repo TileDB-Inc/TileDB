@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,16 +24,14 @@
 # THE SOFTWARE.
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `uri_format` object library
 #
-add_library(uri_format OBJECT parse_uri.cc)
-target_link_libraries(uri_format PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(uri_format PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_uri_format EXCLUDE_FROM_ALL)
-target_link_libraries(compile_uri_format PRIVATE uri_format)
-target_sources(compile_uri_format PRIVATE test/compile_uri_format_main.cc)
+commence(object_library uri_format)
+    this_target_sources(parse_uri.cc generate_uri.cc)
+    this_target_object_libraries(baseline time vfs)
+conclude(object_library)
+
+add_test_subdirectory()

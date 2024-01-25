@@ -74,8 +74,10 @@ class ChecksumSHA256Filter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  ChecksumSHA256Filter();
+  ChecksumSHA256Filter(Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -84,8 +86,8 @@ class ChecksumSHA256Filter : public Filter {
    * Encrypt the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -96,7 +98,7 @@ class ChecksumSHA256Filter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

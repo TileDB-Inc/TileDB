@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,7 +44,9 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/sm/subarray/relevant_fragments.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
 
 #include <cmath>
@@ -67,13 +69,39 @@ namespace sm {
 
 class Array;
 class ArraySchema;
+class OpenedArray;
+class DimensionLabel;
 class EncryptionKey;
 class FragIdx;
 class FragmentMetadata;
-class StorageManager;
 
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
+
+/**
+ * Interface to implement for a class that can store tile ranges computed by
+ * this class.
+ */
+class ITileRange {
+ public:
+  /** Destructor. */
+  virtual ~ITileRange() = default;
+
+  /** Clears all tile ranges data. */
+  virtual void clear_tile_ranges() = 0;
+
+  /**
+   * Add a tile range for a fragment.
+   *
+   * @param f Fragment index.
+   * @param min Min tile index for the range.
+   * @param max Max tile index for the range.
+   */
+  virtual void add_tile_range(unsigned f, uint64_t min, uint64_t max) = 0;
+
+  /** Signals we are done adding tile ranges. */
+  virtual void done_adding_tile_ranges() = 0;
+};
 
 /**
  * A Subarray object is associated with an array, and
@@ -126,6 +154,14 @@ class Subarray {
   /* ********************************* */
   /*         PUBLIC DATA TYPES         */
   /* ********************************* */
+  /**
+   * Size type for the number of dimensions of an array and for dimension
+   * indices.
+   *
+   * Note: This should be the same as `Domain::dimension_size_type`. We're
+   * not including `domain.h`, otherwise we'd use that definition here.
+   */
+  using dimension_size_type = unsigned int;
 
   /**
    * Result size (in bytes) for an attribute/dimension used for
@@ -213,6 +249,26 @@ class Subarray {
       StorageManager* storage_manager = nullptr);
 
   /**
+   * Constructor.
+   *
+   * @param opened_array The opened array the subarray is associated with.
+   * @param layout The layout of the values of the subarray (of the results
+   *     if the subarray is used for reads, or of the values provided
+   *     by the user for writes).
+   * @param parent_stats The parent stats to inherit from.
+   * @param logger The parent logger to clone and use for logging
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *     with existing ranges as they are added.
+   */
+  Subarray(
+      const shared_ptr<OpenedArray> opened_array,
+      Layout layout,
+      stats::Stats* parent_stats,
+      shared_ptr<Logger> logger,
+      bool coalesce_ranges = true,
+      StorageManager* storage_manager = nullptr);
+
+  /**
    * Copy constructor. This performs a deep copy (including memcpy of
    * underlying buffers).
    */
@@ -238,7 +294,7 @@ class Subarray {
   /* ********************************* */
 
   /** Sets config for query-level parameters only. */
-  Status set_config(const Config& config);
+  void set_config(const QueryType query_type, const Config& config);
 
   /**
    * Get the config of the writer
@@ -246,8 +302,89 @@ class Subarray {
    */
   const Config* config() const;
 
-  /** equivalent for older Query::set_subarray(const void *subarray); */
+  /**
+   * Sets the subarray using a pointer to raw range data that stores one range
+   * per dimension.
+   *
+   * This is only valid for arrays with homogenous dimension data types.
+   *
+   * @param subarray A pointer to the range data to use.
+   * @returns Status error
+   */
   Status set_subarray(const void* subarray);
+
+  /**
+   * Sets the subarray using a pointer to raw range data that stores one range
+   * per dimension without performing validity checks.
+   *
+   * This is only valid for arrays with homogenous dimension data types. This
+   * function should only be used for deserializing dense write queries.
+   *
+   * @param subarray A pointer to the range data to use.
+   */
+  void set_subarray_unsafe(const void* subarray);
+
+  /**
+   * Adds dimension ranges computed from label ranges on the dimension label.
+   *
+   * @param dim_idx The dimension to add ranges to.
+   * @param is_point_ranges If ``true`` the data contains point ranges.
+   *     Otherwise, it contains standard ranges.
+   * @param start Pointer to the start of the range array.
+   * @param count Number of total elements in the range array.
+   */
+  void add_index_ranges_from_label(
+      const uint32_t dim_idx,
+      const bool is_point_ranges,
+      const void* start,
+      const uint64_t count);
+
+  /**
+   * Adds a range along the dimension with the given index for the requested
+   * dimension label.
+   *
+   * @param dim_label_ref Cache data about the dimension label definition.
+   * @param range The range to add.
+   * @param read_range_oob_error If ``true`` return error for input range
+   *     larger than the dimension label domain, otherwise return a warning
+   *     and truncate the range.
+   */
+  void add_label_range(
+      const DimensionLabel& dim_label_ref,
+      Range&& range,
+      const bool read_range_oob_error = true);
+
+  /**
+   * Adds a range along the dimension with the given index for the requested
+   * dimension label.
+   *
+   * @param label_name The name of the dimension label to add the range to.
+   * @param start The range start.
+   * @param end The range end.
+   * @param stride The range stride.
+   */
+  void add_label_range(
+      const std::string& label_name,
+      const void* start,
+      const void* end,
+      const void* stride);
+
+  /**
+   * Adds a variable-sized range along the dimension with the given index for
+   * the requested dimension label.
+   *
+   * @param label_name The name of the dimension label to add the range to.
+   * @param start The range start.
+   * @param start_size The size of the start data.
+   * @param end The range end.
+   * @param end_size The size of the end data.
+   */
+  void add_label_range_var(
+      const std::string& label_name,
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size);
 
   /** Adds a range along the dimension with the given index. */
   Status add_range(
@@ -265,12 +402,40 @@ class Subarray {
   /**
    * @brief Set point ranges from an array
    *
-   * @param dim_idx Dimension index
-   * @param start Pointer to start of the array
-   * @param count Number of elements to add
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of elements to add.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
    * @return Status
    */
-  Status add_point_ranges(unsigned dim_idx, const void* start, uint64_t count);
+  Status add_point_ranges(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
+
+  /**
+   * @brief Set ranges from an array of ranges (paired { begin,end } )
+   *
+   * @param dim_idx Dimension index.
+   * @param start Pointer to start of the array.
+   * @param count Number of total elemenst to add. Must contain two elements for
+   *     each range.
+   * @param check_for_label If ``true``, verify no label ranges set on this
+   *   dimension. This should check for labels unless being called by
+   *   ``add_index_ranges_from_label`` to update label ranges with index values.
+   * @return Status
+   * @note The pairs list is logically { {begin1,end1}, {begin2,end2}, ...} but
+   * because of typing considerations from the C api is simply presented as
+   * a linear list of individual items, though they should be multiple of 2
+   */
+  Status add_ranges_list(
+      unsigned dim_idx,
+      const void* start,
+      uint64_t count,
+      bool check_for_label = true);
 
   /**
    * Adds a variable-sized range to the (read/write) query on the input
@@ -311,6 +476,88 @@ class Subarray {
       uint64_t start_size,
       const void* end,
       uint64_t end_size);
+
+  /**
+   * Retrieves reference to attribute ranges.
+   *
+   * @param attr_name Name of the attribute to get ragnes for.
+   */
+  const std::vector<Range>& get_attribute_ranges(
+      const std::string& attr_name) const;
+
+  /**
+   * Get all attribute ranges.
+   */
+  inline const std::unordered_map<std::string, std::vector<Range>>&
+  get_attribute_ranges() const {
+    return attr_range_subset_;
+  }
+
+  /**
+   * Returns the name of the dimension label at the dimension index.
+   *
+   * @param dim_index Index of the dimension to return the label name for.
+   */
+  const std::string& get_label_name(const uint32_t dim_index) const;
+
+  /**
+   * Retrieves a range from a dimension label name in the form (start, end,
+   * stride).
+   *
+   * @param label_name The name of the dimension label to retrieve the range
+   *     from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start to retrieve.
+   * @param end The range end to retrieve.
+   * @param stride The range stride to retrieve.
+   */
+  void get_label_range(
+      const std::string& label_name,
+      uint64_t range_idx,
+      const void** start,
+      const void** end,
+      const void** stride) const;
+
+  /**
+   * Retrieves the number of ranges of the subarray for the given dimension
+   * label name.
+   *
+   * @param label_name The name of the dimension label to get the number of
+   *     ranges on.
+   * @param range_num The number of ranges set for the dimension label.
+   */
+  void get_label_range_num(
+      const std::string& label_name, uint64_t* range_num) const;
+
+  /**
+   * Retrieves a range's sizes for a variable-length dimension label name
+   *
+   * @param label_name The name of dimension label to retrieve the range sizes
+   *     from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start_size The range start size in bytes.
+   * @param end_size The range end size in bytes.
+   */
+  void get_label_range_var_size(
+      const std::string& label_name,
+      uint64_t range_idx,
+      uint64_t* start_size,
+      uint64_t* end_size) const;
+
+  /**
+   * Retrieves a range from a variable-length dimension label name in the form
+   * (start, end).
+   *
+   * @param label_name The name of dimension label to retrieve the range from.
+   * @param range_idx The id of the range to retrieve.
+   * @param start The range start.
+   * @param end The range end.
+   */
+  void get_label_range_var(
+      const std::string& label_name,
+      uint64_t range_idx,
+      void* start,
+      void* end) const;
 
   /**
    * Retrieves the number of ranges of the subarray for the given dimension
@@ -367,16 +614,30 @@ class Subarray {
       void* start,
       void* end) const;
 
-  /** Returns the array the subarray is associated with. */
-  const Array* array() const;
+  /** Returns the opened array the subarray is associated with. */
+  const shared_ptr<OpenedArray> array() const;
 
-  /** Returns the number of cells in the subarray. */
+  /**
+   * Returns the number of cells in the subarray.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num() const;
 
-  /** Returns the number of cells in the input ND range. */
+  /**
+   * Returns the number of cells in the input ND range.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num(uint64_t range_idx) const;
 
-  /** Returns the number of cells in the input ND range. */
+  /** Returns the number of cells in the input ND range.
+   *
+   * This only returns the number of cells for dimension ranges, not label or
+   * attribute ranges.
+   */
   uint64_t cell_num(const std::vector<uint64_t>& range_coords) const;
 
   /** Clears the contents of the subarray. */
@@ -397,6 +658,12 @@ class Subarray {
    * tile boundaries.
    */
   bool coincides_with_tiles() const;
+
+  /**
+   * Checks if the Subarray is OOB for the domain.
+   * Throws if any range if found to be OOB.
+   */
+  void check_oob();
 
   /**
    * Computes the range offsets which are important for getting
@@ -436,13 +703,12 @@ class Subarray {
    *
    * @param compute_tp The compute thread pool.
    * @param frag_tile_idx The current tile index, per fragment.
-   * @param result_tile_ranges The resulting tile ranges.
+   * @param tile_ranges The resulting tile ranges.
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
       std::vector<FragIdx>& frag_tile_idx,
-      std::vector<std::vector<std::pair<uint64_t, uint64_t>>>*
-          result_tile_ranges);
+      ITileRange* tile_ranges);
 
   /**
    * Computes the estimated result size (calibrated using the maximum size)
@@ -502,14 +768,21 @@ class Subarray {
   /** Returns the domain the subarray is constructed from. */
   NDRange domain() const;
 
-  /** ``True`` if the subarray does not contain any ranges. */
+  /** ``True`` if the dimension of the subarray does not contain any ranges. */
+  bool empty(uint32_t dim_idx) const;
+
+  /**
+   * `True`` if the subarray does not contain ranges on any of the dimensions.
+   *
+   * This function does not check for ranges on labels or attributes.
+   */
   bool empty() const;
 
   /**
    * Retrieves a range of a given dimension at a given range index.
    *
    * @note Note that the retrieved range may be invalid if
-   *     Subarray::set_range() is called after this function. In that case,
+   *     Subarray::add_range() is called after this function. In that case,
    *     make sure to make a copy in the caller function.
    */
   Status get_range(
@@ -520,7 +793,7 @@ class Subarray {
    * The range is in the form (start, end).
    *
    * @note Note that the retrieved range may be invalid if
-   *     Subarray::set_range() is called after this function. In that case,
+   *     Subarray::add_range() is called after this function. In that case,
    *     make sure to make a copy in the caller function.
    */
   Status get_range(
@@ -580,6 +853,7 @@ class Subarray {
       const void** stride) const;
 
   /**
+   * ``True`` if the specified dimension is set by default.
    *
    * @param dim_index
    * @return returns true if the specified dimension is set to default subarray
@@ -589,7 +863,7 @@ class Subarray {
   /** Returns `true` if at least one dimension has non-default ranges set. */
   bool is_set() const;
 
-  /** Returns number of non-default (set) ranges */
+  /** Returns the number of dimensions with non-default (set) ranges. */
   int32_t count_set_ranges() const;
 
   /** Returns `true` if the input dimension has non-default range set. */
@@ -617,13 +891,6 @@ class Subarray {
       uint64_t* size,
       const Config* config,
       ThreadPool* compute_tp);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  Status get_est_result_size(
-      const char* name, uint64_t* size, StorageManager* storage_manager);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
@@ -659,12 +926,12 @@ class Subarray {
       const Config* config,
       ThreadPool* compute_tp);
 
-  /** returns whether the estimated result size has been computed or not */
+  /** Returns whether the estimated result size has been computed or not. */
   bool est_result_size_computed();
 
   /*
    * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized attribute/dimensiom.
+   * for the input fixed-sized attribute/dimension.
    */
   Status get_max_memory_size(
       const char* name,
@@ -706,9 +973,6 @@ class Subarray {
       const Config* config,
       ThreadPool* compute_tp);
 
-  /** Retrieves the query type of the subarray's array. */
-  Status get_query_type(QueryType* type) const;
-
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
    * 1D range id. The range coordinates is a tuple with an index
@@ -724,7 +988,7 @@ class Subarray {
   void get_next_range_coords(std::vector<uint64_t>* range_coords) const;
 
   /**
-   * Returns a subarray consisting of the ranges specified by
+   * Returns a subarray consisting of the dimension ranges specified by
    * the input.
    *
    * @param start The subarray will be constructed from ranges in
@@ -735,7 +999,26 @@ class Subarray {
   Subarray get_subarray(uint64_t start, uint64_t end) const;
 
   /**
+   * Returns ``true`` if the any dimension in the subarray have label ranges
+   * set.
+   */
+  bool has_label_ranges() const;
+
+  /**
+   * Returns ``true`` if the dimension index has label ranges set.
+   *
+   * @param dim_idx The dimension index to check for ranges.
+   */
+  bool has_label_ranges(const uint32_t dim_index) const;
+
+  /**
+   * Returns the number of dimensions that have label ranges set
+   */
+  int label_ranges_num() const;
+
+  /**
    * Set default indicator for dimension subarray. Used by serialization only
+   *
    * @param dim_index
    * @param is_default
    */
@@ -767,7 +1050,12 @@ class Subarray {
     return original_range_idx_;
   }
 
-  /** The total number of multi-dimensional ranges in the subarray. */
+  /**
+   * The total number of multi-dimensional ranges in the subarray.
+   *
+   * This only returns the number of multi-dimension ranges on the dimension
+   * space. It does not include ranges set on labels or attributes.
+   */
   uint64_t range_num() const;
 
   /**
@@ -791,6 +1079,30 @@ class Subarray {
   }
 
   /**
+   * Adds ranges for an attribute.
+   *
+   * This method is designed to copy label ranges from a parent subarray to
+   * attribute ranges in a dimension label array. The ranges will only be
+   * accessed by the dimension label readers, and it is assumed all checks on
+   * validity of the ranges has already been ran when adding the label ranges to
+   * the parent subarray.
+   *
+   * @param attr_name Name of the attribute to add the ranges for.
+   * @param ranges Ranges to add.
+   */
+  void set_attribute_ranges(
+      const std::string& attr_name, const std::vector<Range>& ranges);
+
+  /**
+   * Returns the `Range` vector for the given dimension label.
+   *
+   * @param label_name Name of the label to return ranges for.
+   * @returns Vector of ranges on the requested dimension label.
+   */
+  const std::vector<Range>& ranges_for_label(
+      const std::string& label_name) const;
+
+  /**
    * Directly sets the `Range` vector for the given dimension index, making
    * a deep copy.
    *
@@ -801,6 +1113,22 @@ class Subarray {
    * @note Intended for serialization only
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
+
+  /**
+   * Directly sets the dimension label ranges for the given dimension index,
+   * making a deep copy.
+   *
+   * @param dim_idx Index of dimension to set
+   * @param name Name of the dimension label to set
+   * @param ranges `Range` vector that will be copied and set
+   * @return Status
+   *
+   * @note Intended for serialization only
+   */
+  void set_label_ranges_for_dim(
+      const uint32_t dim_idx,
+      const std::string& name,
+      const std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into
@@ -924,12 +1252,12 @@ class Subarray {
   /**
    * Return relevant fragments as computed
    */
-  const std::vector<unsigned>* relevant_fragments() const;
+  const RelevantFragments& relevant_fragments() const;
 
   /**
    * Return relevant fragments as computed
    */
-  std::vector<unsigned>* relevant_fragments();
+  RelevantFragments& relevant_fragments();
 
   /**
    * For flattened ("total order") start/end range indexes,
@@ -953,57 +1281,35 @@ class Subarray {
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 
-  /** Returns if ranges are sorted. */
+  /** Returns if dimension ranges are sorted. */
   bool ranges_sorted() {
     return ranges_sorted_;
   }
 
-  /** Sort ranges per dimension. */
-  Status sort_ranges(ThreadPool* const compute_tp);
+  /** Sort and merge ranges per dimension. */
+  void sort_and_merge_ranges(ThreadPool* const compute_tp);
 
   /** Returns if all ranges for this subarray are non overlapping. */
   tuple<Status, optional<bool>> non_overlapping_ranges(
       ThreadPool* const compute_tp);
 
+  /** Returns if ranges will be coalesced as they are added. */
+  inline bool coalesce_ranges() const {
+    return coalesce_ranges_;
+  }
+
+  /**
+   * Initialize the label ranges vector to nullopt for every
+   * dimension
+   *
+   * @param dim_num Total number of dimensions of the schema
+   */
+  void add_default_label_ranges(dimension_size_type dim_num);
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
   /* ********************************* */
-
-  /**
-   * An opaque context to be used between successive calls
-   * to `compute_relevant_fragments`.
-   */
-  struct ComputeRelevantFragmentsCtx {
-    ComputeRelevantFragmentsCtx()
-        : initialized_(false) {
-    }
-
-    /**
-     * This context cache is lazy initialized. This will be
-     * set to `true` when initialized in `compute_relevant_fragments()`.
-     */
-    bool initialized_;
-
-    /**
-     * The last calibrated start coordinates.
-     */
-    std::vector<uint64_t> last_start_coords_;
-
-    /**
-     * The last calibrated end coordinates.
-     */
-    std::vector<uint64_t> last_end_coords_;
-
-    /**
-     * The fragment bytemaps for each dimension. The inner
-     * vector is the fragment bytemap that has a byte element
-     * for each fragment. Non-zero bytes represent relevant
-     * fragments for a specific dimension. Each dimension
-     * has its own fragment bytemap (the outer vector).
-     */
-    std::vector<std::vector<uint8_t>> frag_bytemaps_;
-  };
 
   /**
    * An opaque context to be used between successive calls
@@ -1026,6 +1332,69 @@ class Subarray {
     uint64_t range_len_;
   };
 
+  /**
+   * Wrapper for optional<tuple<std::string, RangeSetAndSuperset>> for
+   * cleaner data access.
+   */
+  struct LabelRangeSubset {
+   public:
+    /**
+     * Default constructor is not C.41.
+     **/
+    LabelRangeSubset() = delete;
+
+    /**
+     * Constructor
+     *
+     * @param ref Dimension label the ranges will be set on.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
+
+    /**
+     * Constructor
+     *
+     * @param name The name of the dimension label the ranges will be set on.
+     * @param type The type of the label the ranges will be set on.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(
+        const std::string& name, Datatype type, bool coalesce_ranges = true);
+
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges_.ranges();
+    }
+
+    /** Name of the dimension label. */
+    std::string name_;
+
+    /** The ranges set on the dimension label. */
+    RangeSetAndSuperset ranges_;
+  };
+
+  /**
+   * A hash function capable of hashing std::vector<uint8_t> for use by
+   * the tile_coords_map_ unordered_map for caching coords indices.
+   */
+  struct CoordsHasher {
+    /**
+     * Compute a hash value of the provided key.
+     *
+     * @param key The uint8_t vector to hash.
+     * @return std::size_t The hash value.
+     */
+    std::size_t operator()(const std::vector<uint8_t>& key) const {
+      // The awkward cast here is because std::string_view doesn't accept
+      // a uint8_t* in its constructor. Since compilers won't let us cast
+      // directly from unsigned to signed, we have to static cast to void*
+      // first.
+      auto data =
+          static_cast<const char*>(static_cast<const void*>(key.data()));
+      std::string_view str_key(data, key.size());
+      return std::hash<std::string_view>()(str_key);
+    }
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -1040,7 +1409,7 @@ class Subarray {
   shared_ptr<Logger> logger_;
 
   /** The array the subarray object is associated with. */
-  const Array* array_;
+  shared_ptr<OpenedArray> array_;
 
   /** Stores the estimated result size for each array attribute/dimension. */
   std::unordered_map<std::string, ResultSize> est_result_size_;
@@ -1068,6 +1437,26 @@ class Subarray {
   std::vector<RangeSetAndSuperset> range_subset_;
 
   /**
+   * Stores LabelRangeSubset objects for handling ranges on dimension labels.
+   *
+   * Users cannot set label ranges on dimensions that already have normal ranges
+   * set. Once the label query on a dimension is finished, the query will add
+   * the dimension ranges that correspond to the same regions as the label
+   * ranges.
+   *
+   * Valid states for each dimension:
+   *  - No label ranges.
+   *  - Label ranges with no dimension ranges.
+   *  - Label ranges and dimension ranges that correspond to the same regions.
+   */
+  std::vector<optional<LabelRangeSubset>> label_range_subset_;
+
+  /**
+   * Stores ranges for attributes.
+   */
+  std::unordered_map<std::string, std::vector<Range>> attr_range_subset_;
+
+  /**
    * Flag storing if each dimension is a default value or not.
    *
    * TODO: Remove this variable and store `is_default` directly with NDRange.
@@ -1087,7 +1476,7 @@ class Subarray {
    * The array fragment ids whose non-empty domain intersects at
    * least one subarray range.
    */
-  std::vector<unsigned> relevant_fragments_;
+  RelevantFragments relevant_fragments_;
 
   /**
    * The precomputed tile overlap state. Is not guaranteed to be
@@ -1107,7 +1496,8 @@ class Subarray {
   std::vector<std::vector<uint8_t>> tile_coords_;
 
   /** A map (tile coords) -> (vector element position in `tile_coords_`). */
-  std::map<std::vector<uint8_t>, size_t> tile_coords_map_;
+  std::unordered_map<std::vector<uint8_t>, size_t, CoordsHasher>
+      tile_coords_map_;
 
   /** The config for query-level parameters only. */
   Config config_;
@@ -1115,7 +1505,7 @@ class Subarray {
   /** State of specific Config item needed from multiple locations. */
   bool err_on_range_oob_ = true;
 
-  /** Indicate if ranges are sorted. */
+  /** Indicate if dimension ranges are sorted. */
   bool ranges_sorted_;
 
   /** Mutext to protect sorting ranges. */
@@ -1187,39 +1577,6 @@ class Subarray {
    */
   void swap(Subarray& subarray);
 
-  /**
-   * Computes the indexes of the fragments that are relevant to the query,
-   * that is those whose non-empty domain intersects with at least one
-   * range.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param tile_overlap Mutated to store the computed tile overlap.
-   * @param fn_ctx An opaque context object to be used between successive
-   * invocations.
-   */
-  Status compute_relevant_fragments(
-      ThreadPool* compute_tp,
-      const SubarrayTileOverlap* tile_overlap,
-      ComputeRelevantFragmentsCtx* fn_ctx);
-
-  /**
-   * Computes the relevant fragment bytemap for a specific dimension.
-   *
-   * @param compute_tp The thread pool for compute-bound tasks.
-   * @param dim_idx The index of the dimension to compute on.
-   * @param fragment_num The number of fragments to compute on.
-   * @param start_coords The starting range coordinates to compute between.
-   * @param end_coords The ending range coordinates to compute between.
-   * @param frag_bytemap The fragment bytemap to mutate.
-   */
-  Status compute_relevant_fragments_for_dim(
-      ThreadPool* compute_tp,
-      uint32_t dim_idx,
-      uint64_t fragment_num,
-      const std::vector<uint64_t>& start_coords,
-      const std::vector<uint64_t>& end_coords,
-      std::vector<uint8_t>* frag_bytemap) const;
-
   /** Loads the R-Trees of all relevant fragments in parallel. */
   Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
 
@@ -1262,38 +1619,6 @@ class Subarray {
    */
   Status load_relevant_fragment_tile_var_sizes(
       const std::vector<std::string>& names, ThreadPool* compute_tp) const;
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @tparam T dimension type
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  template <typename T>
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  /**
-   * Sort ranges for a particular dimension
-   *
-   * @param compute_tp threadpool for parallel_sort
-   * @param dim_idx dimension index to sort
-   * @return Status
-   */
-  Status sort_ranges_for_dim(
-      ThreadPool* const compute_tp, const uint64_t& dim_idx);
-
-  /**
-   * Determine if ranges for a dimension are non overlapping.
-   *
-   * @param dim_idx dimension index.
-   * @return true if the ranges are non overlapping, false otherwise.
-   */
-  template <typename T>
-  tuple<Status, optional<bool>> non_overlapping_ranges_for_dim(
-      const uint64_t dim_idx);
 
   /**
    * Determine if ranges for a dimension are non overlapping.

@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
 
@@ -44,6 +44,10 @@ using namespace tiledb::test;
 
 class NullableArrayCppFx {
  public:
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+
   template <typename T>
   struct test_dim_t {
     test_dim_t(
@@ -138,6 +142,9 @@ class NullableArrayCppFx {
 
   /** The C++ API VFS object. */
   VFS vfs_;
+
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
 
   /**
    * Removes a directory using `vfs_`.
@@ -290,11 +297,15 @@ void NullableArrayCppFx::write(
     }
   }
 
-  // Submit the query.
-  REQUIRE(query.submit() == Query::Status::COMPLETE);
-
-  // Finalize the query, a no-op for non-global writes.
-  query.finalize();
+  // Submit query
+  auto rc = submit_query_wrapper(
+      ctx_,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
+  REQUIRE(rc == TILEDB_OK);
 
   // Clean up
   array.close();
@@ -554,6 +565,16 @@ TEST_CASE_METHOD(
   attrs.emplace_back("a2", false /* var */, true /* nullable */);
   attrs.emplace_back("a3", true /* var */, true /* nullable */);
 
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+  SECTION("serialization enabled global order write") {
+#ifdef TILEDB_SERIALIZATION
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+#endif
+  }
+
   for (auto attr_iter = attrs.begin(); attr_iter != attrs.end(); ++attr_iter) {
     vector<test_attr_t<uint64_t>> test_attrs(attrs.begin(), attr_iter + 1);
     for (const tiledb_array_type_t array_type : {TILEDB_DENSE, TILEDB_SPARSE}) {
@@ -561,10 +582,11 @@ TEST_CASE_METHOD(
            {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
         for (const tiledb_layout_t tile_order :
              {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR}) {
-          for (const tiledb_layout_t write_order : {TILEDB_ROW_MAJOR,
-                                                    TILEDB_COL_MAJOR,
-                                                    TILEDB_UNORDERED,
-                                                    TILEDB_GLOBAL_ORDER}) {
+          for (const tiledb_layout_t write_order :
+               {TILEDB_ROW_MAJOR,
+                TILEDB_COL_MAJOR,
+                TILEDB_UNORDERED,
+                TILEDB_GLOBAL_ORDER}) {
             do_2d_nullable_test(
                 test_attrs, array_type, cell_order, tile_order, write_order);
           }

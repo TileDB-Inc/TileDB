@@ -1,5 +1,5 @@
 /**
- * @file   group.h
+ * @file   group_experimental.h
  *
  * @author Ravi Gaddipati
  *
@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,14 +35,16 @@
 #ifndef TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 #define TILEDB_CPP_API_GROUP_EXPERIMENTAL_H
 
+#include "capi_string.h"
 #include "context.h"
+#include "object.h"
 #include "tiledb.h"
 
 namespace tiledb {
 class Group {
  public:
   /**
-   * @brief Constructor. This opens the group for the given query type. The
+   * @brief Constructor. Opens the group for the given query type. The
    * destructor calls the `close()` method.
    *
    * **Example:**
@@ -61,12 +63,35 @@ class Group {
       const Context& ctx,
       const std::string& group_uri,
       tiledb_query_type_t query_type)
-      : ctx_(ctx) {
-    tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    tiledb_group_t* group;
-    ctx.handle_error(tiledb_group_alloc(c_ctx, group_uri.c_str(), &group));
-    group_ = std::shared_ptr<tiledb_group_t>(group, deleter_);
-    ctx.handle_error(tiledb_group_open(c_ctx, group, query_type));
+      : Group(ctx, group_uri, query_type, nullptr) {
+  }
+
+  /**
+   * @brief Constructor. Sets a config to the group and opens it for the given
+   * query type. The destructor calls the `close()` method.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * // Open the group for reading
+   * tiledb::Context ctx;
+   * tiledb::Config cfg;
+   * cfg["rest.username"] = "user";
+   * cfg["rest.password"] = "pass";
+   * tiledb::Group group(ctx, "s3://bucket-name/group-name", TILEDB_READ, cfg);
+   * @endcode
+   *
+   * @param ctx TileDB context.
+   * @param group_uri The group URI.
+   * @param query_type Query type to open the group for.
+   * @param config COnfiguration parameters
+   */
+  Group(
+      const Context& ctx,
+      const std::string& group_uri,
+      tiledb_query_type_t query_type,
+      const Config& config)
+      : Group(ctx, group_uri, query_type, config.ptr().get()) {
   }
 
   Group(const Group&) = default;
@@ -77,12 +102,12 @@ class Group {
   /** Destructor; calls `close()`. */
   ~Group() {
     if (owns_c_ptr_ && is_open()) {
-      close();
+      close(false);
     }
   }
 
   /**
-   * @brief Opens the group. The group is opened using a query type as input.
+   * @brief Opens the group using a query type as input.
    *
    * This is to indicate that queries created for this `Group`
    * object will inherit the query type. In other words, `Group`
@@ -112,7 +137,11 @@ class Group {
     ctx.handle_error(tiledb_group_open(c_ctx, group_.get(), query_type));
   }
 
-  /** Sets the group config. */
+  /**
+   * Sets the group config.
+   *
+   * @pre The group must be closed.
+   */
   void set_config(const Config& config) const {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_group_set_config(
@@ -129,8 +158,10 @@ class Group {
   }
 
   /**
-   * Closes the group. The destructor calls this automatically
-   * if the underlying pointer is owned.
+   * Closes the group. This must be called directly if you wish to check that
+   * any changes to the group were committed. This is automatically called
+   * by the destructor but any errors encountered are logged instead of throwing
+   * an exception from a destructor.
    *
    * **Example:**
    * @code{.cpp}
@@ -138,9 +169,15 @@ class Group {
    * group.close();
    * @endcode
    */
-  void close() {
+  void close(bool should_throw = true) {
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_group_close(ctx.ptr().get(), group_.get()));
+    auto rc = tiledb_group_close(ctx.ptr().get(), group_.get());
+    if (rc != TILEDB_OK && should_throw) {
+      ctx.handle_error(rc);
+    } else if (rc != TILEDB_OK) {
+      auto msg = ctx.get_last_error_message();
+      tiledb_log_warn(ctx.ptr().get(), msg.c_str());
+    }
   }
 
   /**
@@ -187,7 +224,7 @@ class Group {
   }
 
   /**
-   * It puts a metadata key-value item to an open group. The group must
+   * Puts a metadata key-value item to an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be added. UTF-8 encodings
@@ -212,7 +249,24 @@ class Group {
   }
 
   /**
-   * It deletes a metadata key-value item from an open group. The group must
+   * Deletes all written data from an open group. The group must
+   * be opened in MODIFY_EXCLUSIVE mode, otherwise the function will error out.
+   *
+   * @param uri The address of the group item to be deleted.
+   * @param recursive True if all data inside the group is to be deleted.
+   *
+   * @note if recursive == false, data added to the group will be left as-is.
+   * @post This is destructive; the group may not be reopened after delete.
+   */
+  void delete_group(const std::string& uri, bool recursive = false) {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    ctx.handle_error(
+        tiledb_group_delete_group(c_ctx, group_.get(), uri.c_str(), recursive));
+  }
+
+  /**
+   * Deletes a metadata key-value item from an open group. The group must
    * be opened in WRITE mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be deleted.
@@ -230,7 +284,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata key-value item from an open group. The group must
+   * Gets a metadata key-value item from an open group. The group must
    * be opened in READ mode, otherwise the function will error out.
    *
    * @param key The key of the metadata item to be retrieved. UTF-8 encodings
@@ -288,7 +342,7 @@ class Group {
   }
 
   /**
-   * It gets a metadata item from an open group using an index.
+   * Gets a metadata item from an open group using an index.
    * The group must be opened in READ mode, otherwise the function will
    * error out.
    *
@@ -348,14 +402,17 @@ class Group {
   /**
    * Remove a member from a group
    *
-   * @param uri of member to remove. Passing a name is also supported if the
-   * group member was assigned a name.
+   * @param name_or_uri Name or URI of member to remove. If the URI is
+   * registered multiple times in the group, the name needs to be specified so
+   * that the correct one can be removed. Note that if a URI is registered as
+   * both a named and unnamed member, the unnamed member will be removed
+   * successfully using the URI.
    */
-  void remove_member(const std::string& uri) {
+  void remove_member(const std::string& name_or_uri) {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
     ctx.handle_error(
-        tiledb_group_remove_member(c_ctx, group_.get(), uri.c_str()));
+        tiledb_group_remove_member(c_ctx, group_.get(), name_or_uri.c_str()));
   }
 
   uint64_t member_count() const {
@@ -370,31 +427,39 @@ class Group {
   tiledb::Object member(uint64_t index) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    char* uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
-    char* name;
-    ctx.handle_error(tiledb_group_get_member_by_index(
+    tiledb_string_t* name;
+    ctx.handle_error(tiledb_group_get_member_by_index_v2(
         c_ctx, group_.get(), index, &uri, &type, &name));
-    std::string uri_str(uri);
-    std::free(uri);
-    std::optional<std::string> name_opt = std::nullopt;
-    if (name != nullptr) {
-      name_opt = name;
-      std::free(name);
-    }
-    return tiledb::Object(type, uri_str, name_opt);
+    return tiledb::Object(
+        type,
+        impl::convert_to_string(&uri).value(),
+        impl::convert_to_string(&name));
   }
 
   tiledb::Object member(std::string name) const {
     auto& ctx = ctx_.get();
     tiledb_ctx_t* c_ctx = ctx.ptr().get();
-    char* uri;
+    tiledb_string_t* uri;
     tiledb_object_t type;
-    ctx.handle_error(tiledb_group_get_member_by_name(
+    ctx.handle_error(tiledb_group_get_member_by_name_v2(
         c_ctx, group_.get(), name.c_str(), &uri, &type));
-    std::string uri_str(uri);
-    std::free(uri);
-    return tiledb::Object(type, uri_str, name);
+    return tiledb::Object(type, impl::convert_to_string(&uri).value(), name);
+  }
+
+  /**
+   * retrieve the relative attribute for a named member
+   *
+   * @param name of member to retrieve associated relative indicator.
+   */
+  bool is_relative(std::string name) const {
+    auto& ctx = ctx_.get();
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    uint8_t is_relative;
+    ctx.handle_error(tiledb_group_get_is_relative_uri_by_name(
+        c_ctx, group_.get(), name.c_str(), &is_relative));
+    return is_relative != 0;
   }
 
   std::string dump(const bool recursive) const {
@@ -409,7 +474,63 @@ class Group {
     return ret;
   }
 
+  /**
+   * Consolidates the group metadata into a single group metadata file.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::consolidate_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to be consolidated.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_consolidate_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
+  }
+
+  /**
+   * Cleans up the group metadata.
+   *
+   * **Example:**
+   * @code{.cpp}
+   * tiledb::Group::vacuum_metadata(ctx, "s3://bucket-name/group-name");
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param uri The URI of the TileDB group to vacuum.
+   * @param config Configuration parameters for the vacuuming.
+   */
+  static void vacuum_metadata(
+      const Context& ctx,
+      const std::string& uri,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_group_vacuum_metadata(
+        ctx.ptr().get(), uri.c_str(), config ? config->ptr().get() : nullptr));
+  }
+
  private:
+  Group(
+      const Context& ctx,
+      const std::string& group_uri,
+      tiledb_query_type_t query_type,
+      tiledb_config_t* config)
+      : ctx_(ctx) {
+    tiledb_ctx_t* c_ctx = ctx.ptr().get();
+    tiledb_group_t* group;
+    ctx.handle_error(tiledb_group_alloc(c_ctx, group_uri.c_str(), &group));
+    group_ = std::shared_ptr<tiledb_group_t>(group, deleter_);
+    if (config) {
+      ctx.handle_error(tiledb_group_set_config(c_ctx, group, config));
+    }
+    ctx.handle_error(tiledb_group_open(c_ctx, group, query_type));
+  }
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

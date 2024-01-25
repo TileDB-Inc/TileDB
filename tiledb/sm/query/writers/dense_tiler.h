@@ -44,7 +44,7 @@
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
@@ -173,7 +173,7 @@ class DenseTiler {
    *     be preallocated and initialized before passed to the function.
    * @return Status
    */
-  Status get_tile(uint64_t id, const std::string& name, WriterTile& tile);
+  Status get_tile(uint64_t id, const std::string& name, WriterTileTuple& tile);
 
   /**
    * Returns the number of tiles to be created. This is equal
@@ -318,7 +318,19 @@ class DenseTiler {
    * @return Status
    */
   Status copy_tile(
-      uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const;
+      uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile& tile) const;
+
+  /**
+   * Computes the tile metadata according to the copy plan.
+   *
+   * @param name The name of the dimension/attribute.
+   * @param id The id of the tile within the subarray to be retrieved. The id
+   *    is serialied in the tile order of the array domain.
+   * @param tile The tile to compute the metadata for. The tile needs to be
+   *    filled in.
+   */
+  void compute_tile_metadata(
+      const std::string& name, uint64_t id, WriterTileTuple& tile) const;
 };
 
 }  // namespace sm

@@ -45,6 +45,7 @@
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -60,7 +61,13 @@ namespace sm {
 
 class Domain;
 class FragmentMetadata;
+class QueryCondition;
 class Subarray;
+
+/**
+ * Utilitary function to sort result tiles by fragment first then tile index.
+ */
+bool result_tile_cmp(const ResultTile* a, const ResultTile* b);
 
 /**
  * Stores information about a logical dense or sparse result tile. Note that it
@@ -70,6 +77,177 @@ class Subarray;
  */
 class ResultTile {
  public:
+  /**
+   * Class definition for tile sizes.
+   *
+   */
+  class TileSizes {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+    TileSizes(
+        const std::shared_ptr<tiledb::sm::FragmentMetadata> fragment,
+        std::string name,
+        const bool var_size,
+        const bool nullable,
+        const bool validity_only,
+        const uint64_t tile_idx)
+        : tile_size_(validity_only ? 0 : fragment->tile_size(name, tile_idx))
+        , tile_persisted_size_(fragment->persisted_tile_size(name, tile_idx))
+        , tile_var_size_(
+              var_size && !validity_only ?
+                  std::optional(fragment->tile_var_size(name, tile_idx)) :
+                  std::nullopt)
+        , tile_var_persisted_size_(
+              var_size ? std::optional(fragment->persisted_tile_var_size(
+                             name, tile_idx)) :
+                         std::nullopt)
+        , tile_validity_size_(
+              nullable ? std::optional(
+                             fragment->cell_num(tile_idx) *
+                             constants::cell_validity_size) :
+                         std::nullopt)
+        , tile_validity_persisted_size_(
+              nullable ? std::optional(fragment->persisted_tile_validity_size(
+                             name, tile_idx)) :
+                         std::nullopt) {
+    }
+
+    TileSizes(
+        const uint64_t tile_size,
+        const uint64_t tile_persisted_size,
+        const optional<uint64_t> tile_var_size,
+        const optional<uint64_t> tile_var_persisted_size,
+        const optional<uint64_t> tile_validity_size,
+        const optional<uint64_t> tile_validity_persisted_size)
+        : tile_size_(tile_size)
+        , tile_persisted_size_(tile_persisted_size)
+        , tile_var_size_(tile_var_size)
+        , tile_var_persisted_size_(tile_var_persisted_size)
+        , tile_validity_size_(tile_validity_size)
+        , tile_validity_persisted_size_(tile_validity_persisted_size) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @return The fixed tile in memory size. */
+    inline uint64_t tile_size() const {
+      return tile_size_;
+    }
+
+    /** @return The fixed tile in disk size. */
+    inline uint64_t tile_persisted_size() const {
+      return tile_persisted_size_;
+    }
+
+    /** @return If there is a var tile or not. */
+    inline bool has_var_tile() const {
+      return tile_var_size_.has_value();
+    }
+
+    /** @return The fixed tile in memory size. */
+    inline uint64_t tile_var_size() const {
+      return tile_var_size_.value();
+    }
+
+    /** @return The fixed tile in disk size. */
+    inline uint64_t tile_var_persisted_size() const {
+      return tile_var_persisted_size_.value();
+    }
+
+    /** @return If there is a validity tile or not. */
+    inline bool has_validity_tile() const {
+      return tile_validity_size_.has_value();
+    }
+
+    /** @return The validity tile in memory size. */
+    inline uint64_t tile_validity_size() const {
+      return tile_validity_size_.value();
+    }
+
+    /** @return The validity tile in disk size. */
+    inline uint64_t tile_validity_persisted_size() const {
+      return tile_validity_persisted_size_.value();
+    }
+
+   private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
+    /** Stores the fixed tile in memory size. */
+    const uint64_t tile_size_;
+
+    /** Stores the fixed tile on disk size. */
+    const uint64_t tile_persisted_size_;
+
+    /** Stores the var tile in memory size. */
+    const optional<uint64_t> tile_var_size_;
+
+    /** Stores the var tile on disk size. */
+    const optional<uint64_t> tile_var_persisted_size_;
+
+    /** Stores the validity tile in memory size. */
+    const optional<uint64_t> tile_validity_size_;
+
+    /** Stores the validity tile on disk size. */
+    const optional<uint64_t> tile_validity_persisted_size_;
+  };
+
+  /**
+   * Class definition for tile data.
+   */
+  class TileData {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+    TileData(
+        void* fixed_filtered_data,
+        void* var_filtered_data,
+        void* validity_filtered_data)
+        : fixed_filtered_data_(fixed_filtered_data)
+        , var_filtered_data_(var_filtered_data)
+        , validity_filtered_data_(validity_filtered_data) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** @return The fixed filtered data pointer. */
+    inline void* fixed_filtered_data() const {
+      return fixed_filtered_data_;
+    }
+
+    /** @return The var filtered data pointer. */
+    inline void* var_filtered_data() const {
+      return var_filtered_data_;
+    }
+
+    /** @return The validity filtered data pointer. */
+    inline void* validity_filtered_data() const {
+      return validity_filtered_data_;
+    }
+
+   private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
+    /** Stores the fixed filtered data pointer. */
+    void* fixed_filtered_data_;
+
+    /** Stores the var filtered data pointer. */
+    void* var_filtered_data_;
+
+    /** Stores the validity filtered data pointer. */
+    void* validity_filtered_data_;
+  };
+
   /**
    * Class definition for the tile tuple.
    */
@@ -83,13 +261,51 @@ class ResultTile {
     TileTuple() = delete;
 
     /** Constructor with var_size and nullable parameters. */
-    TileTuple(bool var_size, bool nullable) {
-      if (var_size) {
-        var_tile_ = Tile();
+    TileTuple(
+        const format_version_t format_version,
+        const ArraySchema& array_schema,
+        const std::string& name,
+        const TileSizes tile_sizes,
+        const TileData tile_data)
+        : fixed_tile_(
+              tile_sizes.has_var_tile() ?
+                  Tile(
+                      format_version,
+                      constants::cell_var_offset_type,
+                      constants::cell_var_offset_size,
+                      0,
+                      tile_sizes.tile_size(),
+                      tile_data.fixed_filtered_data(),
+                      tile_sizes.tile_persisted_size()) :
+                  Tile(
+                      format_version,
+                      array_schema.type(name),
+                      array_schema.cell_size(name),
+                      (name == constants::coords) ? array_schema.dim_num() : 0,
+                      tile_sizes.tile_size(),
+                      tile_data.fixed_filtered_data(),
+                      tile_sizes.tile_persisted_size())) {
+      if (tile_sizes.has_var_tile()) {
+        auto type = array_schema.type(name);
+        var_tile_ = Tile(
+            format_version,
+            type,
+            datatype_size(type),
+            0,
+            tile_sizes.tile_var_size(),
+            tile_data.var_filtered_data(),
+            tile_sizes.tile_var_persisted_size());
       }
 
-      if (nullable) {
-        validity_tile_ = Tile();
+      if (tile_sizes.has_validity_tile()) {
+        validity_tile_ = Tile(
+            format_version,
+            constants::cell_validity_type,
+            constants::cell_validity_size,
+            0,
+            tile_sizes.tile_validity_size(),
+            tile_data.validity_filtered_data(),
+            tile_sizes.tile_validity_persisted_size());
       }
     }
 
@@ -128,6 +344,10 @@ class ResultTile {
     }
 
    private:
+    /* ********************************* */
+    /*        PRIVATE ATTRIBUTES         */
+    /* ********************************* */
+
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
 
@@ -149,7 +369,8 @@ class ResultTile {
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
-  ResultTile(unsigned frag_idx, uint64_t tile_idx, const ArraySchema& schema);
+  ResultTile(
+      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
 
@@ -196,11 +417,21 @@ class ResultTile {
   void erase_tile(const std::string& name);
 
   /** Initializes the result tile for the given attribute. */
-  void init_attr_tile(const std::string& name, bool var_size, bool nullable);
+  void init_attr_tile(
+      const format_version_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const TileSizes tile_sizes,
+      const TileData tile_data);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
-      const std::string& name, bool var_size, unsigned dim_idx);
+      const format_version_t format_version,
+      const ArraySchema& array_schema,
+      const std::string& name,
+      const TileSizes tile_sizes,
+      const TileData tile_data,
+      unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);
@@ -245,6 +476,13 @@ class ResultTile {
    * Returns the timestamp of the cell at position `pos`.
    */
   uint64_t timestamp(uint64_t pos);
+
+  /**
+   * Returns the dimension label value for the `label_name` attribute at
+   * position `pos`.
+   */
+  template <typename LabelType>
+  LabelType attribute_value(const std::string& label_name, const uint64_t pos);
 
   /** Returns the fragment id that this result tile belongs to. */
   unsigned frag_idx() const;
@@ -352,8 +590,6 @@ class ResultTile {
           cached_ranges,
       const char* buff_str,
       const uint64_t* buff_off,
-      const uint64_t cell_num,
-      const uint64_t buff_str_size,
       const uint64_t start,
       const uint64_t end,
       std::vector<BitmapType>& result_count);
@@ -434,9 +670,9 @@ class ResultTile {
       const uint64_t min_cell,
       const uint64_t max_cell) const;
 
- private:
+ protected:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
+  /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
   /** The array domain. */
@@ -448,6 +684,9 @@ class ResultTile {
   /** The id of the tile (which helps locating the physical attribute tiles). */
   uint64_t tile_idx_ = UINT64_MAX;
 
+  /** Number of cells. */
+  uint64_t cell_num_;
+
   /** Attribute names to tiles based on attribute ordering from array schema. */
   std::vector<std::pair<std::string, optional<TileTuple>>> attr_tiles_;
 
@@ -456,6 +695,9 @@ class ResultTile {
 
   /** The delete timestamp attribute tile. */
   optional<TileTuple> delete_timestamps_tile_;
+
+  /** The delete condition marker hash attribute tile. */
+  optional<TileTuple> delete_condition_index_tile_;
 
   /** The zipped coordinates tile. */
   optional<TileTuple> coords_tile_;
@@ -485,7 +727,7 @@ class ResultTile {
    * is invoked in a critical path and is experimentally faster as a c-style
    * function pointer than a bound `std::function`.
    */
-  const void* (ResultTile::*coord_func_)(uint64_t, unsigned)const;
+  const void* (ResultTile::*coord_func_)(uint64_t, unsigned) const;
 
   /**
    * Stores the appropriate templated compute_results_sparse() function based
@@ -529,6 +771,7 @@ class ResultTile {
       const uint64_t)>>
       compute_results_count_sparse_uint8_t_func_;
 
+ private:
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -575,10 +818,8 @@ class ResultTileWithBitmap : public ResultTile {
 
   ResultTileWithBitmap(
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTile(frag_idx, tile_idx, *frag_md.array_schema().get())
-      , cell_num_(frag_md.cell_num(tile_idx))
-      , result_num_(cell_num_)
-      , coords_loaded_(false) {
+      : ResultTile(frag_idx, tile_idx, frag_md)
+      , result_num_(cell_num_) {
   }
 
   /** Move constructor. */
@@ -604,39 +845,12 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
 
   /**
-   * Returns true if the coordinates were loaded for this result tile.
-   *
-   * @return 'true' if the coords are loaded.
-   */
-  inline bool coords_loaded() {
-    return coords_loaded_;
-  }
-
-  /**
-   * Specifies coords are loaded for this result tile.
-   */
-  inline void set_coords_loaded() {
-    coords_loaded_ = true;
-  }
-
-  /**
    * Returns the number of results in the bitmap.
    *
    * @return Number of results.
    */
   inline uint64_t result_num() {
     return result_num_;
-  }
-
-  /**
-   * Clear a cell in the bitmap.
-   *
-   * @param cell_idx Cell index to clear.
-   */
-  void clear_cell(uint64_t cell_idx) {
-    assert(cell_idx < bitmap_.size());
-    result_num_ -= bitmap_[cell_idx];
-    bitmap_[cell_idx] = 0;
   }
 
   /**
@@ -702,7 +916,7 @@ class ResultTileWithBitmap : public ResultTile {
     uint64_t sum = 0;
     for (uint64_t c = start_pos; c < bitmap_.size(); c++) {
       sum += bitmap_[c];
-      if (sum == result_num) {
+      if (sum >= result_num) {
         return c;
       }
     }
@@ -735,9 +949,7 @@ class ResultTileWithBitmap : public ResultTile {
   void swap(ResultTileWithBitmap<BitmapType>& tile) {
     ResultTile::swap(tile);
     std::swap(bitmap_, tile.bitmap_);
-    std::swap(cell_num_, tile.cell_num_);
     std::swap(result_num_, tile.result_num_);
-    std::swap(coords_loaded_, tile.coords_loaded_);
   }
 
  protected:
@@ -747,14 +959,8 @@ class ResultTileWithBitmap : public ResultTile {
   /** Bitmap for this tile. */
   std::vector<BitmapType> bitmap_;
 
-  /** Cell number for this tile. */
-  uint64_t cell_num_;
-
   /** Number of cells in this bitmap. */
   uint64_t result_num_;
-
-  /** Were the coordinates loaded for this tile. */
-  bool coords_loaded_;
 };
 
 /** Global order result tile. */
@@ -768,9 +974,12 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       unsigned frag_idx,
       uint64_t tile_idx,
       bool dups,
+      bool include_delete_meta,
       const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
-      , dups_(dups)
+      , post_dedup_bitmap_(
+            !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
+                                           nullopt)
       , used_(false) {
   }
 
@@ -798,9 +1007,9 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   void swap(GlobalOrderResultTile& tile) {
     ResultTileWithBitmap<uint8_t>::swap(tile);
     std::swap(used_, tile.used_);
-    std::swap(dups_, tile.dups_);
     std::swap(hilbert_values_, tile.hilbert_values_);
-    std::swap(extra_bitmap_, tile.extra_bitmap_);
+    std::swap(post_dedup_bitmap_, tile.post_dedup_bitmap_);
+    std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
   }
 
   /** Returns if the tile was used by the merge or not. */
@@ -815,46 +1024,66 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
 
   /**
    * Returns whether this tile has a post query condition bitmap. For this
-   * tile type, it will either be extra_bitmap_ or the normal bitmap.
+   * tile type, it will either be post_dedup_bitmap_ or the normal bitmap.
    */
-  inline bool has_post_qc_bmp() {
+  inline bool has_post_dedup_bmp() {
     return ResultTileWithBitmap<BitmapType>::has_bmp() ||
-           extra_bitmap_.size() > 0;
+           (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0);
   }
 
   /**
    * Ensures there is a post query condition bitmap allocated. If there is a
-   * regular bitmap already for this tile, 'extra_bitmap_' will contain the
+   * regular bitmap already for this tile, 'post_dedup_bitmap_' will contain the
    * combination of the existing bitmap with query condition results. Otherwise
    * it will only contain the query condition results.
    */
   void ensure_bitmap_for_query_condition() {
-    if (!dups_) {
+    if (post_dedup_bitmap_.has_value()) {
       if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
-        extra_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+        post_dedup_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
       } else {
-        extra_bitmap_.resize(ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+        post_dedup_bitmap_->resize(ResultTile::cell_num_, 1);
       }
     } else {
       if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
         ResultTileWithBitmap<BitmapType>::bitmap_.resize(
-            ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+            ResultTile::cell_num_, 1);
       }
     }
   }
 
   /**
    * Returns the bitmap that included query condition results. For this tile
-   * type, this is 'extra_bitmap_' if allocated, or the regular bitmap.
+   * type, this is 'post_dedup_bitmap_' if allocated, or the regular bitmap.
    */
-  inline std::vector<BitmapType>& bitmap_with_qc() {
-    return extra_bitmap_.size() > 0 ? extra_bitmap_ :
-                                      ResultTileWithBitmap<BitmapType>::bitmap_;
+  inline std::vector<BitmapType>& post_dedup_bitmap() {
+    return post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0 ?
+               post_dedup_bitmap_.value() :
+               ResultTileWithBitmap<BitmapType>::bitmap_;
+  }
+
+  /**
+   * Clear a cell in the bitmap.
+   *
+   * @param cell_idx Cell index to clear.
+   */
+  void clear_cell(uint64_t cell_idx) {
+    if (cell_idx > ResultTileWithBitmap<BitmapType>::bitmap_.size()) {
+      throw std::out_of_range("Cell index out of range");
+    }
+
+    ResultTileWithBitmap<BitmapType>::result_num_ -=
+        ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx];
+    ResultTileWithBitmap<BitmapType>::bitmap_[cell_idx] = 0;
+
+    if (post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0) {
+      post_dedup_bitmap_->at(cell_idx) = 0;
+    }
   }
 
   /** Allocate space for the hilbert values vector. */
   inline void allocate_hilbert_vector() {
-    hilbert_values_.resize(ResultTile::cell_num());
+    hilbert_values_.resize(ResultTile::cell_num_);
   }
 
   /** Get the hilbert value at an index. */
@@ -887,6 +1116,48 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
     return ret;
   }
 
+  /** Allocate space for the delete condition index vector. */
+  inline void allocate_per_cell_delete_condition_vector() {
+    per_cell_delete_condition_.resize(ResultTile::cell_num_, nullptr);
+  }
+
+  /** Compute the delete condition index. */
+  inline void compute_per_cell_delete_condition(QueryCondition* ptr) {
+    // Go through all cells, if the delete condition cleared the cell, and the
+    // index for this cell is still unset, set it to the current condition.
+    for (uint64_t c = 0; c < ResultTile::cell_num_; c++) {
+      if (post_dedup_bitmap_->at(c) == 0 &&
+          per_cell_delete_condition_[c] == nullptr) {
+        per_cell_delete_condition_[c] = ptr;
+      }
+    }
+
+    // Reset the bitmap to be ready for the next condition.
+    std::fill(post_dedup_bitmap_->begin(), post_dedup_bitmap_->end(), 1);
+  }
+
+  /**
+   * Returns the delete timestamp for the cell at `cell_idx`. If there was not
+   * any delete condition that deleted this cell, the timestamp is going to be
+   * uint64_t max.
+   */
+  inline uint64_t delete_timestamp(uint64_t cell_idx) {
+    auto ptr = per_cell_delete_condition_[cell_idx];
+    return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
+                            ptr->condition_timestamp();
+  }
+
+  /**
+   * Returns the delete condition index for the cell at `cell_idx`. If there
+   * was not any delete condition that deleted this cell, the value is going
+   * to be uint64_t max.
+   */
+  inline size_t delete_condition_index(uint64_t cell_idx) {
+    auto ptr = per_cell_delete_condition_[cell_idx];
+    return ptr == nullptr ? std::numeric_limits<uint64_t>::max() :
+                            ptr->condition_index();
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -898,13 +1169,16 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /**
    * An extra bitmap will be needed for array with no duplicates. For those,
    * deduplication need to be run before query condition is applied. So bitmap_
-   * will contain the results before query condition, and extra_bitmap_ will
-   * contain results after query condition.
+   * will contain the results before query condition, and post_dedup_bitmap_
+   * will contain results after query condition.
    */
-  std::vector<BitmapType> extra_bitmap_;
+  optional<std::vector<BitmapType>> post_dedup_bitmap_;
 
-  /** Are duplicates allowed. */
-  bool dups_;
+  /**
+   * Delete condition index that deleted a cell. Used for consolidation with
+   * delete metadata.
+   */
+  std::vector<QueryCondition*> per_cell_delete_condition_;
 
   /** Was the tile used in the merge. */
   bool used_;
@@ -950,7 +1224,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns whether this tile has a post query condition bitmap. For this
    * tile type, this is stored in the regular bitmap.
    */
-  inline bool has_post_qc_bmp() {
+  inline bool has_post_dedup_bmp() {
     return ResultTileWithBitmap<BitmapType>::has_bmp();
   }
 
@@ -961,7 +1235,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   void ensure_bitmap_for_query_condition() {
     if (ResultTileWithBitmap<BitmapType>::bitmap_.size() == 0) {
       ResultTileWithBitmap<BitmapType>::bitmap_.resize(
-          ResultTileWithBitmap<BitmapType>::cell_num_, 1);
+          ResultTile::cell_num_, 1);
     }
   }
 
@@ -969,8 +1243,16 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns the bitmap that included query condition results. For this tile
    * type, this is stored in the regular bitmap.
    */
-  inline std::vector<BitmapType>& bitmap_with_qc() {
+  inline std::vector<BitmapType>& post_dedup_bitmap() {
     return ResultTileWithBitmap<BitmapType>::bitmap_;
+  }
+
+  /** Not used for this result tile type. */
+  inline void allocate_per_cell_delete_condition_vector() {
+  }
+
+  /** Not used for this result tile type. */
+  inline void compute_per_cell_delete_condition(QueryCondition*) {
   }
 };
 

@@ -73,7 +73,7 @@ class BufferList {
    * @param buffer Set to point to the buffer instance
    * @return Status
    */
-  Status get_buffer(uint64_t index, Buffer** buffer);
+  Status get_buffer(uint64_t index, const Buffer** buffer) const;
 
   /** Returns the number of buffers in the list. */
   uint64_t num_buffers() const;

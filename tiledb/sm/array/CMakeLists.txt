@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,22 +25,23 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `array` object library
 #
-add_library(array OBJECT array_directory.cc)
-target_link_libraries(array PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(array PUBLIC vfs $<TARGET_OBJECTS:vfs>)
-target_link_libraries(array PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
-target_link_libraries(array PUBLIC uuid $<TARGET_OBJECTS:uuid>)
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_array EXCLUDE_FROM_ALL)
-target_link_libraries(compile_array PRIVATE config)
-target_sources(compile_array PRIVATE test/compile_array_directory_main.cc)
+commence(object_library array)
+    this_target_sources(array_directory.cc)
+    this_target_object_libraries(
+        array_schema
+        baseline
+        generic_tile_io
+        uri_format
+        vfs
+    )
+    if(TILEDB_STATS)
+        this_target_compile_definitions(-DTILEDB_STATS)
+    endif()
+conclude(object_library)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()

@@ -1,6 +1,5 @@
 #
-# tiledb/common/interval/CMakeLists.txt
-#
+# tiledb/common/interval/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -25,31 +24,7 @@
 # THE SOFTWARE.
 #
 
-if (POLICY CMP0076) # CMP0076 unknown to vs2017 cmake version 3.12.18081601-MSVC_2
-  cmake_policy(SET CMP0076 NEW)  # CMake 3.13 - converts relative paths to absolute
-endif()
-find_package(Catch_EP REQUIRED)
-
-add_executable(unit_interval EXCLUDE_FROM_ALL)
-target_link_libraries(unit_interval PUBLIC Catch2::Catch2)
-
-# Sources for code under test
-target_sources(unit_interval PUBLIC
-  interval.cc
-)
-
-# Sources for tests
-target_sources(unit_interval PUBLIC
-  test/main.cc
-        test/unit_interval_bound.cc
-        test/unit_interval_constructors.cc
-        test/unit_interval_operations.cc
-        test/unit_interval_predicates.cc
-        test/unit_interval_types.cc
-)
-
-add_test(
-        NAME "unit_interval"
-        COMMAND $<TARGET_FILE:unit_interval>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+#
+# No object library `interval`; it's header-only
+#
+add_test_subdirectory()

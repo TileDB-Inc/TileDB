@@ -29,18 +29,18 @@
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+if [[ "$BASH_SOURCE" = $0 ]]; then
+  # exit when *not* sourced (https://superuser.com/a/1288646)
+  echo "run-minio.sh was not sourced. Please set keys manually before running tests."
+fi
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null;
-
-  if [[ "$BASH_SOURCE" = $0 ]]; then
-    # exit when *not* sourced (https://superuser.com/a/1288646)
-    exit 1;
-  fi
 }
 
 run_cask_minio() {
   # note: minio data directories *must* follow parameter arguments
-  minio server --certs-dir=/tmp/minio-data/test_certs --address localhost:9999 /tmp/minio-data &
+  minio server --certs-dir=/tmp/minio-data/test_certs --address 127.0.0.1:9999 /tmp/minio-data &
   export MINIO_PID=$!
   [[ "$?" -eq "0" ]] || die "could not run minio server"
 }
@@ -48,7 +48,7 @@ run_cask_minio() {
 run_docker_minio() {
   # note: minio data directories *must* follow parameter arguments
   docker run -v /tmp/minio-data:/tmp/minio-data \
-       -e MINIO_ACCESS_KEY=minio -e MINIO_SECRET_KEY=miniosecretkey \
+       -e MINIO_ROOT_USER=minio -e MINIO_ROOT_PASSWORD=miniosecretkey \
        -d -p 9999:9000 \
        minio/minio server -S /tmp/minio-data/test_certs \
          /tmp/minio-data || die "could not run docker minio"
@@ -57,8 +57,8 @@ run_docker_minio() {
 export_aws_keys() {
   export AWS_ACCESS_KEY_ID=minio
   export AWS_SECRET_ACCESS_KEY=miniosecretkey
-  export MINIO_ACCESS_KEY=minio
-  export MINIO_SECRET_KEY=miniosecretkey
+  export MINIO_ROOT_USER=minio
+  export MINIO_ROOT_PASSWORD=miniosecretkey
 }
 
 run() {

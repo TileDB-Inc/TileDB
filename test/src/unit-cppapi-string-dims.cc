@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 #include "tiledb/common/logger_public.h"
@@ -1450,17 +1451,25 @@ void write_sparse_array_string_dim(
     const std::string& array_name,
     std::string& data,
     std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    const bool serialized,
+    const bool refactored_query_v2) {
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(layout);
   query.set_data_buffer("dim1", (char*)data.data(), data.size());
   query.set_offsets_buffer("dim1", data_offsets.data(), data_offsets.size());
 
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
 
   array.close();
 }
@@ -1470,7 +1479,9 @@ void read_and_check_sparse_array_string_dim(
     const std::string& array_name,
     std::string& expected_data,
     std::vector<uint64_t>& expected_offsets,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    const bool serialized,
+    const bool refactored_query_v2) {
   Array array(ctx, array_name, TILEDB_READ);
 
   std::vector<uint64_t> offsets_back(expected_offsets.size());
@@ -1483,7 +1494,16 @@ void read_and_check_sparse_array_string_dim(
   query.set_offsets_buffer("dim1", offsets_back.data(), offsets_back.size());
   query.set_layout(layout);
 
-  CHECK_NOTHROW(query.submit());
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
 
   // Check the element data and offsets are properly returned
   CHECK(data_back == expected_data);
@@ -1496,6 +1516,13 @@ TEST_CASE(
     "C++ API: Test filtering of string dimensions on sparse arrays",
     "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
+  bool serialized = false, refactored_query_v2 = false;
+#ifdef TILEDB_SERIALIZATION
+  serialized = GENERATE(true, false);
+  if (serialized) {
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
 
   // Create data buffer to use
   std::stringstream repetitions;
@@ -1540,34 +1567,82 @@ TEST_CASE(
 
   SECTION("Unordered write") {
     write_sparse_array_string_dim(
-        ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+        ctx,
+        array_name,
+        data,
+        data_elem_offsets,
+        TILEDB_UNORDERED,
+        serialized,
+        refactored_query_v2);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_ROW_MAJOR,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_GLOBAL_ORDER,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_UNORDERED,
+          serialized,
+          refactored_query_v2);
     }
   }
   SECTION("Global order write") {
     write_sparse_array_string_dim(
-        ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+        ctx,
+        array_name,
+        data,
+        data_elem_offsets,
+        TILEDB_GLOBAL_ORDER,
+        serialized,
+        refactored_query_v2);
     SECTION("Row major read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_ROW_MAJOR);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_ROW_MAJOR,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Global order read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_GLOBAL_ORDER);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_GLOBAL_ORDER,
+          serialized,
+          refactored_query_v2);
     }
     SECTION("Unordered read") {
       read_and_check_sparse_array_string_dim(
-          ctx, array_name, data, data_elem_offsets, TILEDB_UNORDERED);
+          ctx,
+          array_name,
+          data,
+          data_elem_offsets,
+          TILEDB_UNORDERED,
+          serialized,
+          refactored_query_v2);
     }
   }
 
@@ -1576,7 +1651,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Test adding RLE filter of string dimensions",
+    "C++ API: Test adding RLE/Dictionary filter of string dimensions",
     "[cppapi][string-dims][rle-strings][dict-strings][sparse]") {
   std::string array_name = "test_rle_string_dim";
 
@@ -1590,17 +1665,30 @@ TEST_CASE(
 
   // Create filters
   auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
-  Filter rle_filter(ctx, f);
+  Filter string_filter(ctx, f);
   Filter another_filter(ctx, TILEDB_FILTER_CHECKSUM_MD5);
 
-  // Create filter list with RLE only
+  // Create filter list with RLE/Dict only
   FilterList filter_list_rle_only(ctx);
-  filter_list_rle_only.add_filter(rle_filter);
+  filter_list_rle_only.add_filter(string_filter);
 
-  // Create filter list with RLE and other filters
-  FilterList filter_list_with_others(ctx);
-  filter_list_with_others.add_filter(another_filter);
-  filter_list_with_others.add_filter(rle_filter);
+  // Create filter list with other filters also where RLE/Dict is not first
+  FilterList filter_list_with_others_not_first(ctx);
+  filter_list_with_others_not_first.add_filter(another_filter);
+  filter_list_with_others_not_first.add_filter(string_filter);
+
+  // Create filter list with other filters also where RLE/Dict is first
+  FilterList filter_list_with_others_first(ctx);
+  filter_list_with_others_first.add_filter(string_filter);
+  filter_list_with_others_first.add_filter(another_filter);
+
+  // Create filter list with both RLE and Dict, shouldn't be allowed
+  // as one of them won't be first
+  FilterList filter_list_with_rle_and_dict(ctx);
+  Filter rle_filter(ctx, TILEDB_FILTER_RLE);
+  Filter dict_filter(ctx, TILEDB_FILTER_DICTIONARY);
+  filter_list_with_rle_and_dict.add_filter(dict_filter);
+  filter_list_with_rle_and_dict.add_filter(rle_filter);
 
   {
     // Add dimension that is not var length string
@@ -1609,7 +1697,8 @@ TEST_CASE(
     schema.set_domain(domain);
 
     CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
-    CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+    CHECK_NOTHROW(
+        schema.set_coords_filter_list(filter_list_with_others_not_first));
 
     // Add var length string dimension
     domain.add_dimension(dim_var_string);
@@ -1618,10 +1707,17 @@ TEST_CASE(
     // Test set_coords_filter_list
     {
       // Case 1: There is no more specific filter list for this dimension
-      // Adding RLE with other filters to var-length string dimension is not
+      // Adding RLE after other filters to var-length string dimension is not
       // allowed
-      CHECK_THROWS(schema.set_coords_filter_list(filter_list_with_others));
-      // If only RLE is used, it's allowed
+      CHECK_THROWS(
+          schema.set_coords_filter_list(filter_list_with_others_not_first));
+      // Should throw as even RLE is first, dictionary isn't
+      CHECK_THROWS(
+          schema.set_coords_filter_list(filter_list_with_rle_and_dict));
+      // If RLE/Dict is first, it's allowed
+      CHECK_NOTHROW(
+          schema.set_coords_filter_list(filter_list_with_others_first));
+      // If only RLE/Dict is used, it's allowed
       CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_rle_only));
     }
 
@@ -1635,20 +1731,28 @@ TEST_CASE(
       Domain domain2(ctx);
       domain2.add_dimension(dim_var_string);
       schema.set_domain(domain2);
-      CHECK_NOTHROW(schema.set_coords_filter_list(filter_list_with_others));
+      CHECK_NOTHROW(
+          schema.set_coords_filter_list(filter_list_with_others_not_first));
     }
 
     // Test set_filter_list
     {
-      // Adding RLE with other filters to var-length string dimension is not
-      // allowed
-      CHECK_THROWS(dim_var_string.set_filter_list(filter_list_with_others));
+      // Adding RLE/Dict after other filters to var-length string dimension is
+      // not allowed
+      CHECK_THROWS(
+          dim_var_string.set_filter_list(filter_list_with_others_not_first));
+      // Should throw as even RLE is first, dictionary isn't
+      CHECK_THROWS(
+          dim_var_string.set_filter_list(filter_list_with_rle_and_dict));
+      // If RLE/Dict is first, it's allowed
+      CHECK_NOTHROW(
+          dim_var_string.set_filter_list(filter_list_with_others_first));
 
       // The rest of the cases are allowed
       CHECK_NOTHROW(dim_var_string.set_filter_list(filter_list_rle_only));
       CHECK_NOTHROW(dim_not_var_string.set_filter_list(filter_list_rle_only));
-      CHECK_NOTHROW(
-          dim_not_var_string.set_filter_list(filter_list_with_others));
+      CHECK_NOTHROW(dim_not_var_string.set_filter_list(
+          filter_list_with_others_not_first));
     }
   }
 }

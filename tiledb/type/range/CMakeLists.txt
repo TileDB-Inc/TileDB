@@ -26,17 +26,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
-# Range library
-add_library(range OBJECT range.cc)
-target_link_libraries(range PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(range PUBLIC constants $<TARGET_OBJECTS:constants>)
+#
+# `range` library
+#
+commence(object_library range)
+    this_target_sources(range.cc)
+    this_target_object_libraries(baseline constants)
+conclude(object_library)
 
-# Test-compile of object library ensures link-completeness
-add_executable(compile_range EXCLUDE_FROM_ALL)
-target_sources(compile_range PRIVATE test/compile_range_main.cc)
-target_link_libraries(compile_range PRIVATE range)
-
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()

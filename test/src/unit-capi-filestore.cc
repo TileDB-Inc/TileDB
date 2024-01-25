@@ -33,8 +33,8 @@
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_experimental.h"
 #include "tiledb/sm/global_state/unit_test_config.h"

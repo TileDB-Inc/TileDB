@@ -88,15 +88,6 @@ namespace common {
     }                               \
   } while (false)
 
-#define RETURN_NOT_OK_ELSE_TUPLE(s, else_, ...) \
-  do {                                          \
-    Status _s = (s);                            \
-    if (!_s.ok()) {                             \
-      else_;                                    \
-      return {_s, __VA_ARGS__};                 \
-    }                                           \
-  } while (false)
-
 /**
  * The original `Status` class, used as a ubiquitous return value to avoid
  * throwing exceptions.
@@ -109,7 +100,7 @@ namespace common {
  * implementation and make interconversion easy. The value `nullopt` will be the
  * OK status; anything else will be an error status.
  */
-class Status {
+class [[nodiscard]] Status {
   friend class StatusException;
 
   /* ********************************* */
@@ -275,10 +266,7 @@ inline Status Status_ArraySchemaError(const std::string& msg) {
 inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
   return {"[TileDB::ArraySchemaEvolution] Error", msg};
 }
-/** Return a Metadata error class Status with a given message **/
-inline Status Status_MetadataError(const std::string& msg) {
-  return {"[TileDB::Metadata] Error", msg};
-}
+
 /** Return a IO error class Status with a given message **/
 inline Status Status_IOError(const std::string& msg) {
   return {"[TileDB::IO] Error", msg};
@@ -311,10 +299,6 @@ inline Status Status_BufferError(const std::string& msg) {
 inline Status Status_QueryError(const std::string& msg) {
   return {"[TileDB::Query] Error", msg};
 }
-/** Return a ValidityVector error class Status with a given message **/
-inline Status Status_ValidityVectorError(const std::string& msg) {
-  return {"[TileDB::ValidityVector] Error", msg};
-}
 /** Return a Status_VFSError error class Status with a given message **/
 inline Status Status_VFSError(const std::string& msg) {
   return {"[TileDB::VFS] Error", msg};
@@ -330,14 +314,6 @@ inline Status Status_DomainError(const std::string& msg) {
 /** Return a Consolidator error class Status with a given message **/
 inline Status Status_ConsolidatorError(const std::string& msg) {
   return {"[TileDB::Consolidator] Error", msg};
-}
-/** Return a LRUCache error class Status with a given message **/
-inline Status Status_LRUCacheError(const std::string& msg) {
-  return {"[TileDB::LRUCache] Error", msg};
-}
-/** Return a Config error class Status with a given message **/
-inline Status Status_ConfigError(const std::string& msg) {
-  return {"[TileDB::Config] Error", msg};
 }
 /** Return a Utils error class Status with a given message **/
 inline Status Status_UtilsError(const std::string& msg) {
@@ -363,10 +339,6 @@ inline Status Status_HDFSError(const std::string& msg) {
 inline Status Status_MemFSError(const std::string& msg) {
   return {"[TileDB::MemFS] Error", msg};
 }
-/** Return a Attribute error class Status with a given message **/
-inline Status Status_AttributeError(const std::string& msg) {
-  return {"[TileDB::Attribute] Error", msg};
-}
 /** Return a Status_SparseGlobalOrderReaderError error class Status with a
  * given message **/
 inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
@@ -377,11 +349,6 @@ inline Status Status_SparseGlobalOrderReaderError(const std::string& msg) {
 inline Status Status_SparseUnorderedWithDupsReaderError(
     const std::string& msg) {
   return {"[TileDB::SparseUnorderedWithDupsReaderError] Error", msg};
-}
-/** Return a Status_DenseReaderError error class Status with a given message
- * **/
-inline Status Status_DenseReaderError(const std::string& msg) {
-  return {"[TileDB::DenseReaderError] Error", msg};
 }
 /** Return a Reader error class Status with a given message **/
 inline Status Status_ReaderError(const std::string& msg) {
@@ -411,10 +378,6 @@ inline Status Status_ArrayError(const std::string& msg) {
 /** Return a VFSFileHandle error class Status with a given message **/
 inline Status Status_VFSFileHandleError(const std::string& msg) {
   return {"[TileDB::VFSFileHandle] Error", msg};
-}
-/** Return a Status_ContextError error class Status with a given message **/
-inline Status Status_ContextError(const std::string& msg) {
-  return {"[TileDB::Context] Error", msg};
 }
 /** Return a Status_SubarrayError error class Status with a given message **/
 inline Status Status_SubarrayError(const std::string& msg) {

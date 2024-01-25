@@ -44,11 +44,14 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
+#include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/type/apply_with_type.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -104,42 +107,32 @@ inline IterT skip_invalid_elements(IterT it, const IterT& end) {
 Reader::Reader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
-    QueryCondition& condition,
-    bool skip_checks_serialization)
-    : ReaderBase(
-          stats,
-          logger->clone("Reader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
-          condition) {
+    StrategyParams& params,
+    bool remote_query)
+    : ReaderBase(stats, logger->clone("Reader", ++logger_id_), params) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
     throw ReaderStatusException(
         "Cannot initialize reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty()) {
+  if (!params.default_channel_aggregates().empty()) {
+    throw ReaderStatusException(
+        "Cannot initialize reader; Reader cannot process aggregates");
+  }
+
+  if (!params.skip_checks_serialization() && buffers_.empty()) {
     throw ReaderStatusException("Cannot initialize reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && array_schema_.dense() &&
+  if (!params.skip_checks_serialization() && array_schema_.dense() &&
       !subarray_.is_set()) {
     throw ReaderStatusException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
   // Check subarray
-  check_subarray();
+  check_subarray(remote_query && params.array()->array_schema_latest().dense());
 
   // Initialize the read state
   init_read_state();
@@ -167,8 +160,7 @@ QueryStatusDetailsReason Reader::status_incomplete_reason() const {
                         QueryStatusDetailsReason::REASON_NONE;
 }
 
-Status Reader::initialize_memory_budget() {
-  return Status::Ok();
+void Reader::refresh_config() {
 }
 
 const Reader::ReadState* Reader::read_state() const {
@@ -200,7 +192,9 @@ Status Reader::dowork() {
   auto timer_se = stats_->start_timer("dowork");
 
   // Check that the query condition is valid.
-  RETURN_NOT_OK(condition_.check(array_schema_));
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->check(array_schema_));
+  }
 
   if (buffers_.count(constants::delete_timestamps) != 0) {
     return logger_->status(
@@ -269,6 +263,10 @@ Status Reader::dowork() {
 void Reader::reset() {
 }
 
+std::string Reader::name() {
+  return "LegacyReader";
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -279,16 +277,17 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [st, delete_conditions] =
-      storage_manager_->load_delete_conditions(*array_);
+  auto&& [st, conditions, update_values] =
+      storage_manager_->load_delete_and_update_conditions(*array_);
   RETURN_CANCEL_OR_ERROR(st);
-  delete_conditions_ = std::move(*delete_conditions);
+  delete_and_update_conditions_ = std::move(*conditions);
 
   // Set timestamps variables
   user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||
-                               delete_conditions_.size() > 0;
+                               delete_and_update_conditions_.size() > 0;
   const bool partial_consol_fragment_overlap =
-      partial_consolidated_fragment_overlap();
+      partial_consolidated_fragment_overlap(
+          read_state_.partitioner_.subarray());
   use_timestamps_ = partial_consol_fragment_overlap ||
                     !array_schema_.allows_dups() || user_requested_timestamps_;
 
@@ -305,11 +304,19 @@ Status Reader::load_initial_data() {
   RETURN_CANCEL_OR_ERROR(generate_timestamped_conditions());
 
   // Make a list of dim/attr that will be loaded for query condition.
-  if (!condition_.empty()) {
-    qc_loaded_attr_names_set_.merge(condition_.field_names());
+  if (condition_.has_value()) {
+    qc_loaded_attr_names_set_.merge(condition_->field_names());
   }
-  for (auto delete_condition : delete_conditions_) {
-    qc_loaded_attr_names_set_.merge(delete_condition.field_names());
+  for (auto delete_and_update_condition : delete_and_update_conditions_) {
+    qc_loaded_attr_names_set_.merge(delete_and_update_condition.field_names());
+  }
+
+  // Add delete timestamps condition.
+  RETURN_NOT_OK(add_delete_timestamps_condition());
+
+  // Load processed conditions from fragment metadata.
+  if (delete_and_update_conditions_.size() > 0) {
+    load_processed_conditions();
   }
 
   initial_data_loaded_ = true;
@@ -322,7 +329,7 @@ Status Reader::apply_query_condition(
     std::vector<ResultTile*>& result_tiles,
     Subarray& subarray,
     uint64_t stride) {
-  if ((condition_.empty() && delete_conditions_.empty()) ||
+  if ((!condition_.has_value() && delete_and_update_conditions_.empty()) ||
       result_cell_slabs.empty()) {
     return Status::Ok();
   }
@@ -346,18 +353,25 @@ Status Reader::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
-  if (!condition_.empty()) {
-    RETURN_NOT_OK(condition_.apply(
+  if (condition_.has_value()) {
+    RETURN_NOT_OK(condition_->apply(
         array_schema_, fragment_metadata_, result_cell_slabs, stride));
   }
 
   // Apply delete conditions.
-  if (!delete_conditions_.empty()) {
-    for (uint64_t i = 0; i < delete_conditions_.size(); i++) {
+  if (!delete_and_update_conditions_.empty()) {
+    for (uint64_t i = 0; i < delete_and_update_conditions_.size(); i++) {
       // For legacy, always run the timestamped condition.
-      RETURN_NOT_OK(timestamped_delete_conditions_[i].apply(
+      RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i].apply(
           array_schema_, fragment_metadata_, result_cell_slabs, stride));
     }
+  }
+
+  // Process the delete timestamps condition, if required.
+  if (!delete_timestamps_condition_.empty()) {
+    // Remove cells with partial overlap from the bitmap.
+    RETURN_NOT_OK(delete_timestamps_condition_.apply(
+        array_schema_, fragment_metadata_, result_cell_slabs, stride));
   }
 
   return Status::Ok();
@@ -459,9 +473,7 @@ Status Reader::compute_range_result_coords(
 
     // Apply partial overlap condition, if required.
     const auto frag_meta = fragment_metadata_[tile->frag_idx()];
-    const bool partial_overlap = frag_meta->partial_time_overlap(
-        array_->timestamp_start(), array_->timestamp_end_opened_at());
-    if (frag_meta->has_timestamps() && partial_overlap) {
+    if (process_partial_timestamps(*frag_meta)) {
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
           *(frag_meta->array_schema().get()), *tile, result_bitmap));
     }
@@ -699,8 +711,7 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles.emplace_back(
-                f, t, *(fragment_metadata_[f]->array_schema()).get());
+            result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments or fragments with
@@ -719,8 +730,7 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles.emplace_back(
-              f, t, *(fragment_metadata_[f]->array_schema()).get());
+          result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments or fragments with
@@ -827,9 +837,9 @@ Status Reader::copy_attribute_values(
       continue;
     }
 
-    // If the query condition has a clause for `name`, we will only
-    // flag it to copy because we have already preloaded the offsets
-    // and read the tiles in `apply_query_condition`.
+    // If the query condition has a clause for `name`, we will only flag it to
+    // copy because we have already preloaded the offsets and read the tiles in
+    // `apply_query_condition`.
     ProcessTileFlags flags = ProcessTileFlag::COPY;
     if (qc_loaded_attr_names_set_.count(name) == 0) {
       flags |= ProcessTileFlag::READ;
@@ -938,12 +948,6 @@ void Reader::compute_fixed_cs_partitions(
   }
 }
 
-uint64_t ReaderBase::offsets_bytesize() const {
-  assert(offsets_bitsize_ == 32 || offsets_bitsize_ == 64);
-  return offsets_bitsize_ == 32 ? sizeof(uint32_t) :
-                                  constants::cell_var_offset_size;
-}
-
 Status Reader::copy_partitioned_fixed_cells(
     const size_t partition_idx,
     const std::string* const name,
@@ -991,8 +995,8 @@ Status Reader::copy_partitioned_fixed_cells(
     // for this tile.
     const bool split_buffer_for_zipped_coords =
         is_dim && cs.tile_->stores_zipped_coords();
-    const bool field_not_present =
-        (is_dim || is_attr) && cs.tile_->tile_tuple(*name) == nullptr;
+    const bool field_not_present = (is_dim || is_attr) && cs.tile_ != nullptr &&
+                                   cs.tile_->tile_tuple(*name) == nullptr;
     if ((cs.tile_ == nullptr || field_not_present) &&
         !split_buffer_for_zipped_coords) {  // Empty range or attributed added
                                             // in schema evolution
@@ -1192,18 +1196,13 @@ Status Reader::compute_var_cell_destinations(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
-    uint64_t tile_cell_num = 0;
-    uint64_t tile_var_size = 0;
+    offsets_t* tile_offsets = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
       const auto& tile = tile_tuple->fixed_tile();
-      const auto& tile_var = tile_tuple->var_tile();
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile.data();
-      tile_cell_num = tile.cell_num();
-      tile_var_size = tile_var.size();
+      tile_offsets = tile.data_as<offsets_t>();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1217,10 +1216,7 @@ Status Reader::compute_var_cell_destinations(
       if (cs.tile_ == nullptr || cs.tile_->tile_tuple(name) == nullptr) {
         cell_var_size = fill_value_size;
       } else {
-        cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var_size - (tile_offsets[cell_idx] - tile_offsets[0]);
+        cell_var_size = tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
       }
 
       if (*total_offset_size + offset_size > buffer_size ||
@@ -1299,10 +1295,9 @@ Status Reader::copy_partitioned_var_cells(
     auto cs_length = cs.length_;
 
     // Get tile information, if the range is nonempty.
-    uint64_t* tile_offsets = nullptr;
+    offsets_t* tile_offsets = nullptr;
     Tile* tile_var = nullptr;
     Tile* tile_validity = nullptr;
-    uint64_t tile_cell_num = 0;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
       Tile* const tile = &tile_tuple->fixed_tile();
@@ -1310,8 +1305,7 @@ Status Reader::copy_partitioned_var_cells(
       tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
-      tile_offsets = (uint64_t*)tile->data();
-      tile_cell_num = tile->cell_num();
+      tile_offsets = tile->data_as<offsets_t>();
     }
 
     // Copy each cell in the range
@@ -1342,17 +1336,15 @@ Status Reader::copy_partitioned_var_cells(
               constants::cell_validity_size);
       } else {
         const uint64_t cell_var_size =
-            (cell_idx != tile_cell_num - 1) ?
-                tile_offsets[cell_idx + 1] - tile_offsets[cell_idx] :
-                tile_var->size() - (tile_offsets[cell_idx] - tile_offsets[0]);
+            tile_offsets[cell_idx + 1] - tile_offsets[cell_idx];
         const uint64_t tile_var_offset =
             tile_offsets[cell_idx] - tile_offsets[0];
 
-        RETURN_NOT_OK(tile_var->read(var_dest, tile_var_offset, cell_var_size));
+        tile_var->read(var_dest, tile_var_offset, cell_var_size);
 
         if (nullable)
-          RETURN_NOT_OK(tile_validity->read(
-              validity_dest, cell_idx, constants::cell_validity_size));
+          tile_validity->read(
+              validity_dest, cell_idx, constants::cell_validity_size);
       }
     }
 
@@ -1391,11 +1383,11 @@ Status Reader::process_tiles(
 
   // Pre-load all attribute offsets into memory for attributes
   // to be read.
-  RETURN_NOT_OK(load_tile_offsets(subarray, read_names));
+  load_tile_offsets(subarray.relevant_fragments(), read_names);
 
   // Pre-load all var attribute var tile sizes into memory for attributes
   // to be read.
-  RETURN_NOT_OK(load_tile_var_sizes(subarray, var_size_read_names));
+  load_tile_var_sizes(subarray.relevant_fragments(), var_size_read_names);
 
   // Get the maximum number of attributes to read and unfilter in parallel.
   // Each attribute requires additional memory to buffer reads into
@@ -1445,10 +1437,6 @@ Status Reader::process_tiles(
     std::vector<std::string> inner_names(
         read_names.begin() + idx, read_names.begin() + idx + num_reads);
 
-    // Read the tiles for the names in `inner_names`. Each attribute
-    // name will be read concurrently.
-    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(inner_names, result_tiles));
-
     // Copy the cells into the associated `buffers_`, and then clear the cells
     // from the tiles. The cell copies are not thread safe. Clearing tiles are
     // thread safe, but quick enough that they do not justify scheduling on
@@ -1456,7 +1444,8 @@ Status Reader::process_tiles(
     for (const auto& inner_name : inner_names) {
       const ProcessTileFlags flags = names.at(inner_name);
 
-      RETURN_CANCEL_OR_ERROR(unfilter_tiles(inner_name, result_tiles));
+      RETURN_CANCEL_OR_ERROR(
+          read_and_unfilter_attribute_tiles({inner_name}, result_tiles));
 
       if (flags & ProcessTileFlag::COPY) {
         if (!array_schema_.var_size(inner_name)) {
@@ -1535,7 +1524,8 @@ Status Reader::compute_result_cell_slabs_row_col(
   // or in `result_space_tiles` (dense).
   auto rcs_it = ReadCellSlabIter<T>(
       &subarray, &result_space_tiles, &result_coords, *result_coords_pos);
-  for (rcs_it.begin(); !rcs_it.end(); ++rcs_it) {
+  throw_if_not_ok(rcs_it.begin());
+  for (; !rcs_it.end(); ++rcs_it) {
     // Add result cell slab
     auto result_cell_slab = rcs_it.result_cell_slab();
     result_cell_slabs.push_back(result_cell_slab);
@@ -1574,7 +1564,7 @@ Status Reader::compute_result_cell_slabs_global(
     tile_subarrays.emplace_back(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
-    tile_subarray.template compute_tile_coords<T>();
+    throw_if_not_ok(tile_subarray.template compute_tile_coords<T>());
 
     RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
@@ -1608,15 +1598,18 @@ Status Reader::compute_result_coords(
   // Create temporary vector with pointers to result tiles, so that
   // `read_tiles`, `unfilter_tiles` below can work without changes
   std::vector<ResultTile*> tmp_result_tiles;
-  for (auto& result_tile : result_tiles)
+  for (auto& result_tile : result_tiles) {
     tmp_result_tiles.push_back(&result_tile);
+  }
+  std::sort(tmp_result_tiles.begin(), tmp_result_tiles.end(), result_tile_cmp);
 
   // Preload zipped coordinate tile offsets. Note that this will
   // ignore fragments with a version >= 5.
   auto& subarray = read_state_.partitioner_.current();
   std::vector<std::string> zipped_coords_names = {constants::coords};
-  RETURN_CANCEL_OR_ERROR(load_tile_offsets(
-      read_state_.partitioner_.subarray(), zipped_coords_names));
+  load_tile_offsets(
+      read_state_.partitioner_.subarray().relevant_fragments(),
+      zipped_coords_names);
 
   // Preload unzipped coordinate tile offsets. Note that this will
   // ignore fragments with a version < 5.
@@ -1630,33 +1623,39 @@ Status Reader::compute_result_coords(
     if (array_schema_.var_size(name))
       var_size_dim_names.emplace_back(name);
   }
-  RETURN_CANCEL_OR_ERROR(
-      load_tile_offsets(read_state_.partitioner_.subarray(), dim_names));
-  RETURN_CANCEL_OR_ERROR(load_tile_var_sizes(
-      read_state_.partitioner_.subarray(), var_size_dim_names));
+  load_tile_offsets(
+      read_state_.partitioner_.subarray().relevant_fragments(), dim_names);
+  load_tile_var_sizes(
+      read_state_.partitioner_.subarray().relevant_fragments(),
+      var_size_dim_names);
 
   // Read and unfilter zipped coordinate tiles. Note that
   // this will ignore fragments with a version >= 5.
-  RETURN_CANCEL_OR_ERROR(
-      read_coordinate_tiles(zipped_coords_names, tmp_result_tiles));
-  RETURN_CANCEL_OR_ERROR(unfilter_tiles(constants::coords, tmp_result_tiles));
+  RETURN_CANCEL_OR_ERROR(read_and_unfilter_coordinate_tiles(
+      zipped_coords_names, tmp_result_tiles));
 
   // Read and unfilter unzipped coordinate tiles. Note that
   // this will ignore fragments with a version < 5.
-  RETURN_CANCEL_OR_ERROR(read_coordinate_tiles(dim_names, tmp_result_tiles));
-  for (const auto& dim_name : dim_names) {
-    RETURN_CANCEL_OR_ERROR(unfilter_tiles(dim_name, tmp_result_tiles));
-  }
+  RETURN_CANCEL_OR_ERROR(
+      read_and_unfilter_coordinate_tiles(dim_names, tmp_result_tiles));
 
   // Read and unfilter timestamps, if required.
   if (use_timestamps_) {
     std::vector<std::string> timestamps = {constants::timestamps};
-    RETURN_CANCEL_OR_ERROR(
-        load_tile_offsets(read_state_.partitioner_.subarray(), timestamps));
+    load_tile_offsets(
+        read_state_.partitioner_.subarray().relevant_fragments(), timestamps);
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(timestamps), tmp_result_tiles));
+  }
 
-    RETURN_CANCEL_OR_ERROR(read_attribute_tiles(timestamps, tmp_result_tiles));
-    RETURN_CANCEL_OR_ERROR(
-        unfilter_tiles(constants::timestamps, tmp_result_tiles));
+  // Read and unfilter delete timestamps.
+  {
+    std::vector<std::string> delete_timestamps = {constants::delete_timestamps};
+    load_tile_offsets(
+        read_state_.partitioner_.subarray().relevant_fragments(),
+        delete_timestamps);
+    RETURN_CANCEL_OR_ERROR(read_and_unfilter_attribute_tiles(
+        NameToLoad::from_string_vec(delete_timestamps), tmp_result_tiles));
   }
 
   // Compute the read coordinates for all fragments for each subarray range.
@@ -1699,52 +1698,16 @@ Status Reader::dedup_result_coords(
 
 Status Reader::dense_read() {
   auto type{array_schema_.domain().dimension_ptr(0)->type()};
-  switch (type) {
-    case Datatype::INT8:
-      return dense_read<int8_t>();
-    case Datatype::UINT8:
-      return dense_read<uint8_t>();
-    case Datatype::INT16:
-      return dense_read<int16_t>();
-    case Datatype::UINT16:
-      return dense_read<uint16_t>();
-    case Datatype::INT32:
-      return dense_read<int>();
-    case Datatype::UINT32:
-      return dense_read<unsigned>();
-    case Datatype::INT64:
-      return dense_read<int64_t>();
-    case Datatype::UINT64:
-      return dense_read<uint64_t>();
-    case Datatype::DATETIME_YEAR:
-    case Datatype::DATETIME_MONTH:
-    case Datatype::DATETIME_WEEK:
-    case Datatype::DATETIME_DAY:
-    case Datatype::DATETIME_HR:
-    case Datatype::DATETIME_MIN:
-    case Datatype::DATETIME_SEC:
-    case Datatype::DATETIME_MS:
-    case Datatype::DATETIME_US:
-    case Datatype::DATETIME_NS:
-    case Datatype::DATETIME_PS:
-    case Datatype::DATETIME_FS:
-    case Datatype::DATETIME_AS:
-    case Datatype::TIME_HR:
-    case Datatype::TIME_MIN:
-    case Datatype::TIME_SEC:
-    case Datatype::TIME_MS:
-    case Datatype::TIME_US:
-    case Datatype::TIME_NS:
-    case Datatype::TIME_PS:
-    case Datatype::TIME_FS:
-    case Datatype::TIME_AS:
-      return dense_read<int64_t>();
-    default:
-      return logger_->status(Status_ReaderError(
-          "Cannot read dense array; Unsupported domain type"));
-  }
 
-  return Status::Ok();
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+      return dense_read<decltype(T)>();
+    } else {
+      return Status_ReaderError(
+          "Cannot read dense array; Unsupported domain type");
+    }
+  };
+  return apply_with_type(g, type);
 }
 
 template <class T>
@@ -1775,6 +1738,7 @@ Status Reader::dense_read() {
       result_coords,
       result_tiles,
       result_cell_slabs));
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   auto stride = array_schema_.domain().stride<T>(subarray.layout());
   RETURN_NOT_OK(apply_query_condition(
@@ -2018,6 +1982,7 @@ Status Reader::sparse_read() {
   for (auto& srt : sparse_result_tiles) {
     result_tiles.push_back(&srt);
   }
+  std::sort(result_tiles.begin(), result_tiles.end(), result_tile_cmp);
 
   // Compute result cell slabs
   std::vector<ResultCellSlab> result_cell_slabs;
@@ -2025,8 +1990,8 @@ Status Reader::sparse_read() {
       compute_result_cell_slabs(result_coords, result_cell_slabs));
   result_coords.clear();
 
-  apply_query_condition(
-      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray());
+  throw_if_not_ok(apply_query_condition(
+      result_cell_slabs, result_tiles, read_state_.partitioner_.subarray()));
   get_result_tile_stats(result_tiles);
   get_result_cell_stats(result_cell_slabs);
 
@@ -2147,7 +2112,7 @@ Status Reader::calculate_hilbert_values(
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status(status));
+  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
 
   return Status::Ok();
 }
@@ -2197,6 +2162,227 @@ bool Reader::belong_to_single_fragment(
   }
 
   return true;
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords(
+    const Subarray& subarray) {
+  auto timer_se = stats_->start_timer("fill_dense_coords");
+
+  // Reading coordinates with a query condition is currently unsupported.
+  // Query conditions mutate the result cell slabs to filter attributes.
+  // This path does not use result cell slabs, which will fill coordinates
+  // for cells that should be filtered out.
+  if (condition_.has_value()) {
+    return {
+        logger_->status(Status_ReaderError(
+            "Cannot read dense coordinates; dense coordinate "
+            "reads are unsupported with a query condition")),
+        nullopt};
+  }
+
+  // Prepare buffers
+  std::vector<unsigned> dim_idx;
+  std::vector<QueryBuffer*> buffers;
+  auto coords_it = buffers_.find(constants::coords);
+  auto dim_num = array_schema_.dim_num();
+  if (coords_it != buffers_.end()) {
+    buffers.emplace_back(&(coords_it->second));
+    dim_idx.emplace_back(dim_num);
+  } else {
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto dim{array_schema_.dimension_ptr(d)};
+      auto it = buffers_.find(dim->name());
+      if (it != buffers_.end()) {
+        buffers.emplace_back(&(it->second));
+        dim_idx.emplace_back(d);
+      }
+    }
+  }
+  std::vector<uint64_t> offsets(buffers.size(), 0);
+
+  bool overflowed = false;
+  if (layout_ == Layout::GLOBAL_ORDER) {
+    auto&& [st, of] =
+        fill_dense_coords_global<T>(subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed = *of;
+  } else {
+    assert(layout_ == Layout::ROW_MAJOR || layout_ == Layout::COL_MAJOR);
+    auto&& [st, of] =
+        fill_dense_coords_row_col<T>(subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed = *of;
+  }
+
+  // Update buffer sizes
+  for (size_t i = 0; i < buffers.size(); ++i)
+    *(buffers[i]->buffer_size_) = offsets[i];
+
+  return {Status::Ok(), overflowed};
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords_global(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto tile_coords = subarray.tile_coords();
+  auto cell_order = array_schema_.cell_order();
+
+  bool overflowed = false;
+  for (const auto& tc : tile_coords) {
+    auto tile_subarray = subarray.crop_to_tile((const T*)&tc[0], cell_order);
+    auto&& [st, of] =
+        fill_dense_coords_row_col<T>(tile_subarray, dim_idx, buffers, offsets);
+    RETURN_NOT_OK_TUPLE(st, std::nullopt);
+    overflowed |= *of;
+  }
+
+  return {Status::Ok(), overflowed};
+}
+
+template <class T>
+tuple<Status, optional<bool>> Reader::fill_dense_coords_row_col(
+    const Subarray& subarray,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) {
+  auto cell_order = array_schema_.cell_order();
+  auto dim_num = array_schema_.dim_num();
+
+  // Iterate over all coordinates, retrieved in cell slabs
+  CellSlabIter<T> iter(&subarray);
+  RETURN_CANCEL_OR_ERROR_TUPLE(iter.begin());
+  while (!iter.end()) {
+    auto cell_slab = iter.cell_slab();
+    auto coords_num = cell_slab.length_;
+
+    // Check for overflow
+    for (size_t i = 0; i < buffers.size(); ++i) {
+      auto idx = (dim_idx[i] == dim_num) ? 0 : dim_idx[i];
+      auto coord_size{array_schema_.domain().dimension_ptr(idx)->coord_size()};
+      coord_size = (dim_idx[i] == dim_num) ? coord_size * dim_num : coord_size;
+      auto buff_size = *(buffers[i]->buffer_size_);
+      auto offset = offsets[i];
+      if (coords_num * coord_size + offset > buff_size) {
+        return {Status::Ok(), true};
+      }
+    }
+
+    // Copy slab
+    if (layout_ == Layout::ROW_MAJOR ||
+        (layout_ == Layout::GLOBAL_ORDER && cell_order == Layout::ROW_MAJOR))
+      fill_dense_coords_row_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+    else
+      fill_dense_coords_col_slab(
+          &cell_slab.coords_[0], coords_num, dim_idx, buffers, offsets);
+
+    ++iter;
+  }
+
+  return {Status::Ok(), false};
+}
+
+template <class T>
+void Reader::fill_dense_coords_row_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, start, bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+
+      // Last dimension is incremented by `i`
+      auto new_coord = start[dim_num - 1] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+    }
+  } else {  // Set of separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &offsets[b];
+
+        // First dim-1 dimensions are copied as they are
+        if (dim_num > 1 && dim_idx[b] < dim_num - 1) {
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        } else {
+          // Last dimension is incremented by `i`
+          auto new_coord = start[dim_num - 1] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
+}
+
+template <class T>
+void Reader::fill_dense_coords_col_slab(
+    const T* start,
+    uint64_t num,
+    const std::vector<unsigned>& dim_idx,
+    const std::vector<QueryBuffer*>& buffers,
+    std::vector<uint64_t>& offsets) const {
+  // For easy reference
+  auto dim_num = array_schema_.dim_num();
+
+  // Special zipped coordinates
+  if (dim_idx.size() == 1 && dim_idx[0] == dim_num) {
+    auto c_buff = (char*)buffers[0]->buffer_;
+    auto offset = &offsets[0];
+
+    // Fill coordinates
+    for (uint64_t i = 0; i < num; ++i) {
+      // First dimension is incremented by `i`
+      auto new_coord = start[0] + i;
+      std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+      *offset += sizeof(T);
+
+      // Last dim-1 dimensions are copied as they are
+      if (dim_num > 1) {
+        auto bytes_to_copy = (dim_num - 1) * sizeof(T);
+        std::memcpy(c_buff + *offset, &start[1], bytes_to_copy);
+        *offset += bytes_to_copy;
+      }
+    }
+  } else {  // Separate coordinate buffers
+    for (uint64_t i = 0; i < num; ++i) {
+      for (size_t b = 0; b < buffers.size(); ++b) {
+        auto c_buff = (char*)buffers[b]->buffer_;
+        auto offset = &offsets[b];
+
+        // First dimension is incremented by `i`
+        if (dim_idx[b] == 0) {
+          auto new_coord = start[0] + i;
+          std::memcpy(c_buff + *offset, &new_coord, sizeof(T));
+          *offset += sizeof(T);
+        } else {  // Last dim-1 dimensions are copied as they are
+          std::memcpy(c_buff + *offset, &start[dim_idx[b]], sizeof(T));
+          *offset += sizeof(T);
+        }
+      }
+    }
+  }
 }
 
 }  // namespace sm

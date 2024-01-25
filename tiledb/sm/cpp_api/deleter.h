@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_DELETER_H
 
 #include "context.h"
+#include "log.h"
 #include "tiledb.h"
 #include "tiledb_experimental.h"
 
@@ -60,7 +61,13 @@ class Deleter {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  Deleter() = default;
+  Deleter()
+      : ctx_(nullptr) {
+  }
+
+  Deleter(const Context* ctx)
+      : ctx_(ctx) {
+  }
 
   /* ********************************* */
   /*              DELETERS             */
@@ -102,8 +109,16 @@ class Deleter {
     tiledb_dimension_free(&p);
   }
 
+  void operator()(tiledb_dimension_label_t* p) const {
+    tiledb_dimension_label_free(&p);
+  }
+
   void operator()(tiledb_domain_t* p) const {
     tiledb_domain_free(&p);
+  }
+
+  void operator()(tiledb_enumeration_t* p) const {
+    tiledb_enumeration_free(&p);
   }
 
   void operator()(tiledb_vfs_t* p) const {
@@ -130,10 +145,23 @@ class Deleter {
     tiledb_group_free(&p);
   }
 
+  void operator()(tiledb_consolidation_plan_t* p) const {
+    tiledb_consolidation_plan_free(&p);
+  }
+
+  void operator()(tiledb_query_channel_t* p) const {
+    tiledb_query_channel_free(ctx_->ptr().get(), &p);
+  }
+
+  void operator()(tiledb_channel_operation_t* p) const {
+    tiledb_aggregate_free(ctx_->ptr().get(), &p);
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+  const Context* ctx_;
 };
 
 }  // namespace impl

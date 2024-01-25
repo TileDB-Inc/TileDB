@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;

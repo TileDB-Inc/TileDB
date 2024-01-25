@@ -27,16 +27,11 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    governor.cc
-)
-gather_sources(${SOURCES})
-
 if (FALSE AND TILEDB_TESTS) # reserved for later
     find_package(Catch_EP REQUIRED)
 
     add_executable(unit_governor EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_governor PUBLIC Catch2::Catch2)
+    target_link_libraries(unit_governor PUBLIC Catch2::Catch2WithMain)
 
     # Sources for code under test
     target_sources(unit_dynamic_memory PUBLIC

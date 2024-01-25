@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -32,7 +32,7 @@ include(common NO_POLICY_SCOPE)
 #   - Include path for `c_api` headers
 #
 add_library(export INTERFACE)
-target_compile_definitions(export INTERFACE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(export INTERFACE -Dtiledb_EXPORTS)
 target_include_directories(export INTERFACE ${TILEDB_EXPORT_HEADER_DIR})
 target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_api)
 
@@ -49,6 +49,15 @@ target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_ap
 # depends on `context`, as context handles are often the first argument.
 #
 
+# `array`: no dependencies
+add_subdirectory(array)
+
+# `buffer`: no dependencies
+add_subdirectory(buffer)
+
+# `buffer_list`: depends on `buffer`
+add_subdirectory(buffer_list)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
@@ -58,5 +67,60 @@ add_subdirectory(config)
 # `context`: depends on `config`
 add_subdirectory(context)
 
+# `datatype`: no dependencies
+add_subdirectory(datatype)
+
+# `data_order`: no dependencies
+add_subdirectory(data_order)
+
+# `dimension_label`: depends on `context`, `datatype`, `data_order`
+add_subdirectory(dimension_label)
+
+# `enumeration`: depends on `buffer`, `constants`, and `context`
+add_subdirectory(enumeration)
+
+# `filesystem`: no dependencies
+add_subdirectory(filesystem)
+
 # `filter`: depends on `context`
 add_subdirectory(filter)
+
+# `filter_list`: depends on `context`, `filter`
+add_subdirectory(filter_list)
+
+# `dimension`: depends on `filter_list`, `datatype`
+add_subdirectory(dimension)
+
+# `domain`: depends on `dimension`
+add_subdirectory(domain)
+
+# `attribute`: depends on `filter_list`, `datatype`
+add_subdirectory(attribute)
+
+# `group`: depends on `config`, `context`
+add_subdirectory(group)
+
+# `object`: no dependencies
+add_subdirectory(object)
+
+# NOTE: Only the tiledb_query_type_t enum has been migrated
+# to the new C API layout.
+#
+# `query`: no dependencies yet but will have some
+add_subdirectory(query)
+
+# `string`: no dependencies
+add_subdirectory(string)
+
+# `vfs`: depends on `context`
+add_subdirectory(vfs)
+
+# `query_plan`: no dependencies yet
+add_subdirectory(query_plan)
+
+# `query_aggregate`: no dependencies
+add_subdirectory(query_aggregate)
+
+# `query_field`: no dependencies
+add_subdirectory(query_field)
+

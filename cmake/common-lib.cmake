@@ -59,7 +59,7 @@
 # to be built all together as a whole. One of the consequences of this is that
 # CMake also uses a common build directory for the metabuild. This usually
 # should not cause a problem, but it means that, for example, experiments with
-# common configuation are limited to one-at-a-time per build-directory.
+# common configuration are limited to one-at-a-time per build-directory.
 #
 # Common environment elements fall into two categories, depending on whether
 # they depend on the calling directory or not. Compiler flags that set up

@@ -29,6 +29,6 @@
 #include "../group.h"
 
 int main() {
-  (void)sizeof(tiledb::sm::Group);
+  (void)sizeof(tiledb::sm::GroupDetails);
   return 0;
 }

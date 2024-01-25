@@ -26,4 +26,5 @@
 
 include(common)
 
+add_subdirectory(exception_wrapper)
 add_subdirectory(handle)

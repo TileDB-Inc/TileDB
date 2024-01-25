@@ -45,6 +45,7 @@
 #include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
 #include "tiledb/sm/query/readers/result_coords.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
 using namespace tiledb::common;
@@ -53,7 +54,6 @@ namespace tiledb {
 namespace sm {
 
 class Array;
-class StorageManager;
 class Tile;
 
 /** Processes read queries. */
@@ -67,14 +67,8 @@ class Reader : public ReaderBase, public IQueryStrategy {
   Reader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
-      QueryCondition& condition,
-      bool skip_checks_serialization = false);
+      StrategyParams& params,
+      bool remote_query = false);
 
   /** Destructor. */
   ~Reader() = default;
@@ -100,7 +94,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
   QueryStatusDetailsReason status_incomplete_reason() const;
 
   /** Initialize the memory budget variables. */
-  Status initialize_memory_budget();
+  void refresh_config();
 
   /** Returns the current read state. */
   const ReadState* read_state() const;
@@ -113,6 +107,9 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Resets the reader object. */
   void reset();
+
+  /** Returns the name of the strategy */
+  std::string name();
 
   /**
    * Computes the result cell slabs for the input subarray, given the
@@ -709,6 +706,124 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return timestamp.
    */
   uint64_t get_timestamp(const ResultCoords& rc) const;
+
+  /**
+   * Fills the coordinate buffer with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @return Status, overflowed
+   */
+  template <class T>
+  tuple<Status, optional<bool>> fill_dense_coords(const Subarray& subarray);
+
+  /**
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to global order.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
+   * @return Status, overflowed.
+   */
+  template <class T>
+  tuple<Status, optional<bool>> fill_dense_coords_global(
+      const Subarray& subarray,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets);
+
+  /**
+   * Fills the coordinate buffers with coordinates. Applicable only to dense
+   * arrays when the user explicitly requests the coordinates to be
+   * materialized. Also applicable only to row-/col-major order.
+   *
+   * @tparam T The domain type.
+   * @param subarray The input subarray.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
+   * @return Status, overflowed.
+   */
+  template <class T>
+  tuple<Status, optional<bool>> fill_dense_coords_row_col(
+      const Subarray& subarray,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets);
+
+  /**
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a row-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [3, 1], [3, 2], and [3, 3].
+   *
+   * @tparam T The domain type.
+   * @param start The starting coordinates in the slab.
+   * @param num The number of coords to be written.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_row_slab(
+      const T* start,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets) const;
+
+  /**
+   * Fills coordinates in the input buffers for a particular cell slab,
+   * following a col-major layout. For instance, if the starting coordinate are
+   * [3, 1] and the number of coords to be written is 3, this function will
+   * write to the input buffer (starting at the input offset) coordinates
+   * [4, 1], [5, 1], and [6, 1].
+   *
+   * @tparam T The domain type.
+   * @param start The starting coordinates in the slab.
+   * @param num The number of coords to be written.
+   * @param dim_idx The dimension indices of the corresponding `buffers`.
+   *     For the special zipped coordinates, `dim_idx`, `buffers` and `offsets`
+   *     contain a single element and `dim_idx` contains `dim_num` as
+   *     the dimension index.
+   * @param buffers The buffers to copy from. It could be the special
+   *     zipped coordinates or separate coordinate buffers.
+   * @param offsets The offsets that will be used eventually to update
+   *     the buffer sizes, determining the useful results written in
+   *     the buffers.
+   */
+  template <class T>
+  void fill_dense_coords_col_slab(
+      const T* start,
+      uint64_t num,
+      const std::vector<unsigned>& dim_idx,
+      const std::vector<QueryBuffer*>& buffers,
+      std::vector<uint64_t>& offsets) const;
 };
 
 }  // namespace sm

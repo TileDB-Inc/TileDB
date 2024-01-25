@@ -33,6 +33,7 @@
 #ifndef TILEDB_CELL_SLAB_H
 #define TILEDB_CELL_SLAB_H
 
+#include <cstdint>
 #include <cstring>
 #include <iostream>
 #include <vector>

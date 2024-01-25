@@ -52,6 +52,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/curl/curl_init.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -335,6 +336,13 @@ class Curl {
   tuple<Status, optional<long>> last_http_status_code();
 
  private:
+  /**
+   * A libcurl initializer instance. This should remain
+   * the first member variable to ensure that libcurl is
+   * initialized before any calls that may require it.
+   */
+  tiledb::sm::curl::LibCurlInitializer curl_inited_;
+
   /** TileDB config parameters. */
   const Config* config_;
 
@@ -370,6 +378,9 @@ class Curl {
 
   /** Verbose logging in curl. */
   bool verbose_;
+
+  /** Max curl buffer size for received data. */
+  uint64_t curl_buffer_size_;
 
   /**
    * Populates the curl slist with authorization (token or username+password),
@@ -440,6 +451,23 @@ class Curl {
       void* write_arg) const;
 
   /**
+   * Instruments and then executes curl_easy_perform. Instrumentation
+   * is meant to provide crucial information on core-to-REST-server HTTP
+   * operations which is essential for analyzing and minimizing remote-request
+   * latencies. An indispensable counterpart to Jaeger tracing, while Jaeger
+   * tracing isn't enough to give us a full picture on all interactions in all
+   * contexts.
+   *
+   * Easiest instrumentation enable:
+   *     export TILEDB_CONFIG_LOGGING_LEVEL=5
+   *
+   * @param url URL to fetch.
+   * @param retry_number The time this request is being retried.
+   */
+  CURLcode curl_easy_perform_instrumented(
+      const char* const url, const uint8_t retry_number) const;
+
+  /**
    * Common code shared between variants of 'make_curl_options_request'.
    *
    * @param stats The stats instance to record into
@@ -481,7 +509,7 @@ class Curl {
    * @param retry true if the http code matches the retry list
    * @return Status
    */
-  Status should_retry(bool* retry) const;
+  Status should_retry_based_on_http_status(bool* retry) const;
 };
 
 }  // namespace sm

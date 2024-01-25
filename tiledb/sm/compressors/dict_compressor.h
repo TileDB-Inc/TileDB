@@ -183,7 +183,7 @@ class DictEncoding {
       const span<const std::string> dict,
       span<std::byte> output,
       span<uint64_t> output_offsets) {
-    if (input.empty() || output.empty() || dict.size() == 0) {
+    if (input.empty() || dict.size() == 0) {
       throw std::logic_error(
           "Empty arguments when decompressing dictionary encoded strings.");
     }
@@ -195,8 +195,10 @@ class DictEncoding {
       word_id = utils::endianness::decode_be<T>(&input[in_index]);
       in_index += sizeof(T);
       assert(word_id < dict.size());
-      auto word = dict[word_id];
-      memcpy(&output[out_index], word.data(), word.size());
+      const auto& word = dict[word_id];
+      if (word.size() > 0) {
+        memcpy(&output[out_index], word.data(), word.size());
+      }
       output_offsets[offset_index++] = out_index;
       out_index += word.size();
     }
@@ -237,15 +239,21 @@ class DictEncoding {
 
     std::vector<std::string> dict;
     dict.reserve(serialized_dict.size());
+    // T is uint{8,16,32,64} specified at the call-site
     T str_len = 0;
 
     size_t in_index = 0;
     while (in_index < serialized_dict.size()) {
       str_len = utils::endianness::decode_be<T>(&serialized_dict[in_index]);
+      // increment past the size element to the per-word data block
       in_index += sizeof(T);
       // construct string in place
-      dict.emplace_back(
-          reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+      if (str_len > 0) {
+        dict.emplace_back(
+            reinterpret_cast<const char*>(&serialized_dict[in_index]), str_len);
+      } else {
+        dict.emplace_back();
+      }
       in_index += str_len;
     }
 

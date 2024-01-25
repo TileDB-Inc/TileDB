@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 
 #include <cmath>
@@ -48,31 +49,117 @@ using namespace tiledb::common;
 namespace tiledb::type {
 
 /**
- * Defines a 1D range (low, high), flattened in a sequence of bytes.
- * If the range consists of var-sized values (e.g., strings), then
- * the format is:
+ * Untyped storage for a closed interval
  *
- * low_nbytes (uint32) | low | high_nbytes (uint32) | high
+ * This class is the storage part in a split type system, so it must be used in
+ * conjunction with a type object (of some sort). Internally it does distinguish
+ * between fixed and variable size types.
  */
 class Range {
+  /**
+   * The range is stored as a sequence of bytes with manual memory layout. The
+   * memory layout is different for fixed-size and variable-size types.
+   *
+   * Fixed-size type T:
+   *   lower limit: sizeof(T)
+   *   upper limit: sizeof(T)
+   * Variable-size type T:
+   *   lower limit: range_start_size_
+   *   upper limit: range_size() - range_start_size_
+   */
+  std::vector<uint8_t> range_;
+
+  /**
+   * The byte size of the lower limit of the range. Applicable only to variable
+   * size types.
+   *
+   * Default size of zero applicable to fixed size types
+   */
+  uint64_t range_start_size_{0};
+
+  /**
+   * True if the type is of variable size; false otherwise.
+   *
+   * Default is false for fixed size types
+   */
+  bool var_size_{false};
+
+  /**
+   * The ranges in a query's initial subarray have a depth of 0.
+   * When a range is split, the depth on the split ranges are
+   * set to +1 the depth of the original range.
+   *
+   * TODO: This value is only used in the subarray partitioner and should be
+   * moved to a `class PartitionRange` in that module.
+   *
+   * Default is zero in all cases.
+   */
+  uint64_t partition_depth_{0};
+
+  /**
+   * Constructor that designates the size of the storage. This constructor is
+   * meant to be delegated to and then initialized in the calling constructor's
+   * body.
+   *
+   * @param size Size of the storage array in bytes
+   */
+  explicit Range(size_t size)
+      : range_(size) {
+  }
+
  public:
   /** Default constructor. */
   Range()
-      : range_start_size_(0)
-      , var_size_(false)
-      , partition_depth_(0) {
+      : range_{} {
   }
 
-  /** Constructor setting a range. */
+  /** Constructs a range and sets fixed data. */
   Range(const void* range, uint64_t range_size)
       : Range() {
     set_range(range, range_size);
   }
 
-  /** Constructor setting a range. */
+  /** Constructs a range and sets variable data. */
   Range(const void* range, uint64_t range_size, uint64_t range_start_size)
       : Range() {
     set_range(range, range_size, range_start_size);
+  }
+
+  /** Constructs a range and sets fixed data. */
+  Range(const void* start, const void* end, uint64_t type_size)
+      : Range() {
+    set_range_fixed(start, end, type_size);
+  }
+
+  /** Constructs a range and sets variable data. */
+  Range(
+      const void* start,
+      uint64_t start_size,
+      const void* end,
+      uint64_t end_size)
+      : Range() {
+    set_range_var(start, start_size, end, end_size);
+  }
+
+  /** Constructs a range and sets variable data. */
+  Range(const std::string& s1, const std::string& s2)
+      : Range() {
+    set_str_range(s1, s2);
+  }
+
+  /**
+   * Construct from two values of a fixed size type.
+   *
+   * This constructor requires a tag because otherwise it conflicts with the
+   * two-argument string constructor. Before C++20 it's difficult to only enable
+   * this constructor for language type that we use as fixed-length data.
+   */
+  template <class T>
+  Range(Tag<T>, T first, T second)
+      : Range(2 * sizeof(T)) {
+    auto d{reinterpret_cast<T*>(range_.data())};
+    d[0] = first;
+    d[1] = second;
   }
 
   /** Copy constructor. */
@@ -103,6 +190,21 @@ class Range {
     std::memcpy(range_.data(), r, r_size);
     range_start_size_ = range_start_size;
     var_size_ = true;
+  }
+
+  /**
+   * Sets a fixed-sixed range with start and end serialized separately.
+   *
+   * @param start Location of serialized starting element
+   * @param end Location of serialixed ending element
+   * @param type_size The size of a single element of the deserialized data.
+   */
+  void set_range_fixed(const void* start, const void* end, uint64_t type_size) {
+    range_.resize(2 * type_size);
+    std::memcpy(&range_[0], start, type_size);
+    std::memcpy(&range_[type_size], end, type_size);
+    range_start_size_ = type_size;
+    var_size_ = false;
   }
 
   /** Sets a var-sized range `[r1, r2]`. */
@@ -140,7 +242,9 @@ class Range {
   inline const T* typed_data() const {
     assert(!var_size_);
     assert(range_.empty() || (range_.size() == 2 * sizeof(T)));
-    return range_.empty() ? nullptr : (T*)range_.data();
+    return range_.empty() ?
+               nullptr :
+               static_cast<const T*>(static_cast<const void*>(range_.data()));
   }
 
   /** Returns a pointer to the start of the range. */
@@ -224,6 +328,24 @@ class Range {
     std::memcpy(&range_[fixed_size], end, fixed_size);
   }
 
+  /** Returns the start range as the requested type. */
+  template <typename T>
+  inline T start_as() const {
+    assert(!var_size_);
+    assert(!range_.empty());
+    return *static_cast<const T*>(static_cast<const void*>(range_.data()));
+  }
+
+  /** Returns the end range as the requested type. */
+  template <typename T>
+  inline T end_as() const {
+    assert(!var_size_);
+    assert(!range_.empty());
+    auto end_pos = range_.size() / 2;
+    return *static_cast<const T*>(
+        static_cast<const void*>(range_.data() + end_pos));
+  }
+
   /** Returns true if the range is empty. */
   bool empty() const {
     return range_.empty();
@@ -271,23 +393,6 @@ class Range {
   uint64_t partition_depth() const {
     return partition_depth_;
   }
-
- private:
-  /** The range as a flat byte vector. */
-  std::vector<uint8_t> range_;
-
-  /** The size of the start of `range_`. */
-  uint64_t range_start_size_;
-
-  /** Is the range var sized. */
-  bool var_size_;
-
-  /**
-   * The ranges in a query's initial subarray have a depth of 0.
-   * When a range is split, the depth on the split ranges are
-   * set to +1 the depth of the original range.
-   */
-  uint64_t partition_depth_;
 };
 
 /**

@@ -32,420 +32,533 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 
-void create_sparse_array(const std::string& array_name) {
-  Context ctx;
-  VFS vfs(ctx);
+struct VariableOffsetsFx {
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  test::ServerQueryBuffers server_buffers_;
 
-  // Create the array
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+  void create_sparse_array(const std::string& array_name) {
+    Context ctx;
+    VFS vfs(ctx);
 
-  Domain dom(ctx);
-  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
-      .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
+    // Create the array
+    if (vfs.is_dir(array_name))
+      vfs.remove_dir(array_name);
 
-  ArraySchema schema(ctx, TILEDB_SPARSE);
-  Attribute attr(ctx, "attr", TILEDB_INT32);
-  attr.set_cell_val_num(TILEDB_VAR_NUM);
-  schema.add_attribute(attr);
-  schema.set_tile_order(TILEDB_ROW_MAJOR);
-  schema.set_cell_order(TILEDB_ROW_MAJOR);
-  schema.set_domain(dom);
-  schema.set_allows_dups(true);
+    Domain dom(ctx);
+    dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
+        .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
 
-  Array::create(array_name, schema);
-}
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    Attribute attr(ctx, "attr", TILEDB_INT32);
+    attr.set_cell_val_num(TILEDB_VAR_NUM);
+    schema.add_attribute(attr);
+    schema.set_tile_order(TILEDB_ROW_MAJOR);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_domain(dom);
+    schema.set_allows_dups(true);
 
-void write_sparse_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& data,
-    std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout) {
-  std::vector<int64_t> d1 = {1, 2, 3, 4};
-  std::vector<int64_t> d2 = {2, 1, 3, 4};
-
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(layout);
-  query.set_data_buffer("d1", d1);
-  query.set_data_buffer("d2", d2);
-  query.set_data_buffer("attr", data);
-  query.set_offsets_buffer("attr", data_offsets);
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
-
-  array.close();
-}
-
-void write_sparse_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& data,
-    std::vector<uint32_t>& data_offsets,
-    tiledb_layout_t layout) {
-  std::vector<int64_t> d1 = {1, 2, 3, 4};
-  std::vector<int64_t> d2 = {2, 1, 3, 4};
-
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-  query.set_layout(layout);
-  query.set_data_buffer("d1", d1);
-  query.set_data_buffer("d2", d2);
-  query.set_data_buffer("attr", data.data(), data.size());
-  query.set_offsets_buffer(
-      "attr",
-      reinterpret_cast<uint64_t*>(data_offsets.data()),
-      data_offsets.size());
-  CHECK_NOTHROW(query.submit());
-
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
-
-  array.close();
-}
-
-void read_and_check_sparse_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& expected_data,
-    std::vector<uint64_t>& expected_offsets,
-    tiledb_layout_t layout) {
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
-
-  std::vector<int32_t> attr_val(expected_data.size());
-  std::vector<uint64_t> attr_off(expected_offsets.size());
-
-  query.set_layout(layout);
-  query.set_data_buffer("attr", attr_val);
-  query.set_offsets_buffer("attr", attr_off);
-
-  CHECK_NOTHROW(query.submit());
-
-  // Check the element offsets are properly returned
-  CHECK(attr_val == expected_data);
-  CHECK(attr_off == expected_offsets);
-
-  array.close();
-}
-
-void read_and_check_sparse_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& expected_data,
-    std::vector<uint32_t>& expected_offsets,
-    tiledb_layout_t layout) {
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
-
-  std::vector<int32_t> attr_val(expected_data.size());
-  std::vector<uint32_t> attr_off(expected_offsets.size());
-  query.set_layout(layout);
-  // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
-  // accepts it
-  query.set_data_buffer("attr", attr_val.data(), attr_val.size());
-  query.set_offsets_buffer(
-      "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
-  CHECK_NOTHROW(query.submit());
-
-  // Check the element offsets are properly returned
-  CHECK(attr_val == expected_data);
-  CHECK(attr_off == expected_offsets);
-
-  array.close();
-}
-
-void reset_read_buffers(
-    std::vector<int32_t>& data, std::vector<uint64_t>& offsets) {
-  data.assign(data.size(), 0);
-  offsets.assign(offsets.size(), 0);
-}
-
-void partial_read_and_check_sparse_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& exp_data_part1,
-    std::vector<uint64_t>& exp_off_part1,
-    std::vector<int32_t>& exp_data_part2,
-    std::vector<uint64_t>& exp_off_part2,
-    tiledb_layout_t layout) {
-  // The size of read buffers is smaller than the size
-  // of all the data, so we'll do partial reads
-  std::vector<int32_t> attr_val(exp_data_part1.size());
-  std::vector<uint64_t> attr_off(exp_off_part1.size());
-
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
-  query.set_layout(layout);
-  query.set_data_buffer("attr", attr_val);
-  query.set_offsets_buffer("attr", attr_off);
-
-  // Check that first partial read returns expected results
-  CHECK_NOTHROW(query.submit());
-  Query::Status status = query.query_status();
-  CHECK(status == Query::Status::INCOMPLETE);
-  CHECK(attr_val == exp_data_part1);
-  CHECK(attr_off == exp_off_part1);
-
-  // Check that second partial read returns expected results
-  CHECK_NOTHROW(query.submit());
-  status = query.query_status();
-  CHECK(status == Query::Status::COMPLETE);
-  CHECK(attr_val == exp_data_part2);
-  CHECK(attr_off == exp_off_part2);
-
-  array.close();
-}
-
-void read_and_check_empty_coords_array(
-    Context ctx, const std::string& array_name, tiledb_layout_t layout) {
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
-
-  std::vector<int32_t> attr_val(4);
-  std::vector<uint64_t> attr_off(4);
-
-  query.set_layout(layout);
-  query.set_data_buffer("attr", attr_val);
-  query.set_offsets_buffer("attr", attr_off);
-
-  // Query outside unwritten coordinates of the array
-  int64_t d1_start = 1, d1_end = 2;
-  int64_t d2_start = 3, d2_end = 4;
-  query.add_range("d1", d1_start, d1_end);
-  query.add_range("d2", d2_start, d2_end);
-
-  CHECK_NOTHROW(query.submit());
-
-  // Check the element offsets are properly returned
-  uint64_t offset_elem_num = 0, data_vals_num = 0, validity_elem_num = 0;
-  std::tie(offset_elem_num, data_vals_num, validity_elem_num) =
-      query.result_buffer_elements_nullable()["attr"];
-
-  CHECK(offset_elem_num == 0);
-  CHECK(data_vals_num == 0);
-
-  array.close();
-}
-
-void create_dense_array(const std::string& array_name) {
-  Context ctx;
-  VFS vfs(ctx);
-
-  // Create the array
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
-
-  Domain dom(ctx);
-  dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
-      .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
-
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  Attribute attr(ctx, "attr", TILEDB_INT32);
-  attr.set_cell_val_num(TILEDB_VAR_NUM);
-  schema.add_attribute(attr);
-  schema.set_tile_order(TILEDB_ROW_MAJOR);
-  schema.set_cell_order(TILEDB_ROW_MAJOR);
-  schema.set_domain(dom);
-
-  Array::create(array_name, schema);
-}
-
-void write_dense_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& data,
-    std::vector<uint64_t>& data_offsets,
-    tiledb_layout_t layout,
-    shared_ptr<Config> config = nullptr) {
-  std::vector<int64_t> d1 = {1, 1, 2, 2};
-  std::vector<int64_t> d2 = {1, 2, 1, 2};
-
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-
-  if (config != nullptr) {
-    query.set_config(*config);
-
-    // Validate we can retrieve set config
-    Config config2 = query.config();
-    bool same = *config == config2;
-    CHECK(same == true);
+    Array::create(array_name, schema);
   }
 
-  query.set_data_buffer("attr", data);
-  query.set_offsets_buffer("attr", data_offsets);
-  query.set_layout(layout);
-  if (layout == TILEDB_UNORDERED) {
-    // sparse write to dense array
+  void write_sparse_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& data,
+      std::vector<uint64_t>& data_offsets,
+      tiledb_layout_t layout) {
+    std::vector<int64_t> d1 = {1, 2, 3, 4};
+    std::vector<int64_t> d2 = {2, 1, 3, 4};
+
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(layout);
     query.set_data_buffer("d1", d1);
     query.set_data_buffer("d2", d2);
-  } else {
-    query.set_subarray<int64_t>({1, 2, 1, 2});
+    query.set_data_buffer("attr", data);
+    query.set_offsets_buffer("attr", data_offsets);
+
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
+    REQUIRE(rc == TILEDB_OK);
+
+    array.close();
   }
 
-  CHECK_NOTHROW(query.submit());
+  void write_sparse_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& data,
+      std::vector<uint32_t>& data_offsets,
+      tiledb_layout_t layout) {
+    std::vector<int64_t> d1 = {1, 2, 3, 4};
+    std::vector<int64_t> d2 = {2, 1, 3, 4};
 
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
-
-  array.close();
-}
-
-void write_dense_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& data,
-    std::vector<uint32_t>& data_offsets,
-    tiledb_layout_t layout,
-    shared_ptr<Config> config = nullptr) {
-  std::vector<int64_t> d1 = {1, 1, 2, 2};
-  std::vector<int64_t> d2 = {1, 2, 1, 2};
-
-  Array array(ctx, array_name, TILEDB_WRITE);
-  Query query(ctx, array, TILEDB_WRITE);
-
-  if (config != nullptr) {
-    query.set_config(*config);
-
-    // Validate we can retrieve set config
-    Config config2 = query.config();
-    bool same = *config == config2;
-    CHECK(same == true);
-  }
-
-  // Write using a 32-bit vector, but cast it to 64-bit pointer so that the API
-  // accepts it
-  query.set_data_buffer("attr", data.data(), data.size());
-  query.set_offsets_buffer(
-      "attr",
-      reinterpret_cast<uint64_t*>(data_offsets.data()),
-      data_offsets.size());
-  query.set_layout(layout);
-  if (layout == TILEDB_UNORDERED) {
-    // sparse write to dense array
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+    query.set_layout(layout);
     query.set_data_buffer("d1", d1);
     query.set_data_buffer("d2", d2);
-  } else {
-    query.set_subarray<int64_t>({1, 2, 1, 2});
+    query.set_data_buffer("attr", data.data(), data.size());
+    query.set_offsets_buffer(
+        "attr",
+        reinterpret_cast<uint64_t*>(data_offsets.data()),
+        data_offsets.size());
+
+    /* TODO: enable this when sc21681 is fixed
+      // Submit query
+      auto rc = test::submit_query_wrapper(
+          ctx, array_name, &query, server_buffers_, serialize_,
+      refactored_query_v2_); REQUIRE(rc == TILEDB_OK);
+    */
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+
+    array.close();
   }
 
-  CHECK_NOTHROW(query.submit());
-  // Finalize is necessary in global writes, otherwise a no-op
-  query.finalize();
+  void read_and_check_sparse_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& expected_data,
+      std::vector<uint64_t>& expected_offsets,
+      tiledb_layout_t layout) {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
 
-  array.close();
-}
+    std::vector<int32_t> attr_val(expected_data.size());
+    std::vector<uint64_t> attr_off(expected_offsets.size());
 
-void read_and_check_dense_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& expected_data,
-    std::vector<uint64_t>& expected_offsets,
-    shared_ptr<Config> config = nullptr) {
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
+    query.set_layout(layout);
+    query.set_data_buffer("attr", attr_val);
+    query.set_offsets_buffer("attr", attr_off);
 
-  if (config != nullptr) {
-    query.set_config(*config);
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
 
-    // Validate we can retrieve set config
-    Config config2 = query.config();
-    bool same = *config == config2;
-    CHECK(same == true);
+    // Check the element offsets are properly returned
+    CHECK(attr_val == expected_data);
+    CHECK(attr_off == expected_offsets);
+
+    array.close();
   }
 
-  std::vector<int32_t> attr_val(expected_data.size());
-  std::vector<uint64_t> attr_off(expected_offsets.size());
-  query.set_subarray<int64_t>({1, 2, 1, 2});
-  query.set_data_buffer("attr", attr_val);
-  query.set_offsets_buffer("attr", attr_off);
-  CHECK_NOTHROW(query.submit());
+  void read_and_check_sparse_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& expected_data,
+      std::vector<uint32_t>& expected_offsets,
+      tiledb_layout_t layout) {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
 
-  // Check the element offsets are properly returned
-  CHECK(attr_val == expected_data);
-  CHECK(attr_off == expected_offsets);
+    std::vector<int32_t> attr_val(expected_data.size());
+    std::vector<uint32_t> attr_off(expected_offsets.size());
+    query.set_layout(layout);
+    // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
+    // accepts it
+    query.set_data_buffer("attr", attr_val.data(), attr_val.size());
+    query.set_offsets_buffer(
+        "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
 
-  array.close();
-}
+    /* TODO: enable this when sc21681 is fixed
+        // Submit query
+      auto rc = test::submit_query_wrapper(
+          ctx, array_name, &query, server_buffers_, serialize_,
+      refactored_query_v2_, false); REQUIRE(rc == TILEDB_OK);
+    */
+    CHECK_NOTHROW(query.submit());
 
-void read_and_check_dense_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& expected_data,
-    std::vector<uint32_t>& expected_offsets,
-    shared_ptr<Config> config = nullptr) {
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
+    // Check the element offsets are properly returned
+    CHECK(attr_val == expected_data);
+    CHECK(attr_off == expected_offsets);
 
-  if (config != nullptr) {
-    query.set_config(*config);
-
-    // Validate we can retrieve set config
-    Config config2 = query.config();
-    bool same = *config == config2;
-    CHECK(same == true);
+    array.close();
   }
 
-  std::vector<int32_t> attr_val(expected_data.size());
-  std::vector<uint32_t> attr_off(expected_offsets.size());
-  query.set_subarray<int64_t>({1, 2, 1, 2});
-  // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
-  // accepts it
-  query.set_data_buffer("attr", attr_val.data(), attr_val.size());
-  query.set_offsets_buffer(
-      "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
-  CHECK_NOTHROW(query.submit());
+  void reset_read_buffers(
+      std::vector<int32_t>& data, std::vector<uint64_t>& offsets) {
+    data.assign(data.size(), 0);
+    offsets.assign(offsets.size(), 0);
+  }
 
-  // Check the element offsets are properly returned
-  CHECK(attr_val == expected_data);
-  CHECK(attr_off == expected_offsets);
+  void partial_read_and_check_sparse_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& exp_data_part1,
+      std::vector<uint64_t>& exp_off_part1,
+      std::vector<int32_t>& exp_data_part2,
+      std::vector<uint64_t>& exp_off_part2,
+      tiledb_layout_t layout) {
+    // The size of read buffers is smaller than the size
+    // of all the data, so we'll do partial reads
+    std::vector<int32_t> attr_val(exp_data_part1.size());
+    std::vector<uint64_t> attr_off(exp_off_part1.size());
 
-  array.close();
-}
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.set_layout(layout);
+    query.set_data_buffer("attr", attr_val);
+    query.set_offsets_buffer("attr", attr_off);
 
-void partial_read_and_check_dense_array(
-    Context ctx,
-    const std::string& array_name,
-    std::vector<int32_t>& exp_data_part1,
-    std::vector<uint64_t>& exp_off_part1,
-    std::vector<int32_t>& exp_data_part2,
-    std::vector<uint64_t>& exp_off_part2) {
-  // The size of read buffers is smaller than the size
-  // of all the data, so we'll do partial reads
-  std::vector<int32_t> attr_val(exp_data_part1.size());
-  std::vector<uint64_t> attr_off(exp_off_part1.size());
+    // Check that first partial read returns expected results
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+    Query::Status status = query.query_status();
+    CHECK(status == Query::Status::INCOMPLETE);
+    CHECK(attr_val == exp_data_part1);
+    CHECK(attr_off == exp_off_part1);
 
-  Array array(ctx, array_name, TILEDB_READ);
-  Query query(ctx, array, TILEDB_READ);
-  query.set_subarray<int64_t>({1, 2, 1, 2});
-  query.set_data_buffer("attr", attr_val);
-  query.set_offsets_buffer("attr", attr_off);
+    // Check that second partial read returns expected results
+    rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+    status = query.query_status();
+    CHECK(status == Query::Status::COMPLETE);
+    CHECK(attr_val == exp_data_part2);
+    CHECK(attr_off == exp_off_part2);
 
-  // Check that first partial read returns expected results
-  CHECK_NOTHROW(query.submit());
-  CHECK(attr_val == exp_data_part1);
-  CHECK(attr_off == exp_off_part1);
+    array.close();
+  }
 
-  // Check that second partial read returns expected results
-  CHECK_NOTHROW(query.submit());
-  CHECK(attr_val == exp_data_part2);
-  CHECK(attr_off == exp_off_part2);
+  void read_and_check_empty_coords_array(
+      Context ctx, const std::string& array_name, tiledb_layout_t layout) {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
 
-  array.close();
-}
+    std::vector<int32_t> attr_val(4);
+    std::vector<uint64_t> attr_off(4);
 
-TEST_CASE(
+    query.set_layout(layout);
+    query.set_data_buffer("attr", attr_val);
+    query.set_offsets_buffer("attr", attr_off);
+
+    // Query outside unwritten coordinates of the array
+    int64_t d1_start = 1, d1_end = 2;
+    int64_t d2_start = 3, d2_end = 4;
+    query.add_range("d1", d1_start, d1_end);
+    query.add_range("d2", d2_start, d2_end);
+
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check the element offsets are properly returned
+    uint64_t offset_elem_num = 0, data_vals_num = 0, validity_elem_num = 0;
+    std::tie(offset_elem_num, data_vals_num, validity_elem_num) =
+        query.result_buffer_elements_nullable()["attr"];
+
+    CHECK(offset_elem_num == 0);
+    CHECK(data_vals_num == 0);
+
+    array.close();
+  }
+
+  void create_dense_array(const std::string& array_name) {
+    Context ctx;
+    VFS vfs(ctx);
+
+    // Create the array
+    if (vfs.is_dir(array_name))
+      vfs.remove_dir(array_name);
+
+    Domain dom(ctx);
+    dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
+        .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
+
+    ArraySchema schema(ctx, TILEDB_DENSE);
+    Attribute attr(ctx, "attr", TILEDB_INT32);
+    attr.set_cell_val_num(TILEDB_VAR_NUM);
+    schema.add_attribute(attr);
+    schema.set_tile_order(TILEDB_ROW_MAJOR);
+    schema.set_cell_order(TILEDB_ROW_MAJOR);
+    schema.set_domain(dom);
+
+    Array::create(array_name, schema);
+  }
+
+  void write_dense_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& data,
+      std::vector<uint64_t>& data_offsets,
+      tiledb_layout_t layout,
+      shared_ptr<Config> config = nullptr) {
+    std::vector<int64_t> d1 = {1, 1, 2, 2};
+    std::vector<int64_t> d2 = {1, 2, 1, 2};
+
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+
+    if (config != nullptr) {
+      query.set_config(*config);
+
+      // Validate we can retrieve set config
+      Config config2 = query.config();
+      bool same = *config == config2;
+      CHECK(same == true);
+    }
+
+    query.set_data_buffer("attr", data);
+    query.set_offsets_buffer("attr", data_offsets);
+    query.set_layout(layout);
+    if (layout == TILEDB_UNORDERED) {
+      // sparse write to dense array
+      query.set_data_buffer("d1", d1);
+      query.set_data_buffer("d2", d2);
+    } else {
+      query.set_subarray(
+          Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
+    }
+
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_);
+    REQUIRE(rc == TILEDB_OK);
+
+    array.close();
+  }
+
+  void write_dense_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& data,
+      std::vector<uint32_t>& data_offsets,
+      tiledb_layout_t layout,
+      shared_ptr<Config> config = nullptr) {
+    std::vector<int64_t> d1 = {1, 1, 2, 2};
+    std::vector<int64_t> d2 = {1, 2, 1, 2};
+
+    Array array(ctx, array_name, TILEDB_WRITE);
+    Query query(ctx, array, TILEDB_WRITE);
+
+    if (config != nullptr) {
+      query.set_config(*config);
+
+      // Validate we can retrieve set config
+      Config config2 = query.config();
+      bool same = *config == config2;
+      CHECK(same == true);
+    }
+
+    // Write using a 32-bit vector, but cast it to 64-bit pointer so that the
+    // API accepts it
+    query.set_data_buffer("attr", data.data(), data.size());
+    query.set_offsets_buffer(
+        "attr",
+        reinterpret_cast<uint64_t*>(data_offsets.data()),
+        data_offsets.size());
+    query.set_layout(layout);
+    if (layout == TILEDB_UNORDERED) {
+      // sparse write to dense array
+      query.set_data_buffer("d1", d1);
+      query.set_data_buffer("d2", d2);
+    } else {
+      query.set_subarray(
+          Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
+    }
+
+    /* TODO: enable this when sc21681 is fixed
+      auto rc = test::submit_query_wrapper(
+          ctx, array_name, &query, server_buffers_, serialize_,
+      refactored_query_v2_); REQUIRE(rc == TILEDB_OK);
+    */
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+
+    array.close();
+  }
+
+  void read_and_check_dense_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& expected_data,
+      std::vector<uint64_t>& expected_offsets,
+      shared_ptr<Config> config = nullptr) {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+
+    if (config != nullptr) {
+      query.set_config(*config);
+
+      // Validate we can retrieve set config
+      Config config2 = query.config();
+      bool same = *config == config2;
+      CHECK(same == true);
+    }
+
+    std::vector<int32_t> attr_val(expected_data.size());
+    std::vector<uint64_t> attr_off(expected_offsets.size());
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
+    query.set_data_buffer("attr", attr_val);
+    query.set_offsets_buffer("attr", attr_off);
+
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check the element offsets are properly returned
+    CHECK(attr_val == expected_data);
+    CHECK(attr_off == expected_offsets);
+
+    array.close();
+  }
+
+  void read_and_check_dense_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& expected_data,
+      std::vector<uint32_t>& expected_offsets,
+      shared_ptr<Config> config = nullptr) {
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+
+    if (config != nullptr) {
+      query.set_config(*config);
+
+      // Validate we can retrieve set config
+      Config config2 = query.config();
+      bool same = *config == config2;
+      CHECK(same == true);
+    }
+
+    std::vector<int32_t> attr_val(expected_data.size());
+    std::vector<uint32_t> attr_off(expected_offsets.size());
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
+    // Read using a 32-bit vector, but cast it to 64-bit pointer so that the API
+    // accepts it
+    query.set_data_buffer("attr", attr_val.data(), attr_val.size());
+    query.set_offsets_buffer(
+        "attr", reinterpret_cast<uint64_t*>(attr_off.data()), attr_off.size());
+
+    /* TODO: enable this when sc21681 is fixed
+      // Submit query
+      auto rc = test::submit_query_wrapper(
+          ctx, array_name, &query, server_buffers_, serialize_,
+      refactored_query_v2_, false); REQUIRE(rc == TILEDB_OK);
+    */
+    CHECK_NOTHROW(query.submit());
+    query.finalize();
+
+    // Check the element offsets are properly returned
+    CHECK(attr_val == expected_data);
+    CHECK(attr_off == expected_offsets);
+
+    array.close();
+  }
+
+  void partial_read_and_check_dense_array(
+      Context ctx,
+      const std::string& array_name,
+      std::vector<int32_t>& exp_data_part1,
+      std::vector<uint64_t>& exp_off_part1,
+      std::vector<int32_t>& exp_data_part2,
+      std::vector<uint64_t>& exp_off_part2) {
+    // The size of read buffers is smaller than the size
+    // of all the data, so we'll do partial reads
+    std::vector<int32_t> attr_val(exp_data_part1.size());
+    std::vector<uint64_t> attr_off(exp_off_part1.size());
+
+    Array array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    query.set_subarray(
+        Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
+    query.set_data_buffer("attr", attr_val);
+    query.set_offsets_buffer("attr", attr_off);
+
+    // Check that first partial read returns expected results
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(attr_val == exp_data_part1);
+    CHECK(attr_off == exp_off_part1);
+
+    // Check that second partial read returns expected results
+    rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query,
+        server_buffers_,
+        serialize_,
+        refactored_query_v2_,
+        false);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(attr_val == exp_data_part2);
+    CHECK(attr_off == exp_off_part2);
+
+    array.close();
+  }
+};
+
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test element offsets : sparse array",
     "[var-offsets][element-offset][sparse]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+  refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_element_offset";
   create_sparse_array(array_name);
 
@@ -539,9 +652,14 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test element offsets : dense array",
     "[var-offsets][element-offset][dense]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+  refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_element_offset";
   create_dense_array(array_name);
 
@@ -591,9 +709,14 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test offsets extra element: sparse array",
     "[var-offsets][extra-offset][sparse]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+  refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_extra_offset";
   create_sparse_array(array_name);
 
@@ -1124,9 +1247,14 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test offsets extra element: dense array",
     "[var-offsets][extra-offset][dense]") {
+#ifdef TILEDB_SERIALIZATION
+  serialize_ = true;
+  refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_extra_offset";
   create_dense_array(array_name);
 
@@ -1196,7 +1324,8 @@ TEST_CASE(
         Array array_w(ctx, array_name, TILEDB_WRITE);
         Query query_w(ctx, array_w, TILEDB_WRITE);
         query_w.set_layout(TILEDB_ROW_MAJOR)
-            .set_subarray<int64_t>({1, 2, 1, 2});
+            .set_subarray(
+                Subarray(ctx, array_w).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // Try to write without allocating memory for the extra element
         query_w.set_data_buffer("attr", data);
@@ -1219,7 +1348,8 @@ TEST_CASE(
         std::vector<uint64_t> attr_off(element_offsets.size() - 1);
         query_r.set_data_buffer("attr", attr_val);
         query_r.set_offsets_buffer("attr", attr_off);
-        query_r.set_subarray<int64_t>({1, 2, 1, 2});
+        query_r.set_subarray(
+            Subarray(ctx, array_r).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // First partial read because offsets don't fit
         CHECK_NOTHROW(query_r.submit());
@@ -1370,7 +1500,8 @@ TEST_CASE(
         std::vector<uint64_t> attr_off(data_off_part1.size());
         query.set_data_buffer("attr", attr_val);
         query.set_offsets_buffer("attr", attr_off);
-        query.set_subarray<int64_t>({1, 2, 1, 2});
+        query.set_subarray(
+            Subarray(ctx, array).set_subarray<int64_t>({1, 2, 1, 2}));
 
         // First partial read
         CHECK_NOTHROW(query.submit());
@@ -1442,9 +1573,15 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: sparse array",
     "[var-offsets][32bit-offset][sparse]") {
+#ifdef TILEDB_SERIALIZATION
+  /* TODO: set this to true this when sc21681 is fixed */
+  serialize_ = false;
+  // refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_32bit_offset";
   create_sparse_array(array_name);
 
@@ -1588,9 +1725,15 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: dense array",
     "[var-offsets][32bit-offset][dense]") {
+#ifdef TILEDB_SERIALIZATION
+  /* TODO: set this to true this when sc21681 is fixed */
+  serialize_ = false;
+  refactored_query_v2_ = GENERATE(true, false);
+#endif
   std::string array_name = "test_32bit_offset";
   create_dense_array(array_name);
 
@@ -1668,7 +1811,8 @@ TEST_CASE(
     vfs.remove_dir(array_name);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
     "C++ API: Test 32-bit offsets: sparse array with string dimension",
     "[var-offsets-dim][32bit-offset][sparse]") {
   std::string array_name = "test_32bit_offset_string_dim";

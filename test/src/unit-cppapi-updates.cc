@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -38,6 +39,16 @@ using namespace tiledb;
 TEST_CASE(
     "C++ API updates: test writing two identical fragments",
     "[updates][updates-identical-fragments]") {
+  bool serialized = false, refactored_query_v2 = false;
+  SECTION("no serialization") {
+    serialized = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
   const std::string array_name = "updates_identical_fragments";
   Context ctx;
   VFS vfs(ctx);
@@ -73,23 +84,40 @@ TEST_CASE(
   // First write
   Array array_w1(ctx, array_name, TILEDB_WRITE);
   Query query_w1(ctx, array_w1);
-  query_w1.set_subarray({rowmin, rowmax, colmin, colmax})
+  query_w1
+      .set_subarray(Subarray(ctx, array_w1)
+                        .set_subarray({rowmin, rowmax, colmin, colmax}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  query_w1.submit();
-  query_w1.finalize();
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w1,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
   array_w1.close();
 
   // Second write
   Array array_w2(ctx, array_name, TILEDB_WRITE);
   Query query_w2(ctx, array_w2);
-  query_w2.set_subarray({rowmin, rowmax, colmin, colmax})
+  query_w2
+      .set_subarray(Subarray(ctx, array_w2)
+                        .set_subarray({rowmin, rowmax, colmin, colmax}))
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  query_w2.submit();
-  query_w2.finalize();
+  rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w2,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
   array_w2.close();
 
   // Read
@@ -106,7 +134,15 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", r_data_a1)
       .set_offsets_buffer("a1", r_offsets_a1);
-  query.submit();
+  rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialized,
+      refactored_query_v2,
+      false);
+  REQUIRE(rc == TILEDB_OK);
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
   array.close();
 
@@ -119,6 +155,14 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API updates: empty second write", "[updates][updates-empty-write]") {
+  bool serialized = false, refactored_query_v2 = false;
+#ifdef TILEDB_SERIALIZATION
+  serialized = GENERATE(false, true);
+  if (serialized) {
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
   const std::string array_name = "updates_empty_write";
   Context ctx;
   VFS vfs(ctx);
@@ -143,8 +187,18 @@ TEST_CASE(
   Query query_w1(ctx, array_w1);
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
-  query_w1.submit();
-  query_w1.finalize();
+
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w1,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w1.close();
 
   // Second write
@@ -153,8 +207,17 @@ TEST_CASE(
   Query query_w2(ctx, array_w2);
   query_w2.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
-  query_w2.submit();
-  query_w2.finalize();
+
+  // Submit query
+  rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w2,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w2.close();
 
   if (vfs.is_dir(array_name))

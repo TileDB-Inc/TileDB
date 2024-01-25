@@ -41,13 +41,15 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/query_condition_op.h"
 #include "tiledb/sm/query/ast/query_ast.h"
-#include "tiledb/sm/query/readers/result_cell_slab.h"
-#include "tiledb/sm/query/readers/result_tile.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class FragmentMetadata;
+struct ResultCellSlab;
+class ResultTile;
 
 enum class QueryConditionCombinationOp : uint8_t;
 
@@ -60,11 +62,24 @@ class QueryCondition {
   /** Default constructor. */
   QueryCondition();
 
+  /** Constructor for a set membership QueryCondition */
+  QueryCondition(
+      const std::string& field_name,
+      const void* data,
+      uint64_t data_size,
+      const void* offsets,
+      uint64_t offsets_size,
+      QueryConditionOp op);
+
+  /** Constructor from a marker. */
+  QueryCondition(const std::string& condition_marker);
+
   /** Constructor from a tree. */
   QueryCondition(tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
   /** Constructor from a tree and marker. */
   QueryCondition(
+      const uint64_t condition_index,
       const std::string& condition_marker,
       tdb_unique_ptr<tiledb::sm::ASTNode>&& tree);
 
@@ -107,6 +122,15 @@ class QueryCondition {
       const QueryConditionOp& op);
 
   /**
+   * Translate any query conditions against enumerated attributes to the
+   * underlying attribute type.
+   *
+   * @param array_schema The current array schema with all required enumerations
+   * loaded.
+   */
+  void rewrite_enumeration_conditions(const ArraySchema& array_schema);
+
+  /**
    * Verifies that the current state contains supported comparison
    * operations. Currently, we support the following:
    *   - Fixed-size, single-value, non-nullable attributes.
@@ -133,6 +157,16 @@ class QueryCondition {
       QueryCondition* combined_cond) const;
 
   /**
+   * @brief API call to negate query condition.
+   *
+   * @param combined_cond Where the negated condition is stored.
+   * @return Status
+   */
+  Status negate(
+      QueryConditionCombinationOp combination_op,
+      QueryCondition* combined_cond) const;
+
+  /**
    * Returns true if this condition does not have any nodes in the AST
    * representing the query condition.
    */
@@ -143,6 +177,12 @@ class QueryCondition {
    * representing the query condition.
    */
   std::unordered_set<std::string>& field_names() const;
+
+  /**
+   * Returns a set of all unique field names that reference an enumerated
+   * attribute condition in the AST representing the query condition.
+   */
+  std::unordered_set<std::string>& enumeration_field_names() const;
 
   /**
    * Returns the timestamp for this condition.
@@ -174,6 +214,7 @@ class QueryCondition {
    * @param length The number of cells to process.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
+   * @param cell_slab_coords The cell slab coordinates.
    * @param result_buffer The buffer to use for results.
    * @return Status
    */
@@ -184,6 +225,7 @@ class QueryCondition {
       const uint64_t length,
       const uint64_t src_cell,
       const uint64_t stride,
+      const void* cell_slab_coords,
       uint8_t* result_buffer);
 
   /**
@@ -217,6 +259,27 @@ class QueryCondition {
    */
   const tdb_unique_ptr<ASTNode>& ast() const;
 
+  /**
+   * Returns the condition marker.
+   */
+  const std::string& condition_marker() const;
+
+  /**
+   * Returns the condition index.
+   */
+  uint64_t condition_index() const;
+
+  /**
+   * By default, a query condition is applied against the enumerated values
+   * of an attribute. Setting use_enumeration to false prevents the translation
+   * and applies this query condition directly against the underlying integral
+   * attribute data.
+   *
+   * @param use_enumeration A bool indicating whether to use the enumeration
+   *        values.
+   */
+  void set_use_enumeration(bool use_enumeration);
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
@@ -241,17 +304,33 @@ class QueryCondition {
   template <typename T, QueryConditionOp Cmp>
   struct BinaryCmp;
 
+  /**
+   * Performs dense condition on dimensions.
+   */
+  template <
+      typename T,
+      QueryConditionOp Op,
+      typename CombinationOp,
+      typename Enable = T>
+  struct DenseDimCondition;
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
   /** Marker used to reference which file the condition came from. */
   std::string condition_marker_;
 
+  /** Index for the condition. */
+  size_t condition_index_;
+
   /** AST Tree structure representing the condition. **/
   tdb_unique_ptr<tiledb::sm::ASTNode> tree_{};
 
   /** Caches all field names in the value nodes of the AST.  */
   mutable std::unordered_set<std::string> field_names_;
+
+  /** Caches all field names that references enumerations in the AST. */
+  mutable std::unordered_set<std::string> enumeration_field_names_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -359,17 +438,21 @@ class QueryCondition {
    * templated for a query condition operator.
    *
    * @param node The value node to apply.
+   * @param array_schema The array schema.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
    * @param combination_op The combination op.
+   * @param cell_slab_coords The cell slab coordinates.
    * @param result_buffer The result buffer.
    */
   template <typename T, QueryConditionOp Op, typename CombinationOp>
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -377,24 +460,29 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
+      const void* cell_slab_coords,
       span<uint8_t> result_buffer) const;
 
   /**
    * Applies a value node on a dense result tile.
    *
    * @param node The node to apply.
+   * @param array_schema The array schema.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
    * @param combination_op The combination op.
+   * @param cell_slab_coords The cell slab coordinates.
    * @param result_buffer The result buffer.
    * @return Status.
    */
   template <typename T, typename CombinationOp>
   void apply_ast_node_dense(
       const tdb_unique_ptr<ASTNode>& node,
+      const ArraySchema& array_schema,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
@@ -402,6 +490,7 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
+      const void* cell_slab_coords,
       span<uint8_t> result_buffer) const;
 
   /**
@@ -415,6 +504,7 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
+   * @param  The cell slab coordinates.
    * @param result_buffer The result buffer.
    * @return Status.
    */
@@ -427,6 +517,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       CombinationOp combination_op,
+      const void* cell_slab_coords,
       span<uint8_t> result_buffer) const;
 
   /**
@@ -439,6 +530,7 @@ class QueryCondition {
    * @param src_cell The cell offset in the source tile.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
+   * @param cell_slab_coords The cell slab coordinates.
    * @param result_buffer The buffer to use for results.
    * @return Void.
    */
@@ -451,6 +543,7 @@ class QueryCondition {
       const uint64_t src_cell,
       const uint64_t stride,
       CombinationOp combination_op,
+      const void* cell_slab_coords,
       span<uint8_t> result_buffer) const;
 
   /**
@@ -505,6 +598,7 @@ class QueryCondition {
    * @param node The node to apply.
    * @param result_tile The result tile to get the cells from.
    * @param var_size The attribute is var sized or not.
+   * @param nullable The attribute is nullable or not.
    * @param combination_op The combination op.
    * @param result_bitmap The result bitmap.
    */

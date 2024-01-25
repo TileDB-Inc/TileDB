@@ -33,7 +33,7 @@
 #ifndef TILEDB_STATS_H
 #define TILEDB_STATS_H
 
-#include "tiledb/common/scoped_executor.h"
+#include "duration_instrument.h"
 
 #include <inttypes.h>
 #include <chrono>
@@ -55,6 +55,11 @@ namespace stats {
  * Class that defines stats counters and methods to manipulate them.
  */
 class Stats {
+  /**
+   * Friends with DurationInstrument so it can call `report_duration`.
+   */
+  friend class DurationInstrument<Stats>;
+
  public:
   /* ****************************** */
   /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -64,22 +69,25 @@ class Stats {
    * Value constructor.
    *
    * @param prefix The stat name prefix.
-   * @param parent If non-null, stats will be added to this instance.
    */
   Stats(const std::string& prefix);
 
   /** Destructor. */
   ~Stats() = default;
 
-  /* ****************************** */
-  /*              API               */
-  /* ****************************** */
+/* ****************************** */
+/*              API               */
+/* ****************************** */
 
-  /**
-   * Starts a timer for the input timer stat. The timer
-   * ends when the returned `ScopedExecutor` object is destroyed.
-   */
-  common::ScopedExecutor start_timer(const std::string& stat);
+/**
+ * Starts a timer for the input timer stat. The timer ends when the returned
+ * `DurationInstrument` object is destroyed.
+ */
+#ifdef TILEDB_STATS
+  DurationInstrument<Stats> start_timer(const std::string& stat);
+#else
+  int start_timer(const std::string& stat);
+#endif
 
   /** Adds `count` to the input counter stat. */
   void add_counter(const std::string& stat, uint64_t count);
@@ -131,14 +139,6 @@ class Stats {
   /** A map of counter stats. */
   std::unordered_map<std::string, uint64_t> counters_;
 
-  typedef std::unordered_map<
-      std::thread::id,
-      std::chrono::high_resolution_clock::time_point>
-      ThreadTimer;
-
-  /** The start time for all pending timers. */
-  std::unordered_map<std::string, ThreadTimer> start_times_;
-
   /** Prefix used for the various timers and counters. */
   const std::string prefix_;
 
@@ -155,8 +155,9 @@ class Stats {
   /*       PRIVATE FUNCTIONS        */
   /* ****************************** */
 
-  /** Ends a timer for the input timer stat. */
-  void end_timer(const std::string& stat);
+  /** Reports a duration. Called from a `DurationInstrument` object. */
+  void report_duration(
+      const std::string& stat, const std::chrono::duration<double> duration);
 
   /**
    * Populates the input stats with the instance stats. This is a

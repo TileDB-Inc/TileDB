@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.21)
 project(TileDBPngIngestion)
 
 # Set C++17 as required standard for all C++ targets (required to use the TileDB
@@ -50,9 +50,10 @@ add_executable(tiledb_png "src/main.cc")
 
 # Link the example program with the TileDB shared library.
 # This also configures include paths to find the TileDB headers.
-target_link_libraries(tiledb_png TileDB::tiledb_shared)
+target_link_libraries(tiledb_png TileDB::tiledb)
 
 # Find and link with libpng.
+find_package(Zlib_EP REQUIRED)
 find_package(PNG REQUIRED)
 target_link_libraries(tiledb_png "${PNG_LIBRARIES}")
 target_include_directories(tiledb_png PRIVATE "${PNG_INCLUDE_DIRS}")

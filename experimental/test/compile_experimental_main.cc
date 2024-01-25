@@ -26,7 +26,6 @@
  * THE SOFTWARE.
  */
 
-
 int main() {
   return 0;
 }

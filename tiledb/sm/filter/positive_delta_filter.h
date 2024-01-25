@@ -73,14 +73,20 @@ namespace sm {
  */
 class PositiveDeltaFilter : public Filter {
  public:
-  /** Constructor. */
-  PositiveDeltaFilter();
-
-  /** Constructor.
+  /**
+   * Constructor.
    *
-   * @param max_window_size
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  PositiveDeltaFilter(uint32_t max_window_size);
+  PositiveDeltaFilter(Datatype filter_data_type);
+
+  /**
+   * Constructor.
+   *
+   * @param max_window_size Window size in bytes to apply positive delta filter.
+   * @param filter_data_type Datatype the filter will operate on.
+   */
+  PositiveDeltaFilter(uint32_t max_window_size, Datatype filter_data_type);
 
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
@@ -89,11 +95,18 @@ class PositiveDeltaFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
+   * Checks if the filter is applicable to the input datatype.
+   *
+   * @param type Input datatype to check filter compatibility.
+   */
+  bool accepts_input_datatype(Datatype datatype) const override;
+
+  /**
    * Perform positive-delta encoding of the given input into the given output.
    */
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -104,7 +117,7 @@ class PositiveDeltaFilter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -142,8 +155,8 @@ class PositiveDeltaFilter : public Filter {
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const tile_offsets,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2021-2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -25,48 +25,50 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `vfs` object library
 #
-add_library(vfs OBJECT vfs.cc mem_filesystem.cc path_win.cc posix.cc win.cc uri.cc)
-target_link_libraries(vfs PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(vfs PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(vfs PUBLIC cancelable_tasks $<TARGET_OBJECTS:cancelable_tasks>)
-target_link_libraries(vfs PUBLIC config $<TARGET_OBJECTS:config>)
-target_link_libraries(vfs PUBLIC math $<TARGET_OBJECTS:math>)
-target_link_libraries(vfs PUBLIC stats $<TARGET_OBJECTS:stats>)
-target_link_libraries(vfs PUBLIC stringx $<TARGET_OBJECTS:stringx>)
-target_link_libraries(vfs PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-if(WIN32)
-    if(MSVC)
-        find_library(SHLWAPI_LIBRARY shlwapi)
-        message(STATUS "Found Win32 lib shlwapi: ${SHLWAPI_LIBRARY}")
-        target_link_libraries(vfs PUBLIC ${SHLWAPI_LIBRARY})
-    else()
-        message(STATUS "Linking to Win32 lib shlwapi")
-        target_link_libraries(vfs PUBLIC -lshlwapi)
-    endif()
-endif()
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_vfs EXCLUDE_FROM_ALL)
-target_link_libraries(compile_vfs PRIVATE vfs)
-target_sources(compile_vfs PRIVATE test/compile_vfs_main.cc)
-
-if (TILEDB_TESTS)
-    add_executable(unit_vfs EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_vfs PRIVATE vfs)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_vfs PUBLIC Catch2::Catch2)
-
-    # Sources for tests
-    target_sources(unit_vfs PUBLIC test/main.cc test/unit_uri.cc)
-
-    add_test(
-        NAME "unit_vfs"
-        COMMAND $<TARGET_FILE:unit_vfs>
-        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+commence(object_library vfs)
+    list(APPEND VFS_SOURCES
+        mem_filesystem.cc
+        path_win.cc
+        posix.cc
+        uri.cc
+        vfs.cc
+        vfs_file_handle.cc
+        ls_scanner.cc
+        win.cc
+        filesystem_base.cc
+        ../curl/curl_init.cc
     )
-endif()
+    if (TILEDB_S3)
+        target_include_directories(vfs
+                PRIVATE
+                "${CMAKE_CURRENT_SOURCE_DIR}/../../../external/include"
+        )
+        list(APPEND VFS_SOURCES
+            s3.cc
+            s3_thread_pool_executor.cc
+        )
+    endif()
+    this_target_sources(${VFS_SOURCES})
+    this_target_object_libraries(
+        baseline
+        buffer
+        cancelable_tasks
+        cert_file
+        config
+        math
+        seedable_global_PRNG
+        stats
+        stringx
+        thread_pool
+    )
+    if(WIN32)
+        this_target_link_libraries(shlwapi)
+    endif()
+conclude(object_library)
+
+add_test_subdirectory()

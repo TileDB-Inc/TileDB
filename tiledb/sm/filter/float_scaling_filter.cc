@@ -122,52 +122,43 @@ Status FloatScalingFilter::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   switch (byte_width_) {
-    case sizeof(int8_t): {
+    case sizeof(int8_t):
       return run_forward<T, int8_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int16_t): {
+    case sizeof(int16_t):
       return run_forward<T, int16_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int32_t): {
+    case sizeof(int32_t):
       return run_forward<T, int32_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(int64_t): {
+    case sizeof(int64_t):
       return run_forward<T, int64_t>(
           input_metadata, input, output_metadata, output);
-    } break;
-    default: {
+    default:
       throw std::logic_error(
           "FloatScalingFilter::run_forward: byte_width_ does not reflect the "
           "size of an integer type.");
-    }
   }
 }
 
 Status FloatScalingFilter::run_forward(
-    const Tile& tile,
-    Tile* const,  // offsets_tile
+    const WriterTile&,
+    WriterTile* const,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {
-    case sizeof(float): {
+    case sizeof(float):
       return run_forward<float>(input_metadata, input, output_metadata, output);
-    } break;
-    case sizeof(double): {
+    case sizeof(double):
       return run_forward<double>(
           input_metadata, input, output_metadata, output);
-    } break;
-    default: {
+    default:
       throw std::logic_error(
           "FloatScalingFilter::run_forward: tile_type_size does not reflect "
           "the size of a floating point type.");
-    }
   }
 }
 
@@ -242,16 +233,14 @@ Status FloatScalingFilter::run_reverse(
 }
 
 Status FloatScalingFilter::run_reverse(
-    const Tile& tile,
-    Tile* const,  // offsets_tile
+    const Tile&,
+    Tile*,
     FilterBuffer* input_metadata,
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-  auto tile_type = tile.type();
-  auto tile_type_size = static_cast<uint8_t>(datatype_size(tile_type));
+    const Config&) const {
+  auto tile_type_size = static_cast<uint8_t>(datatype_size(filter_data_type_));
   switch (tile_type_size) {
     case sizeof(float): {
       return run_reverse<float>(input_metadata, input, output_metadata, output);
@@ -276,13 +265,35 @@ Status FloatScalingFilter::set_option_impl(
 
   switch (option) {
     case FilterOption::SCALE_FLOAT_BYTEWIDTH: {
-      byte_width_ = *(uint64_t*)value;
+      // The byte width parameter should be one of the sizes of the possible
+      // integer types.
+      auto val = *(uint64_t*)value;
+      if (val != sizeof(int8_t) && val != sizeof(int16_t) &&
+          val != sizeof(int32_t) && val != sizeof(int64_t)) {
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid byte width value."));
+      }
+      byte_width_ = val;
     } break;
     case FilterOption::SCALE_FLOAT_FACTOR: {
-      scale_ = *(double*)value;
+      // The scaling parameter should be not a NaN, infinity, or zero.
+      auto val = *(double*)value;
+      auto classify = std::fpclassify(val);
+      if (classify != FP_NORMAL) {
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid scale value."));
+      }
+      scale_ = val;
     } break;
     case FilterOption::SCALE_FLOAT_OFFSET: {
-      offset_ = *(double*)value;
+      // The offset parameter should not be a NaN or infinity.
+      auto val = *(double*)value;
+      auto classify = std::fpclassify(val);
+      if (classify == FP_INFINITE || classify == FP_NAN) {
+        return LOG_STATUS(Status_FilterError(
+            "Float scaling filter error; invalid offset value."));
+      }
+      offset_ = val;
     } break;
     default:
       return LOG_STATUS(
@@ -311,9 +322,31 @@ Status FloatScalingFilter::get_option_impl(
   return Status::Ok();
 }
 
+bool FloatScalingFilter::accepts_input_datatype(Datatype datatype) const {
+  size_t size = datatype_size(datatype);
+  return size == sizeof(float) || size == sizeof(double);
+}
+
+Datatype FloatScalingFilter::output_datatype(Datatype) const {
+  if (byte_width_ == sizeof(int8_t)) {
+    return Datatype::INT8;
+  } else if (byte_width_ == sizeof(int16_t)) {
+    return Datatype::INT16;
+  } else if (byte_width_ == sizeof(int32_t)) {
+    return Datatype::INT32;
+  } else if (byte_width_ == sizeof(int64_t)) {
+    return Datatype::INT64;
+  } else {
+    throw std::logic_error(
+        "FloatScalingFilter::output_datatype: byte_width_ does not reflect "
+        "the size of an integer type.");
+  }
+}
+
 /** Returns a new clone of this filter. */
 FloatScalingFilter* FloatScalingFilter::clone_impl() const {
-  return tdb_new(FloatScalingFilter, byte_width_, scale_, offset_);
+  return tdb_new(
+      FloatScalingFilter, byte_width_, scale_, offset_, filter_data_type_);
 }
 
 }  // namespace sm

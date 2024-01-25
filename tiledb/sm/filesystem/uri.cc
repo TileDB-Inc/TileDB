@@ -142,6 +142,10 @@ bool URI::is_file(const std::string& path) {
 #endif
 }
 
+bool URI::contains(const std::string_view& str) const {
+  return uri_.find(str, 0) != std::string::npos;
+}
+
 bool URI::is_file() const {
 #ifdef _WIN32
   return is_file(uri_);
@@ -235,6 +239,32 @@ Status URI::get_rest_components(
   return Status::Ok();
 }
 
+std::optional<URI> URI::get_fragment_name() const {
+  auto to_find = "/" + sm::constants::array_fragments_dir_name + "/";
+  auto pos = uri_.find(to_find);
+  if (pos == std::string::npos) {
+    // Unable to find '/__fragments/' anywhere.
+    return std::nullopt;
+  }
+
+  if (pos + to_find.size() == uri_.size()) {
+    // URI is to the '/__fragments/' directory, no name present.
+    return std::nullopt;
+  }
+
+  auto slash_pos = uri_.find("/", pos + to_find.size());
+  if (slash_pos == pos + to_find.size()) {
+    // URI has an empty fragment name with '/__fragments//'
+    return std::nullopt;
+  }
+
+  if (slash_pos != std::string::npos) {
+    return URI(uri_.substr(0, slash_pos));
+  }
+
+  return URI(uri_);
+}
+
 URI URI::join_path(const std::string& path) const {
   // Check for empty strings.
   if (path.empty()) {
@@ -257,8 +287,21 @@ URI URI::join_path(const std::string& path) const {
   }
 }
 
+URI URI::join_path(const URI& uri) const {
+  return join_path(uri.to_string());
+}
+
 std::string URI::last_path_part() const {
   return uri_.substr(uri_.find_last_of('/') + 1);
+}
+
+std::string URI::last_two_path_parts() const {
+  return uri_.substr(uri_.rfind('/', uri_.rfind('/') - 1) + 1);
+}
+
+URI URI::parent_path() const {
+  auto pos = this->remove_trailing_slash().to_string().find_last_of('/');
+  return URI(uri_.substr(0, pos + 1));
 }
 
 std::string URI::to_path(const std::string& uri) {
@@ -280,6 +323,14 @@ std::string URI::to_path(const std::string& uri) {
 
   // Error
   return "";
+}
+
+std::string URI::backend_name() const {
+  if (is_tiledb(uri_)) {
+    return "";
+  } else {
+    return uri_.substr(0, uri_.find_first_of(':'));
+  }
 }
 
 std::string URI::to_path() const {

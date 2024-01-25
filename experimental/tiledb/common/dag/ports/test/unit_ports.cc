@@ -32,17 +32,28 @@
 
 #include "unit_ports.h"
 #include <future>
-#include "experimental/tiledb/common/dag/ports/policies.h"
 #include "experimental/tiledb/common/dag/ports/ports.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/types.h"
 
 using namespace tiledb::common;
+
+/**
+ * Verify various API approaches
+ */
+TEST_CASE("Ports: Verify various API approaches", "[ports]") {
+  Source<NullMover2, size_t> left_0;
+  Sink<NullMover2, size_t> right_0;
+  Source<AsyncMover2, size_t> left_1;
+  Sink<AsyncMover2, size_t> right_1;
+}
 
 /**
  * Test attaching of Source and Sink ports.
  */
 TEST_CASE("Ports: Test attach ports", "[ports]") {
-  Source<int, NullStateMachine<std::optional<int>>> left;
-  Sink<int, NullStateMachine<std::optional<int>>> right;
+  Source<NullMover2, size_t> left;
+  Sink<NullMover2, size_t> right;
   attach(left, right);
 }
 
@@ -77,8 +88,8 @@ void test_connections(source_type& pn, sink_type& cn) {
  * Test exception when trying to attach already bound ports.
  */
 TEST_CASE("Ports: Test exceptions", "[ports]") {
-  auto pn = Source<size_t, NullStateMachine<std::optional<size_t>>>{};
-  auto cn = Sink<size_t, NullStateMachine<std::optional<size_t>>>{};
+  auto pn = Source<NullMover2, size_t>{};
+  auto cn = Sink<NullMover2, size_t>{};
 
   attach(pn, cn);
 
@@ -91,8 +102,8 @@ TEST_CASE("Ports: Test exceptions", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual set source port values", "[ports]") {
-  Source<size_t, NullStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, NullStateMachine<std::optional<size_t>>> sink;
+  Source<NullMover2, size_t> source;
+  Sink<NullMover2, size_t> sink;
 
   SECTION("set source in bound pair") {
     attach(source, sink);
@@ -100,7 +111,7 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
     CHECK(source.extract().has_value() == true);
   }
   SECTION("set source in unbound source") {
-    CHECK(source.inject(9UL) == false);
+    CHECK_THROWS(source.inject(9UL) == false);
   }
   SECTION("set source that has value") {
     attach(source, sink);
@@ -113,11 +124,11 @@ TEST_CASE("Ports: Manual set source port values", "[ports]") {
  * Test operation of inject and extract.
  */
 TEST_CASE("Ports: Manual extract sink values", "[ports]") {
-  Source<size_t, NullStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, NullStateMachine<std::optional<size_t>>> sink;
+  Source<NullMover2, size_t> source;
+  Sink<NullMover2, size_t> sink;
 
   SECTION("set source in unbound pair") {
-    CHECK(sink.extract().has_value() == false);
+    CHECK_THROWS(sink.extract().has_value() == false);
   }
   SECTION("set source in bound pair") {
     attach(source, sink);
@@ -131,19 +142,19 @@ TEST_CASE("Ports: Manual extract sink values", "[ports]") {
 
 /**
  * Test that we can inject, transfer, and extract data items from Source and
- * Sink with ManualStateMachine.
+ * Sink with ManualMover2.
  *
  */
 TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
-  Source<size_t, ManualStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, ManualStateMachine<std::optional<size_t>>> sink;
+  Source<ManualMover2, size_t> source;
+  Sink<ManualMover2, size_t> sink;
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
+  auto state_machine = sink.get_mover();
   // state_machine->enable_debug();
 
-  CHECK(str(state_machine->state()) == "empty_empty");
+  CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
     CHECK(source.inject(123UL) == true);
@@ -158,56 +169,56 @@ TEST_CASE("Ports: Manual transfer from Source to Sink", "[ports]") {
 
   SECTION("test one item transfer") {
     CHECK(source.inject(123UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 123UL);
-    CHECK(str(state_machine->state()) == "empty_full");
-    state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_01");
+    state_machine->port_drain();
+    CHECK(str(state_machine->state()) == "st_00");
   }
 
   SECTION("test two item transfer") {
     CHECK(source.inject(456UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
     auto b = sink.extract();
     CHECK(b.has_value() == true);
     CHECK(*b == 456UL);
-    CHECK(str(state_machine->state()) == "empty_full");
-    state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_01");
+    state_machine->port_drain();
+    CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
 
     CHECK(source.inject(789UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
 
     auto c = sink.extract();
     CHECK(c.has_value() == true);
     CHECK(*c == 789UL);
-    CHECK(str(state_machine->state()) == "empty_full");
-    state_machine->do_drain();
-    CHECK(str(state_machine->state()) == "empty_empty");
+    CHECK(str(state_machine->state()) == "st_01");
+    state_machine->port_drain();
+    CHECK(str(state_machine->state()) == "st_00");
     CHECK(sink.extract().has_value() == false);
   }
 }
 
 /**
  * Test that we can inject and extract data items from Source and Sink with
- * AsyncStateMachine.
+ * AsyncMover.
  *
  */
 TEST_CASE(
     "Ports: Manual transfer from Source to Sink, async policy", "[ports]") {
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  auto state_machine = sink.get_mover();
+  CHECK(str(state_machine->state()) == "st_00");
 
   SECTION("test injection") {
     CHECK(source.inject(123UL) == true);
@@ -222,7 +233,7 @@ TEST_CASE(
 }
 
 /**
- * Test that we can asynchronously transfer a value from Source to Sik.
+ * Test that we can asynchronously transfer a value from Source to Sinnk.
  *
  * The test creates an asynchronous task for a source node client and for a sync
  * node client, and launches them separately using `std::async`.  To create
@@ -230,25 +241,25 @@ TEST_CASE(
  * launching the tasks and waiting on their futures.
  */
 TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  auto state_machine = sink.get_mover();
+  CHECK(str(state_machine->state()) == "st_00");
 
   std::optional<size_t> b;
 
   auto source_node = [&]() {
     CHECK(source.inject(8675309UL) == true);
-    state_machine->do_fill();
-    state_machine->do_push();
+    state_machine->port_fill();
+    state_machine->port_push();
   };
   auto sink_node = [&]() {
-    state_machine->do_pull();
+    state_machine->port_pull();
     b = sink.extract();
-    state_machine->do_drain();
+    state_machine->port_drain();
   };
 
   SECTION("test source launch, sink launch, source get, sink get") {
@@ -290,16 +301,16 @@ TEST_CASE("Ports: Async transfer from Source to Sink", "[ports]") {
  * different interleavings of the tasks, we use all combinations of ordering for
  * launching the tasks and waiting on their futures.
  */
-TEST_CASE("Ports: Async pass n integers", "[ports]") {
+TEST_CASE("Ports: Async pass n integers, random delays", "[ports]") {
   [[maybe_unused]] constexpr bool debug = false;
 
-  Source<size_t, AsyncStateMachine<std::optional<size_t>>> source;
-  Sink<size_t, AsyncStateMachine<std::optional<size_t>>> sink;
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
 
   attach(source, sink);
 
-  auto state_machine = sink.get_state_machine();
-  CHECK(str(state_machine->state()) == "empty_empty");
+  auto state_machine = sink.get_mover();
+  CHECK(str(state_machine->state()) == "st_00");
 
   size_t rounds = 3379;
   if (debug)
@@ -315,7 +326,7 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
   CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
 
-  [[maybe_unused]] std::optional<size_t> b;
+  [[maybe_unused]] size_t b;
 
   auto source_node = [&]() {
     size_t n = rounds;
@@ -326,8 +337,8 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (state_machine->state() == PortState::full_empty ||
-      //        state_machine->state() == PortState::full_full)// ;
+      // while (state_machine->state() == PortState::st_10 ||
+      //        state_machine->state() == PortState::st_11)// ;
 
       CHECK(is_source_empty(state_machine->state()) == "");
 
@@ -343,11 +354,11 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
       CHECK(is_source_empty(state_machine->state()) == "");
 
-      state_machine->do_fill(debug ? "async source node" : "");
+      state_machine->port_fill(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_push(debug ? "async source node" : "");
+      state_machine->port_push(debug ? "async source node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
@@ -365,13 +376,13 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
       }
 
       // It doesn't seem we actually need these guards here?
-      // while (state_machine->state() == PortState::full_full ||
-      //             state_machine->state() == PortState::empty_full)
+      // while (state_machine->state() == PortState::st_11 ||
+      //             state_machine->state() == PortState::st_01)
       //        ;
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_pull(debug ? "async sink node" : "");
+      state_machine->port_pull(debug ? "async sink node" : "");
 
       CHECK(is_sink_full(state_machine->state()) == "");
 
@@ -387,9 +398,130 @@ TEST_CASE("Ports: Async pass n integers", "[ports]") {
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
 
-      state_machine->do_drain(debug ? "async sink node" : "");
+      state_machine->port_drain(debug ? "async sink node" : "");
 
       std::this_thread::sleep_for(std::chrono::microseconds(random_us(500)));
+    }
+  };
+  SECTION("test source launch, sink launch, source get, sink get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test source launch, sink launch, sink get, source get") {
+    auto fut_a = std::async(std::launch::async, source_node);
+    auto fut_b = std::async(std::launch::async, sink_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  SECTION("test sink launch, source launch, source get, sink get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_a.get();
+    fut_b.get();
+  }
+
+  SECTION("test sink launch, source launch, sink get, source get") {
+    auto fut_b = std::async(std::launch::async, sink_node);
+    auto fut_a = std::async(std::launch::async, source_node);
+    fut_b.get();
+    fut_a.get();
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    for (size_t j = 0; j < input.size(); ++j) {
+      if (input[j] != output[j]) {
+        std::cout << j << " (" << input[j] << ", " << output[j] << ")"
+                  << std::endl;
+      }
+    }
+  }
+
+  if (!std::equal(input.begin(), input.end(), output.begin())) {
+    auto iter = std::find_first_of(
+        input.begin(),
+        input.end(),
+        output.begin(),
+        output.end(),
+        std::not_equal_to<size_t>());
+    if (iter != input.end()) {
+      size_t k = iter - input.begin();
+      std::cout << k << " (" << input[k] << ", " << output[k] << ")"
+                << std::endl;
+    } else {
+      std::cout << "this should not happen" << std::endl;
+    }
+  }
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()));
+}
+
+/**
+ * Repeat above test but without delays.
+ *
+ * The test creates an asynchronous task for a source node client and for a sync
+ * node client, and launches them separately using `std::async`.  To create
+ * different interleavings of the tasks, we use all combinations of ordering for
+ * launching the tasks and waiting on their futures.
+ */
+TEST_CASE("Ports: Async pass n integers", "[ports]") {
+  [[maybe_unused]] constexpr bool debug = false;
+
+  Source<AsyncMover2, size_t> source;
+  Sink<AsyncMover2, size_t> sink;
+
+  attach(source, sink);
+
+  auto state_machine = sink.get_mover();
+  CHECK(str(state_machine->state()) == "st_00");
+
+  size_t rounds = 3379;
+  if (debug)
+    rounds = 3;
+
+  std::vector<size_t> input(rounds);
+  std::vector<size_t> output(rounds);
+
+  std::iota(input.begin(), input.end(), 19);
+  std::fill(output.begin(), output.end(), 0);
+  auto i = input.begin();
+  auto j = output.begin();
+
+  CHECK(std::equal(input.begin(), input.end(), output.begin()) == false);
+
+  [[maybe_unused]] size_t b;
+
+  auto source_node = [&]() {
+    size_t n = rounds;
+
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+
+      CHECK(is_source_empty(state_machine->state()) == "");
+      source.inject(*i++);
+      CHECK(is_source_empty(state_machine->state()) == "");
+      state_machine->port_fill(debug ? "async source node" : "");
+      state_machine->port_push(debug ? "async source node" : "");
+    }
+  };
+
+  auto sink_node = [&]() {
+    size_t n = rounds;
+    while (n--) {
+      if (debug) {
+        std::cout << "source node iteration " << n << std::endl;
+      }
+      state_machine->port_pull(debug ? "async sink node" : "");
+      CHECK(is_sink_full(state_machine->state()) == "");
+      *j++ = *(sink.extract());
+
+      CHECK(is_sink_full(state_machine->state()) == "");
+      state_machine->port_drain(debug ? "async sink node" : "");
     }
   };
   SECTION("test source launch, sink launch, source get, sink get") {

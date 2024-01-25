@@ -25,22 +25,22 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
-# Object library for other units to depend upon
+# `buffer` object library
 #
-add_library(buffer OBJECT buffer.cc)
-target_link_libraries(buffer PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+commence(object_library buffer)
+    this_target_sources(buffer.cc)
+    this_target_object_libraries(baseline)
+conclude(object_library)
 
 #
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_buffer EXCLUDE_FROM_ALL)
-target_link_libraries(compile_buffer PRIVATE buffer)
-target_sources(compile_buffer PRIVATE
-    test/compile_buffer_main.cc $<TARGET_OBJECTS:buffer>
-)
+ # `buffer_list` object library
+ #
+ commence(object_library buffer_list)
+     this_target_sources(buffer_list.cc)
+     this_target_object_libraries(buffer)
+ conclude(object_library)
 
-if (TILEDB_TESTS)
-  add_subdirectory(test)
-endif()
+add_test_subdirectory()

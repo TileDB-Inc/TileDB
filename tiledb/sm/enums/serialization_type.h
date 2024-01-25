@@ -70,7 +70,8 @@ inline Status serialization_type_enum(
   else if (serialization_type_str == constants::serialization_type_capnp_str)
     *serialization_type = SerializationType::CAPNP;
   else {
-    return Status_Error("Invalid SerializationType " + serialization_type_str);
+    return tiledb::common::Status_Error(
+        "Invalid SerializationType " + serialization_type_str);
   }
   return Status::Ok();
 }

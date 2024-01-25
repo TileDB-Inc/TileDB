@@ -65,13 +65,14 @@ TEST_CASE(
   const URI uri_empty = URI();
   Array* array = nullptr;
 
-  REQUIRE_THROWS_AS(x.register_array(uri_empty, *array), std::exception);
+  REQUIRE_THROWS_AS(
+      x.register_array(uri_empty, *array, QueryType::READ), std::exception);
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri_empty) == false);
 
   // Register a non-empty URI
   const URI uri = URI("whitebox_null_array_direct_registration");
-  entry_type iter = x.register_array(uri, *array);
+  entry_type iter = x.register_array(uri, *array, QueryType::READ);
 
   // Check registration
   REQUIRE(x.registry_size() == 1);
@@ -91,7 +92,7 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == false);
 
   // Re-register uri and check registry
-  iter = x.register_array(uri, *array);
+  iter = x.register_array(uri, *array, QueryType::READ);
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(tiledb::sm::utils::parse::is_element_of(uri_empty, uri) == false);
@@ -110,13 +111,15 @@ TEST_CASE(
   // Try to register an empty URI
   const URI uri_empty = URI();
   Array* array = nullptr;
-  REQUIRE_THROWS_AS(x.make_sentry(uri_empty, *array), std::exception);
+  REQUIRE_THROWS_AS(
+      x.make_sentry(uri_empty, *array, QueryType::READ), std::exception);
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri_empty) == false);
 
   // Register a non-empty URI
   const URI uri = URI("whitebox_null_array_sentry_registration");
-  tiledb::sm::ConsistencySentry sentry_uri = x.make_sentry(uri, *array);
+  tiledb::sm::ConsistencySentry sentry_uri =
+      x.make_sentry(uri, *array, QueryType::READ);
 
   // Check registration
   REQUIRE(x.registry_size() == 1);
@@ -135,7 +138,8 @@ TEST_CASE(
   // Register a URI
   const URI uri = URI("whitebox_sentry");
   Array* array = nullptr;
-  tiledb::sm::ConsistencySentry sentry = x.make_sentry(uri, *array);
+  tiledb::sm::ConsistencySentry sentry =
+      x.make_sentry(uri, *array, QueryType::READ);
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
 
@@ -152,7 +156,7 @@ TEST_CASE(
   // Create an optional Sentry
   const URI uri_optional = URI("whitebox_optional_sentry");
   std::optional<tiledb::sm::ConsistencySentry> sentry_optional(
-      x.make_sentry(uri_optional, *array));
+      x.make_sentry(uri_optional, *array, QueryType::READ));
   REQUIRE(x.registry_size() == 2);
   REQUIRE(x.is_open(uri) == true);
 }
@@ -165,12 +169,9 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ThreadPool tp_cpu(1);
-  ThreadPool tp_io(1);
-  stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
   tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
@@ -179,12 +180,12 @@ TEST_CASE(
   REQUIRE(tiledb::sm::utils::parse::is_element_of(uri, uri) == true);
 
   // Deregister array
-  array.get()->close();
+  REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up
-  sm.vfs()->remove_dir(uri);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }
 
 TEST_CASE(
@@ -194,16 +195,13 @@ TEST_CASE(
 
   // Create a StorageManager
   Config config;
-  ThreadPool tp_cpu(1);
-  ThreadPool tp_io(1);
-  stats::Stats stats("");
-  StorageManager sm(&tp_cpu, &tp_io, &stats, make_shared<Logger>(HERE(), ""));
-  Status st = sm.init(config);
-  REQUIRE(st.ok());
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
-  std::vector<URI> uris = {URI("whitebox_array_vector_1"),
-                           URI("whitebox_array_vector_2")};
+  std::vector<URI> uris = {
+      URI("whitebox_array_vector_1"), URI("whitebox_array_vector_2")};
 
   // Register arrays
   size_t count = 0;
@@ -220,7 +218,7 @@ TEST_CASE(
 
   // Deregister arrays
   for (auto a = arrays.end(); a == arrays.begin(); --a) {
-    a->get()->close();
+    REQUIRE(a->get()->close().ok());
     count--;
     REQUIRE(x.is_open(uris[count]) == false);
     REQUIRE(x.registry_size() == count);
@@ -228,6 +226,61 @@ TEST_CASE(
 
   // Clean up
   for (auto uri : uris) {
-    sm.vfs()->remove_dir(uri);
+    REQUIRE(sm.vfs()->remove_dir(uri).ok());
   }
+}
+
+TEST_CASE(
+    "WhiteboxConsistencyController: Exclusive modification",
+    "[ConsistencyController][modify][exclusive]") {
+  WhiteboxConsistencyController x;
+  const URI uri = URI("whitebox_modify_exclusive");
+
+  // Create a StorageManager
+  Config config;
+  auto logger = make_shared<Logger>(HERE(), "foo");
+  ContextResources resources(config, logger, 1, 1, "");
+  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
+
+  // Create an array
+  tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
+
+  // Open an array for exclusive modification
+  auto st = array->open(
+      QueryType::MODIFY_EXCLUSIVE, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  REQUIRE(st.ok());
+  REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri) == true);
+
+  // Try to register an array for read
+  REQUIRE_THROWS_WITH(
+      x.register_array(uri, *array.get(), QueryType::READ),
+      Catch::Matchers::ContainsSubstring(
+          "close array opened for exclusive modification"));
+  REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri) == true);
+
+  // Close exclusive modification array
+  REQUIRE(array.get()->close().ok());
+  REQUIRE(x.registry_size() == 0);
+  REQUIRE(x.is_open(uri) == false);
+
+  // Open array for read
+  st = array->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  REQUIRE(st.ok());
+  REQUIRE(x.registry_size() == 1);
+  REQUIRE(x.is_open(uri) == true);
+
+  // Try to register an array for exclusive modification
+  REQUIRE_THROWS_WITH(
+      x.register_array(uri, *array, QueryType::MODIFY_EXCLUSIVE),
+      Catch::Matchers::ContainsSubstring(
+          "must close array before opening for exclusive modification"));
+  REQUIRE(x.registry_size() == 1);
+
+  // Clean up
+  REQUIRE(array.get()->close().ok());
+  REQUIRE(x.registry_size() == 0);
+  REQUIRE(x.is_open(uri) == false);
+  REQUIRE(sm.vfs()->remove_dir(uri).ok());
 }

@@ -11,17 +11,13 @@ my_array                            # array folder
    |  ...
    |_ __schema                      # array schema folder
          |_ <timestamped_name>      # array schema file
-         |_ ...  
+         |_ ...
 ```
-
-`<timestamped_name>` has format `__timestamp_timestamp_uuid`, where:
-* `timestamp` is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-
 
 The array schema folder can contain:
 
-* Any number of [array schema files](#array-schema-file)
+* Any number of [array schema files](#array-schema-file) with name [`<timestamped_name>`](./timestamped_name.md). 
+   * Note: the name does _not_ include the format version.
 
 ## Previous Array Schema Version
 
@@ -54,6 +50,10 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Attribute 1 | [Attribute](#attribute) | First attribute |
 | … | … | … |
 | Attribute N | [Attribute](#attribute) | Nth attribute |
+| Num labels | `uint32_t` | Number of dimension labels in the array |
+| Label 1 | [Dimension Label](#dimension_label) | First dimension label |
+| … | … | … |
+| Label N | [Dimension Label](#dimension_label) | Nth dimension label |
 
 ## Domain
 
@@ -73,7 +73,7 @@ The dimension has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Dimension name length | `uint32_t` | Number of characters in dimension name |
-| Dimension name | `char[]` | Dimension name character array |
+| Dimension name | `uint8_t[]` | Dimension name character array |
 | Dimension datatype | `uint8_t` | Datatype of the coordinate values |
 | Cell val num | `uint32_t` | Number of coordinate values per cell. For variable-length dimensions, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on coordinate value tiles |
@@ -89,7 +89,7 @@ The attribute has internal format:
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Attribute name length | `uint32_t` | Number of characters in attribute name |
-| Attribute name | `char[]` | Attribute name character array |
+| Attribute name | `uint8_t[]` | Attribute name character array |
 | Attribute datatype | `uint8_t` | Datatype of the attribute values |
 | Cell val num | `uint32_t` | Number of attribute values per cell. For variable-length attributes, this is `std::numeric_limits<uint32_t>::max()` |
 | Filters | [Filter Pipeline](./filter_pipeline.md) | The filter pipeline used on attribute value tiles |
@@ -97,3 +97,26 @@ The attribute has internal format:
 | Fill value | `uint8_t[]` | The fill value |
 | Nullable | `bool` | Whether or not the attribute can be null |
 | Fill value validity | `uint8_t` | The validity fill value |
+| Order | `uint8_t` | Order of the data stored in the attribute. This may be unordered, increasing or decreasing |
+
+## Dimension Label
+
+The dimension label has internal format:
+
+| **Field**                  | **Type**   | **Description** |
+| :------------------------- | :--------- | :-------------- |
+| Dimension index            | `uint32_t` | Index of the dimension the label is for |
+| Label order                | `uint8_t`  | Order of the label data |
+| Dimension label name length| `uint64_t` | Number of characters in the dimension label name |
+| Dimension label name       | `uint8_t []`  | The name of the dimension label |
+| Relative URI               | `uint8_t`     | If the URI of the array the label data is stored in is relative to this array |
+| URI length                 | `uint64_t` | The number of characters in the URI |
+| URI                        | `uint8_t []`  | The URI the label data is stored in |
+| Label attribute name length| `uint32_t` | The length of the attribute name of the label data |
+| Label attribute name       | `uint8_t []`  | The name of the attribute the label data is stored in |
+| Label datatype             | `uint8_t`  | The datatype of the label data |
+| Label cell_val_num         | `uint32_t` | The number of values per cell of the label data. For variable-length labels, this is `std::numeric_limits<uint32_t>::max()` |
+| Label domain size          | `uint64_t` | The size of the label domain |
+| Label domain start size    | `uint64_t` | The size of the first value of the domain for variable-lenght datatypes. For fixed-lenght labels, this is 0|
+| Label domain data          | `uint8_t[]`| Byte array of length equal to domain size above, storing the min, max values of the dimension |
+| Is external                | `uint8_t`     | If the URI is not stored as part of this array |

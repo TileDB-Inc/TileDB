@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -265,6 +265,14 @@ class Config {
    *
    * **Parameters**
    *
+   * - `sm.allow_separate_attribute_writes` <br>
+   *    **Experimental** <br>
+   *    Allow separate attribute write queries.<br>
+   *    **Default**: false
+   * - `sm.allow_updates_experimental` <br>
+   *    **Experimental** <br>
+   *    Allow update queries. Experimental for testing purposes, do not use.<br>
+   *    **Default**: false
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse fragment writes. Note that ties during deduplication are broken
@@ -289,13 +297,12 @@ class Config {
    *    Checks if the coordinates obey the global array order. Applicable only
    *    to sparse writes in global order.
    *    **Default**: true
-   * - `sm.tile_cache_size` <br>
-   *    The tile cache size in bytes. Any `uint64_t` value is acceptable. <br>
-   *    **Default**: 10,000,000
-   * - `sm.array_schema_cache_size` <br>
-   *    Array schema cache size in bytes. Any `uint64_t` value is acceptable.
-   *    <br>
-   *    **Default**: 10,000,000
+   * - `sm.merge_overlapping_ranges_experimental` <br>
+   *    **Experimental** <br>
+   *    If `true`, merge overlapping Subarray ranges. Else, overlapping ranges
+   *    will not be merged and multiplicities will be returned.
+   *    Experimental for testing purposes, do not use.<br>
+   *    **Default**: true
    * - `sm.enable_signal_handlers` <br>
    *    Whether or not TileDB will install signal handlers. <br>
    *    **Default**: true
@@ -315,7 +322,7 @@ class Config {
    *    `group_meta` (remove only consolidate group metadata only).
    *    <br>
    *    **Default**: "fragments"
-   * - `sm.consolidation_mode` <br>
+   * - `sm.consolidation.mode` <br>
    *    The consolidation mode, one of
    *    `commits` (consolidate all commit files),
    *    `fragments` (consolidate all fragments),
@@ -333,9 +340,22 @@ class Config {
    *    (since the resulting fragments is dense). <br>
    *    **Default**: 1.0
    * - `sm.consolidation.buffer_size` <br>
+   *    **Deprecated**
    *    The size (in bytes) of the attribute buffers used during
    *    consolidation. <br>
    *    **Default**: 50,000,000
+   * - `sm.consolidation.total_buffer_size` <br>
+   *    **Deprecated**
+   *    The size (in bytes) of all attribute buffers used during
+   *    consolidation. <br>
+   *    **Default**: 2,147,483,648
+   * - `sm.consolidation.max_fragment_size` <br>
+   *    **Experimental** <br>
+   *    The size (in bytes) of the maximum on-disk fragment size that will be
+   *    created by consolidation. When it is reached, consolidation will
+   *    continue the operation in a new fragment. The result will be a multiple
+   *    fragments, but with seperate MBRs. <br>
+   *    **Default**: UINT64_MAX
    * - `sm.consolidation.steps` <br>
    *    The number of consolidation steps to be performed when executing
    *    the consolidation algorithm.<br>
@@ -386,6 +406,11 @@ class Config {
    *    The offsets format (`bytes` or `elements`) to be used for
    *    var-sized attributes.<br>
    *    **Default**: bytes
+   * - `sm.query.dense.qc_coords_mode` <br>
+   *    **Experimental** <br>
+   *    Reads only the coordinates of the dense query that matched the query
+   *    condition.<br>
+   *    **Default**: false
    * - `sm.query.dense.reader` <br>
    *    Which reader to use for dense queries. "refactored" or "legacy".<br>
    *    **Default**: refactored
@@ -401,6 +426,17 @@ class Config {
    *    Should malloc_trim be called on context and query destruction? This
    *    might reduce residual memory usage. <br>
    *    **Default**: true
+   * - `sm.mem.tile_upper_memory_limit` <br>
+   *    **Experimental** <br>
+   *    This is the upper memory limit that is used when loading tiles. For now
+   *    it is only used in the dense reader but will be eventually used by all
+   *    readers. The readers using this value will use it as a way to limit the
+   *    amount of tile data that is brought into memory at once so that we don't
+   *    incur performance penalties during memory movement operations. It is a
+   *    soft limit that we might go over if a single tile doesn't fit into
+   *    memory, we will allow to load that tile if it still fits within
+   *    `sm.mem.total_budget`. <br>
+   *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
@@ -408,10 +444,6 @@ class Config {
    *    Ratio of the budget allocated for coordinates in the sparse global
    *    order reader. <br>
    *    **Default**: 0.5
-   * - `sm.mem.reader.sparse_global_order.ratio_query_condition` <br>
-   *    Ratio of the budget allocated for the query condition in the sparse
-   *    global order reader. <br>
-   *    **Default**: 0.25
    * - `sm.mem.reader.sparse_global_order.ratio_tile_ranges` <br>
    *    Ratio of the budget allocated for tile ranges in the sparse global
    *    order reader. <br>
@@ -424,10 +456,6 @@ class Config {
    *    Ratio of the budget allocated for coordinates in the sparse unordered
    *    with duplicates reader. <br>
    *    **Default**: 0.5
-   * - `sm.mem.reader.sparse_unordered_with_dups.ratio_query_condition` <br>
-   *    Ratio of the budget allocated for the query condition in the sparse
-   *    unordered with duplicates reader. <br>
-   *    **Default**: 0.25
    * - `sm.mem.reader.sparse_unordered_with_dups.ratio_tile_ranges` <br>
    *    Ratio of the budget allocated for tile ranges in the sparse unordered
    *    with duplicates reader. <br>
@@ -445,6 +473,16 @@ class Config {
    *    The end timestamp used for opening the group. <br>
    *    Also used for the write timestamp if set. <br>
    *    **Default**: UINT64_MAX
+   * - `sm.fragment_info.preload_mbrs` <br>
+   *    If `true` MBRs will be loaded at the same time as the rest of fragment
+   *    info, otherwise they will be loaded lazily when some info related to
+   *    MBRs is requested by the user. <br>
+   *    **Default**: false
+   * -  `sm.partial_tile_offsets_loading`
+   *    **Experimental** <br>
+   *    If `true` tile offsets can be partially loaded and unloaded by the
+   *    readers. <br>
+   *    **Default**: false
    * -  `vfs.read_ahead_cache_size` <br>
    *    The the total maximum size of the read-ahead cache, which is an LRU.
    *    <br>
@@ -463,29 +501,47 @@ class Config {
    * - `vfs.min_batch_gap` <br>
    *    The minimum number of bytes between two VFS read batches.<br>
    *    **Default**: 500KB
+   * - `vfs.read_logging_mode` <br>
+   *    Log read operations at varying levels of verbosity.<br>
+   *   **Default: ""**
+   *    Possible values:<br>
+   *    <ul>
+   *     <li><pre>""</pre> An empty string disables read logging.</li>
+   *     <li><pre>"fragments"</pre> Log each fragment read.</li>
+   *     <li><pre>"fragment_files"</pre> Log each individual fragment file
+   *         read.</li>
+   *     <li><pre>"all_files"</pre> Log all files read.</li>
+   *     <li><pre>"all_reads"</pre> Log all files with offset and length
+   *         parameters.</li>
+   *     <li><pre>"all_reads_always"</pre> Log all files with offset and length
+   *         parameters on every read, not just the first read. On large arrays
+   *         the read cache may get large so this trades of RAM usage vs
+   *         increased log verbosity.</li>
+   *   </ul>
    * - `vfs.file.posix_file_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 644
    * - `vfs.file.posix_directory_permissions` <br>
    *    permissions to use for posix file system with file or dir creation.<br>
    *    **Default**: 755
-   * - `vfs.file.max_parallel_ops` <br>
-   *    The maximum number of parallel operations on objects with `file:///`
-   *    URIs. <br>
-   *    **Default**: `sm.io_concurrency_level`
    * - `vfs.azure.storage_account_name` <br>
-   *    Set the Azure Storage Account name. <br>
+   *    Set the name of the Azure Storage account to use. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_account_key` <br>
-   *    Set the Azure Storage Account key. <br>
+   *    Set the Shared Key to authenticate to Azure Storage. <br>
    *    **Default**: ""
    * - `vfs.azure.storage_sas_token` <br>
-   *    Set the Azure Storage SAS (shared access signature) token. <br>
+   *    Set the Azure Storage SAS (shared access signature) token to use.
+   *    If this option is set along with `vfs.azure.blob_endpoint`, the
+   *    latter must not include a SAS token. <br>
    *    **Default**: ""
    * - `vfs.azure.blob_endpoint` <br>
-   *    Overrides the default Azure Storage Blob endpoint. If empty, the
-   *    endpoint will be constructed from the storage account name. This
-   *    should not include an http:// or https:// prefix. <br>
+   *    Set the default Azure Storage Blob endpoint. <br>
+   *    If not specified, it will take a value of
+   *    `https://<account-name>.blob.core.windows.net`, where `<account-name>`
+   *    is the value of the `vfs.azure.storage_account_name` option. This means
+   *    that at least one of these two options must be set (or both if shared
+   *    key authentication is used). <br>
    *    **Default**: ""
    * - `vfs.azure.block_list_block_size` <br>
    *    The block size (in bytes) used in Azure blob block list writes.
@@ -499,9 +555,17 @@ class Config {
    * - `vfs.azure.use_block_list_upload` <br>
    *    Determines if the Azure backend can use chunked block uploads. <br>
    *    **Default**: "true"
-   * - `vfs.azure.use_https` <br>
-   *    Determines if the blob endpoint should use HTTP or HTTPS.
-   *    **Default**: "true"
+   * - `vfs.azure.max_retries` <br>
+   *    The maximum number of times to retry an Azure network request. <br>
+   *    **Default**: 5
+   * -  `vfs.azure.retry_delay_ms` <br>
+   *    The minimum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 800
+   * -  `vfs.azure.max_retry_delay_ms` <br>
+   *    The maximum permissible delay between Azure netwwork request retry
+   *    attempts, in milliseconds.
+   *    **Default**: 60000
    * - `vfs.gcs.project_id` <br>
    *    Set the GCS project id. <br>
    *    **Default**: ""
@@ -520,6 +584,10 @@ class Config {
    * - `vfs.gcs.request_timeout_ms` <br>
    *    The maximum amount of time to retry network requests to GCS. <br>
    *    **Default**: "3000"
+   * - `vfs.gcs.max_direct_upload_size` <br>
+   *    The maximum size in bytes of a direct upload to GCS. Ignored
+   *    if `vfs.gcs.use_multi_part_upload` is set to true. <br>
+   *    **Default**: "10737418240"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -595,11 +663,15 @@ class Config {
    *    The scale factor for exponential backofff when connecting to S3.
    *    Any `long` value is acceptable. <br>
    *    **Default**: 25
+   * - `vfs.s3.custom_headers.*` <br>
+   *    (Optional) Prefix for custom headers on s3 requests. For each custom
+   *    header, use "vfs.s3.custom_headers.header_key" = "header_value" <br>
+   *    **Optional. No Default**
    * - `vfs.s3.logging_level` <br>
    *    The AWS SDK logging level. This is a process-global setting. The
    *    configuration of the most recently constructed context will set
    *    process state. Log files are written to the process working directory.
-   *    **Default**: off""
+   *    **Default**: "off"
    * - `vfs.s3.request_timeout_ms` <br>
    *    The request timeout in ms. Any `long` value is acceptable. <br>
    *    **Default**: 3000
@@ -626,9 +698,16 @@ class Config {
    * - `vfs.s3.verify_ssl` <br>
    *    Enable HTTPS certificate verification. <br>
    *    **Default**: true
+   * - `vfs.s3.no_sign_request` <br>
+   *    Make unauthenticated requests to s3. <br>
+   *    **Default**: false
    * - `vfs.s3.sse` <br>
    *    The server-side encryption algorithm to use. Supported non-empty
    *    values are "aes256" and "kms" (AWS key management service). <br>
+   *    **Default**: ""
+   * - `vfs.s3.sse_kms_key_id` <br>
+   *    The server-side encryption key to use if
+   *    vfs.s3.sse == "kms" (AWS key management service). <br>
    *    **Default**: ""
    * - `vfs.s3.bucket_canned_acl` <br>
    *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
@@ -650,6 +729,21 @@ class Config {
    *     Aws::S3::Model::ObjectCannedACL.) "aws_exec_read" "owner_read"
    *    "bucket_owner_full_control"
    *    **Default**: "NOT_SET"
+   * - `vfs.s3.config_source` <br>
+   *    Force S3 SDK to only load config options from a set source.
+   *    The supported options are
+   *    `auto` (TileDB config options are considered first,
+   *    then SDK-defined precedence: env vars, config files, ec2 metadata),
+   *    `config_files` (forces SDK to only consider options found in aws
+   *    config files),
+   *    `sts_profile_with_web_identity` (force SDK to consider assume roles/sts
+   * from config files with support for web tokens, commonly used by EKS/ECS).
+   *    **Default**: auto
+   *    <br>
+   * - `vfs.s3.install_sigpipe_handler` <br>
+   *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+   *    signals.
+   *    **Default**: "true"
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -688,10 +782,6 @@ class Config {
    *    Authentication token for REST server (used instead of
    *    username/password). <br>
    *    **Default**: ""
-   * - `rest.resubmit_incomplete` <br>
-   *    If true, incomplete queries received from server are automatically
-   *    resubmitted before returning to user control. <br>
-   *    **Default**: "true"
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
@@ -730,6 +820,17 @@ class Config {
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
+   * - `rest.use_refactored_array_open_and_query_submit` <br>
+   *    If true, the new, experimental REST routes and APIs for opening an array
+   *    and submitting a query will be used <br>
+   *    **Default**: false
+   * - `rest.curl.buffer_size` <br>
+   *    Set curl buffer size for REST requests <br>
+   *    **Default**: 524288 (512KB)
+   * - `rest.capnp_traversal_limit` <br>
+   *    CAPNP traversal limit used in the deserialization of messages(bytes)
+   * <br>
+   *    **Default**: 536870912 (512MB)
    * - `filestore.buffer_size` <br>
    *    Specifies the size in bytes of the internal buffers used in the
    *    filestore API. The size should be bigger than the minimum tile size

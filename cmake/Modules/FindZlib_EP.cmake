@@ -28,10 +28,16 @@
 #   - ZLIB_INCLUDE_DIR, directory containing headers
 #   - ZLIB_LIBRARIES, the Zlib library path
 #   - ZLIB_FOUND, whether Zlib has been found
-#   - The Zlib::Zlib imported target
+#   - The ZLIB::ZLIB imported target
 
 # Include some common helper functions.
 include(TileDBCommon)
+
+if (TILEDB_VCPKG)
+  find_package(ZLIB REQUIRED)
+  return()
+endif()
+
 
 # Search the path set during the superbuild for the EP.
 set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
@@ -40,7 +46,7 @@ set(ZLIB_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 #  Built-in module only supports shared zlib, so using it
 #  w/in superbuild we end up linking zlib.dll.
 #  https://gitlab.kitware.com/cmake/cmake/issues/18029)
-if ((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_ZLIB_EP_BUILT))
+if (((NOT TILEDB_FORCE_ALL_DEPS) AND (NOT TILEDB_ZLIB_EP_BUILT)) OR DEFINED VCPKG_CMAKE_SYSTEM_NAME)
   find_package(ZLIB ${TILEDB_DEPS_NO_DEFAULT_PATH})
 endif()
 
@@ -112,16 +118,11 @@ if (NOT ZLIB_FOUND)
   endif()
 endif()
 
-if (ZLIB_FOUND AND NOT TARGET Zlib::Zlib)
+if (ZLIB_FOUND AND NOT TARGET ZLIB::ZLIB )
   message(STATUS "Found Zlib, adding imported target: ${ZLIB_LIBRARIES}")
-  add_library(Zlib::Zlib UNKNOWN IMPORTED)
-  set_target_properties(Zlib::Zlib PROPERTIES
+  add_library(ZLIB::ZLIB UNKNOWN IMPORTED)
+  set_target_properties(ZLIB::ZLIB PROPERTIES
     IMPORTED_LOCATION "${ZLIB_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${ZLIB_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_ZLIB_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(Zlib::Zlib)
 endif()

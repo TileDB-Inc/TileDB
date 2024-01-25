@@ -38,16 +38,154 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
 
-class Array;
+class OpenedArray;
 class ArraySchema;
+class IAggregator;
 enum class Layout : uint8_t;
-class StorageManager;
+class MemoryTracker;
 class Subarray;
 class QueryBuffer;
+class QueryCondition;
+
+using DefaultChannelAggregates =
+    std::unordered_map<std::string, shared_ptr<IAggregator>>;
+
+/**
+ * Class used to pass in common parameters to strategies. This will make it
+ * easier to change parameters moving fowards.
+ */
+class StrategyParams {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  StrategyParams(
+      StorageManager* storage_manager,
+      shared_ptr<OpenedArray> array,
+      Config& config,
+      std::unordered_map<std::string, QueryBuffer>& buffers,
+      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
+      Subarray& subarray,
+      Layout layout,
+      std::optional<QueryCondition>& condition,
+      DefaultChannelAggregates& default_channel_aggregates,
+      bool skip_checks_serialization,
+      MemoryTracker* memory_tracker)
+      : storage_manager_(storage_manager)
+      , array_(array)
+      , config_(config)
+      , buffers_(buffers)
+      , aggregate_buffers_(aggregate_buffers)
+      , subarray_(subarray)
+      , layout_(layout)
+      , condition_(condition)
+      , default_channel_aggregates_(default_channel_aggregates)
+      , skip_checks_serialization_(skip_checks_serialization)
+      , memory_tracker_(memory_tracker) {
+  }
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
+  /** Return the storage manager. */
+  inline StorageManager* storage_manager() {
+    return storage_manager_;
+  };
+
+  /** Return the array. */
+  inline shared_ptr<OpenedArray> array() {
+    return array_;
+  };
+
+  /** Return the config. */
+  inline Config& config() {
+    return config_;
+  };
+
+  /** Return the buffers. */
+  inline std::unordered_map<std::string, QueryBuffer>& buffers() {
+    return buffers_;
+  };
+
+  /** Return the aggregate buffers. */
+  inline std::unordered_map<std::string, QueryBuffer>& aggregate_buffers() {
+    return aggregate_buffers_;
+  };
+
+  /** Return the subarray. */
+  inline Subarray& subarray() {
+    return subarray_;
+  };
+
+  /** Return the layout. */
+  inline Layout layout() {
+    return layout_;
+  };
+
+  /** Return the condition. */
+  inline std::optional<QueryCondition>& condition() {
+    return condition_;
+  }
+
+  /** Return the default channel aggregates. */
+  inline DefaultChannelAggregates& default_channel_aggregates() {
+    return default_channel_aggregates_;
+  }
+
+  /** Return if we should skip checks for serialization. */
+  inline bool skip_checks_serialization() {
+    return skip_checks_serialization_;
+  }
+
+  inline MemoryTracker* memory_tracker() {
+    return memory_tracker_;
+  }
+
+ private:
+  /* ********************************* */
+  /*        PRIVATE ATTRIBUTES         */
+  /* ********************************* */
+
+  /** Storage manager. */
+  StorageManager* storage_manager_;
+
+  /** Array. */
+  shared_ptr<OpenedArray> array_;
+
+  /** Config for query-level parameters only. */
+  Config& config_;
+
+  /** Buffers. */
+  std::unordered_map<std::string, QueryBuffer>& buffers_;
+
+  /** Aggregate buffers. */
+  std::unordered_map<std::string, QueryBuffer>& aggregate_buffers_;
+
+  /** Query subarray (initially the whole domain by default). */
+  Subarray& subarray_;
+
+  /** Layout of the cells in the result of the subarray. */
+  Layout layout_;
+
+  /** Query condition. */
+  std::optional<QueryCondition>& condition_;
+
+  /** Default channel aggregates. */
+  DefaultChannelAggregates& default_channel_aggregates_;
+
+  /** Skip checks for serialization. */
+  bool skip_checks_serialization_;
+
+  /** Memory tracker. */
+  MemoryTracker* memory_tracker_;
+};
 
 /** Processes read or write queries. */
 class StrategyBase {
@@ -58,14 +196,7 @@ class StrategyBase {
 
   /** Constructor. */
   StrategyBase(
-      stats::Stats* stats,
-      shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout);
+      stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params);
 
   /** Destructor. */
   ~StrategyBase() = default;
@@ -106,8 +237,11 @@ class StrategyBase {
   /** The class logger. */
   shared_ptr<Logger> logger_;
 
-  /** The array. */
-  const Array* array_;
+  /**
+   * A shared pointer to the opened array which ensures that the query can
+   * still access it even after the array is closed.
+   */
+  shared_ptr<OpenedArray> array_;
 
   /** The array schema. */
   const ArraySchema& array_schema_;
@@ -119,7 +253,7 @@ class StrategyBase {
    * Maps attribute/dimension names to their buffers.
    * `TILEDB_COORDS` may be used for the special zipped coordinates
    * buffer.
-   * */
+   */
   std::unordered_map<std::string, QueryBuffer>& buffers_;
 
   /** The layout of the cells in the result of the subarray. */
@@ -152,23 +286,6 @@ class StrategyBase {
    * the query.
    */
   void get_dim_attr_stats() const;
-
-  /**
-   * Generates a new fragment name, which is in the form: <br>
-   * `__t_t_uuid_v`, where `t` is the input timestamp and `v` is the current
-   * format version. For instance,
-   * `__1458759561320_1458759561320_6ba7b8129dad11d180b400c04fd430c8_3`.
-   *
-   * If `timestamp` is 0, then it is set to the current time.
-   *
-   * @param timestamp The timestamp of when the array got opened for writes. It
-   *     is in ms since 1970-01-01 00:00:00 +0000 (UTC).
-   * @param format_version The write version.
-   *
-   * @return Status, new fragment name.
-   */
-  tuple<Status, optional<std::string>> new_fragment_name(
-      uint64_t timestamp, uint32_t format_version) const;
 };
 
 }  // namespace sm

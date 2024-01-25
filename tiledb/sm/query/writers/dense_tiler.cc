@@ -39,7 +39,7 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
@@ -101,8 +101,9 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
   auto subarray = subarray_->ndrange(0);  // Guaranteed to be unary
   std::vector<std::array<T, 2>> sub(dim_num);
   for (int32_t d = 0; d < dim_num; ++d)
-    sub[d] = {*(const T*)subarray[d].start_fixed(),
-              *(const T*)subarray[d].end_fixed()};
+    sub[d] = {
+        *(const T*)subarray[d].start_fixed(),
+        *(const T*)subarray[d].end_fixed()};
   auto tile_layout = array_schema_.cell_order();
   auto sub_layout = subarray_->layout();
 
@@ -190,7 +191,7 @@ const typename DenseTiler<T>::CopyPlan DenseTiler<T>::copy_plan(
 
 template <class T>
 Status DenseTiler<T>::get_tile(
-    uint64_t id, const std::string& name, WriterTile& tile) {
+    uint64_t id, const std::string& name, WriterTileTuple& tile) {
   auto timer_se = stats_->start_timer("get_tile");
 
   // Checks
@@ -218,18 +219,16 @@ Status DenseTiler<T>::get_tile(
     std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
     // Initialize position tile
-    Tile tile_pos;
-    RETURN_NOT_OK(tile_pos.init_unfiltered(
+    WriterTile tile_pos(
         constants::format_version,
         constants::cell_var_offset_type,
-        tile_off_size,
         constants::cell_var_offset_size,
-        0));
+        tile_off_size);
 
     // Fill entire tile with MAX_UINT64
-    std::vector<uint64_t> to_write(
-        cell_num_in_tile, std::numeric_limits<uint64_t>::max());
-    RETURN_NOT_OK(tile_pos.write(to_write.data(), 0, tile_off_size));
+    std::vector<offsets_t> to_write(
+        cell_num_in_tile, std::numeric_limits<offsets_t>::max());
+    tile_pos.write(to_write.data(), 0, tile_off_size);
     to_write.clear();
     to_write.shrink_to_fit();
 
@@ -244,18 +243,17 @@ Status DenseTiler<T>::get_tile(
         id, constants::cell_var_offset_size, (uint8_t*)&cell_pos[0], tile_pos));
 
     // Copy real offsets and values to the corresponding tiles
-    void* tile_pos_buff_tmp = tile_pos.data();
-    auto tile_pos_buff = (uint64_t*)tile_pos_buff_tmp;
+    auto tile_pos_buff = tile_pos.data_as<offsets_t>();
     uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
     auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
     auto& tile_off = tile.offset_tile();
     auto& tile_val = tile.var_tile();
     for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
       pos = tile_pos_buff[i];
-      RETURN_NOT_OK(tile_off.write(&offset, tile_off_offset, sizeof(offset)));
+      tile_off.write(&offset, tile_off_offset, sizeof(offset));
       tile_off_offset += sizeof(offset);
       if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
-        RETURN_NOT_OK(tile_val.write_var(&fill_var[0], offset, cell_size));
+        tile_val.write_var(&fill_var[0], offset, cell_size);
         offset += cell_size;
       } else {  // Non-empty
         val_offset = ((offsets_bytesize_ == 8) ?
@@ -269,8 +267,7 @@ Status DenseTiler<T>::get_tile(
                             mul -
                         val_offset) :
                        buff_var_size - val_offset;
-        RETURN_NOT_OK(
-            tile_val.write_var(&buff_var[val_offset], offset, val_size));
+        tile_val.write_var(&buff_var[val_offset], offset, val_size);
         offset += val_size;
       }
     }
@@ -298,8 +295,10 @@ Status DenseTiler<T>::get_tile(
     memset(tile.validity_tile().data(), 0, tile_size);
 
     // Copy tile from buffer
-    return copy_tile(id, cell_size, buff, tile.validity_tile());
+    RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile.validity_tile()));
   }
+
+  compute_tile_metadata(name, id, tile);
 
   return Status::Ok();
 }
@@ -481,8 +480,9 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
   // Get the tile coordinates in the array tile domain
   std::vector<uint64_t> tile_coords_in_dom(dim_num);
-  for (unsigned d = 0; d < dim_num; ++d)
+  for (unsigned d = 0; d < dim_num; ++d) {
     tile_coords_in_dom[d] = tile_coords_in_sub[d] + first_sub_tile_coords_[d];
+  }
 
   // Calculate tile subarray based on the tile coordinates in the domain
   std::vector<std::array<T, 2>> ret(dim_num);
@@ -500,7 +500,7 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, Tile& tile) const {
+    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 
@@ -509,11 +509,13 @@ Status DenseTiler<T>::copy_tile(
   auto tile_offset = copy_plan.tile_start_el_ * cell_size;
   auto copy_nbytes = copy_plan.copy_el_ * cell_size;
   auto sub_strides_nbytes = copy_plan.sub_strides_el_;
-  for (auto& bsn : sub_strides_nbytes)
+  for (auto& bsn : sub_strides_nbytes) {
     bsn *= cell_size;
+  }
   auto tile_strides_nbytes = copy_plan.tile_strides_el_;
-  for (auto& tsn : tile_strides_nbytes)
+  for (auto& tsn : tile_strides_nbytes) {
     tsn *= cell_size;
+  }
   const auto& dim_ranges = copy_plan.dim_ranges_;
   auto first_d = copy_plan.first_d_;
   auto dim_num = (int64_t)dim_ranges.size();
@@ -521,35 +523,39 @@ Status DenseTiler<T>::copy_tile(
 
   // Auxiliary information needed in the copy loop
   std::vector<uint64_t> tile_offsets(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     tile_offsets[i] = tile_offset;
+  }
   std::vector<uint64_t> sub_offsets(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     sub_offsets[i] = sub_offset;
+  }
   std::vector<uint64_t> cell_coords(dim_num);
-  for (int64_t i = 0; i < dim_num; ++i)
+  for (int64_t i = 0; i < dim_num; ++i) {
     cell_coords[i] = dim_ranges[i][0];
+  }
 
   // Perform the tile copy (always in row-major order)
   auto d = dim_num - 1;
   while (true) {
     // Copy a slab
-    RETURN_NOT_OK(
-        tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes));
+    tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes);
 
     // Advance cell coordinates, tile and buffer offsets
     auto last_dim_changed = d;
     for (; last_dim_changed >= 0; --last_dim_changed) {
       ++cell_coords[last_dim_changed];
-      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1])
+      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1]) {
         cell_coords[last_dim_changed] = dim_ranges[last_dim_changed][0];
-      else
+      } else {
         break;
+      }
     }
 
     // Check if copy loop is done
-    if (last_dim_changed < 0)
+    if (last_dim_changed < 0) {
       break;
+    }
 
     // Update the offsets
     tile_offsets[last_dim_changed] +=
@@ -563,6 +569,73 @@ Status DenseTiler<T>::copy_tile(
   }
 
   return Status::Ok();
+}
+
+template <class T>
+void DenseTiler<T>::compute_tile_metadata(
+    const std::string& name, uint64_t id, WriterTileTuple& tile) const {
+  // Calculate copy plan
+  const CopyPlan copy_plan = this->copy_plan(id);
+
+  const auto type = array_schema_.type(name);
+  const auto is_dim = array_schema_.is_dim(name);
+  const bool var = array_schema_.var_size(name);
+  const auto cell_size = array_schema_.cell_size(name);
+  const auto cell_val_num = array_schema_.cell_val_num(name);
+  TileMetadataGenerator md_generator(
+      type, is_dim, var, cell_size, cell_val_num);
+
+  // For easy reference
+  auto tile_offset = copy_plan.tile_start_el_;
+  auto sub_strides_nbytes = copy_plan.sub_strides_el_;
+  auto tile_strides_nbytes = copy_plan.tile_strides_el_;
+  const auto& dim_ranges = copy_plan.dim_ranges_;
+  auto first_d = copy_plan.first_d_;
+  auto dim_num = (int64_t)dim_ranges.size();
+  assert(dim_num > 0);
+
+  // Auxiliary information needed in the copy loop
+  std::vector<uint64_t> tile_offsets(dim_num);
+  for (int64_t i = 0; i < dim_num; ++i) {
+    tile_offsets[i] = tile_offset;
+  }
+  std::vector<uint64_t> cell_coords(dim_num);
+  for (int64_t i = 0; i < dim_num; ++i) {
+    cell_coords[i] = dim_ranges[i][0];
+  }
+
+  // Perform the tile copy (always in row-major order)
+  auto d = dim_num - 1;
+  while (true) {
+    // Copy a slab
+    md_generator.process_cell_slab(
+        tile, tile_offsets[d], tile_offsets[d] + copy_plan.copy_el_);
+
+    // Advance cell coordinates, tile and buffer offsets
+    auto last_dim_changed = d;
+    for (; last_dim_changed >= 0; --last_dim_changed) {
+      ++cell_coords[last_dim_changed];
+      if (cell_coords[last_dim_changed] > dim_ranges[last_dim_changed][1]) {
+        cell_coords[last_dim_changed] = dim_ranges[last_dim_changed][0];
+      } else {
+        break;
+      }
+    }
+
+    // Check if copy loop is done
+    if (last_dim_changed < 0) {
+      break;
+    }
+
+    // Update the offsets
+    tile_offsets[last_dim_changed] +=
+        tile_strides_nbytes[last_dim_changed + first_d];
+    for (auto i = last_dim_changed + 1; i < dim_num; ++i) {
+      tile_offsets[i] = tile_offsets[i - 1];
+    }
+  }
+
+  md_generator.set_tile_metadata(tile);
 }
 
 // Explicit template instantiations

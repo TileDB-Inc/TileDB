@@ -43,12 +43,11 @@ namespace sm {
 
 /**
  * A filter that computes a checksum of the input data into the output data
- buffer with
- * user specified algorithm.
+ * buffer with user specified algorithm.
  *
  * If the input comes in multiple FilterBuffer parts, each part is checksummed
  * independently in the forward direction. Input metadata is checksummed as
- well.
+ * well.
  *
  * The forward output metadata has the format:
  *   uint32_t - number of metadata checksums
@@ -74,8 +73,10 @@ class ChecksumMD5Filter : public Filter {
  public:
   /**
    * Constructor.
+   *
+   * @param filter_data_type Datatype the filter will operate on.
    */
-  ChecksumMD5Filter();
+  ChecksumMD5Filter(Datatype filter_data_type);
 
   /** Dumps the filter details in ASCII format in the selected output. */
   void dump(FILE* out) const override;
@@ -84,8 +85,8 @@ class ChecksumMD5Filter : public Filter {
    * Encrypt the bytes of the input data into the output data buffer.
    */
   Status run_forward(
-      const Tile& tile,
-      Tile* const tile_offsets,
+      const WriterTile& tile,
+      WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -96,7 +97,7 @@ class ChecksumMD5Filter : public Filter {
    */
   Status run_reverse(
       const Tile& tile,
-      Tile* const tile_offsets,
+      Tile* const offsets_tile,
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

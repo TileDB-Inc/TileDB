@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,11 +31,89 @@
  */
 
 #include "query_ast.h"
+#include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/misc/integral_type_casts.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+static inline bool supported_string_type(Datatype type) {
+  return (
+      type == Datatype::CHAR || type == Datatype::STRING_ASCII ||
+      type == Datatype::STRING_UTF8);
+}
+
+ASTNodeVal::ASTNodeVal(
+    const std::string& field_name,
+    const void* const data,
+    uint64_t data_size,
+    const void* const offsets,
+    uint64_t offsets_size,
+    const QueryConditionOp op,
+    bool use_enumeration)
+    : field_name_(field_name)
+    , is_null_(false)
+    , op_(op)
+    , use_enumeration_(use_enumeration) {
+  if (data == nullptr && data_size != 0) {
+    throw std::invalid_argument(
+        "ASTNodeVal set membership data must not be nullptr");
+  }
+
+  if (data != nullptr && data_size == 0) {
+    throw std::invalid_argument(
+        "ASTNodeVal set membership data size must be greater "
+        "than zero when data is provided.");
+  }
+
+  if (offsets == nullptr) {
+    throw std::invalid_argument(
+        "ASTNodeVal set membership offsets must not be nullptr");
+  }
+
+  if (offsets_size == 0) {
+    throw std::invalid_argument(
+        "ASTNodeVal set membership offsets size must be greater than zero.");
+  }
+
+  if (offsets_size % sizeof(uint64_t) != 0) {
+    throw std::invalid_argument(
+        "ASTNodeVal set membership offsets is not a multiple of "
+        "uint64_t size.");
+  }
+
+  uint64_t num_offsets = offsets_size / constants::cell_var_offset_size;
+  auto offset_elems = static_cast<const uint64_t*>(offsets);
+  for (uint64_t i = 1; i < num_offsets; i++) {
+    if (offset_elems[i] < offset_elems[i - 1]) {
+      throw std::invalid_argument(
+          "ASTNodeVal set membership offsets must not decrease.");
+    }
+  }
+
+  if (offset_elems[num_offsets - 1] > data_size) {
+    throw std::invalid_argument(
+        "ASTNodeVal invalid set membership offsets invalid for data size: "
+        "last offset " +
+        std::to_string(offset_elems[num_offsets - 1]) +
+        " is larger than data size " + std::to_string(data_size));
+  }
+
+  if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
+    throw std::invalid_argument(
+        "ASTNodeVal invalid set membership operator in set "
+        "membership constructor.");
+  }
+
+  data_ = ByteVecValue(data_size);
+  memcpy(data_.data(), data, data_size);
+
+  offsets_ = ByteVecValue(offsets_size);
+  memcpy(offsets_.data(), offsets, offsets_size);
+
+  generate_members();
+}
 
 bool ASTNodeVal::is_expr() const {
   return false;
@@ -54,13 +132,116 @@ void ASTNodeVal::get_field_names(
   field_name_set.insert(field_name_);
 }
 
+void ASTNodeVal::get_enumeration_field_names(
+    std::unordered_set<std::string>& field_name_set) const {
+  if (use_enumeration_) {
+    field_name_set.insert(field_name_);
+  }
+}
+
 bool ASTNodeVal::is_backwards_compatible() const {
+  if (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN) {
+    return false;
+  }
+
   return true;
 }
 
-Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
-  const uint64_t condition_value_size = condition_value_data_.size();
+void ASTNodeVal::rewrite_enumeration_conditions(
+    const ArraySchema& array_schema) {
+  // This is called by the Query class before applying a query condition. This
+  // works by looking up each related enumeration and translating the
+  // condition's value to reflect the underlying index value. I.e., if the
+  // query condition was created with `my_attr = "foo"`, and `my_attr` is an
+  // attribute with an enumeration, this will replace the condition's value
+  // with the index value returned by `Enumeration::index_of()`.
 
+  if (!use_enumeration_) {
+    return;
+  }
+
+  if (is_null_) {
+    return;
+  }
+
+  if (!array_schema.is_attr(field_name_)) {
+    return;
+  }
+
+  auto attr = array_schema.attribute(field_name_);
+  auto enmr_name = attr->get_enumeration_name();
+  if (!enmr_name.has_value()) {
+    return;
+  }
+
+  auto enumeration = array_schema.get_enumeration(enmr_name.value());
+  if (!enumeration) {
+    throw std::logic_error(
+        "Missing required enumeration for field '" + field_name_ + "'");
+  }
+
+  if (!enumeration->ordered()) {
+    switch (op_) {
+      case QueryConditionOp::LT:
+      case QueryConditionOp::LE:
+      case QueryConditionOp::GT:
+      case QueryConditionOp::GE:
+        throw std::logic_error(
+            "Cannot apply an inequality operator against an unordered "
+            "Enumeration");
+      default:
+        break;
+    }
+  }
+
+  auto val_size = datatype_size(attr->type());
+
+  if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
+    auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
+    if (idx == constants::enumeration_missing_value) {
+      throw std::invalid_argument(
+          "Enumeration value not found for field '" + attr->name() + "'");
+    }
+
+    data_ = ByteVecValue(val_size);
+    utils::safe_integral_cast_to_datatype(idx, attr->type(), data_);
+  } else {
+    // Buffers and writers for the new data/offsets memory
+    std::vector<uint8_t> data_buffer(val_size * members_.size());
+    std::vector<uint8_t> offsets_buffer(
+        constants::cell_var_offset_size * members_.size());
+    Serializer data_writer(data_buffer.data(), data_buffer.size());
+    Serializer offsets_writer(offsets_buffer.data(), offsets_buffer.size());
+
+    ByteVecValue curr_data(val_size);
+    uint64_t curr_offset = 0;
+
+    for (auto& member : members_) {
+      auto idx = enumeration->index_of(member.data(), member.size());
+      if (idx == constants::enumeration_missing_value) {
+        throw std::invalid_argument(
+            "Enumeration value not found for field '" + attr->name() + "'");
+      }
+
+      utils::safe_integral_cast_to_datatype(idx, attr->type(), curr_data);
+      data_writer.write(curr_data.data(), curr_data.size());
+      offsets_writer.write(curr_offset);
+      curr_offset += val_size;
+    }
+
+    data_ = ByteVecValue(data_buffer.size());
+    std::memcpy(data_.data(), data_buffer.data(), data_buffer.size());
+
+    offsets_ = ByteVecValue(offsets_buffer.size());
+    std::memcpy(offsets_.data(), offsets_buffer.data(), offsets_buffer.size());
+
+    generate_members();
+  }
+
+  use_enumeration_ = false;
+}
+
+Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   // Ensure that the field exists.
   if (!array_schema.is_field(field_name_)) {
     return Status_QueryConditionError("Field doesn't exist");
@@ -72,8 +253,14 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   const auto cell_size = array_schema.cell_size(field_name_);
   const auto cell_val_num = array_schema.cell_val_num(field_name_);
 
+  bool has_enumeration = false;
+  if (array_schema.is_attr(field_name_)) {
+    auto attr = array_schema.attribute(field_name_);
+    has_enumeration = attr->get_enumeration_name().has_value();
+  }
+
   // Ensure that null value can only be used with equality operators.
-  if (condition_value_view_.content() == nullptr) {
+  if (is_null_) {
     if (op_ != QueryConditionOp::EQ && op_ != QueryConditionOp::NE) {
       return Status_QueryConditionError(
           "Null value can only be used with equality operators");
@@ -81,17 +268,15 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
     // Ensure that an attribute that is marked as nullable
     // corresponds to a type that is nullable.
-    if ((!nullable) &&
-        (type != Datatype::STRING_ASCII && type != Datatype::CHAR)) {
+    if ((!nullable) && !supported_string_type(type)) {
       return Status_QueryConditionError(
           "Null value can only be used with nullable attributes");
     }
   }
 
   // Ensure that non-empty attributes are only var-sized for
-  // ASCII strings.
-  if (var_size && type != Datatype::STRING_ASCII && type != Datatype::CHAR &&
-      condition_value_view_.content() != nullptr) {
+  // ASCII and UTF-8 strings.
+  if (var_size && !supported_string_type(type) && !is_null_) {
     return Status_QueryConditionError(
         "Value node non-empty attribute may only be var-sized for ASCII "
         "strings: " +
@@ -99,8 +284,7 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
   }
 
   // Ensure that non string fixed size attributes store only one value per cell.
-  if (cell_val_num != 1 && type != Datatype::STRING_ASCII &&
-      type != Datatype::CHAR && (!var_size)) {
+  if (cell_val_num != 1 && !supported_string_type(type) && !var_size) {
     return Status_QueryConditionError(
         "Value node attribute must have one value per cell for non-string "
         "fixed size attributes: " +
@@ -109,28 +293,41 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
 
   // Ensure that the condition value size matches the attribute's
   // value size.
-  if (cell_size != constants::var_size && cell_size != condition_value_size &&
-      !(nullable && condition_value_view_.content() == nullptr) &&
-      type != Datatype::STRING_ASCII && type != Datatype::CHAR && (!var_size)) {
+  if (cell_size != constants::var_size && cell_size != data_.size() &&
+      !(nullable && is_null_) && !supported_string_type(type) && (!var_size) &&
+      !(op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
     return Status_QueryConditionError(
         "Value node condition value size mismatch: " +
-        std::to_string(cell_size) +
-        " != " + std::to_string(condition_value_size));
+        std::to_string(cell_size) + " != " + std::to_string(data_.size()));
+  }
+
+  // When applying a set membership test against a fixed size field that
+  // does not have an enumeration, ensure that all set members have the
+  // correct size.
+  if (cell_size != constants::var_size && !has_enumeration &&
+      (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
+    for (auto& member : members_) {
+      if (member.size() != cell_size) {
+        throw Status_QueryConditionError(
+            "Value node set memmber size mismatch: " +
+            std::to_string(cell_size) + " != " + std::to_string(member.size()));
+      }
+    }
   }
 
   // Ensure that the attribute type is valid.
   switch (type) {
     case Datatype::ANY:
-      return Status_QueryConditionError(
-          "Value node attribute type may not be of type 'ANY': " + field_name_);
-    case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
     case Datatype::STRING_UCS2:
     case Datatype::STRING_UCS4:
+    case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
       return Status_QueryConditionError(
-          "Value node attribute type may not be a UTF/UCS string: " +
-          field_name_);
+          "Unsupported value node attribute type " + datatype_str(type) +
+          " on field " + field_name_);
     default:
       break;
   }
@@ -164,8 +361,40 @@ const std::string& ASTNodeVal::get_field_name() const {
   return field_name_;
 }
 
-const UntypedDatumView& ASTNodeVal::get_condition_value_view() const {
-  return condition_value_view_;
+const void* ASTNodeVal::get_value_ptr() const {
+  if (is_null_) {
+    return nullptr;
+  }
+
+  if (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN) {
+    return &members_;
+  }
+
+  if (data_.size() == 0) {
+    return static_cast<const void*>("");
+  }
+
+  return data_.data();
+}
+
+uint64_t ASTNodeVal::get_value_size() const {
+  if (is_null_) {
+    return 0;
+  }
+
+  if (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN) {
+    return 0;
+  }
+
+  return data_.size();
+}
+
+const ByteVecValue& ASTNodeVal::get_data() const {
+  return data_;
+}
+
+const ByteVecValue& ASTNodeVal::get_offsets() const {
+  return offsets_;
 }
 
 const QueryConditionOp& ASTNodeVal::get_op() const {
@@ -181,6 +410,47 @@ const QueryConditionCombinationOp& ASTNodeVal::get_combination_op() const {
   throw std::runtime_error(
       "ASTNodeVal::get_combination_op: Cannot get combination op from an AST "
       "value node.");
+}
+
+bool ASTNodeVal::use_enumeration() const {
+  return use_enumeration_;
+}
+
+void ASTNodeVal::set_use_enumeration(bool use_enumeration) {
+  use_enumeration_ = use_enumeration;
+}
+
+void ASTNodeVal::generate_members() {
+  // Non-set conditions don't genereate members.
+  if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
+    return;
+  }
+
+  members_.clear();
+
+  // This two phase static_cast is needed to convert from offsets_'s internal
+  // uint8_t pointer into a uint64_t pointer.
+  auto void_offsets = static_cast<const void*>(offsets_.data());
+  auto offset_elems = static_cast<const uint64_t*>(void_offsets);
+  uint64_t num_offsets = offsets_.size() / constants::cell_var_offset_size;
+
+  for (uint64_t i = 0; i < num_offsets; i++) {
+    uint64_t start = offset_elems[i];
+    uint64_t length;
+
+    if (i + 1 < num_offsets) {
+      length = offset_elems[i + 1] - offset_elems[i];
+    } else {
+      length = data_.size() - offset_elems[i];
+    }
+
+    // This two phase static_cast is needed to convert from data_'s internal
+    // uint8_t pointer into a char pointer.
+    auto void_data = static_cast<void*>(data_.data() + start);
+    auto data_ptr = static_cast<char*>(void_data);
+    auto member = std::string_view(data_ptr, length);
+    members_.insert(member);
+  }
 }
 
 bool ASTNodeExpr::is_expr() const {
@@ -202,6 +472,13 @@ void ASTNodeExpr::get_field_names(
   }
 }
 
+void ASTNodeExpr::get_enumeration_field_names(
+    std::unordered_set<std::string>& field_name_set) const {
+  for (const auto& child : nodes_) {
+    child->get_enumeration_field_names(field_name_set);
+  }
+}
+
 bool ASTNodeExpr::is_backwards_compatible() const {
   if (combination_op_ != QueryConditionCombinationOp::AND) {
     return false;
@@ -210,8 +487,18 @@ bool ASTNodeExpr::is_backwards_compatible() const {
     if (child->is_expr()) {
       return false;
     }
+    if (!child->is_backwards_compatible()) {
+      return false;
+    }
   }
   return true;
+}
+
+void ASTNodeExpr::rewrite_enumeration_conditions(
+    const ArraySchema& array_schema) {
+  for (auto& child : nodes_) {
+    child->rewrite_enumeration_conditions(array_schema);
+  }
 }
 
 Status ASTNodeExpr::check_node_validity(const ArraySchema& array_schema) const {
@@ -258,10 +545,26 @@ const std::string& ASTNodeExpr::get_field_name() const {
       "expression node.");
 }
 
-const UntypedDatumView& ASTNodeExpr::get_condition_value_view() const {
+const void* ASTNodeExpr::get_value_ptr() const {
   throw std::runtime_error(
-      "ASTNodeExpr::get_condition_value_view: Cannot get condition value view "
-      "from an AST expression node.");
+      "ASTNodeExpr::get_value_ptr: Cannot get a value pointer from "
+      "an AST expression node.");
+}
+
+uint64_t ASTNodeExpr::get_value_size() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_value_size: Cannot get a value size from "
+      "an AST expression node.");
+}
+
+const ByteVecValue& ASTNodeExpr::get_data() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_data: Cannot get data from an AST expression node.");
+}
+
+const ByteVecValue& ASTNodeExpr::get_offsets() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::get_data: Cannot get offsets from an AST expression node.");
 }
 
 const QueryConditionOp& ASTNodeExpr::get_op() const {
@@ -272,9 +575,21 @@ const QueryConditionOp& ASTNodeExpr::get_op() const {
 const std::vector<tdb_unique_ptr<ASTNode>>& ASTNodeExpr::get_children() const {
   return nodes_;
 }
+
 const QueryConditionCombinationOp& ASTNodeExpr::get_combination_op() const {
   return combination_op_;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+bool ASTNodeExpr::use_enumeration() const {
+  throw std::runtime_error(
+      "ASTNodeExpr::use_enumeration: Cannot get enumeration status from "
+      "an AST expression node.");
+}
+
+void ASTNodeExpr::set_use_enumeration(bool use_enumeration) {
+  for (auto& child : nodes_) {
+    child->set_use_enumeration(use_enumeration);
+  }
+}
+
+}  // namespace tiledb::sm

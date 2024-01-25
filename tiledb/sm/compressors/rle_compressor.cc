@@ -146,11 +146,6 @@ uint64_t RLE::overhead(uint64_t nbytes, uint64_t value_size) {
 }
 
 uint8_t RLE::compute_bytesize(uint64_t param_length) {
-  if (param_length == 0) {
-    throw std::logic_error(
-        "Cannot compute RLE parameter bytesize for zero length");
-  }
-
   if (param_length <= std::numeric_limits<uint8_t>::max()) {
     return 1;
   } else if (param_length <= std::numeric_limits<uint16_t>::max()) {
@@ -191,10 +186,11 @@ tuple<uint64_t, uint64_t, uint64_t, uint64_t> RLE::calculate_compression_params(
   output_strings_size += previous.size();
   max_identicals = std::max(identicals, max_identicals);
 
-  return {compute_bytesize(max_identicals),
-          compute_bytesize(max_string_size),
-          num_of_runs,
-          output_strings_size};
+  return {
+      compute_bytesize(max_identicals),
+      compute_bytesize(max_string_size),
+      num_of_runs,
+      output_strings_size};
 }
 
 Status RLE::compress(
@@ -259,8 +255,7 @@ Status RLE::decompress(
     const uint8_t string_len_size,
     span<std::byte> output,
     span<uint64_t> output_offsets) {
-  if (input.empty() || output.empty() || rle_len_size == 0 ||
-      string_len_size == 0) {
+  if (input.empty() || rle_len_size == 0 || string_len_size == 0) {
     return LOG_STATUS(Status_CompressionError(
         "Failed decompressing strings with RLE; empty input arguments"));
   }

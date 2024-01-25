@@ -42,7 +42,8 @@ GroupMemberV1::GroupMemberV1(
     const ObjectType& type,
     const bool& relative,
     const std::optional<std::string>& name)
-    : GroupMember(uri, type, relative, GroupMemberV1::format_version_, name){};
+    : GroupMember(
+          uri, type, relative, GroupMemberV1::format_version_, name, false){};
 
 // ===== FORMAT =====
 // format_version (uint32_t)
@@ -50,68 +51,61 @@ GroupMemberV1::GroupMemberV1(
 // relative (uint8_t)
 // uri_size (uint64_t)
 // uri (string)
-Status GroupMemberV1::serialize(Buffer* buff) {
-  RETURN_NOT_OK(buff->write(&GroupMemberV1::format_version_, sizeof(uint32_t)));
+void GroupMemberV1::serialize(Serializer& serializer) {
+  serializer.write<uint32_t>(GroupMemberV1::format_version_);
 
   // Write type
   uint8_t type = static_cast<uint8_t>(type_);
-  RETURN_NOT_OK(buff->write(&type, sizeof(uint8_t)));
+  serializer.write<uint8_t>(type);
 
   // Write relative
-  RETURN_NOT_OK(buff->write(&relative_, sizeof(uint8_t)));
+  serializer.write<uint8_t>(relative_);
 
   // Write uri
   uint64_t uri_size = uri_.to_string().size();
-  RETURN_NOT_OK(buff->write(&uri_size, sizeof(uri_size)));
-  RETURN_NOT_OK(buff->write(uri_.c_str(), uri_size));
+  serializer.write<uint64_t>(uri_size);
+  serializer.write(uri_.c_str(), uri_size);
 
   // Write name
   auto name_set = static_cast<uint8_t>(name_.has_value());
-  RETURN_NOT_OK(buff->write(&name_set, sizeof(uint8_t)));
+  serializer.write<uint8_t>(name_set);
   if (name_.has_value()) {
     uint64_t name_size = name_->size();
-    RETURN_NOT_OK(buff->write(&name_size, sizeof(uint64_t)));
-    RETURN_NOT_OK(buff->write(name_->data(), name_size));
+    serializer.write<uint64_t>(name_size);
+    serializer.write(name_->data(), name_size);
   }
-
-  return Status::Ok();
 }
 
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupMember>>>
-GroupMemberV1::deserialize(ConstBuffer* buff) {
-  uint8_t type_placeholder;
-  RETURN_NOT_OK_TUPLE(
-      buff->read(&type_placeholder, sizeof(uint8_t)), std::nullopt);
+shared_ptr<GroupMember> GroupMemberV1::deserialize(Deserializer& deserializer) {
+  uint8_t type_placeholder = deserializer.read<uint8_t>();
   ObjectType type = static_cast<ObjectType>(type_placeholder);
 
-  uint8_t relative_int;
-  RETURN_NOT_OK_TUPLE(buff->read(&relative_int, sizeof(uint8_t)), std::nullopt);
+  uint8_t relative_int = deserializer.read<uint8_t>();
   auto relative = static_cast<bool>(relative_int);
 
-  uint64_t uri_size = 0;
-  RETURN_NOT_OK_TUPLE(buff->read(&uri_size, sizeof(uint64_t)), std::nullopt);
+  uint64_t uri_size = deserializer.read<uint64_t>();
 
   std::string uri_string;
   uri_string.resize(uri_size);
-  RETURN_NOT_OK_TUPLE(buff->read(&uri_string[0], uri_size), std::nullopt);
+  deserializer.read(&uri_string[0], uri_size);
 
   uint8_t name_set_int;
   std::optional<std::string> name;
-  RETURN_NOT_OK_TUPLE(buff->read(&name_set_int, sizeof(uint8_t)), std::nullopt);
+  name_set_int = deserializer.read<uint8_t>();
   auto name_set = static_cast<bool>(name_set_int);
   if (name_set) {
     uint64_t name_size = 0;
-    RETURN_NOT_OK_TUPLE(buff->read(&name_size, sizeof(uint64_t)), std::nullopt);
+    name_size = deserializer.read<uint64_t>();
 
     std::string name_string;
     name_string.resize(name_size);
-    RETURN_NOT_OK_TUPLE(buff->read(&name_string[0], name_size), std::nullopt);
+    deserializer.read(&name_string[0], name_size);
     name = name_string;
   }
 
-  tdb_shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
+  shared_ptr<GroupMemberV1> group_member = tdb::make_shared<GroupMemberV1>(
       HERE(), URI(uri_string, !relative), type, relative, name);
-  return {Status::Ok(), group_member};
+  return group_member;
 }
 
 }  // namespace sm

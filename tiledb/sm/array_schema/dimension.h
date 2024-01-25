@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,8 +56,7 @@ namespace tiledb::type {
 class Range;
 }
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Buffer;
 class ConstBuffer;
@@ -70,9 +69,9 @@ enum class Datatype : uint8_t;
  *
  * Note: as laid out in the Storage Format,
  * the following Datatypes are not valid for Dimension:
- * TILEDB_CHAR, TILEDB_BLOB, TILEDB_BOOL, TILEDB_STRING_UTF8,
- * TILEDB_STRING_UTF16, TILEDB_STRING_UTF32, TILEDB_STRING_UCS2,
- * TILEDB_STRING_UCS4, TILEDB_ANY
+ * TILEDB_CHAR, TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT, TILEDB_BOOL,
+ * TILEDB_STRING_UTF8, TILEDB_STRING_UTF16, TILEDB_STRING_UTF32,
+ * TILEDB_STRING_UCS2, TILEDB_STRING_UCS4, TILEDB_ANY
  */
 class Dimension {
  public:
@@ -112,24 +111,30 @@ class Dimension {
       const ByteVecValue& tile_extent);
 
   /**
-   * Constructor. It clones the input.
+   * Copy constructor is deleted.
    *
-   * @param dim The dimension to clone.
+   * `Dimension` objects are stored as `shared_ptr` within C API handles and
+   * within `Domain`. Instead of copying a `Dimension` one can copy a pointer.
    */
-  explicit Dimension(const Dimension* dim);
+  Dimension(const Dimension&) = delete;
 
-  /** Copy constructor. */
-  DISABLE_COPY(Dimension);
+  /**
+   * Copy assignment is deleted.
+   */
+  Dimension& operator=(const Dimension&) = delete;
 
   /** Destructor. */
   ~Dimension() = default;
 
-  /* ********************************* */
-  /*             OPERATORS             */
-  /* ********************************* */
+  /**
+   * Move constructor is default
+   */
+  Dimension(Dimension&&) = default;
 
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Dimension);
+  /**
+   * Move assignment is default
+   */
+  Dimension& operator=(Dimension&&) = default;
 
   /* ********************************* */
   /*                API                */
@@ -150,12 +155,16 @@ class Dimension {
    * Populates the object members from the data in the input binary buffer.
    *
    * @param deserializer The deserializer to deserialize from.
-   * @param type The type of the dimension.
    * @param version The array schema version.
+   * @param type The type of the dimension.
+   * @param coords_filters Coords filters to replace empty coords pipelines.
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
-      Deserializer& deserializer, uint32_t version, Datatype type);
+      Deserializer& deserializer,
+      uint32_t version,
+      Datatype type,
+      FilterPipeline& coords_filters);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -318,7 +327,7 @@ class Dimension {
   template <
       class T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  static T tile_extent_mult(const T& v, const T& tile_extent) {
+  static uint64_t tile_extent_mult(const T& v, const T& tile_extent) {
     typedef typename std::make_unsigned<T>::type unsigned_t;
     return (unsigned_t)v * (unsigned_t)tile_extent;
   }
@@ -454,29 +463,29 @@ class Dimension {
    * Computes the minimum bounding range of the values stored in
    * `tile`. Applicable only to fixed-size dimensions.
    */
-  Status compute_mbr(const Tile& tile, Range* mbr) const;
+  Range compute_mbr(const WriterTile& tile) const;
 
   /**
    * Computed the minimum bounding range of the values stored in
    * `tile`.
    */
   template <class T>
-  static Status compute_mbr(const Tile& tile, Range* mbr);
+  static Range compute_mbr(const WriterTile& tile);
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
-  Status compute_mbr_var(
-      const Tile& tile_off, const Tile& tile_val, Range* mbr) const;
+  Range compute_mbr_var(
+      const WriterTile& tile_off, const WriterTile& tile_val) const;
 
   /**
    * Computes the minimum bounding range of the values stored in
    * `tile_val`. Applicable only to var-sized dimensions.
    */
   template <class T>
-  static Status compute_mbr_var(
-      const Tile& tile_off, const Tile& tile_val, Range* mbr);
+  static Range compute_mbr_var(
+      const WriterTile& tile_off, const WriterTile& tile_val);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -709,7 +718,7 @@ class Dimension {
   Status set_domain_unsafe(const void* domain);
 
   /** Sets the filter pipeline for this dimension. */
-  Status set_filter_pipeline(const FilterPipeline* pipeline);
+  void set_filter_pipeline(const FilterPipeline& pipeline);
 
   /** Sets the tile extent. */
   Status set_tile_extent(const void* tile_extent);
@@ -799,13 +808,14 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<Status(const Tile&, Range*)> compute_mbr_func_;
+  std::function<Range(const WriterTile&)> compute_mbr_func_;
 
   /**
    * Stores the appropriate templated compute_mbr_var() function based on the
    * dimension datatype.
    */
-  std::function<Status(const Tile&, const Tile&, Range*)> compute_mbr_var_func_;
+  std::function<Range(const WriterTile&, const WriterTile&)>
+      compute_mbr_var_func_;
 
   /**
    * Stores the appropriate templated crop_range() function based on the
@@ -1004,9 +1014,6 @@ class Dimension {
   Status check_tile_extent_upper_floor_internal(
       const T_EXTENT* domain, T_EXTENT tile_extent) const;
 
-  /** Returns the domain in string format. */
-  std::string domain_str() const;
-
   /** Throws error if the input type is not a supported Dimension Datatype. */
   void ensure_datatype_is_supported(Datatype type) const;
 
@@ -1077,8 +1084,7 @@ class Dimension {
   void set_smaller_than_func();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 namespace tiledb::common {
 template <>

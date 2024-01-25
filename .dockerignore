@@ -1,5 +1,5 @@
 build
 builds
+**/buildtrees/*
 scripts
 !scripts/capnpupdate.sh
-.git

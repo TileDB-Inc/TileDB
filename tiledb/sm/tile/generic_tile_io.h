@@ -37,13 +37,14 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
+#include "tiledb/sm/stats/stats.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
 
-class StorageManager;
 class Tile;
 
 /** Handles IO (reading/writing) for tiles. */
@@ -99,10 +100,10 @@ class GenericTileIO {
   /**
    * Constructor.
    *
-   * @param storage_manager The storage manager.
+   * @param resources The ContextResources to use
    * @param uri The name of the file that stores data.
    */
-  GenericTileIO(StorageManager* storage_manager, const URI& uri);
+  GenericTileIO(ContextResources& resources, const URI& uri);
 
   GenericTileIO() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
@@ -111,6 +112,21 @@ class GenericTileIO {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /**
+   * Load data from persistent storage.
+   *
+   * @param resources The ContextResources to use.
+   * @param uri The object URI.
+   * @param offset The offset into the file to read from.
+   * @param encryption_key The encryption key to use.
+   * @return Status, Tile with the data.
+   */
+  static Tile load(
+      ContextResources& resources,
+      const URI& uri,
+      uint64_t offset,
+      const EncryptionKey& encryption_key);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
@@ -127,7 +143,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  tuple<Status, optional<Tile>> read_generic(
+  Tile read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);
@@ -135,29 +151,29 @@ class GenericTileIO {
   /**
    * Reads the generic tile header from the file.
    *
-   * @param sm The StorageManager instance to use for reading.
+   * @param resources The ContextResources instance to use for reading.
    * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
    * @param encryption_key If the array is encrypted, the private encryption
    *    key. For unencrypted arrays, pass `nullptr`.
    * @return Status, Header
    */
-  static tuple<Status, optional<GenericTileHeader>> read_generic_tile_header(
-      const StorageManager* sm, const URI& uri, uint64_t file_offset);
+  static GenericTileHeader read_generic_tile_header(
+      ContextResources& resources, const URI& uri, uint64_t file_offset);
 
   /**
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,
-   * other thant the file itself.
+   * other than the file itself.
    *
    * @param tile The tile to be written.
    * @param encryption_key The encryption key to use.
    * @param nbytes The total number of bytes written to the file.
    * @return Status
    */
-  Status write_generic(
-      Tile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+  void write_generic(
+      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
 
   /**
    * Serialize a generic tile header.
@@ -174,15 +190,15 @@ class GenericTileIO {
    * @param header The header to write
    * @return Status
    */
-  Status write_generic_tile_header(GenericTileHeader* header);
+  void write_generic_tile_header(GenericTileHeader* header);
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The storage manager object. */
-  StorageManager* storage_manager_;
+  /** The ContextResources object. */
+  ContextResources& resources_;
 
   /** The file URI. */
   URI uri_;
@@ -194,7 +210,7 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status configure_encryption_filter(
+  void configure_encryption_filter(
       GenericTileHeader* header, const EncryptionKey& encryption_key) const;
 
   /**
@@ -207,8 +223,8 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status
    */
-  Status init_generic_tile_header(
-      Tile* tile,
+  void init_generic_tile_header(
+      WriterTile* tile,
       GenericTileHeader* header,
       const EncryptionKey& encryption_key) const;
 };

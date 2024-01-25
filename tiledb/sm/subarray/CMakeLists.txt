@@ -25,24 +25,14 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `range_subset` object library
 #
-add_library(range_subset OBJECT range_subset.cc)
-target_link_libraries(range_subset PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(range_subset PUBLIC constants $<TARGET_OBJECTS:constants>)
-target_link_libraries(range_subset PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
-target_link_libraries(range_subset PUBLIC range $<TARGET_OBJECTS:range>)
+commence(object_library range_subset)
+this_target_sources(range_subset.cc)
+this_target_object_libraries(baseline buffer constants range thread_pool)
+conclude(object_library)
 
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_range_subset EXCLUDE_FROM_ALL)
-target_link_libraries(compile_range_subset PRIVATE range_subset)
-target_sources(compile_range_subset PRIVATE test/compile_range_subset_main.cc)
-
-
-if (TILEDB_TESTS)
-    add_subdirectory(test)
-endif()
+add_test_subdirectory()

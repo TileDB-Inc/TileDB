@@ -34,7 +34,7 @@
 #include <string>
 #include <vector>
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/ast/query_ast.h"
 
@@ -445,11 +445,12 @@ TEST_CASE(
     "[QueryCondition][ast][constructor]") {
   std::vector<int32_t> vals = {
       0x1aaaaaaa, 0x1bbbbbbb, 0x1ccccccc, 0x1ddddddd, 0x1eeeeeee};
-  std::vector<std::string> expected_strs = {"foo NE aa aa aa 1a",
-                                            "foo NE bb bb bb 1b",
-                                            "foo NE cc cc cc 1c",
-                                            "foo NE dd dd dd 1d",
-                                            "foo NE ee ee ee 1e"};
+  std::vector<std::string> expected_strs = {
+      "foo NE aa aa aa 1a",
+      "foo NE bb bb bb 1b",
+      "foo NE cc cc cc 1c",
+      "foo NE dd dd dd 1d",
+      "foo NE ee ee ee 1e"};
   std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
   // Creating the value nodes foo != 0x1aaaaaaa, foo != 0x1bbbbbbb, foo !=
@@ -497,11 +498,12 @@ TEST_CASE(
     "[QueryCondition][ast][constructor]") {
   std::vector<int32_t> vals = {
       0x1aaaaaaa, 0x1bbbbbbb, 0x1ccccccc, 0x1ddddddd, 0x1eeeeeee};
-  std::vector<std::string> expected_strs = {"foo NE aa aa aa 1a",
-                                            "foo NE bb bb bb 1b",
-                                            "foo NE cc cc cc 1c",
-                                            "foo NE dd dd dd 1d",
-                                            "foo NE ee ee ee 1e"};
+  std::vector<std::string> expected_strs = {
+      "foo NE aa aa aa 1a",
+      "foo NE bb bb bb 1b",
+      "foo NE cc cc cc 1c",
+      "foo NE dd dd dd 1d",
+      "foo NE ee ee ee 1e"};
   std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
   // Creating the value nodes foo != 0x1aaaaaaa, foo != 0x1bbbbbbb, foo !=
@@ -956,11 +958,12 @@ TEST_CASE(
     "[QueryCondition][ast][negate]") {
   std::vector<int32_t> vals = {
       0x1aaaaaaa, 0x1bbbbbbb, 0x1ccccccc, 0x1ddddddd, 0x1eeeeeee};
-  std::vector<std::string> expected_strs = {"foo NE aa aa aa 1a",
-                                            "foo NE bb bb bb 1b",
-                                            "foo NE cc cc cc 1c",
-                                            "foo NE dd dd dd 1d",
-                                            "foo NE ee ee ee 1e"};
+  std::vector<std::string> expected_strs = {
+      "foo NE aa aa aa 1a",
+      "foo NE bb bb bb 1b",
+      "foo NE cc cc cc 1c",
+      "foo NE dd dd dd 1d",
+      "foo NE ee ee ee 1e"};
   std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
   // Creating the value nodes foo != 0x1aaaaaaa, foo != 0x1bbbbbbb, foo !=
@@ -1012,11 +1015,12 @@ TEST_CASE(
     "[QueryCondition][ast][negate]") {
   std::vector<int32_t> vals = {
       0x1aaaaaaa, 0x1bbbbbbb, 0x1ccccccc, 0x1ddddddd, 0x1eeeeeee};
-  std::vector<std::string> expected_strs = {"foo NE aa aa aa 1a",
-                                            "foo NE bb bb bb 1b",
-                                            "foo NE cc cc cc 1c",
-                                            "foo NE dd dd dd 1d",
-                                            "foo NE ee ee ee 1e"};
+  std::vector<std::string> expected_strs = {
+      "foo NE aa aa aa 1a",
+      "foo NE bb bb bb 1b",
+      "foo NE cc cc cc 1c",
+      "foo NE dd dd dd 1d",
+      "foo NE ee ee ee 1e"};
   std::vector<tdb_unique_ptr<ASTNode>> ast_val_nodes;
 
   // Creating the value nodes foo != 0x1aaaaaaa, foo != 0x1bbbbbbb, foo !=

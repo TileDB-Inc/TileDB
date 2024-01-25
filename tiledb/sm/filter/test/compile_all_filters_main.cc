@@ -29,7 +29,11 @@
 #include "../filter_create.h"
 
 int main() {
+  using namespace tiledb::sm;
+
   (void)sizeof(tiledb::sm::FilterCreate);
-  (void)&tiledb::sm::FilterCreate::deserialize;
+  (void)static_cast<shared_ptr<Filter> (*)(
+      Deserializer& deserializer, const uint32_t version, Datatype datatype)>(
+      tiledb::sm::FilterCreate::deserialize);
   return 0;
 }

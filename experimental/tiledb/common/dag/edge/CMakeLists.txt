@@ -1,5 +1,5 @@
 #
-# experimental/tiledb/common/edge/CMakeLists.txt
+# experimental/tiledb/common/dag/edge/CMakeLists.txt
 #
 #
 # The MIT License
@@ -27,43 +27,14 @@
 
 include(common NO_POLICY_SCOPE)
 
-list(APPEND SOURCES
-    edge.cc
-)
-gather_sources(${SOURCES})
-
-#
-# Object library for other units to depend upon
-#
-add_library(edge OBJECT ${SOURCES})
-target_link_libraries(edge PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_edge EXCLUDE_FROM_ALL)
-target_link_libraries(compile_edge PRIVATE edge)
-target_sources(compile_edge PRIVATE test/compile_edge_main.cc)
-
+################################################################
+# Include subdirectory with unit tests                         #
+################################################################
 if (TILEDB_TESTS)
-    add_executable(unit_edge EXCLUDE_FROM_ALL)
-    target_link_libraries(unit_edge PUBLIC edge)
-    find_package(Catch_EP REQUIRED)
-    target_link_libraries(unit_edge PUBLIC Catch2::Catch2)
-    target_link_libraries(unit_edge PUBLIC $<TARGET_OBJECTS:thread_pool>)
-
-    # Sources for code elsewhere required for tests
-    target_sources(unit_edge PUBLIC ${DEPENDENT_SOURCES})
-
-    # Sources for tests
-    target_sources(unit_edge PUBLIC
-            test/main.cc
-            test/unit_edge.cc
-            )
-
-    add_test(
-            NAME "unit_edge"
-            COMMAND $<TARGET_FILE:unit_edge> --durations=yes
-            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-    )
+    add_subdirectory(test)
 endif()
+
+################################################################
+# Define the edge object library                               #
+################################################################
+dag_add_header_only_object_library(edge)

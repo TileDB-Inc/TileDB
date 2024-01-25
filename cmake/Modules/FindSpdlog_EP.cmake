@@ -33,6 +33,11 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(spdlog CONFIG REQUIRED)
+endif()
+
+
 # If the EP was built, it will install the storage_client-config.cmake file,
 # which we can use with find_package. CMake uses CMAKE_PREFIX_PATH to locate find
 # modules.
@@ -69,20 +74,21 @@ if (NOT SPDLOG_FOUND)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_spdlog.zip
-      URL "https://github.com/gabime/spdlog/archive/v1.9.0.zip"
-      URL_HASH SHA1=6259d1b6c5b9b565aa3ba5a6315d49f76d90ec0a
+      URL "https://github.com/gabime/spdlog/archive/v1.11.0.zip"
+      URL_HASH SHA1=4075d3da589d2000cffbd53ea8d31715a64ff8c6
       PATCH_COMMAND
         ${CONDITIONAL_PATCH}
       CMAKE_ARGS
         -DCMAKE_PREFIX_PATH=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
-        -DCMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}
+        -DCMAKE_BUILD_TYPE=$<CONFIG>
         -DCMAKE_CXX_COMPILER=${CMAKE_CXX_COMPILER}
         -DCMAKE_C_COMPILER=${CMAKE_C_COMPILER}
         -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DSPDLOG_BUILD_SHARED=OFF
+        -DSPDLOG_BUILD_EXAMPLE=OFF
       LOG_DOWNLOAD TRUE
       LOG_CONFIGURE TRUE
       LOG_BUILD TRUE
@@ -117,9 +123,4 @@ elseif(TARGET spdlog::spdlog)
       target_link_libraries(spdlog::spdlog INTERFACE fmt::fmt)
     endif()
   endif()
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_SPDLOG_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(spdlog::spdlog)
 endif()

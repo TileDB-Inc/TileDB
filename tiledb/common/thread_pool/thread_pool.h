@@ -153,6 +153,17 @@ class ThreadPool {
    */
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
+  /**
+   * Wait on a single tasks to complete. This function is safe to call
+   * recursively and may execute pending tasks on the calling thread while
+   * waiting.
+   *
+   * @param task Task to wait on.
+   * @return Status::Ok if the task returned Status::Ok, otherwise the error
+   * status is returned
+   */
+  Status wait(Task& task);
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */

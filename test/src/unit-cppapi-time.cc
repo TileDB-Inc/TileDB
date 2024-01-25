@@ -38,15 +38,16 @@ using namespace tiledb;
 
 TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
   const std::string array_name = "cpp_unit_time_array";
-  for (const auto& time_type : {TILEDB_TIME_HR,
-                                TILEDB_TIME_MIN,
-                                TILEDB_TIME_SEC,
-                                TILEDB_TIME_MS,
-                                TILEDB_TIME_US,
-                                TILEDB_TIME_NS,
-                                TILEDB_TIME_PS,
-                                TILEDB_TIME_FS,
-                                TILEDB_TIME_AS}) {
+  for (const auto& time_type :
+       {TILEDB_TIME_HR,
+        TILEDB_TIME_MIN,
+        TILEDB_TIME_SEC,
+        TILEDB_TIME_MS,
+        TILEDB_TIME_US,
+        TILEDB_TIME_NS,
+        TILEDB_TIME_PS,
+        TILEDB_TIME_FS,
+        TILEDB_TIME_AS}) {
     Context ctx;
     VFS vfs(ctx);
 
@@ -102,15 +103,16 @@ TEST_CASE("C++ API: Time attribute", "[cppapi][Time]") {
 
 TEST_CASE("C++ API: Time dimension", "[cppapi][time]") {
   const std::string array_name = "cpp_unit_time_array";
-  for (const auto& time_type : {TILEDB_TIME_HR,
-                                TILEDB_TIME_MIN,
-                                TILEDB_TIME_SEC,
-                                TILEDB_TIME_MS,
-                                TILEDB_TIME_US,
-                                TILEDB_TIME_NS,
-                                TILEDB_TIME_PS,
-                                TILEDB_TIME_FS,
-                                TILEDB_TIME_AS}) {
+  for (const auto& time_type :
+       {TILEDB_TIME_HR,
+        TILEDB_TIME_MIN,
+        TILEDB_TIME_SEC,
+        TILEDB_TIME_MS,
+        TILEDB_TIME_US,
+        TILEDB_TIME_NS,
+        TILEDB_TIME_PS,
+        TILEDB_TIME_FS,
+        TILEDB_TIME_AS}) {
     Context ctx;
     VFS vfs(ctx);
 

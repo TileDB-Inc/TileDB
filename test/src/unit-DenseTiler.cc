@@ -30,7 +30,7 @@
  * Tests the `DenseTiler` class.
  */
 
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -83,7 +83,7 @@ struct DenseTilerFx {
       uint64_t range_size,
       tiledb::sm::Subarray* subarray);
   template <class T>
-  bool check_tile(Tile& tile, const std::vector<T>& data);
+  bool check_tile(WriterTile& tile, const std::vector<T>& data);
 };
 
 DenseTilerFx::DenseTilerFx() {
@@ -171,10 +171,10 @@ void DenseTilerFx::close_array() {
 }
 
 template <class T>
-bool DenseTilerFx::check_tile(Tile& tile, const std::vector<T>& data) {
+bool DenseTilerFx::check_tile(WriterTile& tile, const std::vector<T>& data) {
   std::vector<T> tile_data(data.size());
-  CHECK(tile.size() == data.size() * sizeof(T));
-  CHECK(tile.read(&tile_data[0], 0, data.size() * sizeof(T)).ok());
+  CHECK(tile.size_as<T>() == data.size());
+  CHECK_NOTHROW(tile.read(&tile_data[0], 0, data.size() * sizeof(T)));
   CHECK(tile_data == data);
   return tile_data == data;
 }
@@ -390,9 +390,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -404,9 +404,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -431,9 +431,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2(
+  WriterTileTuple tile2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -457,9 +457,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3(
+  WriterTileTuple tile3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -508,9 +508,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -522,9 +522,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -574,9 +574,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -588,9 +588,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1413,9 +1413,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1433,9 +1433,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1455,9 +1455,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.fixed_tile(), c_data1_1));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1473,9 +1473,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.fixed_tile(), c_data1_2));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1507,9 +1507,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1551,9 +1551,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3_0(
+  WriterTileTuple tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1571,9 +1571,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_0.fixed_tile(), c_data3_0));
 
   // Test get tile 1
-  WriterTile tile3_1(
+  WriterTileTuple tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1593,9 +1593,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_1.fixed_tile(), c_data3_1));
 
   // Test get tile 2
-  WriterTile tile3_2(
+  WriterTileTuple tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1611,9 +1611,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_2.fixed_tile(), c_data3_2));
 
   // Test get tile 3
-  WriterTile tile3_3(
+  WriterTileTuple tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1645,9 +1645,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile4_0(
+  WriterTileTuple tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1715,9 +1715,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1739,9 +1739,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1762,9 +1762,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.fixed_tile(), c_data1_1));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1784,9 +1784,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.fixed_tile(), c_data1_2));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1820,9 +1820,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1882,9 +1882,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3_0(
+  WriterTileTuple tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1906,9 +1906,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_0.fixed_tile(), c_data3_0));
 
   // Test get tile 1
-  WriterTile tile3_1(
+  WriterTileTuple tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1929,9 +1929,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_1.fixed_tile(), c_data3_1));
 
   // Test get tile 2
-  WriterTile tile3_2(
+  WriterTileTuple tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1951,9 +1951,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile3_2.fixed_tile(), c_data3_2));
 
   // Test get tile 3
-  WriterTile tile3_3(
+  WriterTileTuple tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -1987,9 +1987,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile4_0(
+  WriterTileTuple tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2078,9 +2078,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2094,9 +2094,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2155,9 +2155,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2171,9 +2171,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2226,9 +2226,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2239,24 +2239,25 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.fixed_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
       Datatype::INT32);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
-  std::vector<int32_t> c_data1_1 = {4,
-                                    44,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value,
-                                    fill_value};
+  std::vector<int32_t> c_data1_1 = {
+      4,
+      44,
+      fill_value,
+      fill_value,
+      fill_value,
+      fill_value,
+      fill_value,
+      fill_value,
+      fill_value,
+      fill_value};
   CHECK(check_tile<int32_t>(tile1_1.fixed_tile(), c_data1_1));
 
   // Create new subarray
@@ -2274,9 +2275,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2(
+  WriterTileTuple tile2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2301,9 +2302,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3(
+  WriterTileTuple tile3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       2 * sizeof(int32_t),
@@ -2356,9 +2357,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0_a1(
+  WriterTileTuple tile1_0_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2366,9 +2367,9 @@ TEST_CASE_METHOD(
   CHECK(tiler1.get_tile(0, "a1", tile1_0_a1).ok());
   std::vector<int32_t> c_data1_0_a1 = {fill_value, fill_value, 1, 2, 3};
   CHECK(check_tile<int32_t>(tile1_0_a1.fixed_tile(), c_data1_0_a1));
-  WriterTile tile1_0_a2(
+  WriterTileTuple tile1_0_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2379,9 +2380,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<double>(tile1_0_a2.fixed_tile(), c_data1_0_a2));
 
   // Test get tile 1
-  WriterTile tile1_1_a1(
+  WriterTileTuple tile1_1_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2390,19 +2391,20 @@ TEST_CASE_METHOD(
   std::vector<int32_t> c_data1_1_a1 = {
       4, fill_value, fill_value, fill_value, fill_value};
   CHECK(check_tile<int32_t>(tile1_1_a1.fixed_tile(), c_data1_1_a1));
-  WriterTile tile1_1_a2(
+  WriterTileTuple tile1_1_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
       Datatype::FLOAT64);
   CHECK(tiler1.get_tile(1, "a2", tile1_1_a2).ok());
-  std::vector<double> c_data1_1_a2 = {4.4,
-                                      double(fill_value),
-                                      double(fill_value),
-                                      double(fill_value),
-                                      double(fill_value)};
+  std::vector<double> c_data1_1_a2 = {
+      4.4,
+      double(fill_value),
+      double(fill_value),
+      double(fill_value),
+      double(fill_value)};
   CHECK(check_tile<double>(tile1_1_a2.fixed_tile(), c_data1_1_a2));
 
   // Create new subarray
@@ -2420,9 +2422,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_a1(
+  WriterTileTuple tile2_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2430,9 +2432,9 @@ TEST_CASE_METHOD(
   CHECK(tiler2.get_tile(0, "a1", tile2_a1).ok());
   std::vector<int32_t> c_data2_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile2_a1.fixed_tile(), c_data2_a1));
-  WriterTile tile2_a2(
+  WriterTileTuple tile2_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2456,9 +2458,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3_a1(
+  WriterTileTuple tile3_a1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(int32_t),
@@ -2466,9 +2468,9 @@ TEST_CASE_METHOD(
   CHECK(tiler3.get_tile(0, "a1", tile3_a1).ok());
   std::vector<int32_t> c_data3_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile3_a1.fixed_tile(), c_data3_a1));
-  WriterTile tile3_a2(
+  WriterTileTuple tile3_a2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       false,
       sizeof(double),
@@ -2529,9 +2531,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2551,9 +2553,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_0.validity_tile(), c_data1_0));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2573,9 +2575,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_1.validity_tile(), c_data1_1));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2592,9 +2594,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_2.validity_tile(), c_data1_2));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2633,9 +2635,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2696,9 +2698,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile3_0(
+  WriterTileTuple tile3_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2718,9 +2720,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile3_0.validity_tile(), c_data3_0));
 
   // Test get tile 1
-  WriterTile tile3_1(
+  WriterTileTuple tile3_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2740,9 +2742,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile3_1.validity_tile(), c_data3_1));
 
   // Test get tile 2
-  WriterTile tile3_2(
+  WriterTileTuple tile3_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2759,9 +2761,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile3_2.validity_tile(), c_data3_2));
 
   // Test get tile 3
-  WriterTile tile3_3(
+  WriterTileTuple tile3_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2800,9 +2802,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile4_0(
+  WriterTileTuple tile4_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       false,
       true,
       sizeof(int32_t),
@@ -2888,9 +2890,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -2928,9 +2930,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_0.var_tile(), c_data1_0_val));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -2976,9 +2978,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_1.var_tile(), c_data1_1_val));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3007,9 +3009,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<uint8_t>(tile1_2.var_tile(), c_data1_2_val));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3060,9 +3062,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3183,21 +3185,22 @@ TEST_CASE_METHOD(
   std::vector<int32_t> buff_a = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   (void)buff_a;  // Used only as a reference
-  std::vector<uint64_t> buff_a_off = {0,
-                                      1 * sizeof(int32_t),
-                                      3 * sizeof(int32_t),
-                                      6 * sizeof(int32_t),
-                                      10 * sizeof(int32_t),
-                                      15 * sizeof(int32_t),
-                                      16 * sizeof(int32_t),
-                                      18 * sizeof(int32_t),
-                                      21 * sizeof(int32_t),
-                                      25 * sizeof(int32_t),
-                                      30 * sizeof(int32_t),
-                                      31 * sizeof(int32_t),
-                                      33 * sizeof(int32_t),
-                                      36 * sizeof(int32_t),
-                                      40 * sizeof(int32_t)};
+  std::vector<uint64_t> buff_a_off = {
+      0,
+      1 * sizeof(int32_t),
+      3 * sizeof(int32_t),
+      6 * sizeof(int32_t),
+      10 * sizeof(int32_t),
+      15 * sizeof(int32_t),
+      16 * sizeof(int32_t),
+      18 * sizeof(int32_t),
+      21 * sizeof(int32_t),
+      25 * sizeof(int32_t),
+      30 * sizeof(int32_t),
+      31 * sizeof(int32_t),
+      33 * sizeof(int32_t),
+      36 * sizeof(int32_t),
+      40 * sizeof(int32_t)};
   uint64_t buff_a_off_size = buff_a_off.size() * sizeof(uint64_t);
   std::vector<int32_t> buff_a_val = {
       1,  2,  2,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  5,
@@ -3222,9 +3225,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3262,9 +3265,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.var_tile(), c_data1_0_val));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3310,9 +3313,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.var_tile(), c_data1_1_val));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3341,9 +3344,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.var_tile(), c_data1_2_val));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3384,24 +3387,25 @@ TEST_CASE_METHOD(
 
   // Create DenseTiler
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
-  buff_a_off = {0,
-                1 * sizeof(int32_t),
-                3 * sizeof(int32_t),
-                6 * sizeof(int32_t),
-                10 * sizeof(int32_t),
-                15 * sizeof(int32_t),
-                16 * sizeof(int32_t),
-                18 * sizeof(int32_t),
-                21 * sizeof(int32_t),
-                25 * sizeof(int32_t),
-                30 * sizeof(int32_t),
-                31 * sizeof(int32_t),
-                33 * sizeof(int32_t),
-                36 * sizeof(int32_t),
-                40 * sizeof(int32_t),
-                45 * sizeof(int32_t),
-                46 * sizeof(int32_t),
-                48 * sizeof(int32_t)};
+  buff_a_off = {
+      0,
+      1 * sizeof(int32_t),
+      3 * sizeof(int32_t),
+      6 * sizeof(int32_t),
+      10 * sizeof(int32_t),
+      15 * sizeof(int32_t),
+      16 * sizeof(int32_t),
+      18 * sizeof(int32_t),
+      21 * sizeof(int32_t),
+      25 * sizeof(int32_t),
+      30 * sizeof(int32_t),
+      31 * sizeof(int32_t),
+      33 * sizeof(int32_t),
+      36 * sizeof(int32_t),
+      40 * sizeof(int32_t),
+      45 * sizeof(int32_t),
+      46 * sizeof(int32_t),
+      48 * sizeof(int32_t)};
   buff_a_off_size = buff_a_off.size() * sizeof(uint64_t);
   buff_a_val = {1,  2,  2,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,
                 5,  5,  6,  7,  7,  8,  8,  8,  9,  9,  9,  9,  10,
@@ -3413,9 +3417,9 @@ TEST_CASE_METHOD(
   DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3536,22 +3540,23 @@ TEST_CASE_METHOD(
   std::vector<int32_t> buff_a = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15};
   (void)buff_a;  // Used only as a reference
-  std::vector<uint64_t> buff_a_off = {0,
-                                      1 * sizeof(int32_t),
-                                      3 * sizeof(int32_t),
-                                      6 * sizeof(int32_t),
-                                      10 * sizeof(int32_t),
-                                      15 * sizeof(int32_t),
-                                      16 * sizeof(int32_t),
-                                      18 * sizeof(int32_t),
-                                      21 * sizeof(int32_t),
-                                      25 * sizeof(int32_t),
-                                      30 * sizeof(int32_t),
-                                      31 * sizeof(int32_t),
-                                      33 * sizeof(int32_t),
-                                      36 * sizeof(int32_t),
-                                      40 * sizeof(int32_t),
-                                      45 * sizeof(int32_t)};  // Extra element
+  std::vector<uint64_t> buff_a_off = {
+      0,
+      1 * sizeof(int32_t),
+      3 * sizeof(int32_t),
+      6 * sizeof(int32_t),
+      10 * sizeof(int32_t),
+      15 * sizeof(int32_t),
+      16 * sizeof(int32_t),
+      18 * sizeof(int32_t),
+      21 * sizeof(int32_t),
+      25 * sizeof(int32_t),
+      30 * sizeof(int32_t),
+      31 * sizeof(int32_t),
+      33 * sizeof(int32_t),
+      36 * sizeof(int32_t),
+      40 * sizeof(int32_t),
+      45 * sizeof(int32_t)};  // Extra element
   uint64_t buff_a_off_size = buff_a_off.size() * sizeof(uint64_t);
   std::vector<int32_t> buff_a_val = {
       1,  2,  2,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,  5,  5,
@@ -3577,9 +3582,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3617,9 +3622,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.var_tile(), c_data1_0_val));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3665,9 +3670,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.var_tile(), c_data1_1_val));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3696,9 +3701,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.var_tile(), c_data1_2_val));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3739,25 +3744,26 @@ TEST_CASE_METHOD(
 
   // Create DenseTiler
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
-  buff_a_off = {0,
-                1 * sizeof(int32_t),
-                3 * sizeof(int32_t),
-                6 * sizeof(int32_t),
-                10 * sizeof(int32_t),
-                15 * sizeof(int32_t),
-                16 * sizeof(int32_t),
-                18 * sizeof(int32_t),
-                21 * sizeof(int32_t),
-                25 * sizeof(int32_t),
-                30 * sizeof(int32_t),
-                31 * sizeof(int32_t),
-                33 * sizeof(int32_t),
-                36 * sizeof(int32_t),
-                40 * sizeof(int32_t),
-                45 * sizeof(int32_t),
-                46 * sizeof(int32_t),
-                48 * sizeof(int32_t),
-                49 * sizeof(int32_t)};  // Extra element
+  buff_a_off = {
+      0,
+      1 * sizeof(int32_t),
+      3 * sizeof(int32_t),
+      6 * sizeof(int32_t),
+      10 * sizeof(int32_t),
+      15 * sizeof(int32_t),
+      16 * sizeof(int32_t),
+      18 * sizeof(int32_t),
+      21 * sizeof(int32_t),
+      25 * sizeof(int32_t),
+      30 * sizeof(int32_t),
+      31 * sizeof(int32_t),
+      33 * sizeof(int32_t),
+      36 * sizeof(int32_t),
+      40 * sizeof(int32_t),
+      45 * sizeof(int32_t),
+      46 * sizeof(int32_t),
+      48 * sizeof(int32_t),
+      49 * sizeof(int32_t)};  // Extra element
   buff_a_off_size = buff_a_off.size() * sizeof(uint64_t);
   buff_a_val = {1,  2,  2,  3,  3,  3,  4,  4,  4,  4,  5,  5,  5,
                 5,  5,  6,  7,  7,  8,  8,  8,  9,  9,  9,  9,  10,
@@ -3770,9 +3776,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3920,9 +3926,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "elements", 64, false);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -3960,9 +3966,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.var_tile(), c_data1_0_val));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4008,9 +4014,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.var_tile(), c_data1_1_val));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4039,9 +4045,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.var_tile(), c_data1_2_val));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4096,9 +4102,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "elements", 64, false);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4246,9 +4252,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray1, &test::g_helper_stats, "elements", 32, false);
 
   // Test get tile 0
-  WriterTile tile1_0(
+  WriterTileTuple tile1_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4286,9 +4292,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_0.var_tile(), c_data1_0_val));
 
   // Test get tile 1
-  WriterTile tile1_1(
+  WriterTileTuple tile1_1(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4334,9 +4340,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_1.var_tile(), c_data1_1_val));
 
   // Test get tile 2
-  WriterTile tile1_2(
+  WriterTileTuple tile1_2(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4365,9 +4371,9 @@ TEST_CASE_METHOD(
   CHECK(check_tile<int32_t>(tile1_2.var_tile(), c_data1_2_val));
 
   // Test get tile 3
-  WriterTile tile1_3(
+  WriterTileTuple tile1_3(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,
@@ -4422,9 +4428,9 @@ TEST_CASE_METHOD(
       &buffers, &subarray2, &test::g_helper_stats, "elements", 32, false);
 
   // Test get tile 0
-  WriterTile tile2_0(
+  WriterTileTuple tile2_0(
       array_->array_->array_schema_latest(),
-      false,
+      array_->array_->array_schema_latest().domain().cell_num_per_tile(),
       true,
       false,
       1,

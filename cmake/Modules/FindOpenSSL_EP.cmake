@@ -33,6 +33,11 @@
 # Include some common helper functions.
 include(TileDBCommon)
 
+if (TILEDB_VCPKG)
+  find_package(OpenSSL REQUIRED)
+  return()
+endif()
+
 # Search the path set during the superbuild for the EP.
 set(OPENSSL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
 
@@ -105,8 +110,6 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
     URL_HASH SHA1=627938302f681dfac186a9225b65368516b4f484
     CONFIGURE_COMMAND ${OPENSSL_CONFIG_CMD}
     BUILD_IN_SOURCE TRUE
-    BUILD_COMMAND $(MAKE)
-    INSTALL_COMMAND $(MAKE) install
     UPDATE_COMMAND ""
     LOG_DOWNLOAD TRUE
     LOG_CONFIGURE TRUE
@@ -124,7 +127,9 @@ if (NOT OPENSSL_FOUND AND TILEDB_SUPERBUILD)
 endif()
 
 if (OPENSSL_FOUND)
-  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY} -- OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY} -- root: ${OPENSSL_ROOT_DIR}")
+  message(STATUS "Found OpenSSL: ${OPENSSL_SSL_LIBRARY}")
+  message(STATUS "Found OpenSSL crypto: ${OPENSSL_CRYPTO_LIBRARY}")
+  message(STATUS "OpenSSL Root: ${OPENSSL_ROOT_DIR}")
 
   if (DEFINED OPENSSL_INCLUDE_DIR AND "${OPENSSL_INCLUDE_DIR}" MATCHES "${HOMEBREW_BASE}.*")
     # define TILEDB_OPENSSL_DIR so we can ensure curl links the homebrew version
@@ -147,10 +152,4 @@ if (OPENSSL_FOUND)
       INTERFACE_INCLUDE_DIRECTORIES "${OPENSSL_INCLUDE_DIR}"
       )
   endif()
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_OPENSSL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(OpenSSL::SSL)
-  install_target_libs(OpenSSL::Crypto)
 endif()

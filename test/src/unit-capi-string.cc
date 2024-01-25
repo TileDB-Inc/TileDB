@@ -32,7 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -40,8 +40,15 @@
 
 using namespace tiledb::test;
 
+// Since C++20 u8"literals" use char8_t type
+// https://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/p1423r3.html
+#if defined(__cpp_char8_t)
+const char8_t UTF8_STRINGS[] = u8"aabbccdd";
+const char8_t UTF8_STRINGS_VAR[] = u8"aαbββcγγγdδδδδ";
+#else
 const char UTF8_STRINGS[] = u8"aabbccdd";
 const char UTF8_STRINGS_VAR[] = u8"aαbββcγγγdδδδδ";
+#endif
 uint64_t UTF8_NULL_SIZE = sizeof(u8"");
 uint64_t UTF8_OFFSET_0 = 0;
 uint64_t UTF8_OFFSET_1 = sizeof(u8"aα") - UTF8_NULL_SIZE;
@@ -55,6 +62,12 @@ uint64_t UTF16_OFFSET_2 = sizeof(u"aαbβ") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_3 = sizeof(u"aαbβcγ") - UTF16_NULL_SIZE;
 
 struct StringFx {
+  // Serialization parameters
+  bool serialize_ = false;
+  bool refactored_query_v2_ = false;
+  // Buffers to allocate on server side for serialized queries
+  ServerQueryBuffers server_buffers_;
+
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
@@ -166,11 +179,12 @@ void StringFx::write_array(const std::string& array_name) {
       sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE);
   void* buffers[] = {
       buffer_a1, buffer_a2_offsets, buffer_a2, buffer_a3_offsets, buffer_a3};
-  uint64_t buffer_sizes[] = {sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
-                             4 * sizeof(uint64_t),
-                             sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
+  uint64_t buffer_sizes[] = {
+      sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE,
+      4 * sizeof(uint64_t),
+      sizeof(UTF8_STRINGS_VAR) - UTF8_NULL_SIZE,
+      4 * sizeof(uint64_t),
+      sizeof(UTF16_STRINGS_VAR) - UTF16_NULL_SIZE};
 
   // Open array
   tiledb_array_t* array;
@@ -203,9 +217,13 @@ void StringFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -274,9 +292,13 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = submit_query_wrapper(
+      ctx,
+      array_name,
+      &query,
+      server_buffers_,
+      serialize_,
+      refactored_query_v2_);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -332,6 +354,16 @@ void StringFx::delete_array(const std::string& array_name) {
 }
 
 TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi][string]") {
+  SECTION("no serialization") {
+    serialize_ = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialize_ = true;
+    refactored_query_v2_ = GENERATE(true, false);
+  }
+#endif
+
   std::string array_name = "foo";
   delete_array(array_name);
   create_array(array_name);

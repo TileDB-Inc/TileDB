@@ -24,15 +24,17 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 #
-# Finds the Curl library, installing with an ExternalProject as necessary.
-# This module defines:
-#   - CURL_INCLUDE_DIR, directory containing headers
-#   - CURL_LIBRARIES, the Curl library path
-#   - CURL_FOUND, whether Curl has been found
-#   - The Curl::Curl imported target
 
-# Include some common helper functions.
-include(TileDBCommon)
+if (TARGET CURL OR NOT (TILEDB_SERIALIZATION OR TILEDB_GCS OR TILEDB_S3 OR TILEDB_AZURE))
+  return()
+endif()
+
+if (TILEDB_VCPKG)
+  find_package(CURL REQUIRED)
+  return()
+endif()
+
+# === Superbuild
 
 # Search the path set during the superbuild for the EP.
 set(CURL_PATHS ${TILEDB_EP_INSTALL_PREFIX})
@@ -77,17 +79,21 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       PREFIX "externals"
       # Set download name to avoid collisions with only the version number in the filename
       DOWNLOAD_NAME ep_curl.tar.gz
-      URL "https://curl.se/download/curl-7.74.0.tar.gz"
-      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
+      URL "https://curl.se/download/curl-7.88.1.tar.gz"
+      URL_HASH SHA1=6ae5229c36badb822641bb14958e7d227c57611d
       CMAKE_ARGS
         -DCMAKE_INSTALL_PREFIX=${TILEDB_EP_INSTALL_PREFIX}
         -DCMAKE_BUILD_TYPE=Release
         -DBUILD_SHARED_LIBS=OFF
         -DCURL_DISABLE_LDAP=ON
         -DCURL_DISABLE_LDAPS=ON
+        -DCMAKE_USE_LIBSSH2=OFF
         -DCURL_STATICLIB=ON
         -DCMAKE_POSITION_INDEPENDENT_CODE=ON
         -DHTTP_ONLY=ON
+        # NOTE: as of Curl 7.74 there is no way to set ZSTD paths for cmake
+        # ZSTD is not enabled until curl support being able to point to superbuild
+        #-DCURL_ZSTD=ON
         "${WITH_SSL}"
         "-DCMAKE_C_FLAGS=${CFLAGS_DEF}"
       UPDATE_COMMAND ""
@@ -129,6 +135,22 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
       set(WITH_ZLIB "--with-zlib")
     endif()
 
+    if (APPLE)
+      set(WITH_CA_BUNDLE "--with-ca-bundle=/etc/ssl/cert.pem")
+    endif()
+
+    if (TARGET ep_zstd)
+      list(APPEND DEPENDS ep_zstd)
+      set(WITH_ZLIB "--with-zstd=${TILEDB_EP_INSTALL_PREFIX}")
+    elseif (TILEDB_ZSTD_DIR)
+      # ensure that curl links against the same libz
+      set(WITH_ZSTD "--with-zstd=${TILEDB_ZSTD_DIR}")
+    else()
+      message(WARNING "TileDB FindZstd_EP did not set TILEDB_ZSTD_DIR. Falling back to autotools detection.")
+      # ensure that curl config errors out if SSL not available
+      set(WITH_ZSTD "--with-zstd")
+    endif()
+
     # Support cross compilation of MacOS
     if (CMAKE_OSX_ARCHITECTURES STREQUAL arm64)
       set(CURL_CROSS_COMPILATION_FLAGS "CFLAGS=${CFLAGS} -arch arm64" "LDFLAGS=${LDFLAGS} -arch arm64" --host=aarch64-apple-darwin)
@@ -138,8 +160,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
 
     ExternalProject_Add(ep_curl
       PREFIX "externals"
-      URL "https://curl.se/download/curl-7.74.0.tar.gz"
-      URL_HASH SHA1=cd7239cf9223b39ade86a14eb37fe68f5656eae9
+      URL "https://curl.se/download/curl-7.88.1.tar.gz"
+      URL_HASH SHA1=6ae5229c36badb822641bb14958e7d227c57611d
       CONFIGURE_COMMAND
         ${CMAKE_COMMAND} -E env PKG_CONFIG_PATH=${SSL_PKG_CONFIG_PATH} ${TILEDB_EP_BASE}/src/ep_curl/configure
           --prefix=${TILEDB_EP_INSTALL_PREFIX}
@@ -156,7 +178,6 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --without-gnutls
           --without-gssapi
           --without-idn2
-          --without-libmetalink
           --without-libssh2
           --without-librtmp
           --without-nghttp2
@@ -181,6 +202,8 @@ if (NOT CURL_FOUND AND TILEDB_SUPERBUILD)
           --disable-tftp
           ${WITH_SSL}
           ${WITH_ZLIB}
+          ${WITH_ZSTD}
+          ${WITH_CA_BUNDLE}
           ${CURL_CROSS_COMPILATION_FLAGS}
       BUILD_IN_SOURCE TRUE
       BUILD_COMMAND $(MAKE)
@@ -220,9 +243,4 @@ if (CURL_FOUND)
     endif()
   endif()
 
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_CURL_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(CURL::libcurl)
 endif()

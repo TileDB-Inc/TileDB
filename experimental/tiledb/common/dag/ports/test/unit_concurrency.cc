@@ -49,15 +49,55 @@
 #include <future>
 #include <string>
 #include <vector>
-#include "../fsm.h"
 #include "../ports.h"
-#include "helpers.h"
+#include "experimental/tiledb/common/dag/state_machine/fsm.h"
+#include "experimental/tiledb/common/dag/state_machine/item_mover.h"
+#include "experimental/tiledb/common/dag/state_machine/policies.h"
+#include "experimental/tiledb/common/dag/state_machine/test/helpers.h"
+#include "experimental/tiledb/common/dag/utility/print_types.h"
 #include "pseudo_nodes.h"
+
+#include "experimental/tiledb/common/dag/edge/edge.h"
 
 using namespace tiledb::common;
 
-TEST_CASE(
-    "Concurrency: Test level of concurrency for simple graphs", "[ports]") {
+template <class T>
+using AsyncMover3 = ItemMover<AsyncPolicy, three_stage, T>;
+
+template <class T>
+using AsyncMover2 = ItemMover<AsyncPolicy, two_stage, T>;
+
+template <class PortState>
+void simple_graph() {
+  // Define graph node types.  This is not scalable, but it seems difficult to
+  // replicate a partial type alias inside of a function (which we need to do
+  // here since the Mover depends on the functions PortState template parameter.
+  // Will have to see if this makes trouble in practice.  Otherwise we can
+  // refactor the Source/Sink/Node interface to just take normal parameters,
+  // e.g.,
+  //
+  // template <class Mover, class Block = Mover::block_type>
+  // class Source;
+  //
+  // In that case, we would write things as Source<Mover<Block>> rather than
+  // Source<Mover, Block> (or maybe Source<Mover<Block>, Block> if the compiler
+  // is not happy with Source<Mover<Block>>).
+
+  using Producer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ProducerNode<AsyncMover2, size_t>,
+      ProducerNode<AsyncMover3, size_t>>;
+
+  using Consumer = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      ConsumerNode<AsyncMover2, size_t>,
+      ConsumerNode<AsyncMover3, size_t>>;
+
+  using Function = std::conditional_t<
+      std::is_same_v<PortState, two_stage>,
+      FunctionNode<AsyncMover2, size_t>,
+      FunctionNode<AsyncMover3, size_t>>;
+
   bool debug = true;
 
   auto async_sync = [&](size_t source_delay,
@@ -72,81 +112,74 @@ TEST_CASE(
     std::atomic<size_t> i{0};
     size_t num_nodes{0};
 
-    ProducerNode<size_t, AsyncStateMachine<std::optional<size_t>>> q([&]() {
+    Producer /*Node<Mover, size_t> */
+        q([&]() {
+          timestamps[time_index++] = {
+              time_index,
+              "start",
+              0,
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                  (time_t)std::chrono::high_resolution_clock::now() -
+                  start_time)
+                  .count()};
+
+          std::this_thread::sleep_for(
+              std::chrono::milliseconds(static_cast<size_t>(source_delay)));
+
+          timestamps[time_index++] = {
+              time_index,
+              "stop",
+              0,
+              std::chrono::duration_cast<std::chrono::milliseconds>(
+                  (time_t)std::chrono::high_resolution_clock::now() -
+                  start_time)
+                  .count()};
+
+          return i++;
+        });
+
+    Consumer /*Node<Mover, size_t>*/ r([&](size_t) {
       timestamps[time_index++] = {
           time_index,
           "start",
-          0,
+          1,
           std::chrono::duration_cast<std::chrono::milliseconds>(
               (time_t)std::chrono::high_resolution_clock::now() - start_time)
               .count()};
 
       std::this_thread::sleep_for(
-          std::chrono::milliseconds(static_cast<size_t>(source_delay)));
+          std::chrono::milliseconds(static_cast<size_t>(sink_delay)));
 
       timestamps[time_index++] = {
           time_index,
           "stop",
-          0,
+          1,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
+    });
+
+    Function /*Node<Mover, size_t>*/ t([&](size_t) {
+      timestamps[time_index++] = {
+          time_index,
+          "start",
+          2,
           std::chrono::duration_cast<std::chrono::milliseconds>(
               (time_t)std::chrono::high_resolution_clock::now() - start_time)
               .count()};
 
-      return i++;
+      std::this_thread::sleep_for(
+          std::chrono::milliseconds(static_cast<size_t>(fun_delay)));
+
+      timestamps[time_index++] = {
+          time_index,
+          "stop",
+          2,
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              (time_t)std::chrono::high_resolution_clock::now() - start_time)
+              .count()};
+      return 0UL;
     });
-
-    ConsumerNode<size_t, AsyncStateMachine<std::optional<size_t>>> r(
-        [&](size_t) {
-          timestamps[time_index++] = {
-              time_index,
-              "start",
-              1,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-
-          std::this_thread::sleep_for(
-              std::chrono::milliseconds(static_cast<size_t>(sink_delay)));
-
-          timestamps[time_index++] = {
-              time_index,
-              "stop",
-              1,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-        });
-
-    FunctionNode<
-        size_t,
-        size_t,
-        AsyncStateMachine<std::optional<size_t>>,
-        AsyncStateMachine<std::optional<size_t>>>
-        t([&](size_t) {
-          timestamps[time_index++] = {
-              time_index,
-              "start",
-              2,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-
-          std::this_thread::sleep_for(
-              std::chrono::milliseconds(static_cast<size_t>(fun_delay)));
-
-          timestamps[time_index++] = {
-              time_index,
-              "stop",
-              2,
-              std::chrono::duration_cast<std::chrono::milliseconds>(
-                  (time_t)std::chrono::high_resolution_clock::now() -
-                  start_time)
-                  .count()};
-          return 0UL;
-        });
 
     size_t rounds = 5;
 
@@ -176,7 +209,8 @@ TEST_CASE(
         std::cout << "Async node q, sync node r" << std::endl;
 
       num_nodes = 2;
-      attach(q, r);
+
+      Edge(q, r);
 
       auto fut_q = std::async(std::launch::async, fun_q);
 
@@ -194,7 +228,7 @@ TEST_CASE(
         std::cout << "Sync node q, async node r" << std::endl;
 
       num_nodes = 2;
-      attach(q, r);
+      Edge(q, r);
 
       auto fut_r = std::async(std::launch::async, fun_r);
 
@@ -213,8 +247,8 @@ TEST_CASE(
 
       num_nodes = 3;
 
-      attach(q, t);
-      attach(t, r);
+      Edge(q, t);
+      Edge(t, r);
 
       auto fut_q = std::async(std::launch::async, fun_q);
       auto fut_t = std::async(std::launch::async, fun_t);
@@ -235,8 +269,8 @@ TEST_CASE(
 
       num_nodes = 3;
 
-      attach(q, t);
-      attach(t, r);
+      Edge(q, t);
+      Edge(t, r);
 
       auto fut_r = std::async(std::launch::async, fun_r);
       auto fut_t = std::async(std::launch::async, fun_t);
@@ -332,4 +366,16 @@ TEST_CASE(
       std::cout << "100 100 100" << std::endl;
     async_sync(100, 100, 100);
   }
+}
+
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple two-stage graph",
+    "[ports]") {
+  simple_graph<two_stage>();
+}
+
+TEST_CASE(
+    "Concurrency: Test level of concurrency for simple three-stage graph",
+    "[ports]") {
+  simple_graph<three_stage>();
 }

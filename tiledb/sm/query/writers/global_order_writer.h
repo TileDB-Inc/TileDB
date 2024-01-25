@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/query/writers/domain_buffer.h"
 #include "tiledb/sm/query/writers/writer_base.h"
 
@@ -65,7 +66,7 @@ class GlobalOrderWriter : public WriterBase {
      * second tile is the values tile. In both cases, the third tile stores a
      * validity tile for nullable attributes.
      */
-    std::unordered_map<std::string, WriterTileVector> last_tiles_;
+    std::unordered_map<std::string, WriterTileTupleVector> last_tiles_;
 
     /**
      * Stores the last offset into the var size tile buffer for var size
@@ -90,6 +91,13 @@ class GlobalOrderWriter : public WriterBase {
 
     /** The last hilbert value written. */
     uint64_t last_hilbert_value_;
+
+    /**
+     * A mapping of buffer names to multipart upload state used by clients
+     * to track the write state in remote global order writes
+     */
+    std::unordered_map<std::string, VFS::MultiPartUploadState>
+        multipart_upload_state_;
   };
 
   /* ********************************* */
@@ -100,17 +108,14 @@ class GlobalOrderWriter : public WriterBase {
   GlobalOrderWriter(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
+      StrategyParams& params,
+      uint64_t fragment_size,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
+      std::vector<std::string>& processed_conditions,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""),
-      bool skip_checks_serialization = false);
+      bool remote_query,
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~GlobalOrderWriter();
@@ -131,6 +136,46 @@ class GlobalOrderWriter : public WriterBase {
   /** Resets the writer object, rendering it incomplete. */
   void reset();
 
+  /** Returns the name of the strategy */
+  std::string name();
+
+  /** Alloc a new global_write_state and its associated fragment metadata */
+  Status alloc_global_write_state();
+
+  /** Initializes the global write state. */
+  Status init_global_write_state();
+
+  /** Returns a bare pointer to the global state. */
+  GlobalWriteState* get_global_state();
+
+  /**
+   * Used in serialization to share the multipart upload state
+   * among cloud executors
+   *
+   * @param client true if the code is executed from a client context
+   * @return A mapping of buffer names to VFS multipart upload states read from
+   * within this instance's `multipart_upload_state_` if the caller is a client,
+   * or from within the cloud backend internal mappings if the code is executed
+   * on the rest server.
+   */
+  std::pair<Status, std::unordered_map<std::string, VFS::MultiPartUploadState>>
+  multipart_upload_state(bool client);
+
+  /**
+   * Used in serialization of global order writes to set the multipart upload
+   * state in the internal maps of cloud backends
+   *
+   * @param uri complete uri of a buffer file or just the buffer name if client
+   * is true
+   * @param state VFS multipart upload state to be set
+   * @param client true if the code is executed from a client context
+   * @return Status
+   */
+  Status set_multipart_upload_state(
+      const std::string& uri,
+      const VFS::MultiPartUploadState& state,
+      bool client);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -138,6 +183,27 @@ class GlobalOrderWriter : public WriterBase {
 
   /** The state associated with global writes. */
   tdb_unique_ptr<GlobalWriteState> global_write_state_;
+
+  /** The processed conditions. */
+  std::vector<std::string>& processed_conditions_;
+
+  /**
+   * List of fragment URIs to commit. This is the list of fragments that were
+   * written to disk but pending to be commited upon the success of the full
+   * write operation.
+   */
+  std::vector<URI> frag_uris_to_commit_;
+
+  /**
+   * The desired fragment size, in bytes. The writer will create a new fragment
+   * once this size has been reached.
+   */
+  uint64_t fragment_size_;
+
+  /**
+   * Size currently written to the fragment.
+   */
+  uint64_t current_fragment_size_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -172,7 +238,7 @@ class GlobalOrderWriter : public WriterBase {
    * Invoked on error. It removes the directory of the input URI and
    * resets the global write state.
    */
-  void clean_up(const URI& uri);
+  void clean_up();
 
   /**
    * Computes the positions of the coordinate duplicates (if any). Note
@@ -214,9 +280,6 @@ class GlobalOrderWriter : public WriterBase {
    */
   Status global_write_handle_last_tile();
 
-  /** Initializes the global write state. */
-  Status init_global_write_state();
-
   /**
    * This deletes the global write state and deletes the potentially
    * partially written fragment.
@@ -238,7 +301,7 @@ class GlobalOrderWriter : public WriterBase {
    */
   Status prepare_full_tiles(
       const std::set<uint64_t>& coord_dups,
-      std::unordered_map<std::string, WriterTileVector>* tiles) const;
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -257,7 +320,7 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -276,7 +339,7 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles_fixed(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Applicable only to write in global order. It prepares only full
@@ -295,7 +358,29 @@ class GlobalOrderWriter : public WriterBase {
   Status prepare_full_tiles_var(
       const std::string& name,
       const std::set<uint64_t>& coord_dups,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
+
+  /**
+   * Return the number of tiles to write depending on the desired fragment
+   * size. The tiles passed in as an argument should have already been
+   * filtered.
+   *
+   * @param start Current tile index.
+   * @param tile_num Number of tiles in the tiles vectors.
+   * @param tiles Map of vector of tiles, per attributes.
+   * @return Number of tiles to write.
+   */
+  uint64_t num_tiles_to_write(
+      uint64_t start,
+      uint64_t tile_num,
+      std::unordered_map<std::string, WriterTileTupleVector>& tiles);
+
+  /**
+   * Close the current fragment and start a new one. The closed fragment will
+   * be added to `frag_uris_to_commit_` so that all fragments in progress can
+   * be written at once.
+   */
+  Status start_new_fragment();
 };
 
 }  // namespace sm

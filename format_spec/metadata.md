@@ -16,25 +16,20 @@ my_array                            # array folder
          |_ ...
 ```
 
-`<timestamped_name>` has format `__t1_t2_uuid_v`, where:
-
-* `t1` and `t2` are timestamps in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-* `v` is the format version
-
-The metadata folder can contain:
-* Any number of [metadata files](#array-metadata-file)
-* Any number of [vacuum files](./vacuum_file.md)
+The metadata folder can contain any number of [timestamped](./timestamped_name.md):
+* [metadata files](#array-metadata-file)
+* [vacuum files](./vacuum_file.md)
+* Note: the timestamped names do _not_ include the format version.
 
 ## Metadata File
 
-The metadata file has the following on-disk format:
+The metadata file consists of a single [generic tile](./generic_tile.md), containing multiple entries with the following data:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
 | Key length | `uint32_t` | The length of the key. |
 | Key | `uint8_t[]` | The key. |
-| Deletion | `char` | `1`/`0` if it is a deletion/insertion. |
-| Value type | `char` | The value data type. Present only if `del` is `0`. |
+| Deletion | `uint8_t` | `1`/`0` if it is a deletion/insertion. |
+| Value type | `uint8_t` | The value data type. Present only if `del` is `0`. |
 | Number of values | `uint32_t` | The number of values. Present only if `del` is `0`. |
 | Value | `uint8_t[]` | The value. Present only if `del` is `0`. |

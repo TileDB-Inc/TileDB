@@ -25,7 +25,7 @@
 # THE SOFTWARE.
 #
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.21)
 project(TileDBBenchmark)
 
 # Set C++17 as required standard for all C++ targets (required to use the TileDB
@@ -34,18 +34,12 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
-if (WIN32)
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(/DDEBUG /Od /Zi)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(/DNDEBUG /Ox)
-  endif()
+if (MSVC)
+  add_compile_options("$<$<CONFIG:Debug>:/DDEBUG;/Od;/Zi>")
+  add_compile_options("$<$<CONFIG:Release>:/DNDEBUG;/Ox>")
 else()
-  if (CMAKE_BUILD_TYPE MATCHES "Debug")
-    add_compile_options(-DDEBUG -O0 -g3 -ggdb3 -gdwarf-3)
-  elseif (CMAKE_BUILD_TYPE MATCHES "Release")
-    add_compile_options(-DNDEBUG -O3)
-  endif()
+  add_compile_options("$<$<CONFIG:Debug>:-DDEBUG;-O0;-g3;-ggdb3;-gdwarf-3>")
+  add_compile_options("$<$<CONFIG:Release>:-DNDEBUG;-O3>")
 endif()
 
 # Find TileDB
@@ -65,6 +59,7 @@ set(BENCHMARKS
   bench_dense_write_large_tile
   bench_dense_write_small_tile
   bench_large_io
+  bench_reader_base_unfilter_tile
   bench_sparse_read_large_tile
   bench_sparse_read_small_tile
   bench_sparse_tile_cache
@@ -77,5 +72,5 @@ foreach(NAME IN LISTS BENCHMARKS)
     "${NAME}.cc"
     $<TARGET_OBJECTS:benchmark_core>
   )
-  target_link_libraries(${NAME} TileDB::tiledb_shared pthread)
+  target_link_libraries(${NAME} TileDB::tiledb pthread)
 endforeach()

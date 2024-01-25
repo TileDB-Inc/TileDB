@@ -28,18 +28,34 @@ include(common NO_POLICY_SCOPE)
 
 list(APPEND SOURCES
     context_api.cc
-)
+    )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_context OBJECT ${SOURCES})
-target_link_libraries(capi_context PUBLIC export)
+list(APPEND OTHER_SOURCES
+    # We need to recompile sources that depend on StorageManager to use the stub
+    ../../../sm/storage_manager/context.cc
+    ../../../sm/storage_manager/context_resources.cc
+    )
 
 #
-# UNFINISHED
+# The stubbed object library is compiled with the `StorageManagerStub`. Anything
+# that needs actual storage manager behavior will fail. If all that's needed is
+# a reference, it will work fine.
 #
-# There is no `context` object library at this time. It's a precondition for
-# be able to have a `capi_context` object library.
+add_library(capi_context_stub OBJECT ${SOURCES} ${OTHER_SOURCES})
+target_link_libraries(capi_context_stub PUBLIC export)
+target_link_libraries(capi_context_stub PUBLIC storage_manager_stub)
+target_link_libraries(capi_context_stub PUBLIC capi_config_stub $<TARGET_OBJECTS:capi_config_stub>)
+target_link_libraries(capi_context_stub PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+target_link_libraries(capi_context_stub PUBLIC stats $<TARGET_OBJECTS:stats>)
+target_link_libraries(capi_context_stub PUBLIC thread_pool $<TARGET_OBJECTS:thread_pool>)
+
 #
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_capi_context_stub EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_context_stub PRIVATE capi_context_stub)
+target_sources(compile_capi_context_stub PRIVATE test/compile_capi_context_main.cc)
+add_dependencies(all_link_complete compile_capi_context_stub)
+
+add_test_subdirectory()

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,7 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/src/helpers.h"
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
@@ -107,7 +107,9 @@ void write_2d_array(
     std::vector<T1>& buff_d1,
     std::vector<T2>& buff_d2,
     std::vector<int32_t>& buff_a,
-    tiledb_layout_t layout) {
+    tiledb_layout_t layout,
+    const bool serialized = false,
+    const bool refactored_query_v2 = false) {
   Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
@@ -115,7 +117,17 @@ void write_2d_array(
   query_w.set_data_buffer("d1", buff_d1);
   query_w.set_data_buffer("d2", buff_d2);
   query_w.set_layout(layout);
-  CHECK_NOTHROW(query_w.submit());
+  // Submit query
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
+
   array_w.close();
 }
 
@@ -246,9 +258,22 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
 TEST_CASE(
     "C++ API: Test Hilbert, test 2D, int32, write unordered, read global",
     "[cppapi][hilbert][2d][int32]") {
+  bool serialized = false, refactored_query_v2 = false;
+  SECTION("no serialization") {
+    serialized = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
   Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
+
+  test::ServerQueryBuffers server_buffers_;
 
   // Remove array
   if (vfs.is_dir(array_name))
@@ -262,7 +287,13 @@ TEST_CASE(
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      array_name,
+      buff_d1,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED,
+      serialized,
+      refactored_query_v2);
 
   // Read
   SECTION("- Global order") {
@@ -275,7 +306,15 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    CHECK_NOTHROW(query_r.submit());
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
     // Check results
@@ -297,7 +336,15 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
-    CHECK_NOTHROW(query_r.submit());
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
     // Check results
@@ -319,7 +366,15 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_COL_MAJOR);
-    CHECK_NOTHROW(query_r.submit());
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
     // Check results
@@ -342,7 +397,15 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_UNORDERED);
-    CHECK_NOTHROW(query_r.submit());
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2);
+    REQUIRE(rc == TILEDB_OK);
     array_r.close();
 
     // Check results
@@ -356,6 +419,15 @@ TEST_CASE(
 
   // Read
   SECTION("- Unordered, overlapped") {
+    // Disable merge overlapping sparse ranges.
+    // Support for returning multiplicities for overlapping ranges will be
+    // deprecated in a few releases. Turning off this setting allows to still
+    // test that the feature functions properly until we do so. Once support is
+    // fully removed for overlapping ranges, this section can be deleted.
+    Config cfg;
+    cfg["sm.merge_overlapping_ranges_experimental"] = "false";
+    ctx = Context(cfg);
+
     // regression test for sc-11244
     Array array_r(ctx, array_name, TILEDB_READ);
     Query query_r(ctx, array_r, TILEDB_READ);
@@ -374,7 +446,16 @@ TEST_CASE(
     query_r.add_range("d2", (int32_t)1, (int32_t)3);
     query_r.add_range("d2", (int32_t)2, (int32_t)4);
     query_r.set_layout(TILEDB_UNORDERED);
-    CHECK_NOTHROW(query_r.submit());
+    // Submit query
+    auto rc = test::submit_query_wrapper(
+        ctx,
+        array_name,
+        &query_r,
+        server_buffers_,
+        serialized,
+        refactored_query_v2,
+        false);
+    REQUIRE(rc == TILEDB_OK);
     CHECK(query_r.query_status() == tiledb::Query::Status::COMPLETE);
     // check number of results
     uint64_t num = query_r.result_buffer_elements()["a"].second;
@@ -478,7 +559,7 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({1, 5, 1, 7});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 5, 1, 7}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -515,6 +596,17 @@ TEST_CASE(
 TEST_CASE(
     "C++ API: Test Hilbert, test writing in global order",
     "[cppapi][hilbert][write][global-order]") {
+  bool serialized = false, refactored_query_v2 = false;
+  SECTION("no serialization") {
+    serialized = false;
+  }
+#ifdef TILEDB_SERIALIZATION
+  SECTION("serialization enabled global order write") {
+    serialized = true;
+    refactored_query_v2 = GENERATE(true, false);
+  }
+#endif
+
   Context ctx;
   VFS vfs(ctx);
   std::string array_name = "hilbert_array";
@@ -542,9 +634,16 @@ TEST_CASE(
   buff_a = {2, 3, 4, 1};
   buff_d1 = {1, 1, 5, 4};
   buff_d2 = {3, 1, 4, 2};
-  CHECK_NOTHROW(query_w.submit());
-  query_w.finalize();
-  array_w.close();
+
+  test::ServerQueryBuffers server_buffers_;
+  auto rc = test::submit_query_wrapper(
+      ctx,
+      array_name,
+      &query_w,
+      server_buffers_,
+      serialized,
+      refactored_query_v2);
+  REQUIRE(rc == TILEDB_OK);
 
   // Remove array
   if (vfs.is_dir(array_name))
@@ -580,7 +679,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -603,7 +702,7 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({1, 4, 1, 4});
+    query_r.set_subarray(Subarray(ctx, array_r).set_subarray({1, 4, 1, 4}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -944,7 +1043,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({-49, -45, -99, -93});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -45, -99, -93}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1008,7 +1108,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_ROW_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1031,7 +1132,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({-49, -46, -99, -96});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({-49, -46, -99, -96}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1363,7 +1465,8 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.set_subarray({0.1f, 0.6f, 0.1f, 0.7f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.6f, 0.1f, 0.7f}));
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1442,7 +1545,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_COL_MAJOR);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1465,7 +1569,8 @@ TEST_CASE(
     query_r.set_data_buffer("a", r_buff_a);
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
-    query_r.set_subarray({0.1f, 0.4f, 0.1f, 0.6f});
+    query_r.set_subarray(
+        Subarray(ctx, array_r).set_subarray({0.1f, 0.4f, 0.1f, 0.6f}));
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
     array_r.close();
@@ -1869,6 +1974,7 @@ TEST_CASE(
   Config config;
   config["sm.consolidation.mode"] = "fragments";
   config["sm.vacuum.mode"] = "fragments";
+  config["sm.consolidation.total_buffer_size"] = "1048576";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(get_fragment_dir(array_name));

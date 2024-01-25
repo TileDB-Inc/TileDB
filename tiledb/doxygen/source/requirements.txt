@@ -1,0 +1,6 @@
+breathe
+cmake
+docutils
+jinja2
+sphinx_rtd_theme
+sphinxcontrib-contentui

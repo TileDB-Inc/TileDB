@@ -36,7 +36,7 @@
 #include "tiledb/sm/serialization/query.h"
 #endif
 
-#include "test/src/ast_helpers.h"
+#include "test/support/src/ast_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"

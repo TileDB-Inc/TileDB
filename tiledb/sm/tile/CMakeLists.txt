@@ -25,17 +25,36 @@
 #
 
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 #
 # `tile` object library
 #
-add_library(tile OBJECT tile.cc)
-target_link_libraries(tile PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(tile PUBLIC buffer $<TARGET_OBJECTS:buffer>)
-target_link_libraries(tile PUBLIC constants $<TARGET_OBJECTS:constants>)
+commence(object_library tile)
+  this_target_sources(tile.cc)
+  this_target_object_libraries(baseline buffer constants)
+conclude(object_library)
+
 #
-# Test-compile of object library ensures link-completeness
+# `generic_tile_io` object library
 #
-add_executable(compile_tile EXCLUDE_FROM_ALL)
-target_link_libraries(compile_tile PRIVATE tile)
-target_sources(compile_tile PRIVATE test/compile_tile_main.cc)
+commence(object_library generic_tile_io)
+  this_target_sources(generic_tile_io.cc)
+  this_target_object_libraries(
+      baseline
+      buffer
+      constants
+      tiledb_crypto
+      filter_pipeline
+      tile
+      vfs
+  )
+conclude(object_library)
+
+# This is linked outside the object_library scope because ContextResources
+# is recompiled as part of the capi_context_stub. Including context_resources
+# here like this prevents many headaches revolving around duplicate symbols
+# when linking executables.
+target_link_libraries(compile_generic_tile_io PRIVATE context_resources)
+
+add_test_subdirectory()

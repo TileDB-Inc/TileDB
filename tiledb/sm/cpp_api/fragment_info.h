@@ -34,6 +34,7 @@
 #define TILEDB_CPP_API_FRAGMENT_INFO_H
 
 #include "array_schema.h"
+#include "capi_string.h"
 #include "context.h"
 #include "deleter.h"
 #include "exception.h"
@@ -82,20 +83,6 @@ class FragmentInfo {
         tiledb_fragment_info_load(ctx.ptr().get(), fragment_info_.get()));
   }
 
-  /** Loads the fragment info from an encrypted array. */
-  TILEDB_DEPRECATED
-  void load(
-      tiledb_encryption_type_t encryption_type,
-      const std::string& encryption_key) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_fragment_info_load_with_key(
-        ctx.ptr().get(),
-        fragment_info_.get(),
-        encryption_type,
-        encryption_key.data(),
-        (uint32_t)encryption_key.size()));
-  }
-
   /** Returns the URI of the fragment with the given index. */
   std::string fragment_uri(uint32_t fid) const {
     auto& ctx = ctx_.get();
@@ -108,10 +95,10 @@ class FragmentInfo {
   /** Returns the name of the fragment with the given index. */
   std::string fragment_name(uint32_t fid) const {
     auto& ctx = ctx_.get();
-    const char* name_c;
-    ctx.handle_error(tiledb_fragment_info_get_fragment_name(
-        ctx.ptr().get(), fragment_info_.get(), fid, &name_c));
-    return std::string(name_c);
+    tiledb_string_t* name;
+    ctx.handle_error(tiledb_fragment_info_get_fragment_name_v2(
+        ctx.ptr().get(), fragment_info_.get(), fid, &name));
+    return impl::convert_to_string(&name).value();
   }
 
   /**
@@ -426,6 +413,11 @@ class FragmentInfo {
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_fragment_info_dump(ctx.ptr().get(), fragment_info_.get(), out));
+  }
+
+  /** Returns the C TileDB context object. */
+  std::shared_ptr<tiledb_fragment_info_t> ptr() const {
+    return fragment_info_;
   }
 
  private:

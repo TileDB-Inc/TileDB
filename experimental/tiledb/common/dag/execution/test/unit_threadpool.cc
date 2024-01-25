@@ -27,36 +27,90 @@
  *
  * @section DESCRIPTION
  *
- * Tests the threadpool class.
+ * Tests the threadpool class.  The basic interface and implementation of the
+ * experimental `ThreadPool` is based on the existing TileDB `ThreadPool`.
+ * However, the experimental `ThreadPool` extends the existing `ThreadPool`,
+ * controlled by three template parameters (as described in threadpool.h);
+ *
+ * template <
+ *   bool WorkStealing = false,
+ *   bool MultipleQueues = false,
+ *   bool RecursivePush = true>
+ * class ThreadPool{};
+ *
+ *
  */
 
 #include <test/support/tdb_catch.h>
 #include "experimental/tiledb/common/dag/execution/threadpool.h"
 
-// using namespace tiledb::common;
+using namespace tiledb::common;
+
+template <bool A, bool B, bool C>
+void test_construct() {
+  for (size_t N = 1; N < 8; ++N) {
+    auto a = ThreadPool<A, B, C>(N);
+    CHECK(a.num_threads() == N);
+  }
+}
 
 TEST_CASE("Threadpool: Test construct", "[threadpool]") {
-  auto a = ThreadPool<false, false, false>(4);
-  CHECK(a.num_threads() == 4);
+  test_construct<false, false, false>();
+  test_construct<false, false, true>();
+  test_construct<false, true, false>();
+  test_construct<false, true, true>();
+  test_construct<true, false, false>();
+  test_construct<true, false, true>();
+  test_construct<true, true, false>();
+  test_construct<true, true, true>();
+}
 
-  auto b = ThreadPool<false, false, true>(4);
-  CHECK(a.num_threads() == 4);
+template <bool A, bool B, bool C>
+void test_simple_job() {
+  for (size_t N = 1; N < 8; ++N) {
+    auto a = ThreadPool<A, B, C>(N);
+    auto fut = a.async([]() { return 8675309; });
+    CHECK(fut.get() == 8675309);
+  }
+}
 
-  auto c = ThreadPool<false, true, false>(4);
-  CHECK(c.num_threads() == 4);
+TEST_CASE("Threadpool: Test run simple job", "[threadpool]") {
+  test_simple_job<false, false, false>();
+  test_simple_job<false, false, true>();
+  test_simple_job<false, true, false>();
+  test_simple_job<false, true, true>();
+  test_simple_job<true, false, false>();
+  test_simple_job<true, false, true>();
+  test_simple_job<true, true, false>();
+  test_simple_job<true, true, true>();
+}
 
-  auto d = ThreadPool<false, true, true>(4);
-  CHECK(d.num_threads() == 4);
+template <bool A, bool B, bool C>
+void test_multiple_job() {
+  for (size_t N = 1; N < 8; ++N) {
+    auto a = ThreadPool<A, B, C>(N);
+    auto v = a.async([]() -> size_t { return 0UL; });
+    v.get();
+    for (size_t i = 1; i < 16; ++i) {
+      std::vector<decltype(v)> futs(i);
+      futs.clear();
+      for (size_t j = 1; j <= i; ++j) {
+        futs.emplace_back(a.async([=]() -> size_t { return 8675309 + j + i; }));
+      }
+      for (size_t j = 1; j <= i; ++j) {
+        CHECK(futs[j - 1].get() == (8675309 + j + i));
+      }
+    }
+  }
+}
 
-  auto e = ThreadPool<true, false, false>(4);
-  CHECK(e.num_threads() == 4);
-
-  auto f = ThreadPool<true, false, true>(4);
-  CHECK(f.num_threads() == 4);
-
-  auto g = ThreadPool<true, true, false>(4);
-  CHECK(g.num_threads() == 4);
-
-  auto h = ThreadPool<true, true, true>(4);
-  CHECK(g.num_threads() == 4);
+TEST_CASE("Threadpool: Test run multiple job", "[threadpool]") {
+  test_multiple_job<false, false, false>();
+  test_multiple_job<false, false, true>();
+  test_multiple_job<false, true, false>();
+  test_multiple_job<false, true, true>();
+  test_multiple_job<true, false, false>();
+  test_multiple_job<true, false, true>();
+  test_multiple_job<true, true, false>();
+  test_multiple_job<true, true, true>();
 }

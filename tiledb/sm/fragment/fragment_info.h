@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,11 +35,12 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/fragment/single_fragment_info.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -57,7 +58,7 @@ class FragmentInfo {
   FragmentInfo();
 
   /** Constructor. */
-  FragmentInfo(const URI& array_uri, StorageManager* storage_manager);
+  FragmentInfo(const URI& array_uri, ContextResources& resources);
 
   /** Destructor. */
   ~FragmentInfo();
@@ -79,10 +80,11 @@ class FragmentInfo {
   /* ********************************* */
 
   /**
-   * Sets a config to the fragment info. Useful for retrieving timestamps
-   * and encryption key.
+   * Sets a config to the fragment info. Useful for encryption information.
+   *
+   * @pre The FragmentInfo object must not yet be loaded.
    */
-  Status set_config(const Config& config);
+  void set_config(const Config& config);
 
   /** Expand the non empty domain before start with a new range */
   void expand_anterior_ndrange(const Domain& domain, const NDRange& range);
@@ -106,7 +108,7 @@ class FragmentInfo {
   Status get_total_cell_num(uint64_t* cell_num) const;
 
   /** Retrieves the name of the fragment with the given index. */
-  Status get_fragment_name(uint32_t fid, const char** name) const;
+  const std::string& fragment_name(uint32_t fid) const;
 
   /** Retrieves the size of the fragment with the given index. */
   Status get_fragment_size(uint32_t fid, uint64_t* size) const;
@@ -227,8 +229,7 @@ class FragmentInfo {
   Status get_version(uint32_t fid, uint32_t* version) const;
 
   /** Retrieves the array schema of the fragment with the given index. */
-  tuple<Status, optional<shared_ptr<ArraySchema>>> get_array_schema(
-      uint32_t fid);
+  shared_ptr<ArraySchema> get_array_schema(uint32_t fid);
 
   /** Retrieves the array schema name of the fragment with the given index. */
   Status get_array_schema_name(uint32_t fid, const char** schema_name);
@@ -241,19 +242,9 @@ class FragmentInfo {
   /**
    * Loads the fragment info from an array.
    *
-   * @param set_timestamp_range_from_config If `true` the timestamps
-   *     will be set by reading them from `config_`.
-   * @param set_key_from_cfg If `true`, the encryption key and type
-   *     will be set by reading them from `config_`.
-   * @param compute_anterior If `true`, all fragments
-   *     will be loaded and `anterior_ndrange` will be computed for
-   *     those that have a start timestamp smaller than `timestamp_start_`.
    * @return Status
    */
-  Status load(
-      bool set_timestamp_range_from_config,
-      bool set_key_from_config,
-      bool compute_anterior);
+  Status load();
 
   /**
    * Loads the fragment info from an array using the input key.
@@ -272,6 +263,7 @@ class FragmentInfo {
    * Loads the fragment info from an array using the input key
    * and timestamps.
    *
+   * @param array_dir The array directory to load the fragments.
    * @param timestamp_start This function will load fragments with
    *      whose timestamps are within [timestamp_start, timestamp_end].
    * @param timestamp_end This function will load fragments with
@@ -279,18 +271,15 @@ class FragmentInfo {
    * @param encryption_type The encryption type.
    * @param encryption_key The encryption key.
    * @param key_length The length of `encryption_key`.
-   * @param compute_anterior If `true`, all fragments
-   *     will be loaded and `anterior_ndrange` will be computed for
-   *     those that have a start timestamp smaller than `timestamp_start_`.
    * @return Status
    */
   Status load(
+      const ArrayDirectory& array_dir,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length,
-      bool compute_anterior);
+      uint32_t key_length);
 
   /**
    * It replaces a sequence of SingleFragmentInfo elements in
@@ -309,6 +298,34 @@ class FragmentInfo {
       const URI& new_fragment_uri,
       const std::vector<TimestampedURI>& to_replace);
 
+  /**
+   * Returns the array schemas and fragment metadata for the given array.
+   * The function will focus only on relevant schemas and metadata as
+   * dictated by the input URI manager.
+   *
+   * @param array_dir The ArrayDirectory object used to retrieve the
+   *     various URIs in the array directory.
+   * @param memory_tracker The memory tracker of the array
+   *     for which the fragment metadata is loaded.
+   * @param enc_key The encryption key to use.
+   * @return tuple latest ArraySchema, map of all array schemas and
+   * vector of FragmentMetadata
+   *        ArraySchema The array schema to be retrieved after the
+   *           array is opened.
+   *        ArraySchemaMap Map of all array schemas found keyed by name
+   *        fragment_metadata The fragment metadata to be retrieved
+   *           after the array is opened.
+   */
+  static tuple<
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+      std::vector<shared_ptr<FragmentMetadata>>>
+  load_array_schemas_and_fragment_metadata(
+      ContextResources& resources,
+      const ArrayDirectory& array_dir,
+      MemoryTracker* memory_tracker,
+      const EncryptionKey& enc_key);
+
   /** Returns the vector with the info about individual fragments. */
   const std::vector<SingleFragmentInfo>& single_fragment_info_vec() const;
 
@@ -318,8 +335,67 @@ class FragmentInfo {
   /** Returns the number of fragments to vacuum. */
   uint32_t to_vacuum_num() const;
 
+  /** Returns the list of fragments to vacuum. */
+  inline const std::vector<URI>& to_vacuum() const {
+    return to_vacuum_;
+  }
+
   /** Returns the number of fragments with unconsolidated metadata. */
   uint32_t unconsolidated_metadata_num() const;
+
+  /** Returns array schemas map. */
+  inline const shared_ptr<ArraySchema> array_schema_latest() const {
+    return array_schema_latest_;
+  }
+
+  /** Returns array schemas map. */
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
+
+  /** Returns the config. */
+  inline const Config& config() const {
+    return config_;
+  }
+
+  // Accessors
+
+  /** Returns array schemas latest. */
+  inline shared_ptr<ArraySchema>& array_schema_latest() {
+    return array_schema_latest_;
+  }
+
+  /** array_schemas_all accessor. */
+  inline std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() {
+    return array_schemas_all_;
+  }
+
+  /** single_fragment_info_vec_ accessor. */
+  inline std::vector<SingleFragmentInfo>& single_fragment_info_vec() {
+    return single_fragment_info_vec_;
+  }
+
+  /** to_vacuum_ accessor. */
+  inline std::vector<URI>& to_vacuum() {
+    return to_vacuum_;
+  }
+
+  /** array_uri_ accessor. */
+  inline URI& array_uri() {
+    return array_uri_;
+  }
+
+  /** unconsolidated_metadata_num_ accessor. */
+  inline uint32_t& unconsolidated_metadata_num() {
+    return unconsolidated_metadata_num_;
+  }
+
+  /** loaded_ accessor. */
+  inline bool& loaded() {
+    return loaded_;
+  }
 
  private:
   /* ********************************* */
@@ -335,6 +411,9 @@ class FragmentInfo {
   /** The encryption key used if the array is encrypted. */
   EncryptionKey enc_key_;
 
+  /** The latest array schema. */
+  std::shared_ptr<ArraySchema> array_schema_latest_;
+
   /**
    * All the array schemas relevant to the loaded fragment metadata
    * keyed by their file name.
@@ -344,8 +423,8 @@ class FragmentInfo {
   /** Information about fragments in the array. */
   std::vector<SingleFragmentInfo> single_fragment_info_vec_;
 
-  /** The storage manager. */
-  StorageManager* storage_manager_;
+  /** The context resources. */
+  ContextResources* resources_;
 
   /** The URIs of the fragments to vacuum. */
   std::vector<URI> to_vacuum_;
@@ -362,6 +441,9 @@ class FragmentInfo {
   /** Timestamp end used in load. */
   uint64_t timestamp_end_;
 
+  /** Whether the fragment info have been loaded. */
+  bool loaded_ = false;
+
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
@@ -370,10 +452,19 @@ class FragmentInfo {
   Status set_enc_key_from_config();
 
   /**
-   * Sets the timestamp range from config_. If not present, the timestamp
-   * range is set to [0, now].
+   * Sets the timestamp range to [0, now].
    */
-  Status set_timestamp_range_from_config();
+  Status set_default_timestamp_range();
+
+  /**
+   * Loads the fragment info from an array using the array directory.
+   */
+  Status load(const ArrayDirectory& array_directory);
+
+  /**
+   * Throws if the info have not been loaded.
+   */
+  void ensure_loaded() const;
 
   /**
    * Loads the fragment metadata of the input URI and returns a

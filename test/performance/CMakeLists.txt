@@ -55,7 +55,6 @@ add_executable(
   tiledb_explore_msys_handle_leakage EXCLUDE_FROM_ALL
   $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
   ${TILEDB_MSYS_HANDLE_LEAKAGE_SOURCES}
-#  "performance/msys_handle_leakage/unit.cc"
   "msys_handle_leakage/unit.cc"
 )
 
@@ -77,7 +76,7 @@ target_include_directories(
 target_link_libraries(tiledb_explore_msys_handle_leakage
   PUBLIC
     TILEDB_CORE_OBJECTS_ILIB
-    Catch2::Catch2
+    Catch2::Catch2WithMain
     tiledb_test_support_lib
 )
 
@@ -87,14 +86,14 @@ target_link_libraries(tiledb_explore_msys_handle_leakage
 
 # This is necessary only because we are linking directly to the core objects.
 # Other users (e.g. the examples) do not need this flag.
-target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE -Dtiledb_EXPORTS)
 
 target_compile_definitions(tiledb_explore_msys_handle_leakage PRIVATE
   -DTILEDB_TEST_INPUTS_DIR="${CMAKE_CURRENT_SOURCE_DIR}/inputs"
 )
 
 # Linking dl is only needed on linux with gcc
-if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     set_target_properties(tiledb_explore_msys_handle_leakage PROPERTIES
       LINK_FLAGS "-Wl,--no-as-needed -ldl"
     )

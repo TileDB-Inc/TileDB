@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -135,7 +135,8 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   dim_buffer_offset<int32_t, 36>(p) = tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
+  FilterPipeline fp;
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
 
   // Check name
   CHECK(dim->name() == dimension_name);
@@ -174,7 +175,8 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32);
+  FilterPipeline fp;
+  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
   // Check name
   CHECK(dim->name() == dimension_name);
   // Check type
@@ -216,15 +218,18 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 
   SECTION("- valid and unsupported Datatypes") {
-    std::vector<Datatype> valid_unsupported_datatypes = {Datatype::CHAR,
-                                                         Datatype::BLOB,
-                                                         Datatype::BOOL,
-                                                         Datatype::STRING_UTF8,
-                                                         Datatype::STRING_UTF16,
-                                                         Datatype::STRING_UTF32,
-                                                         Datatype::STRING_UCS2,
-                                                         Datatype::STRING_UCS4,
-                                                         Datatype::ANY};
+    std::vector<Datatype> valid_unsupported_datatypes = {
+        Datatype::CHAR,
+        Datatype::BLOB,
+        Datatype::GEOM_WKB,
+        Datatype::GEOM_WKT,
+        Datatype::BOOL,
+        Datatype::STRING_UTF8,
+        Datatype::STRING_UTF16,
+        Datatype::STRING_UTF32,
+        Datatype::STRING_UCS2,
+        Datatype::STRING_UCS4,
+        Datatype::ANY};
 
     for (Datatype type : valid_unsupported_datatypes) {
       try {
@@ -238,7 +243,8 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   }
 
   SECTION("- invalid Datatypes") {
-    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {42, 100};
+    // Note: Ensure this test is updated each time a new datatype is added.
+    std::vector<std::underlying_type_t<Datatype>> invalid_datatypes = {44, 100};
 
     for (auto type : invalid_datatypes) {
       try {
@@ -383,22 +389,23 @@ TEMPLATE_LIST_TEST_CASE(
 TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
   Dimension dim{"", Datatype::STRING_ASCII};
 
-  std::vector<char> range_data = {'a',
-                                  'a',
-                                  'a',
-                                  'a',
-                                  'b',
-                                  'b',
-                                  'c',
-                                  'd',
-                                  'e',
-                                  'f',
-                                  'e',
-                                  'g',
-                                  'h',
-                                  'i',
-                                  'y',
-                                  'z'};
+  std::vector<char> range_data = {
+      'a',
+      'a',
+      'a',
+      'a',
+      'b',
+      'b',
+      'c',
+      'd',
+      'e',
+      'f',
+      'e',
+      'g',
+      'h',
+      'i',
+      'y',
+      'z'};
   NDRange ranges;
   for (uint64_t r = 0; r < range_data.size() / 2; r++) {
     ranges.emplace_back(&range_data[r * 2], 2, 1);
@@ -422,7 +429,7 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
 TEST_CASE("Dimension::oob format") {
   Dimension d("X", Datatype::FLOAT64);
   double d_dom[2]{-682.73999, 929.42999};
-  d.set_domain(Range(&d_dom, sizeof(d_dom)));
+  REQUIRE(d.set_domain(Range(&d_dom, sizeof(d_dom))).ok());
   double x{-682.75};
   std::string error{};
   bool b{Dimension::oob<double>(&d, &x, &error)};

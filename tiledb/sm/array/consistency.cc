@@ -32,6 +32,7 @@
 
 #include <iostream>
 
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/consistency.h"
 
 using namespace tiledb::common;
@@ -57,18 +58,35 @@ ConsistencySentry::~ConsistencySentry() {
 }
 
 ConsistencySentry ConsistencyController::make_sentry(
-    const URI uri, Array& array) {
-  return ConsistencySentry{*this, register_array(uri, array)};
+    const URI uri, Array& array, const QueryType query_type) {
+  return ConsistencySentry{*this, register_array(uri, array, query_type)};
 }
 
 ConsistencyController::entry_type ConsistencyController::register_array(
-    const URI uri, Array& array) {
+    const URI uri, Array& array, const QueryType query_type) {
   if (uri.empty()) {
     throw std::runtime_error(
         "[ConsistencyController::register_array] URI cannot be empty.");
   }
+
   std::lock_guard<std::mutex> lock(mtx_);
-  return array_registry_.insert({uri, array});
+  auto iter = array_registry_.find(uri);
+  if (iter != array_registry_.end()) {
+    if (query_type == QueryType::MODIFY_EXCLUSIVE) {
+      throw std::runtime_error(
+          "[ConsistencyController::register_array] Array already open; must "
+          "close array before opening for exclusive modification.");
+    } else {
+      if (std::get<1>(iter->second) == QueryType::MODIFY_EXCLUSIVE) {
+        throw std::runtime_error(
+            "[ConsistencyController::register_array] Must close array opened "
+            "for exclusive modification before opening an array at the same "
+            "address.");
+      }
+    }
+  }
+
+  return array_registry_.insert({uri, array_entry(array, query_type)});
 }
 
 void ConsistencyController::deregister_array(
@@ -78,9 +96,8 @@ void ConsistencyController::deregister_array(
 }
 
 bool ConsistencyController::is_open(const URI uri) {
-  for (auto iter : array_registry_) {
-    if (iter.first == uri)
-      return true;
+  if (array_registry_.find(uri) != array_registry_.end()) {
+    return true;
   }
   return false;
 }

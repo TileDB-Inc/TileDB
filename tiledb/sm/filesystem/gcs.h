@@ -35,13 +35,24 @@
 
 #ifdef HAVE_GCS
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// One abseil file has a warning that fails on Windows when compiling with
+// warnings as errors.
+#pragma warning(disable : 4127)  // conditional expression is constant
+#endif
 #include <google/cloud/storage/client.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
 
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/curl/curl_init.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
@@ -390,8 +401,18 @@ class GCS {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * A libcurl initializer instance. This should remain
+   * the first member variable to ensure that libcurl is
+   * initialized before any calls that may require it.
+   */
+  tiledb::sm::curl::LibCurlInitializer curl_inited_;
+
   /** The current state. */
   State state_;
+
+  /** SSLConfig options. */
+  SSLConfig ssl_cfg_;
 
   /**
    * Mutex protecting client initialization. This is mutable so that nominally
@@ -401,6 +422,9 @@ class GCS {
 
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
+
+  // The GCS endpoint.
+  std::string endpoint_;
 
   // The GCS project id.
   std::string project_id_;

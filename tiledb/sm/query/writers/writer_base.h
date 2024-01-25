@@ -44,7 +44,8 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/tile/writer_tile.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
@@ -55,9 +56,8 @@ class Array;
 class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
-class StorageManager;
 
-using WriterTileVector = std::vector<WriterTile>;
+using WriterTileTupleVector = std::vector<WriterTileTuple>;
 
 /** Processes write queries. */
 class WriterBase : public StrategyBase, public IQueryStrategy {
@@ -70,17 +70,12 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   WriterBase(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      Subarray& subarray,
-      Layout layout,
+      StrategyParams& params,
       std::vector<WrittenFragmentInfo>& written_fragment_info,
       bool disable_checks_consolidation,
       Query::CoordsInfo& coords_info_,
-      URI fragment_uri = URI(""),
-      bool skip_checks_serialization = false);
+      bool remote_query,
+      optional<std::string> fragment_name = nullopt);
 
   /** Destructor. */
   ~WriterBase();
@@ -115,7 +110,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool get_dedup_coords() const;
 
   /** Initialize the memory budget variables. */
-  Status initialize_memory_budget();
+  void refresh_config();
 
   /** Sets current setting of check_coord_dups_ */
   void set_check_coord_dups(bool b);
@@ -179,6 +174,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /** The name of the new fragment to be created. */
   URI fragment_uri_;
 
+  /** Timestamps for the new fragment to be created. */
+  std::pair<uint64_t, uint64_t> fragment_timestamp_range_;
+
   /** Stores information about the written fragments. */
   std::vector<WrittenFragmentInfo>& written_fragment_info_;
 
@@ -187,6 +185,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** Used in serialization to track if the writer belongs to a remote query */
+  bool remote_query_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -217,6 +218,17 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void check_var_attr_offsets() const;
 
   /**
+   * Throws an error if ordered data buffers do not have the expected sort.
+   *
+   * This method only checks currently loaded data. It does not check the
+   * sort of data in subsequent writes for the global order writer.
+   *
+   * For unordered writes, this method will need to be modified to take into
+   * account the sort order.
+   */
+  void check_attr_order() const;
+
+  /**
    * Cleans up the coordinate buffers. Applicable only if the coordinate
    * buffers were allocated by TileDB (not the user)
    */
@@ -226,15 +238,31 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status close_files(shared_ptr<FragmentMetadata> meta) const;
 
   /**
-   * Computes the coordinates metadata (e.g., MBRs).
+   * Computes the MBRs.
    *
-   * @param tiles The tiles to calculate the coords metadata from. It is
-   *     a map of vectors, one vector of tiles per dimension.
-   * @param meta The fragment metadata that will store the coords metadata.
-   * @return Status
+   * @param tiles The tiles to calculate the MBRs from. It is a map of vectors,
+   * one vector of tiles per dimension/coordinates.
+   * @return MBRs.
    */
-  Status compute_coords_metadata(
-      const std::unordered_map<std::string, WriterTileVector>& tiles,
+  std::vector<NDRange> compute_mbrs(
+      const std::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const;
+
+  /**
+   * Set the coordinates metadata (e.g., MBRs).
+   *
+   * @param start_tile_idx Index of the first tile to set metadata for.
+   * @param end_tile_idx Index of the last tile to set metadata for.
+   * @param tiles The tiles to calculate the coords metadata from. It is
+   *     a map of vectors, one vector of tiles per dimension/coordinates.
+   * @param mbrs The MBRs.
+   * @param meta The fragment metadata that will store the coords metadata.
+   */
+  void set_coords_metadata(
+      const uint64_t start_tile_idx,
+      const uint64_t end_tile_idx,
+      const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+      const std::vector<NDRange>& mbrs,
       shared_ptr<FragmentMetadata> meta) const;
 
   /**
@@ -247,7 +275,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_tiles_metadata(
       uint64_t tile_num,
-      std::unordered_map<std::string, WriterTileVector>& tiles) const;
+      std::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -258,19 +286,22 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /**
    * Creates a new fragment.
    *
+   * This will create the fragment directory, fragment URI directory, and commit
+   * directory (if they do not already exist) the first time it is called.
+   *
    * @param dense Whether the fragment is dense or not.
    * @param frag_meta The fragment metadata to be generated.
    * @return Status
    */
-  Status create_fragment(
-      bool dense, shared_ptr<FragmentMetadata>& frag_meta) const;
+  Status create_fragment(bool dense, shared_ptr<FragmentMetadata>& frag_meta);
 
   /**
    * Runs the input coordinate and attribute tiles through their
    * filter pipelines. The tile buffers are modified to contain the output
    * of the pipeline.
    */
-  Status filter_tiles(std::unordered_map<std::string, WriterTileVector>* tiles);
+  Status filter_tiles(
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -280,7 +311,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param tile The tiles to be filtered.
    * @return Status
    */
-  Status filter_tiles(const std::string& name, WriterTileVector* tiles);
+  Status filter_tiles(const std::string& name, WriterTileTupleVector* tiles);
 
   /**
    * Runs the input tile for the input attribute/dimension through the filter
@@ -292,13 +323,13 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @param offsets_tile The offsets tile in case of a var tile, or null.
    * @param offsets True if the tile to be filtered contains offsets for a
    *    var-sized attribute/dimension.
-   * @param offsets True if the tile to be filtered contains validity values.
+   * @param nullable True if the tile to be filtered contains validity values.
    * @return Status
    */
   Status filter_tile(
       const std::string& name,
-      Tile* tile,
-      Tile* offsets_tile,
+      WriterTile* tile,
+      WriterTile* offsets_tile,
       bool offsets,
       bool nullable);
 
@@ -332,7 +363,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status init_tiles(
       const std::string& name,
       uint64_t tile_num,
-      WriterTileVector* tiles) const;
+      WriterTileTupleVector* tiles) const;
 
   /**
    * Optimize the layout for 1D arrays. Specifically, if the array
@@ -392,20 +423,27 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   Status split_coords_buffer();
 
   /**
-   * Writes all the input tiles to storage.
+   * Writes a number of the input tiles to storage for all
+   * dimensions/attributes.
    *
+   * @param start_tile_idx Index of the first tile to write.
+   * @param end_tile_idx Index of the last tile to write.
+   * @param frag_meta Current fragment metadata.
    * @param tiles Attribute/Coordinate tiles to be written, one element per
    *     attribute or dimension.
-   * @param tiles Attribute/Coordinate tiles to be written.
    * @return Status
    */
-  Status write_all_tiles(
+  Status write_tiles(
+      const uint64_t start_tile_idx,
+      const uint64_t end_tile_idx,
       shared_ptr<FragmentMetadata> frag_meta,
-      std::unordered_map<std::string, WriterTileVector>* tiles);
+      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
    *
+   * @param start_tile_idx Index of the first tile to write.
+   * @param end_tile_idx Index of the last tile to write.
    * @param name The attribute/dimension the tiles belong to.
    * @param frag_meta The fragment metadata.
    * @param start_tile_id The function will start writing tiles
@@ -416,19 +454,16 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return Status
    */
   Status write_tiles(
+      const uint64_t start_tile_idx,
+      const uint64_t end_tile_idx,
       const std::string& name,
       shared_ptr<FragmentMetadata> frag_meta,
       uint64_t start_tile_id,
-      WriterTileVector* tiles,
+      WriterTileTupleVector* tiles,
       bool close_files = true);
 
   /**
-   * Invoked on error. It removes the directory of the input URI and
-   * resets the global write state.
-   */
-  void clean_up(const URI& uri);
-
-  /** Calculates the hilbert values of the input coordinate buffers.
+   * Calculates the hilbert values of the input coordinate buffers.
    *
    * @param[in] domain_buffers QueryBuffers for which to calculate values
    * @param[out] hilbert_values Output values written into caller-defined vector
@@ -451,10 +486,15 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<WriterTileVector>& tile_batches,
+      std::vector<WriterTileTupleVector>& tile_batches,
       tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);
+
+  /**
+   * Returns true if this write strategy is part of a remote query
+   */
+  bool remote_query() const;
 };
 
 }  // namespace sm

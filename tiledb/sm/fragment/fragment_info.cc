@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,25 +41,25 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
-using namespace tiledb::sm;
-using namespace tiledb::common;
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
 FragmentInfo::FragmentInfo()
-    : storage_manager_(nullptr)
+    : resources_(nullptr)
     , unconsolidated_metadata_num_(0) {
 }
 
-FragmentInfo::FragmentInfo(
-    const URI& array_uri, StorageManager* storage_manager)
+FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
     : array_uri_(array_uri)
-    , config_(storage_manager->config())
-    , storage_manager_(storage_manager)
+    , config_(resources.config())
+    , resources_(&resources)
     , unconsolidated_metadata_num_(0) {
 }
 
@@ -91,9 +91,12 @@ FragmentInfo& FragmentInfo::operator=(FragmentInfo&& fragment_info) {
 /*                API                */
 /* ********************************* */
 
-Status FragmentInfo::set_config(const Config& config) {
-  config_ = config;
-  return Status::Ok();
+void FragmentInfo::set_config(const Config& config) {
+  if (loaded_) {
+    throw StatusException(
+        Status_FragmentInfoError("[set_config] Cannot set config after load"));
+  }
+  config_.inherit(config);
 }
 
 void FragmentInfo::expand_anterior_ndrange(
@@ -102,6 +105,7 @@ void FragmentInfo::expand_anterior_ndrange(
 }
 
 void FragmentInfo::dump(FILE* out) const {
+  ensure_loaded();
   if (out == nullptr)
     out = stdout;
 
@@ -130,6 +134,7 @@ void FragmentInfo::dump(FILE* out) const {
 }
 
 Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
+  ensure_loaded();
   if (dense == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is dense; Dense argument cannot be null"));
@@ -144,6 +149,7 @@ Status FragmentInfo::get_dense(uint32_t fid, int32_t* dense) const {
 }
 
 Status FragmentInfo::get_sparse(uint32_t fid, int32_t* sparse) const {
+  ensure_loaded();
   if (sparse == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot check if fragment is sparse; Sparse argument cannot be null"));
@@ -158,10 +164,12 @@ Status FragmentInfo::get_sparse(uint32_t fid, int32_t* sparse) const {
 }
 
 uint32_t FragmentInfo::fragment_num() const {
+  ensure_loaded();
   return (uint32_t)single_fragment_info_vec_.size();
 }
 
 Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
+  ensure_loaded();
   if (cell_num == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Cell number argument cannot be null"));
@@ -176,6 +184,7 @@ Status FragmentInfo::get_cell_num(uint32_t fid, uint64_t* cell_num) const {
 }
 
 Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
+  ensure_loaded();
   if (cell_num == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cell number argument cannot be null"));
@@ -196,24 +205,17 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
   return Status::Ok();
 }
 
-Status FragmentInfo::get_fragment_name(uint32_t fid, const char** name) const {
-  if (name == nullptr)
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cannot get fragment name; Name argument cannot be null"));
-
+const std::string& FragmentInfo::fragment_name(uint32_t fid) const {
+  ensure_loaded();
   if (fid >= fragment_num())
-    return LOG_STATUS(Status_FragmentInfoError(
-        "Cannot get fragment URI; Invalid fragment index"));
+    throw Status_FragmentInfoError(
+        "Cannot get fragment URI; Invalid fragment index");
 
-  auto meta = single_fragment_info_vec_[fid].meta();
-  auto meta_name =
-      meta->fragment_uri().remove_trailing_slash().last_path_part();
-  *name = meta_name.c_str();
-
-  return Status::Ok();
+  return single_fragment_info_vec_[fid].name();
 }
 
 Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
+  ensure_loaded();
   if (size == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; Size argument cannot be null"));
@@ -228,6 +230,7 @@ Status FragmentInfo::get_fragment_size(uint32_t fid, uint64_t* size) const {
 }
 
 Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
+  ensure_loaded();
   if (uri == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; URI argument cannot be null"));
@@ -242,6 +245,7 @@ Status FragmentInfo::get_fragment_uri(uint32_t fid, const char** uri) const {
 }
 
 Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
+  ensure_loaded();
   if (uri == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get URI of fragment to vacuum; URI argument cannot be null"));
@@ -257,6 +261,7 @@ Status FragmentInfo::get_to_vacuum_uri(uint32_t fid, const char** uri) const {
 
 Status FragmentInfo::get_timestamp_range(
     uint32_t fid, uint64_t* start, uint64_t* end) const {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get timestamp range; Start argument cannot be null"));
@@ -278,6 +283,7 @@ Status FragmentInfo::get_timestamp_range(
 
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, uint32_t did, void* domain) const {
+  ensure_loaded();
   if (domain == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Domain argument cannot be null"));
@@ -306,6 +312,7 @@ Status FragmentInfo::get_non_empty_domain(
 
 Status FragmentInfo::get_non_empty_domain(
     uint32_t fid, const char* dim_name, void* domain) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain; Invalid fragment index"));
@@ -339,6 +346,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) const {
+  ensure_loaded();
   if (start_size == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get non-empty domain var size; Start "
@@ -376,6 +384,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get var-sized non-empty domain; Invalid fragment index"));
@@ -408,6 +417,7 @@ Status FragmentInfo::get_non_empty_domain_var_size(
 
 Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, uint32_t did, void* start, void* end) const {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get non-empty domain var; Domain "
@@ -443,6 +453,7 @@ Status FragmentInfo::get_non_empty_domain_var(
 
 Status FragmentInfo::get_non_empty_domain_var(
     uint32_t fid, const char* dim_name, void* start, void* end) const {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get non-empty domain var; Invalid fragment index"));
@@ -474,6 +485,7 @@ Status FragmentInfo::get_non_empty_domain_var(
 }
 
 Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
+  ensure_loaded();
   if (mbr_num == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get fragment URI; MBR number argument cannot be null"));
@@ -488,7 +500,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
   }
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   *mbr_num = meta->mbrs().size();
 
   return Status::Ok();
@@ -496,6 +508,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
 
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, uint32_t did, void* mbr) {
+  ensure_loaded();
   if (mbr == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR; mbr argument cannot be null"));
@@ -509,7 +522,7 @@ Status FragmentInfo::get_mbr(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -536,6 +549,7 @@ Status FragmentInfo::get_mbr(
 
 Status FragmentInfo::get_mbr(
     uint32_t fid, uint32_t mid, const char* dim_name, void* mbr) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR; Invalid fragment index"));
@@ -570,6 +584,7 @@ Status FragmentInfo::get_mbr_var_size(
     uint32_t did,
     uint64_t* start_size,
     uint64_t* end_size) {
+  ensure_loaded();
   if (start_size == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR var size; Start "
@@ -589,7 +604,7 @@ Status FragmentInfo::get_mbr_var_size(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -619,6 +634,7 @@ Status FragmentInfo::get_mbr_var_size(
     const char* dim_name,
     uint64_t* start_size,
     uint64_t* end_size) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var size; Invalid fragment index"));
@@ -650,6 +666,7 @@ Status FragmentInfo::get_mbr_var_size(
 
 Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, uint32_t did, void* start, void* end) {
+  ensure_loaded();
   if (start == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get MBR var; Start argument cannot be null"));
@@ -667,7 +684,7 @@ Status FragmentInfo::get_mbr_var(
         Status_FragmentInfoError("Cannot get MBR var; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  RETURN_NOT_OK(meta->load_rtree(enc_key_));
+  meta->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -695,6 +712,7 @@ Status FragmentInfo::get_mbr_var(
 
 Status FragmentInfo::get_mbr_var(
     uint32_t fid, uint32_t mid, const char* dim_name, void* start, void* end) {
+  ensure_loaded();
   if (fid >= fragment_num())
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot get MBR var; Invalid fragment index"));
@@ -726,6 +744,7 @@ Status FragmentInfo::get_mbr_var(
 }
 
 Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
+  ensure_loaded();
   if (version == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get version; Version argument cannot be null"));
@@ -739,12 +758,14 @@ Status FragmentInfo::get_version(uint32_t fid, uint32_t* version) const {
   return Status::Ok();
 }
 
-tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
-    uint32_t fid) {
-  if (fid >= fragment_num())
-    return {LOG_STATUS(Status_FragmentInfoError(
-                "Cannot get array schema; Invalid fragment index")),
-            nullopt};
+shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
+  ensure_loaded();
+  if (fid >= fragment_num()) {
+    auto st = Status_FragmentInfoError(
+        "Cannot get array schema; Invalid fragment index");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    throw_if_not_ok(st);
+  }
   URI schema_uri;
   uint32_t version = single_fragment_info_vec_[fid].format_version();
   if (version >= 10) {
@@ -756,12 +777,13 @@ tuple<Status, optional<shared_ptr<ArraySchema>>> FragmentInfo::get_array_schema(
   }
 
   EncryptionKey encryption_key;
-  return storage_manager_->load_array_schema_from_uri(
-      schema_uri, encryption_key);
+  return ArrayDirectory::load_array_schema_from_uri(
+      *resources_, schema_uri, encryption_key);
 }
 
 Status FragmentInfo::get_array_schema_name(
     uint32_t fid, const char** schema_name) {
+  ensure_loaded();
   if (schema_name == nullptr)
     return LOG_STATUS(Status_FragmentInfoError(
         "Cannot get array schema URI; schema name argument cannot be null"));
@@ -782,6 +804,7 @@ Status FragmentInfo::get_array_schema_name(
 
 Status FragmentInfo::has_consolidated_metadata(
     uint32_t fid, int32_t* has) const {
+  ensure_loaded();
   if (has == nullptr)
     return LOG_STATUS(
         Status_FragmentInfoError("Cannot check if fragment has consolidated "
@@ -796,98 +819,93 @@ Status FragmentInfo::has_consolidated_metadata(
 
   return Status::Ok();
 }
+
+Status FragmentInfo::load() {
+  RETURN_NOT_OK(set_enc_key_from_config());
+  RETURN_NOT_OK(set_default_timestamp_range());
+
+  if (array_uri_.is_tiledb()) {
+    auto rest_client = resources_->rest_client();
+    if (rest_client == nullptr) {
+      return LOG_STATUS(Status_ArrayError(
+          "Cannot load fragment info; remote array with no REST client."));
+    }
+
+    // Overriding this config parameter is necessary to enable Cloud to load
+    // MBRs at the same time as the rest of fragment info and not lazily
+    // as it's the case for local fragment info load requests.
+    throw_if_not_ok(config_.set("sm.fragment_info.preload_mbrs", "true"));
+
+    return rest_client->post_fragment_info_from_rest(array_uri_, this);
+  }
+
+  // Create an ArrayDirectory object and load
+  ArrayDirectory array_dir(
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
+
+  return load(array_dir);
+}
+
 Status FragmentInfo::load(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
-  auto set_timestamp_range_from_config = true;
-  auto set_key_from_config = false;  // Key set explicitly above
-  auto compute_anterior = false;
-  return load(
-      set_timestamp_range_from_config, set_key_from_config, compute_anterior);
+  RETURN_NOT_OK(set_default_timestamp_range());
+
+  // Create an ArrayDirectory object and load
+  ArrayDirectory array_dir(
+      *resources_, array_uri_, timestamp_start_, timestamp_end_);
+  return load(array_dir);
 }
 
 Status FragmentInfo::load(
+    const ArrayDirectory& array_dir,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     EncryptionType encryption_type,
     const void* encryption_key,
-    uint32_t key_length,
-    bool compute_anterior) {
+    uint32_t key_length) {
   timestamp_start_ = timestamp_start;
   timestamp_end_ = timestamp_end;
+
   RETURN_NOT_OK(enc_key_.set_key(encryption_type, encryption_key, key_length));
-  auto set_timestamp_range_from_config =
-      false;                         // Timestamps set explicitly above
-  auto set_key_from_config = false;  // Key set explicitly above
-  return load(
-      set_timestamp_range_from_config, set_key_from_config, compute_anterior);
+  return load(array_dir);
 }
 
-Status FragmentInfo::load(
-    bool set_timestamp_range_from_config,
-    bool set_key_from_config,
-    bool compute_anterior) {
-  bool is_array;
-  RETURN_NOT_OK(storage_manager_->is_array(array_uri_, &is_array));
-  if (!is_array) {
-    auto msg = std::string("Cannot load fragment info; Array '") +
-               array_uri_.to_string() + "' does not exist";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
+Status FragmentInfo::load(const ArrayDirectory& array_dir) {
+  // Check if we need to preload MBRs or not based on config
+  bool found = false, preload_rtrees = false;
+  auto status = config_.get<bool>(
+      "sm.fragment_info.preload_mbrs", &preload_rtrees, &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error("Cannot get fragment info config setting");
   }
-
-  if (array_uri_.is_tiledb()) {
-    auto msg = std::string(
-                   "FragmentInfo not supported in TileDB Cloud arrays; "
-                   "FragmentInfo for array '") +
-               array_uri_.to_string() + "' cannot be loaded";
-    return LOG_STATUS(Status_FragmentInfoError(msg));
-  }
-
-  // Set the timestamp range
-  if (set_timestamp_range_from_config) {
-    RETURN_NOT_OK(this->set_timestamp_range_from_config());
-  }
-
-  // Get the encryption key (if not already set)
-  if (set_key_from_config) {
-    RETURN_NOT_OK(this->set_enc_key_from_config());
-  }
-
-  // Create an ArrayDirectory object and load
-  auto timestamp_start = compute_anterior ? 0 : timestamp_start_;
-  auto array_dir = ArrayDirectory(
-      storage_manager_->vfs(),
-      storage_manager_->compute_tp(),
-      array_uri_,
-      timestamp_start,
-      timestamp_end_);
 
   // Get the array schemas and fragment metadata.
-  auto&& [st_schemas, array_schema_latest, array_schemas_all, fragment_metadata] =
-      storage_manager_->load_array_schemas_and_fragment_metadata(
-          array_dir, nullptr, enc_key_);
-  RETURN_NOT_OK(st_schemas);
-  (void)array_schema_latest;  // Not needed here
-  array_schemas_all_ = std::move(array_schemas_all.value());
-  auto fragment_num = (uint32_t)fragment_metadata.value().size();
-  const auto& fragment_metadata_v = fragment_metadata.value();
+  std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
+  std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
+      load_array_schemas_and_fragment_metadata(
+          *resources_, array_dir, nullptr, enc_key_);
+  auto fragment_num = (uint32_t)fragment_metadata.size();
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
   RETURN_NOT_OK(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_->compute_tp(),
       0,
       fragment_num,
-      [this, &fragment_metadata_v, &sizes](uint64_t i) {
-        // Get fragment size. Applicable only to relevant fragments,
-        // excluding those potentially used to compute anterior_ndrange_.
-        auto meta = fragment_metadata_v[i];
-        if (meta->timestamp_range().first >= timestamp_start_) {
-          uint64_t size;
-          RETURN_NOT_OK(meta->fragment_size(&size));
-          sizes[i] = size;
+      [this, &fragment_metadata, &sizes, preload_rtrees](uint64_t i) {
+        // Get fragment size. Applicable only to relevant fragments, including
+        // fragments that are in the range [timestamp_start_, timestamp_end_].
+        auto meta = fragment_metadata[i];
+        if (meta->timestamp_range().first >= timestamp_start_ &&
+            meta->timestamp_range().second <= timestamp_end_) {
+          sizes[i] = meta->fragment_size();
+        }
+
+        if (preload_rtrees & !meta->dense()) {
+          meta->load_rtree(enc_key_);
         }
 
         return Status::Ok();
@@ -899,13 +917,13 @@ Status FragmentInfo::load(
 
   // Create the vector that will store the SingleFragmentInfo objects
   for (uint64_t fid = 0; fid < fragment_num; fid++) {
-    const auto meta = fragment_metadata_v[fid];
+    const auto meta = fragment_metadata[fid];
     const auto& array_schema = meta->array_schema();
     const auto& non_empty_domain = meta->non_empty_domain();
 
     if (meta->timestamp_range().first < timestamp_start_) {
       expand_anterior_ndrange(array_schema->domain(), non_empty_domain);
-    } else {
+    } else if (meta->timestamp_range().second <= timestamp_end_) {
       const auto& uri = meta->fragment_uri();
       bool sparse = !meta->dense();
 
@@ -932,10 +950,18 @@ Status FragmentInfo::load(
 
   // Get number of unconsolidated fragment metadata
   unconsolidated_metadata_num_ = 0;
-  for (const auto& f : single_fragment_info_vec_)
+  for (const auto& f : single_fragment_info_vec_) {
     unconsolidated_metadata_num_ += (uint32_t)!f.has_consolidated_footer();
+  }
 
+  loaded_ = true;
   return Status::Ok();
+}
+
+void FragmentInfo::ensure_loaded() const {
+  if (!loaded_) {
+    throw Status_FragmentInfoError("Fragment info has not been loaded.");
+  }
 }
 
 Status FragmentInfo::load_and_replace(
@@ -950,6 +976,106 @@ Status FragmentInfo::load_and_replace(
   RETURN_NOT_OK(replace(new_single_fragment_info.value(), to_replace));
 
   return Status::Ok();
+}
+
+tuple<Tile, std::vector<std::pair<std::string, uint64_t>>>
+load_consolidated_fragment_meta(
+    ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
+  auto timer_se =
+      resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
+
+  // No consolidated fragment metadata file
+  if (uri.to_string().empty())
+    throw StatusException(Status_FragmentInfoError(
+        "Cannot load consolidated fragment metadata; URI is empty."));
+
+  auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
+
+  resources.stats().add_counter("consolidated_frag_meta_size", tile.size());
+
+  uint32_t fragment_num;
+  Deserializer deserializer(tile.data(), tile.size());
+  fragment_num = deserializer.read<uint32_t>();
+
+  uint64_t name_size, offset;
+  std::string name;
+  std::vector<std::pair<std::string, uint64_t>> ret;
+  ret.reserve(fragment_num);
+  for (uint32_t f = 0; f < fragment_num; ++f) {
+    name_size = deserializer.read<uint64_t>();
+    name.resize(name_size);
+    deserializer.read(&name[0], name_size);
+    offset = deserializer.read<uint64_t>();
+    ret.emplace_back(name, offset);
+  }
+
+  return {std::move(tile), std::move(ret)};
+}
+
+std::tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>,
+    std::vector<shared_ptr<FragmentMetadata>>>
+FragmentInfo::load_array_schemas_and_fragment_metadata(
+    ContextResources& resources,
+    const ArrayDirectory& array_dir,
+    MemoryTracker* memory_tracker,
+    const EncryptionKey& enc_key) {
+  auto timer_se = resources.stats().start_timer(
+      "sm_load_array_schemas_and_fragment_metadata");
+
+  // Load array schemas
+  std::shared_ptr<ArraySchema> array_schema_latest;
+  std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
+      array_schemas_all;
+  std::tie(array_schema_latest, array_schemas_all) =
+      array_dir.load_array_schemas(enc_key);
+
+  const auto filtered_fragment_uris = [&]() {
+    auto timer_se =
+        resources.stats().start_timer("sm_load_filtered_fragment_uris");
+    return array_dir.filtered_fragment_uris(array_schema_latest->dense());
+  }();
+  const auto& meta_uris = array_dir.fragment_meta_uris();
+  const auto& fragments_to_load = filtered_fragment_uris.fragment_uris();
+
+  // Get the consolidated fragment metadatas
+  std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
+  std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
+      meta_uris.size());
+  throw_if_not_ok(
+      parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
+        auto&& [tile_opt, offsets] =
+            load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
+        fragment_metadata_tiles[i] =
+            make_shared<Tile>(HERE(), std::move(tile_opt));
+        offsets_vectors[i] = std::move(offsets);
+        return Status::Ok();
+      }));
+
+  // Get the unique fragment metadatas into a map.
+  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
+    for (auto& offset : offsets_vectors[i]) {
+      if (offsets.count(offset.first) == 0) {
+        offsets.emplace(
+            offset.first,
+            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
+      }
+    }
+  }
+
+  // Load the fragment metadata
+  auto&& fragment_metadata = FragmentMetadata::load(
+      resources,
+      memory_tracker,
+      array_schema_latest,
+      array_schemas_all,
+      enc_key,
+      fragments_to_load,
+      offsets);
+
+  return {array_schema_latest, array_schemas_all, fragment_metadata};
 }
 
 const std::vector<SingleFragmentInfo>& FragmentInfo::single_fragment_info_vec()
@@ -985,7 +1111,7 @@ Status FragmentInfo::set_enc_key_from_config() {
       enc_type, enc_key_str.c_str(), static_cast<uint32_t>(enc_key_str.size()));
 }
 
-Status FragmentInfo::set_timestamp_range_from_config() {
+Status FragmentInfo::set_default_timestamp_range() {
   timestamp_start_ = 0;
   timestamp_end_ = utils::time::timestamp_now_ms();
 
@@ -997,7 +1123,7 @@ Status FragmentInfo::set_timestamp_range_from_config() {
 tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
     const URI& new_fragment_uri) const {
   SingleFragmentInfo ret;
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_->vfs();
   const auto& array_schema_latest =
       single_fragment_info_vec_.back().meta()->array_schema();
 
@@ -1006,17 +1132,15 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   RETURN_NOT_OK_TUPLE(
       utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
       nullopt);
-  uint32_t version;
   auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_name_version(name, &version), nullopt);
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (version == 1) {  // This corresponds to format version <=2
+  if (fragment_version <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
-    RETURN_NOT_OK_TUPLE(vfs->is_file(coords_uri, &sparse), nullopt);
+    RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);
   } else {
     // Do nothing. It does not matter what the `sparse` value
     // is, since the FragmentMetadata object will load the correct
@@ -1028,21 +1152,19 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   // Get fragment non-empty domain
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
-      storage_manager_,
+      resources_,
       nullptr,
       array_schema_latest,
       new_fragment_uri,
       timestamp_range,
       !sparse);
-  RETURN_NOT_OK_TUPLE(
-      meta->load(enc_key_, nullptr, 0, array_schemas_all_), nullopt);
+  meta->load(enc_key_, nullptr, 0, array_schemas_all_);
 
   // This is important for format version > 2
   sparse = !meta->dense();
 
   // Get fragment size
-  uint64_t size;
-  RETURN_NOT_OK_TUPLE(meta->fragment_size(&size), nullopt);
+  uint64_t size = meta->fragment_size();
 
   // Compute expanded non-empty domain only for dense fragments
   // Get non-empty domain, and compute expanded non-empty domain
@@ -1102,10 +1224,11 @@ Status FragmentInfo::replace(
 FragmentInfo FragmentInfo::clone() const {
   FragmentInfo clone;
   clone.array_uri_ = array_uri_;
+  clone.array_schema_latest_ = array_schema_latest_;
   clone.array_schemas_all_ = array_schemas_all_;
   clone.config_ = config_;
   clone.single_fragment_info_vec_ = single_fragment_info_vec_;
-  clone.storage_manager_ = storage_manager_;
+  clone.resources_ = resources_;
   clone.to_vacuum_ = to_vacuum_;
   clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
   clone.anterior_ndrange_ = anterior_ndrange_;
@@ -1117,10 +1240,11 @@ FragmentInfo FragmentInfo::clone() const {
 
 void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(array_uri_, fragment_info.array_uri_);
+  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
   std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
   std::swap(config_, fragment_info.config_);
   std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
-  std::swap(storage_manager_, fragment_info.storage_manager_);
+  std::swap(resources_, fragment_info.resources_);
   std::swap(to_vacuum_, fragment_info.to_vacuum_);
   std::swap(
       unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
@@ -1128,3 +1252,5 @@ void FragmentInfo::swap(FragmentInfo& fragment_info) {
   std::swap(timestamp_start_, fragment_info.timestamp_start_);
   std::swap(timestamp_end_, fragment_info.timestamp_end_);
 }
+
+}  // namespace tiledb::sm

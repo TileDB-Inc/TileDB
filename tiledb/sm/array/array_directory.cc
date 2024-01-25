@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,31 +33,47 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/uuid.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
+#include "tiledb/sm/tile/tile.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
+
+#include <numeric>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+/** Class for ArrayDirectory status exceptions. */
+class ArrayDirectoryException : public StatusException {
+ public:
+  explicit ArrayDirectoryException(const std::string& msg)
+      : StatusException("ArrayDirectory", msg) {
+  }
+};
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
+ArrayDirectory::ArrayDirectory(ContextResources& resources, const URI& uri)
+    : resources_(resources)
+    , uri_(uri.add_trailing_slash()) {
+}
+
 ArrayDirectory::ArrayDirectory(
-    VFS* vfs,
-    ThreadPool* tp,
+    ContextResources& resources,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     ArrayDirectoryMode mode)
-    : uri_(uri.add_trailing_slash())
-    , vfs_(vfs)
-    , tp_(tp)
+    : resources_(resources)
+    , uri_(uri.add_trailing_slash())
+    , stats_(resources_.get().vfs().stats()->create_child("ArrayDirectory"))
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , mode_(mode)
@@ -72,6 +88,126 @@ ArrayDirectory::ArrayDirectory(
 /*                API                */
 /* ********************************* */
 
+shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
+    ContextResources& resources,
+    const URI& schema_uri,
+    const EncryptionKey& encryption_key) {
+  auto timer_se =
+      resources.stats().start_timer("sm_load_array_schema_from_uri");
+
+  auto&& tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
+
+  resources.stats().add_counter("read_array_schema_size", tile.size());
+
+  // Deserialize
+  Deserializer deserializer(tile.data(), tile.size());
+  return make_shared<ArraySchema>(
+      HERE(), ArraySchema::deserialize(deserializer, schema_uri));
+}
+
+shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
+    const EncryptionKey& encryption_key) const {
+  auto timer_se =
+      resources_.get().stats().start_timer("sm_load_array_schema_latest");
+
+  if (uri_.is_invalid()) {
+    throw ArrayDirectoryException(
+        "Cannot load array schema; Invalid array URI");
+  }
+
+  // Load schema from URI
+  const URI& schema_uri = latest_array_schema_uri();
+  auto&& array_schema =
+      load_array_schema_from_uri(resources_.get(), schema_uri, encryption_key);
+
+  array_schema->set_array_uri(uri_);
+
+  return std::move(array_schema);
+}
+
+tuple<
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
+ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
+  // Load all array schemas
+  auto&& array_schemas = load_all_array_schemas(encryption_key);
+
+  // Locate the latest array schema
+  const auto& array_schema_latest_name =
+      latest_array_schema_uri().last_path_part();
+  auto it = array_schemas.find(array_schema_latest_name);
+  assert(it != array_schemas.end());
+
+  return {it->second, array_schemas};
+}
+
+std::unordered_map<std::string, shared_ptr<ArraySchema>>
+ArrayDirectory::load_all_array_schemas(
+    const EncryptionKey& encryption_key) const {
+  auto timer_se =
+      resources_.get().stats().start_timer("sm_load_all_array_schemas");
+
+  if (uri_.is_invalid()) {
+    throw ArrayDirectoryException(
+        "Cannot load all array schemas; Invalid array URI");
+  }
+
+  const std::vector<URI>& schema_uris = array_schema_uris();
+  if (schema_uris.empty()) {
+    throw ArrayDirectoryException(
+        "Cannot get the array schema vector; No array schemas found.");
+  }
+
+  std::vector<shared_ptr<ArraySchema>> schema_vector;
+  auto schema_num = schema_uris.size();
+  schema_vector.resize(schema_num);
+
+  auto status = parallel_for(
+      &resources_.get().compute_tp(), 0, schema_num, [&](size_t schema_ith) {
+        auto& schema_uri = schema_uris[schema_ith];
+        try {
+          auto&& array_schema = load_array_schema_from_uri(
+              resources_.get(), schema_uri, encryption_key);
+          array_schema->set_array_uri(uri_);
+          schema_vector[schema_ith] = array_schema;
+        } catch (std::exception& e) {
+          return Status_ArrayDirectoryError(e.what());
+        }
+
+        return Status::Ok();
+      });
+  throw_if_not_ok(status);
+
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
+  for (const auto& schema : schema_vector) {
+    array_schemas[schema->name()] = schema;
+  }
+
+  return array_schemas;
+}
+
+std::vector<shared_ptr<const Enumeration>>
+ArrayDirectory::load_enumerations_from_paths(
+    const std::vector<std::string>& enumeration_paths,
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
+  // This should never be called with an empty list of enumeration paths, but
+  // there's no reason to not check an early return case here given that code
+  // changes.
+  if (enumeration_paths.size() == 0) {
+    return {};
+  }
+
+  std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
+  auto& tp = resources_.get().io_tp();
+  throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
+    ret[i] =
+        load_enumeration(enumeration_paths[i], encryption_key, memory_tracker);
+    return Status::Ok();
+  }));
+  return ret;
+}
+
 const URI& ArrayDirectory::uri() const {
   return uri_;
 }
@@ -82,6 +218,10 @@ const std::vector<URI>& ArrayDirectory::array_schema_uris() const {
 
 const URI& ArrayDirectory::latest_array_schema_uri() const {
   return latest_array_schema_uri_;
+}
+
+const std::vector<URI>& ArrayDirectory::unfiltered_fragment_uris() const {
+  return unfiltered_fragment_uris_;
 }
 
 const std::vector<URI>& ArrayDirectory::array_meta_uris_to_vacuum() const {
@@ -100,6 +240,11 @@ const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
   return commit_uris_to_vacuum_;
 }
 
+const std::unordered_set<std::string>&
+ArrayDirectory::consolidated_commit_uris_set() const {
+  return consolidated_commit_uris_set_;
+}
+
 const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
     const {
   return consolidated_commits_uris_to_vacuum_;
@@ -107,6 +252,74 @@ const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
 
 const std::vector<TimestampedURI>& ArrayDirectory::array_meta_uris() const {
   return array_meta_uris_;
+}
+
+const uint64_t& ArrayDirectory::timestamp_start() const {
+  return timestamp_start_;
+}
+
+const uint64_t& ArrayDirectory::timestamp_end() const {
+  return timestamp_end_;
+}
+
+void ArrayDirectory::write_commit_ignore_file(
+    const std::vector<URI>& commit_uris_to_ignore) {
+  auto name = storage_format::generate_consolidated_fragment_name(
+      commit_uris_to_ignore.front(),
+      commit_uris_to_ignore.back(),
+      constants::format_version);
+
+  // Write URIs, relative to the array URI.
+  std::stringstream ss;
+  auto base_uri_size = uri().to_string().size();
+  for (const auto& uri : commit_uris_to_ignore) {
+    ss << uri.to_string().substr(base_uri_size) << "\n";
+  }
+
+  // Write an ignore file to ensure consolidated WRT files still work
+  auto data = ss.str();
+  URI ignore_file_uri = get_commits_dir(constants::format_version)
+                            .join_path(name + constants::ignore_file_suffix);
+  throw_if_not_ok(
+      resources_.get().vfs().write(ignore_file_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.get().vfs().close_file(ignore_file_uri));
+}
+
+void ArrayDirectory::delete_fragments_list(
+    const std::vector<URI>& fragment_uris) {
+  // Get fragment URIs from the array that match the input fragment_uris
+  auto filtered_uris = filtered_fragment_uris(true);
+  auto uris = filtered_uris.fragment_uris(fragment_uris);
+
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  for (auto& timestamped_uri : uris) {
+    auto commit_uri = get_commit_uri(timestamped_uri);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (consolidated_commit_uris_set().count(commit_uri.c_str()) != 0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
+    }
+  }
+
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    write_commit_ignore_file(commit_uris_to_ignore);
+  }
+
+  // Delete fragments and commits
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(resources_.get().vfs().remove_dir(uris[i]));
+        bool is_file = false;
+        RETURN_NOT_OK(
+            resources_.get().vfs().is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(
+              resources_.get().vfs().remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
 }
 
 Status ArrayDirectory::load() {
@@ -121,22 +334,14 @@ Status ArrayDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
     // List (in parallel) the root directory URIs
-    tasks.emplace_back(tp_->execute([&]() {
-      auto&& [st, uris] = list_root_dir_uris();
-      RETURN_NOT_OK(st);
-
-      root_dir_uris = std::move(uris.value());
-
+    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+      root_dir_uris = list_root_dir_uris();
       return Status::Ok();
     }));
 
     // List (in parallel) the commits directory URIs
-    tasks.emplace_back(tp_->execute([&]() {
-      auto&& [st, uris] = list_commits_dir_uris();
-      RETURN_NOT_OK(st);
-
-      commits_dir_uris = std::move(uris.value());
-
+    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+      commits_dir_uris = list_commits_dir_uris();
       return Status::Ok();
     }));
 
@@ -144,19 +349,17 @@ Status ArrayDirectory::load() {
     // are not used for commits consolidation/vacuuming.
     if (mode_ != ArrayDirectoryMode::COMMITS) {
       // Load (in parallel) the fragment metadata directory URIs
-      tasks.emplace_back(tp_->execute([&]() {
-        auto&& [st, fragment_meta_uris] =
-            load_fragment_metadata_dir_uris_v12_or_higher();
-        RETURN_NOT_OK(st);
+      tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
         fragment_meta_uris_v12_or_higher =
-            std::move(fragment_meta_uris.value());
-
+            list_fragment_metadata_dir_uris_v12_or_higher();
         return Status::Ok();
       }));
 
       // Load (in parallel) the array metadata URIs
-      tasks.emplace_back(
-          tp_->execute([&]() { return load_array_meta_uris(); }));
+      tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+        load_array_meta_uris();
+        return Status::Ok();
+      }));
     }
   }
 
@@ -164,12 +367,14 @@ Status ArrayDirectory::load() {
   // commits consolidation/vacuuming.
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Load (in parallel) the array schema URIs
-    tasks.emplace_back(
-        tp_->execute([&]() { return load_array_schema_uris(); }));
+    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
+      load_array_schema_uris();
+      return Status::Ok();
+    }));
   }
 
   // Wait for all tasks to complete
-  RETURN_NOT_OK(tp_->wait_all(tasks));
+  RETURN_NOT_OK(resources_.get().compute_tp().wait_all(tasks));
 
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Add old array schema, if required.
@@ -188,8 +393,7 @@ Status ArrayDirectory::load() {
           "Cannot open array; Array does not exist."));
     }
 
-    // Set the latest array schema URI
-    latest_array_schema_uri_ = array_schema_uris_.back();
+    latest_array_schema_uri_ = select_latest_array_schema_uri();
     assert(!latest_array_schema_uri_.is_invalid());
   }
 
@@ -236,10 +440,12 @@ Status ArrayDirectory::load() {
           fragment_meta_uris_v12_or_higher.end(),
           std::back_inserter(fragment_meta_uris_));
 
-      // Sort the delete commits by timestamp. Delete tiles locations come from
-      // both the consolidated file and the directory listing, and they might
-      // have interleaved times, so we need to sort.
-      std::sort(delete_tiles_location_.begin(), delete_tiles_location_.end());
+      // Sort the delete/update commits by timestamp. Delete and update tiles
+      // locations come from both the consolidated file and the directory
+      // listing, and they might have interleaved times, so we need to sort.
+      std::sort(
+          delete_and_update_tiles_location_.begin(),
+          delete_and_update_tiles_location_.end());
     }
   }
 
@@ -264,16 +470,11 @@ ArrayDirectory::filtered_fragment_uris(const bool full_overlap_only) const {
   std::vector<URI> commit_uris_to_ignore;
   if (mode_ == ArrayDirectoryMode::VACUUM_FRAGMENTS) {
     for (auto& uri : fragment_uris_to_vacuum.value()) {
-      auto&& [st, commit_uri] = get_commit_uri(uri);
-      if (!st.ok()) {
-        throw std::logic_error(st.message());
-      }
-
-      if (consolidated_commit_uris_set_.count(commit_uri.value().c_str()) ==
-          0) {
-        commit_uris_to_vacuum.emplace_back(commit_uri.value());
+      auto commit_uri = get_commit_uri(uri);
+      if (consolidated_commit_uris_set_.count(commit_uri.c_str()) == 0) {
+        commit_uris_to_vacuum.emplace_back(commit_uri);
       } else {
-        commit_uris_to_ignore.emplace_back(commit_uri.value());
+        commit_uris_to_ignore.emplace_back(commit_uri);
       }
     }
   }
@@ -299,17 +500,22 @@ const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
 }
 
-const std::vector<ArrayDirectory::DeleteTileLocation>&
-ArrayDirectory::delete_tiles_location() const {
-  return delete_tiles_location_;
+const std::vector<ArrayDirectory::DeleteAndUpdateTileLocation>&
+ArrayDirectory::delete_and_update_tiles_location() const {
+  return delete_and_update_tiles_location_;
+}
+
+URI ArrayDirectory::generate_fragment_dir_uri(
+    uint32_t write_version, URI array_uri) {
+  if (write_version < 12) {
+    return array_uri;
+  }
+
+  return array_uri.join_path(constants::array_fragments_dir_name);
 }
 
 URI ArrayDirectory::get_fragments_dir(uint32_t write_version) const {
-  if (write_version < 12) {
-    return uri_;
-  }
-
-  return uri_.join_path(constants::array_fragments_dir_name);
+  return generate_fragment_dir_uri(write_version, uri_);
 }
 
 URI ArrayDirectory::get_fragment_metadata_dir(uint32_t write_version) const {
@@ -328,63 +534,30 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
   return uri_.join_path(constants::array_commits_dir_name);
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_commit_uri(
-    const URI& fragment_uri) const {
+URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_version(name, &version), nullopt);
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
-    return {Status::Ok(),
-            URI(fragment_uri.to_string() + constants::ok_file_suffix)};
+  if (fragment_version < 12) {
+    return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
   auto temp_uri =
       uri_.join_path(constants::array_commits_dir_name).join_path(name);
-  return {Status::Ok(),
-          URI(temp_uri.to_string() + constants::write_file_suffix)};
+  return URI(temp_uri.to_string() + constants::write_file_suffix);
 }
 
-tuple<Status, optional<URI>> ArrayDirectory::get_vaccum_uri(
-    const URI& fragment_uri) const {
+URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
   auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  uint32_t version;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_fragment_version(name, &version), nullopt);
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
-  if (version == UINT32_MAX || version < 12) {
-    return {Status::Ok(),
-            URI(fragment_uri.to_string() + constants::vacuum_file_suffix)};
+  if (fragment_version < 12) {
+    return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
   auto temp_uri =
       uri_.join_path(constants::array_commits_dir_name).join_path(name);
-  return {Status::Ok(),
-          URI(temp_uri.to_string() + constants::vacuum_file_suffix)};
-}
-
-tuple<Status, optional<std::string>> ArrayDirectory::compute_new_fragment_name(
-    const URI& first, const URI& last, uint32_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
+  return URI(temp_uri.to_string() + constants::vacuum_file_suffix);
 }
 
 bool ArrayDirectory::loaded() const {
@@ -395,12 +568,59 @@ bool ArrayDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
-tuple<Status, optional<std::vector<URI>>> ArrayDirectory::list_root_dir_uris() {
-  // List the array directory URIs
-  std::vector<URI> array_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &array_dir_uris), nullopt);
+const std::set<std::string>& ArrayDirectory::dir_names() {
+  static const std::set<std::string> dir_names = {
+      constants::array_schema_dir_name,
+      constants::array_metadata_dir_name,
+      constants::array_fragment_meta_dir_name,
+      constants::array_fragments_dir_name,
+      constants::array_commits_dir_name,
+      constants::array_dimension_labels_dir_name};
 
-  return {Status::Ok(), array_dir_uris};
+  return dir_names;
+}
+
+std::vector<URI> ArrayDirectory::ls(const URI& uri) const {
+  auto&& [st, opt_dir_entries] = resources_.get().vfs().ls_with_sizes(uri);
+  throw_if_not_ok(st);
+  auto dir_entries = opt_dir_entries.value();
+  auto dirs = dir_names();
+  std::vector<URI> uris;
+
+  for (auto entry : dir_entries) {
+    auto entry_uri = URI(entry.path().native());
+
+    // Always list directories
+    if (entry.is_directory()) {
+      uris.emplace_back(entry_uri);
+      continue;
+    }
+
+    // Filter out empty files of the same name as the directory
+    if (entry_uri.remove_trailing_slash() == uri.remove_trailing_slash() &&
+        entry.file_size() == 0) {
+      continue;
+    }
+
+    // List non-known (user-added) directory names and non-empty files
+    auto iter = dirs.find(entry_uri.last_path_part());
+    if (iter == dirs.end() || entry.file_size() > 0) {
+      uris.emplace_back(entry_uri);
+    } else {
+      // Handle MinIO-based s3 implementation limitation
+      throw ArrayDirectoryException(
+          "Cannot list given uri; File '" + entry_uri.to_string() +
+          "' may be masking a non-empty directory by the same name.");
+    }
+  }
+
+  return uris;
+}
+
+std::vector<URI> ArrayDirectory::list_root_dir_uris() {
+  // List the array directory URIs
+  auto timer_se = stats_->start_timer("list_root_uris");
+  return ls(uri_);
 }
 
 tuple<Status, optional<std::vector<URI>>>
@@ -415,14 +635,10 @@ ArrayDirectory::load_root_dir_uris_v1_v11(
   return {Status::Ok(), fragment_uris.value()};
 }
 
-tuple<Status, optional<std::vector<URI>>>
-ArrayDirectory::list_commits_dir_uris() {
+std::vector<URI> ArrayDirectory::list_commits_dir_uris() {
   // List the commits folder array directory URIs
-  auto commits_uri = uri_.join_path(constants::array_commits_dir_name);
-  std::vector<URI> commits_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(commits_uri, &commits_dir_uris), nullopt);
-
-  return {Status::Ok(), commits_dir_uris};
+  auto timer_se = stats_->start_timer("list_commit_uris");
+  return ls(uri_.join_path(constants::array_commits_dir_name));
 }
 
 tuple<Status, optional<std::vector<URI>>>
@@ -456,21 +672,27 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
       }
     } else if (is_vacuum_file(commits_dir_uris[i])) {
       fragment_uris.emplace_back(commits_dir_uris[i]);
-    } else if (stdx::string::ends_with(
-                   commits_dir_uris[i].to_string(),
-                   constants::delete_file_suffix)) {
-      // Get the start and end timestamp for this delete
-      std::pair<uint64_t, uint64_t> delete_timestamp_range;
+    } else if (
+        stdx::string::ends_with(
+            commits_dir_uris[i].to_string(), constants::delete_file_suffix) ||
+        stdx::string::ends_with(
+            commits_dir_uris[i].to_string(), constants::update_file_suffix)) {
+      // Get the start and end timestamp for this delete/update
+      std::pair<uint64_t, uint64_t> timestamp_range;
       RETURN_NOT_OK_TUPLE(
           utils::parse::get_timestamp_range(
-              commits_dir_uris[i], &delete_timestamp_range),
+              commits_dir_uris[i], &timestamp_range),
           nullopt);
 
       // Add the delete tile location if it overlaps the open start/end times
-      if (timestamps_overlap(delete_timestamp_range, false)) {
+      if (timestamps_overlap(timestamp_range, false)) {
         if (consolidated_commit_uris_set_.count(commits_dir_uris[i].c_str()) ==
             0) {
-          delete_tiles_location_.emplace_back(commits_dir_uris[i], 0);
+          const auto base_uri_size = uri_.to_string().size();
+          delete_and_update_tiles_location_.emplace_back(
+              commits_dir_uris[i],
+              commits_dir_uris[i].to_string().substr(base_uri_size),
+              0);
         }
       }
     }
@@ -479,16 +701,11 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
   return {Status::Ok(), fragment_uris};
 }
 
-tuple<Status, optional<std::vector<URI>>>
-ArrayDirectory::load_fragment_metadata_dir_uris_v12_or_higher() {
+std::vector<URI>
+ArrayDirectory::list_fragment_metadata_dir_uris_v12_or_higher() {
   // List the fragment metadata directory URIs
-  auto fragment_metadata_uri =
-      uri_.join_path(constants::array_fragment_meta_dir_name);
-
-  std::vector<URI> ret;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(fragment_metadata_uri, &ret), nullopt);
-
-  return {Status::Ok(), ret};
+  auto timer_se = stats_->start_timer("list_fragment_meta_uris");
+  return ls(uri_.join_path(constants::array_fragment_meta_dir_name));
 }
 
 tuple<
@@ -497,17 +714,22 @@ tuple<
     optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
     const std::vector<URI>& commits_dir_uris) {
-  // Load the commit URIs to ignore
+  auto timer_se = stats_->start_timer("load_consolidated_commit_uris");
+  // Load the commit URIs to ignore. This is done in serial for now as it can be
+  // optimized by vacuuming.
   std::unordered_set<std::string> ignore_set;
   for (auto& uri : commits_dir_uris) {
     if (stdx::string::ends_with(
             uri.to_string(), constants::ignore_file_suffix)) {
       uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(vfs_->file_size(uri, &size), nullopt, nullopt);
+      RETURN_NOT_OK_TUPLE(
+          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
       std::string names;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          vfs_->read(uri, 0, &names[0], size), nullopt, nullopt);
+          resources_.get().vfs().read(uri, 0, &names[0], size),
+          nullopt,
+          nullopt);
       std::stringstream ss(names);
       for (std::string uri_str; std::getline(ss, uri_str);) {
         ignore_set.emplace(uri_str);
@@ -515,7 +737,8 @@ ArrayDirectory::load_consolidated_commit_uris(
     }
   }
 
-  // Load all commit URIs
+  // Load all commit URIs. This is done in serial for now as it can be optimized
+  // by vacuuming.
   std::unordered_set<std::string> uris_set;
   std::vector<std::pair<URI, std::string>> meta_files;
   for (uint64_t i = 0; i < commits_dir_uris.size(); i++) {
@@ -523,41 +746,44 @@ ArrayDirectory::load_consolidated_commit_uris(
     if (stdx::string::ends_with(
             uri.to_string(), constants::con_commits_file_suffix)) {
       uint64_t size = 0;
-      RETURN_NOT_OK_TUPLE(vfs_->file_size(uri, &size), nullopt, nullopt);
+      RETURN_NOT_OK_TUPLE(
+          resources_.get().vfs().file_size(uri, &size), nullopt, nullopt);
       meta_files.emplace_back(uri, std::string());
 
       auto& names = meta_files.back().second;
       names.resize(size);
       RETURN_NOT_OK_TUPLE(
-          vfs_->read(uri, 0, &names[0], size), nullopt, nullopt);
+          resources_.get().vfs().read(uri, 0, &names[0], size),
+          nullopt,
+          nullopt);
       std::stringstream ss(names);
-      for (std::string uri_str; std::getline(ss, uri_str);) {
-        if (ignore_set.count(uri_str) == 0) {
-          uris_set.emplace(uri_.to_string() + uri_str);
+      for (std::string condition_marker; std::getline(ss, condition_marker);) {
+        if (ignore_set.count(condition_marker) == 0) {
+          uris_set.emplace(uri_.to_string() + condition_marker);
         }
 
         // If we have a delete, process the condition tile
-        if (stdx::string::ends_with(uri_str, constants::delete_file_suffix)) {
+        if (stdx::string::ends_with(
+                condition_marker, constants::delete_file_suffix)) {
           storage_size_t size = 0;
           ss.read(
               static_cast<char*>(static_cast<void*>(&size)),
               sizeof(storage_size_t));
           auto pos = ss.tellg();
-          pos += sizeof(storage_size_t);
 
           // Get the start and end timestamp for this delete
           std::pair<uint64_t, uint64_t> delete_timestamp_range;
-          URI full_delete_uri = uri_.join_path(uri_str);
           RETURN_NOT_OK_TUPLE(
               utils::parse::get_timestamp_range(
-                  full_delete_uri, &delete_timestamp_range),
+                  URI(condition_marker), &delete_timestamp_range),
               nullopt,
               nullopt);
 
           // Add the delete tile location if it overlaps the open start/end
           // times
           if (timestamps_overlap(delete_timestamp_range, false)) {
-            delete_tiles_location_.emplace_back(full_delete_uri, pos);
+            delete_and_update_tiles_location_.emplace_back(
+                uri, condition_marker, pos);
           }
           pos += size;
           ss.seekg(pos);
@@ -579,11 +805,17 @@ ArrayDirectory::load_consolidated_commit_uris(
     for (auto& meta_file : meta_files) {
       std::stringstream ss(meta_file.second);
       uint64_t count = 0;
+      bool all_in_set = true;
       for (std::string uri_str; std::getline(ss, uri_str);) {
-        count += uris_set.count(uri_.to_string() + uri_str);
+        if (uris_set.count(uri_.to_string() + uri_str) > 0) {
+          count++;
+        } else {
+          all_in_set = false;
+          break;
+        }
       }
 
-      if (count == uris_set.size()) {
+      if (all_in_set && count == uris_set.size()) {
         for (auto& uri : commits_dir_uris) {
           if (stdx::string::ends_with(
                   uri.to_string(), constants::con_commits_file_suffix)) {
@@ -605,16 +837,19 @@ ArrayDirectory::load_consolidated_commit_uris(
   return {Status::Ok(), uris, uris_set};
 }
 
-Status ArrayDirectory::load_array_meta_uris() {
+void ArrayDirectory::load_array_meta_uris() {
   // Load the URIs in the array metadata directory
   std::vector<URI> array_meta_dir_uris;
-  auto array_meta_uri = uri_.join_path(constants::array_metadata_dir_name);
-  RETURN_NOT_OK(vfs_->ls(array_meta_uri, &array_meta_dir_uris));
+  {
+    auto timer_se = stats_->start_timer("list_array_meta_uris");
+    array_meta_dir_uris =
+        ls(uri_.join_path(constants::array_metadata_dir_name));
+  }
 
-  // Compute and array metadata URIs and the vacuum file URIs to vacuum. */
+  // Compute array metadata URIs and vacuum URIs to vacuum. */
   auto&& [st1, array_meta_uris_to_vacuum, array_meta_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(true, array_meta_dir_uris);
-  RETURN_NOT_OK(st1);
+  throw_if_not_ok(st1);
   array_meta_uris_to_vacuum_ = std::move(array_meta_uris_to_vacuum.value());
   array_meta_vac_uris_to_vacuum_ =
       std::move(array_meta_vac_uris_to_vacuum.value());
@@ -622,23 +857,22 @@ Status ArrayDirectory::load_array_meta_uris() {
   // Compute filtered array metadata URIs
   auto&& [st2, array_meta_filtered_uris] = compute_filtered_uris(
       true, array_meta_dir_uris, array_meta_uris_to_vacuum_);
-  RETURN_NOT_OK(st2);
+  throw_if_not_ok(st2);
   array_meta_uris_ = std::move(array_meta_filtered_uris.value());
   array_meta_dir_uris.clear();
-
-  return Status::Ok();
 }
 
-Status ArrayDirectory::load_array_schema_uris() {
+void ArrayDirectory::load_array_schema_uris() {
   // Load the URIs from the array schema directory
   std::vector<URI> array_schema_dir_uris;
-  auto schema_dir_uri = uri_.join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(vfs_->ls(schema_dir_uri, &array_schema_dir_uris));
+  {
+    auto timer_se = stats_->start_timer("list_array_schema_uris");
+    array_schema_dir_uris =
+        ls(uri_.join_path(constants::array_schema_dir_name));
+  }
 
   // Compute all the array schema URIs plus the latest array schema URI
-  RETURN_NOT_OK(compute_array_schema_uris(array_schema_dir_uris));
-
-  return Status::Ok();
+  throw_if_not_ok(compute_array_schema_uris(array_schema_dir_uris));
 }
 
 void ArrayDirectory::load_commits_uris_to_consolidate(
@@ -705,7 +939,8 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
 
   // Get only the committed fragment uris
   std::vector<uint8_t> is_fragment(array_dir_uris.size(), 0);
-  auto status = parallel_for(tp_, 0, array_dir_uris.size(), [&](size_t i) {
+  auto& tp = resources_.get().compute_tp();
+  auto status = parallel_for(&tp, 0, array_dir_uris.size(), [&](size_t i) {
     if (stdx::string::starts_with(array_dir_uris[i].last_path_part(), "."))
       return Status::Ok();
     int32_t flag;
@@ -741,6 +976,26 @@ std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
   return ret;
 }
 
+std::string ArrayDirectory::get_full_vac_uri(
+    std::string base, std::string vac_uri) {
+  size_t frag_pos = vac_uri.find(constants::array_fragments_dir_name);
+  if (frag_pos != std::string::npos) {
+    vac_uri = vac_uri.substr(frag_pos);
+  } else if (
+      vac_uri.find(constants::array_metadata_dir_name) != std::string::npos) {
+    vac_uri = vac_uri.substr(vac_uri.find(constants::array_metadata_dir_name));
+  } else {
+    size_t last_slash_pos = vac_uri.find_last_of('/');
+    if (last_slash_pos == std::string::npos) {
+      throw std::logic_error("Invalid URI: " + vac_uri);
+    }
+
+    vac_uri = vac_uri.substr(last_slash_pos + 1);
+  }
+
+  return base + vac_uri;
+}
+
 bool ArrayDirectory::timestamps_overlap(
     const std::pair<uint64_t, uint64_t> fragment_timestamp_range,
     const bool consolidation_with_timestamps) const {
@@ -765,30 +1020,58 @@ tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
 ArrayDirectory::compute_uris_to_vacuum(
     const bool full_overlap_only, const std::vector<URI>& uris) const {
   // Get vacuum URIs
+  std::vector<uint8_t> vac_file_bitmap(uris.size());
+  std::vector<uint8_t> overlapping_vac_file_bitmap(uris.size());
+  std::vector<uint8_t> non_vac_uri_bitmap(uris.size());
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        auto& uri = uris[i];
+
+        // Get the start and end timestamp for this fragment
+        std::pair<uint64_t, uint64_t> fragment_timestamp_range;
+        RETURN_NOT_OK(
+            utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+        if (is_vacuum_file(uri)) {
+          vac_file_bitmap[i] = 1;
+          if (timestamps_overlap(
+                  fragment_timestamp_range,
+                  !full_overlap_only &&
+                      consolidation_with_timestamps_supported(uri))) {
+            overlapping_vac_file_bitmap[i] = 1;
+          }
+        } else {
+          if (!timestamps_overlap(
+                  fragment_timestamp_range,
+                  !full_overlap_only &&
+                      consolidation_with_timestamps_supported(uri))) {
+            non_vac_uri_bitmap[i] = 1;
+          }
+        }
+
+        return Status::Ok();
+      }));
+
+  auto num_vac_files =
+      std::accumulate(vac_file_bitmap.begin(), vac_file_bitmap.end(), 0);
   std::vector<URI> vac_files;
   std::unordered_set<std::string> non_vac_uris_set;
   std::unordered_map<std::string, size_t> uris_map;
-  for (size_t i = 0; i < uris.size(); ++i) {
-    // Get the start and end timestamp for this fragment
-    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uris[i], &fragment_timestamp_range),
-        nullopt,
-        nullopt);
-    if (is_vacuum_file(uris[i])) {
-      if (timestamps_overlap(
-              fragment_timestamp_range,
-              !full_overlap_only &&
-                  consolidation_with_timestamps_supported(uris[i]))) {
+
+  if (num_vac_files > 0) {
+    vac_files.reserve(num_vac_files);
+    auto num_non_vac_uris = std::accumulate(
+        non_vac_uri_bitmap.begin(), non_vac_uri_bitmap.end(), 0);
+    non_vac_uris_set.reserve(num_non_vac_uris);
+    for (uint64_t i = 0; i < uris.size(); i++) {
+      if (overlapping_vac_file_bitmap[i] != 0) {
         vac_files.emplace_back(uris[i]);
       }
-    } else {
-      if (!timestamps_overlap(
-              fragment_timestamp_range,
-              !full_overlap_only &&
-                  consolidation_with_timestamps_supported(uris[i]))) {
+
+      if (non_vac_uri_bitmap[i] != 0) {
         non_vac_uris_set.emplace(uris[i].to_string());
-      } else {
+      }
+
+      if (vac_file_bitmap[i] == 0 && non_vac_uri_bitmap[i] == 0) {
         uris_map[uris[i].to_string()] = i;
       }
     }
@@ -798,15 +1081,19 @@ ArrayDirectory::compute_uris_to_vacuum(
   // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
-  auto status = parallel_for(tp_, 0, vac_files.size(), [&](size_t i) {
+  auto& tp = resources_.get().compute_tp();
+  auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
-    RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
+    RETURN_NOT_OK(resources_.get().vfs().file_size(vac_files[i], &size));
     std::string names;
     names.resize(size);
-    RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
+    RETURN_NOT_OK(
+        resources_.get().vfs().read(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
+      uri_str =
+          get_full_vac_uri(uri_.add_trailing_slash().to_string(), uri_str);
       auto it = uris_map.find(uri_str);
       if (it != uris_map.end())
         to_vacuum_vec[it->second] = 1;
@@ -848,36 +1135,54 @@ ArrayDirectory::compute_filtered_uris(
   std::vector<TimestampedURI> filtered_uris;
 
   // Do nothing if there are not enough URIs
-  if (uris.empty())
+  if (uris.empty()) {
     return {Status::Ok(), filtered_uris};
+  }
 
   // Get the URIs that must be ignored
   std::unordered_set<std::string> to_ignore_set;
-  for (const auto& uri : to_ignore)
-    to_ignore_set.emplace(uri.c_str());
+  auto base_uri_size = uri_.to_string().size();
+  for (const auto& uri : to_ignore) {
+    to_ignore_set.emplace(uri.to_string().substr(base_uri_size).c_str());
+  }
 
   // Filter based on vacuumed URIs and timestamp
-  for (auto& uri : uris) {
-    // Ignore vacuumed URIs
-    if (to_ignore_set.count(uri.c_str()) != 0)
-      continue;
+  std::vector<uint8_t> overlaps_bitmap(uris.size());
+  std::vector<std::pair<uint64_t, uint64_t>> fragment_timestamp_ranges(
+      uris.size());
+  throw_if_not_ok(parallel_for(
+      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+        auto& uri = uris[i];
+        std::string short_uri = uri.to_string().substr(base_uri_size);
+        if (to_ignore_set.count(short_uri.c_str()) != 0) {
+          return Status::Ok();
+        }
 
-    // Also ignore any vac uris
-    if (is_vacuum_file(uri))
-      continue;
+        // Also ignore any vac uris
+        if (is_vacuum_file(uri)) {
+          return Status::Ok();
+        }
 
-    // Get the start and end timestamp for this fragment
-    std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-    RETURN_NOT_OK_TUPLE(
-        utils::parse::get_timestamp_range(uri, &fragment_timestamp_range),
-        nullopt);
-    if (timestamps_overlap(
-            fragment_timestamp_range,
-            !full_overlap_only &&
-                consolidation_with_timestamps_supported(uri))) {
-      filtered_uris.emplace_back(uri, fragment_timestamp_range);
+        // Get the start and end timestamp for this fragment
+        RETURN_NOT_OK(utils::parse::get_timestamp_range(
+            uri, &fragment_timestamp_ranges[i]));
+        if (timestamps_overlap(
+                fragment_timestamp_ranges[i],
+                !full_overlap_only &&
+                    consolidation_with_timestamps_supported(uri))) {
+          overlaps_bitmap[i] = 1;
+        }
+        return Status::Ok();
+      }));
+
+  auto count =
+      std::accumulate(overlaps_bitmap.begin(), overlaps_bitmap.end(), 0);
+  filtered_uris.reserve(count);
+  for (uint64_t i = 0; i < uris.size(); i++) {
+    if (overlaps_bitmap[i]) {
+      filtered_uris.emplace_back(uris[i], fragment_timestamp_ranges[i]);
     }
-  }
+  };
 
   // Sort the names based on the timestamps
   std::sort(filtered_uris.begin(), filtered_uris.end());
@@ -893,7 +1198,7 @@ Status ArrayDirectory::compute_array_schema_uris(
     // Optionally add the old array schema from the root array folder
     auto old_schema_uri = uri_.join_path(constants::array_schema_filename);
     bool has_file = false;
-    RETURN_NOT_OK(vfs_->is_file(old_schema_uri, &has_file));
+    RETURN_NOT_OK(resources_.get().vfs().is_file(old_schema_uri, &has_file));
     if (has_file) {
       array_schema_uris_.push_back(old_schema_uri);
     }
@@ -903,13 +1208,53 @@ Status ArrayDirectory::compute_array_schema_uris(
   if (!array_schema_dir_uris.empty()) {
     array_schema_uris_.reserve(
         array_schema_uris_.size() + array_schema_dir_uris.size());
-    std::copy(
-        array_schema_dir_uris.begin(),
-        array_schema_dir_uris.end(),
-        std::back_inserter(array_schema_uris_));
+    for (auto& uri : array_schema_dir_uris) {
+      if (uri.last_path_part() == constants::array_enumerations_dir_name) {
+        continue;
+      }
+      array_schema_uris_.push_back(uri);
+    }
   }
 
   return Status::Ok();
+}
+
+URI ArrayDirectory::select_latest_array_schema_uri() {
+  // Set the latest array schema URI. When in READ mode, the latest array
+  // schema URI is the schema with the largest timestamp less than or equal
+  // to the current timestamp_end_. If no schema meets this definition, we
+  // use the first schema available.
+  //
+  // The reason for choosing the oldest array schema URI even when time
+  // traveling before it existed is to first, not break any arrays that have
+  // fragments written before the first schema existed. The second reason is
+  // to not break old arrays that only have the old `__array_schema.tdb`
+  // URI which does not have timestamps.
+  if (mode_ != ArrayDirectoryMode::READ) {
+    return array_schema_uris_.back();
+  }
+
+  optional<URI> latest_uri = nullopt;
+  uint64_t latest_ts = 0;
+
+  for (auto& uri : array_schema_uris_) {
+    auto name = uri.remove_trailing_slash().last_path_part();
+
+    // Skip the old schema URI name since it doesn't have timestamps
+    if (name == constants::array_schema_filename) {
+      continue;
+    }
+
+    std::pair<uint64_t, uint64_t> ts_range;
+    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &ts_range));
+
+    if (ts_range.second > latest_ts && ts_range.second <= timestamp_end_) {
+      latest_uri = uri;
+      latest_ts = ts_range.second;
+    }
+  }
+
+  return latest_uri.value_or(array_schema_uris_.front());
 }
 
 bool ArrayDirectory::is_vacuum_file(const URI& uri) const {
@@ -956,16 +1301,15 @@ Status ArrayDirectory::is_fragment(
 
   // If the format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  uint32_t version;
-  RETURN_NOT_OK(utils::parse::get_fragment_version(name, &version));
-  if (version != UINT32_MAX && version >= 5) {
+  auto fragment_version = utils::parse::get_fragment_version(name);
+  if (fragment_version >= 5) {
     *is_fragment = false;
     return Status::Ok();
   }
 
   // Versions < 5
   bool is_file;
-  RETURN_NOT_OK(vfs_->is_file(
+  RETURN_NOT_OK(resources_.get().vfs().is_file(
       uri.join_path(constants::fragment_metadata_filename), &is_file));
   *is_fragment = (int)is_file;
   return Status::Ok();
@@ -974,16 +1318,41 @@ Status ArrayDirectory::is_fragment(
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
   // Get the fragment version from the uri
-  uint32_t version;
   auto name = uri.remove_trailing_slash().last_path_part();
-  utils::parse::get_fragment_version(name, &version);
+  auto fragment_version = utils::parse::get_fragment_version(name);
 
   // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
   // explicitly exclude this case when checking if consolidation with timestamps
   // is supported on a fragment
   return mode_ == ArrayDirectoryMode::READ &&
-         version >= constants::consolidation_with_timestamps_min_version &&
-         version != UINT32_MAX;
+         fragment_version >=
+             constants::consolidation_with_timestamps_min_version;
 }
-}  // namespace sm
-}  // namespace tiledb
+
+shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
+    const std::string& enumeration_path,
+    const EncryptionKey& encryption_key,
+    MemoryTracker& memory_tracker) const {
+  auto timer_se = resources_.get().stats().start_timer("sm_load_enumeration");
+
+  auto enmr_uri = uri_.join_path(constants::array_schema_dir_name)
+                      .join_path(constants::array_enumerations_dir_name)
+                      .join_path(enumeration_path);
+
+  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
+  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+
+  if (!memory_tracker.take_memory(
+          tile.size(), MemoryTracker::MemoryType::ENUMERATION)) {
+    throw ArrayDirectoryException(
+        "Error loading enumeration; Insufficient memory budget; Needed " +
+        std::to_string(tile.size()) + " but only had " +
+        std::to_string(memory_tracker.get_memory_available()) +
+        " from budget " + std::to_string(memory_tracker.get_memory_budget()));
+  }
+
+  Deserializer deserializer(tile.data(), tile.size());
+  return Enumeration::deserialize(deserializer);
+}
+
+}  // namespace tiledb::sm

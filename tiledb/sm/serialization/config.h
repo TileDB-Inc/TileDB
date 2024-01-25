@@ -59,7 +59,7 @@ namespace serialization {
  * @return
  */
 Status config_serialize(
-    const Config* config,
+    const Config& config,
     SerializationType serialize_type,
     Buffer* serialized_buffer,
     const bool client_side);

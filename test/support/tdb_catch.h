@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,38 @@
 #ifndef TILEDB_MISC_TDB_CATCH_H
 #define TILEDB_MISC_TDB_CATCH_H
 
-#include <catch.hpp>
+/*
+ * The header-only version of Catch includes Windows system headers that bleed
+ * out preprocessor definitions. This has been reported as
+ * https://github.com/catchorg/Catch2/issues/2432. It may not be a problem for
+ * version 3 of Catch, which isn't header-only.
+ *
+ * We need to detect and remove definitions that are a problem. It shouldn't be
+ * strictly necessary, but out of a superabundance of caution, we detect
+ * previous definitions and leave them unchanged.
+ *   - DELETE
+ */
+#if defined(DELETE)
+#define TILEDB_CATCH_DELETE_PREDEFINED DELETE
+#endif
+
+/*
+ * The actual payload of this file
+ */
+#include <catch2/catch_all.hpp>
+#include <catch2/reporters/catch_reporter_event_listener.hpp>
+#include <catch2/reporters/catch_reporter_registrars.hpp>
+
+/*
+ * Clean up preprocessor definitions
+ */
+#if defined(TILEDB_CATCH_DELETE_PREDEFINED)
+#define DELETE TILEDB_CATCH_DELETE_PREDEFINED
+#undef TILEDB_CATCH_DELETE_PREDEFINED
+#else
+#if defined(DELETE)
+#undef DELETE
+#endif
+#endif
 
 #endif  // TILEDB_MISC_TDB_CATCH_H

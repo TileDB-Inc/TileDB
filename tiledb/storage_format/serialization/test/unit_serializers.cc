@@ -1,5 +1,5 @@
 /**
- * @file unit_validity_vector.cc
+ * @file unit_serializers.cc
  *
  * @section LICENSE
  *
@@ -32,7 +32,7 @@
 
 #include "tiledb/storage_format/serialization/serializers.h"
 
-#include <catch.hpp>
+#include <tdb_catch.h>
 #include <iostream>
 
 using namespace std;

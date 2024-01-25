@@ -30,8 +30,8 @@
  * Tests the `SubarrayPartitioner` class for dense arrays.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
@@ -189,16 +189,17 @@ void SubarrayPartitionerDenseFx::write_default_1d_array() {
   tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 15 * sizeof(int),
-                                 16 * sizeof(int),
-                                 17 * sizeof(int),
-                                 18 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      15 * sizeof(int),
+      16 * sizeof(int),
+      17 * sizeof(int),
+      18 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {
       1, 2, 2, 3, 3, 3, 4, 4, 4, 5, 5, 6, 6, 6, 6, 7, 8, 9, 10};
@@ -213,22 +214,23 @@ void SubarrayPartitionerDenseFx::write_default_2d_array() {
   tiledb::test::QueryBuffers buffers;
   std::vector<int> a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
   uint64_t a_size = a.size() * sizeof(int);
-  std::vector<uint64_t> b_off = {0,
-                                 sizeof(int),
-                                 3 * sizeof(int),
-                                 6 * sizeof(int),
-                                 9 * sizeof(int),
-                                 11 * sizeof(int),
-                                 15 * sizeof(int),
-                                 17 * sizeof(int),
-                                 20 * sizeof(int),
-                                 21 * sizeof(int),
-                                 23 * sizeof(int),
-                                 24 * sizeof(int),
-                                 25 * sizeof(int),
-                                 27 * sizeof(int),
-                                 28 * sizeof(int),
-                                 29 * sizeof(int)};
+  std::vector<uint64_t> b_off = {
+      0,
+      sizeof(int),
+      3 * sizeof(int),
+      6 * sizeof(int),
+      9 * sizeof(int),
+      11 * sizeof(int),
+      15 * sizeof(int),
+      17 * sizeof(int),
+      20 * sizeof(int),
+      21 * sizeof(int),
+      23 * sizeof(int),
+      24 * sizeof(int),
+      25 * sizeof(int),
+      27 * sizeof(int),
+      28 * sizeof(int),
+      29 * sizeof(int)};
   uint64_t b_off_size = b_off.size() * sizeof(uint64_t);
   std::vector<int> b_val = {1,  2,  2,  3,  3,  3,  4,  4,  4, 5, 5,
                             6,  6,  6,  6,  7,  7,  8,  8,  8, 9, 10,
@@ -625,8 +627,8 @@ TEST_CASE_METHOD(
     "[SubarrayPartitioner][dense][1D][MR][split_once]") {
   Layout subarray_layout;
   SubarrayRanges<uint64_t> ranges = {{2, 3, 5, 8, 9, 10}};
-  std::vector<SubarrayRanges<uint64_t>> partitions = {{{2, 3, 5, 8}},
-                                                      {{9, 10}}};
+  std::vector<SubarrayRanges<uint64_t>> partitions = {
+      {{2, 3, 5, 8}}, {{9, 10}}};
   uint64_t budget = 7 * sizeof(int);
   std::string attr = "a";
   bool unsplittable = false;

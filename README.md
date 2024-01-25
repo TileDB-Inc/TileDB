@@ -1,6 +1,6 @@
 <a href="https://tiledb.com"><img src="https://github.com/TileDB-Inc/TileDB/raw/dev/doc/source/_static/tiledb-logo_color_no_margin_@4x.png" alt="TileDB logo" width="400"></a>
 
-[![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) ![](doc/anaconda.svg)[![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
+[![Full CI](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml/badge.svg?branch=dev)](https://github.com/TileDB-Inc/TileDB/actions/workflows/full-ci.yml) [![Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_apis/build/status/TileDB-Inc.TileDB?branchName=dev)](https://dev.azure.com/TileDB-Inc/CI/_build/latest?definitionId=2&branchName=dev) [![](doc/anaconda.svg)![Anaconda download count badge](https://anaconda.org/conda-forge/TileDB/badges/downloads.svg)](https://anaconda.org/conda-forge/TileDB)
 
 # The Universal Storage Engine
 
@@ -25,16 +25,14 @@ You can use TileDB to store data in a variety of applications, such as Genomics,
 
 ## Quickstart
 
-You can install the TileDB library as follows:
+You can install the TileDB C++ library as follows:
 
 ```bash
-# Homebrew (macOS):
-$ brew update
-$ brew install tiledb-inc/stable/tiledb
-
-# Or Conda (macOS, Linux, Windows):
+# Conda (macOS, Linux, Windows):
 $ conda install -c conda-forge tiledb
 ```
+
+(see links below for Python, R, and other API installation instructions)
 
 Alternatively, you can use the Docker image we provide:
 
@@ -61,14 +59,25 @@ the documentation.
 
 The TileDB data format is open-source and can be found [here](format_spec/FORMAT_SPEC.md).
 
+## Application-specific Packages
+
+* [TileDB-BioImaging](https://github.com/TileDB-Inc/TileDB-BioImaging): TileDB library for biomedical imaging, with support for image-optimized compression using WebP.
+* [TileDB Geospatial Tools](https://docs.tiledb.com/main/integrations-and-extensions/geospatial) (GDAL, PDAL, Rasterio)
+* [TileDB-SOMA](https://github.com/single-cell-data/TileDB-SOMA): TileDB implementation of the [SOMA](https://github.com/single-cell-data/SOMA) specification for single-cell genomic data. ([documentation](https://github.com/single-cell-data/TileDB-SOMA#quick-start))
+* [TileDB-VCF](https://github.com/TileDB-Inc/TileDB-VCF): TileDB library and query engine for genomic variant data. ([documentation](https://docs.tiledb.com/main/integrations-and-extensions/genomics/population-genomics)).
+* [TileDB-Vector-Search](https://github.com/TileDB-Inc/TileDB-Vector-Search): open source, embeddable, and cloud-native vector similarity search database built on top of TileDB in high-performance C++, with an easy-to-use Python API.
+
 ## APIs
 
 The TileDB team maintains a variety of APIs built on top of the C++ library:
 
+* C ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/c_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c-api.html))
+* C++ ([examples](https://github.com/TileDB-Inc/TileDB/tree/dev/examples/cpp_api), [API docs](https://tiledb-inc-tiledb.readthedocs-hosted.com/en/stable/c++-api.html))
 * [Python](https://github.com/TileDB-Inc/TileDB-Py)
 * [R](https://github.com/TileDB-Inc/TileDB-R)
 * [Java](https://github.com/TileDB-Inc/TileDB-Java)
 * [Go](https://github.com/TileDB-Inc/TileDB-Go)
+* [C#](https://github.com/TileDB-Inc/TileDB-CSharp)
 
 ## Integrations
 
@@ -78,8 +87,7 @@ TileDB is also integrated with several popular databases and data science tools:
 * [Dask](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/dask)
 * [MariaDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/mariadb)
 * [PrestoDB](https://docs.tiledb.com/main/integrations-and-extensions/sql/prestodb)
-* [Geospatial](https://docs.tiledb.com/main/integrations-and-extensions/geospatial) (GDAL, PDAL, Rasterio)
-* [Genomics](https://docs.tiledb.com/main/integrations-and-extensions/population-genomics) (gVCF)
+* [Trino](https://docs.tiledb.com/main/integrations-and-extensions/distributed-computing/prestodb-1)
 
 ## Get involved
 

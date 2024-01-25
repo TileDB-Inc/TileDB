@@ -34,18 +34,16 @@ gather_sources(${SOURCES})
 #
 # Object library for other units to depend upon
 #
-add_library(capi_filter OBJECT ${SOURCES})
-target_link_libraries(capi_filter PUBLIC export)
-target_link_libraries(capi_filter PUBLIC all_filters $<TARGET_OBJECTS:all_filters>)
+add_library(capi_filter_stub OBJECT ${SOURCES})
+target_link_libraries(capi_filter_stub PUBLIC capi_context_stub $<TARGET_OBJECTS:capi_context_stub>)
+target_link_libraries(capi_filter_stub PUBLIC all_filters $<TARGET_OBJECTS:all_filters>)
+
 #
 # Test-compile of object library ensures link-completeness
 #
-# Note: As of this time, this test-compile does not fully link because there's
-# no `context` object library to link against. There's no point in testing
-# link-completeness against the library as a whole.
-#
-add_executable(noncompile_capi_filter EXCLUDE_FROM_ALL)
-target_link_libraries(noncompile_capi_filter PRIVATE capi_filter)
-target_sources(noncompile_capi_filter PRIVATE test/compile_capi_filter_main.cc)
+add_executable(compile_capi_filter_stub EXCLUDE_FROM_ALL)
+target_link_libraries(compile_capi_filter_stub PRIVATE capi_filter_stub)
+target_sources(compile_capi_filter_stub PRIVATE test/compile_capi_filter_main.cc)
+add_dependencies(all_link_complete compile_capi_filter_stub)
 
 add_test_subdirectory()

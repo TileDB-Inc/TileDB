@@ -31,14 +31,14 @@
  * functions, declared in logger_public.h.
  */
 
-#include "tiledb/common/logger.h"
-
 #include <spdlog/fmt/fmt.h>
 #include <spdlog/fmt/ostr.h>
 #include <spdlog/sinks/stdout_sinks.h>
 #ifndef _WIN32
 #include <spdlog/sinks/stdout_color_sinks.h>
 #endif
+
+#include "tiledb/common/logger.h"
 
 namespace tiledb::common {
 
@@ -47,7 +47,10 @@ namespace tiledb::common {
 /* ********************************* */
 
 Logger::Logger(
-    const std::string& name, const Logger::Format format, const bool root)
+    const std::string& name,
+    const Logger::Level level,
+    const Logger::Format format,
+    const bool root)
     : name_(name)
     , root_(root) {
   logger_ = spdlog::get(name_);
@@ -64,7 +67,7 @@ Logger::Logger(
     logger_->set_pattern("{\n \"log\": [");
     logger_->critical("");
   }
-  set_level(Logger::Level::ERR);
+  set_level(level);
   set_format(format);
 }
 
@@ -122,6 +125,10 @@ void Logger::fatal(const char* msg) {
 Status Logger::status(const Status& st) {
   logger_->error(st.message());
   return st;
+}
+
+void Logger::status_no_return_value(const Status& st) {
+  logger_->error(st.message());
 }
 
 void Logger::trace(const std::string& msg) {
@@ -276,11 +283,20 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /*              GLOBAL               */
 /* ********************************* */
 
+std::string global_logger_name(const Logger::Format format) {
+  std::string name{
+      std::to_string(std::chrono::duration_cast<std::chrono::nanoseconds>(
+                         std::chrono::system_clock::now().time_since_epoch())
+                         .count()) +
+      "-Global"};
+  if (format != Logger::Format::JSON) {
+    return name;
+  }
+  return {"\"" + name + "\":\"1\""};
+}
+
 Logger& global_logger(Logger::Format format) {
-  static std::string name = (format == Logger::Format::JSON) ?
-                                Logger::global_logger_json_name :
-                                Logger::global_logger_default_name;
-  static Logger l(name, format, true);
+  static Logger l(global_logger_name(format), Logger::Level::ERR, format, true);
   return l;
 }
 
@@ -313,6 +329,11 @@ void LOG_ERROR(const std::string& msg) {
 Status LOG_STATUS(const Status& st) {
   global_logger().error(st.to_string());
   return st;
+}
+
+/** Logs a status without returning it. */
+void LOG_STATUS_NO_RETURN_VALUE(const Status& st) {
+  global_logger().error(st.to_string());
 }
 
 /** Logs a status. */

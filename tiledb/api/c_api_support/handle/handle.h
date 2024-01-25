@@ -31,6 +31,7 @@
 #ifndef TILEDB_API_HANDLE_H
 #define TILEDB_API_HANDLE_H
 
+#include "tiledb/api/c_api_support/argument_validation.h"
 #include "tiledb/common/common.h"
 
 namespace tiledb::api {
@@ -152,7 +153,7 @@ class CAPIHandle {
    * @return
    */
   template <class... Args>
-  static T* make_handle(Args&&... args) {
+  [[nodiscard]] static T* make_handle(Args&&... args) {
     auto p{make_shared<T>(HERE(), std::forward<Args>(args)...)};
     p->know_self(p);  // copy-construct for argument passed by value
     return p.get();
@@ -198,7 +199,48 @@ class CAPIHandle {
   inline const T& get() const {
     return *self_.get();
   }
+
+  inline static std::string handle_name() {
+    return std::string(T::object_type_name);
+  }
 };
+
+/**
+ * Generic validation of candidate handle pointers.
+ *
+ * This class is _only_ for implementation of handle-specific validation
+ * functions. It is _not_ the case that generic validity is the only kind of
+ * validity. Each handle class may add specific validation checks as well.
+ *
+ * @tparam T A class derived from CAPIHandle
+ * @tparam E Exception type to throw if handle is not valid
+ * @param p a possible pointer to an object of type T
+ */
+template <class T, class E = CAPIException>
+void ensure_handle_is_valid(const T* p) {
+  if (p == nullptr) {
+    throw E(std::string("Invalid TileDB ") + T::handle_name() + " object");
+  }
+  if (p != &p->get()) {
+    throw E(T::handle_name() + " object is not self-consistent");
+  }
+}
+
+/**
+ * Non-throwing handle validation
+ *
+ * This function is a variant of `ensure_handle_is_valid` that returns a boolean
+ * `false` instead of throwing. No explanations are provided, obviously.
+ *
+ * This function supports the specific case where we require a boolean pre-check
+ * at one time and a full check at a later one. Ordinarily this is the wrong way
+ * to do things. We use it, however, in the exception wrapper, whose action
+ * classes cannot be fully C.41-compliant.
+ */
+template <class T>
+bool is_handle_valid(const T* p) {
+  return (p != nullptr) && (p == &p->get());
+}
 
 }  // namespace tiledb::api
 

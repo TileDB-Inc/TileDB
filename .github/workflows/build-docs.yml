@@ -1,12 +1,15 @@
 name: build-docs
 on:
   push:
+    branches:
+      - dev
+      - 'release-*'
     paths-ignore:
       - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
-      - 'doc/source/conf.py'
+      - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
   pull_request:
     branches:
@@ -16,17 +19,17 @@ on:
       - '_quarto.yml'
       - 'quarto-materials/*'
       - '**/.md'
-      - 'doc/source/conf.py'
+      - 'tiledb/doxygen/source/*'
       - 'tiledb/sm/c_api/tiledb_version.h'
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-22.04
-    if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: 90
     name: Build Docs
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -38,17 +41,21 @@ jobs:
           printenv
         shell: bash
 
-      - name: Install Doxygen (linux only)
+      - name: Set up Python
+        uses: actions/setup-python@v4
+
+      - name: Install Doxygen
         run: |
           set -e pipefail
           sudo apt-get update
           # Install doxygen *before* running cmake
           sudo apt-get install -y  doxygen
+          pip install virtualenv
         shell: bash
-        if: ${{ runner.os == 'Linux' }}
 
-      - name: Build Doxygen Docs (linux only)'
+      - name: Build Doxygen Docs
         run: |
-          source $GITHUB_WORKSPACE/scripts/ci/build_docs.sh
+          # Build the documentation (this does not deploy to RTD).
+          cd $GITHUB_WORKSPACE/tiledb/doxygen;
+          ./local-build.sh;
         shell: bash
-        if: ${{ runner.os == 'Linux' }}

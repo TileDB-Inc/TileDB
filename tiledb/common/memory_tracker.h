@@ -41,10 +41,18 @@ namespace sm {
 
 class MemoryTracker {
  public:
+  enum class MemoryType {
+    RTREE,
+    FOOTER,
+    TILE_OFFSETS,
+    MIN_MAX_SUM_NULL_COUNT,
+    ENUMERATION
+  };
+
   /** Constructor. */
   MemoryTracker() {
     memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint32_t>::max();
+    memory_budget_ = std::numeric_limits<uint64_t>::max();
   };
 
   /** Destructor. */
@@ -59,10 +67,11 @@ class MemoryTracker {
    * @param size The memory size.
    * @return true if the memory is available, false otherwise.
    */
-  bool take_memory(uint64_t size) {
+  bool take_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
     if (memory_usage_ + size <= memory_budget_) {
       memory_usage_ += size;
+      memory_usage_by_type_[mem_type] += size;
       return true;
     }
 
@@ -74,19 +83,26 @@ class MemoryTracker {
    *
    * @param size The memory size.
    */
-  void release_memory(uint64_t size) {
+  void release_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
     memory_usage_ -= size;
+    memory_usage_by_type_[mem_type] -= size;
   }
 
   /**
    * Set the memory budget.
    *
    * @param size The memory budget size.
+   * @return true if the budget can be set, false otherwise.
    */
-  void set_budget(uint64_t size) {
+  bool set_budget(uint64_t size) {
     std::lock_guard<std::mutex> lg(mutex_);
+    if (memory_usage_ > size) {
+      return false;
+    }
+
     memory_budget_ = size;
+    return true;
   }
 
   /**
@@ -95,6 +111,14 @@ class MemoryTracker {
   uint64_t get_memory_usage() {
     std::lock_guard<std::mutex> lg(mutex_);
     return memory_usage_;
+  }
+
+  /**
+   * Get the memory usage by type.
+   */
+  uint64_t get_memory_usage(MemoryType mem_type) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return memory_usage_by_type_[mem_type];
   }
 
   /**
@@ -124,6 +148,9 @@ class MemoryTracker {
 
   /** Memory budget. */
   uint64_t memory_budget_;
+
+  /** Memory usage by type. */
+  std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
 };
 
 }  // namespace sm

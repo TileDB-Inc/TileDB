@@ -31,7 +31,20 @@
  */
 #ifdef _WIN32
 
-#include "win.h"
+#if !defined(NOMINMAX)
+#define NOMINMAX  // suppress definition of min/max macros in Windows headers
+#endif
+#include <Shlwapi.h>
+#include <Windows.h>
+#include <algorithm>
+#include <cassert>
+#include <codecvt>
+#include <fstream>
+#include <iostream>
+#include <locale>
+#include <sstream>
+#include <string_view>
+
 #include "path_win.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -43,20 +56,7 @@
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
-
-#if !defined(NOMINMAX)
-#define NOMINMAX  // suppress definition of min/max macros in Windows headers
-#endif
-#include <Shlwapi.h>
-#include <Windows.h>
-#include <strsafe.h>
-#include <wininet.h>  // For INTERNET_MAX_URL_LENGTH
-#include <algorithm>
-#include <cassert>
-#include <fstream>
-#include <iostream>
-#include <sstream>
-#include <string_view>
+#include "win.h"
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -67,14 +67,22 @@ namespace sm {
 namespace {
 /** Returns the last Windows error message string. */
 std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
-  LPVOID lpMsgBuf = nullptr;
-  if (FormatMessage(
+  LPWSTR lpMsgBuf = nullptr;
+  // FormatMessageW allocates a buffer that must be freed with LocalFree.
+  if (FormatMessageW(
           FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM |
               FORMAT_MESSAGE_IGNORE_INSERTS,
           NULL,
           gle,
-          MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-          (LPTSTR)&lpMsgBuf,
+          // By passing zero as the language ID, Windows will try the following
+          // languages in order:
+          // * Language neutral
+          // * Thread LANGID, based on the thread's locale value
+          // * User default LANGID, based on the user's default locale value
+          // * System default LANGID, based on the system default locale value
+          // * US English
+          0,
+          (LPWSTR)&lpMsgBuf,
           0,
           NULL) == 0) {
     if (lpMsgBuf) {
@@ -82,7 +90,9 @@ std::string get_last_error_msg_desc(decltype(GetLastError()) gle) {
     }
     return "unknown error";
   }
-  std::string msg(reinterpret_cast<char*>(lpMsgBuf));
+  // Convert to UTF-8.
+  std::string msg =
+      std::wstring_convert<std::codecvt_utf8<wchar_t>>{}.to_bytes(lpMsgBuf);
   LocalFree(lpMsgBuf);
   return msg;
 }
@@ -126,7 +136,7 @@ std::string Win::abs_path(const std::string& path) {
   std::string str_result;
   if (PathCanonicalize(result, full_path.c_str()) == FALSE) {
     auto gle = GetLastError();
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Cannot canonicalize path. (" +
         get_last_error_msg(gle, "PathCanonicalize") + ")")));
   } else {
@@ -181,7 +191,7 @@ std::string Win::current_dir() {
   unsigned long length = GetCurrentDirectory(0, nullptr);
   char* path = (char*)tdb_malloc(length * sizeof(char));
   if (path == nullptr || GetCurrentDirectory(length, path) == 0) {
-    LOG_STATUS(Status_IOError(std::string(
+    LOG_STATUS_NO_RETURN_VALUE(Status_IOError(std::string(
         "Failed to get current directory. " +
         get_last_error_msg("GetCurrentDirectory"))));
   }
@@ -194,6 +204,7 @@ Status Win::recursively_remove_directory(const std::string& path) const {
   const std::string glob = path + "\\*";
   WIN32_FIND_DATA find_data;
   const char* what_call = nullptr;
+  Status ret;
 
   // Get first file in directory.
   HANDLE find_h = FindFirstFileEx(
@@ -214,13 +225,13 @@ Status Win::recursively_remove_directory(const std::string& path) const {
         strcmp(find_data.cFileName, "..") != 0) {
       std::string file_path = path + "\\" + find_data.cFileName;
       if (PathIsDirectory(file_path.c_str())) {
-        if (!recursively_remove_directory(file_path).ok()) {
-          what_call = "recursively_remove_directory";
+        ret = recursively_remove_directory(file_path);
+        if (!ret.ok()) {
           goto err;
         }
       } else {
-        if (!remove_file(file_path).ok()) {
-          what_call = "remove_file";
+        ret = remove_file(file_path);
+        if (!ret.ok()) {
           goto err;
         }
       }
@@ -245,6 +256,15 @@ err:
   if (find_h != INVALID_HANDLE_VALUE) {
     FindClose(find_h);
   }
+
+  // If we encountered an error while recursively
+  // removing files and directories, return it.
+  if (!ret.ok()) {
+    return ret;
+  }
+
+  // Otherwise, create a new error status and return
+  // that instead.
   std::string offender = __func__;
   if (what_call) {
     offender.append(" ");
@@ -299,14 +319,8 @@ Status Win::file_size(const std::string& path, uint64_t* size) const {
   return Status::Ok();
 }
 
-Status Win::init(const Config& config, ThreadPool* vfs_thread_pool) {
-  if (vfs_thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_VFSError("Cannot initialize with null thread pool"));
-  }
-
+Status Win::init(const Config& config) {
   config_ = config;
-  vfs_thread_pool_ = vfs_thread_pool;
 
   return Status::Ok();
 }
@@ -426,28 +440,32 @@ Status Win::read(
         get_last_error_msg("CreateFile") + ")"));
   }
 
-  LARGE_INTEGER offset_lg_int;
-  offset_lg_int.QuadPart = offset;
-  if (SetFilePointerEx(file_h, offset_lg_int, NULL, FILE_BEGIN) == 0) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File seek error " +
-        get_last_error_msg(gle, "SetFilePointerEx")));
-  }
-
-  unsigned long num_bytes_read = 0;
-  if (ReadFile(file_h, buffer, nbytes, &num_bytes_read, NULL) == 0 ||
-      num_bytes_read != nbytes) {
-    auto gle = GetLastError();
-    CloseHandle(file_h);
-    return LOG_STATUS(Status_IOError(
-        "Cannot read from file '" + path + "'; File read error " +
-        (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
-                    "num_bytes_read " + std::to_string(num_bytes_read) +
-                        " != nbyes " + std::to_string(nbytes))));
-  }
-
+  char* byte_buffer = reinterpret_cast<char*>(buffer);
+  do {
+    LARGE_INTEGER offset_lg_int;
+    offset_lg_int.QuadPart = offset;
+    OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
+    ov.Offset = offset_lg_int.LowPart;
+    ov.OffsetHigh = offset_lg_int.HighPart;
+    DWORD num_bytes_to_read = nbytes > std::numeric_limits<DWORD>::max() ?
+                                  std::numeric_limits<DWORD>::max() :
+                                  (DWORD)nbytes;
+    DWORD num_bytes_read = 0;
+    if (ReadFile(
+            file_h, byte_buffer, num_bytes_to_read, &num_bytes_read, &ov) ==
+        0) {
+      auto gle = GetLastError();
+      CloseHandle(file_h);
+      return LOG_STATUS(Status_IOError(
+          "Cannot read from file '" + path + "'; File read error " +
+          (gle != 0 ? get_last_error_msg(gle, "ReadFile") :
+                      "num_bytes_read " + std::to_string(num_bytes_read) +
+                          " != nbyes " + std::to_string(nbytes))));
+    }
+    byte_buffer += num_bytes_read;
+    offset += num_bytes_read;
+    nbytes -= num_bytes_read;
+  } while (nbytes > 0);
   if (CloseHandle(file_h) == 0) {
     return LOG_STATUS(Status_IOError(
         "Cannot read from file '" + path + "'; File closing error " +
@@ -497,17 +515,6 @@ Status Win::sync(const std::string& path) const {
 
 Status Win::write(
     const std::string& path, const void* buffer, uint64_t buffer_size) const {
-  // Get config params
-  bool found = false;
-  uint64_t min_parallel_size = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.min_parallel_size", &min_parallel_size, &found));
-  assert(found);
-  uint64_t max_parallel_ops = 0;
-  RETURN_NOT_OK(config_.get<uint64_t>(
-      "vfs.file.max_parallel_ops", &max_parallel_ops, &found));
-  assert(found);
-
   Status st;
   // Open the file for appending, creating it if it doesn't exist.
   HANDLE file_h = CreateFile(
@@ -533,40 +540,10 @@ Status Win::write(
         get_last_error_msg(gle, "GetFileSizeEx")));
   }
   uint64_t file_offset = file_size_lg_int.QuadPart;
-  // Ensure that each thread is responsible for at least min_parallel_size
-  // bytes, and cap the number of parallel operations at the thread pool size.
-  uint64_t num_ops = std::min(
-      std::max(buffer_size / min_parallel_size, uint64_t(1)), max_parallel_ops);
-  if (num_ops == 1) {
-    if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
-      CloseHandle(file_h);
-      return LOG_STATUS(
-          Status_IOError(std::string("Cannot write to file '") + path));
-    }
-  } else {
-    std::vector<ThreadPool::Task> results;
-    uint64_t thread_write_nbytes = utils::math::ceil(buffer_size, num_ops);
-    for (uint64_t i = 0; i < num_ops; i++) {
-      uint64_t begin = i * thread_write_nbytes,
-               end =
-                   std::min((i + 1) * thread_write_nbytes - 1, buffer_size - 1);
-      uint64_t thread_nbytes = end - begin + 1;
-      uint64_t thread_file_offset = file_offset + begin;
-      auto thread_buffer = reinterpret_cast<const char*>(buffer) + begin;
-      results.push_back(vfs_thread_pool_->execute(
-          [file_h, thread_file_offset, thread_buffer, thread_nbytes]() {
-            return write_at(
-                file_h, thread_file_offset, thread_buffer, thread_nbytes);
-          }));
-    }
-    st = vfs_thread_pool_->wait_all(results);
-    if (!st.ok()) {
-      CloseHandle(file_h);
-      std::stringstream errmsg;
-      // failures in write_at() log their own gle messages.
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
+  if (!write_at(file_h, file_offset, buffer, buffer_size).ok()) {
+    CloseHandle(file_h);
+    return LOG_STATUS(
+        Status_IOError(std::string("Cannot write to file '") + path));
   }
   // Always close the handle.
   if (CloseHandle(file_h) == 0) {
@@ -582,14 +559,18 @@ Status Win::write_at(
     const void* buffer,
     uint64_t buffer_size) {
   // Write data to the file in batches of constants::max_write_bytes bytes at a
-  // time. Because this may be called in multiple threads, we don't seek the
-  // file handle. Instead, we use the OVERLAPPED struct to specify an offset at
-  // which to write. Note that the file handle does not have to be opened in
-  // "overlapped" mode (i.e. async writes) to do this.
-  unsigned long bytes_written = 0;
+  // time. Instead of seeking the file handle we use the OVERLAPPED struct to
+  // specify an offset at which to write. Note that the file handle does not
+  // have to be opened in "overlapped" mode (i.e. async writes) to do this.
   uint64_t byte_idx = 0;
   const char* byte_buffer = reinterpret_cast<const char*>(buffer);
-  while (buffer_size > constants::max_write_bytes) {
+  uint64_t remaining_bytes_to_write = buffer_size;
+  while (remaining_bytes_to_write > 0) {
+    DWORD bytes_to_write =
+        remaining_bytes_to_write > std::numeric_limits<DWORD>::max() ?
+            std::numeric_limits<DWORD>::max() :
+            (DWORD)remaining_bytes_to_write;
+    DWORD bytes_written = 0;
     LARGE_INTEGER offset;
     offset.QuadPart = file_offset;
     OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
@@ -598,30 +579,16 @@ Status Win::write_at(
     if (WriteFile(
             file_h,
             byte_buffer + byte_idx,
-            constants::max_write_bytes,
+            bytes_to_write,
             &bytes_written,
-            &ov) == 0 ||
-        bytes_written != constants::max_write_bytes) {
+            &ov) == 0) {
       return LOG_STATUS(Status_IOError(std::string(
           "Cannot write to file; File writing error: " +
           get_last_error_msg("WriteFile"))));
     }
-    buffer_size -= constants::max_write_bytes;
-    byte_idx += constants::max_write_bytes;
-    file_offset += constants::max_write_bytes;
-  }
-  LARGE_INTEGER offset;
-  offset.QuadPart = file_offset;
-  OVERLAPPED ov = {0, 0, {{0, 0}}, 0};
-  ov.Offset = offset.LowPart;
-  ov.OffsetHigh = offset.HighPart;
-  if (WriteFile(
-          file_h, byte_buffer + byte_idx, buffer_size, &bytes_written, &ov) ==
-          0 ||
-      bytes_written != buffer_size) {
-    return LOG_STATUS(Status_IOError(std::string(
-        "Cannot write to file; File writing error: " +
-        get_last_error_msg("WriteFile"))));
+    remaining_bytes_to_write -= bytes_written;
+    byte_idx += bytes_written;
+    file_offset += bytes_written;
   }
   return Status::Ok();
 }

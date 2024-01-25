@@ -62,6 +62,8 @@ inline const std::string& query_status_str(QueryStatus query_status) {
       return constants::query_status_incomplete_str;
     case QueryStatus::UNINITIALIZED:
       return constants::query_status_uninitialized_str;
+    case QueryStatus::INITIALIZED:
+      return constants::query_status_initialized_str;
     default:
       return constants::empty_str;
   }
@@ -80,8 +82,10 @@ inline Status query_status_enum(
     *query_status = QueryStatus::INCOMPLETE;
   else if (query_status_str == constants::query_status_uninitialized_str)
     *query_status = QueryStatus::UNINITIALIZED;
+  else if (query_status_str == constants::query_status_initialized_str)
+    *query_status = QueryStatus::INITIALIZED;
   else {
-    return Status_Error("Invalid QueryStatus " + query_status_str);
+    return common::Status_Error("Invalid QueryStatus " + query_status_str);
   }
   return Status::Ok();
 }

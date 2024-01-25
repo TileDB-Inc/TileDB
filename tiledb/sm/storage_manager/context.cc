@@ -40,6 +40,8 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+static common::Logger::Level get_log_level(const Config& config);
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -49,16 +51,23 @@ namespace sm {
 Context::Context(const Config& config)
     : last_error_(nullopt)
     , logger_(make_shared<Logger>(
-          HERE(), "Context: " + std::to_string(++logger_id_)))
-    , compute_tp_(get_compute_thread_count(config))
-    , io_tp_(get_io_thread_count(config))
-    , stats_(make_shared<stats::Stats>(HERE(), "Context"))
-    , storage_manager_{} {
-  if (!init(config).ok()) {
-    logger_->status(
-        Status_ContextError("Failed to initialize Context in constructor."));
-    throw std::logic_error("Could not initialize Context in constructor");
-  }
+          HERE(),
+          logger_prefix_ + std::to_string(++logger_id_),
+          get_log_level(config)))
+    , resources_(
+          config,
+          logger_,
+          get_compute_thread_count(config),
+          get_io_thread_count(config),
+          // TODO: Remove `.StorageManager` from statistic names
+          // We're sticking with `Context.StorageManager` here because
+          // it is part of the public facing API.
+          "Context.StorageManager")
+    , storage_manager_{resources_, logger_, config} {
+  /*
+   * Logger class is not yet C.41-compliant
+   */
+  throw_if_not_ok(init_loggers(config));
 }
 
 /* ****************************** */
@@ -75,46 +84,14 @@ void Context::save_error(const Status& st) {
   last_error_ = st.to_string();
 }
 
+void Context::save_error(const std::string& msg) {
+  std::lock_guard<std::mutex> lock(mtx_);
+  last_error_ = msg;
+}
+
 void Context::save_error(const StatusException& st) {
   std::lock_guard<std::mutex> lock(mtx_);
   last_error_ = st.what();
-}
-
-// Return pointer to underlying storage manager.
-StorageManager* Context::storage_manager() const {
-  return &(*storage_manager_);
-}
-
-ThreadPool* Context::compute_tp() const {
-  return &compute_tp_;
-}
-
-ThreadPool* Context::io_tp() const {
-  return &io_tp_;
-}
-
-stats::Stats* Context::stats() const {
-  return stats_.get();
-}
-
-Status Context::init(const Config& config) {
-  RETURN_NOT_OK(init_loggers(config));
-
-  // Register stats.
-  stats::all_stats.register_stats(stats_);
-
-  // Create storage manager
-  storage_manager_ = tdb_unique_ptr<tiledb::sm::StorageManager>{
-      new (std::nothrow) tiledb::sm::StorageManager(
-          &compute_tp_, &io_tp_, stats_.get(), logger_)};
-  if (storage_manager_ == nullptr)
-    return logger_->status(Status_ContextError(
-        "Cannot initialize context Storage manager allocation failed"));
-
-  // Initialize storage manager
-  auto sm = storage_manager_->init(config);
-
-  return sm;
 }
 
 Status Context::get_config_thread_count(
@@ -134,7 +111,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_async_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_async_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -144,7 +121,7 @@ Status Context::get_config_thread_count(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_reader_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -154,7 +131,7 @@ Status Context::get_config_thread_count(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_writer_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
         "config parameter \"sm.compute_concurrency_level\"."));
   }
@@ -164,7 +141,7 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_vfs_threads);
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }
@@ -179,7 +156,7 @@ Status Context::get_config_thread_count(
   if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
-    logger_->status(Status_StorageManagerError(
+    logger_->status_no_return_value(Status_StorageManagerError(
         "Config parameter \"sm.num_tbb_threads\" has been removed; use "
         "config parameter \"sm.io_concurrency_level\"."));
   }
@@ -262,6 +239,25 @@ Status Context::init_loggers(const Config& config) {
   logger_->set_level(static_cast<Logger::Level>(level));
 
   return Status::Ok();
+}
+
+common::Logger::Level get_log_level(const Config& config) {
+  auto cfg_level = config.get<std::string>("config.logging_level");
+  if (cfg_level == "0") {
+    return Logger::Level::FATAL;
+  } else if (cfg_level == "1") {
+    return Logger::Level::ERR;
+  } else if (cfg_level == "2") {
+    return Logger::Level::WARN;
+  } else if (cfg_level == "3") {
+    return Logger::Level::INFO;
+  } else if (cfg_level == "4") {
+    return Logger::Level::DBG;
+  } else if (cfg_level == "5") {
+    return Logger::Level::TRACE;
+  } else {
+    return Logger::Level::ERR;
+  }
 }
 
 }  // namespace sm

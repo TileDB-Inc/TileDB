@@ -43,8 +43,8 @@
 #include <vector>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
 
 using namespace tiledb::common;
 
@@ -61,13 +61,18 @@ class URI;
 /**
  * This class implements the POSIX filesystem functions.
  */
-class Posix {
+class Posix : public FilesystemBase {
  public:
+  /** Default constructor. */
+  Posix()
+      : Posix(Config()) {
+  }
+
   /** Constructor. */
-  Posix();
+  explicit Posix(const Config& config);
 
   /** Destructor. */
-  ~Posix() = default;
+  ~Posix() override = default;
 
   /**
    * Returns the absolute posix (string) path of the input in the
@@ -81,7 +86,7 @@ class Posix {
    * @param dir The name of the directory to be created.
    * @return Status
    */
-  Status create_dir(const std::string& path) const;
+  Status create_dir(const URI& uri) const override;
 
   /**
    * Creates an empty file.
@@ -89,7 +94,7 @@ class Posix {
    * @param filename The name of the file to be created.
    * @return Status
    */
-  Status touch(const std::string& filename) const;
+  Status touch(const URI& uri) const override;
 
   /**
    * Returns the directory where the program is executed.
@@ -106,9 +111,7 @@ class Posix {
    * @param path The path of the directory to be deleted.
    * @return Status
    */
-  Status remove_dir(const std::string& path) const;
-
-  /** Deletes the file in the input path. */
+  Status remove_dir(const URI& path) const override;
 
   /**
    * Removes a given path.
@@ -116,7 +119,7 @@ class Posix {
    * @param path The path of the file / empty directory to be deleted.
    * @return Status
    */
-  Status remove_file(const std::string& path) const;
+  Status remove_file(const URI& path) const override;
 
   /**
    * Returns the size of the input file.
@@ -125,16 +128,7 @@ class Posix {
    * @param nbytes Pointer to a value
    * @return Status
    */
-  Status file_size(const std::string& path, uint64_t* size) const;
-
-  /**
-   * Initialize this instance with the given config.
-   *
-   * @param config Config parameters.
-   * @param vfs_thread_pool ThreadPool from the parent VFS instance.
-   * @return Status
-   */
-  Status init(const Config& config, ThreadPool* vfs_thread_pool);
+  Status file_size(const URI& path, uint64_t* size) const override;
 
   /**
    * Checks if the input is an existing directory.
@@ -142,7 +136,7 @@ class Posix {
    * @param dir The directory to be checked.
    * @return *True* if *dir* is an existing directory, and *False* otherwise.
    */
-  bool is_dir(const std::string& path) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if the input is an existing file.
@@ -150,7 +144,7 @@ class Posix {
    * @param file The file to be checked.
    * @return *True* if *file* is an existing file, and *false* otherwise.
    */
-  bool is_file(const std::string& path) const;
+  bool is_file(const URI& uri) const override;
 
   /**
    *
@@ -170,34 +164,37 @@ class Posix {
    * @return A list of directory_entry objects
    */
   tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& uri) const;
+  ls_with_sizes(const URI& uri) const override;
 
   /**
    * Move a given filesystem path.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
    * @return Status
    */
-  Status move_path(const std::string& old_path, const std::string& new_path);
+  Status move_file(const URI& old_path, const URI& new_path) const override;
 
   /**
    * Copy a given filesystem file.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
    * @return Status
    */
-  Status copy_file(const std::string& old_path, const std::string& new_path);
+  Status copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem directory.
+   * Both URI must be of the same file:// backend type.
    *
    * @param old_path The old path.
    * @param new_path The new path.
    * @return Status
    */
-  Status copy_dir(const std::string& old_path, const std::string& new_path);
+  Status copy_dir(const URI& old_path, const URI& new_path) const override;
 
   /**
    * Reads data from a file into a buffer.
@@ -209,10 +206,11 @@ class Posix {
    * @return Status.
    */
   Status read(
-      const std::string& path,
+      const URI& uri,
       uint64_t offset,
       void* buffer,
-      uint64_t nbytes) const;
+      uint64_t nbytes,
+      bool use_read_ahead = true) override;
 
   /**
    * Syncs a file or directory.
@@ -220,7 +218,7 @@ class Posix {
    * @param path The name of the file.
    * @return Status
    */
-  Status sync(const std::string& path);
+  Status sync(const URI& uri) override;
 
   /**
    * Writes the input buffer to a file.
@@ -234,18 +232,12 @@ class Posix {
    * @return Status
    */
   Status write(
-      const std::string& path, const void* buffer, uint64_t buffer_size);
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write = false) override;
 
  private:
-  /** Config parameters inherited from parent VFS. */
-  std::reference_wrapper<const Config> config_;
-
-  /** Default config. */
-  Config default_config_;
-
-  /** Thread pool from parent VFS instance. */
-  ThreadPool* vfs_thread_pool_;
-
   static void adjacent_slashes_dedup(std::string* path);
 
   static bool both_slashes(char a, char b);
@@ -273,9 +265,9 @@ class Posix {
    * @param buffer Buffer to hold read data
    * @param nbytes Number of bytes to read
    * @param offset Offset in file to start reading from.
-   * @return Number of bytes actually read (< nbytes on error).
+   * @return Status
    */
-  static uint64_t read_all(
+  static Status read_all(
       int fd, void* buffer, uint64_t nbytes, uint64_t offset);
 
   static int unlink_cb(
@@ -285,21 +277,8 @@ class Posix {
       struct FTW* ftwbuf);
 
   /**
-   * Writes all nbytes to the given file descriptor, retrying as necessary.
-   *
-   * @param fd Open file descriptor to write to
-   * @param file_offset File offset at which to write.
-   * @param buffer Buffer with data to write
-   * @param nbytes Number of bytes to write
-   * @return Number of bytes actually written (< nbytes on error).
-   */
-  static uint64_t pwrite_all(
-      int fd, uint64_t file_offset, const void* buffer, uint64_t nbytes);
-
-  /**
    * Write data from the given buffer to the file descriptor, beginning at the
-   * given offset. Multiple threads can safely write to the same open file
-   * descriptor.
+   * given offset.
    *
    * @param fd Open file descriptor to write to
    * @param file_offset Offset in the file at which to start writing
@@ -310,19 +289,8 @@ class Posix {
   static Status write_at(
       int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size);
 
-  /**
-   * Parse config to get posix permissions for creating new files
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_file_permissions(uint32_t* permissions) const;
-
-  /**
-   * Parse config to get posix permissions for creating new directories
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_directory_permissions(uint32_t* permissions) const;
+ private:
+  uint32_t file_permissions_, directory_permissions_;
 };
 
 }  // namespace sm

@@ -30,8 +30,8 @@
  * Tests the `CellSlabIter` class.
  */
 
-#include "test/src/helpers.h"
-#include "test/src/vfs_helpers.h"
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 
@@ -213,15 +213,16 @@ TEST_CASE_METHOD(
   CHECK(iter.begin().ok());
   auto iter_ranges = iter.ranges();
 
-  std::vector<CellSlabIter<uint64_t>::Range> c_ranges = {{5, 10, 0},
-                                                         {11, 15, 1},
-                                                         {3, 5, 0},
-                                                         {10, 10, 0},
-                                                         {11, 20, 1},
-                                                         {6, 10, 0},
-                                                         {11, 20, 1},
-                                                         {21, 30, 2},
-                                                         {31, 36, 3}};
+  std::vector<CellSlabIter<uint64_t>::Range> c_ranges = {
+      {5, 10, 0},
+      {11, 15, 1},
+      {3, 5, 0},
+      {10, 10, 0},
+      {11, 20, 1},
+      {6, 10, 0},
+      {11, 20, 1},
+      {21, 30, 2},
+      {31, 36, 3}};
   CHECK(iter_ranges.size() == 1);
   CHECK(iter_ranges[0].size() == c_ranges.size());
   CHECK(std::equal(
@@ -313,7 +314,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 15, 3, 5, 11, 14}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   uint64_t tile_coords_0[] = {0};
   uint64_t tile_coords_1[] = {1};
@@ -433,7 +434,7 @@ TEST_CASE_METHOD(
       {1, 2, 5, 8},
   };
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  subarray.compute_tile_coords<uint64_t>();
+  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
 
   check_iter<uint64_t>(subarray, c_cell_slabs);
 

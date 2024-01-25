@@ -96,7 +96,7 @@ int main(int argc, char* argv[]) {
   do {
     nread = fread(fbuf, 1, sizeof(fbuf), infile);
     if (nread) {
-      inbuf->write(fbuf, nread);
+      throw_if_not_ok(inbuf->write(fbuf, nread));
       cntread += nread;
     }
   } while (nread == sizeof(fbuf));
@@ -146,10 +146,11 @@ int main(int argc, char* argv[]) {
     }
   };
   addbytevals(&cntread, sizeof(cntread));
-  tdb_gzip_buf->write(&cntread, sizeof(cntread));
+  throw_if_not_ok(tdb_gzip_buf->write(&cntread, sizeof(cntread)));
   uint64_t compressed_size = zipped_buf->size();
   addbytevals(&compressed_size, sizeof(compressed_size));
-  tdb_gzip_buf->write(&compressed_size, sizeof(compressed_size));
+  throw_if_not_ok(
+      tdb_gzip_buf->write(&compressed_size, sizeof(compressed_size)));
   auto nremaining = zipped_buf->size();
   // vs19 complained...
   // A) could not find raw string literal terminator
@@ -180,7 +181,8 @@ int main(int argc, char* argv[]) {
   // brief sanity check that wrapper compression matches unwrapped compression
   shared_ptr<tiledb::sm::Buffer> out_gzipped_buf =
       make_shared<tiledb::sm::Buffer>(HERE());
-  gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size());
+  throw_if_not_ok(
+      gzip_compress(out_gzipped_buf, inbuf->data(0), inbuf->size()));
   if (out_gzipped_buf->size() != tdb_gzip_buf->size()) {
     printf(
         "Error, compressed data sizes mismatch! %" PRIu64 ", %" PRIu64 "u\n",
@@ -202,7 +204,8 @@ int main(int argc, char* argv[]) {
 
   // brief sanity check the decompressed()d data matches original
   tdb_gzip_buf->set_offset(0);
-  gzip_decompress(expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data()));
+  throw_if_not_ok(gzip_decompress(
+      expanded_buffer, static_cast<uint8_t*>(tdb_gzip_buf->data())));
   if (expanded_buffer->size() != inbuf->size()) {
     fprintf(stderr, "re-expanded size different from original size!\n");
     exit(-29);

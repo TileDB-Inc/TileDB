@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,31 +37,32 @@
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
+/*
+ * Note that the `GroupDirectoryMode` argument is anonymous. It's not used
+ * anywhere in the code at present, though that might change.
+ */
 GroupDirectory::GroupDirectory(
     VFS* vfs,
     ThreadPool* tp,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
-    GroupDirectoryMode mode)
+    GroupDirectoryMode)
     : uri_(uri.add_trailing_slash())
     , vfs_(vfs)
     , tp_(tp)
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
-    , mode_(mode)
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
@@ -75,6 +76,10 @@ GroupDirectory::GroupDirectory(
 
 const URI& GroupDirectory::uri() const {
   return uri_;
+}
+
+const std::vector<URI>& GroupDirectory::group_file_uris() const {
+  return group_file_uris_;
 }
 
 /** Returns the latest array schema URI. */
@@ -112,10 +117,6 @@ const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
 
 Status GroupDirectory::load() {
   assert(!loaded_);
-  // We use mode here to avoid warning on errors
-  // Mode will be used for consolidation settings
-  (void)mode_;
-
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
   std::vector<URI> commits_dir_uris;
@@ -144,8 +145,12 @@ Status GroupDirectory::load() {
   // Error check
   bool is_group = false;
   for (const auto& uri : root_dir_uris) {
-    if (uri.last_path_part() == constants::group_filename ||
-        uri.last_path_part() == constants::group_detail_dir_name) {
+    if (uri.last_path_part() == constants::group_filename) {
+      is_group = true;
+      group_file_uris_.insert(group_file_uris_.begin(), uri);
+    }
+
+    if (uri.last_path_part() == constants::group_detail_dir_name) {
       is_group = true;
     }
   }
@@ -159,29 +164,6 @@ Status GroupDirectory::load() {
   loaded_ = true;
 
   return Status::Ok();
-}
-
-tuple<Status, optional<std::string>> GroupDirectory::compute_new_fragment_name(
-    const URI& first, const URI& last, uint32_t format_version) const {
-  // Get uuid
-  std::string uuid;
-  RETURN_NOT_OK_TUPLE(uuid::generate_uuid(&uuid, false), nullopt);
-
-  // For creating the new fragment URI
-
-  // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(first, &t_first), nullopt);
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(last, &t_last), nullopt);
-
-  // Create new URI
-  std::stringstream ss;
-  ss << "/__" << t_first.first << "_" << t_last.second << "_" << uuid << "_"
-     << format_version;
-
-  return {Status::Ok(), ss.str()};
 }
 
 bool GroupDirectory::loaded() const {
@@ -377,5 +359,4 @@ bool GroupDirectory::is_vacuum_file(const URI& uri) const {
   return false;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

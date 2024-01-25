@@ -41,8 +41,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*          FACTORY METHODS          */
@@ -51,7 +50,7 @@ namespace sm {
 /** Factory function to create the consolidator depending on mode. */
 shared_ptr<Consolidator> Consolidator::create(
     const ConsolidationMode mode,
-    const Config* config,
+    const Config& config,
     StorageManager* storage_manager) {
   switch (mode) {
     case ConsolidationMode::FRAGMENT_META:
@@ -72,11 +71,11 @@ shared_ptr<Consolidator> Consolidator::create(
 }
 
 ConsolidationMode Consolidator::mode_from_config(
-    const Config* config, const bool vacuum_mode) {
+    const Config& config, const bool vacuum_mode) {
   bool found = false;
   const std::string mode = vacuum_mode ?
-                               config->get("sm.vacuum.mode", &found) :
-                               config->get("sm.consolidation.mode", &found);
+                               config.get("sm.vacuum.mode", &found) :
+                               config.get("sm.consolidation.mode", &found);
   if (!found) {
     throw std::logic_error(
         "Cannot consolidate; Consolidation mode cannot be null");
@@ -121,10 +120,14 @@ Status Consolidator::consolidate(
       Status_ConsolidatorError("Cannot consolidate; Invalid object"));
 }
 
-Status Consolidator::vacuum([[maybe_unused]] const char* array_name) {
-  return logger_->status(
-      Status_ConsolidatorError("Cannot vacuum; Invalid object"));
+void Consolidator::vacuum([[maybe_unused]] const char* array_name) {
+  throw Status_ConsolidatorError("Cannot vacuum; Invalid object");
 }
 
-}  // namespace sm
-}  // namespace tiledb
+void Consolidator::check_array_uri(const char* array_name) {
+  if (URI(array_name).is_tiledb()) {
+    throw std::logic_error("Consolidation is not supported for remote arrays.");
+  }
+}
+
+}  // namespace tiledb::sm

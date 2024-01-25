@@ -1,5 +1,5 @@
 /**
- * @file tiledb/api/c_api/filter/filter_external.cc
+ * @file tiledb/api/c_api/filter/filter_api.cc
  *
  * @section LICENSE
  *
@@ -32,42 +32,37 @@
 
 #include "filter_api_external.h"
 #include "filter_api_internal.h"
-#include "tiledb/sm/c_api/api_exception_safety.h"
+#include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/sm/enums/filter_type.h"
 
-/* ********************************* */
-/*              FILTER               */
-/* ********************************* */
-
-namespace tiledb::common::detail {
+namespace tiledb::api {
 
 capi_return_t tiledb_filter_alloc(
     tiledb_ctx_t*, tiledb_filter_type_t type, tiledb_filter_t** filter) {
-  api::ensure_output_pointer_is_valid(filter);
+  ensure_output_pointer_is_valid(filter);
+
   *filter = tiledb_filter_t::make_handle(tiledb::sm::FilterCreate::make(
       static_cast<tiledb::sm::FilterType>(type)));
   return TILEDB_OK;
 }
 
 void tiledb_filter_free(tiledb_filter_t** filter) {
-  api::ensure_output_pointer_is_valid(filter);
-  api::ensure_filter_is_valid(*filter);
+  ensure_output_pointer_is_valid(filter);
+  ensure_filter_is_valid(*filter);
   tiledb_filter_t::break_handle(*filter);
 }
 
 capi_return_t tiledb_filter_get_type(
-    tiledb_ctx_t*, tiledb_filter_t* filter, tiledb_filter_type_t* type) {
-  api::ensure_filter_is_valid(filter);
-  api::ensure_output_pointer_is_valid(type);
+    tiledb_filter_t* filter, tiledb_filter_type_t* type) {
+  ensure_filter_is_valid(filter);
+  ensure_output_pointer_is_valid(type);
   *type = static_cast<tiledb_filter_type_t>(filter->type());
   return TILEDB_OK;
 }
 
 capi_return_t tiledb_filter_set_option(
-    tiledb_ctx_t*,
-    tiledb_filter_t* filter,
-    tiledb_filter_option_t option,
-    const void* value) {
-  api::ensure_filter_is_valid(filter);
+    tiledb_filter_t* filter, tiledb_filter_option_t option, const void* value) {
+  ensure_filter_is_valid(filter);
   auto st{
       filter->set_option(static_cast<tiledb::sm::FilterOption>(option), value)};
   if (!st.ok()) {
@@ -77,12 +72,9 @@ capi_return_t tiledb_filter_set_option(
 }
 
 capi_return_t tiledb_filter_get_option(
-    tiledb_ctx_t*,
-    tiledb_filter_t* filter,
-    tiledb_filter_option_t option,
-    void* value) {
-  api::ensure_filter_is_valid(filter);
-  api::ensure_output_pointer_is_valid(value);
+    tiledb_filter_t* filter, tiledb_filter_option_t option, void* value) {
+  ensure_filter_is_valid(filter);
+  ensure_output_pointer_is_valid(value);
   auto st{
       filter->get_option(static_cast<tiledb::sm::FilterOption>(option), value)};
   if (!st.ok()) {
@@ -125,64 +117,77 @@ capi_return_t tiledb_filter_option_from_str(
   return TILEDB_OK;
 }
 
-}  // namespace tiledb::common::detail
+}  // namespace tiledb::api
 
-/* ********************************* */
-/*              FILTER               */
-/* ********************************* */
+using tiledb::api::api_entry_context;
+using tiledb::api::api_entry_plain;
 
-int32_t tiledb_filter_alloc(
+CAPI_INTERFACE(
+    filter_alloc,
     tiledb_ctx_t* ctx,
     tiledb_filter_type_t type,
-    tiledb_filter_t** filter) noexcept {
-  return api_entry_context<detail::tiledb_filter_alloc>(ctx, type, filter);
+    tiledb_filter_t** filter) {
+  return tiledb::api::api_entry_with_context<tiledb::api::tiledb_filter_alloc>(
+      ctx, type, filter);
 }
 
-void tiledb_filter_free(tiledb_filter_t** filter) noexcept {
-  return api_entry_void<detail::tiledb_filter_free>(filter);
+CAPI_INTERFACE_VOID(filter_free, tiledb_filter_t** filter) {
+  return tiledb::api::api_entry_void<tiledb::api::tiledb_filter_free>(filter);
 }
 
-int32_t tiledb_filter_get_type(
+CAPI_INTERFACE(
+    filter_get_type,
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
-    tiledb_filter_type_t* type) noexcept {
-  return api_entry_context<detail::tiledb_filter_get_type>(ctx, filter, type);
+    tiledb_filter_type_t* type) {
+  return api_entry_context<tiledb::api::tiledb_filter_get_type>(
+      ctx, filter, type);
 }
 
-int32_t tiledb_filter_set_option(
-    tiledb_ctx_t* ctx,
-    tiledb_filter_t* filter,
-    tiledb_filter_option_t option,
-    const void* value) noexcept {
-  return api_entry_context<detail::tiledb_filter_set_option>(
-      ctx, filter, option, value);
-}
-
-int32_t tiledb_filter_get_option(
+CAPI_INTERFACE(
+    filter_set_option,
     tiledb_ctx_t* ctx,
     tiledb_filter_t* filter,
     tiledb_filter_option_t option,
-    void* value) noexcept {
-  return api_entry_context<detail::tiledb_filter_get_option>(
+    const void* value) {
+  return api_entry_context<tiledb::api::tiledb_filter_set_option>(
       ctx, filter, option, value);
 }
 
-int32_t tiledb_filter_type_to_str(
-    tiledb_filter_type_t filter_type, const char** str) noexcept {
-  return api_entry<detail::tiledb_filter_type_to_str>(filter_type, str);
+CAPI_INTERFACE(
+    filter_get_option,
+    tiledb_ctx_t* ctx,
+    tiledb_filter_t* filter,
+    tiledb_filter_option_t option,
+    void* value) {
+  return api_entry_context<tiledb::api::tiledb_filter_get_option>(
+      ctx, filter, option, value);
 }
 
-int32_t tiledb_filter_type_from_str(
-    const char* str, tiledb_filter_type_t* filter_type) noexcept {
-  return api_entry<detail::tiledb_filter_type_from_str>(str, filter_type);
+CAPI_INTERFACE(
+    filter_type_to_str, tiledb_filter_type_t filter_type, const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_filter_type_to_str>(
+      filter_type, str);
 }
 
-int32_t tiledb_filter_option_to_str(
-    tiledb_filter_option_t filter_option, const char** str) noexcept {
-  return api_entry<detail::tiledb_filter_option_to_str>(filter_option, str);
+CAPI_INTERFACE(
+    filter_type_from_str, const char* str, tiledb_filter_type_t* filter_type) {
+  return api_entry_plain<tiledb::api::tiledb_filter_type_from_str>(
+      str, filter_type);
 }
 
-int32_t tiledb_filter_option_from_str(
-    const char* str, tiledb_filter_option_t* filter_option) noexcept {
-  return api_entry<detail::tiledb_filter_option_from_str>(str, filter_option);
+CAPI_INTERFACE(
+    filter_option_to_str,
+    tiledb_filter_option_t filter_option,
+    const char** str) {
+  return api_entry_plain<tiledb::api::tiledb_filter_option_to_str>(
+      filter_option, str);
+}
+
+CAPI_INTERFACE(
+    filter_option_from_str,
+    const char* str,
+    tiledb_filter_option_t* filter_option) {
+  return api_entry_plain<tiledb::api::tiledb_filter_option_from_str>(
+      str, filter_option);
 }
