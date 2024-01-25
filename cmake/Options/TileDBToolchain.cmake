@@ -65,6 +65,16 @@ if(TILEDB_SANITIZER STREQUAL "address")
     set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-asan")
 endif()
 
+get_cmake_property(is_multi_config GENERATOR_IS_MULTI_CONFIG)
+if(NOT is_multi_config AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" AND NOT VCPKG_TARGET_TRIPLET)
+    if(TILEDB_VCPKG_BASE_TRIPLET)
+        message(STATUS "Overriding vcpkg triplet to ${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+        set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+    else()
+        message(WARNING "Dependencies will be built without symbols. You have to set either VCPKG_TARGET_TRIPLET or TILEDB_VCPKG_BASE_TRIPLET.")
+    endif()
+endif()
+
 set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
 
 macro(tiledb_vcpkg_enable_if tiledb_feature vcpkg_feature)
