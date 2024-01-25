@@ -62,11 +62,10 @@ class Group {
  public:
   /**
    * Constructs a Group object given a uri and a ContextResources reference.
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Group class on StorageManager. For
-   * now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * Group(ContextResources&, const URI&).
+   * This is a transitional constructor in the sense that we are working on
+   * removing the dependency of the Group class on StorageManager. For now we
+   * still need to keep the storage_manager argument, but once the dependency is
+   * gone the signature will be Group(ContextResources&, const URI&).
    *
    * @param resources A ContextResources reference
    * @param group_uri The location of the group
