@@ -142,23 +142,23 @@ void Posix::file_size(const URI& uri, uint64_t* size) const {
   close(fd);
 }
 
-void Posix::move_file(const URI& old_path, const URI& new_path) {
+void Posix::move_file(const URI& old_path, const URI& new_path) const {
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
     throw IOError(std::string("Cannot move path: ") + strerror(errno));
   }
 }
 
-void Posix::move_dir(const URI& old_uri, const URI& new_uri) {
+void Posix::move_dir(const URI& old_uri, const URI& new_uri) const {
   move_file(old_uri, new_uri);
 }
 
-void Posix::copy_file(const URI& old_uri, const URI& new_uri) {
+void Posix::copy_file(const URI& old_uri, const URI& new_uri) const {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   std::ofstream dst(new_uri.to_path(), std::ios::binary);
   dst << src.rdbuf();
 }
 
-void Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
+void Posix::copy_dir(const URI& old_uri, const URI& new_uri) const {
   auto old_path = old_uri.to_path();
   auto new_path = new_uri.to_path();
   create_dir(new_uri);
@@ -224,7 +224,7 @@ void Posix::read(
   }
 }
 
-void Posix::sync(const URI& uri) {
+void Posix::sync(const URI& uri) const {
   auto path = uri.to_path();
 
   // Open file

@@ -621,7 +621,7 @@ class S3 : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) override;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies a file.
@@ -629,7 +629,7 @@ class S3 : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copies a directory. All subdirectories and files are copied.
@@ -637,7 +637,7 @@ class S3 : FilesystemBase {
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads from a file.
@@ -760,7 +760,7 @@ class S3 : FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) override {
+  void move_file(const URI& old_uri, const URI& new_uri) const override {
     throw_if_not_ok(move_object(old_uri, new_uri));
   }
 
@@ -769,7 +769,7 @@ class S3 : FilesystemBase {
    *
    * @param uri The URI of the file.
    */
-  void sync(const URI&) override {
+  void sync(const URI&) const override {
     // No-op for S3.
   }
 

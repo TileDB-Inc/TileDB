@@ -365,7 +365,7 @@ bool S3::is_bucket(const URI& uri) const {
   return head_bucket_outcome.IsSuccess();
 }
 
-void S3::move_dir(const URI& old_uri, const URI& new_uri) {
+void S3::move_dir(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(init_client());
 
   std::vector<std::string> paths;
@@ -377,13 +377,13 @@ void S3::move_dir(const URI& old_uri, const URI& new_uri) {
   }
 }
 
-void S3::copy_file(const URI& old_uri, const URI& new_uri) {
+void S3::copy_file(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(init_client());
 
   throw_if_not_ok(copy_object(old_uri, new_uri));
 }
 
-void S3::copy_dir(const URI& old_uri, const URI& new_uri) {
+void S3::copy_dir(const URI& old_uri, const URI& new_uri) const {
   throw_if_not_ok(init_client());
 
   std::string old_uri_string = old_uri.to_string();

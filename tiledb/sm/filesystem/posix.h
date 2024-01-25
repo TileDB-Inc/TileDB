@@ -133,7 +133,7 @@ class Posix : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_file(const URI& old_uri, const URI& new_uri) override;
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Renames a directory.
@@ -142,7 +142,7 @@ class Posix : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void move_dir(const URI& old_uri, const URI& new_uri) override;
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem file.
@@ -151,7 +151,7 @@ class Posix : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem directory.
@@ -160,7 +160,7 @@ class Posix : public FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  void copy_dir(const URI& old_uri, const URI& new_uri) override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads data from a file into a buffer.
@@ -182,7 +182,7 @@ class Posix : public FilesystemBase {
    *
    * @param path The name of the file.
    */
-  void sync(const URI& uri) override;
+  void sync(const URI& uri) const override;
 
   /**
    * Writes the input buffer to a file.

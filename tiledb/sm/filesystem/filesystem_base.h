@@ -125,7 +125,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void move_file(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Renames a directory.
@@ -134,7 +134,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void move_dir(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void move_dir(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Copies a file.
@@ -143,7 +143,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Copies directory.
@@ -152,7 +152,7 @@ class FilesystemBase {
    * @param old_uri The old URI.
    * @param new_uri The new URI.
    */
-  virtual void copy_dir(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri) const = 0;
 
   /**
    * Reads from a file.
@@ -175,7 +175,7 @@ class FilesystemBase {
    *
    * @param uri The URI of the file.
    */
-  virtual void sync(const URI& uri) = 0;
+  virtual void sync(const URI& uri) const = 0;
 
   /**
    * Writes the contents of a buffer into a file.
