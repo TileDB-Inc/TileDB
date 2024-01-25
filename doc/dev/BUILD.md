@@ -125,4 +125,25 @@ Vcpkg will not be automatically downloaded if:
 * The `TILEDB_DISABLE_AUTO_VCPKG` environment variable has been defined.
 * The build tree has been configured by directly calling CMake and the `CMAKE_TOOLCHAIN_FILE` variable has been set by the user.
 
-In these cases no dependencies CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package) command. The user is responsible for providing them.
+In these cases CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html) command. The user is responsible for providing the dependencies.
+
+### Building with sanitizers
+
+TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as the vcpkg base triplet corresponding to your platform. The following platforms support sanitizers:
+
+* `arm64-osx`
+* `x64-linux`
+* `x64-osx`
+* `x64-windows`
+
+> [!NOTE]
+> Currently only the `address` sanitizer is supported.
+
+```bash
+cd TileDB && mkdir build-asan && cd build-asan
+../bootstrap --enable-sanitizer=address --vcpkg-base-triplet=x64-linux
+make && make check
+```
+
+> [!IMPORTANT]
+> To avoid errors, building with sanitizers must be done in a separate build directory.
