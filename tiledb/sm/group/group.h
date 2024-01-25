@@ -60,6 +60,19 @@ class GroupDetailsException : public StatusException {
 
 class Group {
  public:
+  /**
+   * Constructs a Group object given a uri and a ContextResources reference.
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Group class on StorageManager. For
+   * now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * Group(ContextResources&, const URI&).
+   *
+   * @param resources A ContextResources reference
+   * @param group_uri The location of the group
+   * @param storage_manager A StorageManager pointer
+   *    (this will go away in the near future)
+   */
   Group(
       ContextResources& resources,
       const URI& group_uri,
@@ -431,7 +444,7 @@ class Group {
   mutable std::mutex mtx_;
 
   /** The ContextResources class. */
-  std::reference_wrapper<ContextResources> resources_;
+  ContextResources& resources_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

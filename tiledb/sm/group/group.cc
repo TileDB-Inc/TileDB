@@ -713,7 +713,7 @@ std::string Group::dump(
 
 void Group::load_metadata() {
   if (remote_) {
-    auto rest_client = resources_.get().rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr)
       throw GroupStatusException(
           "Cannot load metadata; remote group with no REST client.");
@@ -731,7 +731,7 @@ void Group::load_metadata_from_storage(
     const EncryptionKey& encryption_key,
     Metadata* metadata) {
   [[maybe_unused]] auto timer_se =
-      resources_.get().stats().start_timer("group_load_metadata_from_storage");
+      resources_.stats().start_timer("group_load_metadata_from_storage");
 
   // Special case
   if (metadata == nullptr) {
@@ -744,12 +744,11 @@ void Group::load_metadata_from_storage(
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(parallel_for(
-      &resources_.get().compute_tp(), 0, metadata_num, [&](size_t m) {
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = group_metadata_to_load[m].uri_;
 
-        auto&& tile =
-            GenericTileIO::load(resources_.get(), uri, 0, encryption_key);
+        auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
         metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
         return Status::Ok();
@@ -760,7 +759,7 @@ void Group::load_metadata_from_storage(
   for (const auto& t : metadata_tiles) {
     meta_size += t->size();
   }
-  resources_.get().stats().add_counter("group_read_group_meta_size", meta_size);
+  resources_.stats().add_counter("group_read_group_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
   *metadata = Metadata::deserialize(metadata_tiles);
