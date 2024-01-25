@@ -78,17 +78,15 @@ class Posix : public FilesystemBase {
    * Creates a new directory.
    *
    * @param dir The name of the directory to be created.
-   * @return Status
    */
-  Status create_dir(const URI& uri) const override;
+  void create_dir(const URI& uri) const override;
 
   /**
    * Creates an empty file.
    *
    * @param filename The name of the file to be created.
-   * @return Status
    */
-  Status touch(const URI& uri) const override;
+  void touch(const URI& uri) const override;
 
   /**
    * Checks if the input is an existing directory.
@@ -110,26 +108,23 @@ class Posix : public FilesystemBase {
    * Removes a given directory recursively.
    *
    * @param path The path of the directory to be deleted.
-   * @return Status
    */
-  Status remove_dir(const URI& path) const override;
+  void remove_dir(const URI& path) const override;
 
   /**
    * Removes a given path.
    *
    * @param path The path of the file / empty directory to be deleted.
-   * @return Status
    */
-  Status remove_file(const URI& path) const override;
+  void remove_file(const URI& path) const override;
 
   /**
    * Returns the size of the input file.
    *
    * @param path The name of the file whose size is to be retrieved.
    * @param nbytes Pointer to a value
-   * @return Status
    */
-  Status file_size(const URI& path, uint64_t* size) const override;
+  void file_size(const URI& path, uint64_t* size) const override;
 
   /**
    * Move a given filesystem path.
@@ -137,9 +132,8 @@ class Posix : public FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status move_file(const URI& old_uri, const URI& new_uri) override;
+  void move_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Renames a directory.
@@ -147,9 +141,8 @@ class Posix : public FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri) override;
+  void move_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copy a given filesystem file.
@@ -157,9 +150,8 @@ class Posix : public FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copy a given filesystem directory.
@@ -167,9 +159,8 @@ class Posix : public FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri) override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads data from a file into a buffer.
@@ -178,9 +169,8 @@ class Posix : public FilesystemBase {
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The size of the data to be read from the file.
-   * @return Status.
    */
-  Status read(
+  void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
@@ -191,9 +181,8 @@ class Posix : public FilesystemBase {
    * Syncs a file or directory.
    *
    * @param path The name of the file.
-   * @return Status
    */
-  Status sync(const URI& uri) override;
+  void sync(const URI& uri) override;
 
   /**
    * Writes the input buffer to a file.
@@ -204,9 +193,8 @@ class Posix : public FilesystemBase {
    * @param path The name of the file.
    * @param buffer The input buffer.
    * @param buffer_size The size of the input buffer.
-   * @return Status
    */
-  Status write(
+  void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
@@ -216,52 +204,49 @@ class Posix : public FilesystemBase {
    * Checks if an object store bucket exists.
    *
    * @param uri The name of the object store bucket.
-   * @param is_bucket Set to `true` if the bucket exists and `false` otherwise.
-   * @return Status
+   * @return True if the bucket exists, false otherwise.
    */
-  Status is_bucket(const URI&, bool*) const override {
-    return Status::Ok();
+  bool is_bucket(const URI&) const override {
+    // No concept of buckets for Posix.
+    return false;
   }
 
   /**
    * Checks if an object-store bucket is empty.
    *
    * @param uri The name of the object store bucket.
-   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
-   * @return Status
+   * @return True if the bucket is empty, false otherwise.
    */
-  Status is_empty_bucket(const URI&, bool*) const override {
-    return Status::Ok();
+  bool is_empty_bucket(const URI&) const override {
+    // No concept of buckets for Posix.
+    return true;
   }
 
   /**
    * Creates an object store bucket.
    *
    * @param uri The name of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI&) const override {
-    return Status::Ok();
+  void create_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**
    * Deletes an object store bucket.
    *
    * @param uri The name of the bucket to be deleted.
-   * @return Status
    */
-  Status remove_bucket(const URI&) const override {
-    return Status::Ok();
+  void remove_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**
    * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
-   * @return Status
    */
-  Status empty_bucket(const URI&) const override {
-    return Status::Ok();
+  void empty_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
   }
 
   /**

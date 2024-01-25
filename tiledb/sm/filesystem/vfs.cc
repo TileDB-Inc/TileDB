@@ -164,7 +164,8 @@ Status VFS::create_dir(const URI& uri) const {
 #ifdef _WIN32
     return win_.create_dir(uri.to_path());
 #else
-    return posix_.create_dir(uri);
+    posix_.create_dir(uri);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -240,7 +241,8 @@ Status VFS::touch(const URI& uri) const {
 #ifdef _WIN32
     return win_.touch(uri.to_path());
 #else
-    return posix_.touch(uri);
+    posix_.touch(uri);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -252,7 +254,8 @@ Status VFS::touch(const URI& uri) const {
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().touch(uri);
+    s3().touch(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -285,7 +288,8 @@ Status VFS::cancel_all_tasks() {
 Status VFS::create_bucket(const URI& uri) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().create_bucket(uri);
+    s3().create_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -310,7 +314,8 @@ Status VFS::create_bucket(const URI& uri) const {
 Status VFS::remove_bucket(const URI& uri) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().remove_bucket(uri);
+    s3().remove_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -335,7 +340,8 @@ Status VFS::remove_bucket(const URI& uri) const {
 Status VFS::empty_bucket(const URI& uri) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().empty_bucket(uri);
+    s3().empty_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -361,7 +367,8 @@ Status VFS::is_empty_bucket(
     const URI& uri, [[maybe_unused]] bool* is_empty) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().is_empty_bucket(uri, is_empty);
+    *is_empty = s3().is_empty_bucket(uri);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -388,7 +395,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #ifdef _WIN32
     return win_.remove_dir(uri.to_path());
 #else
-    return posix_.remove_dir(uri);
+    posix_.remove_dir(uri);
 #endif
   } else if (uri.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -398,7 +405,7 @@ Status VFS::remove_dir(const URI& uri) const {
 #endif
   } else if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().remove_dir(uri);
+    s3().remove_dir(uri);
 #else
     throw BuiltWithout("S3");
 #endif
@@ -419,6 +426,7 @@ Status VFS::remove_dir(const URI& uri) const {
   } else {
     throw UnsupportedURI(uri.to_string());
   }
+  return Status::Ok();
 }
 
 void VFS::remove_dirs(
@@ -438,7 +446,8 @@ Status VFS::remove_file(const URI& uri) const {
 #ifdef _WIN32
     return win_.remove_file(uri.to_path());
 #else
-    return posix_.remove_file(uri);
+    posix_.remove_file(uri);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -523,7 +532,8 @@ Status VFS::file_size(const URI& uri, uint64_t* size) const {
 #ifdef _WIN32
     return win_.file_size(uri.to_path(), size);
 #else
-    return posix_.file_size(uri, size);
+    posix_.file_size(uri, size);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -661,7 +671,7 @@ Status VFS::is_file(const URI& uri, bool* is_file) const {
 Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    RETURN_NOT_OK(s3().is_bucket(uri, is_bucket));
+    *is_bucket = s3().is_bucket(uri);
     return Status::Ok();
 #else
     *is_bucket = false;
@@ -791,7 +801,8 @@ Status VFS::move_file(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       return win_.move_path(old_uri.to_path(), new_uri.to_path());
 #else
-      return posix_.move_file(old_uri, new_uri);
+      posix_.move_file(old_uri, new_uri);
+      return Status::Ok();
 #endif
     }
     throw UnsupportedOperation("Moving files");
@@ -860,7 +871,8 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       return win_.move_path(old_uri.to_path(), new_uri.to_path());
 #else
-      return posix_.move_dir(old_uri, new_uri);
+      posix_.move_dir(old_uri, new_uri);
+      return Status::Ok();
 #endif
     }
     throw UnsupportedOperation("Moving directories");
@@ -879,12 +891,14 @@ Status VFS::move_dir(const URI& old_uri, const URI& new_uri) {
 
   // S3
   if (old_uri.is_s3()) {
-    if (new_uri.is_s3())
+    if (new_uri.is_s3()) {
 #ifdef HAVE_S3
-      return s3().move_dir(old_uri, new_uri);
+      s3().move_dir(old_uri, new_uri);
+      return Status::Ok();
 #else
       throw BuiltWithout("S3");
 #endif
+    }
     throw UnsupportedOperation("Moving directories");
   }
 
@@ -935,7 +949,8 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 #ifdef _WIN32
       throw VFSException("Copying files on Windows is not yet supported.");
 #else
-      return posix_.copy_file(old_uri, new_uri);
+      posix_.copy_file(old_uri, new_uri);
+      return Status::Ok();
 #endif
     }
     throw UnsupportedOperation("Copying files");
@@ -955,12 +970,14 @@ Status VFS::copy_file(const URI& old_uri, const URI& new_uri) {
 
   // S3
   if (old_uri.is_s3()) {
-    if (new_uri.is_s3())
+    if (new_uri.is_s3()) {
 #ifdef HAVE_S3
-      return s3().copy_file(old_uri, new_uri);
+      s3().copy_file(old_uri, new_uri);
+      return Status::Ok();
 #else
       throw BuiltWithout("S3");
 #endif
+    }
     throw UnsupportedOperation("Copying files");
   }
 
@@ -1000,7 +1017,8 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
       throw VFSException(
           "Copying directories on Windows is not yet supported.");
 #else
-      return posix_.copy_dir(old_uri, new_uri);
+      posix_.copy_dir(old_uri, new_uri);
+      return Status::Ok();
 #endif
     }
     throw UnsupportedOperation("Copying directories");
@@ -1020,12 +1038,14 @@ Status VFS::copy_dir(const URI& old_uri, const URI& new_uri) {
 
   // S3
   if (old_uri.is_s3()) {
-    if (new_uri.is_s3())
+    if (new_uri.is_s3()) {
 #ifdef HAVE_S3
-      return s3().copy_dir(old_uri, new_uri);
+      s3().copy_dir(old_uri, new_uri);
+      return Status::Ok();
 #else
       throw BuiltWithout("S3");
 #endif
+    }
     throw UnsupportedOperation("Copying directories");
   }
 
@@ -1135,7 +1155,8 @@ Status VFS::read_impl(
 #ifdef _WIN32
     return win_.read(uri.to_path(), offset, buffer, nbytes);
 #else
-    return posix_.read(uri, offset, buffer, nbytes, false);
+    posix_.read(uri, offset, buffer, nbytes, false);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1156,8 +1177,8 @@ Status VFS::read_impl(
         std::placeholders::_4,
         std::placeholders::_5,
         std::placeholders::_6);
-    return read_ahead_impl(
-        read_fn, uri, offset, buffer, nbytes, use_read_ahead);
+    read_ahead_impl(read_fn, uri, offset, buffer, nbytes, use_read_ahead);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif
@@ -1203,9 +1224,9 @@ Status VFS::read_impl(
   throw UnsupportedURI(uri.to_string());
 }
 
-Status VFS::read_ahead_impl(
-    const std::function<Status(
-        const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
+void VFS::read_ahead_impl(
+    const std::function<
+        void(const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
     const URI& uri,
     const uint64_t offset,
     void* const buffer,
@@ -1215,8 +1236,9 @@ Status VFS::read_ahead_impl(
   uint64_t nbytes_read = 0;
 
   // Do not use the read-ahead cache if disabled by the caller.
-  if (!use_read_ahead)
+  if (!use_read_ahead) {
     return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
+  }
 
   // Only perform a read-ahead if the requested read size
   // is smaller than the size of the buffers in the read-ahead
@@ -1227,8 +1249,9 @@ Status VFS::read_ahead_impl(
   //    to a future small read.
   // 3. It saves us a copy. We must make a copy of the buffer at
   //    some point (one for the user, one for the cache).
-  if (nbytes >= vfs_params_.read_ahead_size_)
+  if (nbytes >= vfs_params_.read_ahead_size_) {
     return read_fn(uri, offset, buffer, nbytes, 0, &nbytes_read);
+  }
 
   // Avoid a read if the requested buffer can be read from the
   // read cache. Note that we intentionally do not use a read
@@ -1236,23 +1259,24 @@ Status VFS::read_ahead_impl(
   // system's file system to cache readahead data in memory.
   // Additionally, we do not perform readahead with HDFS.
   bool success;
-  RETURN_NOT_OK(read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
-  if (success)
-    return Status::Ok();
+  throw_if_not_ok(
+      read_ahead_cache_->read(uri, offset, buffer, nbytes, &success));
+  if (success) {
+    return;
+  }
 
   // We will read directly into the read-ahead buffer and then copy
   // the subrange of this buffer back to the user to satisfy the
   // read request.
   Buffer ra_buffer;
-  RETURN_NOT_OK(ra_buffer.realloc(vfs_params_.read_ahead_size_));
+  throw_if_not_ok(ra_buffer.realloc(vfs_params_.read_ahead_size_));
 
   // Calculate the exact number of bytes to populate `ra_buffer`
   // with `vfs_params_.read_ahead_size_` bytes.
   const uint64_t ra_nbytes = vfs_params_.read_ahead_size_ - nbytes;
 
   // Read into `ra_buffer`.
-  RETURN_NOT_OK(
-      read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read));
+  read_fn(uri, offset, ra_buffer.data(), nbytes, ra_nbytes, &nbytes_read);
 
   // Copy the requested read range back into the caller's output `buffer`.
   assert(nbytes_read >= nbytes);
@@ -1260,9 +1284,7 @@ Status VFS::read_ahead_impl(
 
   // Cache `ra_buffer` at `offset`.
   ra_buffer.set_size(nbytes_read);
-  RETURN_NOT_OK(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
-
-  return Status::Ok();
+  throw_if_not_ok(read_ahead_cache_->insert(uri, offset, std::move(ra_buffer)));
 }
 
 bool VFS::supports_fs(Filesystem fs) const {
@@ -1288,7 +1310,8 @@ Status VFS::sync(const URI& uri) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
 #else
-    return posix_.sync(uri);
+    posix_.sync(uri);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1378,7 +1401,8 @@ Status VFS::close_file(const URI& uri) {
 #ifdef _WIN32
     return win_.sync(uri.to_path());
 #else
-    return posix_.sync(uri);
+    posix_.sync(uri);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1439,7 +1463,8 @@ Status VFS::write(
 #ifdef _WIN32
     return win_.write(uri.to_path(), buffer, buffer_size);
 #else
-    return posix_.write(uri, buffer, buffer_size);
+    posix_.write(uri, buffer, buffer_size);
+    return Status::Ok();
 #endif
   }
   if (uri.is_hdfs()) {
@@ -1451,7 +1476,8 @@ Status VFS::write(
   }
   if (uri.is_s3()) {
 #ifdef HAVE_S3
-    return s3().write(uri, buffer, buffer_size, remote_global_order_write);
+    s3().write(uri, buffer, buffer_size, remote_global_order_write);
+    return Status::Ok();
 #else
     throw BuiltWithout("S3");
 #endif

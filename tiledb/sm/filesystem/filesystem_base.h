@@ -33,12 +33,19 @@
 #ifndef TILEDB_FILESYSTEMBASE_H
 #define TILEDB_FILESYSTEMBASE_H
 
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "uri.h"
 
 #include <vector>
 
 namespace tiledb::sm {
+class IOError : public StatusException {
+ public:
+  explicit IOError(const std::string& message)
+      : StatusException("IO Error", message) {
+  }
+};
 
 class FilesystemBase {
  public:
@@ -54,17 +61,15 @@ class FilesystemBase {
    *   just succeeds without doing anything.
    *
    * @param uri The URI of the directory.
-   * @return Status
    */
-  virtual Status create_dir(const URI& uri) const = 0;
+  virtual void create_dir(const URI& uri) const = 0;
 
   /**
    * Creates an empty file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  virtual Status touch(const URI& uri) const = 0;
+  virtual void touch(const URI& uri) const = 0;
 
   /**
    * Checks if a directory exists.
@@ -86,26 +91,23 @@ class FilesystemBase {
    * Removes a given directory (recursive)
    *
    * @param uri The uri of the directory to be removed
-   * @return Status
    */
-  virtual Status remove_dir(const URI& uri) const = 0;
+  virtual void remove_dir(const URI& uri) const = 0;
 
   /**
    * Deletes a file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  virtual Status remove_file(const URI& uri) const = 0;
+  virtual void remove_file(const URI& uri) const = 0;
 
   /**
    * Retrieves the size of a file.
    *
    * @param uri The URI of the file.
    * @param size The file size to be retrieved.
-   * @return Status
    */
-  virtual Status file_size(const URI& uri, uint64_t* size) const = 0;
+  virtual void file_size(const URI& uri, uint64_t* size) const = 0;
 
   /**
    * Retrieves all the entries contained in the parent.
@@ -122,9 +124,8 @@ class FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  virtual Status move_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void move_file(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Renames a directory.
@@ -132,9 +133,8 @@ class FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  virtual Status move_dir(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void move_dir(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Copies a file.
@@ -142,9 +142,8 @@ class FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  virtual Status copy_file(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void copy_file(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Copies directory.
@@ -152,9 +151,8 @@ class FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  virtual Status copy_dir(const URI& old_uri, const URI& new_uri) = 0;
+  virtual void copy_dir(const URI& old_uri, const URI& new_uri) = 0;
 
   /**
    * Reads from a file.
@@ -164,9 +162,8 @@ class FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
    */
-  virtual Status read(
+  virtual void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
@@ -177,9 +174,8 @@ class FilesystemBase {
    * Syncs (flushes) a file. Note that for S3 this is a noop.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  virtual Status sync(const URI& uri) = 0;
+  virtual void sync(const URI& uri) = 0;
 
   /**
    * Writes the contents of a buffer into a file.
@@ -188,9 +184,8 @@ class FilesystemBase {
    * @param buffer The buffer to write from.
    * @param buffer_size The buffer size.
    * @param remote_global_order_write Remote global order write
-   * @return Status
    */
-  virtual Status write(
+  virtual void write(
       const URI& uri,
       const void* buffer,
       uint64_t buffer_size,
@@ -200,43 +195,38 @@ class FilesystemBase {
    * Checks if an object store bucket exists.
    *
    * @param uri The name of the object store bucket.
-   * @param is_bucket Set to `true` if the bucket exists and `false` otherwise.
-   * @return Status
+   * @return True if the bucket exists, false otherwise.
    */
-  virtual Status is_bucket(const URI& uri, bool* is_bucket) const = 0;
+  virtual bool is_bucket(const URI& uri) const = 0;
 
   /**
    * Checks if an object-store bucket is empty.
    *
    * @param uri The name of the object store bucket.
-   * @param is_empty Set to `true` if the bucket is empty and `false` otherwise.
-   * @return Status
+   * @return True if the bucket is empty, false otherwise.
    */
-  virtual Status is_empty_bucket(const URI& uri, bool* is_empty) const = 0;
+  virtual bool is_empty_bucket(const URI& uri) const = 0;
 
   /**
    * Creates an object store bucket.
    *
    * @param uri The name of the bucket to be created.
-   * @return Status
    */
-  virtual Status create_bucket(const URI& uri) const = 0;
+  virtual void create_bucket(const URI& uri) const = 0;
 
   /**
    * Deletes an object store bucket.
    *
    * @param uri The name of the bucket to be deleted.
-   * @return Status
    */
-  virtual Status remove_bucket(const URI& uri) const = 0;
+  virtual void remove_bucket(const URI& uri) const = 0;
 
   /**
    * Deletes the contents of an object store bucket.
    *
    * @param uri The name of the bucket to be emptied.
-   * @return Status
    */
-  virtual Status empty_bucket(const URI& uri) const = 0;
+  virtual void empty_bucket(const URI& uri) const = 0;
 };
 
 }  // namespace tiledb::sm

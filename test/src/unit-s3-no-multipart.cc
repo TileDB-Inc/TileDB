@@ -62,33 +62,30 @@ struct S3DirectFx {
 
 S3DirectFx::S3DirectFx() {
   // Create bucket
-  bool exists;
-  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  bool exists = s3_.is_bucket(S3_BUCKET);
   if (exists)
-    REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+    REQUIRE_NOTHROW(s3_.remove_bucket(S3_BUCKET));
 
-  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  exists = s3_.is_bucket(S3_BUCKET);
   REQUIRE(!exists);
-  REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+  REQUIRE_NOTHROW(s3_.create_bucket(S3_BUCKET));
 
   // Check if bucket is empty
-  bool is_empty;
-  REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
   CHECK(is_empty);
 }
 
 S3DirectFx::~S3DirectFx() {
   // Empty bucket
-  bool is_empty;
-  CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
   if (!is_empty) {
-    CHECK(s3_.empty_bucket(S3_BUCKET).ok());
-    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK_NOTHROW(s3_.empty_bucket(S3_BUCKET));
+    is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(is_empty);
   }
 
   // Delete bucket
-  CHECK(s3_.remove_bucket(S3_BUCKET).ok());
+  CHECK_NOTHROW(s3_.remove_bucket(S3_BUCKET));
   CHECK(s3_.disconnect().ok());
 }
 
@@ -124,10 +121,12 @@ TEST_CASE_METHOD(
 
   // Write to two files
   auto largefile = TEST_DIR + "largefile";
-  CHECK(s3_.write(URI(largefile), write_buffer, buffer_size).ok());
-  CHECK(s3_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  CHECK_NOTHROW(s3_.write(URI(largefile), write_buffer, buffer_size));
+  CHECK_NOTHROW(
+      s3_.write(URI(largefile), write_buffer_small, buffer_size_small));
   auto smallfile = TEST_DIR + "smallfile";
-  CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+  CHECK_NOTHROW(
+      s3_.write(URI(smallfile), write_buffer_small, buffer_size_small));
 
   // Before flushing, the files do not exist
   bool exists = false;
@@ -156,7 +155,8 @@ TEST_CASE_METHOD(
   // Read from the beginning
   auto read_buffer = new char[26];
   uint64_t bytes_read = 0;
-  CHECK(s3_.read_impl(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK_NOTHROW(
+      s3_.read_impl(URI(largefile), 0, read_buffer, 26, 0, &bytes_read));
   assert(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
@@ -168,8 +168,8 @@ TEST_CASE_METHOD(
   CHECK(allok);
 
   // Read from a different offset
-  CHECK(
-      s3_.read_impl(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK_NOTHROW(
+      s3_.read_impl(URI(largefile), 11, read_buffer, 26, 0, &bytes_read));
   assert(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
@@ -183,7 +183,7 @@ TEST_CASE_METHOD(
   // Try to write 11 MB file, should fail with given buffer configuration
   auto badfile = TEST_DIR + "badfile";
   auto badbuffer = (char*)malloc(11000000);
-  CHECK(!(s3_.write(URI(badfile), badbuffer, 11000000).ok()));
+  CHECK_THROWS((s3_.write(URI(badfile), badbuffer, 11000000)));
 }
 
 TEST_CASE_METHOD(
@@ -200,9 +200,8 @@ TEST_CASE_METHOD(
   tiledb::sm::S3 s3{&g_helper_stats, &thread_pool_, cfg};
   auto uri = URI(TEST_DIR + "writefailure");
 
-  // This is a buffered write, which is why it returns ok.
-  auto st = s3.write(uri, "Validate s3 custom headers", 26);
-  REQUIRE(st.ok());
+  // This is a buffered write, which is why it should not throw.
+  CHECK_NOTHROW(s3.write(uri, "Validate s3 custom headers", 26));
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The Content-Md5 you specified is not valid.");

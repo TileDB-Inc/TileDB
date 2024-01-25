@@ -134,7 +134,7 @@ TEST_CASE("VFS: Test long posix paths", "[vfs]") {
     REQUIRE(vfs_long_path_pos.is_file(testfile, &exists).ok());
 
     // Creating the file is not
-    REQUIRE(!vfs_long_path_pos.touch(testfile).ok());
+    REQUIRE_THROWS(vfs_long_path_pos.touch(testfile));
   }
 
   REQUIRE(vfs_long_path_pos.remove_dir(URI(tmpdir_base)).ok());

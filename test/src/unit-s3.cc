@@ -63,33 +63,30 @@ struct S3Fx {
 
 S3Fx::S3Fx() {
   // Create bucket
-  bool exists;
-  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  bool exists = s3_.is_bucket(S3_BUCKET);
   if (exists)
-    REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+    REQUIRE_NOTHROW(s3_.remove_bucket(S3_BUCKET));
 
-  REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+  exists = s3_.is_bucket(S3_BUCKET);
   REQUIRE(!exists);
-  REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+  REQUIRE_NOTHROW(s3_.create_bucket(S3_BUCKET));
 
   // Check if bucket is empty
-  bool is_empty;
-  REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
   CHECK(is_empty);
 }
 
 S3Fx::~S3Fx() {
   // Empty bucket
-  bool is_empty;
-  CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
   if (!is_empty) {
-    CHECK(s3_.empty_bucket(S3_BUCKET).ok());
-    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    CHECK_NOTHROW(s3_.empty_bucket(S3_BUCKET));
+    is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(is_empty);
   }
 
   // Delete bucket
-  CHECK(s3_.remove_bucket(S3_BUCKET).ok());
+  CHECK_NOTHROW(s3_.remove_bucket(S3_BUCKET));
   CHECK(s3_.disconnect().ok());
 }
 
@@ -125,30 +122,29 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   auto file6 = TEST_DIR + "file6";
 
   // Check that bucket is empty
-  bool is_empty;
-  CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
   CHECK(is_empty);
 
   // Continue building the hierarchy
   bool exists = false;
-  CHECK(s3_.touch(URI(file1)).ok());
+  CHECK_NOTHROW(s3_.touch(URI(file1)));
   CHECK(s3_.is_object(URI(file1), &exists).ok());
   CHECK(exists);
-  CHECK(s3_.touch(URI(file2)).ok());
+  CHECK_NOTHROW(s3_.touch(URI(file2)));
   CHECK(s3_.is_object(URI(file2), &exists).ok());
   CHECK(exists);
-  CHECK(s3_.touch(URI(file3)).ok());
+  CHECK_NOTHROW(s3_.touch(URI(file3)));
   CHECK(s3_.is_object(URI(file3), &exists).ok());
   CHECK(exists);
-  CHECK(s3_.touch(URI(file4)).ok());
+  CHECK_NOTHROW(s3_.touch(URI(file4)));
   CHECK(s3_.is_object(URI(file4), &exists).ok());
   CHECK(exists);
-  CHECK(s3_.touch(URI(file5)).ok());
+  CHECK_NOTHROW(s3_.touch(URI(file5)));
   CHECK(s3_.is_object(URI(file5), &exists).ok());
   CHECK(exists);
 
   // Check that the bucket is not empty
-  CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+  is_empty = s3_.is_empty_bucket(S3_BUCKET);
   CHECK(!is_empty);
 
   // Check invalid file
@@ -182,7 +178,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
 
   // ls_with_sizes
   std::string s = "abcdef";
-  CHECK(s3_.write(URI(file3), s.data(), s.size()).ok());
+  CHECK_NOTHROW(s3_.write(URI(file3), s.data(), s.size()));
   CHECK(s3_.flush_object(URI(file3)).ok());
 
   auto&& [status, rv] = s3_.ls_with_sizes(URI(dir));
@@ -208,7 +204,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(paths.size() == 5);
 
   // Move directory
-  CHECK(s3_.move_dir(URI(dir), URI(dir2)).ok());
+  CHECK_NOTHROW(s3_.move_dir(URI(dir), URI(dir2)));
   CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
   CHECK(!is_dir);
   CHECK(s3_.is_dir(URI(dir2), &is_dir).ok());
@@ -223,7 +219,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
   CHECK(!exists);
 
   // Remove directories
-  CHECK(s3_.remove_dir(URI(dir2)).ok());
+  CHECK_NOTHROW(s3_.remove_dir(URI(dir2)));
   CHECK(s3_.is_object(URI(file1), &exists).ok());
   CHECK(!exists);
   CHECK(s3_.is_object(URI(file2), &exists).ok());
@@ -245,10 +241,12 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
 
   // Write to two files
   auto largefile = TEST_DIR + "largefile";
-  CHECK(s3_.write(URI(largefile), write_buffer, buffer_size).ok());
-  CHECK(s3_.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  CHECK_NOTHROW(s3_.write(URI(largefile), write_buffer, buffer_size));
+  CHECK_NOTHROW(
+      s3_.write(URI(largefile), write_buffer_small, buffer_size_small));
   auto smallfile = TEST_DIR + "smallfile";
-  CHECK(s3_.write(URI(smallfile), write_buffer_small, buffer_size_small).ok());
+  CHECK_NOTHROW(
+      s3_.write(URI(smallfile), write_buffer_small, buffer_size_small));
 
   // Before flushing, the files do not exist
   bool exists = false;
@@ -277,7 +275,8 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
   // Read from the beginning
   auto read_buffer = new char[26];
   uint64_t bytes_read = 0;
-  CHECK(s3_.read_impl(URI(largefile), 0, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK_NOTHROW(
+      s3_.read_impl(URI(largefile), 0, read_buffer, 26, 0, &bytes_read));
   CHECK(26 == bytes_read);
   bool allok = true;
   for (int i = 0; i < 26; i++) {
@@ -289,8 +288,8 @@ TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
   CHECK(allok);
 
   // Read from a different offset
-  CHECK(
-      s3_.read_impl(URI(largefile), 11, read_buffer, 26, 0, &bytes_read).ok());
+  CHECK_NOTHROW(
+      s3_.read_impl(URI(largefile), 11, read_buffer, 26, 0, &bytes_read));
   CHECK(26 == bytes_read);
   allok = true;
   for (int i = 0; i < 26; i++) {
@@ -316,7 +315,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     // Write one large file, the write will fail
     auto largefile =
         TEST_DIR + "failed_largefile_" + std::to_string(nth_failure);
-    CHECK(!s3_.write(URI(largefile), write_buffer, buffer_size).ok());
+    CHECK_THROWS(s3_.write(URI(largefile), write_buffer, buffer_size));
 
     // Before flushing, the file does not exist
     bool exists = false;
@@ -368,18 +367,16 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use BucketCannedACL", "[s3]") {
     tiledb::sm::S3 s3_{&g_helper_stats, &thread_pool_, config};
 
     // Create bucket
-    bool exists;
-    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    bool exists = s3_.is_bucket(S3_BUCKET);
     if (exists)
-      REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+      REQUIRE_NOTHROW(s3_.remove_bucket(S3_BUCKET));
 
-    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    exists = s3_.is_bucket(S3_BUCKET);
     REQUIRE(!exists);
-    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+    REQUIRE_NOTHROW(s3_.create_bucket(S3_BUCKET));
 
     // Check if bucket is empty
-    bool is_empty;
-    REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(is_empty);
 
     CHECK(s3_.disconnect().ok());
@@ -423,30 +420,29 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     auto file6 = TEST_DIR + "file6";
 
     // Check that bucket is empty
-    bool is_empty;
-    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(is_empty);
 
     // Continue building the hierarchy
     bool exists = false;
-    CHECK(s3_.touch(URI(file1)).ok());
+    CHECK_NOTHROW(s3_.touch(URI(file1)));
     CHECK(s3_.is_object(URI(file1), &exists).ok());
     CHECK(exists);
-    CHECK(s3_.touch(URI(file2)).ok());
+    CHECK_NOTHROW(s3_.touch(URI(file2)));
     CHECK(s3_.is_object(URI(file2), &exists).ok());
     CHECK(exists);
-    CHECK(s3_.touch(URI(file3)).ok());
+    CHECK_NOTHROW(s3_.touch(URI(file3)));
     CHECK(s3_.is_object(URI(file3), &exists).ok());
     CHECK(exists);
-    CHECK(s3_.touch(URI(file4)).ok());
+    CHECK_NOTHROW(s3_.touch(URI(file4)));
     CHECK(s3_.is_object(URI(file4), &exists).ok());
     CHECK(exists);
-    CHECK(s3_.touch(URI(file5)).ok());
+    CHECK_NOTHROW(s3_.touch(URI(file5)));
     CHECK(s3_.is_object(URI(file5), &exists).ok());
     CHECK(exists);
 
     // Check that the bucket is not empty
-    CHECK(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(!is_empty);
 
     // Check invalid file
@@ -489,7 +485,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     CHECK(paths.size() == 5);
 
     // Move directory
-    CHECK(s3_.move_dir(URI(dir), URI(dir2)).ok());
+    CHECK_NOTHROW(s3_.move_dir(URI(dir), URI(dir2)));
     CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
     CHECK(!is_dir);
     CHECK(s3_.is_dir(URI(dir2), &is_dir).ok());
@@ -504,7 +500,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     CHECK(!exists);
 
     // Remove directories
-    CHECK(s3_.remove_dir(URI(dir2)).ok());
+    CHECK_NOTHROW(s3_.remove_dir(URI(dir2)));
     CHECK(s3_.is_object(URI(file1), &exists).ok());
     CHECK(!exists);
     CHECK(s3_.is_object(URI(file2), &exists).ok());
@@ -522,18 +518,16 @@ TEST_CASE_METHOD(S3Fx, "Test S3 use Bucket/Object CannedACL", "[s3]") {
     tiledb::sm::S3 s3_{&g_helper_stats, &thread_pool_, config};
 
     // Create bucket
-    bool exists;
-    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    bool exists = s3_.is_bucket(S3_BUCKET);
     if (exists)
-      REQUIRE(s3_.remove_bucket(S3_BUCKET).ok());
+      REQUIRE_NOTHROW(s3_.remove_bucket(S3_BUCKET));
 
-    REQUIRE(s3_.is_bucket(S3_BUCKET, &exists).ok());
+    exists = s3_.is_bucket(S3_BUCKET);
     REQUIRE(!exists);
-    REQUIRE(s3_.create_bucket(S3_BUCKET).ok());
+    REQUIRE_NOTHROW(s3_.create_bucket(S3_BUCKET));
 
     // Check if bucket is empty
-    bool is_empty;
-    REQUIRE(s3_.is_empty_bucket(S3_BUCKET, &is_empty).ok());
+    bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
     CHECK(is_empty);
 
     exercise_object_canned_acl();

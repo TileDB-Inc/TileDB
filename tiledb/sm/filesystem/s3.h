@@ -586,25 +586,31 @@ class S3 : FilesystemBase {
    * Creates a bucket.
    *
    * @param bucket The name of the bucket to be created.
-   * @return Status
    */
-  Status create_bucket(const URI& bucket) const override;
+  void create_bucket(const URI& bucket) const override;
 
-  /** Removes the contents of an S3 bucket. */
-  Status empty_bucket(const URI& bucket) const override;
+  /**
+   * Removes the contents of an S3 bucket.
+   *
+   * @param bucket The URI of the bucket to be emptied.
+   */
+  void empty_bucket(const URI& bucket) const override;
 
-  /** Checks if a bucket is empty. */
-  Status is_empty_bucket(const URI& bucket, bool* is_empty) const override;
+  /**
+   * Checks if a bucket is empty.
+   *
+   * @param bucket The URI of the bucket.
+   * @return True if the bucket is empty, false otherwise.
+   */
+  bool is_empty_bucket(const URI& bucket) const override;
 
   /**
    * Check if a bucket exists.
    *
    * @param bucket The name of the bucket.
-   * @param exists Mutates to `true` if `uri` is an existing bucket,
-   *   and `false` otherwise.
-   * @return Status
+   * @return True if the bucket exists, false otherwise.
    */
-  Status is_bucket(const URI& uri, bool* exists) const override;
+  bool is_bucket(const URI& uri) const override;
 
   /**
    * Renames a directory. Note that this is an expensive operation.
@@ -614,27 +620,24 @@ class S3 : FilesystemBase {
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status move_dir(const URI& old_uri, const URI& new_uri) override;
+  void move_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies a file.
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status copy_file(const URI& old_uri, const URI& new_uri) override;
+  void copy_file(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Copies a directory. All subdirectories and files are copied.
    *
    * @param old_uri The URI of the old path.
    * @param new_uri The URI of the new path.
-   * @return Status
    */
-  Status copy_dir(const URI& old_uri, const URI& new_uri) override;
+  void copy_dir(const URI& old_uri, const URI& new_uri) override;
 
   /**
    * Reads from a file.
@@ -644,9 +647,8 @@ class S3 : FilesystemBase {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
    */
-  Status read(
+  void read(
       const URI& uri,
       uint64_t offset,
       void* buffer,
@@ -657,9 +659,8 @@ class S3 : FilesystemBase {
    * Deletes a bucket.
    *
    * @param bucket The name of the bucket to be deleted.
-   * @return Status
    */
-  Status remove_bucket(const URI& bucket) const override;
+  void remove_bucket(const URI& bucket) const override;
 
   /**
    * Deletes all objects with prefix `prefix/` (if the ending `/` does not
@@ -683,17 +684,15 @@ class S3 : FilesystemBase {
    * there is not object with prefix "s3://some_bucket/foo2/" in this example.
    *
    * @param prefix The prefix of the objects to be deleted.
-   * @return Status
    */
-  Status remove_dir(const URI& prefix) const override;
+  void remove_dir(const URI& prefix) const override;
 
   /**
    * Creates an empty object.
    *
    * @param uri The URI of the object to be created.
-   * @return Status
    */
-  Status touch(const URI& uri) const override;
+  void touch(const URI& uri) const override;
 
   /**
    * Writes the input buffer to an S3 object. Note that this is essentially
@@ -703,9 +702,8 @@ class S3 : FilesystemBase {
    * @param buffer The input buffer.
    * @param length The size of the input buffer.
    * @param remote_global_order_write
-   * @return Status
    */
-  Status write(
+  void write(
       const URI& uri,
       const void* buffer,
       uint64_t length,
@@ -719,10 +717,9 @@ class S3 : FilesystemBase {
    *   just succeeds without doing anything.
    *
    * @param uri The URI of the directory.
-   * @return Status
    */
-  Status create_dir(const URI&) const override {
-    return Status::Ok();
+  void create_dir(const URI&) const override {
+    // No-op for S3.
   }
 
   /**
@@ -741,10 +738,9 @@ class S3 : FilesystemBase {
    * Deletes a file.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  Status remove_file(const URI& uri) const override {
-    return remove_object(uri);
+  void remove_file(const URI& uri) const override {
+    throw_if_not_ok(remove_object(uri));
   }
 
   /**
@@ -752,10 +748,9 @@ class S3 : FilesystemBase {
    *
    * @param uri The URI of the file.
    * @param size The file size to be retrieved.
-   * @return Status
    */
-  Status file_size(const URI& uri, uint64_t* size) const override {
-    return object_size(uri, size);
+  void file_size(const URI& uri, uint64_t* size) const override {
+    throw_if_not_ok(object_size(uri, size));
   }
 
   /**
@@ -764,20 +759,18 @@ class S3 : FilesystemBase {
    *
    * @param old_uri The old URI.
    * @param new_uri The new URI.
-   * @return Status
    */
-  Status move_file(const URI& old_uri, const URI& new_uri) override {
-    return move_object(old_uri, new_uri);
+  void move_file(const URI& old_uri, const URI& new_uri) override {
+    throw_if_not_ok(move_object(old_uri, new_uri));
   }
 
   /**
    * Syncs (flushes) a file. Note that for S3 this is a noop.
    *
    * @param uri The URI of the file.
-   * @return Status
    */
-  Status sync(const URI&) override {
-    return Status::Ok();
+  void sync(const URI&) override {
+    // No-op for S3.
   }
 
   /**
@@ -962,7 +955,7 @@ class S3 : FilesystemBase {
    * @param new_uri The URI of the new path.
    * @return Status
    */
-  Status move_object(const URI& old_uri, const URI& new_uri);
+  Status move_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Returns the size of the input object with a given URI in bytes.
@@ -982,9 +975,8 @@ class S3 : FilesystemBase {
    * @param length The size of the data to be read from the object.
    * @param read_ahead_length The additional length to read ahead.
    * @param length_returned Returns the total length read into `buffer`.
-   * @return Status
    */
-  Status read_impl(
+  void read_impl(
       const URI& uri,
       off_t offset,
       void* buffer,
@@ -1423,7 +1415,7 @@ class S3 : FilesystemBase {
    * @param new_uri The newly created object.
    * @return Status
    */
-  Status copy_object(const URI& old_uri, const URI& new_uri);
+  Status copy_object(const URI& old_uri, const URI& new_uri) const;
 
   /**
    * Fills the file buffer (given as an input `Buffer` object) from the

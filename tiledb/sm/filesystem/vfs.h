@@ -939,10 +939,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param buffer The buffer to read into.
    * @param nbytes Number of bytes to read.
    * @param use_read_ahead Whether to use the read-ahead cache.
-   * @return Status
    */
-  Status read_ahead_impl(
-      const std::function<Status(
+  void read_ahead_impl(
+      const std::function<void(
           const URI&, off_t, void*, uint64_t, uint64_t, uint64_t*)>& read_fn,
       const URI& uri,
       const uint64_t offset,

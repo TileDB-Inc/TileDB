@@ -70,35 +70,32 @@ Posix::Posix(const Config& config) {
   directory_permissions_ = std::strtol(permissions.c_str(), nullptr, 8);
 }
 
-Status Posix::create_dir(const URI& uri) const {
+void Posix::create_dir(const URI& uri) const {
   // If the directory does not exist, create it
   auto path = uri.to_path();
   if (is_dir(uri)) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot create directory '") + path +
-        "'; Directory already exists"));
+        "'; Directory already exists");
   }
 
   if (mkdir(path.c_str(), directory_permissions_) != 0) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot create directory '") + path + "'; " +
-        strerror(errno)));
+        strerror(errno));
   }
-  return Status::Ok();
 }
 
-Status Posix::touch(const URI& uri) const {
+void Posix::touch(const URI& uri) const {
   auto filename = uri.to_path();
 
   int fd =
       ::open(filename.c_str(), O_WRONLY | O_CREAT | O_SYNC, file_permissions_);
   if (fd == -1 || ::close(fd) != 0) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Failed to create file '") + filename + "'; " +
-        strerror(errno)));
+        strerror(errno));
   }
-
-  return Status::Ok();
 }
 
 bool Posix::is_dir(const URI& uri) const {
@@ -113,31 +110,29 @@ bool Posix::is_file(const URI& uri) const {
   return (stat(uri.to_path().c_str(), &st) == 0) && !S_ISDIR(st.st_mode);
 }
 
-Status Posix::remove_dir(const URI& uri) const {
+void Posix::remove_dir(const URI& uri) const {
   auto path = uri.to_path();
   int rc = nftw(path.c_str(), unlink_cb, 64, FTW_DEPTH | FTW_PHYS);
-  if (rc)
-    return LOG_STATUS(Status_IOError(
+  if (rc) {
+    throw IOError(
         std::string("Failed to delete path '") + path + "';  " +
-        strerror(errno)));
-  return Status::Ok();
+        strerror(errno));
+  }
 }
 
-Status Posix::remove_file(const URI& uri) const {
+void Posix::remove_file(const URI& uri) const {
   auto path = uri.to_path();
   if (remove(path.c_str()) != 0) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot delete file '") + path + "'; " + strerror(errno)));
+    throw IOError(
+        std::string("Cannot delete file '") + path + "'; " + strerror(errno));
   }
-  return Status::Ok();
 }
 
-Status Posix::file_size(const URI& uri, uint64_t* size) const {
+void Posix::file_size(const URI& uri, uint64_t* size) const {
   auto path = uri.to_path();
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(Status_IOError(
-        "Cannot get file size of '" + path + "'; " + strerror(errno)));
+    throw IOError("Cannot get file size of '" + path + "'; " + strerror(errno));
   }
 
   struct stat st;
@@ -145,34 +140,30 @@ Status Posix::file_size(const URI& uri, uint64_t* size) const {
   *size = (uint64_t)st.st_size;
 
   close(fd);
-  return Status::Ok();
 }
 
-Status Posix::move_file(const URI& old_path, const URI& new_path) {
+void Posix::move_file(const URI& old_path, const URI& new_path) {
   if (rename(old_path.to_path().c_str(), new_path.to_path().c_str()) != 0) {
-    return LOG_STATUS(
-        Status_IOError(std::string("Cannot move path: ") + strerror(errno)));
+    throw IOError(std::string("Cannot move path: ") + strerror(errno));
   }
-  return Status::Ok();
 }
 
-Status Posix::move_dir(const URI& old_uri, const URI& new_uri) {
-  return move_file(old_uri, new_uri);
+void Posix::move_dir(const URI& old_uri, const URI& new_uri) {
+  move_file(old_uri, new_uri);
 }
 
-Status Posix::copy_file(const URI& old_uri, const URI& new_uri) {
+void Posix::copy_file(const URI& old_uri, const URI& new_uri) {
   std::ifstream src(old_uri.to_path(), std::ios::binary);
   std::ofstream dst(new_uri.to_path(), std::ios::binary);
   dst << src.rdbuf();
-  return Status::Ok();
 }
 
-Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
+void Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
   auto old_path = old_uri.to_path();
   auto new_path = new_uri.to_path();
-  RETURN_NOT_OK(create_dir(new_uri));
+  create_dir(new_uri);
   std::vector<std::string> paths;
-  RETURN_NOT_OK(ls(old_path, &paths));
+  throw_if_not_ok(ls(old_path, &paths));
 
   std::queue<std::string> path_queue;
   for (auto& path : paths)
@@ -184,22 +175,20 @@ Status Posix::copy_dir(const URI& old_uri, const URI& new_uri) {
     path_queue.pop();
 
     if (is_dir(URI(file_name_abs))) {
-      RETURN_NOT_OK(create_dir(URI(new_path + "/" + file_name)));
+      create_dir(URI(new_path + "/" + file_name));
       std::vector<std::string> child_paths;
-      RETURN_NOT_OK(ls(file_name_abs, &child_paths));
+      throw_if_not_ok(ls(file_name_abs, &child_paths));
       for (auto& path : child_paths)
         path_queue.emplace(std::move(path));
     } else {
       assert(is_file(URI(file_name_abs)));
-      RETURN_NOT_OK(copy_file(
-          URI(old_path + "/" + file_name), URI(new_path + "/" + file_name)));
+      copy_file(
+          URI(old_path + "/" + file_name), URI(new_path + "/" + file_name));
     }
   }
-
-  return Status::Ok();
 }
 
-Status Posix::read(
+void Posix::read(
     const URI& uri,
     uint64_t offset,
     void* buffer,
@@ -208,37 +197,34 @@ Status Posix::read(
   // Checks
   auto path = uri.to_path();
   uint64_t file_size;
-  RETURN_NOT_OK(this->file_size(URI(path), &file_size));
+  this->file_size(URI(path), &file_size);
   if (offset + nbytes > file_size)
-    return LOG_STATUS(
-        Status_IOError("Cannot read from file; Read exceeds file size"));
+    throw IOError("Cannot read from file; Read exceeds file size");
 
   // Open file
   int fd = open(path.c_str(), O_RDONLY);
   if (fd == -1) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot read from file; ") + strerror(errno)));
+    throw IOError(std::string("Cannot read from file; ") + strerror(errno));
   }
   if (offset > static_cast<uint64_t>(std::numeric_limits<off_t>::max())) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot read from file ' ") + path.c_str() +
-        "'; offset > typemax(off_t)"));
+        "'; offset > typemax(off_t)");
   }
   if (nbytes > SSIZE_MAX) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot read from file ' ") + path +
-        "'; nbytes > SSIZE_MAX"));
+        "'; nbytes > SSIZE_MAX");
   }
-  Status st = read_all(fd, buffer, nbytes, offset);
+  throw_if_not_ok(read_all(fd, buffer, nbytes, offset));
   // Close file
   if (close(fd)) {
     LOG_STATUS_NO_RETURN_VALUE(
         Status_IOError(std::string("Cannot close file; ") + strerror(errno)));
   }
-  return st;
 }
 
-Status Posix::sync(const URI& uri) {
+void Posix::sync(const URI& uri) {
   auto path = uri.to_path();
 
   // Open file
@@ -247,34 +233,32 @@ Status Posix::sync(const URI& uri) {
     fd = open(path.c_str(), O_RDONLY, directory_permissions_);
   } else if (is_file(URI(path))) {  // FILE
     fd = open(path.c_str(), O_WRONLY | O_APPEND | O_CREAT, file_permissions_);
-  } else
-    return Status_Ok();  // If file does not exist, exit
+  } else {
+    return;  // If file does not exist, exit
+  }
 
   // Handle error
   if (fd == -1) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot open file '") + path + "' for syncing; " +
-        strerror(errno)));
+        strerror(errno));
   }
 
   // Sync
   if (fsync(fd) != 0) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot sync file '") + path + "'; " + strerror(errno)));
+    throw IOError(
+        std::string("Cannot sync file '") + path + "'; " + strerror(errno));
   }
 
   // Close file
   if (close(fd) != 0) {
-    return LOG_STATUS(Status_IOError(
+    throw IOError(
         std::string("Cannot close synced file '") + path + "'; " +
-        strerror(errno)));
+        strerror(errno));
   }
-
-  // Success
-  return Status::Ok();
 }
 
-Status Posix::write(
+void Posix::write(
     const URI& uri,
     const void* buffer,
     uint64_t buffer_size,
@@ -298,19 +282,14 @@ Status Posix::write(
   Status st;
   uint64_t file_offset = 0;
   if (is_file(URI(path))) {
-    st = file_size(URI(path), &file_offset);
-    if (!st.ok()) {
-      std::stringstream errmsg;
-      errmsg << "Cannot write to file '" << path << "'; " << st.message();
-      return LOG_STATUS(Status_IOError(errmsg.str()));
-    }
+    file_size(URI(path), &file_offset);
   }
 
   // Open or create file.
   int fd = open(path.c_str(), O_WRONLY | O_CREAT, file_permissions_);
   if (fd == -1) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot open file '") + path + "'; " + strerror(errno)));
+    throw IOError(
+        std::string("Cannot open file '") + path + "'; " + strerror(errno));
   }
 
   st = write_at(fd, file_offset, buffer, buffer_size);
@@ -318,13 +297,12 @@ Status Posix::write(
     close(fd);
     std::stringstream errmsg;
     errmsg << "Cannot write to file '" << path << "'; " << st.message();
-    return LOG_STATUS(Status_IOError(errmsg.str()));
+    throw IOError(errmsg.str());
   }
   if (close(fd) != 0) {
-    return LOG_STATUS(Status_IOError(
-        std::string("Cannot close file '") + path + "'; " + strerror(errno)));
+    throw IOError(
+        std::string("Cannot close file '") + path + "'; " + strerror(errno));
   }
-  return st;
 }
 
 tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
@@ -351,7 +329,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
       entries.emplace_back(abspath, 0, true);
     } else {
       uint64_t size;
-      RETURN_NOT_OK_TUPLE(file_size(URI(abspath), &size), nullopt);
+      file_size(URI(abspath), &size);
       entries.emplace_back(abspath, size, false);
     }
   }
