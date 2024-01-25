@@ -66,6 +66,7 @@ namespace tiledb {
 namespace sm {
 
 class Array;
+class OpenedArray;
 class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
@@ -247,60 +248,6 @@ class StorageManagerCanonical {
   group_open_for_writes(Group* group);
 
   /**
-   * Consolidates the fragments of an array into a single one.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config& config);
-
-  /**
-   * Consolidates the fragments of an array into a single one.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param fragment_uris URIs of the fragments to consolidate.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status fragments_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const std::vector<std::string> fragment_uris,
-      const Config& config);
-
-  /**
-   * Writes a consolidated commits file.
-   *
-   * @param write_version Write version.
-   * @param array_dir ArrayDirectory where the data is stored.
-   * @param commit_uris Commit files to include.
-   */
-  void write_consolidated_commits_file(
-      format_version_t write_version,
-      ArrayDirectory array_dir,
-      const std::vector<URI>& commit_uris);
-
-  /**
    * Cleans up the array data.
    *
    * @param array_name The name of the array whose data is to be deleted.
@@ -323,37 +270,6 @@ class StorageManagerCanonical {
    * @param group_name The name of the group whose data is to be deleted.
    */
   void delete_group(const char* group_name);
-
-  /**
-   * Cleans up the array, such as its consolidated fragments and array
-   * metadata. Note that this will coarsen the granularity of time traveling
-   * (see docs for more information).
-   *
-   * @param array_name The name of the array to be vacuumed.
-   * @param config Configuration parameters for vacuuming.
-   */
-  void array_vacuum(const char* array_name, const Config& config);
-
-  /**
-   * Consolidates the metadata of an array into a single file.
-   *
-   * @param array_name The name of the array whose metadata will be
-   *     consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_metadata_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config& config);
 
   /**
    * Creates a TileDB array storing its schema.
@@ -597,14 +513,14 @@ class StorageManagerCanonical {
   /**
    * Loads the delete and update conditions from storage.
    *
-   * @param array The array.
+   * @param opened_array The opened array.
    * @return Status, vector of the conditions, vector of the update values.
    */
   tuple<
       Status,
       optional<std::vector<QueryCondition>>,
       optional<std::vector<std::vector<UpdateValue>>>>
-  load_delete_and_update_conditions(const Array& array);
+  load_delete_and_update_conditions(const OpenedArray& opened_array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
@@ -844,24 +760,11 @@ class StorageManagerCanonical {
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
 
-  /**
-   * The condition variable for exlcusively locking arrays. This is used
-   * to wait for an array to be closed, before being exclusively locked
-   * by `array_xlock`.
-   */
-  std::condition_variable xlock_cv_;
-
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
-
-  /** Keeps track of which groups are open. */
-  std::set<Group*> open_groups_;
-
-  /** Mutex for managing open groups. */
-  std::mutex open_groups_mtx_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;

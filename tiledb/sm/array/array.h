@@ -59,6 +59,200 @@ class FragmentMetadata;
 enum class QueryType : uint8_t;
 
 /**
+ * Class to store opened array resources. The class is not C.41 compliant as the
+ * serialization code doesn't allow it. It needs to be refactored. This object
+ * will not change after the array as been opened though (see note below for the
+ * consolidation exception), so eventually we can make this object C.41
+ * compliant. That object allows queries or subarrays can take a reference to
+ * the resources which is going to be stored in a shared pointer and guarantee
+ * that the resources will be kept alive for the whole duration of the query.
+ *
+ * For consolidation, the opened array resources will be changed after the array
+ * is opened. The consolidator does load fragments separately once it figured
+ * out what it wants to consolidate. This is not an issue as we control the
+ * consolidator code and that code is built around that functionality.
+ */
+class OpenedArray {
+ public:
+  /* No default constructor. */
+  OpenedArray() = delete;
+
+  /**
+   * Construct a new Opened Array object.
+   *
+   * @param resources The context resources to use.
+   * @param array_uri The URI of the array.
+   * @param encryption_type Encryption type.
+   * @param key_bytes Encryption key data.
+   * @param key_length Encryption key length.
+   * @param timestamp_start Start timestamp used to load the array directory.
+   * @param timestamp_end_opened_at Timestamp at which the array was opened.
+   * @param is_remote Is the array remote?
+   */
+  OpenedArray(
+      ContextResources& resources,
+      const URI& array_uri,
+      EncryptionType encryption_type,
+      const void* key_bytes,
+      uint32_t key_length,
+      uint64_t timestamp_start,
+      uint64_t timestamp_end_opened_at,
+      bool is_remote)
+      : array_dir_(ArrayDirectory(resources, array_uri))
+      , array_schema_latest_(nullptr)
+      , metadata_()
+      , metadata_loaded_(false)
+      , non_empty_domain_computed_(false)
+      , encryption_key_(make_shared<EncryptionKey>(HERE()))
+      , timestamp_start_(timestamp_start)
+      , timestamp_end_opened_at_(timestamp_end_opened_at)
+      , is_remote_(is_remote) {
+    throw_if_not_ok(
+        encryption_key_->set_key(encryption_type, key_bytes, key_length));
+  }
+
+  /** Returns the array directory object. */
+  inline const ArrayDirectory& array_directory() const {
+    return array_dir_.value();
+  }
+
+  /** Sets the array directory. */
+  inline void set_array_directory(const ArrayDirectory&& dir) {
+    array_dir_ = dir;
+  }
+
+  /** Returns the latest array schema. */
+  inline const ArraySchema& array_schema_latest() const {
+    return *(array_schema_latest_.get());
+  }
+
+  /** Returns the latest array schema as a shared pointer. */
+  inline shared_ptr<ArraySchema> array_schema_latest_ptr() const {
+    return array_schema_latest_;
+  }
+
+  /** Sets the latest array schema. */
+  inline void set_array_schema_latest(
+      const shared_ptr<ArraySchema>& array_schema) {
+    array_schema_latest_ = array_schema;
+  }
+
+  /** Returns all array schemas. */
+  inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
+  array_schemas_all() const {
+    return array_schemas_all_;
+  }
+
+  /** Sets all array schema. */
+  inline void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+    array_schemas_all_ = std::move(all_schemas);
+  }
+
+  /** Gets a reference to the metadata. */
+  inline Metadata& metadata() {
+    return metadata_;
+  }
+
+  /** Get a reference to the `metadata_loaded_` value. */
+  inline bool& metadata_loaded() {
+    return metadata_loaded_;
+  }
+
+  /** Get a reference to the `non_empty_domain_computed_` value. */
+  inline bool& non_empty_domain_computed() {
+    return non_empty_domain_computed_;
+  }
+
+  /** Gets a reference to the non empty domain. */
+  inline NDRange& non_empty_domain() {
+    return non_empty_domain_;
+  }
+
+  /** Gets a reference to the fragment metadata. */
+  inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
+    return fragment_metadata_;
+  }
+
+  /** Returns a constant pointer to the encryption key. */
+  inline const EncryptionKey* encryption_key() const {
+    return encryption_key_.get();
+  }
+
+  /**
+   * Returns a reference to the private encryption key.
+   */
+  inline const EncryptionKey& get_encryption_key() const {
+    return *encryption_key_;
+  }
+
+  /** Returns the start timestamp used to load the array directory. */
+  inline uint64_t timestamp_start() const {
+    return timestamp_start_;
+  }
+
+  /**
+   * Returns the timestamp at which the array was opened.
+   *
+   * WARNING: This is a legacy function that is needed to support the current
+   * API and REST calls. Do not use in new code.
+   */
+  inline uint64_t timestamp_end_opened_at() const {
+    return timestamp_end_opened_at_;
+  }
+
+  /** Returns if the array is remote or not. */
+  inline bool is_remote() const {
+    return is_remote_;
+  }
+
+ private:
+  /** The array directory object for listing URIs. */
+  optional<ArrayDirectory> array_dir_;
+
+  /** The latest array schema. */
+  shared_ptr<ArraySchema> array_schema_latest_;
+
+  /**
+   * A map of all array_schemas_all
+   */
+  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+
+  /** The array metadata. */
+  Metadata metadata_;
+
+  /** True if the array metadata is loaded. */
+  bool metadata_loaded_;
+
+  /** True if the non_empty_domain has been computed */
+  bool non_empty_domain_computed_;
+
+  /** The non-empty domain of the array. */
+  NDRange non_empty_domain_;
+
+  /** The metadata of the fragments the array was opened with. */
+  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
+
+  /**
+   * The private encryption key used to encrypt the array.
+   *
+   * Note: This is the only place in TileDB where the user's private key
+   * bytes should be stored. Whenever a key is needed, a pointer to this
+   * memory region should be passed instead of a copy of the bytes.
+   */
+  shared_ptr<EncryptionKey> encryption_key_;
+
+  /** The start timestamp used to load the array directory. */
+  uint64_t timestamp_start_;
+
+  /** The timestamp at which the array was opened. */
+  uint64_t timestamp_end_opened_at_;
+
+  /** Is this a remote array? */
+  bool is_remote_;
+};
+
+/**
  * Free function that returns a reference to the ConsistencyController object.
  */
 ConsistencyController& controller();
@@ -103,37 +297,53 @@ class Array {
   /*                API                */
   /* ********************************* */
 
+  /** Returns the opened array. */
+  inline const shared_ptr<OpenedArray> opened_array() const {
+    return opened_array_;
+  };
+
   /** Returns the array directory object. */
-  const ArrayDirectory& array_directory() const;
+  inline const ArrayDirectory& array_directory() const {
+    return opened_array_->array_directory();
+  }
 
   /** Set the array directory. */
-  void set_array_directory(const ArrayDirectory& dir) {
-    array_dir_ = dir;
+  inline void set_array_directory(const ArrayDirectory&& dir) {
+    opened_array_->set_array_directory(std::move(dir));
   }
 
   /** Sets the latest array schema.
    * @param array_schema The array schema to set.
    */
-  void set_array_schema_latest(const shared_ptr<ArraySchema>& array_schema);
+  inline void set_array_schema_latest(
+      const shared_ptr<ArraySchema>& array_schema) {
+    opened_array_->set_array_schema_latest(array_schema);
+  }
 
   /** Returns the latest array schema. */
-  const ArraySchema& array_schema_latest() const;
+  inline const ArraySchema& array_schema_latest() const {
+    return opened_array_->array_schema_latest();
+  }
 
   /** Returns the latest array schema as a shared pointer. */
-  shared_ptr<const ArraySchema> array_schema_latest_ptr() const;
+  inline shared_ptr<const ArraySchema> array_schema_latest_ptr() const {
+    return opened_array_->array_schema_latest_ptr();
+  }
 
   /** Returns array schemas map. */
   inline const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
   array_schemas_all() const {
-    return array_schemas_all_;
+    return opened_array_->array_schemas_all();
   }
 
   /**
    * Sets all array schemas.
    * @param all_schemas The array schemas to set.
    */
-  void set_array_schemas_all(
-      std::unordered_map<std::string, shared_ptr<ArraySchema>>& all_schemas);
+  inline void set_array_schemas_all(
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
+    opened_array_->set_array_schemas_all(std::move(all_schemas));
+  }
 
   /** Returns the array URI. */
   const URI& array_uri() const;
@@ -242,16 +452,19 @@ class Array {
   const EncryptionKey* encryption_key() const;
 
   /**
-   * Returns the fragment metadata of the array. If the array is not open,
-   * an empty vector is returned.
-   */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata() const;
-
-  /**
    * Accessor to the fragment metadata of the array.
    */
   inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
-    return fragment_metadata_;
+    return opened_array_->fragment_metadata();
+  }
+
+  /**
+   * Sets fragment metadata.
+   * @param fragment_metadata The fragment metadata.
+   */
+  inline void set_fragment_metadata(
+      std::vector<shared_ptr<FragmentMetadata>>&& fragment_metadata) {
+    opened_array_->fragment_metadata() = fragment_metadata;
   }
 
   /**
@@ -321,7 +534,9 @@ class Array {
   /**
    * Returns a reference to the private encryption key.
    */
-  const EncryptionKey& get_encryption_key() const;
+  inline const EncryptionKey& get_encryption_key() const {
+    return opened_array_->get_encryption_key();
+  }
 
   /**
    * Re-opens the array. This effectively updates the "view" of the array,
@@ -531,37 +746,40 @@ class Array {
 
   /** Set if array metadata is loaded already for this array or not */
   inline void set_metadata_loaded(const bool is_loaded) {
-    metadata_loaded_ = is_loaded;
+    opened_array_->metadata_loaded() = is_loaded;
   }
 
   /** Check if array metadata is loaded already for this array or not */
-  inline bool& metadata_loaded() {
-    return metadata_loaded_;
+  inline bool metadata_loaded() {
+    return opened_array_->metadata_loaded();
   }
 
   /** Check if non emtpy domain is loaded already for this array or not */
-  inline bool& non_empty_domain_computed() {
-    return non_empty_domain_computed_;
+  inline bool non_empty_domain_computed() {
+    return opened_array_->non_empty_domain_computed();
   }
 
-  /** Returns the non-empty domain of the opened array.
-   *  If the non_empty_domain has not been computed or loaded
-   *  it will be loaded first
-   * */
-  tuple<Status, optional<const NDRange>> non_empty_domain();
-
   /**
-   * Retrieves the array metadata object that is already loadad.
-   * If it's not yet loaded it will be empty.
+   * Returns the non-empty domain of the opened array. If the non_empty_domain
+   * has not been computed or loaded it will be loaded first
    */
-  NDRange* loaded_non_empty_domain();
+  const NDRange non_empty_domain();
+  /**
+   * Retrieves the array metadata object that is already loaded. If it's not yet
+   * loaded it will be empty.
+   */
+  inline NDRange& loaded_non_empty_domain() {
+    return opened_array_->non_empty_domain();
+  }
 
   /** Returns the non-empty domain of the opened array. */
-  void set_non_empty_domain(const NDRange& non_empty_domain);
+  inline void set_non_empty_domain(const NDRange& non_empty_domain) {
+    opened_array_->non_empty_domain() = non_empty_domain;
+  }
 
   /** Set if the non_empty_domain is computed already for this array or not */
   inline void set_non_empty_domain_computed(const bool is_computed) {
-    non_empty_domain_computed_ = is_computed;
+    opened_array_->non_empty_domain_computed() = is_computed;
   }
 
   /** Returns the memory tracker. */
@@ -569,7 +787,8 @@ class Array {
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
-   * open. */
+   * open.
+   */
   bool serialize_non_empty_domain() const;
 
   /**
@@ -598,9 +817,7 @@ class Array {
   /**
    * Sets the array state as open, used in serialization
    */
-  inline void set_serialized_array_open() {
-    is_open_ = true;
-  }
+  void set_serialized_array_open();
 
   /** Set the query type to open the array for. */
   inline void set_query_type(QueryType query_type) {
@@ -619,26 +836,18 @@ class Array {
   std::unordered_map<std::string, uint64_t> get_average_var_cell_sizes() const;
 
   /** Load array directory for non-remote arrays */
-  ArrayDirectory& load_array_directory();
+  const ArrayDirectory& load_array_directory();
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** The latest array schema. */
-  shared_ptr<ArraySchema> array_schema_latest_;
-
-  /**
-   * A map of all array_schemas_all
-   */
-  std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
+  /** The opened array that can be used by queries. */
+  shared_ptr<OpenedArray> opened_array_;
 
   /** The array URI. */
   URI array_uri_;
-
-  /** The array directory object for listing URIs. */
-  ArrayDirectory array_dir_;
 
   /** This is a backwards compatible URI from serialization
    *  In TileDB 2.5 we removed sending the URI but 2.4 and older were
@@ -647,18 +856,6 @@ class Array {
    * clients.
    */
   URI array_uri_serialized_;
-
-  /**
-   * The private encryption key used to encrypt the array.
-   *
-   * Note: This is the only place in TileDB where the user's private key
-   * bytes should be stored. Whenever a key is needed, a pointer to this
-   * memory region should be passed instead of a copy of the bytes.
-   */
-  shared_ptr<EncryptionKey> encryption_key_;
-
-  /** The metadata of the fragments the array was opened with. */
-  std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
 
   /** `True` if the array has been opened. */
   std::atomic<bool> is_open_;
@@ -726,18 +923,6 @@ class Array {
 
   /** True if the array is remote (has `tiledb://` URI scheme). */
   bool remote_;
-
-  /** The array metadata. */
-  Metadata metadata_;
-
-  /** True if the array metadata is loaded. */
-  bool metadata_loaded_;
-
-  /** True if the non_empty_domain has been computed */
-  bool non_empty_domain_computed_;
-
-  /** The non-empty domain of the array. */
-  NDRange non_empty_domain_;
 
   /** Memory tracker for the array. */
   MemoryTracker memory_tracker_;

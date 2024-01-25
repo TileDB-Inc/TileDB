@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -117,42 +117,6 @@ TEST_CASE("Test HDFS filesystem", "[hdfs]") {
     }
   }
   CHECK(allok);
-
-  std::vector<std::string> paths;
-  st = hdfs.ls(URI("hdfs:///"), &paths);
-  CHECK(st.ok());
-  CHECK(paths.size() > 0);
-
-  // ls_with_sizes
-  // Dir structure:
-  // ...../subdir
-  // ...../subdir/file
-  // ...../subdir/subsubdir
-
-  std::string subdir = "hdfs://localhost:9000/tiledb_test/subdir";
-  std::string file = subdir + "/file";
-  std::string subsubdir = subdir + "/subsubdir";
-
-  CHECK(hdfs.create_dir(URI(subdir)).ok());
-  CHECK(hdfs.create_dir(URI(subsubdir)).ok());
-  CHECK(hdfs.touch(URI(file)).ok());
-
-  std::string s = "abcdef";
-  CHECK(hdfs.write(URI(file), s.data(), s.size()).ok());
-
-  auto&& [status, rv] = hdfs.ls_with_sizes(URI(subdir));
-  auto children = *rv;
-  REQUIRE(status.ok());
-
-  REQUIRE(children.size() == 2);
-  CHECK(children[0].path().native() == file);
-  CHECK(children[1].path().native() == subsubdir.substr(0, subsubdir.size()));
-
-  CHECK(children[0].file_size() == s.size());
-  // Directories don't get a size
-  CHECK(children[1].file_size() == 0);
-  // Cleanup
-  CHECK(hdfs.remove_dir(URI(subdir)).ok());
 
   uint64_t nbytes = 0;
   st = hdfs.file_size(URI("hdfs:///tiledb_test/tiledb_test_file"), &nbytes);

@@ -71,36 +71,18 @@ template <class BitmapType>
 SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool consolidation_with_timestamps,
-    bool skip_checks_serialization)
+    StrategyParams& params,
+    bool consolidation_with_timestamps)
     : SparseIndexReaderBase(
           "sparse_global_order",
           stats,
-          logger->clone("SparseGlobalOrderReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates,
-          skip_checks_serialization,
+          logger->clone("SparseUnorderedWithDupsReader", ++logger_id_),
+          params,
           true)
-    , result_tiles_leftover_(array->fragment_metadata().size())
-    , memory_used_for_coords_(array->fragment_metadata().size())
+    , result_tiles_leftover_(array_->fragment_metadata().size())
+    , memory_used_for_coords_(array_->fragment_metadata().size())
     , consolidation_with_timestamps_(consolidation_with_timestamps)
-    , last_cells_(array->fragment_metadata().size())
+    , last_cells_(array_->fragment_metadata().size())
     , tile_offsets_loaded_(false) {
   // Initialize memory budget variables.
   refresh_config();
@@ -2234,33 +2216,9 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
 
 // Explicit template instantiations
 template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
-    stats::Stats*,
-    shared_ptr<Logger>,
-    StorageManager*,
-    Array*,
-    Config&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    Subarray&,
-    Layout,
-    std::optional<QueryCondition>&,
-    DefaultChannelAggregates&,
-    bool,
-    bool);
+    stats::Stats*, shared_ptr<Logger>, StrategyParams&, bool);
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
-    stats::Stats*,
-    shared_ptr<Logger>,
-    StorageManager*,
-    Array*,
-    Config&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    std::unordered_map<std::string, QueryBuffer>&,
-    Subarray&,
-    Layout,
-    std::optional<QueryCondition>&,
-    DefaultChannelAggregates&,
-    bool,
-    bool);
+    stats::Stats*, shared_ptr<Logger>, StrategyParams&, bool);
 
 }  // namespace sm
 }  // namespace tiledb

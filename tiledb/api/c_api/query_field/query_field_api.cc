@@ -52,8 +52,7 @@ tiledb_field_origin_t FieldFromAggregate::origin() {
 tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     tiledb_query_t* query, const char* field_name)
     : query_(query->query_)
-    , field_name_(field_name)
-    , channel_(tiledb_query_channel_handle_t::make_handle(query)) {
+    , field_name_(field_name) {
   if (field_name_ == tiledb::sm::constants::coords) {
     field_origin_ = std::make_shared<FieldFromDimension>();
     type_ = query_->array_schema().domain().dimension_ptr(0)->type();
@@ -81,6 +80,8 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
+
+  channel_ = tiledb_query_channel_handle_t::make_handle(query);
 }
 
 namespace tiledb::api {

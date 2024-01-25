@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -183,6 +183,33 @@ TEST_CASE(
   REQUIRE(query_condition.field_names().count(field_name) == 1);
   check_ast_str(query_condition, "foo LT 62 61 72");
   check_ast_str(query_condition.negated_condition(), "foo GE 62 61 72");
+}
+
+TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
+  std::string field_name = "blob_attr";
+  std::byte value{5};
+
+  QueryCondition query_condition;
+  REQUIRE(query_condition
+              .init(
+                  std::string(field_name),
+                  &value,
+                  sizeof(value),
+                  QueryConditionOp::LT)
+              .ok());
+
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<Attribute> attr =
+      make_shared<Attribute>(HERE(), "blob_attr", Datatype::BLOB);
+  REQUIRE(array_schema->add_attribute(attr).ok());
+  std::vector<ResultCellSlab> result_cell_slabs;
+  std::vector<shared_ptr<FragmentMetadata>> frag_md;
+
+  REQUIRE_THROWS_WITH(
+      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1),
+      Catch::Matchers::ContainsSubstring(
+          "Cannot perform query comparison; Unsupported datatype " +
+          datatype_str(Datatype::BLOB)));
 }
 
 TEST_CASE(

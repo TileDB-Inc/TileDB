@@ -326,7 +326,11 @@ std::string URI::to_path(const std::string& uri) {
 }
 
 std::string URI::backend_name() const {
-  return uri_.substr(0, uri_.find_first_of(':'));
+  if (is_tiledb(uri_)) {
+    return "";
+  } else {
+    return uri_.substr(0, uri_.find_first_of(':'));
+  }
 }
 
 std::string URI::to_path() const {

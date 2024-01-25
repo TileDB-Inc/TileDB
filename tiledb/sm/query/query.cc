@@ -84,6 +84,7 @@ Query::Query(
     optional<std::string> fragment_name)
     : array_shared_(array)
     , array_(array_shared_.get())
+    , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
     , type_(array_->get_query_type())
     , layout_(
@@ -129,7 +130,7 @@ Query::Query(
     config_ = storage_manager->config();
 
   // Set initial subarray configuration
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 
   rest_scratch_ = make_shared<Buffer>(HERE());
 }
@@ -475,7 +476,7 @@ QueryBuffer Query::buffer(const std::string& name) const {
 
 Status Query::finalize() {
   if (status_ == QueryStatus::UNINITIALIZED ||
-      status_ == QueryStatus::INITIALIZED) {
+      (status_ == QueryStatus::INITIALIZED && !array_->is_remote())) {
     return Status::Ok();
   }
 
@@ -983,7 +984,7 @@ void Query::set_config(const Config& config) {
   // Set subarray's config for backwards compatibility
   // Users expect the query config to effect the subarray based on existing
   // behavior before subarray was exposed directly
-  subarray_.set_config(config_);
+  subarray_.set_config(type_, config_);
 }
 
 Status Query::set_coords_buffer(void* buffer, uint64_t* buffer_size) {
@@ -1789,6 +1790,18 @@ bool Query::is_aggregate(std::string output_field_name) const {
 /* ****************************** */
 
 Status Query::create_strategy(bool skip_checks_serialization) {
+  auto params = StrategyParams(
+      storage_manager_,
+      opened_array_,
+      config_,
+      buffers_,
+      aggregate_buffers_,
+      subarray_,
+      layout_,
+      condition_,
+      default_channel_aggregates_,
+      skip_checks_serialization,
+      array_->memory_tracker());
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {
@@ -1800,17 +1813,11 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           OrderedWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           written_fragment_info_,
           coords_info_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else if (layout_ == Layout::UNORDERED) {
       if (array_schema_->dense()) {
         return Status_QueryError(
@@ -1821,37 +1828,25 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           UnorderedWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           written_fragment_info_,
           coords_info_,
           written_buffers_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else if (layout_ == Layout::GLOBAL_ORDER) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           GlobalOrderWriter,
           stats_->create_child("Writer"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          subarray_,
-          layout_,
+          params,
           fragment_size_,
           written_fragment_info_,
           disable_checks_consolidation_,
           processed_conditions_,
           coords_info_,
           remote_query_,
-          fragment_name_,
-          skip_checks_serialization));
+          fragment_name_));
     } else {
       return Status_QueryError(
           "Cannot create strategy; unsupported layout " + layout_str(layout_));
@@ -1867,17 +1862,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           OrderedDimLabelReader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          dimension_label_increasing_,
-          skip_checks_serialization));
+          params,
+          dimension_label_increasing_));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
                    layout_, *array_schema_)) {
       auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
@@ -1889,31 +1875,13 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             SparseUnorderedWithDupsReader<uint8_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            skip_checks_serialization));
+            params));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint64_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            skip_checks_serialization));
+            params));
       }
     } else if (
         use_refactored_sparse_global_order_reader(layout_, *array_schema_) &&
@@ -1929,65 +1897,29 @@ Status Query::create_strategy(bool skip_checks_serialization) {
             SparseGlobalOrderReader<uint8_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            consolidation_with_timestamps_,
-            skip_checks_serialization));
+            params,
+            consolidation_with_timestamps_));
       } else {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader<uint64_t>,
             stats_->create_child("Reader"),
             logger_,
-            storage_manager_,
-            array_,
-            config_,
-            buffers_,
-            aggregate_buffers_,
-            subarray_,
-            layout_,
-            condition_,
-            default_channel_aggregates_,
-            consolidation_with_timestamps_,
-            skip_checks_serialization));
+            params,
+            consolidation_with_timestamps_));
       }
     } else if (use_refactored_dense_reader(*array_schema_, all_dense)) {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           DenseReader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          skip_checks_serialization,
+          params,
           remote_query_));
     } else {
       strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
           Reader,
           stats_->create_child("Reader"),
           logger_,
-          storage_manager_,
-          array_,
-          config_,
-          buffers_,
-          aggregate_buffers_,
-          subarray_,
-          layout_,
-          condition_,
-          default_channel_aggregates_,
-          skip_checks_serialization,
+          params,
           remote_query_));
     }
   } else if (type_ == QueryType::DELETE || type_ == QueryType::UPDATE) {
@@ -1995,15 +1927,8 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         DeletesAndUpdates,
         stats_->create_child("Deletes"),
         logger_,
-        storage_manager_,
-        array_,
-        config_,
-        buffers_,
-        subarray_,
-        layout_,
-        condition_,
-        update_values_,
-        skip_checks_serialization));
+        params,
+        update_values_));
   } else {
     return logger_->status(
         Status_QueryError("Cannot create strategy; unsupported query type"));

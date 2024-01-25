@@ -49,12 +49,6 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 QueryPlan::QueryPlan(Query& query) {
-  if (query.array()->is_remote()) {
-    throw std::logic_error(
-        "Failed to create a query plan; Remote arrays"
-        "are not currently supported.");
-  }
-
   array_uri_ = query.array()->array_uri().to_string();
   vfs_backend_ = URI(array_uri_).backend_name();
   query_layout_ = query.layout();
@@ -80,19 +74,47 @@ QueryPlan::QueryPlan(Query& query) {
   std::sort(dimensions_.begin(), dimensions_.end());
 }
 
+QueryPlan::QueryPlan(
+    Query& query,
+    Layout layout,
+    const std::string& strategy_name,
+    ArrayType array_type,
+    const std::vector<std::string>& attributes,
+    const std::vector<std::string>& dimensions)
+    : array_uri_{query.array()->array_uri().to_string()}
+    , vfs_backend_{URI(array_uri_).backend_name()}
+    , query_layout_{layout}
+    , strategy_name_{strategy_name}
+    , array_type_{array_type}
+    , attributes_{attributes}
+    , dimensions_{dimensions} {
+}
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
 std::string QueryPlan::dump_json(uint32_t indent) {
-  nlohmann::json rv = {
-      {"TileDB Query Plan",
-       {{"Array.URI", array_uri_},
-        {"Array.Type", array_type_str(array_type_)},
-        {"VFS.Backend", vfs_backend_},
-        {"Query.Layout", layout_str(query_layout_)},
-        {"Query.Strategy.Name", strategy_name_},
-        {"Query.Attributes", attributes_},
-        {"Query.Dimensions", dimensions_}}}};
+  nlohmann::json rv;
+  if (!URI(array_uri_).is_tiledb()) {
+    rv = {
+        {"TileDB Query Plan",
+         {{"Array.URI", array_uri_},
+          {"Array.Type", array_type_str(array_type_)},
+          {"VFS.Backend", vfs_backend_},
+          {"Query.Layout", layout_str(query_layout_)},
+          {"Query.Strategy.Name", strategy_name_},
+          {"Query.Attributes", attributes_},
+          {"Query.Dimensions", dimensions_}}}};
+  } else {
+    rv = {
+        {"TileDB Query Plan",
+         {{"Array.URI", array_uri_},
+          {"Array.Type", array_type_str(array_type_)},
+          {"Query.Layout", layout_str(query_layout_)},
+          {"Query.Strategy.Name", strategy_name_},
+          {"Query.Attributes", attributes_},
+          {"Query.Dimensions", dimensions_}}}};
+  }
 
   return rv.dump(indent);
 }

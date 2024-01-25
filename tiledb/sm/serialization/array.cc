@@ -246,9 +246,6 @@ Status array_from_capnp(
     QueryType query_type = QueryType::READ;
     RETURN_NOT_OK(query_type_enum(query_type_str, &query_type));
     array->set_query_type(query_type);
-    if (!array->is_open()) {
-      array->set_serialized_array_open();
-    }
 
     array->set_timestamps(
         array_reader.getStartTimestamp(),
@@ -260,6 +257,10 @@ Status array_from_capnp(
         array_reader.getEndTimestamp(),
         false);
   };
+
+  if (!array->is_open()) {
+    array->set_serialized_array_open();
+  }
 
   if (array_reader.hasArraySchemasAll()) {
     std::unordered_map<std::string, shared_ptr<ArraySchema>> all_schemas;
@@ -275,7 +276,7 @@ Status array_from_capnp(
             make_shared<ArraySchema>(HERE(), schema);
       }
     }
-    array->set_array_schemas_all(all_schemas);
+    array->set_array_schemas_all(std::move(all_schemas));
   }
 
   if (array_reader.hasArraySchemaLatest()) {
@@ -294,14 +295,18 @@ Status array_from_capnp(
         array_directory_reader,
         storage_manager->resources(),
         array->array_uri());
-    array->set_array_directory(*array_dir);
+    array->set_array_directory(std::move(*array_dir));
+  } else {
+    array->set_array_directory(
+        ArrayDirectory(storage_manager->resources(), array->array_uri()));
   }
 
   if (array_reader.hasFragmentMetadataAll()) {
-    array->fragment_metadata().clear();
-    array->fragment_metadata().reserve(
-        array_reader.getFragmentMetadataAll().size());
-    for (auto frag_meta_reader : array_reader.getFragmentMetadataAll()) {
+    auto fragment_metadata = array->fragment_metadata();
+    fragment_metadata.clear();
+    auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
+    fragment_metadata.reserve(fragment_metadata_all_reader.size());
+    for (auto frag_meta_reader : fragment_metadata_all_reader) {
       auto meta = make_shared<FragmentMetadata>(HERE());
       RETURN_NOT_OK(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(),
@@ -312,8 +317,9 @@ Status array_from_capnp(
       if (client_side) {
         meta->set_rtree_loaded();
       }
-      array->fragment_metadata().emplace_back(meta);
+      fragment_metadata.emplace_back(meta);
     }
+    array->set_fragment_metadata(std::move(fragment_metadata));
   }
 
   if (array_reader.hasNonEmptyDomain()) {
@@ -556,11 +562,21 @@ Status array_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit = storage_manager->config()
+                             .get<uint64_t>("rest.capnp_traversal_limit")
+                             .value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         capnp::Array::Reader array_reader = reader.getRoot<capnp::Array>();
         RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
         break;

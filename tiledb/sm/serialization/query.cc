@@ -1613,7 +1613,8 @@ Status query_from_capnp(
     void* buffer_start,
     CopyState* const copy_state,
     Query* const query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool allocate_buffers) {
   using namespace tiledb::sm;
 
   auto array = query->array();
@@ -2056,20 +2057,20 @@ Status query_from_capnp(
               name,
               attr_state->var_len_data.data(),
               &attr_state->var_len_size,
-              false,
+              allocate_buffers,
               true));
           throw_if_not_ok(query->set_offsets_buffer(
               name,
               attr_state->fixed_len_data.data_as<uint64_t>(),
               &attr_state->fixed_len_size,
-              false,
+              allocate_buffers,
               true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
                 name,
                 attr_state->validity_len_data.data_as<uint8_t>(),
                 &attr_state->validity_len_size,
-                false,
+                allocate_buffers,
                 true));
           }
         } else {
@@ -2077,14 +2078,14 @@ Status query_from_capnp(
               name,
               attr_state->fixed_len_data.data(),
               &attr_state->fixed_len_size,
-              false,
+              allocate_buffers,
               true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
                 name,
                 attr_state->validity_len_data.data_as<uint8_t>(),
                 &attr_state->validity_len_size,
-                false,
+                allocate_buffers,
                 true));
           }
         }
@@ -2114,12 +2115,24 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, varlen_data, &attr_state->var_len_size, true, true));
+              name,
+              varlen_data,
+              &attr_state->var_len_size,
+              allocate_buffers,
+              true));
           throw_if_not_ok(query->set_offsets_buffer(
-              name, offsets, &attr_state->fixed_len_size, true, true));
+              name,
+              offsets,
+              &attr_state->fixed_len_size,
+              allocate_buffers,
+              true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         } else {
           auto* data = attribute_buffer_start;
@@ -2142,10 +2155,14 @@ Status query_from_capnp(
           attr_state->validity_len_data.swap(validity_buff);
 
           throw_if_not_ok(query->set_data_buffer(
-              name, data, &attr_state->fixed_len_size, true, true));
+              name, data, &attr_state->fixed_len_size, allocate_buffers, true));
           if (nullable) {
             throw_if_not_ok(query->set_validity_buffer(
-                name, validity, &attr_state->validity_len_size, true, true));
+                name,
+                validity,
+                &attr_state->validity_len_size,
+                allocate_buffers,
+                true));
           }
         }
       } else {
@@ -2538,7 +2555,8 @@ Status do_query_deserialize(
     const SerializationContext context,
     CopyState* const copy_state,
     Query* query,
-    ThreadPool* compute_tp) {
+    ThreadPool* compute_tp,
+    const bool allocate_buffers) {
   if (serialize_type == SerializationType::JSON)
     return LOG_STATUS(Status_SerializationError(
         "Cannot deserialize query; json format not supported."));
@@ -2556,7 +2574,13 @@ Status do_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         return query_from_capnp(
-            query_reader, context, nullptr, copy_state, query, compute_tp);
+            query_reader,
+            context,
+            nullptr,
+            copy_state,
+            query,
+            compute_tp,
+            allocate_buffers);
       }
       case SerializationType::CAPNP: {
         // Capnp FlatArrayMessageReader requires 64-bit alignment.
@@ -2586,7 +2610,13 @@ Status do_query_deserialize(
         auto attribute_buffer_start = reader.getEnd();
         auto buffer_start = const_cast<::capnp::word*>(attribute_buffer_start);
         return query_from_capnp(
-            query_reader, context, buffer_start, copy_state, query, compute_tp);
+            query_reader,
+            context,
+            buffer_start,
+            copy_state,
+            query,
+            compute_tp,
+            allocate_buffers);
       }
       default:
         return LOG_STATUS(Status_SerializationError(
@@ -2628,6 +2658,7 @@ Status query_deserialize(
     original_copy_state =
         tdb_unique_ptr<CopyState>(tdb_new(CopyState, *copy_state));
   }
+  auto allocate_buffers = query->type() == QueryType::WRITE;
 
   // Deserialize 'serialized_buffer'.
   const Status st = do_query_deserialize(
@@ -2636,7 +2667,8 @@ Status query_deserialize(
       clientside ? SerializationContext::CLIENT : SerializationContext::SERVER,
       copy_state,
       query,
-      compute_tp);
+      compute_tp,
+      allocate_buffers);
 
   // If the deserialization failed, deserialize 'original_buffer'
   // into 'query' to ensure that 'query' is in the state it was before the
@@ -2654,7 +2686,8 @@ Status query_deserialize(
         SerializationContext::BACKUP,
         copy_state,
         query,
-        compute_tp);
+        compute_tp,
+        allocate_buffers);
     if (!st2.ok()) {
       LOG_ERROR(st2.message());
       return st2;

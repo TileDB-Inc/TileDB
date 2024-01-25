@@ -37,6 +37,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -73,43 +74,31 @@ class GlobalOrderWriterStatusException : public StatusException {
 GlobalOrderWriter::GlobalOrderWriter(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    Subarray& subarray,
-    Layout layout,
+    StrategyParams& params,
     uint64_t fragment_size,
     std::vector<WrittenFragmentInfo>& written_fragment_info,
     bool disable_checks_consolidation,
     std::vector<std::string>& processed_conditions,
     Query::CoordsInfo& coords_info,
     bool remote_query,
-    optional<std::string> fragment_name,
-    bool skip_checks_serialization)
+    optional<std::string> fragment_name)
     : WriterBase(
           stats,
           logger,
-          storage_manager,
-          array,
-          config,
-          buffers,
-          subarray,
-          layout,
+          params,
           written_fragment_info,
           disable_checks_consolidation,
           coords_info,
           remote_query,
-          fragment_name,
-          skip_checks_serialization)
+          fragment_name)
     , processed_conditions_(processed_conditions)
     , fragment_size_(fragment_size)
     , current_fragment_size_(0) {
   // Check the layout is global order.
-  if (layout != Layout::GLOBAL_ORDER) {
+  if (layout_ != Layout::GLOBAL_ORDER) {
     throw GlobalOrderWriterStatusException(
         "Failed to initialize global order writer. Layout " +
-        layout_str(layout) + " is not global order.");
+        layout_str(layout_) + " is not global order.");
   }
 
   // Check no ordered attributes.
@@ -725,8 +714,11 @@ Status GlobalOrderWriter::finalize_global_write_state() {
     commit_uris.emplace_back(commit_uri);
 
     auto write_version = array_->array_schema_latest().write_version();
-    storage_manager_->write_consolidated_commits_file(
-        write_version, array_->array_directory(), commit_uris);
+    Consolidator::write_consolidated_commits_file(
+        write_version,
+        array_->array_directory(),
+        commit_uris,
+        storage_manager_);
   }
 
   // Delete global write state

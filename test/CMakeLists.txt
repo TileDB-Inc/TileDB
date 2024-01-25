@@ -203,6 +203,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-SubarrayPartitioner-sparse.cc
   src/unit-vfs.cc
   src/unit-win-filesystem.cc
+  "${CMAKE_SOURCE_DIR}/tiledb/api/c_api/vfs/test/unit_capi_ls_recursive.cc"
   )
 
 if (TILEDB_CPP_API)

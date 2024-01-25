@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -222,10 +222,13 @@ TEST_CASE("util::safe_integral_cast_to_datatype", "[safe-integral-casts]") {
 TEST_CASE(
     "util::safe_integral_cast_to_datatype bad type",
     "[safe-integral-casts][error]") {
+  auto datatype = GENERATE(
+      Datatype::BLOB,
+      Datatype::GEOM_WKB,
+      Datatype::GEOM_WKT,
+      Datatype::STRING_ASCII);
   ByteVecValue bvv;
-  REQUIRE_THROWS(utils::safe_integral_cast_to_datatype(5, Datatype::BLOB, bvv));
-  REQUIRE_THROWS(
-      utils::safe_integral_cast_to_datatype(5, Datatype::STRING_ASCII, bvv));
+  REQUIRE_THROWS(utils::safe_integral_cast_to_datatype(5, datatype, bvv));
 }
 
 template <typename Source>

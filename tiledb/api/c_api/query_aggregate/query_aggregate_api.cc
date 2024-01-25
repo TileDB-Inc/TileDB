@@ -35,6 +35,7 @@
 #include "query_aggregate_api_internal.h"
 #include "tiledb/api/c_api/query/query_api_internal.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
+#include "tiledb/api/c_api/query_field/query_field_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 
 const tiledb_channel_operator_handle_t* tiledb_channel_operator_sum =
@@ -170,7 +171,7 @@ capi_return_t tiledb_query_get_default_channel(
 }
 
 capi_return_t tiledb_create_unary_aggregate(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_query_t* query,
     const tiledb_channel_operator_t* op,
     const char* input_field_name,
@@ -184,12 +185,10 @@ capi_return_t tiledb_create_unary_aggregate(
   auto& schema = query->query_->array_schema();
 
   // Getting the field errors if there is no input_field_name associated with
-  // the query
-  tiledb_query_field_t* field;
-  if (auto rv = tiledb_query_get_field(ctx, query, input_field_name, &field)) {
-    return rv;
-  }
-  tiledb_query_field_free(ctx, &field);
+  // the query.
+  tiledb_query_field_t* field =
+      tiledb_query_field_handle_t::make_handle(query, input_field_name);
+  tiledb_query_field_handle_t::break_handle(field);
 
   auto fi = tiledb::sm::FieldInfo(
       field_name,

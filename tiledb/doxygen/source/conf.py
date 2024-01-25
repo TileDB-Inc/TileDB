@@ -76,9 +76,9 @@ copyright = '2023 TileDB, Inc'
 author = 'TileDB, Inc.'
 
 # The short X.Y version.
-version = '2.20'
+version = '2.21'
 # The full version, including alpha/beta/rc tags.
-release = '2.20.0'
+release = '2.21.0'
 
 # Breathe extension configuration.
 doxygen_xml_dir = os.path.join(TILEDB_BUILD_DIR, 'xml/')
@@ -107,7 +107,7 @@ c_id_attributes = ['TILEDB_EXPORT', 'TILEDB_NOEXCEPT', 'TILEDB_DEPRECATED_EXPORT
 #
 # This is also used if you do content translation via gettext catalogs.
 # Usually you set "language" from the command line for these cases.
-language = None
+language = "en"
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.

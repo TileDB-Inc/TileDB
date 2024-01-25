@@ -58,6 +58,7 @@
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -495,9 +496,9 @@ int32_t tiledb_array_schema_load(
     auto storage_manager{ctx->storage_manager()};
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+    optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(
+      array_dir.emplace(
           storage_manager->resources(),
           uri,
           0,
@@ -512,7 +513,7 @@ int32_t tiledb_array_schema_load(
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -586,9 +587,9 @@ int32_t tiledb_array_schema_load_with_key(
     auto storage_manager{ctx->storage_manager()};
 
     // Load URIs from the array directory
-    tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+    optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
-      array_dir = tiledb::sm::ArrayDirectory(
+      array_dir.emplace(
           storage_manager->resources(),
           uri,
           0,
@@ -603,7 +604,7 @@ int32_t tiledb_array_schema_load_with_key(
     }
 
     // Load latest array schema
-    auto&& array_schema_latest = array_dir.load_array_schema_latest(key);
+    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -1719,7 +1720,8 @@ int32_t tiledb_subarray_set_config(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
   api::ensure_config_is_valid(config);
-  subarray->subarray_->set_config(config->config());
+  subarray->subarray_->set_config(
+      tiledb::sm::QueryType::READ, config->config());
   return TILEDB_OK;
 }
 
@@ -2701,13 +2703,13 @@ int32_t tiledb_array_create_with_key(
 int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
-  throw_if_not_ok(ctx->storage_manager()->array_consolidate(
+  tiledb::sm::Consolidator::array_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
   return TILEDB_OK;
 }
 
@@ -2720,13 +2722,13 @@ int32_t tiledb_array_consolidate_with_key(
     tiledb_config_t* config) {
   // Sanity checks
 
-  throw_if_not_ok(ctx->storage_manager()->array_consolidate(
+  tiledb::sm::Consolidator::array_consolidate(
       array_uri,
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
       key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }
@@ -2746,24 +2748,24 @@ int32_t tiledb_array_consolidate_fragments(
     uris.emplace_back(fragment_uris[i]);
   }
 
-  throw_if_not_ok(ctx->storage_manager()->fragments_consolidate(
+  tiledb::sm::Consolidator::fragments_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  ctx->storage_manager()->array_vacuum(
+  tiledb::sm::Consolidator::array_vacuum(
       array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config());
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }
@@ -2929,9 +2931,9 @@ int32_t tiledb_array_encryption_type(
   auto uri = tiledb::sm::URI(array_uri);
 
   // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir(storage_manager->resources(), uri);
+  optional<tiledb::sm::ArrayDirectory> array_dir;
   try {
-    array_dir = tiledb::sm::ArrayDirectory(
+    array_dir.emplace(
         storage_manager->resources(),
         uri,
         0,
@@ -2947,7 +2949,7 @@ int32_t tiledb_array_encryption_type(
   // Get encryption type
   tiledb::sm::EncryptionType enc;
   throw_if_not_ok(
-      ctx->storage_manager()->array_get_encryption(array_dir, &enc));
+      ctx->storage_manager()->array_get_encryption(array_dir.value(), &enc));
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
@@ -4346,7 +4348,7 @@ capi_return_t tiledb_handle_query_plan_request(
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) {
   if (sanity_check(ctx, array) == TILEDB_ERR) {
-    throw std::invalid_argument("Array paramter must be valid.");
+    throw std::invalid_argument("Array parameter must be valid.");
   }
 
   api::ensure_buffer_is_valid(request);
@@ -4361,7 +4363,7 @@ capi_return_t tiledb_handle_query_plan_request(
   sm::QueryPlan plan(query);
 
   tiledb::sm::serialization::serialize_query_plan_response(
-      plan.dump_json(),
+      plan,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
 

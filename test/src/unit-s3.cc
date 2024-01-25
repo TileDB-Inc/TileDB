@@ -55,7 +55,7 @@ struct S3Fx {
 
   const std::string S3_PREFIX = "s3://";
   const tiledb::sm::URI S3_BUCKET =
-      tiledb::sm::URI(S3_PREFIX + random_label("tiledb-") + "/");
+      tiledb::sm::URI(S3_PREFIX + "tiledb-" + random_label() + "/");
   const std::string TEST_DIR = S3_BUCKET.to_string() + "tiledb_test_dir/";
   ThreadPool thread_pool_{2};
   tiledb::sm::S3 s3_{&g_helper_stats, &thread_pool_, set_config_params()};
@@ -100,132 +100,6 @@ Config S3Fx::set_config_params() {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   return config;
-}
-
-TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file management", "[s3]") {
-  /* Create the following file hierarchy:
-   *
-   * TEST_DIR/dir/subdir/file1
-   * TEST_DIR/dir/subdir/file2
-   * TEST_DIR/dir/file3
-   * TEST_DIR/file4
-   * TEST_DIR/file5
-   */
-  auto dir = TEST_DIR + "dir/";
-  auto dir2 = TEST_DIR + "dir2/";
-  auto subdir = dir + "subdir/";
-  auto file1 = subdir + "file1";
-  auto file2 = subdir + "file2";
-  auto file3 = dir + "file3";
-  auto file4 = TEST_DIR + "file4";
-  auto file5 = TEST_DIR + "file5";
-  auto file6 = TEST_DIR + "file6";
-
-  // Check that bucket is empty
-  bool is_empty = s3_.is_empty_bucket(S3_BUCKET);
-  CHECK(is_empty);
-
-  // Continue building the hierarchy
-  bool exists = false;
-  CHECK_NOTHROW(s3_.touch(URI(file1)));
-  CHECK(s3_.is_object(URI(file1), &exists).ok());
-  CHECK(exists);
-  CHECK_NOTHROW(s3_.touch(URI(file2)));
-  CHECK(s3_.is_object(URI(file2), &exists).ok());
-  CHECK(exists);
-  CHECK_NOTHROW(s3_.touch(URI(file3)));
-  CHECK(s3_.is_object(URI(file3), &exists).ok());
-  CHECK(exists);
-  CHECK_NOTHROW(s3_.touch(URI(file4)));
-  CHECK(s3_.is_object(URI(file4), &exists).ok());
-  CHECK(exists);
-  CHECK_NOTHROW(s3_.touch(URI(file5)));
-  CHECK(s3_.is_object(URI(file5), &exists).ok());
-  CHECK(exists);
-
-  // Check that the bucket is not empty
-  is_empty = s3_.is_empty_bucket(S3_BUCKET);
-  CHECK(!is_empty);
-
-  // Check invalid file
-  CHECK(s3_.is_object(URI(TEST_DIR + "foo"), &exists).ok());
-  CHECK(!exists);
-
-  // List with prefix
-  std::vector<std::string> paths;
-  CHECK(s3_.ls(URI(TEST_DIR), &paths).ok());
-  CHECK(paths.size() == 3);
-  paths.clear();
-  CHECK(s3_.ls(URI(dir), &paths).ok());
-  CHECK(paths.size() == 2);
-  paths.clear();
-  CHECK(s3_.ls(URI(subdir), &paths).ok());
-  CHECK(paths.size() == 2);
-  paths.clear();
-  CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
-  CHECK(paths.size() == 5);
-
-  // Check if a directory exists
-  bool is_dir = false;
-  CHECK(s3_.is_dir(URI(file1), &is_dir).ok());
-  CHECK(!is_dir);  // Not a dir
-  CHECK(s3_.is_dir(URI(file4), &is_dir).ok());
-  CHECK(!is_dir);  // Not a dir
-  CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-  CHECK(is_dir);  // This is viewed as a dir
-  CHECK(s3_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  CHECK(is_dir);  // This is viewed as a dir
-
-  // ls_with_sizes
-  std::string s = "abcdef";
-  CHECK_NOTHROW(s3_.write(URI(file3), s.data(), s.size()));
-  CHECK(s3_.flush_object(URI(file3)).ok());
-
-  auto&& [status, rv] = s3_.ls_with_sizes(URI(dir));
-  auto children = *rv;
-  REQUIRE(status.ok());
-
-  REQUIRE(children.size() == 2);
-  CHECK(children[0].path().native() == file3);
-  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
-
-  CHECK(children[0].file_size() == s.size());
-  // Directories don't get a size
-  CHECK(children[1].file_size() == 0);
-
-  // Move file
-  CHECK(s3_.move_object(URI(file5), URI(file6)).ok());
-  CHECK(s3_.is_object(URI(file5), &exists).ok());
-  CHECK(!exists);
-  CHECK(s3_.is_object(URI(file6), &exists).ok());
-  CHECK(exists);
-  paths.clear();
-  CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
-  CHECK(paths.size() == 5);
-
-  // Move directory
-  CHECK_NOTHROW(s3_.move_dir(URI(dir), URI(dir2)));
-  CHECK(s3_.is_dir(URI(dir), &is_dir).ok());
-  CHECK(!is_dir);
-  CHECK(s3_.is_dir(URI(dir2), &is_dir).ok());
-  CHECK(is_dir);
-  paths.clear();
-  CHECK(s3_.ls(S3_BUCKET, &paths, "").ok());  // No delimiter
-  CHECK(paths.size() == 5);
-
-  // Remove files
-  CHECK(s3_.remove_object(URI(file4)).ok());
-  CHECK(s3_.is_object(URI(file4), &exists).ok());
-  CHECK(!exists);
-
-  // Remove directories
-  CHECK_NOTHROW(s3_.remove_dir(URI(dir2)));
-  CHECK(s3_.is_object(URI(file1), &exists).ok());
-  CHECK(!exists);
-  CHECK(s3_.is_object(URI(file2), &exists).ok());
-  CHECK(!exists);
-  CHECK(s3_.is_object(URI(file3), &exists).ok());
-  CHECK(!exists);
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {

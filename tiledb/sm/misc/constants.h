@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,9 +40,7 @@
 
 #include "tiledb/common/common.h"
 
-namespace tiledb {
-namespace sm {
-
+namespace tiledb::sm {
 enum class Datatype : uint8_t;
 enum class Compressor : uint8_t;
 enum class SerializationType : uint8_t;
@@ -489,6 +487,12 @@ extern const std::string char_str;
 /** The string representation for type blob. */
 extern const std::string blob_str;
 
+/** The string representation for type geom_wkb. */
+extern const std::string geom_wkb_str;
+
+/** The string representation for type geom_wkt. */
+extern const std::string geom_wkt_str;
+
 /** The string representation for type bool. */
 extern const std::string bool_str;
 
@@ -785,9 +789,8 @@ extern const uint64_t s3_min_multipart_part_size;
  * global order writes intermediate chunks
  */
 extern const std::string s3_multipart_buffering_dirname;
-}  // namespace constants
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace constants
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_CONSTANTS_H

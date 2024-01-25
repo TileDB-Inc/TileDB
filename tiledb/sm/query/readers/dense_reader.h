@@ -90,16 +90,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   DenseReader(
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization = false,
+      StrategyParams& params,
       bool remote_query = false);
 
   /** Destructor. */
@@ -409,7 +400,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
       const std::vector<RangeInfo<DimType>>& range_info,
-      std::vector<uint8_t>& aggregate_bitmap,
+      const std::vector<uint8_t>& qc_result,
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads);
 

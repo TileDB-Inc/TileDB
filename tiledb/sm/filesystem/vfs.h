@@ -528,17 +528,26 @@ class VFS : private VFSBase, protected S3_within_VFS {
       const URI& parent,
       [[maybe_unused]] F f,
       [[maybe_unused]] D d = accept_all_dirs) const {
-    if (parent.is_s3()) {
+    LsObjects results;
+    try {
+      if (parent.is_s3()) {
 #ifdef HAVE_S3
-      return s3().ls_filtered(parent, f, d, true);
+        results = s3().ls_filtered(parent, f, d, true);
 #else
-      throw filesystem::VFSException("TileDB was built without S3 support");
+        throw filesystem::VFSException("TileDB was built without S3 support");
 #endif
-    } else {
-      throw filesystem::VFSException(
-          "Recursive ls over " + parent.backend_name() +
-          " storage backend is not supported.");
+      } else {
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+      }
+    } catch (LsStopTraversal& e) {
+      // Do nothing, callback signaled to stop traversal.
+    } catch (...) {
+      // Rethrow exception thrown by the callback.
+      throw;
     }
+    return results;
   }
 
   /**

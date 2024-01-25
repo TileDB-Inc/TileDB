@@ -71,30 +71,10 @@ class DenseReaderStatusException : public StatusException {
 DenseReader::DenseReader(
     stats::Stats* stats,
     shared_ptr<Logger> logger,
-    StorageManager* storage_manager,
-    Array* array,
-    Config& config,
-    std::unordered_map<std::string, QueryBuffer>& buffers,
-    std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-    Subarray& subarray,
-    Layout layout,
-    std::optional<QueryCondition>& condition,
-    DefaultChannelAggregates& default_channel_aggregates,
-    bool skip_checks_serialization,
+    StrategyParams& params,
     bool remote_query)
-    : ReaderBase(
-          stats,
-          logger->clone("DenseReader", ++logger_id_),
-          storage_manager,
-          array,
-          config,
-          buffers,
-          aggregate_buffers,
-          subarray,
-          layout,
-          condition,
-          default_channel_aggregates)
-    , array_memory_tracker_(array->memory_tracker()) {
+    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params)
+    , array_memory_tracker_(params.memory_tracker()) {
   elements_mode_ = false;
 
   // Sanity checks.
@@ -103,13 +83,13 @@ DenseReader::DenseReader(
         "Cannot initialize dense reader; Storage manager not set");
   }
 
-  if (!skip_checks_serialization && buffers_.empty() &&
+  if (!params.skip_checks_serialization() && buffers_.empty() &&
       aggregate_buffers_.empty()) {
     throw DenseReaderStatusException(
         "Cannot initialize dense reader; Buffers not set");
   }
 
-  if (!skip_checks_serialization && !subarray_.is_set()) {
+  if (!params.skip_checks_serialization() && !subarray_.is_set()) {
     throw DenseReaderStatusException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
@@ -1339,13 +1319,6 @@ Status DenseReader::process_aggregates(
   const auto& tile_coords = subarray.tile_coords();
   const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
-  std::vector<uint8_t> aggregate_bitmap;
-  if (condition_.has_value()) {
-    aggregate_bitmap = qc_result;
-  } else {
-    aggregate_bitmap.resize(subarray.cell_num(), 1);
-  }
-
   // Process values in parallel.
   auto status = parallel_for_2d(
       storage_manager_->compute_tp(),
@@ -1378,7 +1351,7 @@ Status DenseReader::process_aggregates(
               tile_subarrays[t],
               global_order ? tile_offsets[t] : 0,
               range_info,
-              aggregate_bitmap,
+              qc_result,
               range_thread_idx,
               num_range_threads));
         }
@@ -1883,7 +1856,7 @@ Status DenseReader::aggregate_tiles(
     const Subarray& tile_subarray,
     const uint64_t global_cell_offset,
     const std::vector<RangeInfo<DimType>>& range_info,
-    std::vector<uint8_t>& aggregate_bitmap,
+    const std::vector<uint8_t>& qc_result,
     const uint64_t range_thread_idx,
     const uint64_t num_range_threads) {
   // For easy reference
@@ -1929,6 +1902,14 @@ Status DenseReader::aggregate_tiles(
       cell_offset = iter.dest_offset_row_col();
     }
 
+    std::vector<uint8_t> aggregate_bitmap(iter.cell_slab_length(), 1);
+    if (condition_.has_value()) {
+      memcpy(
+          aggregate_bitmap.data(),
+          qc_result.data() + cell_offset,
+          iter.cell_slab_length());
+    }
+
     // Iterate through all fragment domains and copy data.
     for (uint64_t fd = 0; fd < frag_domains.size(); fd++) {
       // If the cell slab overlaps this fragment domain range, copy data.
@@ -1956,7 +1937,7 @@ Status DenseReader::aggregate_tiles(
               iter.pos_in_tile() + start,
               iter.pos_in_tile() + end + 1,
               tile_tuples[fd],
-              &aggregate_bitmap[cell_offset + start])};
+              aggregate_bitmap.data() + start)};
           for (auto& aggregate : aggregates) {
             aggregate->aggregate_data(aggregate_buffer);
           }
@@ -1972,7 +1953,7 @@ Status DenseReader::aggregate_tiles(
                 start_cell,
                 start_cell + 1,
                 tile_tuples[fd],
-                &aggregate_bitmap[cell_offset + start + i])};
+                aggregate_bitmap.data() + start + i)};
             for (auto& aggregate : aggregates) {
               aggregate->aggregate_data(aggregate_buffer);
             }
@@ -1984,7 +1965,7 @@ Status DenseReader::aggregate_tiles(
         // fragments.
         if (fd != frag_domains.size() - 1) {
           for (uint64_t c = start; c <= end; c++) {
-            aggregate_bitmap[cell_offset + c] = 0;
+            aggregate_bitmap[c] = 0;
           }
         }
 
