@@ -36,6 +36,7 @@
 
 #include <cstring>
 #include <iostream>
+#include <numeric>
 
 using namespace tiledb;
 

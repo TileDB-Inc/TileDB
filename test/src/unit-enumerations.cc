@@ -2073,7 +2073,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     EnumerationFx,
     "Cap'N Proto - Basic New ArraySchema Serialization",
-    "[enumeration][capnp][basic][initialized-in-ram") {
+    "[enumeration][capnp][basic][initialized-in-ram]") {
   auto client_side = GENERATE(true, false);
   auto ser_type = GENERATE(SerializationType::CAPNP, SerializationType::JSON);
 
