@@ -113,51 +113,6 @@ FragmentMetadata::FragmentMetadata(
 
 FragmentMetadata::~FragmentMetadata() = default;
 
-// Copy initialization
-FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
-  resources_ = other.resources_;
-  array_schema_ = other.array_schema_;
-  dense_ = other.dense_;
-  fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
-  has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
-  has_timestamps_ = other.has_timestamps_;
-  has_delete_meta_ = other.has_delete_meta_;
-  sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
-  array_uri_ = other.array_uri_;
-}
-
-FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
-  resources_ = other.resources_;
-  array_schema_ = other.array_schema_;
-  dense_ = other.dense_;
-  fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
-  has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
-  has_timestamps_ = other.has_timestamps_;
-  has_delete_meta_ = other.has_delete_meta_;
-  sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
-  array_uri_ = other.array_uri_;
-
-  return *this;
-}
-
 /* ****************************** */
 /*                API             */
 /* ****************************** */

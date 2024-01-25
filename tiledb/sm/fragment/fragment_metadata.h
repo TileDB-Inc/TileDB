@@ -100,10 +100,8 @@ class FragmentMetadata {
   /** Destructor. */
   ~FragmentMetadata();
 
-  // Copy initialization
-  FragmentMetadata(const FragmentMetadata& other);
-
-  FragmentMetadata& operator=(const FragmentMetadata& other);
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentMetadata);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentMetadata);
 
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
