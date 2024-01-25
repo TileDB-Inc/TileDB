@@ -58,6 +58,7 @@
 #include "tiledb/sm/c_api/api_argument_validator.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/config/config_iter.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/cpp_api/core_interface.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -2702,13 +2703,13 @@ int32_t tiledb_array_create_with_key(
 int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
-  throw_if_not_ok(ctx->storage_manager()->array_consolidate(
+  tiledb::sm::Consolidator::array_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
   return TILEDB_OK;
 }
 
@@ -2721,13 +2722,13 @@ int32_t tiledb_array_consolidate_with_key(
     tiledb_config_t* config) {
   // Sanity checks
 
-  throw_if_not_ok(ctx->storage_manager()->array_consolidate(
+  tiledb::sm::Consolidator::array_consolidate(
       array_uri,
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
       key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }
@@ -2747,24 +2748,24 @@ int32_t tiledb_array_consolidate_fragments(
     uris.emplace_back(fragment_uris[i]);
   }
 
-  throw_if_not_ok(ctx->storage_manager()->fragments_consolidate(
+  tiledb::sm::Consolidator::fragments_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }
 
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
-  ctx->storage_manager()->array_vacuum(
+  tiledb::sm::Consolidator::array_vacuum(
       array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config());
+      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      ctx->storage_manager());
 
   return TILEDB_OK;
 }

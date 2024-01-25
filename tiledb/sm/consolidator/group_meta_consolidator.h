@@ -83,14 +83,14 @@ class GroupMetaConsolidator : public Consolidator {
       const char* group_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Performs the vacuuming operation.
    *
    * @param group_name URI of group to consolidate.
    */
-  void vacuum(const char* group_name);
+  void vacuum(const char* group_name) override;
 
  private:
   /* ********************************* */
