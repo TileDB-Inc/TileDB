@@ -37,6 +37,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/cpp_api/vfs_experimental.h"
 #include "tiledb/sm/filesystem/s3.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/misc/tdb_time.h"
@@ -525,6 +526,61 @@ TEST_CASE("S3: S3Scanner iterator", "[s3][ls-scan-iterator]") {
     auto full_uri = s3_test.temp_dir_.to_string() + "/" + s3_object.GetKey();
     CHECK(full_uri == expected[i].first);
     CHECK(static_cast<uint64_t>(s3_object.GetSize()) == expected[i].second);
+  }
+}
+
+TEST_CASE("List nested prefix repro minio", "[debug][minio]") {
+  tiledb::Config config;
+  config.set("vfs.s3.endpoint_override", "localhost:9999");
+  config.set("vfs.s3.scheme", "https");
+  config.set("vfs.s3.use_virtual_addressing", "false");
+  config.set("vfs.s3.verify_ssl", "false");
+  tiledb::Context ctx(config);
+  tiledb::VFS vfs(ctx);
+
+  auto test_uri = tiledb::test::test_dir("s3://").to_string();
+  if (!vfs.is_bucket(test_uri)) {
+    vfs.create_bucket(test_uri);
+  }
+  // This is the same as using `Create Folder` functionality in AWS S3 console.
+  // Creates a 0 byte object as a folder on S3.
+  vfs.touch(test_uri + "/debug/test/");
+  // Add an object to our new folder.
+  vfs.touch(test_uri + "/debug/test/file.txt");
+  std::vector<std::string> results;
+  SECTION("ls") {
+    results = vfs.ls(test_uri + "/debug/test/");
+  }
+  SECTION("ls_recursive") {
+    tiledb::VFSExperimental::ls_recursive(
+        ctx,
+        vfs,
+        test_uri + "/debug/test/",
+        [&](const std::string_view& path, uint64_t) {
+          results.emplace_back(path);
+          return true;
+        });
+  }
+  SECTION("ls_recursive_filter") {
+    tiledb::VFSExperimental::ls_recursive_filter(
+        ctx,
+        vfs,
+        test_uri + "/debug/",
+        [&](const std::string_view& path, uint64_t) {
+          results.emplace_back(path);
+          return true;
+        });
+  }
+
+  if (constants::library_version[1] < 22) {
+    // Prior to 2.22.0 we return the folder as well as the file.
+    REQUIRE(results.size() == 2);
+  } else {
+    REQUIRE(results.size() == 1);
+  }
+
+  if (vfs.is_bucket(test_uri)) {
+    vfs.remove_bucket(test_uri);
   }
 }
 

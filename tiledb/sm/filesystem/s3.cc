@@ -458,11 +458,6 @@ void S3::touch(const URI& uri) const {
         "Cannot create file; URI is not an S3 URI: " + uri.to_string()));
   }
 
-  if (uri.to_string().back() == '/') {
-    throw S3Exception(std::string(
-        "Cannot create file; URI is a directory: " + uri.to_string()));
-  }
-
   bool exists;
   throw_if_not_ok(is_object(uri, &exists));
   if (exists) {
@@ -892,10 +887,14 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
-      std::string file(object.GetKey().c_str());
+      std::string file("s3://" + aws_auth + add_front_slash(object.GetKey()));
       uint64_t size = object.GetSize();
-      entries.emplace_back(
-          "s3://" + aws_auth + add_front_slash(file), size, false);
+      // TODO: Remove library_version check after 2.22.0 release.
+      if (constants::library_version[1] > 22 && size == 0 &&
+          file == prefix_str) {
+        continue;  // Skip the top level prefix.
+      }
+      entries.emplace_back(file, size, false);
     }
 
     for (const auto& object :

@@ -1675,6 +1675,13 @@ void S3Scanner<F, D>::next(typename Iterator::pointer& ptr) {
     uint64_t size = object.GetSize();
     std::string path = "s3://" + list_objects_request_.GetBucket() +
                        S3::add_front_slash(object.GetKey());
+    // TODO: Remove library_version check after 2.22.0 release.
+    if (constants::library_version[1] > 22 && size == 0 &&
+        path == this->prefix_.to_string()) {
+      // Skip the root directory.
+      advance(ptr);
+      continue;
+    }
 
     // TODO: Add support for directory pruning.
     if (this->file_filter_(path, size)) {
