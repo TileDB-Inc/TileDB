@@ -67,7 +67,7 @@ function(fetch_tiledb_release_list VERSION EXPECTED_HASH)
 
                 set(RELEASE_VAR TILEDB_${OS}_${ARCH})
                 set(URL_${RELEASE_VAR} ${URL} PARENT_SCOPE)
-                set(SHA_${RELEASE_VAR} ${SHA} PARENT_SCOPE)
+                set(HASH_${RELEASE_VAR} ${SHA} PARENT_SCOPE)
         endforeach()
 endfunction()
 
@@ -90,6 +90,10 @@ function(detect_artifact_name OUT_VAR)
         else() # Linux
                 SET(${OUT_VAR} TILEDB_LINUX_X86_64 PARENT_SCOPE)
         endif()
+endfunction()
+
+function(get_tiledb_source_url_and_hash OUT_URL OUT_HASH)
+        # TODO
 endfunction()
 
 function(fetch_prebuilt_tiledb)
@@ -117,7 +121,7 @@ function(fetch_prebuilt_tiledb)
         ExternalProject_Add(ep_tiledb
                 PREFIX "externals"
                 URL ${URL_${ARTIFACT_NAME}}
-                URL_HASH SHA1=${SHA_${ARTIFACT_NAME}}
+                URL_HASH SHA256=${HASH_${ARTIFACT_NAME}}
                 CONFIGURE_COMMAND ""
                 BUILD_COMMAND ""
                 UPDATE_COMMAND ""
