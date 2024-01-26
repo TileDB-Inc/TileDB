@@ -77,7 +77,9 @@ int main(int argc, char* argv[]) {
   if (argc > 1) {
     if (argc != 3) {
       printf("Usage: tdb_gzip_embedded_data <input> <output>\n");
-      printf("If neither <input> nor <output> are specified, they will be stdin and stdout respectively.\n");
+      printf(
+          "If neither <input> nor <output> are specified, they will be stdin "
+          "and stdout respectively.\n");
     }
     infile = fopen(argv[1], "rb");
     if (!infile) {
