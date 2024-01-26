@@ -75,14 +75,23 @@ int main(int argc, char* argv[]) {
   // output stream.
 
   if (argc > 1) {
-    outfile = fopen(argv[1], "w+b");
-    if (!outfile) {
+    if (argc != 3) {
+      printf("Usage: tdb_gzip_embedded_data <input> <output>\n");
+      printf("If neither <input> nor <output> are specified, they will be stdin and stdout respectively.\n");
+    }
+    infile = fopen(argv[1], "rb");
+    if (!infile) {
       fprintf(stderr, "Unable to create file %s\n", argv[1]);
       exit(-2);
     }
+    outfile = fopen(argv[2], "wb");
+    if (!outfile) {
+      fprintf(stderr, "Unable to create file %s\n", argv[2]);
+      exit(-2);
+    }
   }
-  auto closefile = [&]() { fclose(outfile); };
-  tiledb::common::ScopedExecutor onexit1(closefile);
+  tiledb::common::ScopedExecutor onexit1([&]() { fclose(infile); });
+  tiledb::common::ScopedExecutor onexit2([&]() { fclose(outfile); });
 
 #ifdef _WIN32
   // need to be sure in/out are in binay mode, windows default won't be!!!
