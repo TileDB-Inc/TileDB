@@ -67,7 +67,7 @@ FragmentID::FragmentID(const URI& uri)
   auto pos = name_.find_last_of('.');
   name_ = (pos == std::string::npos) ? name_ : name_.substr(0, pos);
   if (name_.find_last_of('_') == std::string::npos) {
-    throw InvalidURIException("Name may not be empty.");
+    throw InvalidURIException("Provided URI does not contain a fragment name.");
   }
 
   // Set array format version

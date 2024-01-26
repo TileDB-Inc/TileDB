@@ -145,3 +145,45 @@ TEST_CASE(
     }
   }
 }
+
+// Should succeed and do
+TEST_CASE("FragmentID: Valid uris", "[fragment_id][valid_uri]") {
+  std::array<success_test_case, 5> success_cases{{
+      {"file:///__0123456789ABCDEF0123456789ABCDEF_1",
+       "__0123456789ABCDEF0123456789ABCDEF_1",
+       std::pair{1, 1},
+       1,
+       2},
+      {"file:///__0123456789ABCDEF0123456789ABCDEF_1_2",
+       "__0123456789ABCDEF0123456789ABCDEF_1_2",
+       std::pair{2, 2},
+       1,
+       2},
+      {"file:///__0123456789ABCDEF0123456789ABCDEF_2_1",
+       "__0123456789ABCDEF0123456789ABCDEF_2_1",
+       std::pair{1, 1},
+       1,
+       2},
+      {"file:///__1_2_0123456789ABCDEF0123456789ABCDEF",
+       "__1_2_0123456789ABCDEF0123456789ABCDEF",
+       std::pair{1, 2},
+       2,
+       4},
+      {"file:///__1_2_0123456789ABCDEF0123456789ABCDEF_5",
+       "__1_2_0123456789ABCDEF0123456789ABCDEF_5",
+       std::pair{1, 2},
+       3,
+       5},
+  }};
+
+  for (auto success_case : success_cases) {
+    auto uri = success_case.path;
+    DYNAMIC_SECTION(uri) {
+      FragmentID f{uri};
+      CHECK(f.name() == success_case.name);
+      CHECK(f.timestamp_range() == success_case.timestamp_range);
+      CHECK(f.name_version() == success_case.name_version);
+      CHECK(f.array_format_version() == success_case.array_format_version);
+    }
+  }
+}
