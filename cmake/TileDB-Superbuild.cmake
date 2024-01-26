@@ -198,3 +198,10 @@ add_custom_target(package
         COMMAND ${CMAKE_CPACK_COMMAND} --config CPackConfig.cmake -G "$<IF:$<PLATFORM_ID:Windows>,ZIP,TGZ>"
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
 )
+
+# make package_source (.tar.gz for Linux and MacOS, .zip for Windows)
+add_custom_target(package_source
+        DEPENDS tiledb
+        COMMAND ${CMAKE_CPACK_COMMAND} --config CPackSourceConfig.cmake -G "$<IF:$<PLATFORM_ID:Windows>,ZIP,TGZ>"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+)
