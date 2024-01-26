@@ -45,9 +45,11 @@ include("${CMAKE_CURRENT_LIST_DIR}/@TARGETS_EXPORT_NAME@.cmake")
 check_required_components("@PROJECT_NAME@")
 
 if(@BUILD_SHARED_LIBS@ AND NOT TARGET TileDB::tiledb_shared) # BUILD_SHARED_LIBS AND NOT TARGET TileDB::tiledb_shared
-  add_library(TileDB::tiledb_shared ALIAS TileDB::tiledb)
+  add_library(TileDB::tiledb_shared INTERFACE IMPORTED)
+  set_target_properties(TileDB::tiledb_shared PROPERTIES INTERFACE_LINK_LIBRARIES TileDB::tiledb)
 elseif(NOT TARGET TileDB::tiledb_static)
-  add_library(TileDB::tiledb_static ALIAS TileDB::tiledb)
+  add_library(TileDB::tiledb_static INTERFACE IMPORTED)
+  set_target_properties(TileDB::tiledb_static PROPERTIES INTERFACE_LINK_LIBRARIES TileDB::tiledb)
 endif()
 
 # Define a convenience all-caps variable
