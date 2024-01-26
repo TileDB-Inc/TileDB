@@ -16,4 +16,4 @@ _Note_: The presence of `[]` is indicative of an optional parameter.
 | :-: | :-: | :-: |
 | 1 - 2 | 1.4 - 1.5 | `__uuid_t1[_t2]` |
 | 3 - 4 | 1.6 - 1.7 | `__t1_t2_uuid` |
-| 5+ | 2.0+ | `__t1_t2_uuid_[v]` |
+| 5+ | 2.0+ | `__t1_t2_uuid[_v]` |

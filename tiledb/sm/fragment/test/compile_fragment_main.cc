@@ -32,7 +32,6 @@ using namespace tiledb::sm;
 
 int main() {
   FragmentID x(URI{});
-  (void)x.uri();
   (void)x.name();
   (void)x.timestamp_range();
   (void)x.name_version();

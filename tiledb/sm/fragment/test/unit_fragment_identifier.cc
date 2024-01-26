@@ -37,106 +37,111 @@
 
 using namespace tiledb::sm;
 
+const std::string frag_dir{"file:///"};
+struct failure_test_case {
+  std::string path;
+};
+
+struct success_test_case {
+  std::string path;  // input
+  // outputs
+  std::string name;
+  timestamp_range_type timestamp_range;
+  int name_version;
+  format_version_t array_format_version;
+};
+
+TEST_CASE("FragmentID: Constructor: empty uri", "[fragment_id][empty_uri]") {
+  failure_test_case failure_case{""};
+  REQUIRE_THROWS(FragmentID{failure_case.path});
+}
+
+// Should fail but succeed (known defects)
 TEST_CASE(
-    "FragmentID: get_timestamp_range", "[fragment_id][get_timestamp_range]") {
-  // #TODO use table-driven tests to reduce copypasta
-  std::pair<uint64_t, uint64_t> range;
+    "FragmentID: Constructor: Invalid uri",
+    "[!shouldfail][fragment_id][invalid_uri]") {
+  std::vector<failure_test_case> invalid_uris{{{""}, {"_"}, {"X"}}};
 
-  SECTION("name version 1") {
-    // Note: the end timestamp may or may not be present.
-    // If present, this version sets both range values to the end timestamp.
-    // As such, if the end_timestamp < start_timestamp, no error is thrown.
-    SECTION("valid timestamps") {
-      tiledb::sm::URI frag;
+  std::vector<failure_test_case> empty_fields{{
+      {"__"},    // 2 underscores only, no fields
+      {"___"},   // 3 underscores only, all fields empty (version 1)
+      {"____"},  // 4 underscores only, all fields empty (versions 2, 3)
+      {"_____"}  // 5 underscores, all fields are empty (version 3)
+  }};
 
-      SECTION("with end timestamp") {
-        // Create fragment at timestamp 1-2
-        frag = tiledb::sm::URI(
-            "file:///array_name/__fragments/"
-            "__44318efd44f546b18db13edc8d10805b_1_2");
+  // (Version 1) Expects: __uuid_t
+  std::vector<failure_test_case> two_fields{{
+      {"__0123456789ABCDEF0123456789ABCDEF_1_"},  // __uuid_t_
+      {"__1_0123456789ABCDEF0123456789ABCDEF"},   // __t_uuid
+      {"___0123456789ABCDEF0123456789ABCDEF1"},   // ___uuidt
+      {"_0123456789ABCDEF0123456789ABCDEF__1"},   // _uuid__t
+      {"0123456789ABCDEF0123456789ABCDEF___1"}    // uuid___t
+  }};
+
+  // (Version 2, 3) Expects: __t1_t2_uuid
+  std::vector<failure_test_case> three_fields{{
+      {"__1_2_0123456789ABCDEF0123456789ABCDEF_"},  // __t1_t2_uuid_
+      {"__1_0123456789ABCDEF0123456789ABCDEF_2"},   // __t1_uuid_t2
+      {"__2_0123456789ABCDEF0123456789ABCDEF_1"},   // __t2_uuid_t1
+      {"____120123456789ABCDEF0123456789ABCDEF"},   // ____t1t2uuid
+      {"___1_20123456789ABCDEF0123456789ABCDEF"},   // ___t1_t2uuid
+      {"__1__20123456789ABCDEF0123456789ABCDEF"},   // __t1__t2uuid
+      {"_1___20123456789ABCDEF0123456789ABCDEF"},   // _t1___t2uuid
+      {"1____20123456789ABCDEF0123456789ABCDEF"},   // t1____t2uuid
+      {"1___2_0123456789ABCDEF0123456789ABCDEF"},   // t1___t2_uuid
+      {"1__2__0123456789ABCDEF0123456789ABCDEF"},   // t1__t2__uuid
+      {"1_2___0123456789ABCDEF0123456789ABCDEF"},   // t1_t2___uuid
+      {"12____0123456789ABCDEF0123456789ABCDEF"},   // t1t2____uuid
+  }};
+
+  // (Version 3) Expects: __t1_t2_uuid_v
+  std::vector<failure_test_case> four_fields{{
+      {"__1_2_0123456789ABCDEF0123456789ABCDEF_5_"},  // __t1_t2_uuid_v_
+      {"__1_2_5_0123456789ABCDEF0123456789ABCDEF"},   // __t1_t2_v_uuid
+      {"__1_0123456789ABCDEF0123456789ABCDEF_2_5"},   // __t1_uuid_t2_v
+      {"__0123456789ABCDEF0123456789ABCDEF_1_2_5"},   // __uuid_t1_t2_v
+      {"_____120123456789ABCDEF0123456789ABCDEF5"},   // _____t1t2uuidv
+      {"____1_20123456789ABCDEF0123456789ABCDEF5"},   // ____t1_t2uuidv
+      {"___1__20123456789ABCDEF0123456789ABCDEF5"},   // ___t1__t2uuidv
+      {"__1___20123456789ABCDEF0123456789ABCDEF5"},   // __t1___t2uuidv
+      {"_1____20123456789ABCDEF0123456789ABCDEF5"},   // _t1____t2uuidv
+      {"1____20123456789ABCDEF0123456789ABCDEF5"},    // t1_____t2uuidv
+      {"1___2_0123456789ABCDEF0123456789ABCDEF5"},    // t1____t2_uuidv
+      {"1__2__0123456789ABCDEF0123456789ABCDEF5"},    // t1__t2___uuidv
+      {"1_2___0123456789ABCDEF0123456789ABCDEF5"},    // t1_t2___uuidv
+      {"1_2__0123456789ABCDEF0123456789ABCDEF_5"},    // t1_t2__uuid_v
+      {"1_2_0123456789ABCDEF0123456789ABCDEF__5"},    // t1_t2_uuid__v
+      {"1_20123456789ABCDEF0123456789ABCDEF___5"},    // t1_t2uuid___v
+  }};
+
+  // Timestamps and uuid are identical
+  std::vector<failure_test_case> uuid_timestamps{{
+      {"__0123456789ABCDEF0123456789ABCDEF_"
+       "0123456789ABCDEF0123456789ABCDEF"},  // version1: __uuid_t1
+      {"__0123456789ABCDEF0123456789ABCDEF_"
+       "0123456789ABCDEF0123456789ABCDEF_"
+       "0123456789ABCDEF0123456789ABCDEF"},  // version1: __uuid_t1_t2,
+                                             // versions 2,3:
+                                             // __t1_t2_uuid
+      {"__0123456789ABCDEF0123456789ABCDEF_"
+       "0123456789ABCDEF0123456789ABCDEF_0123456789ABCDEF0123456789ABCDEF_"
+       "5"},  // version3: __t1_t2_uuid_v
+  }};
+
+  std::vector<std::vector<failure_test_case>> failure_cases{
+      invalid_uris,
+      empty_fields,
+      two_fields,
+      three_fields,
+      four_fields,
+      uuid_timestamps};
+
+  for (auto failure_case : failure_cases) {
+    for (auto failure : failure_case) {
+      auto uri = frag_dir + failure.path;
+      DYNAMIC_SECTION(uri) {
+        REQUIRE_THROWS(FragmentID{uri});
       }
-
-      SECTION("without end timestamp") {
-        // Create fragment at timestamp 2
-        frag = tiledb::sm::URI(
-            "file:///array_name/__fragments/"
-            "__44318efd44f546b18db13edc8d10805b_2");
-      }
-
-      // Check timestamp range
-      FragmentID fragment_uri{frag};
-      range = fragment_uri.timestamp_range();
-      CHECK(range.first == 2);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__44318efd44f546b18db13edc8d10805b_2_1");
-
-      // Check timestamp range
-      FragmentID fragment_uri{frag};
-      range = fragment_uri.timestamp_range();
-      CHECK(range.first == 1);
-      CHECK(range.second == 1);
-    }
-  }
-
-  SECTION("name version 2") {
-    SECTION("valid timestamps") {
-      // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b");
-
-      // Check timestamp range
-      FragmentID fragment_uri{frag};
-      range = fragment_uri.timestamp_range();
-      CHECK(range.first == 1);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b");
-
-      // FragmentURI creation will fail on timestamp range fetching
-      REQUIRE_THROWS_WITH(
-          FragmentID(frag),
-          Catch::Matchers::ContainsSubstring(
-              "start timestamp cannot be after end timestamp"));
-    }
-  }
-
-  SECTION("name version 3") {
-    SECTION("valid timestamps") {
-      // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b_5");
-
-      // Check timestamp range
-      FragmentID fragment_uri{frag};
-      range = fragment_uri.timestamp_range();
-      CHECK(range.first == 1);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b_5");
-
-      // FragmentID creation will fail on timestamp range fetching
-      REQUIRE_THROWS_WITH(
-          FragmentID(frag),
-          Catch::Matchers::ContainsSubstring(
-              "start timestamp cannot be after end timestamp"));
     }
   }
 }

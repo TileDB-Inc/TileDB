@@ -53,15 +53,27 @@ enum class FragmentNameVersion { ONE, TWO, THREE };
 
 /**
  * Validate, parse and handle the different components of a fragment identifer.
+ *
+ * @section Known Defects:
+ * Construction should fail (but currently does not)
+ * with the following _name_ (not uri) inputs:
+ *
+ * Empty.
+ * "X" Non-empty, no underscores.
+ * "_" 1 underscore only, no fields.
+ * "__" 2 underscores only, no fields.
+ * "___" 3 underscores only, all fields empty (version 1).
+ * "____" 4 underscores only, all fields empty (versions 2, 3).
+ * "_____"5 underscores, all fields are empty (version 3).
+ * Missing fields.
+ * Correct number of fields, incorrect order.
+ * Trailing "_".
+ * Otherwise potentially-malformed names, which may not begin with "__".
  */
-class FragmentID {
+class FragmentID : private URI {
  private:
-  /** The original fragment uri. */
-  const URI& uri_;
-
   /** The fragment name. */
   std::string name_;
-
   /** The timestamp range. */
   timestamp_range_type timestamp_range_;
 
@@ -81,10 +93,7 @@ class FragmentID {
   /** Destructor. */
   ~FragmentID() = default;
 
-  /** Accessors. */
-  inline const URI& uri() {
-    return uri_;
-  }
+  /** Accessor to the fragment name. */
   inline const std::string& name() {
     return name_;
   }

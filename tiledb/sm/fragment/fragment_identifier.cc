@@ -46,22 +46,34 @@ class FragmentIDException : public StatusException {
   }
 };
 
+class InvalidURIException : public FragmentIDException {
+ public:
+  explicit InvalidURIException(const std::string& message)
+      : FragmentIDException("input URI is invalid. " + message) {
+  }
+};
+
 FragmentID::FragmentID(const URI& uri)
-    : uri_(uri)
+    : URI(uri)
     , name_(uri.remove_trailing_slash().last_path_part())
     , timestamp_range_({0, 0})
     , name_version_(FragmentNameVersion::ONE) {
   // Ensure input uri is valid (non-empty)
   if (uri.empty()) {
-    throw FragmentIDException(
-        "Failed to construct FragmentID; input URI is invalid.");
+    throw InvalidURIException("URI may not be empty.");
   }
 
   // Set name
   auto pos = name_.find_last_of('.');
   name_ = (pos == std::string::npos) ? name_ : name_.substr(0, pos);
-  assert(name_.find_last_of('_') != std::string::npos);
+  if (name_.find_last_of('_') == std::string::npos) {
+    throw InvalidURIException("Name may not be empty.");
+  }
+
+  // Set array format version
   auto array_format_version_str = name_.substr(name_.find_last_of('_') + 1);
+  std::stringstream ss(array_format_version_str);
+  ss >> array_format_version_;
 
   // Set name version
   size_t n = std::count(name_.begin(), name_.end(), '_');
@@ -70,12 +82,6 @@ FragmentID::FragmentID(const URI& uri)
   } else if (array_format_version_str.size() == 32) {
     name_version_ = FragmentNameVersion::TWO;
   }
-
-  // Set array format version
-  uint32_t ret;
-  std::stringstream ss(array_format_version_str);
-  ss >> ret;
-  array_format_version_ = ret;
 
   // Set timestamp range
   if (name_version_ == FragmentNameVersion::ONE) {
@@ -96,9 +102,6 @@ FragmentID::FragmentID(const URI& uri)
         (long long int*)&timestamp_range_.first,
         (long long int*)&timestamp_range_.second);
   }
-
-  // #TODO "sscanf foes not allow any decent error handling. Probably need to
-  // rewrite this."
   if (timestamp_range_.first > timestamp_range_.second) {
     throw FragmentIDException(
         "Failed to construct FragmentID; start timestamp cannot "
