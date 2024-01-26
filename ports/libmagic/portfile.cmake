@@ -31,9 +31,31 @@ if(VCPKG_TARGET_IS_WINDOWS)
     set(VCPKG_CXX_FLAGS "${VCPKG_CXX_FLAGS} -D_CRT_SECURE_NO_WARNINGS -D_CRT_NONSTDC_NO_WARNINGS")
 endif()
 
+set(CONFIG_OPTIONS)
+
+if(NOT "zlib" IN_LIST FEATURES)
+    list(APPEND CONFIG_OPTIONS "--disable-zlib")
+endif()
+
+if(NOT "bzip2" IN_LIST FEATURES)
+    list(APPEND CONFIG_OPTIONS "--disable-bzlib")
+endif()
+
+if(NOT "lzma" IN_LIST FEATURES)
+    list(APPEND CONFIG_OPTIONS "--disable-xzlib")
+endif()
+
+if(NOT "zstd" IN_LIST FEATURES)
+    list(APPEND CONFIG_OPTIONS "--disable-zstdlib")
+endif()
+
 vcpkg_configure_make(
     AUTOCONFIG
     SOURCE_PATH "${SOURCE_PATH}"
+    OPTIONS
+        ${CONFIG_OPTIONS}
+        "--disable-lzlib"
+        "--disable-libseccomp"
 )
 
 if(VCPKG_CROSSCOMPILING)
