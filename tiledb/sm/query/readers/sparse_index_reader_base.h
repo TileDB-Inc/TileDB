@@ -302,6 +302,14 @@ class SparseIndexReaderBase : public ReaderBase {
 
     /** Is the reader done with the query. */
     bool done_adding_result_tiles_;
+
+    ReadState() {
+    }
+
+    ReadState(std::vector<FragIdx>&& frag_idx, bool done_adding_result_tiles)
+        : frag_idx_(std::move(frag_idx))
+        , done_adding_result_tiles_(done_adding_result_tiles) {
+    }
   };
 
   /**

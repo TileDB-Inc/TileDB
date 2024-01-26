@@ -667,20 +667,24 @@ Status index_read_state_from_capnp(
     const ArraySchema& schema,
     const capnp::ReadStateIndex::Reader& read_state_reader,
     SparseIndexReaderBase* reader) {
-  auto read_state = reader->read_state();
-
-  read_state->done_adding_result_tiles_ =
-      read_state_reader.getDoneAddingResultTiles();
-
+  bool done_reading = read_state_reader.getDoneAddingResultTiles();
   assert(read_state_reader.hasFragTileIdx());
-  read_state->frag_idx_.clear();
+  std::vector<FragIdx> fragment_indexes;
   for (const auto rcs : read_state_reader.getFragTileIdx()) {
     auto tile_idx = rcs.getTileIdx();
     auto cell_idx = rcs.getCellIdx();
 
-    read_state->frag_idx_.emplace_back(tile_idx, cell_idx);
+    fragment_indexes.emplace_back(tile_idx, cell_idx);
   }
 
+  auto read_state = reader->read_state();
+  if (read_state == nullptr) {
+    throw std::runtime_error(
+        "index_read_state_from_capnp: read_state within SparseIndexReaderBase "
+        "object is null.");
+  }
+  *read_state = tiledb::sm::SparseIndexReaderBase::ReadState(
+      std::move(fragment_indexes), done_reading);
   return Status::Ok();
 }
 
