@@ -203,7 +203,8 @@ void Array::load_fragments(
   auto timer_se = resources_.stats().start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<shared_ptr<Tile>, uint64_t>>
+      offsets;
   set_fragment_metadata(FragmentMetadata::load(
       resources_,
       memory_tracker(),
@@ -1475,9 +1476,8 @@ void Array::do_load_metadata() {
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = array_metadata_to_load[m].uri_;
 
-        auto&& tile =
+        metadata_tiles[m] =
             GenericTileIO::load(resources_, uri, 0, *encryption_key());
-        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
         return Status::Ok();
       }));

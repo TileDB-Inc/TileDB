@@ -328,8 +328,8 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status filter_tile(
       const std::string& name,
-      WriterTile* tile,
-      WriterTile* offsets_tile,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& offsets_tile,
       bool offsets,
       bool nullable);
 

@@ -269,7 +269,8 @@ class ResultTile {
         const TileData tile_data)
         : fixed_tile_(
               tile_sizes.has_var_tile() ?
-                  Tile(
+                  Tile::make_shared(
+                      HERE(),
                       format_version,
                       constants::cell_var_offset_type,
                       constants::cell_var_offset_size,
@@ -277,7 +278,8 @@ class ResultTile {
                       tile_sizes.tile_size(),
                       tile_data.fixed_filtered_data(),
                       tile_sizes.tile_persisted_size()) :
-                  Tile(
+                  Tile::make_shared(
+                      HERE(),
                       format_version,
                       array_schema.type(name),
                       array_schema.cell_size(name),
@@ -287,7 +289,8 @@ class ResultTile {
                       tile_sizes.tile_persisted_size())) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
-        var_tile_ = Tile(
+        var_tile_ = Tile::make_shared(
+            HERE(),
             format_version,
             type,
             datatype_size(type),
@@ -298,7 +301,8 @@ class ResultTile {
       }
 
       if (tile_sizes.has_validity_tile()) {
-        validity_tile_ = Tile(
+        validity_tile_ = Tile::make_shared(
+            HERE(),
             format_version,
             constants::cell_validity_type,
             constants::cell_validity_size,
@@ -314,33 +318,33 @@ class ResultTile {
     /* ********************************* */
 
     /** @returns Fixed tile. */
-    Tile& fixed_tile() {
+    shared_ptr<Tile> fixed_tile() {
       return fixed_tile_;
     }
 
     /** @returns Var tile. */
-    Tile& var_tile() {
-      return var_tile_.value();
+    shared_ptr<Tile> var_tile() {
+      return var_tile_;
     }
 
     /** @returns Validity tile. */
-    Tile& validity_tile() {
-      return validity_tile_.value();
+    shared_ptr<Tile> validity_tile() {
+      return validity_tile_;
     }
 
     /** @returns Fixed tile. */
-    const Tile& fixed_tile() const {
+    shared_ptr<const Tile> fixed_tile() const {
       return fixed_tile_;
     }
 
     /** @returns Var tile. */
-    const Tile& var_tile() const {
-      return var_tile_.value();
+    shared_ptr<const Tile> var_tile() const {
+      return var_tile_;
     }
 
     /** @returns Validity tile. */
-    const Tile& validity_tile() const {
-      return validity_tile_.value();
+    shared_ptr<const Tile> validity_tile() const {
+      return validity_tile_;
     }
 
    private:
@@ -349,13 +353,13 @@ class ResultTile {
     /* ********************************* */
 
     /** Stores the fixed data tile. */
-    Tile fixed_tile_;
+    shared_ptr<Tile> fixed_tile_;
 
     /** Stores the var data tile. */
-    optional<Tile> var_tile_;
+    shared_ptr<Tile> var_tile_;
 
     /** Stores the validity data tile. */
-    optional<Tile> validity_tile_;
+    shared_ptr<Tile> validity_tile_;
   };
 
   /* ********************************* */
@@ -403,7 +407,7 @@ class ResultTile {
   bool stores_zipped_coords() const;
 
   /** Returns the zipped coordinates tile. */
-  const Tile& zipped_coords_tile() const;
+  shared_ptr<const Tile> zipped_coords_tile() const;
 
   /** Returns the coordinate tile for the input dimension. */
   const TileTuple& coord_tile(unsigned dim_idx) const;
@@ -970,6 +974,9 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  GlobalOrderResultTile() = delete;
+
   GlobalOrderResultTile(
       unsigned frag_idx,
       uint64_t tile_idx,
@@ -1190,6 +1197,9 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  UnorderedWithDupsResultTile() = delete;
+
   UnorderedWithDupsResultTile(
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {

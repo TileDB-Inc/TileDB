@@ -1210,10 +1210,10 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
               array_schema_.attribute(name)->fill_value().size());
           src_var_buff = array_schema_.attribute(name)->fill_value().data();
         } else {
-          const auto& t = tile_tuple->fixed_tile();
-          const auto& t_var = tile_tuple->var_tile();
-          src_buff = t.template data_as<offsets_t>();
-          src_var_buff = t_var.template data_as<uint8_t>();
+          const auto t = tile_tuple->fixed_tile();
+          const auto t_var = tile_tuple->var_tile();
+          src_buff = t->template data_as<offsets_t>();
+          src_var_buff = t_var->template data_as<uint8_t>();
         }
 
         // Get dest buffers.
@@ -1242,8 +1242,8 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
         // Copy nullable values.
         if (nullable) {
           if (!use_fill_value) {
-            const auto& t_val = tile_tuple->validity_tile();
-            const auto src_val_buff = t_val.template data_as<uint8_t>();
+            const auto t_val = tile_tuple->validity_tile();
+            const auto src_val_buff = t_val->template data_as<uint8_t>();
             for (uint64_t c = min_pos; c < max_pos; c++) {
               *val_buffer = src_val_buff[c];
               val_buffer++;
@@ -1386,8 +1386,8 @@ void SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
           use_fill_value = true;
           src_buff = array_schema_.attribute(name)->fill_value().data();
         } else {
-          const auto& t = tile_tuple->fixed_tile();
-          src_buff = t.template data_as<uint8_t>();
+          const auto t = tile_tuple->fixed_tile();
+          src_buff = t->template data_as<uint8_t>();
         }
 
         // Get dest buffers.
@@ -1422,8 +1422,8 @@ void SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
         if (nullable) {
           if (!use_fill_value) {
             // Copy validity values from tile.
-            const auto& t_val = tile_tuple->validity_tile();
-            const auto src_val_buff = t_val.template data_as<uint8_t>();
+            const auto t_val = tile_tuple->validity_tile();
+            const auto src_val_buff = t_val->template data_as<uint8_t>();
             memcpy(val_buffer, src_val_buff + min_pos, max_pos - min_pos);
           } else {
             // Copy the fill value for validity.
@@ -1480,7 +1480,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
         if (fragment_metadata_[rt->frag_idx()]->has_timestamps()) {
           // Copy tile.
           const auto tile_tuple = rt->tile_tuple(constants::timestamps);
-          const auto t = &tile_tuple->fixed_tile();
+          const auto t = tile_tuple->fixed_tile();
           const auto src_buff = t->template data_as<uint8_t>();
           memcpy(
               buffer,
@@ -1555,13 +1555,13 @@ void SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
           // Get source buffers.
           const auto tile_tuple_delete_ts =
               rt->tile_tuple(constants::delete_timestamps);
-          const auto t_delete_ts = &tile_tuple_delete_ts->fixed_tile();
+          const auto t_delete_ts = tile_tuple_delete_ts->fixed_tile();
           auto src_buff_delete_ts =
               t_delete_ts->template data_as<uint64_t>() + min_pos;
           const auto tile_tuple_condition_indexes =
               rt->tile_tuple(constants::delete_condition_index);
           const auto t_condition_indexes =
-              &tile_tuple_condition_indexes->fixed_tile();
+              tile_tuple_condition_indexes->fixed_tile();
           auto src_buff_condition_indexes =
               t_condition_indexes->template data_as<uint64_t>() + min_pos;
 
@@ -2080,12 +2080,12 @@ AggregateBuffer SparseGlobalOrderReader<BitmapType>::make_aggregate_buffer(
       max_cell,
       name == constants::count_of_rows ?
           nullptr :
-          rt.tile_tuple(name)->fixed_tile().data(),
+          rt.tile_tuple(name)->fixed_tile()->data(),
       var_sized ?
-          std::make_optional(rt.tile_tuple(name)->var_tile().data_as<char>()) :
+          std::make_optional(rt.tile_tuple(name)->var_tile()->data_as<char>()) :
           nullopt,
       nullable ? std::make_optional(
-                     rt.tile_tuple(name)->validity_tile().data_as<uint8_t>()) :
+                     rt.tile_tuple(name)->validity_tile()->data_as<uint8_t>()) :
                  nullopt,
       false,
       nullopt,

@@ -383,8 +383,8 @@ uint32_t FilterPipeline::max_chunk_size() const {
 
 Status FilterPipeline::run_forward(
     stats::Stats* const writer_stats,
-    WriterTile* const tile,
-    WriterTile* const offsets_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& offsets_tile,
     ThreadPool* const compute_tp,
     bool use_chunking) const {
   RETURN_NOT_OK(
@@ -402,15 +402,15 @@ Status FilterPipeline::run_forward(
 
   // Get the chunk sizes for var size attributes.
   auto&& [st, chunk_offsets] =
-      get_var_chunk_sizes(chunk_size, tile, offsets_tile);
+      get_var_chunk_sizes(chunk_size, tile.get(), offsets_tile.get());
   RETURN_NOT_OK_ELSE(st, tile->filtered_buffer().clear());
 
   // Run the filters over all the chunks and store the result in
   // 'filtered_buffer'.
   RETURN_NOT_OK_ELSE(
       filter_chunks_forward(
-          *tile,
-          offsets_tile,
+          *tile.get(),
+          offsets_tile.get(),
           chunk_size,
           *chunk_offsets,
           tile->filtered_buffer(),
@@ -425,20 +425,22 @@ Status FilterPipeline::run_forward(
 }
 
 void FilterPipeline::run_reverse_generic_tile(
-    stats::Stats* stats, Tile& tile, const Config& config) const {
+    stats::Stats* stats,
+    const shared_ptr<Tile>& tile,
+    const Config& config) const {
   ChunkData chunk_data;
-  tile.load_chunk_data(chunk_data);
+  tile->load_chunk_data(chunk_data);
   for (unsigned c = 0; c < chunk_data.filtered_chunks_.size(); c++) {
     throw_if_not_ok(
-        run_reverse(stats, &tile, nullptr, chunk_data, c, c + 1, 1, config));
+        run_reverse(stats, tile, nullptr, chunk_data, c, c + 1, 1, config));
   }
-  tile.clear_filtered_buffer();
+  tile->clear_filtered_buffer();
 }
 
 Status FilterPipeline::run_reverse(
     stats::Stats* const reader_stats,
-    Tile* const tile,
-    Tile* const offsets_tile,
+    const shared_ptr<Tile>& tile,
+    const shared_ptr<Tile>& offsets_tile,
     const ChunkData& chunk_data,
     const uint64_t min_chunk_index,
     const uint64_t max_chunk_index,
@@ -493,8 +495,8 @@ Status FilterPipeline::run_reverse(
       f->init_decompression_resource_pool(concurrency_level);
 
       RETURN_NOT_OK(f->run_reverse(
-          *tile,
-          offsets_tile,
+          *tile.get(),
+          offsets_tile.get(),
           &input_metadata,
           &input_data,
           &output_metadata,

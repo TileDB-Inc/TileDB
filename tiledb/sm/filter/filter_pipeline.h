@@ -226,8 +226,8 @@ class FilterPipeline {
    */
   Status run_forward(
       stats::Stats* writer_stats,
-      WriterTile* tile,
-      WriterTile* offsets_tile,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& offsets_tile,
       ThreadPool* compute_tp,
       bool chunking = true) const;
 
@@ -239,7 +239,9 @@ class FilterPipeline {
    * @param config Global config.
    */
   void run_reverse_generic_tile(
-      stats::Stats* stats, Tile& tile, const Config& config) const;
+      stats::Stats* stats,
+      const shared_ptr<Tile>& tile,
+      const Config& config) const;
 
   /**
    * Run the given chunk range in reverse through the pipeline.
@@ -257,8 +259,8 @@ class FilterPipeline {
    */
   Status run_reverse(
       stats::Stats* const reader_stats,
-      Tile* const tile,
-      Tile* const offsets_tile,
+      const shared_ptr<Tile>& tile,
+      const shared_ptr<Tile>& offsets_tile,
       const ChunkData& chunk_data,
       const uint64_t min_chunk_index,
       const uint64_t max_chunk_index,

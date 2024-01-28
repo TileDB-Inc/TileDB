@@ -318,7 +318,10 @@ class DenseTiler {
    * @return Status
    */
   Status copy_tile(
-      uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile& tile) const;
+      uint64_t id,
+      uint64_t cell_size,
+      uint8_t* buff,
+      const shared_ptr<WriterTile>& tile) const;
 
   /**
    * Computes the tile metadata according to the copy plan.

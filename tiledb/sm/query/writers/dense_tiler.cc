@@ -219,7 +219,8 @@ Status DenseTiler<T>::get_tile(
     std::vector<uint8_t> fill_var(sizeof(uint64_t), 0);
 
     // Initialize position tile
-    WriterTile tile_pos(
+    auto tile_pos = WriterTile::make_shared(
+        HERE(),
         constants::format_version,
         constants::cell_var_offset_type,
         constants::cell_var_offset_size,
@@ -228,7 +229,7 @@ Status DenseTiler<T>::get_tile(
     // Fill entire tile with MAX_UINT64
     std::vector<offsets_t> to_write(
         cell_num_in_tile, std::numeric_limits<offsets_t>::max());
-    tile_pos.write(to_write.data(), 0, tile_off_size);
+    tile_pos->write(to_write.data(), 0, tile_off_size);
     to_write.clear();
     to_write.shrink_to_fit();
 
@@ -243,17 +244,17 @@ Status DenseTiler<T>::get_tile(
         id, constants::cell_var_offset_size, (uint8_t*)&cell_pos[0], tile_pos));
 
     // Copy real offsets and values to the corresponding tiles
-    auto tile_pos_buff = tile_pos.data_as<offsets_t>();
+    auto tile_pos_buff = tile_pos->template data_as<offsets_t>();
     uint64_t tile_off_offset = 0, offset = 0, val_offset, val_size, pos;
     auto mul = (offsets_format_mode_ == "bytes") ? 1 : cell_size;
-    auto& tile_off = tile.offset_tile();
-    auto& tile_val = tile.var_tile();
+    auto tile_off = tile.offset_tile();
+    auto tile_val = tile.var_tile();
     for (uint64_t i = 0; i < cell_num_in_tile; ++i) {
       pos = tile_pos_buff[i];
-      tile_off.write(&offset, tile_off_offset, sizeof(offset));
+      tile_off->write(&offset, tile_off_offset, sizeof(offset));
       tile_off_offset += sizeof(offset);
       if (pos == std::numeric_limits<uint64_t>::max()) {  // Empty
-        tile_val.write_var(&fill_var[0], offset, cell_size);
+        tile_val->write_var(&fill_var[0], offset, cell_size);
         offset += cell_size;
       } else {  // Non-empty
         val_offset = ((offsets_bytesize_ == 8) ?
@@ -267,19 +268,19 @@ Status DenseTiler<T>::get_tile(
                             mul -
                         val_offset) :
                        buff_var_size - val_offset;
-        tile_val.write_var(&buff_var[val_offset], offset, val_size);
+        tile_val->write_var(&buff_var[val_offset], offset, val_size);
         offset += val_size;
       }
     }
 
-    tile_val.set_size(offset);
+    tile_val->set_size(offset);
   } else {
     auto cell_size = array_schema_.cell_size(name);
     auto tile_size = cell_size * cell_num_in_tile;
     auto buff = (uint8_t*)buffers_->find(name)->second.buffer_;
     assert(buff != nullptr);
 
-    memset(tile.fixed_tile().data(), 0, tile_size);
+    memset(tile.fixed_tile()->data(), 0, tile_size);
 
     // Copy tile from buffer
     RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile.fixed_tile()));
@@ -292,7 +293,7 @@ Status DenseTiler<T>::get_tile(
         (uint8_t*)buffers_->find(name)->second.validity_vector_.buffer();
     assert(buff != nullptr);
 
-    memset(tile.validity_tile().data(), 0, tile_size);
+    memset(tile.validity_tile()->data(), 0, tile_size);
 
     // Copy tile from buffer
     RETURN_NOT_OK(copy_tile(id, cell_size, buff, tile.validity_tile()));
@@ -500,7 +501,10 @@ std::vector<std::array<T, 2>> DenseTiler<T>::tile_subarray(uint64_t id) const {
 
 template <class T>
 Status DenseTiler<T>::copy_tile(
-    uint64_t id, uint64_t cell_size, uint8_t* buff, WriterTile& tile) const {
+    uint64_t id,
+    uint64_t cell_size,
+    uint8_t* buff,
+    const shared_ptr<WriterTile>& tile) const {
   // Calculate copy plan
   const CopyPlan copy_plan = this->copy_plan(id);
 
@@ -539,7 +543,7 @@ Status DenseTiler<T>::copy_tile(
   auto d = dim_num - 1;
   while (true) {
     // Copy a slab
-    tile.write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes);
+    tile->write(&buff[sub_offsets[d]], tile_offsets[d], copy_nbytes);
 
     // Advance cell coordinates, tile and buffer offsets
     auto last_dim_changed = d;

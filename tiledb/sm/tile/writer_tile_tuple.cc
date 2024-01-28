@@ -50,30 +50,34 @@ WriterTileTuple::WriterTileTuple(
     const uint64_t cell_size,
     const Datatype type)
     : fixed_tile_(
-          var_size ? WriterTile(
+          var_size ? WriterTile::make_shared(
+                         HERE(),
                          array_schema.write_version(),
                          constants::cell_var_offset_type,
                          constants::cell_var_offset_size,
                          cell_num_per_tile * constants::cell_var_offset_size) :
-                     WriterTile(
+                     WriterTile::make_shared(
+                         HERE(),
                          array_schema.write_version(),
                          type,
                          cell_size,
                          cell_num_per_tile * cell_size))
     , var_tile_(
-          var_size ? std::optional<WriterTile>(WriterTile(
+          var_size ? WriterTile::make_shared(
+                         HERE(),
                          array_schema.write_version(),
                          type,
                          datatype_size(type),
-                         cell_num_per_tile * constants::cell_var_offset_size)) :
-                     std::nullopt)
+                         cell_num_per_tile * constants::cell_var_offset_size) :
+                     nullptr)
     , validity_tile_(
-          nullable ? std::optional<WriterTile>(WriterTile(
+          nullable ? WriterTile::make_shared(
+                         HERE(),
                          array_schema.write_version(),
                          constants::cell_validity_type,
                          constants::cell_validity_size,
-                         cell_num_per_tile * constants::cell_validity_size)) :
-                     std::nullopt)
+                         cell_num_per_tile * constants::cell_validity_size) :
+                     nullptr)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
     , min_size_(0)
@@ -130,7 +134,7 @@ void WriterTileTuple::set_metadata(
   sum_ = sum;
   null_count_ = null_count;
 
-  if (var_tile_.has_value()) {
+  if (var_tile_) {
     var_pre_filtered_size_ = var_tile_->size();
   }
 }

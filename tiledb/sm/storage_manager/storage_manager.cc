@@ -1019,13 +1019,13 @@ StorageManagerCanonical::load_delete_and_update_conditions(
             tiledb::sm::constants::delete_file_suffix)) {
       conditions[i] =
           tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
     } else if (tiledb::sm::utils::parse::ends_with(
                    locations[i].condition_marker(),
                    tiledb::sm::constants::update_file_suffix)) {
       auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
           deserialize_update_condition_and_values(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {
@@ -1264,12 +1264,12 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(members, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  auto tile = WriterTile::from_generic(size_computation_serializer.size());
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   group->serialize(members, serializer);
 
-  stats()->add_counter("write_group_size", tile.size());
+  stats()->add_counter("write_group_size", tile->size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1294,11 +1294,11 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
-  Serializer serializer(tile.data(), tile.size());
+  auto tile = WriterTile::from_generic(size_computation_serializer.size());
+  Serializer serializer(tile->data(), tile->size());
   array_schema->serialize(serializer);
 
-  stats()->add_counter("write_array_schema_size", tile.size());
+  stats()->add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
   bool exists;
@@ -1342,9 +1342,8 @@ Status StorageManagerCanonical::store_array_schema(
     SizeComputationSerializer enumeration_size_serializer;
     enmr->serialize(enumeration_size_serializer);
 
-    WriterTile tile{
-        WriterTile::from_generic(enumeration_size_serializer.size())};
-    Serializer serializer(tile.data(), tile.size());
+    auto tile = WriterTile::from_generic(enumeration_size_serializer.size());
+    Serializer serializer(tile->data(), tile->size());
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
@@ -1372,8 +1371,8 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
-  Serializer serializer(tile.data(), tile.size());
+  auto tile = WriterTile::from_generic(size_computation_serializer.size());
+  Serializer serializer(tile->data(), tile->size());
   metadata->serialize(serializer);
 
   stats()->add_counter("write_meta_size", serializer.size());
@@ -1387,10 +1386,12 @@ Status StorageManagerCanonical::store_metadata(
 }
 
 Status StorageManagerCanonical::store_data_to_generic_tile(
-    WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
+    const shared_ptr<WriterTile>& tile,
+    const URI& uri,
+    const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(resources_, uri);
   uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, encryption_key, &nbytes);
+  tile_io.write_generic(tile, encryption_key, &nbytes);
   return vfs()->close_file(uri);
 }
 
@@ -1411,10 +1412,10 @@ StorageManagerCanonical::load_group_from_uri(
 
   auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
 
-  stats()->add_counter("read_group_size", tile.size());
+  stats()->add_counter("read_group_size", tile->size());
 
   // Deserialize
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   auto opt_group = GroupDetails::deserialize(deserializer, group_uri);
   return {Status::Ok(), opt_group};
 }
@@ -1430,11 +1431,11 @@ StorageManagerCanonical::load_group_from_all_uris(
   for (auto& uri : uris) {
     auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
 
-    stats()->add_counter("read_group_size", tile.size());
+    stats()->add_counter("read_group_size", tile->size());
 
     // Deserialize
     shared_ptr<Deserializer> deserializer =
-        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
+        tdb::make_shared<TileDeserializer>(HERE(), tile);
     deserializers.emplace_back(deserializer);
   }
 
@@ -1526,8 +1527,7 @@ void StorageManagerCanonical::load_group_metadata(
   throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
     const auto& uri = group_metadata_to_load[m].uri_;
 
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+    metadata_tiles[m] = GenericTileIO::load(resources_, uri, 0, encryption_key);
 
     return Status::Ok();
   }));

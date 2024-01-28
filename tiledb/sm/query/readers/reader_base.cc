@@ -722,14 +722,14 @@ ReaderBase::load_tile_chunk_data(
 
   // Skip non-existent attributes/dimensions (e.g. coords in the
   // dense case).
-  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile()->filtered_size() == 0) {
     return {Status::Ok(), 0, 0, 0};
   }
 
-  const auto t = &tile_tuple->fixed_tile();
+  const auto t = tile_tuple->fixed_tile();
   const auto t_var =
-      var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
-  const auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
+      var_size && !validity_only ? tile_tuple->var_tile() : nullptr;
+  const auto t_validity = nullable ? tile_tuple->validity_tile() : nullptr;
 
   uint64_t unfiltered_tile_size = 0, unfiltered_tile_var_size = 0,
            unfiltered_tile_validity_size = 0;
@@ -762,7 +762,7 @@ ReaderBase::load_tile_chunk_data(
 }
 
 Status ReaderBase::zip_tile_coordinates(
-    const std::string& name, Tile* tile) const {
+    const std::string& name, const shared_ptr<Tile>& tile) const {
   if (tile->stores_coords()) {
     bool using_compression =
         array_schema_.filters(name).get_filter<CompressionFilter>() != nullptr;
@@ -790,26 +790,26 @@ Status ReaderBase::post_process_unfiltered_tile(
 
   // Skip non-existent attributes/dimensions (e.g. coords in the
   // dense case).
-  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile()->filtered_size() == 0) {
     return Status::Ok();
   }
 
-  auto& t = tile_tuple->fixed_tile();
-  t.clear_filtered_buffer();
+  auto t = tile_tuple->fixed_tile();
+  t->clear_filtered_buffer();
 
-  throw_if_not_ok(zip_tile_coordinates(name, &t));
+  throw_if_not_ok(zip_tile_coordinates(name, t));
 
   if (var_size && !validity_only) {
-    auto& t_var = tile_tuple->var_tile();
-    t_var.clear_filtered_buffer();
-    throw_if_not_ok(zip_tile_coordinates(name, &t_var));
-    t.add_extra_offset(t_var);
+    auto t_var = tile_tuple->var_tile();
+    t_var->clear_filtered_buffer();
+    throw_if_not_ok(zip_tile_coordinates(name, t_var));
+    t->add_extra_offset(t_var);
   }
 
   if (nullable) {
-    auto& t_validity = tile_tuple->validity_tile();
-    t_validity.clear_filtered_buffer();
-    throw_if_not_ok(zip_tile_coordinates(name, &t_validity));
+    auto t_validity = tile_tuple->validity_tile();
+    t_validity->clear_filtered_buffer();
+    throw_if_not_ok(zip_tile_coordinates(name, t_validity));
   }
 
   return Status::Ok();
@@ -931,13 +931,13 @@ Status ReaderBase::unfilter_tile(
 
   // Skip non-existent attributes/dimensions (e.g. coords in the
   // dense case).
-  if (tile_tuple == nullptr || tile_tuple->fixed_tile().filtered_size() == 0) {
+  if (tile_tuple == nullptr || tile_tuple->fixed_tile()->filtered_size() == 0) {
     return Status::Ok();
   }
 
-  auto t = &tile_tuple->fixed_tile();
-  auto t_var = var_size && !validity_only ? &tile_tuple->var_tile() : nullptr;
-  auto t_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
+  auto t = tile_tuple->fixed_tile();
+  auto t_var = var_size && !validity_only ? tile_tuple->var_tile() : nullptr;
+  auto t_validity = nullable ? tile_tuple->validity_tile() : nullptr;
 
   FilterPipeline fixed_filters;
   FilterPipeline var_filters;

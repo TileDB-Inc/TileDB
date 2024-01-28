@@ -267,6 +267,27 @@ std::shared_ptr<T> make_shared(const char (&origin)[n], Args&&... args) {
       origin, std::forward<Args>(args)...);
 }
 
+template <typename RequireMakeSharedClass>
+class require_make_shared {
+ public:
+  template <int n, class... Args>
+  static std::shared_ptr<RequireMakeSharedClass> make_shared(
+      const char (&origin)[n], Args&&... args) {
+    class make_shared_adapter : public RequireMakeSharedClass {
+     public:
+      make_shared_adapter(Args&&... args)
+          : RequireMakeSharedClass(std::forward<Args>(args)...) {
+        // Make sure any called constructor is not public.
+        static_assert(
+            !std::is_constructible_v<RequireMakeSharedClass, Args...>);
+      }
+    };
+
+    return tiledb::common::make_shared<make_shared_adapter>(
+        origin, std::forward<Args>(args)...);
+  }
+};
+
 }  // namespace tiledb::common
 
 /**

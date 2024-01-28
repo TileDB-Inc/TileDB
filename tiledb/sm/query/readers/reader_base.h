@@ -684,7 +684,8 @@ class ReaderBase : public StrategyBase {
    * @param tile Tile to zip the coordinates if needed.
    * @return Status
    */
-  Status zip_tile_coordinates(const std::string& name, Tile* tile) const;
+  Status zip_tile_coordinates(
+      const std::string& name, const shared_ptr<Tile>& tile) const;
 
   /**
    * Reads the chunk data of all tile buffers and stores them in a data

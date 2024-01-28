@@ -60,7 +60,11 @@ struct Sum {
    * @param end End cell index.
    * @param sum The current sum.
    */
-  static void sum(WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+  static void sum(
+      const shared_ptr<WriterTile>& tile,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
 
   /**
    * Add the sum cells of from [start, end] to the current sum for a nullable
@@ -73,8 +77,8 @@ struct Sum {
    * @param sum The current sum.
    */
   static void sum_nullable(
-      const WriterTile& tile,
-      const WriterTile& tile_validity,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -86,10 +90,13 @@ struct Sum {
 template <typename T>
 struct Sum<T, int64_t> {
   static void sum(
-      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+      const shared_ptr<WriterTile>& tile,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
   static void sum_nullable(
-      const WriterTile& tile,
-      const WriterTile& tile_validity,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -101,10 +108,13 @@ struct Sum<T, int64_t> {
 template <typename T>
 struct Sum<T, uint64_t> {
   static void sum(
-      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+      const shared_ptr<WriterTile>& tile,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
   static void sum_nullable(
-      const WriterTile& tile,
-      const WriterTile& tile_validity,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -116,10 +126,13 @@ struct Sum<T, uint64_t> {
 template <typename T>
 struct Sum<T, double> {
   static void sum(
-      const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum);
+      const shared_ptr<WriterTile>& tile,
+      uint64_t start,
+      uint64_t end,
+      ByteVec& sum);
   static void sum_nullable(
-      const WriterTile& tile,
-      const WriterTile& tile_validity,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& tile_validity,
       uint64_t start,
       uint64_t end,
       ByteVec& sum);
@@ -284,7 +297,8 @@ class TileMetadataGenerator {
    * @param end End cell index.
    */
   template <class T>
-  void min_max(const WriterTile& tile, uint64_t start, uint64_t end);
+  void min_max(
+      const shared_ptr<WriterTile>& tile, uint64_t start, uint64_t end);
 
   /**
    * Updates the min and max of a fixed data tile with nullable values.
@@ -296,8 +310,8 @@ class TileMetadataGenerator {
    */
   template <class T>
   void min_max_nullable(
-      const WriterTile& tile,
-      const WriterTile& tile_validity,
+      const shared_ptr<WriterTile>& tile,
+      const shared_ptr<WriterTile>& tile_validity,
       uint64_t start,
       uint64_t end);
 

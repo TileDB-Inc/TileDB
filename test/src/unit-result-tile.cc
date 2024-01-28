@@ -230,8 +230,8 @@ TEST_CASE_METHOD(
       tile_data,
       dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &tile_tuple->fixed_tile();
-  Tile* const t_var = &tile_tuple->var_tile();
+  const auto t = tile_tuple->fixed_tile();
+  const auto t_var = tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   offsets_t* offsets = t->data_as<offsets_t>();
@@ -340,8 +340,8 @@ TEST_CASE_METHOD(
       tile_data,
       dim_idx);
   auto tile_tuple = rt.tile_tuple(dim_name);
-  Tile* const t = &tile_tuple->fixed_tile();
-  Tile* const t_var = &tile_tuple->var_tile();
+  const auto t = tile_tuple->fixed_tile();
+  const auto t_var = tile_tuple->var_tile();
 
   // Initialize offsets, use 1 character strings.
   offsets_t* offsets = t->data_as<offsets_t>();

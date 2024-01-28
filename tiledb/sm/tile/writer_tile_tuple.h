@@ -71,57 +71,76 @@ class WriterTileTuple {
   /* ********************************* */
 
   /** Returns the fixed tile. */
-  inline WriterTile& fixed_tile() {
-    assert(!var_tile_.has_value());
+  inline shared_ptr<WriterTile> fixed_tile() {
+    assert(var_tile_ == nullptr);
     return fixed_tile_;
   }
 
   /** Returns the fixed tile. */
-  inline const WriterTile& fixed_tile() const {
-    assert(!var_tile_.has_value());
+  inline const shared_ptr<WriterTile> fixed_tile() const {
+    assert(var_tile_ == nullptr);
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
-  inline WriterTile& offset_tile() {
-    assert(var_tile_.has_value());
+  inline shared_ptr<WriterTile> offset_tile() {
+    assert(var_tile_ != nullptr);
     return fixed_tile_;
   }
 
   /** Returns the offset tile. */
-  inline const WriterTile& offset_tile() const {
-    assert(var_tile_.has_value());
+  inline const shared_ptr<WriterTile> offset_tile() const {
+    assert(var_tile_ != nullptr);
     return fixed_tile_;
   }
 
   /** Is the tile var_size. */
   inline bool var_size() const {
-    return var_tile_.has_value();
+    return var_tile_ != nullptr;
   }
 
   /** Returns the var tile. */
-  inline WriterTile& var_tile() {
-    return *var_tile_;
+  inline shared_ptr<WriterTile> var_tile() {
+    return var_tile_;
   }
 
   /** Returns the var tile. */
-  inline const WriterTile& var_tile() const {
-    return *var_tile_;
+  inline const shared_ptr<WriterTile> var_tile() const {
+    return var_tile_;
   }
 
   /** Is the tile nullable. */
   inline bool nullable() const {
-    return validity_tile_.has_value();
+    return validity_tile_ != nullptr;
   }
 
   /** Returns the validity tile. */
-  inline WriterTile& validity_tile() {
-    return *validity_tile_;
+  inline shared_ptr<WriterTile> validity_tile() {
+    return validity_tile_;
   }
 
   /** Returns the validity tile. */
-  inline const WriterTile& validity_tile() const {
-    return *validity_tile_;
+  inline const shared_ptr<WriterTile> validity_tile() const {
+    return validity_tile_;
+  }
+
+  inline void swap_fixed_tile(WriterTileTuple& other) {
+    assert(var_tile_ == nullptr);
+    fixed_tile_.swap(other.fixed_tile_);
+  }
+
+  inline void swap_offset_tile(WriterTileTuple& other) {
+    assert(var_tile_ != nullptr);
+    fixed_tile_.swap(other.fixed_tile_);
+  }
+
+  inline void swap_var_tile(WriterTileTuple& other) {
+    assert(var_tile_ != nullptr);
+    var_tile_.swap(other.var_tile_);
+  }
+
+  inline void swap_validity_tile(WriterTileTuple& other) {
+    validity_tile_.swap(other.validity_tile_);
   }
 
   /**
@@ -195,13 +214,13 @@ class WriterTileTuple {
   inline void set_final_size(uint64_t size) {
     cell_num_ = size;
 
-    if (var_tile_.has_value()) {
-      fixed_tile_.set_size(size * constants::cell_var_offset_size);
+    if (var_tile_) {
+      fixed_tile_->set_size(size * constants::cell_var_offset_size);
     } else {
-      fixed_tile_.set_size(size * cell_size_);
+      fixed_tile_->set_size(size * cell_size_);
     }
 
-    if (validity_tile_.has_value()) {
+    if (validity_tile_ != nullptr) {
       validity_tile_->set_size(size * constants::cell_validity_size);
     }
   }
@@ -227,13 +246,13 @@ class WriterTileTuple {
    * Fixed data tile. Contains offsets for var size attribute/dimension and
    * the data itself in case of fixed sized attribute/dimension.
    */
-  WriterTile fixed_tile_;
+  shared_ptr<WriterTile> fixed_tile_;
 
   /** Var data tile. */
-  std::optional<WriterTile> var_tile_;
+  shared_ptr<WriterTile> var_tile_;
 
   /** Validity data tile. */
-  std::optional<WriterTile> validity_tile_;
+  shared_ptr<WriterTile> validity_tile_;
 
   /** Cell size for this attribute. */
   uint64_t cell_size_;

@@ -43,9 +43,12 @@ namespace tiledb::sm {
 
 template <typename T>
 void Sum<T, int64_t>::sum(
-    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const shared_ptr<WriterTile>& tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
+  auto values = tile->data_as<T>();
   auto sum_data = reinterpret_cast<int64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -69,9 +72,12 @@ void Sum<T, int64_t>::sum(
 
 template <typename T>
 void Sum<T, uint64_t>::sum(
-    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const shared_ptr<WriterTile>& tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
+  auto values = tile->data_as<T>();
   auto sum_data = reinterpret_cast<uint64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -88,9 +94,12 @@ void Sum<T, uint64_t>::sum(
 
 template <typename T>
 void Sum<T, double>::sum(
-    const WriterTile& tile, uint64_t start, uint64_t end, ByteVec& sum) {
+    const shared_ptr<WriterTile>& tile,
+    uint64_t start,
+    uint64_t end,
+    ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
+  auto values = tile->data_as<T>();
   auto sum_data = reinterpret_cast<double*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -110,14 +119,14 @@ void Sum<T, double>::sum(
 
 template <typename T>
 void Sum<T, int64_t>::sum_nullable(
-    const WriterTile& tile,
-    const WriterTile& validity_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
+  auto values = tile->data_as<T>();
+  auto validity_values = validity_tile->data_as<uint8_t>();
   auto sum_data = reinterpret_cast<int64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -143,14 +152,14 @@ void Sum<T, int64_t>::sum_nullable(
 
 template <typename T>
 void Sum<T, uint64_t>::sum_nullable(
-    const WriterTile& tile,
-    const WriterTile& validity_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
+  auto values = tile->data_as<T>();
+  auto validity_values = validity_tile->data_as<uint8_t>();
   auto sum_data = reinterpret_cast<uint64_t*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -169,14 +178,14 @@ void Sum<T, uint64_t>::sum_nullable(
 
 template <typename T>
 void Sum<T, double>::sum_nullable(
-    const WriterTile& tile,
-    const WriterTile& validity_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& validity_tile,
     uint64_t start,
     uint64_t end,
     ByteVec& sum) {
   // Get pointers to the data and cell num.
-  auto values = tile.data_as<T>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
+  auto values = tile->data_as<T>();
+  auto validity_values = validity_tile->data_as<uint8_t>();
   auto sum_data = reinterpret_cast<double*>(sum.data());
 
   // Process cell by cell, swallowing overflow exception.
@@ -383,9 +392,9 @@ void TileMetadataGenerator::set_tile_metadata(WriterTileTuple& tile) {
 
 template <class T>
 void TileMetadataGenerator::min_max(
-    const WriterTile& tile, uint64_t start, uint64_t end) {
+    const shared_ptr<WriterTile>& tile, uint64_t start, uint64_t end) {
   // Get pointer to the data and cell num.
-  auto values = tile.data_as<T>();
+  auto values = tile->data_as<T>();
 
   // Initialize defaults.
   if (min_ == nullptr) {
@@ -402,15 +411,15 @@ void TileMetadataGenerator::min_max(
 
 template <>
 void TileMetadataGenerator::min_max<char>(
-    const WriterTile& tile, uint64_t start, uint64_t end) {
+    const shared_ptr<WriterTile>& tile, uint64_t start, uint64_t end) {
   // For strings, return null for empty tiles.
-  auto size = tile.size();
+  auto size = tile->size();
   if (size == 0) {
     return;
   }
 
   // Get pointer to the data, set the min max to the first value.
-  auto data = tile.data_as<char>();
+  auto data = tile->data_as<char>();
   if (min_ == nullptr) {
     min_ = data + start * cell_size_;
     max_ = data + start * cell_size_;
@@ -432,12 +441,12 @@ void TileMetadataGenerator::min_max<char>(
 
 template <class T>
 void TileMetadataGenerator::min_max_nullable(
-    const WriterTile& tile,
-    const WriterTile& validity_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& validity_tile,
     uint64_t start,
     uint64_t end) {
-  auto values = tile.data_as<T>();
-  auto validity_values = validity_tile.data_as<uint8_t>();
+  auto values = tile->data_as<T>();
+  auto validity_values = validity_tile->data_as<uint8_t>();
 
   // Initialize defaults.
   if (min_ == nullptr) {
@@ -458,13 +467,13 @@ void TileMetadataGenerator::min_max_nullable(
 
 template <>
 void TileMetadataGenerator::min_max_nullable<char>(
-    const WriterTile& tile,
-    const WriterTile& validity_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& validity_tile,
     uint64_t start,
     uint64_t end) {
   // Get pointers to the data and cell num.
-  auto value = tile.data_as<char>() + cell_size_ * start;
-  auto validity_values = validity_tile.data_as<uint8_t>();
+  auto value = tile->data_as<char>() + cell_size_ * start;
+  auto validity_values = validity_tile->data_as<uint8_t>();
 
   // Process cell by cell.
   for (uint64_t c = start; c < end; c++) {
@@ -490,7 +499,7 @@ template <class T>
 void TileMetadataGenerator::process_cell_range(
     const WriterTileTuple& tile, uint64_t start, uint64_t end) {
   min_size_ = max_size_ = cell_size_;
-  const auto& fixed_tile = tile.fixed_tile();
+  const auto fixed_tile = tile.fixed_tile();
 
   // Fixed size attribute, non nullable
   if (!tile.nullable()) {
@@ -503,8 +512,8 @@ void TileMetadataGenerator::process_cell_range(
           fixed_tile, start, end, sum_);
     }
   } else {  // Fixed size attribute, nullable.
-    const auto& validity_tile = tile.validity_tile();
-    auto validity_value = validity_tile.data_as<uint8_t>();
+    const auto validity_tile = tile.validity_tile();
+    auto validity_value = validity_tile->data_as<uint8_t>();
     if (has_min_max_) {
       min_max_nullable<T>(fixed_tile, validity_tile, start, end);
     } else {
@@ -531,13 +540,13 @@ void TileMetadataGenerator::process_cell_range_var(
   const auto& var_tile = tile.var_tile();
 
   // Handle empty tile.
-  if (!has_min_max_ || offset_tile.size() == 0) {
+  if (!has_min_max_ || offset_tile->size() == 0) {
     return;
   }
 
   // Get pointers to the data and cell num.
-  auto offset_value = offset_tile.data_as<offsets_t>() + start;
-  auto var_data = var_tile.data_as<char>();
+  auto offset_value = offset_tile->data_as<offsets_t>() + start;
+  auto var_data = var_tile->data_as<char>();
   auto cell_num = tile.cell_num();
 
   // Var size attribute, non nullable.
@@ -546,7 +555,7 @@ void TileMetadataGenerator::process_cell_range_var(
       min_ = &var_data[*offset_value];
       max_ = &var_data[*offset_value];
       min_size_ = max_size_ = start == cell_num - 1 ?
-                                  var_tile.size() - *offset_value :
+                                  var_tile->size() - *offset_value :
                                   offset_value[1] - *offset_value;
       offset_value++;
       start++;
@@ -554,20 +563,20 @@ void TileMetadataGenerator::process_cell_range_var(
 
     for (uint64_t c = start; c < end; c++) {
       auto value = var_data + *offset_value;
-      auto size = c == cell_num - 1 ? var_tile.size() - *offset_value :
+      auto size = c == cell_num - 1 ? var_tile->size() - *offset_value :
                                       offset_value[1] - *offset_value;
       min_max_var(value, size);
       offset_value++;
     }
   } else {  // Var size attribute, nullable.
     const auto& validity_tile = tile.validity_tile();
-    auto validity_value = validity_tile.data_as<uint8_t>();
+    auto validity_value = validity_tile->data_as<uint8_t>();
 
     for (uint64_t c = start; c < end; c++) {
       auto is_null = *validity_value == 0;
       if (!is_null) {
         auto value = var_data + *offset_value;
-        auto size = c == cell_num - 1 ? var_tile.size() - *offset_value :
+        auto size = c == cell_num - 1 ? var_tile->size() - *offset_value :
                                         offset_value[1] - *offset_value;
         if (min_ == nullptr && max_ == nullptr) {
           min_ = value;

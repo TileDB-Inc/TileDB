@@ -119,14 +119,12 @@ Status FragmentMetaConsolidator::consolidate(
   }
 
   // Serialize all fragment metadata footers in parallel
-  std::vector<tiledb_unique_ptr<WriterTile>> tiles(meta.size());
+  std::vector<shared_ptr<WriterTile>> tiles(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
         meta[i]->write_footer(size_computation_serializer);
-        tiles[i].reset(tdb_new(
-            WriterTile,
-            WriterTile::from_generic(size_computation_serializer.size())));
+        tiles[i] = WriterTile::from_generic(size_computation_serializer.size());
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
         meta[i]->write_footer(serializer);
 
@@ -162,9 +160,9 @@ Status FragmentMetaConsolidator::consolidate(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer, offset);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  auto tile = WriterTile::from_generic(size_computation_serializer.size());
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   serialize_data(serializer, offset);
 
   // Close array
@@ -175,7 +173,7 @@ Status FragmentMetaConsolidator::consolidate(
 
   GenericTileIO tile_io(storage_manager_->resources(), uri);
   [[maybe_unused]] uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, enc_key, &nbytes);
+  tile_io.write_generic(tile, enc_key, &nbytes);
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();

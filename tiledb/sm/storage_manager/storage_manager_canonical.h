@@ -666,7 +666,9 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status store_data_to_generic_tile(
-      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
+      const shared_ptr<WriterTile>& tile,
+      const URI& uri,
+      const EncryptionKey& encryption_key);
 
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;

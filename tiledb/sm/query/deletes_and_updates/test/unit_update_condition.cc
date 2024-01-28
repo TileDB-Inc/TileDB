@@ -52,7 +52,7 @@ void serialize_deserialize_check(
       serialize_update_condition_and_values(query_condition, update_values);
   auto&& [deserialized_condition, deserialized_update_values] =
       deserialize_update_condition_and_values(
-          0, "", serialized.data(), serialized.size());
+          0, "", serialized->data(), serialized->size());
 
   CHECK(tiledb::test::ast_equal(
       query_condition.ast(), deserialized_condition.ast()));

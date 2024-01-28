@@ -51,27 +51,10 @@ namespace sm {
  */
 class TileBase {
  public:
-  /**
-   * Constructor.
-   *
-   * @param format_version The format version.
-   * @param type The data type.
-   * @param cell_size The cell size.
-   * @param size The size of the tile.
-   */
-  TileBase(
-      const format_version_t format_version,
-      const Datatype type,
-      const uint64_t cell_size,
-      const uint64_t size);
-
-  /** Move constructor. */
-  TileBase(TileBase&& tile);
-
-  /** Move-assign operator. */
-  TileBase& operator=(TileBase&& tile);
+  TileBase() = delete;
 
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
   /* ********************************* */
   /*                API                */
@@ -135,14 +118,25 @@ class TileBase {
    *
    * @param var_tile Var tile.
    */
-  void add_extra_offset(TileBase& var_tile) {
-    data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
+  void add_extra_offset(const shared_ptr<TileBase>& var_tile) {
+    data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile->size();
   }
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(TileBase& tile);
-
  protected:
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   */
+  TileBase(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size);
+
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
@@ -171,7 +165,7 @@ class TileBase {
 /**
  * Tile object used for read operations.
  */
-class Tile : public TileBase {
+class Tile : public TileBase, public tdb::require_make_shared<Tile> {
  public:
   /**
    * returns a Tile initialized with parameters commonly used for
@@ -179,40 +173,16 @@ class Tile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static Tile from_generic(storage_size_t tile_size);
+  static shared_ptr<Tile> from_generic(storage_size_t tile_size);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param format_version The format version.
-   * @param type The data type.
-   * @param cell_size The cell size.
-   * @param zipped_coords_dim_num The number of dimensions in case the tile
-   *      stores coordinates.
-   * @param size The size of the tile.
-   * @param filtered_data Pointer to the external filtered data.
-   * @param filtered_size The filtered size to allocate.
-   */
-  Tile(
-      const format_version_t format_version,
-      const Datatype type,
-      const uint64_t cell_size,
-      const unsigned int zipped_coords_dim_num,
-      const uint64_t size,
-      void* filtered_data,
-      uint64_t filtered_size);
-
-  /** Move constructor. */
-  Tile(Tile&& tile);
-
-  /** Move-assign operator. */
-  Tile& operator=(Tile&& tile);
+  Tile() = delete;
 
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
 
   /* ********************************* */
   /*                API                */
@@ -284,8 +254,27 @@ class Tile : public TileBase {
    */
   uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
+ protected:
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param zipped_coords_dim_num The number of dimensions in case the tile
+   *      stores coordinates.
+   * @param size The size of the tile.
+   * @param filtered_data Pointer to the external filtered data.
+   * @param filtered_size The filtered size to allocate.
+   */
+  Tile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const unsigned int zipped_coords_dim_num,
+      const uint64_t size,
+      void* filtered_data,
+      uint64_t filtered_size);
 
  private:
   /* ********************************* */
@@ -347,7 +336,8 @@ class Tile : public TileBase {
 /**
  * Tile object for write operations.
  */
-class WriterTile : public TileBase {
+class WriterTile : public TileBase,
+                   public tdb::require_make_shared<WriterTile> {
  public:
   /**
    * returns a Tile initialized with parameters commonly used for
@@ -355,7 +345,7 @@ class WriterTile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static WriterTile from_generic(storage_size_t tile_size);
+  static shared_ptr<WriterTile> from_generic(storage_size_t tile_size);
 
   /**
    * Computes the chunk size for a tile.
@@ -378,27 +368,9 @@ class WriterTile : public TileBase {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /**
-   * Constructor.
-   *
-   * @param format_version The format version.
-   * @param type The data type.
-   * @param cell_size The cell size.
-   * @param size The size of the tile.
-   */
-  WriterTile(
-      const format_version_t format_version,
-      const Datatype type,
-      const uint64_t cell_size,
-      const uint64_t size);
-
-  /** Move constructor. */
-  WriterTile(WriterTile&& tile);
-
-  /** Move-assign operator. */
-  WriterTile& operator=(WriterTile&& tile);
-
+  WriterTile() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);
 
   /* ********************************* */
   /*                API                */
@@ -445,8 +417,20 @@ class WriterTile : public TileBase {
     size_ = size;
   }
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(WriterTile& tile);
+ protected:
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   */
+  WriterTile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size);
 
  private:
   /* ********************************* */
@@ -473,13 +457,13 @@ class WriterTile : public TileBase {
  */
 class TileDeserializer : public Deserializer {
  public:
-  explicit TileDeserializer(Tile&& tile)
-      : Deserializer(tile.data(), tile.size())
-      , tile_(std::move(tile)) {
+  explicit TileDeserializer(shared_ptr<Tile> tile)
+      : Deserializer(tile->data(), tile->size())
+      , tile_(tile) {
   }
 
  private:
-  Tile tile_;
+  shared_ptr<Tile> tile_;
 };
 
 }  // namespace sm

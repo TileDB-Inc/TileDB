@@ -441,10 +441,10 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      tile_it->fixed_tile().write(
+      tile_it->fixed_tile()->write(
           buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        tile_it->validity_tile().write(
+        tile_it->validity_tile()->write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
             constants::cell_validity_size);
@@ -459,10 +459,10 @@ Status UnorderedWriter::prepare_tiles_fixed(
         cell_idx = 0;
       }
 
-      tile_it->fixed_tile().write(
+      tile_it->fixed_tile()->write(
           buffer + cell_pos_[i] * cell_size, cell_idx * cell_size, cell_size);
       if (nullable)
-        tile_it->validity_tile().write(
+        tile_it->validity_tile()->write(
             buffer_validity + cell_pos_[i] * constants::cell_validity_size,
             cell_idx * constants::cell_validity_size,
             constants::cell_validity_size);
@@ -509,14 +509,14 @@ Status UnorderedWriter::prepare_tiles_var(
   if (dups_num == 0) {
     for (uint64_t i = 0; i < cell_num; ++i, ++cell_idx) {
       if (cell_idx == cell_num_per_tile) {
-        tile_it->var_tile().set_size(offset);
+        tile_it->var_tile()->set_size(offset);
         cell_idx = 0;
         offset = 0;
         tile_it++;
       }
 
       // Write offset.
-      tile_it->offset_tile().write(
+      tile_it->offset_tile()->write(
           &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
@@ -528,12 +528,13 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
+      tile_it->var_tile()->write_var(
+          buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        tile_it->validity_tile().write(
+        tile_it->validity_tile()->write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
             constants::cell_validity_size);
@@ -545,14 +546,14 @@ Status UnorderedWriter::prepare_tiles_var(
         continue;
 
       if (cell_idx == cell_num_per_tile) {
-        tile_it->var_tile().set_size(offset);
+        tile_it->var_tile()->set_size(offset);
         cell_idx = 0;
         offset = 0;
         tile_it++;
       }
 
       // Write offset.
-      tile_it->offset_tile().write(
+      tile_it->offset_tile()->write(
           &offset, cell_idx * sizeof(offset), sizeof(offset));
 
       // Write var-sized value(s).
@@ -564,12 +565,13 @@ Status UnorderedWriter::prepare_tiles_var(
               prepare_buffer_offset(
                   buffer, cell_pos_[i] + 1, attr_datatype_size) -
                   buff_offset;
-      tile_it->var_tile().write_var(buffer_var + buff_offset, offset, var_size);
+      tile_it->var_tile()->write_var(
+          buffer_var + buff_offset, offset, var_size);
       offset += var_size;
 
       // Write validity value(s).
       if (nullable) {
-        tile_it->validity_tile().write(
+        tile_it->validity_tile()->write(
             buffer_validity + cell_pos_[i],
             cell_idx * constants::cell_validity_size,
             constants::cell_validity_size);
@@ -580,7 +582,7 @@ Status UnorderedWriter::prepare_tiles_var(
   }
 
   if (cell_num > 0) {
-    tile_it->var_tile().set_size(offset);
+    tile_it->var_tile()->set_size(offset);
   }
 
   uint64_t last_tile_cell_num = (cell_num - dups_num) % cell_num_per_tile;

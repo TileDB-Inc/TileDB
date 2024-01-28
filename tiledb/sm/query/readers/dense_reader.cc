@@ -1278,14 +1278,14 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
   optional<uint8_t*> validity_data = nullopt;
   if (tile_tuple != nullptr) {
     fixed_data =
-        tile_tuple->fixed_tile().data_as<char>() + min_cell * cell_size;
+        tile_tuple->fixed_tile()->data_as<char>() + min_cell * cell_size;
     var_data = var_sized ?
-                   std::make_optional(tile_tuple->var_tile().data_as<char>()) :
+                   std::make_optional(tile_tuple->var_tile()->data_as<char>()) :
                    nullopt;
     validity_data =
         nullable ?
             std::make_optional(
-                tile_tuple->validity_tile().data_as<uint8_t>() + min_cell) :
+                tile_tuple->validity_tile()->data_as<uint8_t>() + min_cell) :
             nullopt;
   }
 
@@ -1477,19 +1477,19 @@ Status DenseReader::copy_fixed_tiles(
         if (stride == 1) {
           std::memcpy(
               dest_ptr + cell_size * start,
-              tile.data_as<char>() + cell_size * src_offset,
+              tile->data_as<char>() + cell_size * src_offset,
               cell_size * (end - start + 1));
 
           if (nullable) {
-            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
+            const auto tile_nullable = tile_tuples[fd]->validity_tile();
             std::memcpy(
                 dest_validity_ptr + start,
-                tile_nullable.data_as<char>() + src_offset,
+                tile_nullable->data_as<char>() + src_offset,
                 (end - start + 1));
           }
         } else {
           // Go cell by cell.
-          auto src = tile.data_as<char>() + cell_size * src_offset;
+          auto src = tile->data_as<char>() + cell_size * src_offset;
           auto dest = dest_ptr + cell_size * start;
           for (uint64_t i = 0; i < end - start + 1; ++i) {
             std::memcpy(dest, src, cell_size);
@@ -1498,8 +1498,8 @@ Status DenseReader::copy_fixed_tiles(
           }
 
           if (nullable) {
-            const auto& tile_nullable = tile_tuples[fd]->validity_tile();
-            auto src_validity = tile_nullable.data_as<char>() + src_offset;
+            const auto tile_nullable = tile_tuples[fd]->validity_tile();
+            auto src_validity = tile_nullable->data_as<char>() + src_offset;
             auto dest_validity = dest_validity_ptr + start;
             for (uint64_t i = 0; i < end - start + 1; ++i) {
               memcpy(dest_validity, src_validity, 1);
@@ -1669,10 +1669,10 @@ Status DenseReader::copy_offset_tiles(
         auto dest_validity_ptr = dst_val_buf + cell_offset;
 
         // Get the tile buffers.
-        const auto& t_var = tile_tuples[fd]->var_tile();
+        const auto t_var = tile_tuples[fd]->var_tile();
 
         // Setup variables for the copy.
-        auto src_buff = tile_tuples[fd]->fixed_tile().data_as<offsets_t>() +
+        auto src_buff = tile_tuples[fd]->fixed_tile()->data_as<offsets_t>() +
                         start * stride + src_cell;
         auto div = elements_mode_ ? data_type_size : 1;
         auto dest = (OffType*)dest_ptr + start;
@@ -1682,13 +1682,13 @@ Status DenseReader::copy_offset_tiles(
         for (; i <= end - start; ++i) {
           auto i_src = i * stride;
           dest[i] = (src_buff[i_src + 1] - src_buff[i_src]) / div;
-          var_data_buff[i + start] = t_var.data_as<char>() + src_buff[i_src];
+          var_data_buff[i + start] = t_var->data_as<char>() + src_buff[i_src];
         }
 
         // Process validity values.
         if (nullable) {
           auto src_buff_validity =
-              tile_tuples[fd]->validity_tile().data_as<uint8_t>() +
+              tile_tuples[fd]->validity_tile()->data_as<uint8_t>() +
               start * stride + src_cell;
 
           for (i = 0; i < end - start + 1; ++i) {

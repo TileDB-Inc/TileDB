@@ -97,6 +97,8 @@ class GenericTileIO {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  GenericTileIO() = delete;
+
   /**
    * Constructor.
    *
@@ -105,7 +107,6 @@ class GenericTileIO {
    */
   GenericTileIO(ContextResources& resources, const URI& uri);
 
-  GenericTileIO() = delete;
   DISABLE_COPY_AND_COPY_ASSIGN(GenericTileIO);
   DISABLE_MOVE_AND_MOVE_ASSIGN(GenericTileIO);
 
@@ -122,7 +123,7 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status, Tile with the data.
    */
-  static Tile load(
+  static shared_ptr<Tile> load(
       ContextResources& resources,
       const URI& uri,
       uint64_t offset,
@@ -143,7 +144,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  Tile read_generic(
+  shared_ptr<Tile> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);
@@ -173,7 +174,9 @@ class GenericTileIO {
    * @return Status
    */
   void write_generic(
-      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      const shared_ptr<WriterTile>& tile,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Serialize a generic tile header.
@@ -224,7 +227,7 @@ class GenericTileIO {
    * @return Status
    */
   void init_generic_tile_header(
-      WriterTile* tile,
+      shared_ptr<WriterTile> tile,
       GenericTileHeader* header,
       const EncryptionKey& encryption_key) const;
 };

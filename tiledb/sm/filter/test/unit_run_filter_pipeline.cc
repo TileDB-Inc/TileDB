@@ -165,36 +165,30 @@ class SimpleVariableTestData {
 void check_run_pipeline_full(
     Config& config,
     ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& offsets_tile,
     FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     const FilteredTileChecker& filtered_buffer_checker) {
   // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
-                &tp)
-            .ok());
+  CHECK(pipeline.run_forward(&dummy_stats, tile, offsets_tile, &tp).ok());
 
   // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
+  CHECK(tile->size() == 0);
 
   // Check the filtered buffer has the expected data.
-  auto filtered_buffer = tile.filtered_buffer();
+  auto filtered_buffer = tile->filtered_buffer();
   filtered_buffer_checker.check(filtered_buffer);
 
   // Run the data in reverse.
   auto unfiltered_tile =
       test_data->create_filtered_buffer_tile(filtered_buffer);
   ChunkData chunk_data;
-  unfiltered_tile.load_chunk_data(chunk_data);
+  unfiltered_tile->load_chunk_data(chunk_data);
   CHECK(pipeline
             .run_reverse(
                 &dummy_stats,
-                &unfiltered_tile,
+                unfiltered_tile,
                 nullptr,
                 chunk_data,
                 0,
@@ -217,31 +211,25 @@ void check_run_pipeline_full(
 void check_run_pipeline_roundtrip(
     Config& config,
     ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& offsets_tile,
     FilterPipeline& pipeline,
     TileDataGenerator* test_data) {
   // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
-                &tp)
-            .ok());
+  CHECK(pipeline.run_forward(&dummy_stats, tile, offsets_tile, &tp).ok());
 
   // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
+  CHECK(tile->size() == 0);
 
   // Run the data in reverse.
   auto unfiltered_tile =
-      test_data->create_filtered_buffer_tile(tile.filtered_buffer());
+      test_data->create_filtered_buffer_tile(tile->filtered_buffer());
   ChunkData chunk_data;
-  unfiltered_tile.load_chunk_data(chunk_data);
+  unfiltered_tile->load_chunk_data(chunk_data);
   CHECK(pipeline
             .run_reverse(
                 &dummy_stats,
-                &unfiltered_tile,
+                unfiltered_tile,
                 nullptr,
                 chunk_data,
                 0,

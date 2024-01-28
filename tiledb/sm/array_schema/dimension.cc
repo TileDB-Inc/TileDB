@@ -298,11 +298,11 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 }
 
 template <class T>
-Range Dimension::compute_mbr(const WriterTile& tile) {
-  auto cell_num = tile.cell_num();
+Range Dimension::compute_mbr(const shared_ptr<WriterTile>& tile) {
+  auto cell_num = tile->cell_num();
   assert(cell_num > 0);
 
-  void* tile_buffer = tile.data();
+  void* tile_buffer = tile->data();
   assert(tile_buffer != nullptr);
 
   // Initialize MBR with the first tile values
@@ -317,22 +317,23 @@ Range Dimension::compute_mbr(const WriterTile& tile) {
   return mbr;
 }
 
-Range Dimension::compute_mbr(const WriterTile& tile) const {
+Range Dimension::compute_mbr(const shared_ptr<WriterTile>& tile) const {
   assert(compute_mbr_func_ != nullptr);
   return compute_mbr_func_(tile);
 }
 
 template <>
 Range Dimension::compute_mbr_var<char>(
-    const WriterTile& tile_off, const WriterTile& tile_val) {
-  auto d_val_size = tile_val.size();
-  auto cell_num = tile_off.cell_num();
+    const shared_ptr<WriterTile>& tile_off,
+    const shared_ptr<WriterTile>& tile_val) {
+  auto d_val_size = tile_val->size();
+  auto cell_num = tile_off->cell_num();
   assert(cell_num > 0);
 
-  offsets_t* d_off = tile_off.data_as<offsets_t>();
+  offsets_t* d_off = tile_off->data_as<offsets_t>();
   assert(d_off != nullptr);
 
-  char* d_val = tile_val.data_as<char>();
+  char* d_val = tile_val->data_as<char>();
   assert(d_val != nullptr);
 
   // Initialize MBR with the first tile values
@@ -350,7 +351,8 @@ Range Dimension::compute_mbr_var<char>(
 }
 
 Range Dimension::compute_mbr_var(
-    const WriterTile& tile_off, const WriterTile& tile_val) const {
+    const shared_ptr<WriterTile>& tile_off,
+    const shared_ptr<WriterTile>& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
   return compute_mbr_var_func_(tile_off, tile_val);
 }

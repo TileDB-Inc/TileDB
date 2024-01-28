@@ -188,7 +188,7 @@ void set_result_tile_dim(
       dim_idx);
   auto tile_tuple = result_tile.tile_tuple(dim);
   REQUIRE(tile_tuple != nullptr);
-  uint64_t* data = tile_tuple->fixed_tile().data_as<uint64_t>();
+  uint64_t* data = tile_tuple->fixed_tile()->data_as<uint64_t>();
   for (uint64_t i = 0; i < v.size(); i++) {
     data[i] = v[i];
   }

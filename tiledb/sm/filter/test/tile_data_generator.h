@@ -51,7 +51,7 @@ class TileDataGenerator {
    * Checks if the provide tile has the same data as a writer tile created
    * by this class.
    */
-  virtual void check_tile_data(const Tile& tile) const = 0;
+  virtual void check_tile_data(const shared_ptr<Tile>& tile) const = 0;
 
   /** Returns the datatype of the original data stored in this test. */
   virtual Datatype datatype() const = 0;
@@ -59,8 +59,9 @@ class TileDataGenerator {
   /**
    * Returns an empty writer tile with enough room for the input data.
    */
-  WriterTile create_empty_writer_tile() const {
-    return WriterTile(
+  shared_ptr<WriterTile> create_empty_writer_tile() const {
+    return WriterTile::make_shared(
+        HERE(),
         constants::format_version,
         datatype(),
         cell_size(),
@@ -70,21 +71,23 @@ class TileDataGenerator {
   /**
    * Returns the writer tile and optional writer offsets tile.
    *
-   * If the data is fixed, the offsets tile will be a null opt.
+   * If the data is fixed, the offsets tile will not be valid.
    *
    * @returns [writer_tile, writer_offsets_tile] The writer tile with the input
    * test data and the writer offsets tile with the (optional) input offsets
    * data.
    */
-  virtual std::tuple<WriterTile, std::optional<WriterTile>>
+  virtual std::tuple<shared_ptr<WriterTile>, shared_ptr<WriterTile>>
   create_writer_tiles() const = 0;
 
   /**
    * Returns a tile with the data from the filtered buffer and enough room
    * for the original tile data.
    **/
-  Tile create_filtered_buffer_tile(FilteredBuffer& filtered_buffer) const {
-    return Tile(
+  shared_ptr<Tile> create_filtered_buffer_tile(
+      FilteredBuffer& filtered_buffer) const {
+    return Tile::make_shared(
+        HERE(),
         constants::format_version,
         datatype(),
         cell_size(),
@@ -139,29 +142,29 @@ class IncrementTileDataGenerator : public TileDataGenerator {
     return sizeof(T);
   }
 
-  void check_tile_data(const Tile& tile) const override {
+  void check_tile_data(const shared_ptr<Tile>& tile) const override {
     T expected{};
     for (uint64_t index = 0; index < num_elements_; ++index) {
       T element{};
-      CHECK_NOTHROW(tile.read(&element, index * sizeof(T), sizeof(T)));
+      CHECK_NOTHROW(tile->read(&element, index * sizeof(T), sizeof(T)));
       CHECK(element == expected++);
     }
   }
 
-  std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles()
-      const override {
+  std::tuple<shared_ptr<WriterTile>, shared_ptr<WriterTile>>
+  create_writer_tiles() const override {
     // Writer tile.
     auto tile = create_empty_writer_tile();
     T value{};
     for (uint64_t index = 0; index < num_elements_; ++index) {
-      CHECK_NOTHROW(tile.write(&value, index * sizeof(T), sizeof(T)));
+      CHECK_NOTHROW(tile->write(&value, index * sizeof(T), sizeof(T)));
       ++value;
     }
 
     // If no cells per value data, then this is fixed length data and there is
     // no offsets tile.
     if (cells_per_value_.empty()) {
-      return {std::move(tile), std::nullopt};
+      return {tile, nullptr};
     }
 
     // If cells_per_value_ is not empty, construct a vector of offsets values.
@@ -174,19 +177,20 @@ class IncrementTileDataGenerator : public TileDataGenerator {
     offsets.pop_back();
 
     // Write the offsets tile.
-    WriterTile offsets_tile(
+    auto offsets_tile = WriterTile::make_shared(
+        HERE(),
         constants::format_version,
         Datatype::UINT64,
         constants::cell_var_offset_size,
         offsets.size() * constants::cell_var_offset_size);
     for (uint64_t index = 0; index < offsets.size(); ++index) {
-      CHECK_NOTHROW(offsets_tile.write(
+      CHECK_NOTHROW(offsets_tile->write(
           &offsets[index],
           index * constants::cell_var_offset_size,
           constants::cell_var_offset_size));
     }
 
-    return {std::move(tile), std::move(offsets_tile)};
+    return {tile, offsets_tile};
   }
 
   Datatype datatype() const override {

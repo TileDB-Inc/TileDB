@@ -951,7 +951,7 @@ Status FragmentInfo::load_and_replace(
   return Status::Ok();
 }
 
-tuple<Tile, std::vector<std::pair<std::string, uint64_t>>>
+tuple<shared_ptr<Tile>, std::vector<std::pair<std::string, uint64_t>>>
 load_consolidated_fragment_meta(
     ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
   auto timer_se =
@@ -962,12 +962,12 @@ load_consolidated_fragment_meta(
     throw StatusException(Status_FragmentInfoError(
         "Cannot load consolidated fragment metadata; URI is empty."));
 
-  auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
+  auto tile = GenericTileIO::load(resources, uri, 0, enc_key);
 
-  resources.stats().add_counter("consolidated_frag_meta_size", tile.size());
+  resources.stats().add_counter("consolidated_frag_meta_size", tile->size());
 
   uint32_t fragment_num;
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   fragment_num = deserializer.read<uint32_t>();
 
   uint64_t name_size, offset;
@@ -982,7 +982,7 @@ load_consolidated_fragment_meta(
     ret.emplace_back(name, offset);
   }
 
-  return {std::move(tile), std::move(ret)};
+  return {tile, std::move(ret)};
 }
 
 std::tuple<
@@ -1018,22 +1018,22 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
       meta_uris.size());
   throw_if_not_ok(
       parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
-        auto&& [tile_opt, offsets] =
+        auto [tile, offsets] =
             load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
-        fragment_metadata_tiles[i] =
-            make_shared<Tile>(HERE(), std::move(tile_opt));
+        fragment_metadata_tiles[i] = tile;
         offsets_vectors[i] = std::move(offsets);
         return Status::Ok();
       }));
 
   // Get the unique fragment metadatas into a map.
-  std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;
+  std::unordered_map<std::string, std::pair<shared_ptr<Tile>, uint64_t>>
+      offsets;
   for (uint64_t i = 0; i < offsets_vectors.size(); i++) {
     for (auto& offset : offsets_vectors[i]) {
       if (offsets.count(offset.first) == 0) {
         offsets.emplace(
             offset.first,
-            std::make_pair(fragment_metadata_tiles[i].get(), offset.second));
+            std::make_pair(fragment_metadata_tiles[i], offset.second));
       }
     }
   }

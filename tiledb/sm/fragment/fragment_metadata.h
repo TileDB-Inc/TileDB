@@ -446,7 +446,7 @@ class FragmentMetadata {
    */
   void load(
       const EncryptionKey& encryption_key,
-      Tile* fragment_metadata_tile,
+      const shared_ptr<Tile>& fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -486,8 +486,9 @@ class FragmentMetadata {
           array_schemas_all,
       const EncryptionKey& encryption_key,
       const std::vector<TimestampedURI>& fragments_to_load,
-      const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
-          offsets);
+      const std::unordered_map<
+          std::string,
+          std::pair<shared_ptr<Tile>, uint64_t>>& offsets);
 
   /** Stores all the metadata to storage. */
   void store(const EncryptionKey& encryption_key);
@@ -1780,7 +1781,7 @@ class FragmentMetadata {
    */
   void load_v3_or_higher(
       const EncryptionKey& encryption_key,
-      Tile* fragment_metadata_tile,
+      const shared_ptr<Tile>& fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -1792,7 +1793,7 @@ class FragmentMetadata {
    */
   void load_footer(
       const EncryptionKey& encryption_key,
-      Tile* fragment_metadata_tile,
+      const shared_ptr<Tile>& fragment_metadata_tile,
       uint64_t offset,
       std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas);
 
@@ -1838,7 +1839,7 @@ class FragmentMetadata {
   void store_footer(const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to a tile. */
-  WriterTile write_rtree();
+  shared_ptr<WriterTile> write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
@@ -2026,17 +2027,15 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and returns a tile.
    */
-  Tile read_generic_tile_from_file(
+  shared_ptr<Tile> read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
    * Reads the fragment metadata file footer (which contains the generic tile
    * offsets) into the input buffer.
    */
-  void read_file_footer(
-      std::shared_ptr<Tile>& tile,
-      uint64_t* footer_offset,
-      uint64_t* footer_size) const;
+  shared_ptr<Tile> read_file_footer(
+      uint64_t* footer_offset, uint64_t* footer_size) const;
 
   /**
    * Writes the contents of the input tile as a separate
@@ -2048,7 +2047,7 @@ class FragmentMetadata {
    */
   void write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      WriterTile& tile,
+      const shared_ptr<WriterTile>& tile,
       uint64_t* nbytes) const;
 
   /**
@@ -2057,7 +2056,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  void write_footer_to_file(WriterTile&) const;
+  void write_footer_to_file(const shared_ptr<WriterTile>&) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

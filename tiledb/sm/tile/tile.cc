@@ -60,23 +60,25 @@ uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 /*           STATIC API           */
 /* ****************************** */
 
-Tile Tile::from_generic(storage_size_t tile_size) {
-  return {
+shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size) {
+  return Tile::make_shared(
+      HERE(),
       0,
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
       tile_size,
       nullptr,
-      0};
+      0);
 }
 
-WriterTile WriterTile::from_generic(storage_size_t tile_size) {
-  return {
+shared_ptr<WriterTile> WriterTile::from_generic(storage_size_t tile_size) {
+  return WriterTile::make_shared(
+      HERE(),
       0,
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
-      tile_size};
+      tile_size);
 }
 
 uint32_t WriterTile::compute_chunk_size(
@@ -122,21 +124,6 @@ TileBase::TileBase(
   }
 }
 
-TileBase::TileBase(TileBase&& tile)
-    : data_(std::move(tile.data_))
-    , size_(std::move(tile.size_))
-    , cell_size_(std::move(tile.cell_size_))
-    , format_version_(std::move(tile.format_version_))
-    , type_(std::move(tile.type_)) {
-}
-
-TileBase& TileBase::operator=(TileBase&& tile) {
-  // Swap with the argument
-  swap(tile);
-
-  return *this;
-}
-
 Tile::Tile(
     const format_version_t format_version,
     const Datatype type,
@@ -151,20 +138,6 @@ Tile::Tile(
     , filtered_size_(filtered_size) {
 }
 
-Tile::Tile(Tile&& tile)
-    : TileBase(std::move(tile))
-    , zipped_coords_dim_num_(std::move(tile.zipped_coords_dim_num_))
-    , filtered_data_(std::move(tile.filtered_data_))
-    , filtered_size_(std::move(tile.filtered_size_)) {
-}
-
-Tile& Tile::operator=(Tile&& tile) {
-  // Swap with the argument
-  swap(tile);
-
-  return *this;
-}
-
 WriterTile::WriterTile(
     const format_version_t format_version,
     const Datatype type,
@@ -174,29 +147,9 @@ WriterTile::WriterTile(
     , filtered_buffer_(0) {
 }
 
-WriterTile::WriterTile(WriterTile&& tile)
-    : TileBase(std::move(tile))
-    , filtered_buffer_(std::move(tile.filtered_buffer_)) {
-}
-
-WriterTile& WriterTile::operator=(WriterTile&& tile) {
-  // Swap with the argument
-  swap(tile);
-
-  return *this;
-}
-
 /* ****************************** */
 /*               API              */
 /* ****************************** */
-
-void TileBase::swap(TileBase& tile) {
-  std::swap(size_, tile.size_);
-  std::swap(data_, tile.data_);
-  std::swap(cell_size_, tile.cell_size_);
-  std::swap(format_version_, tile.format_version_);
-  std::swap(type_, tile.type_);
-}
 
 void TileBase::read(
     void* const buffer, const uint64_t offset, const uint64_t nbytes) const {
@@ -256,13 +209,6 @@ uint64_t Tile::load_offsets_chunk_data(ChunkData& chunk_data) {
   return load_chunk_data(chunk_data, s - 8);
 }
 
-void Tile::swap(Tile& tile) {
-  TileBase::swap(tile);
-  std::swap(filtered_data_, tile.filtered_data_);
-  std::swap(filtered_size_, tile.filtered_size_);
-  std::swap(zipped_coords_dim_num_, tile.zipped_coords_dim_num_);
-}
-
 void WriterTile::clear_data() {
   data_ = nullptr;
   size_ = 0;
@@ -284,11 +230,6 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
   }
 
   write(data, offset, nbytes);
-}
-
-void WriterTile::swap(WriterTile& tile) {
-  TileBase::swap(tile);
-  std::swap(filtered_buffer_, tile.filtered_buffer_);
 }
 
 /* ********************************* */

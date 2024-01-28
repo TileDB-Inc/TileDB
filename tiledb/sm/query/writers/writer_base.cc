@@ -823,17 +823,19 @@ Status WriterBase::filter_tiles(
   auto tile_num = tiles->size();
 
   // Process all tiles, minus offsets, they get processed separately.
-  std::vector<std::tuple<WriterTile*, WriterTile*, bool, bool>> args;
+  std::vector<
+      std::tuple<shared_ptr<WriterTile>, shared_ptr<WriterTile>, bool, bool>>
+      args;
   args.reserve(tile_num * (1 + nullable));
   for (auto& tile : *tiles) {
     if (var_size) {
-      args.emplace_back(&tile.var_tile(), &tile.offset_tile(), false, false);
+      args.emplace_back(tile.var_tile(), tile.offset_tile(), false, false);
     } else {
-      args.emplace_back(&tile.fixed_tile(), nullptr, false, false);
+      args.emplace_back(tile.fixed_tile(), nullptr, false, false);
     }
 
     if (nullable) {
-      args.emplace_back(&tile.validity_tile(), nullptr, false, true);
+      args.emplace_back(tile.validity_tile(), nullptr, false, true);
     }
   }
 
@@ -854,7 +856,7 @@ Status WriterBase::filter_tiles(
         storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
           RETURN_NOT_OK(
-              filter_tile(name, &tile.offset_tile(), nullptr, true, false));
+              filter_tile(name, tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
         });
     RETURN_NOT_OK(status);
@@ -865,8 +867,8 @@ Status WriterBase::filter_tiles(
 
 Status WriterBase::filter_tile(
     const std::string& name,
-    WriterTile* const tile,
-    WriterTile* const offsets_tile,
+    const shared_ptr<WriterTile>& tile,
+    const shared_ptr<WriterTile>& offsets_tile,
     const bool offsets,
     const bool nullable) {
   auto timer_se = stats_->start_timer("filter_tile");
@@ -1108,24 +1110,24 @@ Status WriterBase::write_tiles(
   for (size_t i = start_tile_idx, tile_id = start_tile_id; i < end_tile_idx;
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
-    auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
+    auto t = var_size ? tile.offset_tile() : tile.fixed_tile();
     RETURN_NOT_OK(storage_manager_->vfs()->write(
         uri,
-        t.filtered_buffer().data(),
-        t.filtered_buffer().size(),
+        t->filtered_buffer().data(),
+        t->filtered_buffer().size(),
         remote_global_order_write));
-    frag_meta->set_tile_offset(name, tile_id, t.filtered_buffer().size());
+    frag_meta->set_tile_offset(name, tile_id, t->filtered_buffer().size());
     auto null_count = tile.null_count();
 
     if (var_size) {
-      auto& t_var = tile.var_tile();
+      auto t_var = tile.var_tile();
       RETURN_NOT_OK(storage_manager_->vfs()->write(
           var_uri,
-          t_var.filtered_buffer().data(),
-          t_var.filtered_buffer().size(),
+          t_var->filtered_buffer().data(),
+          t_var->filtered_buffer().size(),
           remote_global_order_write));
       frag_meta->set_tile_var_offset(
-          name, tile_id, t_var.filtered_buffer().size());
+          name, tile_id, t_var->filtered_buffer().size());
       frag_meta->set_tile_var_size(name, tile_id, tile.var_pre_filtered_size());
       if (has_min_max_md && null_count != frag_meta->cell_num(tile_id)) {
         frag_meta->set_tile_min_var_size(name, tile_id, tile.min().size());
@@ -1143,14 +1145,14 @@ Status WriterBase::write_tiles(
     }
 
     if (nullable) {
-      auto& t_val = tile.validity_tile();
+      auto t_val = tile.validity_tile();
       RETURN_NOT_OK(storage_manager_->vfs()->write(
           validity_uri,
-          t_val.filtered_buffer().data(),
-          t_val.filtered_buffer().size(),
+          t_val->filtered_buffer().data(),
+          t_val->filtered_buffer().size(),
           remote_global_order_write));
       frag_meta->set_tile_validity_offset(
-          name, tile_id, t_val.filtered_buffer().size());
+          name, tile_id, t_val->filtered_buffer().size());
       frag_meta->set_tile_null_count(name, tile_id, null_count);
     }
   }

@@ -48,7 +48,7 @@ using namespace tiledb::sm::deletes_and_updates::serialization;
 void serialize_deserialize_check(QueryCondition& query_condition) {
   auto serialized = serialize_condition(query_condition);
   auto deserialized =
-      deserialize_condition(0, "", serialized.data(), serialized.size());
+      deserialize_condition(0, "", serialized->data(), serialized->size());
 
   CHECK(tiledb::test::ast_equal(query_condition.ast(), deserialized.ast()));
 }

@@ -1199,10 +1199,10 @@ Status Reader::compute_var_cell_destinations(
     offsets_t* tile_offsets = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(name);
-      const auto& tile = tile_tuple->fixed_tile();
+      const auto tile = tile_tuple->fixed_tile();
 
       // Get the internal buffer to the offset values.
-      tile_offsets = tile.data_as<offsets_t>();
+      tile_offsets = tile->data_as<offsets_t>();
     }
 
     // Compute the destinations for each cell in the range.
@@ -1296,13 +1296,13 @@ Status Reader::copy_partitioned_var_cells(
 
     // Get tile information, if the range is nonempty.
     offsets_t* tile_offsets = nullptr;
-    Tile* tile_var = nullptr;
-    Tile* tile_validity = nullptr;
+    shared_ptr<Tile> tile_var = nullptr;
+    shared_ptr<Tile> tile_validity = nullptr;
     if (cs.tile_ != nullptr && cs.tile_->tile_tuple(*name) != nullptr) {
       const auto tile_tuple = cs.tile_->tile_tuple(*name);
-      Tile* const tile = &tile_tuple->fixed_tile();
-      tile_var = &tile_tuple->var_tile();
-      tile_validity = nullable ? &tile_tuple->validity_tile() : nullptr;
+      const auto tile = tile_tuple->fixed_tile();
+      tile_var = tile_tuple->var_tile();
+      tile_validity = nullable ? tile_tuple->validity_tile() : nullptr;
 
       // Get the internal buffer to the offset values.
       tile_offsets = tile->data_as<offsets_t>();
