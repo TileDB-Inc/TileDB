@@ -51,16 +51,45 @@ enum class MemoryType {
   ENUMERATION
 };
 
+class MemoryTrackerResource : public tdb::pmr::memory_resource {
+ public:
+  // Disable all default generated constructors.
+  MemoryTrackerResource() = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerResource);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerResource);
+
+  explicit MemoryTrackerResource(
+      tdb::pmr::memory_resource* upstream,
+      std::atomic<uint64_t>& total_counter,
+      std::atomic<uint64_t>& type_counter)
+      : upstream_(upstream)
+      , total_counter_(total_counter)
+      , type_counter_(type_counter) {
+  }
+
+ protected:
+  void* do_allocate(size_t bytes, size_t alignment) override;
+  void do_deallocate(void* p, size_t bytes, size_t alignment) override;
+  bool do_is_equal(
+      const tdb::pmr::memory_resource& other) const noexcept override;
+
+ private:
+  tdb::pmr::memory_resource* upstream_;
+  std::atomic<uint64_t>& total_counter_;
+  std::atomic<uint64_t>& type_counter_;
+};
+
 class MemoryTracker {
  public:
   /** Constructor. */
-  MemoryTracker() {
-    memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint64_t>::max();
-  };
+  MemoryTracker()
+      : memory_usage_(0)
+      , memory_budget_(std::numeric_limits<uint64_t>::max())
+      , upstream_(tdb::pmr::get_default_resource())
+      , total_counter_(0){};
 
   /** Destructor. */
-  ~MemoryTracker() = default;
+  ~MemoryTracker();
 
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
@@ -68,17 +97,10 @@ class MemoryTracker {
   /**
    * Create a memory resource instance.
    *
-   * For now, this is only a shim to using the default memory resources
-   * as defined by the standard library. Eventually this will be replaced with
-   * a custom memory resource type similar to what exists on the branch
-   * `pd/experiment/pmr-vectors`.
-   *
    * @param type The type of memory that is being tracked.
    * @return A memory resource derived from std::pmr::memory_resource.
    */
-  tdb::pmr::memory_resource* get_resource(MemoryType) {
-    return tdb::pmr::get_default_resource();
-  }
+  tdb::pmr::memory_resource* get_resource(MemoryType);
 
   /**
    * Take memory from the budget.
@@ -159,7 +181,7 @@ class MemoryTracker {
   }
 
  private:
-  /** Protects all member variables. */
+  /** Protects all non-atomic member variables. */
   std::mutex mutex_;
 
   /** Memory usage for tracked structures. */
@@ -170,6 +192,19 @@ class MemoryTracker {
 
   /** Memory usage by type. */
   std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+
+  /** The upstream memory resource. */
+  tdb::pmr::memory_resource* upstream_;
+
+  /** MemoryTrackerResource by MemoryType. */
+  std::unordered_map<MemoryType, std::shared_ptr<MemoryTrackerResource>>
+      resources_;
+
+  /** Memory counters by MemoryType. */
+  std::unordered_map<MemoryType, std::atomic<uint64_t>> counters_;
+
+  /** The total memory usage of this MemoryTracker. */
+  std::atomic<uint64_t> total_counter_;
 };
 
 }  // namespace sm
