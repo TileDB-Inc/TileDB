@@ -491,15 +491,11 @@ Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
   return Status::Ok();
 }
 
-template <typename CapnpT>
-std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
-    CapnpT& reader) {
-  capnp::NonEmptyDomainList::Reader r =
-      (capnp::NonEmptyDomainList::Reader)reader;
-
+NDRange deserialize_non_empty_domain_rv(
+    const capnp::NonEmptyDomainList::Reader& reader) {
   NDRange ndRange;
-  if (r.hasNonEmptyDomains() && r.getNonEmptyDomains().size() > 0) {
-    auto nonEmptyDomains = r.getNonEmptyDomains();
+  if (reader.hasNonEmptyDomains() && reader.getNonEmptyDomains().size() > 0) {
+    auto nonEmptyDomains = reader.getNonEmptyDomains();
 
     for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
       auto nonEmptyDomainObj = nonEmptyDomains[i];
@@ -520,22 +516,17 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
     }
   }
 
-  return {Status::Ok(), ndRange};
+  return ndRange;
 }
 
 /** Deserializes the given from Capnp build to array's nonEmptyDomain
  *
- * @tparam CapnpT Capnp builder type
  * @param builder Builder to get nonEmptyDomain from
  * @param array Array to set the nonEmptyDomain on
- * @return Status
  */
-template <typename CapnpT>
-Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
-  auto&& [status, ndrange] = deserialize_non_empty_domain_rv(reader);
-  RETURN_NOT_OK(status);
-  array->set_non_empty_domain(*ndrange);
-  return Status::Ok();
+void deserialize_non_empty_domain(
+    const capnp::NonEmptyDomainList::Reader& reader, tiledb::sm::Array* array) {
+  array->set_non_empty_domain(deserialize_non_empty_domain_rv(reader));
 }
 
 /**

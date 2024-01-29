@@ -1599,7 +1599,7 @@ Status nonempty_domain_deserialize(
         auto reader = builder.asReader();
 
         // Deserialize
-        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        utils::deserialize_non_empty_domain(reader, array);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1611,7 +1611,7 @@ Status nonempty_domain_deserialize(
         auto reader = msg_reader.getRoot<capnp::NonEmptyDomainList>();
 
         // Deserialize
-        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        utils::deserialize_non_empty_domain(reader, array);
         break;
       }
       default: {

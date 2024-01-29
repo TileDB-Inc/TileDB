@@ -323,10 +323,9 @@ Status array_from_capnp(
   }
 
   if (array_reader.hasNonEmptyDomain()) {
-    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
     // Deserialize
-    RETURN_NOT_OK(
-        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+    utils::deserialize_non_empty_domain(
+        array_reader.getNonEmptyDomain(), array);
     array->set_non_empty_domain_computed(true);
   }
 
