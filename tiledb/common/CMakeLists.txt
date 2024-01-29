@@ -62,6 +62,7 @@ commence(object_library baseline)
         governor/governor.cc
         heap_profiler.cc
         heap_memory.cc
+        memory_tracker.cc
         pmr.cc
         polymorphic_allocator/polymorphic_allocator.cc
     )
