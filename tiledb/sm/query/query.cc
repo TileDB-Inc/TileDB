@@ -35,6 +35,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/enums/query_status.h"
@@ -82,7 +83,9 @@ Query::Query(
     StorageManager* storage_manager,
     shared_ptr<Array> array,
     optional<std::string> fragment_name)
-    : array_shared_(array)
+    : query_memory_tracker_(
+          storage_manager->resources().create_memory_tracker())
+    , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
@@ -112,6 +115,12 @@ Query::Query(
     , fragment_size_(std::numeric_limits<uint64_t>::max())
     , query_remote_buffer_storage_(std::nullopt) {
   assert(array->is_open());
+
+  if (array->get_query_type() == QueryType::READ) {
+    query_memory_tracker_->set_type(MemoryTrackerType::QUERY_READ);
+  } else {
+    query_memory_tracker_->set_type(MemoryTrackerType::QUERY_WRITE);
+  }
 
   subarray_ = Subarray(array_, layout_, stats_, logger_);
 

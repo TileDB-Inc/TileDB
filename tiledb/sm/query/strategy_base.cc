@@ -47,7 +47,7 @@ namespace sm {
 
 StrategyBase::StrategyBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
-    : memory_tracker_(params.memory_tracker())
+    : array_memory_tracker_(params.array_memory_tracker())
     , stats_(stats)
     , logger_(logger)
     , array_(params.array())
