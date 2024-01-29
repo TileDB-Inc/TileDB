@@ -3036,10 +3036,8 @@ Status global_write_state_from_capnp(
   write_state->last_hilbert_value_ = state_reader.getLastHilbertValue();
 
   if (state_reader.hasFragMeta()) {
-    auto frag_meta = write_state->frag_meta_;
-    auto frag_meta_reader = state_reader.getFragMeta();
-    RETURN_NOT_OK(fragment_metadata_from_capnp(
-        query.array_schema_shared(), frag_meta_reader, frag_meta));
+    write_state->frag_meta_ = fragment_metadata_from_capnp(
+        query.array_schema_shared(), state_reader.getFragMeta());
   }
 
   // Deserialize the multipart upload state

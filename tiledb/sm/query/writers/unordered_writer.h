@@ -85,12 +85,10 @@ class UnorderedWriter : public WriterBase {
   std::string name();
 
   /** Returns the context resources of the writer. */
-  ContextResources* resources() {
-    return &storage_manager_->resources();
-  }
+  ContextResources* resources();
 
   /** Set fragment metadata. */
-  Status set_frag_meta(shared_ptr<FragmentMetadata> frag_meta) {
+  void set_frag_meta(shared_ptr<FragmentMetadata> frag_meta) {
     frag_meta_ = frag_meta;
   }
 

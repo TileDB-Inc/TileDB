@@ -239,13 +239,13 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMinBuffer(),
           frag_meta_reader.getTileMinBuffer()),
-      utils::capnp_2d_list_to_vector<uint8_t>(
+      utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMinVarBuffer(),
           frag_meta_reader.getTileMinVarBuffer()),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMaxBuffer(),
           frag_meta_reader.getTileMaxBuffer()),
-      utils::capnp_2d_list_to_vector<uint8_t>(
+      utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMaxVarBuffer(),
           frag_meta_reader.getTileMaxVarBuffer()),
       utils::capnp_2d_list_to_vector<uint8_t>(

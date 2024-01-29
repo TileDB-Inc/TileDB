@@ -165,6 +165,10 @@ std::string UnorderedWriter::name() {
   return "UnorderedWriter";
 }
 
+ContextResources* UnorderedWriter::resources() {
+  return &storage_manager_->resources();
+}
+
 /* ****************************** */
 /*        PRIVATE METHODS         */
 /* ****************************** */

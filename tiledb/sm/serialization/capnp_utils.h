@@ -173,18 +173,21 @@ std::vector<T> capnp_list_to_vector(
 /**
  * Converts a capnproto list of lists of primitives to a vector of vectors.
  *
+ * @tparam T The type of items in the capnproto list.
+ * @tparam TConverted The type of items in the resulting vector.
+ * Defaults to T.
  * @param has_value whether the list actually contains any value.
  * @param list The capnproto list.
  * @param initial_size The initial size of the returning value.
  */
-template <class T>
-std::vector<std::vector<T>> capnp_2d_list_to_vector(
+template <class T, class TConverted = T>
+std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
     bool has_value,
     typename ::capnp::List<
         typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
         ::capnp::Kind::LIST>::Reader list,
     uint64_t initial_size = 0) {
-  std::vector<std::vector<T>> result(initial_size);
+  std::vector<std::vector<TConverted>> result(initial_size);
   if (has_value) {
     result.reserve(list.size());
     for (const auto& t : list) {
@@ -483,7 +486,7 @@ Status copy_capnp_list(
   return Status::Ok();
 }
 
-void serialize_non_empty_domain_rv(
+inline void serialize_non_empty_domain_rv(
     capnp::NonEmptyDomainList::Builder& builder,
     const NDRange& nonEmptyDomain,
     uint32_t dim_num) {
@@ -519,7 +522,7 @@ void serialize_non_empty_domain_rv(
  * @param builder Builder to set subarray onto
  * @param array Array to get nonEmptyDomain from
  */
-void serialize_non_empty_domain(
+inline void serialize_non_empty_domain(
     capnp::NonEmptyDomainList::Builder& builder, tiledb::sm::Array* array) {
   serialize_non_empty_domain_rv(
       builder,
@@ -527,7 +530,7 @@ void serialize_non_empty_domain(
       array->array_schema_latest().dim_num());
 }
 
-NDRange deserialize_non_empty_domain_rv(
+inline NDRange deserialize_non_empty_domain_rv(
     const capnp::NonEmptyDomainList::Reader& reader) {
   NDRange ndRange;
   if (reader.hasNonEmptyDomains() && reader.getNonEmptyDomains().size() > 0) {
@@ -560,7 +563,7 @@ NDRange deserialize_non_empty_domain_rv(
  * @param builder Builder to get nonEmptyDomain from
  * @param array Array to set the nonEmptyDomain on
  */
-void deserialize_non_empty_domain(
+inline void deserialize_non_empty_domain(
     const capnp::NonEmptyDomainList::Reader& reader, tiledb::sm::Array* array) {
   array->set_non_empty_domain(deserialize_non_empty_domain_rv(reader));
 }
