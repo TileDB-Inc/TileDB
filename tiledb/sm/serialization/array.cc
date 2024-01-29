@@ -197,8 +197,7 @@ Status array_to_capnp(
   if (array->use_refactored_array_open()) {
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-      RETURN_NOT_OK(
-          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+      utils::serialize_non_empty_domain(nonempty_domain_builder, array);
     }
 
     if (array->serialize_metadata()) {
@@ -214,8 +213,7 @@ Status array_to_capnp(
   } else {
     if (array->non_empty_domain_computed()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-      RETURN_NOT_OK(
-          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+      utils::serialize_non_empty_domain(nonempty_domain_builder, array);
     }
 
     if (array->metadata_loaded()) {

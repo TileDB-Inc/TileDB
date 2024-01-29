@@ -1537,7 +1537,7 @@ Status nonempty_domain_serialize(
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::NonEmptyDomainList>();
 
-    RETURN_NOT_OK(utils::serialize_non_empty_domain(builder, array));
+    utils::serialize_non_empty_domain(builder, array);
 
     // Copy to buffer
     serialized_buffer->reset_size();

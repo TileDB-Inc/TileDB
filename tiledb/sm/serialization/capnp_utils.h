@@ -443,9 +443,10 @@ Status copy_capnp_list(
   return Status::Ok();
 }
 
-template <typename CapnpT>
-Status serialize_non_empty_domain_rv(
-    CapnpT& builder, const NDRange& nonEmptyDomain, uint32_t dim_num) {
+void serialize_non_empty_domain_rv(
+    capnp::NonEmptyDomainList::Builder& builder,
+    const NDRange& nonEmptyDomain,
+    uint32_t dim_num) {
   if (!nonEmptyDomain.empty()) {
     auto nonEmptyDomainListBuilder = builder.initNonEmptyDomains(dim_num);
 
@@ -457,7 +458,7 @@ Status serialize_non_empty_domain_rv(
 
       if (!dimNonEmptyDomain.empty()) {
         auto subarray_builder = dim_builder.initNonEmptyDomain();
-        RETURN_NOT_OK(utils::set_capnp_array_ptr(
+        throw_if_not_ok(utils::set_capnp_array_ptr(
             subarray_builder,
             tiledb::sm::Datatype::UINT8,
             dimNonEmptyDomain.data(),
@@ -471,24 +472,19 @@ Status serialize_non_empty_domain_rv(
       }
     }
   }
-  return Status::Ok();
 }
 
 /** Serializes the given array's nonEmptyDomain into the given Capnp builder.
  *
- * @tparam CapnpT Capnp builder type
  * @param builder Builder to set subarray onto
  * @param array Array to get nonEmptyDomain from
- * @return Status
  */
-template <typename CapnpT>
-Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  return serialize_non_empty_domain_rv(
+void serialize_non_empty_domain(
+    capnp::NonEmptyDomainList::Builder& builder, tiledb::sm::Array* array) {
+  serialize_non_empty_domain_rv(
       builder,
       array->non_empty_domain(),
       array->array_schema_latest().dim_num());
-
-  return Status::Ok();
 }
 
 NDRange deserialize_non_empty_domain_rv(

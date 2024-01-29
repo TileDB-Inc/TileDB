@@ -672,10 +672,10 @@ Status fragment_metadata_to_capnp(
   frag_meta_builder->setLastTileCellNum(frag_meta.last_tile_cell_num());
 
   auto ned_builder = frag_meta_builder->initNonEmptyDomain();
-  RETURN_NOT_OK(utils::serialize_non_empty_domain_rv(
+  utils::serialize_non_empty_domain_rv(
       ned_builder,
       frag_meta.non_empty_domain(),
-      frag_meta.array_schema()->dim_num()));
+      frag_meta.array_schema()->dim_num());
 
   // TODO: Can this be done better? Does this make a lot of copies?
   SizeComputationSerializer size_computation_serializer;
