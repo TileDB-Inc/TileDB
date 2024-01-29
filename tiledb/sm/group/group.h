@@ -462,6 +462,31 @@ class Group {
       const shared_ptr<GroupDirectory>& group_dir,
       const EncryptionKey& encryption_key,
       Metadata* metadata);
+
+  /** Opens an group for reads. */
+  void group_open_for_reads();
+
+  /**
+   * Load group details from disk
+   */
+  void load_group_details();
+
+  /**
+   * Load a group detail from URI
+   *
+   * @param uri location to load
+   */
+  void load_group_from_uri(const URI& uri);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param uris locations to load
+   */
+  void load_group_from_all_uris(const std::vector<TimestampedURI>& uris);
+
+  /** Opens an group for writes. */
+  void group_open_for_writes();
 };
 }  // namespace tiledb::sm
 

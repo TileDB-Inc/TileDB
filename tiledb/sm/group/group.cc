@@ -166,11 +166,7 @@ Status Group::open(
       return Status_GroupDirectoryError(le.what());
     }
 
-    auto&& [st, group_details] = storage_manager_->group_open_for_reads(this);
-    RETURN_NOT_OK(st);
-    if (group_details.has_value()) {
-      group_details_ = group_details.value();
-    }
+    group_open_for_reads();
   } else {
     try {
       group_dir_ = make_shared<GroupDirectory>(
@@ -185,12 +181,7 @@ Status Group::open(
       return Status_GroupDirectoryError(le.what());
     }
 
-    auto&& [st, group_details] = storage_manager_->group_open_for_writes(this);
-    RETURN_NOT_OK(st);
-
-    if (group_details.has_value()) {
-      group_details_ = group_details.value();
-    }
+    group_open_for_writes();
 
     metadata_.reset(timestamp_end);
   }
@@ -764,6 +755,85 @@ void Group::load_metadata_from_storage(
   // Copy the deserialized metadata into the original Metadata object
   *metadata = Metadata::deserialize(metadata_tiles);
   metadata->set_loaded_metadata_uris(group_metadata_to_load);
+}
+
+void Group::group_open_for_reads() {
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("group_open_for_reads");
+
+  // Load group data
+  load_group_details();
+}
+
+void Group::load_group_details() {
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("load_group_details");
+  const URI& latest_group_uri = group_directory()->latest_group_details_uri();
+  if (latest_group_uri.is_invalid()) {
+    return;
+  }
+
+  // V1 groups did not have the version appended so only have 4 "_"
+  // (__<timestamp>_<timestamp>_<uuid>)
+  auto part = latest_group_uri.last_path_part();
+  if (std::count(part.begin(), part.end(), '_') == 4) {
+    load_group_from_uri(latest_group_uri);
+    return;
+  }
+
+  // V2 and newer should loop over all uris all the time to handle deletes at
+  // read-time
+  load_group_from_all_uris(group_directory()->group_detail_uris());
+}
+
+void Group::load_group_from_uri(const URI& uri) {
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("load_group_from_uri");
+
+  auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key());
+
+  resources_.stats().add_counter("read_group_size", tile.size());
+
+  // Deserialize
+  Deserializer deserializer(tile.data(), tile.size());
+  auto opt_group =
+      GroupDetails::deserialize(deserializer, group_directory()->uri());
+
+  if (opt_group.has_value()) {
+    group_details_ = opt_group.value();
+  }
+}
+
+void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("load_group_from_all_uris");
+
+  std::vector<shared_ptr<Deserializer>> deserializers;
+  for (auto& uri : uris) {
+    auto&& tile =
+        GenericTileIO::load(resources_, uri.uri_, 0, *encryption_key());
+
+    resources_.stats().add_counter("read_group_size", tile.size());
+
+    // Deserialize
+    shared_ptr<Deserializer> deserializer =
+        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
+    deserializers.emplace_back(deserializer);
+  }
+
+  auto opt_group =
+      GroupDetails::deserialize(deserializers, group_directory()->uri());
+
+  if (opt_group.has_value()) {
+    group_details_ = opt_group.value();
+  }
+}
+
+void Group::group_open_for_writes() {
+  [[maybe_unused]] auto timer_se =
+      resources_.stats().start_timer("group_open_for_writes");
+
+  load_group_details();
 }
 
 }  // namespace tiledb::sm
