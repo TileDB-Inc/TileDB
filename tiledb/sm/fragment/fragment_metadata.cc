@@ -92,18 +92,15 @@ FragmentMetadata::FragmentMetadata(
     , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_validity_offsets_(
           memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
-    , tile_min_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_min_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
     , tile_min_var_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
-    , tile_max_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+          memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
     , tile_max_var_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
-    , tile_sums_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+          memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS)) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -135,18 +132,15 @@ FragmentMetadata::FragmentMetadata(
     , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_validity_offsets_(
           memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
-    , tile_min_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+    , tile_min_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
     , tile_min_var_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
-    , tile_max_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+          memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
     , tile_max_var_buffer_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
-    , tile_sums_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+          memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
-          memory_tracker_->get_resource(MemoryType::MIN_MAX_SUM_NULL_COUNT))
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
@@ -3173,8 +3167,7 @@ void FragmentMetadata::load_tile_min_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_MIN_VALS)) {
       throw FragmentMetadataStatusException(
           "Cannot load min values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3218,8 +3211,7 @@ void FragmentMetadata::load_tile_max_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_MAX_VALS)) {
       throw FragmentMetadataStatusException(
           "Cannot load max values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3257,8 +3249,7 @@ void FragmentMetadata::load_tile_sum_values(
   if (tile_sum_num != 0) {
     auto size = tile_sum_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_SUMS)) {
       throw FragmentMetadataStatusException(
           "Cannot load sum values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3290,8 +3281,7 @@ void FragmentMetadata::load_tile_null_count_values(
   if (tile_null_count_num != 0) {
     auto size = tile_null_count_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_NULL_COUNTS)) {
       throw FragmentMetadataStatusException(
           "Cannot load null count values; Insufficient memory budget; "
           "Needed " +
