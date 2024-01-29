@@ -80,14 +80,14 @@ jobs:
     timeout-minutes: ${{ inputs.timeout || 90 }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
         with:
             submodules: true
             fetch-depth: 0
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -113,7 +113,7 @@ jobs:
 
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         if: ${{ !inputs.manylinux }}
         with:
           python-version: '3.8'
@@ -228,7 +228,7 @@ jobs:
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 10
           name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
@@ -238,7 +238,7 @@ jobs:
 
       - name: 'Upload failure artifacts (macOS)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ failure() == true && startsWith(matrix.os, 'macos-') == true }} # only run this job if the build step failed
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           retention-days: 10
           name: "${{ matrix.os }}.coredumps.${{ github.job }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"

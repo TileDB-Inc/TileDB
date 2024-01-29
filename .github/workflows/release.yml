@@ -55,12 +55,12 @@ jobs:
     steps:
       - name: Checkout TileDB
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
         if: ${{ startsWith(matrix.os, 'macos-') == true }}  
       - name: Export GitHub Actions cache variables
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -110,7 +110,7 @@ jobs:
           Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
         shell: pwsh
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tiledb-dist
           path: ${{ steps.get-values.outputs.archive_name }}.*
@@ -118,7 +118,7 @@ jobs:
         run: |
           tar -czf build-${{ matrix.platform }}.tar.gz -C build .
       - name: Upload build directory
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tiledb-build
           path: build-${{ matrix.platform }}.tar.gz
@@ -132,7 +132,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: tiledb-dist
           path: dist
@@ -149,12 +149,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: tiledb-dist
           path: dist
       - name: Publish release artifacts
-        uses: actions/github-script@v6
+        uses: actions/github-script@v7
         with:
           script: |
             const fs = require('fs');

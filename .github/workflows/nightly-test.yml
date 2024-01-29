@@ -38,7 +38,7 @@ jobs:
         run: printenv
 
       - name: Checkout TileDB `dev`
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
@@ -73,7 +73,7 @@ jobs:
     if: failure() || cancelled()
     steps:
       - name: Checkout TileDB `dev`
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Create Issue if Build Fails
         uses: TileDB-Inc/github-actions/open-issue@main
         with:

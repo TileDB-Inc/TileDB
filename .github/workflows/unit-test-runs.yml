@@ -21,7 +21,7 @@ jobs:
       fail-fast: false
     name: Build - ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
@@ -29,7 +29,7 @@ jobs:
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
-      - uses: actions/github-script@v6
+      - uses: actions/github-script@v7
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');

@@ -18,7 +18,7 @@ jobs:
     name: ${{ matrix.dockerfile }}
     steps:
       - name: Check out the repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           submodules: true
           fetch-depth: 0

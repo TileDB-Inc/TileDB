@@ -22,7 +22,7 @@ jobs:
     timeout-minutes: 90
     name: Check Heap Memory Violations
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
