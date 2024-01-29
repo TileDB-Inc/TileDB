@@ -26,6 +26,7 @@ examples/obj/*
 scripts/deps-staging/*
 .idea
 *.DS_Store
+compile_commands.json
 doc/venv
 doc/source/__pycache__
 doc/source/_build
