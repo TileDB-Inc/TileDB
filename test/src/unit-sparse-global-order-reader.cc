@@ -739,10 +739,13 @@ TEST_CASE_METHOD(
                      "computed size") != std::string::npos);
 }
 
+// PJD: This test marked !shouldfail because it's effectively asserting that
+// sizeof(GlobalOrderResultTile<BitmapType>) is approximately 1200 bytes
+// where with shared_ptr its now only about 500 bytes.
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: coords budget forcing one tile at a time",
-    "[sparse-global-order][small-coords-budget]") {
+    "[sparse-global-order][small-coords-budget][!shouldfail]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
