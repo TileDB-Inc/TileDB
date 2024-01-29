@@ -232,6 +232,26 @@ class MemoryTracker {
   std::atomic<uint64_t> total_counter_;
 };
 
+class MemoryTrackerManager {
+ public:
+  /** Constructor. */
+  MemoryTrackerManager() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerManager);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerManager);
+
+  /**
+   * Create a new memory tracker.
+   *
+   * @return The created MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> create_tracker();
+
+ private:
+  std::mutex mutex_;
+  std::vector<std::weak_ptr<MemoryTracker>> trackers_;
+};
+
 }  // namespace sm
 }  // namespace tiledb
 

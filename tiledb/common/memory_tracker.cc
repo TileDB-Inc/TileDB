@@ -131,4 +131,24 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
   return ret.get();
 }
 
+shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  // Delete any expired weak_ptr instances
+  size_t idx = 0;
+  while (idx < trackers_.size()) {
+    if (trackers_[idx].expired()) {
+      trackers_.erase(trackers_.begin() + idx);
+    } else {
+      idx++;
+    }
+  }
+
+  // Create a new tracker
+  auto ret = make_shared<MemoryTracker>(HERE());
+  trackers_.emplace(trackers_.begin(), ret);
+
+  return ret;
+}
+
 }  // namespace tiledb::sm
