@@ -111,6 +111,86 @@ FragmentMetadata::FragmentMetadata(
   array_schema_name_ = array_schema_->name();
 }
 
+FragmentMetadata::FragmentMetadata(
+    ContextResources* resources,
+    MemoryTracker* memory_tracker,
+    shared_ptr<const ArraySchema> array_schema,
+    std::vector<uint64_t>&& file_sizes,
+    std::vector<uint64_t>&& file_var_sizes,
+    std::vector<uint64_t>&& file_validity_sizes,
+    URI&& fragment_uri,
+    bool has_timestamps,
+    bool has_delete_meta,
+    bool has_consolidated_footer,
+    uint64_t sparse_tile_num,
+    uint64_t tile_index_base,
+    std::vector<std::vector<uint64_t>>&& tile_offsets,
+    std::vector<std::vector<uint64_t>>&& tile_var_offsets,
+    std::vector<std::vector<uint64_t>>&& tile_var_sizes,
+    std::vector<std::vector<uint64_t>>&& tile_validity_offsets,
+    std::vector<std::vector<uint8_t>>&& tile_min_buffer,
+    std::vector<std::vector<char>>&& tile_min_var_buffer,
+    std::vector<std::vector<uint8_t>>&& tile_max_buffer,
+    std::vector<std::vector<char>>&& tile_max_var_buffer,
+    std::vector<std::vector<uint8_t>>&& tile_sums,
+    std::vector<std::vector<uint64_t>>&& tile_null_counts,
+    std::vector<std::vector<uint8_t>>&& fragment_mins,
+    std::vector<std::vector<uint8_t>>&& fragment_maxs,
+    std::vector<uint64_t>&& fragment_sums,
+    std::vector<uint64_t>&& fragment_null_counts,
+    uint32_t version,
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    uint64_t last_tile_cell_num,
+    NDRange&& non_empty_domain,
+    RTree&& rtree,
+    FragmentMetadata::GenericTileOffsets&& generic_tile_offsets,
+    FragmentMetadata::LoadedMetadata&& loaded_metadata)
+    : resources_(resources)
+    , memory_tracker_(memory_tracker)
+    , array_schema_(array_schema)
+    , dense_(array_schema_->dense())
+    , file_sizes_(std::move(file_sizes))
+    , file_var_sizes_(std::move(file_var_sizes))
+    , file_validity_sizes_(std::move(file_validity_sizes))
+    , footer_size_(0)
+    , footer_offset_(0)
+    , fragment_uri_(std::move(fragment_uri))
+    , has_consolidated_footer_(has_consolidated_footer)
+    , last_tile_cell_num_(last_tile_cell_num)
+    , has_timestamps_(has_timestamps)
+    , has_delete_meta_(has_delete_meta)
+    , sparse_tile_num_(sparse_tile_num)
+    , loaded_metadata_(std::move(loaded_metadata))
+    , meta_file_size_(0)
+    , tile_offsets_mtx_(tile_offsets.size())
+    , tile_var_offsets_mtx_(tile_var_offsets.size())
+    , rtree_(std::move(rtree))
+    , tile_index_base_(tile_index_base)
+    , tile_offsets_(std::move(tile_offsets))
+    , tile_var_offsets_(std::move(tile_var_offsets))
+    , tile_var_sizes_(std::move(tile_var_sizes))
+    , tile_validity_offsets_(std::move(tile_validity_offsets))
+    , tile_min_buffer_(std::move(tile_min_buffer))
+    , tile_min_var_buffer_(std::move(tile_min_var_buffer))
+    , tile_max_buffer_(std::move(tile_max_buffer))
+    , tile_max_var_buffer_(std::move(tile_max_var_buffer))
+    , tile_sums_(std::move(tile_sums))
+    , tile_null_counts_(std::move(tile_null_counts))
+    , fragment_mins_(std::move(fragment_mins))
+    , fragment_maxs_(std::move(fragment_maxs))
+    , fragment_sums_(std::move(fragment_sums))
+    , fragment_null_counts_(std::move(fragment_null_counts))
+    , version_(version)
+    , timestamp_range_(timestamp_range)
+    , gt_offsets_(std::move(generic_tile_offsets)) {
+  build_idx_map();
+  if (array_schema_->dense()) {
+    init_domain(non_empty_domain);
+  } else {
+    non_empty_domain_ = std::move(non_empty_domain);
+  }
+}
+
 FragmentMetadata::~FragmentMetadata() = default;
 
 /* ****************************** */

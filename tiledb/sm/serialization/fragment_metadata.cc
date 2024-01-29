@@ -54,9 +54,59 @@ namespace serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
-void generic_tile_offsets_from_capnp(
-    const capnp::FragmentMetadata::GenericTileOffsets::Reader& gt_reader,
-    FragmentMetadata::GenericTileOffsets& gt_offsets) {
+/**
+ * Creates a LoadedMetadata object for a freshly deserialized fragment metadata.
+ */
+static FragmentMetadata::LoadedMetadata create_deserialized_loaded_metadata(
+    const uint64_t num_dims_and_attrs,
+    const capnp::FragmentMetadata::Reader& reader) {
+  // There is a difference in the metadata loaded for versions >= 2
+  bool loadedValue = reader.getVersion() <= 2;
+  FragmentMetadata::LoadedMetadata loaded_metadata;
+  loaded_metadata.tile_offsets_.resize(num_dims_and_attrs);
+  if (reader.hasTileOffsets()) {
+    std::fill_n(
+        loaded_metadata.tile_offsets_.begin(),
+        reader.getTileOffsets().size(),
+        loadedValue);
+  }
+  loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs);
+  if (reader.hasTileVarOffsets()) {
+    std::fill_n(
+        loaded_metadata.tile_var_offsets_.begin(),
+        reader.getTileVarOffsets().size(),
+        loadedValue);
+  }
+  loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs);
+  if (reader.hasTileVarSizes()) {
+    std::fill_n(
+        loaded_metadata.tile_var_sizes_.begin(),
+        reader.getTileVarSizes().size(),
+        loadedValue);
+  }
+  if (reader.hasTileValidityOffsets()) {
+    loaded_metadata.tile_validity_offsets_.resize(
+        reader.getTileValidityOffsets().size());
+  }
+  if (reader.hasTileMinBuffer()) {
+    loaded_metadata.tile_min_.resize(reader.getTileMinBuffer().size());
+  }
+  if (reader.hasTileMaxBuffer()) {
+    loaded_metadata.tile_max_.resize(reader.getTileMaxBuffer().size());
+  }
+  if (reader.hasTileSums()) {
+    loaded_metadata.tile_sum_.resize(reader.getTileMaxBuffer().size());
+  }
+  if (reader.hasTileNullCounts()) {
+    loaded_metadata.tile_null_count_.resize(reader.getTileMaxBuffer().size());
+  }
+  loaded_metadata.footer_ = reader.hasGtOffsets();
+  return loaded_metadata;
+}
+
+static FragmentMetadata::GenericTileOffsets generic_tile_offsets_from_capnp(
+    const capnp::FragmentMetadata::GenericTileOffsets::Reader& gt_reader) {
+  FragmentMetadata::GenericTileOffsets gt_offsets;
   gt_offsets.rtree_ = gt_reader.getRtree();
   if (gt_reader.hasTileOffsets()) {
     gt_offsets.tile_offsets_.reserve(gt_reader.getTileOffsets().size());
@@ -114,261 +164,32 @@ void generic_tile_offsets_from_capnp(
       gt_reader.getFragmentMinMaxSumNullCountOffset();
   gt_offsets.processed_conditions_offsets_ =
       gt_reader.getProcessedConditionsOffsets();
+
+  return gt_offsets;
 }
 
-Status fragment_metadata_from_capnp(
+shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta,
     ContextResources* resources,
     MemoryTracker* memory_tracker) {
-  // TODO: consider a new constructor for fragment meta or using the
-  // existing one
-  if (resources) {
-    frag_meta->set_context_resources(resources);
-  }
-  if (memory_tracker) {
-    frag_meta->set_memory_tracker(memory_tracker);
-  }
-  if (frag_meta_reader.hasFileSizes()) {
-    auto filesizes_reader = frag_meta_reader.getFileSizes();
-    frag_meta->file_sizes().reserve(filesizes_reader.size());
-    for (const auto& file_size : filesizes_reader) {
-      frag_meta->file_sizes().emplace_back(file_size);
-    }
-  }
-  if (frag_meta_reader.hasFileVarSizes()) {
-    auto filevarsizes_reader = frag_meta_reader.getFileVarSizes();
-    frag_meta->file_var_sizes().reserve(filevarsizes_reader.size());
-    for (const auto& file_var_size : filevarsizes_reader) {
-      frag_meta->file_var_sizes().emplace_back(file_var_size);
-    }
-  }
-  if (frag_meta_reader.hasFileValiditySizes()) {
-    auto filevaliditysizes_reader = frag_meta_reader.getFileValiditySizes();
-    frag_meta->file_validity_sizes().reserve(filevaliditysizes_reader.size());
-
-    for (const auto& file_validity_size : filevaliditysizes_reader) {
-      frag_meta->file_validity_sizes().emplace_back(file_validity_size);
-    }
-  }
+  URI fragment_uri;
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
-    frag_meta->fragment_uri() = deserialize_array_uri_to_absolute(
+    fragment_uri = deserialize_array_uri_to_absolute(
         frag_meta_reader.getFragmentUri().cStr(), array_schema->array_uri());
   }
-  frag_meta->has_timestamps() = frag_meta_reader.getHasTimestamps();
-  frag_meta->has_delete_meta() = frag_meta_reader.getHasDeleteMeta();
-  frag_meta->has_consolidated_footer() =
-      frag_meta_reader.getHasConsolidatedFooter();
-  frag_meta->sparse_tile_num() = frag_meta_reader.getSparseTileNum();
-  frag_meta->tile_index_base() = frag_meta_reader.getTileIndexBase();
-  frag_meta->version() = frag_meta_reader.getVersion();
+  uint64_t num_dims_and_attrs = FragmentMetadata::num_dims_and_attrs(
+      *array_schema,
+      frag_meta_reader.getHasTimestamps(),
+      frag_meta_reader.getHasDeleteMeta());
 
-  // Set the array schema and most importantly retrigger the build
-  // of the internal idx_map. Also set array_schema_name which is used
-  // in some places in the global writer
-  frag_meta->set_array_schema(array_schema);
-  frag_meta->set_schema_name(array_schema->name());
-  frag_meta->set_dense(array_schema->dense());
-
-  FragmentMetadata::LoadedMetadata loaded_metadata;
-
-  // num_dims_and_attrs() requires a set array schema, so it's important
-  // schema is set above on the fragment metadata object.
-  uint64_t num_dims_and_attrs = frag_meta->num_dims_and_attrs();
-
-  // The tile offsets field may not be present here in some usecases such as
-  // refactored query, but readers on the server side require these vectors to
-  // have the first dimension properly allocated when loading their data on
-  // demand.
-  frag_meta->resize_tile_offsets_vectors(num_dims_and_attrs);
-  loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
-
-  // There is a difference in the metadata loaded for versions >= 2
-  auto loaded = frag_meta->version() <= 2 ? true : false;
-
-  if (frag_meta_reader.hasTileOffsets()) {
-    auto tileoffsets_reader = frag_meta_reader.getTileOffsets();
-    uint64_t i = 0;
-    for (const auto& t : tileoffsets_reader) {
-      auto& last = frag_meta->tile_offsets()[i];
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-      loaded_metadata.tile_offsets_[i++] = loaded;
-    }
-  }
-
-  // The tile var offsets field may not be present here in some usecases such as
-  // refactored query, but readers on the server side require these vectors to
-  // have the first dimension properly allocated when loading its data on
-  // demand.
-  frag_meta->resize_tile_var_offsets_vectors(num_dims_and_attrs);
-  loaded_metadata.tile_var_offsets_.resize(num_dims_and_attrs, false);
-  if (frag_meta_reader.hasTileVarOffsets()) {
-    auto tilevaroffsets_reader = frag_meta_reader.getTileVarOffsets();
-    uint64_t i = 0;
-    for (const auto& t : tilevaroffsets_reader) {
-      auto& last = frag_meta->tile_var_offsets()[i];
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-      loaded_metadata.tile_var_offsets_[i++] = loaded;
-    }
-  }
-
-  // The tile var sizes field may not be present here in some usecases such as
-  // refactored query, but readers on the server side require these vectors to
-  // have the first dimension properly allocated when loading its data on
-  // demand.
-  frag_meta->resize_tile_var_sizes_vectors(num_dims_and_attrs);
-  loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
-  if (frag_meta_reader.hasTileVarSizes()) {
-    auto tilevarsizes_reader = frag_meta_reader.getTileVarSizes();
-    uint64_t i = 0;
-    for (const auto& t : tilevarsizes_reader) {
-      auto& last = frag_meta->tile_var_sizes()[i];
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-      loaded_metadata.tile_var_sizes_[i++] = loaded;
-    }
-  }
-
-  // This field may not be present here in some usecases such as refactored
-  // query, but readers on the server side require this vector to have the first
-  // dimension properly allocated when loading its data on demand.
-  frag_meta->resize_tile_validity_offsets_vectors(num_dims_and_attrs);
-  loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs, false);
-  if (frag_meta_reader.hasTileValidityOffsets()) {
-    auto tilevalidityoffsets_reader = frag_meta_reader.getTileValidityOffsets();
-    uint64_t i = 0;
-    for (const auto& t : tilevalidityoffsets_reader) {
-      auto& last = frag_meta->tile_validity_offsets()[i];
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-      loaded_metadata.tile_validity_offsets_[i++] = false;
-    }
-  }
-  if (frag_meta_reader.hasTileMinBuffer()) {
-    auto tileminbuffer_reader = frag_meta_reader.getTileMinBuffer();
-    for (const auto& t : tileminbuffer_reader) {
-      auto& last = frag_meta->tile_min_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-    loaded_metadata.tile_min_.resize(tileminbuffer_reader.size(), false);
-  }
-  if (frag_meta_reader.hasTileMinVarBuffer()) {
-    auto tileminvarbuffer_reader = frag_meta_reader.getTileMinVarBuffer();
-    for (const auto& t : tileminvarbuffer_reader) {
-      auto& last = frag_meta->tile_min_var_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-  }
-  if (frag_meta_reader.hasTileMaxBuffer()) {
-    auto tilemaxbuffer_reader = frag_meta_reader.getTileMaxBuffer();
-    for (const auto& t : tilemaxbuffer_reader) {
-      auto& last = frag_meta->tile_max_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-    loaded_metadata.tile_max_.resize(tilemaxbuffer_reader.size(), false);
-  }
-  if (frag_meta_reader.hasTileMaxVarBuffer()) {
-    auto tilemaxvarbuffer_reader = frag_meta_reader.getTileMaxVarBuffer();
-    for (const auto& t : tilemaxvarbuffer_reader) {
-      auto& last = frag_meta->tile_max_var_buffer().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-  }
-  if (frag_meta_reader.hasTileSums()) {
-    auto tilesums_reader = frag_meta_reader.getTileSums();
-    for (const auto& t : tilesums_reader) {
-      auto& last = frag_meta->tile_sums().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-    loaded_metadata.tile_sum_.resize(tilesums_reader.size(), false);
-  }
-  if (frag_meta_reader.hasTileNullCounts()) {
-    auto tilenullcounts_reader = frag_meta_reader.getTileNullCounts();
-    for (const auto& t : tilenullcounts_reader) {
-      auto& last = frag_meta->tile_null_counts().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-    loaded_metadata.tile_null_count_.resize(
-        tilenullcounts_reader.size(), false);
-  }
-  if (frag_meta_reader.hasFragmentMins()) {
-    auto fragmentmins_reader = frag_meta_reader.getFragmentMins();
-    for (const auto& t : fragmentmins_reader) {
-      auto& last = frag_meta->fragment_mins().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-  }
-  if (frag_meta_reader.hasFragmentMaxs()) {
-    auto fragmentmaxs_reader = frag_meta_reader.getFragmentMaxs();
-    for (const auto& t : fragmentmaxs_reader) {
-      auto& last = frag_meta->fragment_maxs().emplace_back();
-      last.reserve(t.size());
-      for (const auto& v : t) {
-        last.emplace_back(v);
-      }
-    }
-  }
-  if (frag_meta_reader.hasFragmentSums()) {
-    auto fragmentsums_reader = frag_meta_reader.getFragmentSums();
-    frag_meta->fragment_sums().reserve(fragmentsums_reader.size());
-    for (const auto& fragment_sum : fragmentsums_reader) {
-      frag_meta->fragment_sums().emplace_back(fragment_sum);
-    }
-  }
-  if (frag_meta_reader.hasFragmentNullCounts()) {
-    auto fragmentnullcounts_reader = frag_meta_reader.getFragmentNullCounts();
-    frag_meta->fragment_null_counts().reserve(fragmentnullcounts_reader.size());
-    for (const auto& fragment_null_count : fragmentnullcounts_reader) {
-      frag_meta->fragment_null_counts().emplace_back(fragment_null_count);
-    }
-  }
-
-  frag_meta->version() = frag_meta_reader.getVersion();
-  if (frag_meta_reader.hasTimestampRange()) {
-    frag_meta->timestamp_range() = std::make_pair(
-        frag_meta_reader.getTimestampRange()[0],
-        frag_meta_reader.getTimestampRange()[1]);
-  }
-  frag_meta->last_tile_cell_num() = frag_meta_reader.getLastTileCellNum();
-
+  RTree rtree;
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
     auto& domain = array_schema->domain();
     // If there are no levels, we still need domain_ properly initialized
-    frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
+    rtree = RTree(&domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
     // What we actually deserialize is not something written on disk in a
     // possibly historical format, but what has been serialized in
@@ -377,35 +198,84 @@ Status fragment_metadata_from_capnp(
     // the version of a fragment is on disk, we will be serializing _on wire_ in
     // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
     // deserialize it as well in that way.
-    frag_meta->rtree().deserialize(
-        deserializer, &domain, constants::format_version);
+    rtree.deserialize(deserializer, &domain, constants::format_version);
   }
 
-  // It's important to do this here as init_domain depends on some fields
-  // above to be properly initialized
-  if (frag_meta_reader.hasNonEmptyDomain()) {
-    auto reader = frag_meta_reader.getNonEmptyDomain();
-    auto&& [status, ndrange] = utils::deserialize_non_empty_domain_rv(reader);
-    RETURN_NOT_OK(status);
-    // Whilst sparse gets its domain calculated, dense needs to have it
-    // set here from the deserialized data
-    if (array_schema->dense()) {
-      frag_meta->init_domain(*ndrange);
-    } else {
-      const auto& frag0_dom = *ndrange;
-      frag_meta->non_empty_domain().assign(frag0_dom.begin(), frag0_dom.end());
-    }
-  }
-
-  if (frag_meta_reader.hasGtOffsets()) {
-    generic_tile_offsets_from_capnp(
-        frag_meta_reader.getGtOffsets(), frag_meta->generic_tile_offsets());
-    loaded_metadata.footer_ = true;
-  }
-
-  frag_meta->set_loaded_metadata(loaded_metadata);
-
-  return Status::Ok();
+  return make_shared<FragmentMetadata>(
+      HERE(),
+      resources,
+      memory_tracker,
+      array_schema,
+      utils::capnp_list_to_vector<uint64_t>(
+          frag_meta_reader.hasFileSizes(), frag_meta_reader.getFileSizes()),
+      utils::capnp_list_to_vector<uint64_t>(
+          frag_meta_reader.hasFileVarSizes(),
+          frag_meta_reader.getFileVarSizes()),
+      utils::capnp_list_to_vector<uint64_t>(
+          frag_meta_reader.hasFileValiditySizes(),
+          frag_meta_reader.getFileValiditySizes()),
+      std::move(fragment_uri),
+      frag_meta_reader.getHasTimestamps(),
+      frag_meta_reader.getHasDeleteMeta(),
+      frag_meta_reader.getHasConsolidatedFooter(),
+      frag_meta_reader.getSparseTileNum(),
+      frag_meta_reader.getTileIndexBase(),
+      utils::capnp_2d_list_to_vector<uint64_t>(
+          frag_meta_reader.hasTileOffsets(),
+          frag_meta_reader.getTileOffsets(),
+          num_dims_and_attrs),
+      utils::capnp_2d_list_to_vector<uint64_t>(
+          frag_meta_reader.hasTileVarOffsets(),
+          frag_meta_reader.getTileVarOffsets(),
+          num_dims_and_attrs),
+      utils::capnp_2d_list_to_vector<uint64_t>(
+          frag_meta_reader.hasTileVarSizes(),
+          frag_meta_reader.getTileVarSizes(),
+          num_dims_and_attrs),
+      utils::capnp_2d_list_to_vector<uint64_t>(
+          frag_meta_reader.hasTileValidityOffsets(),
+          frag_meta_reader.getTileValidityOffsets(),
+          num_dims_and_attrs),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasTileMinBuffer(),
+          frag_meta_reader.getTileMinBuffer()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasTileMinVarBuffer(),
+          frag_meta_reader.getTileMinVarBuffer()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasTileMaxBuffer(),
+          frag_meta_reader.getTileMaxBuffer()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasTileMaxVarBuffer(),
+          frag_meta_reader.getTileMaxVarBuffer()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasTileSums(), frag_meta_reader.getTileSums()),
+      utils::capnp_2d_list_to_vector<uint64_t>(
+          frag_meta_reader.hasTileNullCounts(),
+          frag_meta_reader.getTileNullCounts()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasFragmentMins(),
+          frag_meta_reader.getFragmentMins()),
+      utils::capnp_2d_list_to_vector<uint8_t>(
+          frag_meta_reader.hasFragmentMaxs(),
+          frag_meta_reader.getFragmentMaxs()),
+      utils::capnp_list_to_vector<uint64_t>(
+          frag_meta_reader.hasFragmentSums(),
+          frag_meta_reader.getFragmentSums()),
+      utils::capnp_list_to_vector<uint64_t>(
+          frag_meta_reader.hasFragmentNullCounts(),
+          frag_meta_reader.getFragmentNullCounts()),
+      frag_meta_reader.getVersion(),
+      std::make_pair(
+          frag_meta_reader.getTimestampRange()[0],
+          frag_meta_reader.getTimestampRange()[1]),
+      frag_meta_reader.getLastTileCellNum(),
+      utils::deserialize_non_empty_domain_rv(
+          frag_meta_reader.getNonEmptyDomain()),
+      std::move(rtree),
+      generic_tile_offsets_from_capnp(frag_meta_reader.getGtOffsets()),
+      create_deserialized_loaded_metadata(
+          num_dims_and_attrs, frag_meta_reader));
 }
 
 void generic_tile_offsets_to_capnp(

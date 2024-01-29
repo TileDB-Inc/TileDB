@@ -223,18 +223,14 @@ single_fragment_info_from_capnp(
   }
 
   // Get list of single fragment info
-  shared_ptr<FragmentMetadata> meta;
-  if (single_frag_info_reader.hasMeta()) {
-    auto frag_meta_reader = single_frag_info_reader.getMeta();
-    meta = make_shared<FragmentMetadata>(HERE());
-    auto st =
-        fragment_metadata_from_capnp(schema->second, frag_meta_reader, meta);
-  } else {
+  if (!single_frag_info_reader.hasMeta()) {
     return {
         Status_SerializationError(
             "Missing fragment metadata from single fragment info capnp reader"),
         nullopt};
   }
+  shared_ptr<FragmentMetadata> meta = fragment_metadata_from_capnp(
+      schema->second, single_frag_info_reader.getMeta());
 
   auto expanded_non_empty_domain = meta->non_empty_domain();
   if (meta->dense()) {

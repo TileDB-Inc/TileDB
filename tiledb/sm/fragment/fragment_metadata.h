@@ -65,6 +65,10 @@ class MemoryTracker;
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
  public:
+  /** Forward declarations */
+  struct GenericTileOffsets;
+  struct LoadedMetadata;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -96,6 +100,44 @@ class FragmentMetadata {
       bool dense = true,
       bool has_timestamps = false,
       bool has_delete_mata = false);
+
+  /**
+   * Constructor used by serialization.
+   */
+  FragmentMetadata(
+      ContextResources* resources,
+      MemoryTracker* memory_tracker,
+      shared_ptr<const ArraySchema> array_schema,
+      std::vector<uint64_t>&& file_sizes,
+      std::vector<uint64_t>&& file_var_sizes,
+      std::vector<uint64_t>&& file_validity_sizes,
+      URI&& fragment_uri,
+      bool has_timestamps,
+      bool has_delete_meta,
+      bool has_consolidated_footer,
+      uint64_t sparse_tile_num,
+      uint64_t tile_index_base,
+      std::vector<std::vector<uint64_t>>&& tile_offsets,
+      std::vector<std::vector<uint64_t>>&& tile_var_offsets,
+      std::vector<std::vector<uint64_t>>&& tile_var_sizes,
+      std::vector<std::vector<uint64_t>>&& tile_nullability_offsets,
+      std::vector<std::vector<uint8_t>>&& tile_min_buffer,
+      std::vector<std::vector<char>>&& tile_min_var_buffer,
+      std::vector<std::vector<uint8_t>>&& tile_max_buffer,
+      std::vector<std::vector<char>>&& tile_max_var_buffer,
+      std::vector<std::vector<uint8_t>>&& tile_sums,
+      std::vector<std::vector<uint64_t>>&& tile_null_counts,
+      std::vector<std::vector<uint8_t>>&& fragment_mins,
+      std::vector<std::vector<uint8_t>>&& fragment_maxs,
+      std::vector<uint64_t>&& fragment_sums,
+      std::vector<uint64_t>&& fragment_null_counts,
+      uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      uint64_t last_tile_cell_num,
+      NDRange&& non_empty_domain,
+      RTree&& rtree,
+      FragmentMetadata::GenericTileOffsets&& generic_tile_offsets,
+      FragmentMetadata::LoadedMetadata&& loaded_metadata);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -147,11 +189,23 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
+   * Returns the number of dimensions and attributes of a not-yet-constructed
+   * fragment metadata.
+   */
+  static inline uint64_t num_dims_and_attrs(
+      const ArraySchema& array_schema,
+      bool has_timestamps,
+      bool has_delete_meta) {
+    return array_schema.attribute_num() + array_schema.dim_num() + 1 +
+           has_timestamps + (has_delete_meta * 2);
+  }
+
+  /**
    * Returns the number of dimensions and attributes.
    */
   inline uint64_t num_dims_and_attrs() const {
-    return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
-           has_timestamps_ + (has_delete_meta_ * 2);
+    return num_dims_and_attrs(
+        *array_schema_, has_timestamps_, has_delete_meta_);
   }
 
   /** Returns the number of cells in the fragment. */

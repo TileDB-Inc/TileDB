@@ -84,8 +84,15 @@ class UnorderedWriter : public WriterBase {
   /** Returns the name of the strategy. */
   std::string name();
 
-  /** Alloc a new fragment metadata. */
-  Status alloc_frag_meta();
+  /** Returns the context resources of the writer. */
+  ContextResources* resources() {
+    return &storage_manager_->resources();
+  }
+
+  /** Set fragment metadata. */
+  Status set_frag_meta(shared_ptr<FragmentMetadata> frag_meta) {
+    frag_meta_ = frag_meta;
+  }
 
   /** Returns the cell position vector. */
   std::vector<uint64_t>& cell_pos() {

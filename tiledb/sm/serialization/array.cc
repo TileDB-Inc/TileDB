@@ -305,13 +305,11 @@ Status array_from_capnp(
     auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
     fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
-      auto meta = make_shared<FragmentMetadata>(HERE());
-      RETURN_NOT_OK(fragment_metadata_from_capnp(
+      auto meta = fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(),
           frag_meta_reader,
-          meta,
           &storage_manager->resources(),
-          array->memory_tracker()));
+          array->memory_tracker());
       if (client_side) {
         meta->set_rtree_loaded();
       }

@@ -155,6 +155,46 @@ inline bool is_aligned(const void* ptr) {
 }
 
 /**
+ * Converts a capnproto list of primitives to a vector.
+ *
+ * @param has_value whether the list actually contains any value.
+ * @param list The capnproto list.
+ */
+template <class T>
+std::vector<T> capnp_list_to_vector(
+    bool has_value,
+    typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>::Reader list) {
+  if (!has_value) {
+    return {};
+  }
+  return std::vector<T>(list.begin(), list.end());
+}
+
+/**
+ * Converts a capnproto list of lists of primitives to a vector of vectors.
+ *
+ * @param has_value whether the list actually contains any value.
+ * @param list The capnproto list.
+ * @param initial_size The initial size of the returning value.
+ */
+template <class T>
+std::vector<std::vector<T>> capnp_2d_list_to_vector(
+    bool has_value,
+    typename ::capnp::List<
+        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader list,
+    uint64_t initial_size = 0) {
+  std::vector<std::vector<T>> result(initial_size);
+  if (has_value) {
+    result.reserve(list.size());
+    for (const auto& t : list) {
+      result.emplace_back(t.begin(), t.end());
+    }
+  }
+  return result;
+}
+
+/**
  * Calls `set{Int8,Int16,Float32,...}(::kj::ArrayPtr<const T> value)` as
  * necessary on the given Capnp builder object, by dispatching on the given
  * TileDB type.
