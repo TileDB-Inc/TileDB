@@ -38,7 +38,6 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
@@ -56,6 +55,7 @@ namespace sm {
 class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
+class MemoryTracker;
 enum class QueryType : uint8_t;
 
 /**
