@@ -30,9 +30,11 @@
  * This file contains the MemoryTracker implementation.
  */
 
-#include "tiledb/common/memory_tracker.h"
+#include "external/include/nlohmann/json.hpp"
+
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::sm {
 
@@ -87,6 +89,10 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
   }
 }
 
+uint64_t MemoryTrackerResource::get_count() {
+  return type_counter_.fetch_add(0, std::memory_order_relaxed);
+}
+
 void* MemoryTrackerResource::do_allocate(size_t bytes, size_t alignment) {
   total_counter_.fetch_add(bytes, std::memory_order_relaxed);
   type_counter_.fetch_add(bytes, std::memory_order_relaxed);
@@ -131,6 +137,25 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
   return ret.get();
 }
 
+std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>>
+MemoryTracker::get_counts() {
+  std::lock_guard<std::mutex> lg(mutex_);
+
+  auto total = total_counter_.fetch_add(0, std::memory_order_relaxed);
+  std::unordered_map<MemoryType, uint64_t> by_type;
+  std::vector<MemoryType> to_del;
+  for (auto& [mem_type, resource] : resources_) {
+    by_type[mem_type] = resource->get_count();
+  }
+
+  return {total, by_type};
+}
+
+uint64_t MemoryTracker::generate_id() {
+  static std::atomic<uint64_t> curr_id{0};
+  return curr_id.fetch_add(1);
+}
+
 shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
   std::lock_guard<std::mutex> lg(mutex_);
 
@@ -149,6 +174,37 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
   trackers_.emplace(trackers_.begin(), ret);
 
   return ret;
+}
+
+std::string MemoryTrackerManager::to_json() {
+  std::lock_guard<std::mutex> lg(mutex_);
+  nlohmann::json rv;
+
+  for (auto iter = trackers_.begin(); iter != trackers_.end(); ++iter) {
+    auto ptr = iter->lock();
+    if (ptr) {
+      nlohmann::json val;
+
+      // Set an distinguishing id
+      val["tracker_id"] = std::to_string(ptr->get_id());
+
+      // Mark the stats with the tracker type.
+      val["tracker_type"] = memory_tracker_type_to_str(ptr->get_type());
+
+      // Add memory stats
+      auto [total, by_type] = ptr->get_counts();
+      val["total_memory"] = total;
+      val["by_type"] = nlohmann::json::object();
+      for (auto& [type, count] : by_type) {
+        val["by_type"][memory_type_to_str(type)] = count;
+      }
+      rv.push_back(val);
+    } else {
+      trackers_.erase(iter);
+    }
+  }
+
+  return rv.dump();
 }
 
 }  // namespace tiledb::sm
