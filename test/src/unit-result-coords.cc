@@ -29,6 +29,8 @@
  *
  * Tests for the ResultCoords classes.
  */
+
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 
@@ -54,7 +56,7 @@ struct CResultCoordsFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
-  std::unique_ptr<FragmentMetadata> frag_md_;
+  std::shared_ptr<FragmentMetadata> frag_md_;
 
   CResultCoordsFx(uint64_t num_cells);
   ~CResultCoordsFx();
@@ -104,13 +106,14 @@ CResultCoordsFx::CResultCoordsFx(uint64_t num_cells) {
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  frag_md_.reset(new FragmentMetadata(
+  frag_md_ = make_shared<FragmentMetadata>(
+      HERE(),
       nullptr,
-      nullptr,
+      make_shared<MemoryTracker>(HERE()),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      true));
+      true);
 }
 
 CResultCoordsFx::~CResultCoordsFx() {
