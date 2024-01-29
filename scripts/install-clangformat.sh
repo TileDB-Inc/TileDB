@@ -29,9 +29,9 @@ die() {
 }
 
 install_apt_pkg() {
-  wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-  add-apt-repository 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-16 main' &&
-  apt-get update -qq && apt-get install -qq -y clang-format-16
+  wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key > /etc/apt/trusted.gpg.d/apt.llvm.org.asc
+  add-apt-repository 'deb http://apt.llvm.org/focal/ llvm-toolchain-focal-17 main' &&
+  apt-get update -qq && apt-get install -qq -y clang-format-17
 }
 
 install_brew_pkg() {
