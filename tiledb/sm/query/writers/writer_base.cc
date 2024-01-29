@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,6 +40,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/filter/compression_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/comparators.h"
 #include "tiledb/sm/misc/hilbert.h"
@@ -213,8 +214,8 @@ WriterBase::WriterBase(
   auto frag_dir_uri =
       array_->array_directory().get_fragments_dir(write_version);
   fragment_uri_ = frag_dir_uri.join_path(new_fragment_str);
-  throw_if_not_ok(utils::parse::get_timestamp_range(
-      fragment_uri_, &fragment_timestamp_range_));
+  FragmentID fragment_id{fragment_uri_};
+  fragment_timestamp_range_ = fragment_id.timestamp_range();
 }
 
 WriterBase::~WriterBase() {

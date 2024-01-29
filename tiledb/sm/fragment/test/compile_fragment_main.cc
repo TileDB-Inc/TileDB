@@ -1,11 +1,11 @@
 /**
- * @file tiledb/sm/storage_format/uri/parse_uri.h
+ * @file compile_fragment_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,30 +24,17 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file contains functions for parsing URIs for storage of an array.
  */
 
-#ifndef TILEDB_PARSE_URI_H
-#define TILEDB_PARSE_URI_H
+#include "../fragment_identifier.h"
 
-#include "tiledb/common/status.h"
-#include "tiledb/sm/filesystem/uri.h"
+using namespace tiledb::sm;
 
-namespace tiledb::sm::utils::parse {
-
-/**
- * Returns true if the given URIs have the same "prefix" and could
- * potentially intersect one another.
- * i.e. The second URI is an element of the first (or vice versa).
- *
- * Note: The order of the arguments does not matter;
- * the API is checking for working tree intersection.
- */
-bool is_element_of(const URI uri, const URI intersecting_uri);
-
-}  // namespace tiledb::sm::utils::parse
-
-#endif  // TILEDB_PARSE_URI_H
+int main() {
+  FragmentID x(URI{});
+  (void)x.name();
+  (void)x.timestamp_range();
+  (void)x.name_version();
+  (void)x.array_format_version();
+  return 0;
+}

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -535,28 +535,24 @@ URI ArrayDirectory::get_commits_dir(uint32_t write_version) const {
 }
 
 URI ArrayDirectory::get_commit_uri(const URI& fragment_uri) const {
-  auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
-
-  if (fragment_version < 12) {
+  FragmentID fragment_id{fragment_uri};
+  if (fragment_id.array_format_version() < 12) {
     return URI(fragment_uri.to_string() + constants::ok_file_suffix);
   }
 
-  auto temp_uri =
-      uri_.join_path(constants::array_commits_dir_name).join_path(name);
+  auto temp_uri = uri_.join_path(constants::array_commits_dir_name)
+                      .join_path(fragment_id.name());
   return URI(temp_uri.to_string() + constants::write_file_suffix);
 }
 
 URI ArrayDirectory::get_vacuum_uri(const URI& fragment_uri) const {
-  auto name = fragment_uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
-
-  if (fragment_version < 12) {
+  FragmentID fragment_id{fragment_uri};
+  if (fragment_id.array_format_version() < 12) {
     return URI(fragment_uri.to_string() + constants::vacuum_file_suffix);
   }
 
-  auto temp_uri =
-      uri_.join_path(constants::array_commits_dir_name).join_path(name);
+  auto temp_uri = uri_.join_path(constants::array_commits_dir_name)
+                      .join_path(fragment_id.name());
   return URI(temp_uri.to_string() + constants::vacuum_file_suffix);
 }
 
@@ -678,11 +674,8 @@ ArrayDirectory::load_commits_dir_uris_v12_or_higher(
         stdx::string::ends_with(
             commits_dir_uris[i].to_string(), constants::update_file_suffix)) {
       // Get the start and end timestamp for this delete/update
-      std::pair<uint64_t, uint64_t> timestamp_range;
-      RETURN_NOT_OK_TUPLE(
-          utils::parse::get_timestamp_range(
-              commits_dir_uris[i], &timestamp_range),
-          nullopt);
+      FragmentID fragment_id{commits_dir_uris[i]};
+      auto timestamp_range{fragment_id.timestamp_range()};
 
       // Add the delete tile location if it overlaps the open start/end times
       if (timestamps_overlap(timestamp_range, false)) {
@@ -772,12 +765,8 @@ ArrayDirectory::load_consolidated_commit_uris(
           auto pos = ss.tellg();
 
           // Get the start and end timestamp for this delete
-          std::pair<uint64_t, uint64_t> delete_timestamp_range;
-          RETURN_NOT_OK_TUPLE(
-              utils::parse::get_timestamp_range(
-                  URI(condition_marker), &delete_timestamp_range),
-              nullopt,
-              nullopt);
+          FragmentID fragment_id{URI(condition_marker)};
+          auto delete_timestamp_range{fragment_id.timestamp_range()};
 
           // Add the delete tile location if it overlaps the open start/end
           // times
@@ -1028,9 +1017,8 @@ ArrayDirectory::compute_uris_to_vacuum(
         auto& uri = uris[i];
 
         // Get the start and end timestamp for this fragment
-        std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-        RETURN_NOT_OK(
-            utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+        FragmentID fragment_id{uri};
+        auto fragment_timestamp_range{fragment_id.timestamp_range()};
         if (is_vacuum_file(uri)) {
           vac_file_bitmap[i] = 1;
           if (timestamps_overlap(
@@ -1164,8 +1152,8 @@ ArrayDirectory::compute_filtered_uris(
         }
 
         // Get the start and end timestamp for this fragment
-        RETURN_NOT_OK(utils::parse::get_timestamp_range(
-            uri, &fragment_timestamp_ranges[i]));
+        FragmentID fragment_id{uri};
+        fragment_timestamp_ranges[i] = fragment_id.timestamp_range();
         if (timestamps_overlap(
                 fragment_timestamp_ranges[i],
                 !full_overlap_only &&
@@ -1238,16 +1226,13 @@ URI ArrayDirectory::select_latest_array_schema_uri() {
   uint64_t latest_ts = 0;
 
   for (auto& uri : array_schema_uris_) {
-    auto name = uri.remove_trailing_slash().last_path_part();
-
+    FragmentID fragment_id{uri};
     // Skip the old schema URI name since it doesn't have timestamps
-    if (name == constants::array_schema_filename) {
+    if (fragment_id.name() == constants::array_schema_filename) {
       continue;
     }
 
-    std::pair<uint64_t, uint64_t> ts_range;
-    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &ts_range));
-
+    auto ts_range{fragment_id.timestamp_range()};
     if (ts_range.second > latest_ts && ts_range.second <= timestamp_end_) {
       latest_uri = uri;
       latest_ts = ts_range.second;
@@ -1270,7 +1255,8 @@ Status ArrayDirectory::is_fragment(
     const std::unordered_set<std::string>& consolidated_uris_set,
     int* is_fragment) const {
   // If the URI name has a suffix, then it is not a fragment
-  auto name = uri.remove_trailing_slash().last_path_part();
+  FragmentID fragment_id{uri};
+  auto name = fragment_id.name();
   if (name.find_first_of('.') != std::string::npos) {
     *is_fragment = 0;
     return Status::Ok();
@@ -1299,10 +1285,9 @@ Status ArrayDirectory::is_fragment(
     return Status::Ok();
   }
 
-  // If the format version is >= 5, then the above suffices to check if
+  // If the array format version is >= 5, then the above suffices to check if
   // the URI is indeed a fragment
-  auto fragment_version = utils::parse::get_fragment_version(name);
-  if (fragment_version >= 5) {
+  if (fragment_id.array_format_version() >= 5) {
     *is_fragment = false;
     return Status::Ok();
   }
@@ -1317,15 +1302,12 @@ Status ArrayDirectory::is_fragment(
 
 bool ArrayDirectory::consolidation_with_timestamps_supported(
     const URI& uri) const {
-  // Get the fragment version from the uri
-  auto name = uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
-
-  // get_fragment_version returns UINT32_MAX for versions <= 2 so we should
-  // explicitly exclude this case when checking if consolidation with timestamps
-  // is supported on a fragment
+  // FragmentID::array_format_version() returns UINT32_MAX for versions <= 2
+  // so we should explicitly exclude this case when checking if consolidation
+  // with timestamps is supported on a fragment
+  FragmentID fragment_id{uri};
   return mode_ == ArrayDirectoryMode::READ &&
-         fragment_version >=
+         fragment_id.array_format_version() >=
              constants::consolidation_with_timestamps_min_version;
 }
 

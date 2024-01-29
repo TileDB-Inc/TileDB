@@ -35,10 +35,10 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <functional>
@@ -209,12 +209,8 @@ uint64_t QueryCondition::condition_timestamp() const {
     return 0;
   }
 
-  std::pair<uint64_t, uint64_t> timestamps;
-  if (!utils::parse::get_timestamp_range(URI(condition_marker_), &timestamps)
-           .ok()) {
-    throw std::logic_error("Error parsing condition marker.");
-  }
-
+  FragmentID fragment_id{condition_marker_};
+  auto timestamps{fragment_id.timestamp_range()};
   return timestamps.first;
 }
 
