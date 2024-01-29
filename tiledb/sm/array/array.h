@@ -823,9 +823,7 @@ class Array {
   void set_serialized_array_open();
 
   /** Set the query type to open the array for. */
-  inline void set_query_type(QueryType query_type) {
-    query_type_ = query_type;
-  }
+  void set_query_type(QueryType query_type);
 
   /**
    * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
