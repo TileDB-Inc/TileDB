@@ -780,6 +780,9 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The query memory tracker. */
+  shared_ptr<MemoryTracker> query_memory_tracker_;
+
   /** A smart pointer to the array the query is associated with.
    * Ensures that the Array object exists as long as the Query object exists. */
   shared_ptr<Array> array_shared_;
