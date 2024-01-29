@@ -140,6 +140,28 @@ void vfs_test_create_temp_dir(
   REQUIRE(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
 }
 
+// VfsTestUtils vfs_test_setup(const std::string& array_name) {
+//   VfsTestUtils test_utils{};
+//   REQUIRE(
+//       vfs_test_init(test_utils.fs_vec, &test_utils.ctx_c,
+//       &test_utils.vfs_c).ok());
+//   std::string temp_dir = test_utils.fs_vec[0]->temp_dir();
+//   if constexpr (rest_tests) {
+//     test_utils.array_uri = "tiledb://unit/";
+//   }
+//   test_utils.array_uri += temp_dir + array_name;
+//   test::vfs_test_create_temp_dir(test_utils.ctx_c, test_utils.vfs_c,
+//   temp_dir); return test_utils;
+// }
+
+// void vfs_test_cleanup(const VfsTestUtils& test_utils) {
+//   Array::delete_array(test_utils.ctx_c, test_utils.array_uri);
+//   REQUIRE(
+//       test::vfs_test_close(test_utils.fs_vec, test_utils.ctx_c,
+//       test_utils.vfs_c)
+//           .ok());
+// }
+
 Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {

@@ -2939,6 +2939,11 @@ int32_t tiledb_array_encryption_type(
   auto storage_manager = ctx->storage_manager();
   auto uri = tiledb::sm::URI(array_uri);
 
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
   // Load URIs from the array directory
   optional<tiledb::sm::ArrayDirectory> array_dir;
   try {
