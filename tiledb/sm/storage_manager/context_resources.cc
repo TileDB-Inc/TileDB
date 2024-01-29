@@ -55,6 +55,8 @@ ContextResources::ContextResources(
     size_t io_thread_count,
     std::string stats_name)
     : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
+    , memory_tracker_reporter_(make_shared<MemoryTrackerReporter>(
+          HERE(), config, memory_tracker_manager_))
     , config_(config)
     , logger_(logger)
     , compute_tp_(compute_thread_count)
@@ -79,6 +81,8 @@ ContextResources::ContextResources(
       rest_client_ = client;
     }
   }
+
+  memory_tracker_reporter_->start();
 }
 
 shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {

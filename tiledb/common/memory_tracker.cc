@@ -30,6 +30,8 @@
  * This file contains the MemoryTracker implementation.
  */
 
+#include <fstream>
+
 #include "external/include/nlohmann/json.hpp"
 
 #include "tiledb/common/exception/exception.h"
@@ -205,6 +207,96 @@ std::string MemoryTrackerManager::to_json() {
   }
 
   return rv.dump();
+}
+
+MemoryTrackerReporter::~MemoryTrackerReporter() {
+  if (!filename_.has_value()) {
+    return;
+  }
+
+  {
+    std::lock_guard<std::mutex> lg(mutex_);
+    stop_ = true;
+    cv_.notify_all();
+  }
+  try {
+    thread_.join();
+  } catch (std::exception& exc) {
+    LOG_ERROR(
+        "Error stopping MemoryTrackerReporter thread: " +
+        std::string(exc.what()));
+  }
+}
+
+void MemoryTrackerReporter::start() {
+  if (!filename_.has_value()) {
+    LOG_INFO("No filename set, not starting the MemoryTrackerReporter.");
+    return;
+  }
+
+  {
+    // Scoped so we release this before the thread starts. Probably unnecessary
+    // by better safe than sorry.
+    std::lock_guard<std::mutex> lg(mutex_);
+    if (stop_) {
+      throw std::runtime_error("MemoryTrackerReporters cannot be restarted.");
+    }
+  }
+
+  // Thread start logic mirrored from the ThreadPool.
+  for (size_t i = 0; i < 3; i++) {
+    try {
+      thread_ = std::thread(&MemoryTrackerReporter::run, this);
+      return;
+    } catch (const std::system_error& e) {
+      if (e.code() == std::errc::resource_unavailable_try_again) {
+        continue;
+      }
+
+      LOG_ERROR(
+          "Error starting the MemoryTrackerReporter: " + std::string(e.what()));
+    }
+  }
+
+  LOG_ERROR("Failed to start the MemoryTrackerReporter thread.");
+}
+
+void MemoryTrackerReporter::run() {
+  std::stringstream ss;
+  std::ofstream out;
+  out.open(filename_.value(), std::ios::app);
+
+  if (!out) {
+    LOG_ERROR("Error opening MemoryTrackerReporter file: " + filename_.value());
+    return;
+  }
+
+  while (true) {
+    std::unique_lock<std::mutex> lk(mutex_);
+    cv_.wait_for(lk, std::chrono::milliseconds(1000), [&] { return stop_; });
+
+    if (stop_) {
+      return;
+    }
+
+    if (!out) {
+      LOG_ERROR(
+          "Error writing to MemoryTrackerReporter file: " + filename_.value());
+      return;
+    }
+
+    auto json = manager_->to_json();
+    if (json == "null") {
+      // This happens if the manager doesn't have any trackers registered.
+      // Rather than log noise we just ignore it.
+      continue;
+    }
+
+    ss.str("");
+    ss.clear();
+    ss << json << std::endl;
+    out << ss.str();
+  }
 }
 
 }  // namespace tiledb::sm
