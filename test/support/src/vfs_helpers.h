@@ -50,6 +50,12 @@ constexpr bool aws_s3_config = true;
 constexpr bool aws_s3_config = false;
 #endif
 
+#ifndef TILEDB_TESTS_ENABLE_REST
+constexpr bool rest_tests = false;
+#else
+constexpr bool rest_tests = true;
+#endif
+
 /**
  * Generates a random temp directory URI for use in VFS tests.
  *
@@ -95,7 +101,6 @@ void vfs_test_remove_temp_dir(
 
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
-
 /**
  * This class defines and manipulates
  * a list of supported filesystems.
@@ -747,6 +752,35 @@ struct TemporaryDirectoryFixture {
  private:
   /** Vector of supported filesystems. Used to initialize ``vfs_``. */
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
+};
+
+/* TODO: doc */
+struct VFSTestSetup {
+  VFSTestSetup() = delete;
+
+  VFSTestSetup(std::string array_name)
+      : fs_vec(vfs_test_get_fs_vec())
+      , ctx_c{nullptr}
+      , vfs_c{nullptr} {
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok();
+    ctx = Context(ctx_c, false);
+    std::string temp_dir = fs_vec[0]->temp_dir();
+    if constexpr (rest_tests) {
+      array_uri = "tiledb://unit/";
+    }
+    array_uri += temp_dir + array_name;
+    vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
+  };
+
+  ~VFSTestSetup() {
+    REQUIRE(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
+  };
+
+  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+  tiledb_ctx_handle_t* ctx_c;
+  tiledb_vfs_handle_t* vfs_c;
+  Context ctx;
+  std::string array_uri;
 };
 
 /**
