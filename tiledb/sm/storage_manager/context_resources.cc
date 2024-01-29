@@ -54,7 +54,8 @@ ContextResources::ContextResources(
     size_t compute_thread_count,
     size_t io_thread_count,
     std::string stats_name)
-    : config_(config)
+    : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
+    , config_(config)
     , logger_(logger)
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
@@ -81,7 +82,7 @@ ContextResources::ContextResources(
 }
 
 shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
-  return make_shared<MemoryTracker>(HERE());
+  return memory_tracker_manager_->create_tracker();
 }
 
 }  // namespace tiledb::sm
