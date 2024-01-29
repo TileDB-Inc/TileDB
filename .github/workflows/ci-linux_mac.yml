@@ -80,14 +80,29 @@ jobs:
     timeout-minutes: ${{ inputs.timeout || 90 }}
     name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
     steps:
+      # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+      - uses: actions/checkout@v3
+        if: inputs.manylinux
+        with:
+            submodules: true
+            fetch-depth: 0
       - uses: actions/checkout@v4
+        if: ${{ !inputs.manylinux }}
         with:
             submodules: true
             fetch-depth: 0
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
+      # v7 uses node 20 which is incompatible with the libc version of the manylinux image
+      - uses: actions/github-script@v6
+        if: inputs.manylinux
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - uses: actions/github-script@v7
+        if: ${{ !inputs.manylinux }}
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -226,8 +241,19 @@ jobs:
         run: du --exclude _deps -h $GITHUB_WORKSPACE/build
         if: ${{ failure() }}
 
+      # v4 uses node 20 which is incompatible with the libc version of the manylinux image
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
-        if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        if: ${{ inputs.manylinux && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
+        uses: actions/upload-artifact@v3
+        with:
+          retention-days: 10
+          name: "coredumps.${{ github.job }}.${{ matrix.os }}.${{ github.run_number }}.${{github.run_id}}.${{github.run_attempt}}"
+          if-no-files-found: warn # 'ignore', 'warn' or 'error' are available, defaults to `warn`
+          path: |
+            /var/lib/apport/coredump/
+
+      - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
+        if: ${{ !inputs.manylinux && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         uses: actions/upload-artifact@v4
         with:
           retention-days: 10

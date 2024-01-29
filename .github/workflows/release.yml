@@ -53,14 +53,27 @@ jobs:
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
     steps:
+      # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+      - name: Checkout TileDB (Node 16)
+        uses: actions/checkout@v3
+        if: matrix.manylinux
       - name: Checkout TileDB
-        # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v4
+        if: ${{ !matrix.manylinux }}
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}  
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+      # v7 uses node 20 which is incompatible with the libc version of the manylinux image
+      - name: Export GitHub Actions cache variables (Node 16)
+        uses: actions/github-script@v6
+        if: matrix.manylinux
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v7
+        if: ${{ !matrix.manylinux }}
         with:
           script: |
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
@@ -109,16 +122,32 @@ jobs:
         run: |
           Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
         shell: pwsh
+      # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+      - name: Upload release artifacts (Node 16)
+        uses: actions/upload-artifact@v3
+        if: matrix.manylinux
+        with:
+          name: tiledb-dist
+          path: ${{ steps.get-values.outputs.archive_name }}.*
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
+        if: ${{ !matrix.manylinux }}
         with:
           name: tiledb-dist
           path: ${{ steps.get-values.outputs.archive_name }}.*
       - name: Archive build directory
         run: |
           tar -czf build-${{ matrix.platform }}.tar.gz -C build .
+      # v4 uses node 20 which is incompatible with the libc version of the manylinux image
+      - name: Upload build directory (Node 16)
+        uses: actions/upload-artifact@v3
+        if: matrix.manylinux
+        with:
+          name: tiledb-build
+          path: build-${{ matrix.platform }}.tar.gz
       - name: Upload build directory
         uses: actions/upload-artifact@v4
+        if: ${{ !matrix.manylinux }}
         with:
           name: tiledb-build
           path: build-${{ matrix.platform }}.tar.gz
