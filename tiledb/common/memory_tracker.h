@@ -76,6 +76,9 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
       , type_counter_(type_counter) {
   }
 
+  /** The number of bytes tracked by this resource. */
+  uint64_t get_count();
+
  protected:
   void* do_allocate(size_t bytes, size_t alignment) override;
   void do_deallocate(void* p, size_t bytes, size_t alignment) override;
@@ -94,6 +97,7 @@ class MemoryTracker {
   MemoryTracker()
       : memory_usage_(0)
       , memory_budget_(std::numeric_limits<uint64_t>::max())
+      , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
       , total_counter_(0){};
@@ -104,13 +108,10 @@ class MemoryTracker {
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
 
-  /**
-   * Create a memory resource instance.
-   *
-   * @param type The type of memory that is being tracked.
-   * @return A memory resource derived from std::pmr::memory_resource.
-   */
-  tdb::pmr::memory_resource* get_resource(MemoryType);
+  /** Get the id of this MemoryTracker instance. */
+  inline uint64_t get_id() {
+    return id_;
+  }
 
   /** Get the type of this memory tracker. */
   inline MemoryTrackerType get_type() {
@@ -123,6 +124,17 @@ class MemoryTracker {
     std::lock_guard<std::mutex> lg(mutex_);
     type_ = type;
   }
+
+  /**
+   * Create a memory resource instance.
+   *
+   * @param type The type of memory that is being tracked.
+   * @return A memory resource derived from std::pmr::memory_resource.
+   */
+  tdb::pmr::memory_resource* get_resource(MemoryType);
+
+  /** Return the total and counts of this tracker. */
+  std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>> get_counts();
 
   /**
    * Take memory from the budget.
@@ -215,6 +227,9 @@ class MemoryTracker {
   /** Memory usage by type. */
   std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
 
+  /** The id of this MemoryTracker. */
+  uint64_t id_;
+
   /** The type of this MemoryTracker. */
   MemoryTrackerType type_;
 
@@ -230,6 +245,9 @@ class MemoryTracker {
 
   /** The total memory usage of this MemoryTracker. */
   std::atomic<uint64_t> total_counter_;
+
+  /** Generate a unique id for this MemoryTracker. */
+  static uint64_t generate_id();
 };
 
 class MemoryTrackerManager {
@@ -247,8 +265,18 @@ class MemoryTrackerManager {
    */
   shared_ptr<MemoryTracker> create_tracker();
 
+  /**
+   * Generate a JSON string representing the current state of tracked memory.
+   *
+   * @return A string containing the JSON representation of tracked memory.
+   */
+  std::string to_json();
+
  private:
+  /** A mutext to protect our list of trackers. */
   std::mutex mutex_;
+
+  /** A weak_ptr to the instances of MemoryTracker we create. */
   std::vector<std::weak_ptr<MemoryTracker>> trackers_;
 };
 
