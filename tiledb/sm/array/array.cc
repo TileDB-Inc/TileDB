@@ -33,6 +33,7 @@
 #include "tiledb/common/common.h"
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -149,6 +150,7 @@ Status Array::open_without_fragments(
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
+  memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
 
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
@@ -246,6 +248,11 @@ Status Array::open(
   }
 
   query_type_ = query_type;
+  if (query_type_ == QueryType::READ) {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
+  } else {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_WRITE);
+  }
 
   set_timestamps(
       timestamp_start, timestamp_end, query_type_ == QueryType::READ);
@@ -1619,6 +1626,15 @@ void Array::set_serialized_array_open() {
       timestamp_start(),
       timestamp_end_opened_at(),
       array_uri_.is_tiledb());
+}
+
+void Array::set_query_type(QueryType query_type) {
+  query_type_ = query_type;
+  if (query_type_ == QueryType::READ) {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
+  } else {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_WRITE);
+  }
 }
 
 void Array::set_array_closed() {

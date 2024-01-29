@@ -51,6 +51,15 @@ enum class MemoryType {
   ENUMERATION
 };
 
+enum class MemoryTrackerType {
+  ANONYMOUS,
+  ARRAY_READ,
+  ARRAY_WRITE,
+  QUERY_READ,
+  QUERY_WRITE,
+  CONSOLIDATOR
+};
+
 class MemoryTrackerResource : public tdb::pmr::memory_resource {
  public:
   // Disable all default generated constructors.
@@ -85,6 +94,7 @@ class MemoryTracker {
   MemoryTracker()
       : memory_usage_(0)
       , memory_budget_(std::numeric_limits<uint64_t>::max())
+      , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
       , total_counter_(0){};
 
@@ -101,6 +111,18 @@ class MemoryTracker {
    * @return A memory resource derived from std::pmr::memory_resource.
    */
   tdb::pmr::memory_resource* get_resource(MemoryType);
+
+  /** Get the type of this memory tracker. */
+  inline MemoryTrackerType get_type() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return type_;
+  }
+
+  /** Set the type of this memory tracker. */
+  void set_type(MemoryTrackerType type) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    type_ = type;
+  }
 
   /**
    * Take memory from the budget.
@@ -192,6 +214,9 @@ class MemoryTracker {
 
   /** Memory usage by type. */
   std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+
+  /** The type of this MemoryTracker. */
+  MemoryTrackerType type_;
 
   /** The upstream memory resource. */
   tdb::pmr::memory_resource* upstream_;

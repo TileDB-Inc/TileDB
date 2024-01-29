@@ -67,6 +67,26 @@ std::string memory_type_to_str(MemoryType type) {
   }
 }
 
+std::string memory_tracker_type_to_str(MemoryTrackerType type) {
+  switch (type) {
+    case MemoryTrackerType::ANONYMOUS:
+      return "Anonymous";
+    case MemoryTrackerType::ARRAY_READ:
+      return "ArrayRead";
+    case MemoryTrackerType::ARRAY_WRITE:
+      return "ArrayWrite";
+    case MemoryTrackerType::QUERY_READ:
+      return "QueryRead";
+    case MemoryTrackerType::QUERY_WRITE:
+      return "QueryWrite";
+    case MemoryTrackerType::CONSOLIDATOR:
+      return "Consolidator";
+    default:
+      auto val = std::to_string(static_cast<uint32_t>(type));
+      throw std::logic_error("Invalid memory tracker type: " + val);
+  }
+}
+
 void* MemoryTrackerResource::do_allocate(size_t bytes, size_t alignment) {
   total_counter_.fetch_add(bytes, std::memory_order_relaxed);
   type_counter_.fetch_add(bytes, std::memory_order_relaxed);
