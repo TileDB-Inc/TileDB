@@ -73,6 +73,12 @@ class FragmentMetadataStatusException : public StatusException {
   }
 };
 
+// Temporary until these changes are verified.
+inline shared_ptr<MemoryTracker> verify_tracker(shared_ptr<MemoryTracker> mt) {
+  assert(mt != nullptr);
+  return mt;
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -83,7 +89,7 @@ FragmentMetadata::FragmentMetadata() {
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
     : resources_(resources)
-    , memory_tracker_(memory_tracker) {
+    , memory_tracker_(verify_tracker(memory_tracker)) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -96,7 +102,7 @@ FragmentMetadata::FragmentMetadata(
     bool has_timestamps,
     bool has_deletes_meta)
     : resources_(resources)
-    , memory_tracker_(memory_tracker)
+    , memory_tracker_(verify_tracker(memory_tracker))
     , array_schema_(array_schema)
     , dense_(dense)
     , footer_size_(0)
