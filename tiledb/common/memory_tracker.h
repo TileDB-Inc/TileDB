@@ -34,8 +34,13 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
+#include <chrono>
+#include <condition_variable>
+#include <thread>
+
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/config/config.h"
 
 namespace tiledb {
 namespace sm {
@@ -278,6 +283,56 @@ class MemoryTrackerManager {
 
   /** A weak_ptr to the instances of MemoryTracker we create. */
   std::vector<std::weak_ptr<MemoryTracker>> trackers_;
+};
+
+class MemoryTrackerReporter {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param cfg The Config instance for the parent context.
+   * @param manager The MemoryTrackerManager instance on the context resources.
+   */
+  MemoryTrackerReporter(
+      const Config& cfg, shared_ptr<MemoryTrackerManager> manager)
+      : manager_(manager)
+      , filename_(cfg.get<std::string>("sm.memory.tracker.reporter.filename"))
+      , stop_(false) {
+  }
+
+  /** Destructor. */
+  ~MemoryTrackerReporter();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerReporter);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerReporter);
+
+  /** Start the background reporter thread if configured. */
+  void start();
+
+  /** Stop the background reporter thread if started. */
+  void stop();
+
+  /** The background reporter thread's main loop. */
+  void run();
+
+ private:
+  /** The MemoryTrackerManager instance on the parent ContextResources. */
+  shared_ptr<MemoryTrackerManager> manager_;
+
+  /** An filename set in the config. */
+  std::optional<std::string> filename_;
+
+  /** The background reporter thread. */
+  std::thread thread_;
+
+  /** A mutex for communication with the background thread. */
+  std::mutex mutex_;
+
+  /** A condition variable for signaling the background thread. */
+  std::condition_variable cv_;
+
+  /** A stop flag to signal shutdown to the background thread. */
+  bool stop_;
 };
 
 }  // namespace sm

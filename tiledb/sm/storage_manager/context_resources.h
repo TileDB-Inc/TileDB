@@ -46,6 +46,7 @@ namespace tiledb::sm {
 
 class MemoryTracker;
 class MemoryTrackerManager;
+class MemoryTrackerReporter;
 class RestClient;
 
 /**
@@ -125,6 +126,9 @@ class ContextResources {
 
   /** The MemoryTrackerManager for this context. */
   mutable shared_ptr<MemoryTrackerManager> memory_tracker_manager_;
+
+  /** The MemoryTrackerReporter for this context. */
+  mutable shared_ptr<MemoryTrackerReporter> memory_tracker_reporter_;
 
   /** The configuration for this ContextResources */
   mutable Config config_;
