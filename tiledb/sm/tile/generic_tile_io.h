@@ -122,7 +122,7 @@ class GenericTileIO {
    * @param encryption_key The encryption key to use.
    * @return Status, Tile with the data.
    */
-  static Tile load(
+  static shared_ptr<Tile> load(
       ContextResources& resources,
       const URI& uri,
       uint64_t offset,
@@ -143,7 +143,7 @@ class GenericTileIO {
    * @param config The storage manager's config.
    * @return Status, Tile
    */
-  Tile read_generic(
+  shared_ptr<Tile> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
       const Config& config);

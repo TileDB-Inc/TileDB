@@ -126,9 +126,13 @@ class ResultSpaceTile {
   }
 
   /** Sets the input result tile for the given fragment. */
-  void set_result_tile(unsigned frag_idx, ResultTile& result_tile) {
+  void set_result_tile(
+      unsigned frag_idx, uint64_t tile_idx, FragmentMetadata& frag_md) {
     assert(result_tiles_.count(frag_idx) == 0);
-    result_tiles_[frag_idx] = std::move(result_tile);
+    result_tiles_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(frag_idx),
+        std::forward_as_tuple(frag_idx, tile_idx, frag_md));
   }
 
   /** Returns the result tile for the input fragment. */

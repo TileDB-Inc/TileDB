@@ -103,15 +103,14 @@ WriterTile make_offsets_tile(std::vector<uint64_t>& offsets) {
 }
 
 Tile create_tile_for_unfiltering(uint64_t nelts, WriterTile& tile) {
-  Tile ret(
+  return {
       tile.format_version(),
       tile.type(),
       tile.cell_size(),
       0,
       tile.cell_size() * nelts,
       tile.filtered_buffer().data(),
-      tile.filtered_buffer().size());
-  return ret;
+      tile.filtered_buffer().size()};
 }
 
 void run_reverse(
@@ -1221,19 +1220,19 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     key[0]++;
     filter->set_key(key);
 
-    unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
-    run_reverse(config, tp, unfiltered_tile, pipeline, false);
+    auto unfiltered_tile2 = create_tile_for_unfiltering(nelts, tile);
+    run_reverse(config, tp, unfiltered_tile2, pipeline, false);
 
     // Fix key and check success.
-    unfiltered_tile = create_tile_for_unfiltering(nelts, tile);
+    auto unfiltered_tile3 = create_tile_for_unfiltering(nelts, tile);
     key[0]--;
     filter->set_key(key);
-    run_reverse(config, tp, unfiltered_tile, pipeline);
+    run_reverse(config, tp, unfiltered_tile3, pipeline);
 
     for (uint64_t i = 0; i < nelts; i++) {
       uint64_t elt = 0;
       CHECK_NOTHROW(
-          unfiltered_tile.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
+          unfiltered_tile3.read(&elt, i * sizeof(uint64_t), sizeof(uint64_t)));
       CHECK(elt == i);
     }
   }

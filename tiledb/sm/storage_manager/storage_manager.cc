@@ -1007,7 +1007,7 @@ StorageManagerCanonical::load_delete_and_update_conditions(
     auto& uri = locations[i].uri();
 
     // Read the condition from storage.
-    auto&& tile = GenericTileIO::load(
+    auto tile = GenericTileIO::load(
         resources_,
         uri,
         locations[i].offset(),
@@ -1018,13 +1018,13 @@ StorageManagerCanonical::load_delete_and_update_conditions(
             tiledb::sm::constants::delete_file_suffix)) {
       conditions[i] =
           tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
     } else if (tiledb::sm::utils::parse::ends_with(
                    locations[i].condition_marker(),
                    tiledb::sm::constants::update_file_suffix)) {
       auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
           deserialize_update_condition_and_values(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {

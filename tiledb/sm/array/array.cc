@@ -1478,10 +1478,8 @@ void Array::do_load_metadata() {
   throw_if_not_ok(
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = array_metadata_to_load[m].uri_;
-
-        auto&& tile =
+        metadata_tiles[m] =
             GenericTileIO::load(resources_, uri, 0, *encryption_key());
-        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
         return Status::Ok();
       }));

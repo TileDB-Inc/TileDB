@@ -96,12 +96,12 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
   auto timer_se =
       resources.stats().start_timer("sm_load_array_schema_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
+  auto tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
 
-  resources.stats().add_counter("read_array_schema_size", tile.size());
+  resources.stats().add_counter("read_array_schema_size", tile->size());
 
   // Deserialize
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   auto memory_tracker = resources.create_memory_tracker();
   memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
   return ArraySchema::deserialize(deserializer, schema_uri, memory_tracker);
@@ -1323,18 +1323,18 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
                       .join_path(constants::array_enumerations_dir_name)
                       .join_path(enumeration_path);
 
-  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
-  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+  auto tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
+  resources_.get().stats().add_counter("read_enumeration_size", tile->size());
 
-  if (!memory_tracker->take_memory(tile.size(), MemoryType::ENUMERATION)) {
+  if (!memory_tracker->take_memory(tile->size(), MemoryType::ENUMERATION)) {
     throw ArrayDirectoryException(
         "Error loading enumeration; Insufficient memory budget; Needed " +
-        std::to_string(tile.size()) + " but only had " +
+        std::to_string(tile->size()) + " but only had " +
         std::to_string(memory_tracker->get_memory_available()) +
         " from budget " + std::to_string(memory_tracker->get_memory_budget()));
   }
 
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   return Enumeration::deserialize(deserializer);
 }
 

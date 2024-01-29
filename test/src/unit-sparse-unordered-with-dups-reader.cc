@@ -1527,7 +1527,7 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
     rt.emplace_back(0, t, *fragments[0]);
 
@@ -1540,8 +1540,9 @@ TEST_CASE_METHOD(
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Create a Query buffer.
@@ -1743,7 +1744,7 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
     rt.emplace_back(0, t, *fragments[0]);
 
@@ -1756,8 +1757,9 @@ TEST_CASE_METHOD(
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Call the function.

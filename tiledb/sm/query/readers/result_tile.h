@@ -268,26 +268,18 @@ class ResultTile {
         const TileSizes tile_sizes,
         const TileData tile_data)
         : fixed_tile_(
-              tile_sizes.has_var_tile() ?
-                  Tile(
-                      format_version,
-                      constants::cell_var_offset_type,
-                      constants::cell_var_offset_size,
-                      0,
-                      tile_sizes.tile_size(),
-                      tile_data.fixed_filtered_data(),
-                      tile_sizes.tile_persisted_size()) :
-                  Tile(
-                      format_version,
-                      array_schema.type(name),
-                      array_schema.cell_size(name),
-                      (name == constants::coords) ? array_schema.dim_num() : 0,
-                      tile_sizes.tile_size(),
-                      tile_data.fixed_filtered_data(),
-                      tile_sizes.tile_persisted_size())) {
+              format_version,
+              tile_sizes.has_var_tile() ? constants::cell_var_offset_type :
+                                          array_schema.type(name),
+              tile_sizes.has_var_tile() ? constants::cell_var_offset_size :
+                                          array_schema.cell_size(name),
+              (name == constants::coords) ? array_schema.dim_num() : 0,
+              tile_sizes.tile_size(),
+              tile_data.fixed_filtered_data(),
+              tile_sizes.tile_persisted_size()) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
-        var_tile_ = Tile(
+        var_tile_.emplace(
             format_version,
             type,
             datatype_size(type),
@@ -298,7 +290,7 @@ class ResultTile {
       }
 
       if (tile_sizes.has_validity_tile()) {
-        validity_tile_ = Tile(
+        validity_tile_.emplace(
             format_version,
             constants::cell_validity_type,
             constants::cell_validity_size,
@@ -373,18 +365,10 @@ class ResultTile {
       unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
 
   /** Default destructor. */
   ~ResultTile() = default;
-
-  /** Move constructor. */
-  ResultTile(ResultTile&& tile);
-
-  /** Move-assign operator. */
-  ResultTile& operator=(ResultTile&& tile);
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(ResultTile& tile);
 
   /* ********************************* */
   /*                API                */
@@ -822,22 +806,8 @@ class ResultTileWithBitmap : public ResultTile {
       , result_num_(cell_num_) {
   }
 
-  /** Move constructor. */
-  ResultTileWithBitmap(ResultTileWithBitmap<BitmapType>&& other) noexcept {
-    // Swap with the argument
-    swap(other);
-  }
-
-  /** Move-assign operator. */
-  ResultTileWithBitmap<BitmapType>& operator=(
-      ResultTileWithBitmap<BitmapType>&& other) {
-    // Swap with the argument
-    swap(other);
-
-    return *this;
-  }
-
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTileWithBitmap);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTileWithBitmap);
 
  public:
   /* ********************************* */
@@ -945,13 +915,6 @@ class ResultTileWithBitmap : public ResultTile {
     return false;
   }
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(ResultTileWithBitmap<BitmapType>& tile) {
-    ResultTile::swap(tile);
-    std::swap(bitmap_, tile.bitmap_);
-    std::swap(result_num_, tile.result_num_);
-  }
-
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -983,34 +946,12 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       , used_(false) {
   }
 
-  /** Move constructor. */
-  GlobalOrderResultTile(GlobalOrderResultTile&& other) noexcept {
-    // Swap with the argument
-    swap(other);
-  }
-
-  /** Move-assign operator. */
-  GlobalOrderResultTile& operator=(GlobalOrderResultTile&& other) {
-    // Swap with the argument
-    swap(other);
-
-    return *this;
-  }
-
   DISABLE_COPY_AND_COPY_ASSIGN(GlobalOrderResultTile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(GlobalOrderResultTile);
 
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(GlobalOrderResultTile& tile) {
-    ResultTileWithBitmap<uint8_t>::swap(tile);
-    std::swap(used_, tile.used_);
-    std::swap(hilbert_values_, tile.hilbert_values_);
-    std::swap(post_dedup_bitmap_, tile.post_dedup_bitmap_);
-    std::swap(per_cell_delete_condition_, tile.per_cell_delete_condition_);
-  }
 
   /** Returns if the tile was used by the merge or not. */
   inline bool used() {
@@ -1195,30 +1136,12 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
       : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
   }
 
-  /** Move constructor. */
-  UnorderedWithDupsResultTile(UnorderedWithDupsResultTile&& other) noexcept {
-    // Swap with the argument
-    swap(other);
-  }
-
-  /** Move-assign operator. */
-  UnorderedWithDupsResultTile& operator=(UnorderedWithDupsResultTile&& other) {
-    // Swap with the argument
-    swap(other);
-
-    return *this;
-  }
-
+  DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWithDupsResultTile);
   DISABLE_COPY_AND_COPY_ASSIGN(UnorderedWithDupsResultTile);
 
   /* ********************************* */
   /*          PUBLIC METHODS           */
   /* ********************************* */
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(UnorderedWithDupsResultTile& tile) {
-    ResultTileWithBitmap<BitmapType>::swap(tile);
-  }
 
   /**
    * Returns whether this tile has a post query condition bitmap. For this

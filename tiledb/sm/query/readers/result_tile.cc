@@ -72,10 +72,10 @@ ResultTile::ResultTile(
     : domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
-    , cell_num_(frag_md.cell_num(tile_idx)) {
+    , cell_num_(frag_md.cell_num(tile_idx))
+    , attr_tiles_(frag_md.array_schema()->attribute_num())
+    , coord_tiles_(domain_->dim_num()) {
   auto array_schema = frag_md.array_schema();
-  coord_tiles_.resize(domain_->dim_num());
-  attr_tiles_.resize(array_schema->attribute_num());
   for (uint64_t i = 0; i < array_schema->attribute_num(); i++) {
     auto attribute = array_schema->attribute(i);
     attr_tiles_[i] = std::make_pair(attribute->name(), nullopt);
@@ -85,41 +85,6 @@ ResultTile::ResultTile(
   // Default `coord_func_` to fetch from `coord_tile_` until at least
   // one unzipped coordinate has been initialized.
   coord_func_ = &ResultTile::zipped_coord;
-}
-
-/** Move constructor. */
-ResultTile::ResultTile(ResultTile&& other) {
-  // Swap with the argument
-  swap(other);
-}
-
-/** Move-assign operator. */
-ResultTile& ResultTile::operator=(ResultTile&& other) {
-  // Swap with the argument
-  swap(other);
-
-  return *this;
-}
-
-void ResultTile::swap(ResultTile& tile) {
-  std::swap(domain_, tile.domain_);
-  std::swap(frag_idx_, tile.frag_idx_);
-  std::swap(tile_idx_, tile.tile_idx_);
-  std::swap(cell_num_, tile.cell_num_);
-  std::swap(attr_tiles_, tile.attr_tiles_);
-  std::swap(timestamps_tile_, tile.timestamps_tile_);
-  std::swap(delete_timestamps_tile_, tile.delete_timestamps_tile_);
-  std::swap(coords_tile_, tile.coords_tile_);
-  std::swap(coord_tiles_, tile.coord_tiles_);
-  std::swap(compute_results_dense_func_, tile.compute_results_dense_func_);
-  std::swap(coord_func_, tile.coord_func_);
-  std::swap(compute_results_sparse_func_, tile.compute_results_sparse_func_);
-  std::swap(
-      compute_results_count_sparse_uint64_t_func_,
-      tile.compute_results_count_sparse_uint64_t_func_);
-  std::swap(
-      compute_results_count_sparse_uint8_t_func_,
-      tile.compute_results_count_sparse_uint8_t_func_);
 }
 
 /* ****************************** */
@@ -174,33 +139,35 @@ void ResultTile::init_attr_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data) {
-  auto tuple =
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data);
-
   if (name == constants::coords) {
-    coords_tile_ = std::move(tuple);
+    coords_tile_.emplace(
+        format_version, array_schema, name, tile_sizes, tile_data);
     return;
   }
 
   if (name == constants::timestamps) {
-    timestamps_tile_ = std::move(tuple);
+    timestamps_tile_.emplace(
+        format_version, array_schema, name, tile_sizes, tile_data);
     return;
   }
 
   if (name == constants::delete_timestamps) {
-    delete_timestamps_tile_ = std::move(tuple);
+    delete_timestamps_tile_.emplace(
+        format_version, array_schema, name, tile_sizes, tile_data);
     return;
   }
 
   if (name == constants::delete_condition_index) {
-    delete_condition_index_tile_ = std::move(tuple);
+    delete_condition_index_tile_.emplace(
+        format_version, array_schema, name, tile_sizes, tile_data);
     return;
   }
 
   // Handle attributes
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
-      at.second = std::move(tuple);
+      at.second.emplace(
+          format_version, array_schema, name, tile_sizes, tile_data);
       return;
     }
   }
@@ -213,9 +180,9 @@ void ResultTile::init_coord_tile(
     const TileSizes tile_sizes,
     const TileData tile_data,
     unsigned dim_idx) {
-  coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
-      name,
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data));
+  coord_tiles_[dim_idx].first = name;
+  coord_tiles_[dim_idx].second.emplace(
+      format_version, array_schema, name, tile_sizes, tile_data);
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.
