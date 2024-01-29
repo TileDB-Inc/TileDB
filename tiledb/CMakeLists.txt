@@ -1053,3 +1053,21 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+# Packaging configuration
+configure_file ("${PROJECT_SOURCE_DIR}/cmake/inputs/CustomCPackOptions.cmake.in"
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake"
+        @ONLY)
+set (CPACK_PROJECT_CONFIG_FILE
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
+
+# Not all options can be set in CustomCPackOptions.cmake
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set(CPACK_SOURCE_GENERATOR "ZIP")
+  set(CPACK_GENERATOR "ZIP")
+else()
+  set(CPACK_SOURCE_GENERATOR "TGZ")
+  set(CPACK_GENERATOR "TGZ")
+endif()
+
+include(CPack)
