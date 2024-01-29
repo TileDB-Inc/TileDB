@@ -30,8 +30,9 @@
  * This file implements class DenseReader.
  */
 
+#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/common/logger.h"
-
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -40,7 +41,6 @@
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/query/legacy/cell_slab_iter.h"
 #include "tiledb/sm/query/query_macros.h"
-#include "tiledb/sm/query/readers/dense_reader.h"
 #include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
