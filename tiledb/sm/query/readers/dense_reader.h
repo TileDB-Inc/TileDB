@@ -309,7 +309,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
     if ((type == Datatype::STRING_ASCII || type == Datatype::CHAR) &&
         array_schema_.cell_val_num(name) != constants::var_num &&
         array_schema_.is_nullable(name)) {
-      if (frag_md->version() <= 20) {
+      if (frag_md->format_version() <= 20) {
         return false;
       }
     }

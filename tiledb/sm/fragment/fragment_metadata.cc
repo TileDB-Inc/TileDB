@@ -1421,10 +1421,6 @@ URI FragmentMetadata::validity_uri(const std::string& name) const {
       encoded_name + "_validity" + constants::file_suffix);
 }
 
-const std::string& FragmentMetadata::array_schema_name() {
-  return array_schema_name_;
-}
-
 void FragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
   // Sort 'names' in ascending order of their index. The
@@ -1704,7 +1700,7 @@ uint64_t FragmentMetadata::tile_size(
 }
 
 uint64_t FragmentMetadata::tile_var_size(
-    const std::string& name, uint64_t tile_idx) {
+    const std::string& name, uint64_t tile_idx) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1924,7 +1920,8 @@ uint64_t FragmentMetadata::get_tile_null_count(
   return tile_null_counts_[idx][tile_idx];
 }
 
-std::vector<uint8_t>& FragmentMetadata::get_min(const std::string& name) {
+const std::vector<uint8_t>& FragmentMetadata::get_min(
+    const std::string& name) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1946,7 +1943,8 @@ std::vector<uint8_t>& FragmentMetadata::get_min(const std::string& name) {
   return fragment_mins_[idx];
 }
 
-std::vector<uint8_t>& FragmentMetadata::get_max(const std::string& name) {
+const std::vector<uint8_t>& FragmentMetadata::get_max(
+    const std::string& name) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -1968,7 +1966,7 @@ std::vector<uint8_t>& FragmentMetadata::get_max(const std::string& name) {
   return fragment_maxs_[idx];
 }
 
-void* FragmentMetadata::get_sum(const std::string& name) {
+const void* FragmentMetadata::get_sum(const std::string& name) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
@@ -4696,33 +4694,12 @@ void FragmentMetadata::store_footer(const EncryptionKey&) {
   resources_->stats().add_counter("write_frag_meta_footer_size", tile.size());
 }
 
-void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
-  tile_offsets_mtx().resize(size);
-  tile_offsets().resize(size);
-}
-
-void FragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
-  tile_var_offsets_mtx().resize(size);
-  tile_var_offsets().resize(size);
-}
-
-void FragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
-  tile_var_sizes().resize(size);
-}
-void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
-  tile_validity_offsets().resize(size);
-}
-
 void FragmentMetadata::clean_up() {
   auto fragment_metadata_uri =
       fragment_uri_.join_path(constants::fragment_metadata_filename);
 
   throw_if_not_ok(resources_->vfs().close_file(fragment_metadata_uri));
   throw_if_not_ok(resources_->vfs().remove_file(fragment_metadata_uri));
-}
-
-const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
-  return array_schema_;
 }
 
 void FragmentMetadata::build_idx_map() {
@@ -4747,14 +4724,6 @@ void FragmentMetadata::build_idx_map() {
     idx_map_[constants::delete_timestamps] = idx++;
     idx_map_[constants::delete_condition_index] = idx++;
   }
-}
-
-void FragmentMetadata::set_schema_name(const std::string& name) {
-  array_schema_name_ = name;
-}
-
-void FragmentMetadata::set_dense(bool dense) {
-  dense_ = dense;
 }
 
 // Explicit template instantiations

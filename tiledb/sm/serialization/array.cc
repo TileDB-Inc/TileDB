@@ -183,7 +183,7 @@ Status array_to_capnp(
           // Old fragment with zipped coordinates didn't have a format that
           // allow to dynamically load tile offsets and sizes and since they all
           // get loaded at array open, we need to serialize them here.
-          if (fragment_metadata_all[i]->version() <= 2) {
+          if (fragment_metadata_all[i]->format_version() <= 2) {
             fragment_meta_sizes_offsets_to_capnp(
                 *fragment_metadata_all[i], &fragment_metadata_builder);
           }
