@@ -66,7 +66,7 @@ class StrategyParams {
   /* ********************************* */
 
   StrategyParams(
-      shared_ptr<MemoryTracker> memory_tracker,
+      shared_ptr<MemoryTracker> array_memory_tracker,
       StorageManager* storage_manager,
       shared_ptr<OpenedArray> array,
       Config& config,
@@ -77,7 +77,7 @@ class StrategyParams {
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
-      : memory_tracker_(memory_tracker)
+      : array_memory_tracker_(array_memory_tracker)
       , storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
@@ -94,8 +94,8 @@ class StrategyParams {
   /*                 API               */
   /* ********************************* */
 
-  inline shared_ptr<MemoryTracker> memory_tracker() {
-    return memory_tracker_;
+  inline shared_ptr<MemoryTracker> array_memory_tracker() {
+    return array_memory_tracker_;
   }
 
   /** Return the storage manager. */
@@ -153,8 +153,8 @@ class StrategyParams {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /** Memory tracker. */
-  shared_ptr<MemoryTracker> memory_tracker_;
+  /** Array Memory tracker. */
+  shared_ptr<MemoryTracker> array_memory_tracker_;
 
   /** Storage manager. */
   StorageManager* storage_manager_;
@@ -206,8 +206,8 @@ class StrategyBase {
   /* ********************************* */
 
   /** Returns `memory_tracker_`. */
-  inline shared_ptr<MemoryTracker> memory_tracker() const {
-    return memory_tracker_;
+  inline shared_ptr<MemoryTracker> array_memory_tracker() const {
+    return array_memory_tracker_;
   }
 
   /** Returns `stats_`. */
@@ -247,7 +247,7 @@ class StrategyBase {
   /* ********************************* */
 
   /** The memory tracker. */
-  shared_ptr<MemoryTracker> memory_tracker_;
+  shared_ptr<MemoryTracker> array_memory_tracker_;
 
   /** The class stats. */
   stats::Stats* stats_;
