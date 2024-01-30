@@ -137,8 +137,8 @@ SparseIndexReaderBase::read_state() const {
   return read_state_;
 }
 
-typename SparseIndexReaderBase::ReadState& SparseIndexReaderBase::read_state() {
-  return read_state_;
+void SparseIndexReaderBase::set_read_state(ReadState read_state) {
+  read_state_ = std::move(read_state);
 }
 
 uint64_t SparseIndexReaderBase::available_memory() {
@@ -320,7 +320,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   auto timer_se = stats_->start_timer("load_initial_data");
-  read_state_.done_adding_result_tiles() = false;
+  read_state_.set_done_adding_result_tiles(false);
 
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();

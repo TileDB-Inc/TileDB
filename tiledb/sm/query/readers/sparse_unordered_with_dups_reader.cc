@@ -149,7 +149,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    read_state_.done_adding_result_tiles() = true;
+    read_state_.set_done_adding_result_tiles(true);
     return Status::Ok();
   }
 
@@ -502,7 +502,7 @@ SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     logger_->debug("All result tiles loaded");
   }
 
-  read_state_.done_adding_result_tiles() = done_adding_result_tiles;
+  read_state_.set_done_adding_result_tiles(done_adding_result_tiles);
 
   return result_tiles;
 }
@@ -1724,18 +1724,20 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
   // Adjust tile index.
   for (auto rt : result_tiles) {
-    read_state_.frag_idx()[rt->frag_idx()] = FragIdx(rt->tile_idx() + 1, 0);
+    read_state_.set_frag_idx(rt->frag_idx(), FragIdx(rt->tile_idx() + 1, 0));
   }
 
   // If the last tile is not fully copied, save the cell index.
   if (result_tiles.size() > 0) {
     auto last_tile =
         (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
-    auto& frag_tile_idx = read_state_.frag_idx()[last_tile->frag_idx()];
     if (last_tile->result_num() != last_tile_cells_copied) {
-      frag_tile_idx.tile_idx_ = last_tile->tile_idx();
-      frag_tile_idx.cell_idx_ =
-          last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) + 1;
+      read_state_.set_frag_idx(
+          last_tile->frag_idx(),
+          FragIdx(
+              last_tile->tile_idx(),
+              last_tile->pos_with_given_result_sum(0, last_tile_cells_copied) +
+                  1));
     }
   }
 

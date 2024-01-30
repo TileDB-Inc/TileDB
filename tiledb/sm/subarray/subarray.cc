@@ -2640,7 +2640,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
-    std::vector<FragIdx>& frag_tile_idx,
+    const std::vector<FragIdx>& frag_tile_idx,
     ITileRange* tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
 

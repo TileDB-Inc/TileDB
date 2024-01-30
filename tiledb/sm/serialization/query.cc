@@ -663,10 +663,9 @@ Status read_state_from_capnp(
   return Status::Ok();
 }
 
-Status index_read_state_from_capnp(
+tiledb::sm::SparseIndexReaderBase::ReadState index_read_state_from_capnp(
     const ArraySchema& schema,
-    const capnp::ReadStateIndex::Reader& read_state_reader,
-    SparseIndexReaderBase* reader) {
+    const capnp::ReadStateIndex::Reader& read_state_reader) {
   bool done_reading = read_state_reader.getDoneAddingResultTiles();
   assert(read_state_reader.hasFragTileIdx());
   std::vector<FragIdx> fragment_indexes;
@@ -677,9 +676,8 @@ Status index_read_state_from_capnp(
     fragment_indexes.emplace_back(tile_idx, cell_idx);
   }
 
-  reader->read_state() = tiledb::sm::SparseIndexReaderBase::ReadState(
+  return tiledb::sm::SparseIndexReaderBase::ReadState(
       std::move(fragment_indexes), done_reading);
-  return Status::Ok();
 }
 
 Status dense_read_state_from_capnp(
@@ -1177,8 +1175,8 @@ Status index_reader_from_capnp(
 
   // Read state
   if (reader_reader.hasReadState())
-    RETURN_NOT_OK(index_read_state_from_capnp(
-        schema, reader_reader.getReadState(), reader));
+    reader->set_read_state(
+        index_read_state_from_capnp(schema, reader_reader.getReadState()));
 
   // Query condition
   if (reader_reader.hasCondition()) {
