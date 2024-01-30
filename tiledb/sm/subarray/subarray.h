@@ -323,6 +323,37 @@ class Subarray {
       StorageManager* storage_manager = nullptr);
 
   /**
+   * Constructor.
+   *
+   * @param opened_array The opened array the subarray is associated with.
+   * @param layout The layout of the values of the subarray (of the results
+   *    if the subarray is used for reads, or of the values provided
+   *    by the user for writes).
+   * @param parent_stats The parent stats to inherit from.
+   * @param logger The parent logger to clone and use for logging
+   * @param range_subset Vector of RangeSetAndSuperset for each dimension.
+   * @param is_default Vector of boolean indicating if the range is default.
+   * @param label_range_subset Vector of optional<LabelRangeSubset> for each
+   *    dimension.
+   * @param attr_range_subset Map of attribute name to a vector of Ranges, for
+   *    each attribute.
+   * @param relevant_fragments RelevantFragments object for the subarray.
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *    with existing ranges as they are added
+   */
+  Subarray(
+      const Array* array,
+      Layout layout,
+      stats::Stats* stats,
+      shared_ptr<tiledb::common::Logger> logger,
+      std::vector<RangeSetAndSuperset> range_subset,
+      std::vector<bool> is_default,
+      std::vector<optional<LabelRangeSubset>> label_range_subset,
+      std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
+      std::vector<unsigned int> relevant_fragments,
+      bool coalesce_ranges = true);
+
+  /**
    * Copy constructor. This performs a deep copy (including memcpy of
    * underlying buffers).
    */

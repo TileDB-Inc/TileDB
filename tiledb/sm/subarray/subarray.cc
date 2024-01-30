@@ -150,6 +150,32 @@ Subarray::Subarray(
   add_default_ranges();
 }
 
+Subarray::Subarray(
+    const Array* array,
+    Layout layout,
+    stats::Stats* stats,
+    shared_ptr<Logger> logger,
+    std::vector<RangeSetAndSuperset> range_subset,
+    std::vector<bool> is_default,
+    std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset,
+    std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
+    std::vector<unsigned int> relevant_fragments,
+    bool coalesce_ranges)
+    : stats_(stats)
+    , logger_(std::move(logger))
+    , array_(array->opened_array())
+    , layout_(layout)
+    , cell_order_(array_->array_schema_latest().cell_order())
+    , range_subset_(std::move(range_subset))
+    , label_range_subset_(std::move(label_range_subset))
+    , attr_range_subset_(std::move(attr_range_subset))
+    , is_default_(std::move(is_default))
+    , est_result_size_computed_(false)
+    , relevant_fragments_(relevant_fragments)
+    , coalesce_ranges_(coalesce_ranges)
+    , ranges_sorted_(false) {
+}
+
 Subarray::Subarray(const Subarray& subarray)
     : Subarray() {
   // Make a deep-copy clone
