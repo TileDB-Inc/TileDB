@@ -239,9 +239,8 @@ Status unordered_write_state_from_capnp(
     UnorderedWriter* runordered_writer,
     SerializationContext context);
 
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition& condition);
+QueryCondition condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader);
 
 Status condition_to_capnp(
     const QueryCondition& condition,

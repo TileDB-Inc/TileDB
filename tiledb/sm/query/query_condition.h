@@ -59,10 +59,10 @@ class QueryCondition {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
+  /** Default constructor. Should be used only in the C API. */
   QueryCondition();
 
-  /** Constructor for a set membership QueryCondition */
+  /** Constructor for a set membership QueryCondition. */
   QueryCondition(
       const std::string& field_name,
       const void* data,
