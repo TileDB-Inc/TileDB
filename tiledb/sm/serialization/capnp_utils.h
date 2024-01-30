@@ -35,6 +35,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include <capnp/compat/std-iterator.h>
 #include "tiledb-rest.capnp.h"
 
 #include "tiledb/common/heap_memory.h"

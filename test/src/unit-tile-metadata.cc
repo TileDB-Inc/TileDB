@@ -1554,7 +1554,9 @@ struct CPPTileMetadataStringDimFx {
       // Validate mins.
       auto& min = frag_meta[0]->get_min("a");
       CHECK(min.size() == sizeof(double));
-      CHECK(*static_cast<double*>(static_cast<void*>(min.data())) == 4);
+      CHECK(
+          *static_cast<const double*>(static_cast<const void*>(min.data())) ==
+          4);
 
       CHECK_THROWS_WITH(
           frag_meta[0]->get_min("d1"),
@@ -1569,7 +1571,9 @@ struct CPPTileMetadataStringDimFx {
       // Validate maxs.
       auto& max = frag_meta[0]->get_max("a");
       CHECK(max.size() == sizeof(double));
-      CHECK(*static_cast<double*>(static_cast<void*>(max.data())) == 7);
+      CHECK(
+          *static_cast<const double*>(static_cast<const void*>(max.data())) ==
+          7);
 
       CHECK_THROWS_WITH(
           frag_meta[0]->get_max("d1"),
