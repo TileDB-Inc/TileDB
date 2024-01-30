@@ -3037,7 +3037,9 @@ Status global_write_state_from_capnp(
 
   if (state_reader.hasFragMeta()) {
     write_state->frag_meta_ = fragment_metadata_from_capnp(
-        query.array_schema_shared(), state_reader.getFragMeta());
+        query.array_schema_shared(),
+        state_reader.getFragMeta(),
+        global_writer->resources());
   }
 
   // Deserialize the multipart upload state
