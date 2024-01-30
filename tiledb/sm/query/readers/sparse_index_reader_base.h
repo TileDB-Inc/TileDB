@@ -296,20 +296,49 @@ class SparseIndexReaderBase : public ReaderBase {
    * it is really required to determine if a query is incomplete from the client
    * side of a cloud request.
    */
-  struct ReadState {
-    /** The tile index inside of each fragments. */
-    std::vector<FragIdx> frag_idx_;
+  class ReadState {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
 
-    /** Is the reader done with the query. */
-    bool done_adding_result_tiles_;
+    ReadState() = delete;
 
-    ReadState() {
+    ReadState(size_t frag_idxs_len)
+        : frag_idx_(frag_idxs_len) {
     }
 
     ReadState(std::vector<FragIdx>&& frag_idx, bool done_adding_result_tiles)
         : frag_idx_(std::move(frag_idx))
         , done_adding_result_tiles_(done_adding_result_tiles) {
     }
+
+    /* ********************************* */
+    /*              GETTERS              */
+    /* ********************************* */
+
+    const bool& done_adding_result_tiles() const {
+      return done_adding_result_tiles_;
+    }
+
+    bool& done_adding_result_tiles() {
+      return done_adding_result_tiles_;
+    }
+
+    std::vector<FragIdx>& frag_idx() {
+      return frag_idx_;
+    }
+
+    const std::vector<FragIdx>& frag_idx() const {
+      return frag_idx_;
+    }
+
+   private:
+    /** The tile index inside of each fragments. */
+    std::vector<FragIdx> frag_idx_;
+
+    /** Is the reader done with the query. */
+    bool done_adding_result_tiles_;
   };
 
   /**
@@ -514,16 +543,16 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Returns the current read state.
    *
-   * @return pointer to the read state.
+   * @return reference to the read state.
    */
-  const ReadState* read_state() const;
+  const ReadState& read_state() const;
 
   /**
    * Returns the current read state.
    *
-   * @return pointer to the read state.
+   * @return reference to the read state.
    */
-  ReadState* read_state();
+  ReadState& read_state();
 
  protected:
   /* ********************************* */

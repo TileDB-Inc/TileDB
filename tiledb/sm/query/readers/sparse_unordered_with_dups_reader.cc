@@ -95,7 +95,7 @@ SparseUnorderedWithDupsReader<BitmapType>::SparseUnorderedWithDupsReader(
 
 template <class BitmapType>
 bool SparseUnorderedWithDupsReader<BitmapType>::incomplete() const {
-  return !read_state_.done_adding_result_tiles_ ||
+  return !read_state_.done_adding_result_tiles() ||
          !result_tiles_leftover_.empty();
 }
 
@@ -149,7 +149,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    read_state_.done_adding_result_tiles_ = true;
+    read_state_.done_adding_result_tiles() = true;
     return Status::Ok();
   }
 
@@ -176,7 +176,7 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
 
       // No more tiles to process, done.
       if (result_tiles.empty()) {
-        assert(read_state_.done_adding_result_tiles_);
+        assert(read_state_.done_adding_result_tiles());
         break;
       }
 
@@ -468,7 +468,7 @@ SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
         auto tile_num = fragment_metadata_[f]->tile_num();
 
         // Figure out the start index.
-        auto start = read_state_.frag_idx_[f].tile_idx_;
+        auto start = read_state_.frag_idx()[f].tile_idx_;
 
         // Add all tiles for this fragment.
         if (start == tile_num) {
@@ -502,7 +502,7 @@ SparseUnorderedWithDupsReader<BitmapType>::create_result_tiles() {
     logger_->debug("All result tiles loaded");
   }
 
-  read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
+  read_state_.done_adding_result_tiles() = done_adding_result_tiles;
 
   return result_tiles;
 }
@@ -776,7 +776,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
         // We might have a partially processed result tile from last run.
         auto min_pos_tile = 0;
         if (i == 0) {
-          min_pos_tile = read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
+          min_pos_tile = read_state_.frag_idx()[rt->frag_idx()].cell_idx_;
         }
 
         auto max_pos_tile =
@@ -1254,7 +1254,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
         // We might have a partially processed result tile from last run.
         auto min_pos_tile = 0;
         if (i == 0) {
-          min_pos_tile = read_state_.frag_idx_[rt->frag_idx()].cell_idx_;
+          min_pos_tile = read_state_.frag_idx()[rt->frag_idx()].cell_idx_;
         }
 
         auto max_pos_tile =
@@ -1424,7 +1424,7 @@ SparseUnorderedWithDupsReader<BitmapType>::resize_fixed_results_to_copy(
 
   uint64_t initial_cell_offset = cells_copied(names);
   uint64_t first_tile_min_pos =
-      read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
+      read_state_.frag_idx()[result_tiles[0]->frag_idx()].cell_idx_;
 
   return resize_fixed_result_tiles_to_copy(
       max_num_cells, initial_cell_offset, first_tile_min_pos, result_tiles);
@@ -1713,7 +1713,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
   if (result_tiles.size() > 0) {
     auto last_tile =
         (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
-    auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
+    auto& frag_tile_idx = read_state_.frag_idx()[last_tile->frag_idx()];
     last_tile_cells_copied = cell_offsets[result_tiles.size()] -
                              cell_offsets[result_tiles.size() - 1];
     if (frag_tile_idx.tile_idx_ == last_tile->tile_idx()) {
@@ -1724,14 +1724,14 @@ bool SparseUnorderedWithDupsReader<BitmapType>::process_tiles(
 
   // Adjust tile index.
   for (auto rt : result_tiles) {
-    read_state_.frag_idx_[rt->frag_idx()] = FragIdx(rt->tile_idx() + 1, 0);
+    read_state_.frag_idx()[rt->frag_idx()] = FragIdx(rt->tile_idx() + 1, 0);
   }
 
   // If the last tile is not fully copied, save the cell index.
   if (result_tiles.size() > 0) {
     auto last_tile =
         (UnorderedWithDupsResultTile<BitmapType>*)result_tiles.back();
-    auto& frag_tile_idx = read_state_.frag_idx_[last_tile->frag_idx()];
+    auto& frag_tile_idx = read_state_.frag_idx()[last_tile->frag_idx()];
     if (last_tile->result_num() != last_tile_cells_copied) {
       frag_tile_idx.tile_idx_ = last_tile->tile_idx();
       frag_tile_idx.cell_idx_ =
@@ -1803,7 +1803,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::copy_tiles(
   uint64_t var_buffer_size = 0;
   if (var_sized) {
     uint64_t first_tile_min_pos =
-        read_state_.frag_idx_[result_tiles[0]->frag_idx()].cell_idx_;
+        read_state_.frag_idx()[result_tiles[0]->frag_idx()].cell_idx_;
 
     // Adjust the offsets buffer and make sure all data fits.
     auto&& [caused_overflow, new_var_buffer_size, new_result_tiles_size] =
@@ -1934,7 +1934,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
 
         // The first tile might have already been processed by the last
         // computation. We only process a tile the first time.
-        if (i == 0 && read_state_.frag_idx_[rt->frag_idx()].cell_idx_ != 0) {
+        if (i == 0 && read_state_.frag_idx()[rt->frag_idx()].cell_idx_ != 0) {
           return Status::Ok();
         }
 
@@ -2001,9 +2001,10 @@ template <class BitmapType>
 void SparseUnorderedWithDupsReader<BitmapType>::end_iteration(
     ResultTilesList& result_tiles) {
   // Clear result tiles that are not necessary anymore.
-  while (!result_tiles.empty() &&
-         result_tiles.front().tile_idx() <
-             read_state_.frag_idx_[result_tiles.front().frag_idx()].tile_idx_) {
+  while (
+      !result_tiles.empty() &&
+      result_tiles.front().tile_idx() <
+          read_state_.frag_idx()[result_tiles.front().frag_idx()].tile_idx_) {
     const auto f = result_tiles.front().frag_idx();
 
     remove_result_tile(f, result_tiles, result_tiles.begin());

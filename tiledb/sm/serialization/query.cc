@@ -596,18 +596,18 @@ Status read_state_to_capnp(
 }
 
 Status index_read_state_to_capnp(
-    const SparseIndexReaderBase::ReadState* read_state,
+    const SparseIndexReaderBase::ReadState& read_state,
     capnp::ReaderIndex::Builder* builder) {
   auto read_state_builder = builder->initReadState();
 
   read_state_builder.setDoneAddingResultTiles(
-      read_state->done_adding_result_tiles_);
+      read_state.done_adding_result_tiles());
 
   auto frag_tile_idx_builder =
-      read_state_builder.initFragTileIdx(read_state->frag_idx_.size());
-  for (size_t i = 0; i < read_state->frag_idx_.size(); ++i) {
-    frag_tile_idx_builder[i].setTileIdx(read_state->frag_idx_[i].tile_idx_);
-    frag_tile_idx_builder[i].setCellIdx(read_state->frag_idx_[i].cell_idx_);
+      read_state_builder.initFragTileIdx(read_state.frag_idx().size());
+  for (size_t i = 0; i < read_state.frag_idx().size(); ++i) {
+    frag_tile_idx_builder[i].setTileIdx(read_state.frag_idx()[i].tile_idx_);
+    frag_tile_idx_builder[i].setCellIdx(read_state.frag_idx()[i].cell_idx_);
   }
 
   return Status::Ok();
@@ -677,13 +677,7 @@ Status index_read_state_from_capnp(
     fragment_indexes.emplace_back(tile_idx, cell_idx);
   }
 
-  auto read_state = reader->read_state();
-  if (read_state == nullptr) {
-    throw std::runtime_error(
-        "index_read_state_from_capnp: read_state within SparseIndexReaderBase "
-        "object is null.");
-  }
-  *read_state = tiledb::sm::SparseIndexReaderBase::ReadState(
+  reader->read_state() = tiledb::sm::SparseIndexReaderBase::ReadState(
       std::move(fragment_indexes), done_reading);
   return Status::Ok();
 }
