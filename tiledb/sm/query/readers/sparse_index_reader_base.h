@@ -572,7 +572,7 @@ class SparseIndexReaderBase : public ReaderBase {
   const ReadState& read_state() const;
 
   /**
-   * Sets the new read state.
+   * Sets the new read state. Used only for deserialization.
    *
    * @param read_state New read_state value.
    * @return void
