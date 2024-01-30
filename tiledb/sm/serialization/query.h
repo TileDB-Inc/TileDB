@@ -241,7 +241,7 @@ Status unordered_write_state_from_capnp(
 
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
+    QueryCondition& condition);
 
 Status condition_to_capnp(
     const QueryCondition& condition,

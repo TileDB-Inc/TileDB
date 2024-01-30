@@ -272,7 +272,7 @@ TEST_CASE(
               query_condition, &condition_builder)
               .ok());
   REQUIRE(tiledb::sm::serialization::condition_from_capnp(
-              condition_builder, &query_condition_clone)
+              condition_builder, query_condition_clone)
               .ok());
   REQUIRE(tiledb::test::ast_equal(
       query_condition.ast(), query_condition_clone.ast()));

@@ -1070,7 +1070,7 @@ tdb_unique_ptr<ASTNode> condition_ast_from_capnp(
 
 Status condition_from_capnp(
     const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition) {
+    QueryCondition& condition) {
   if (condition_reader.hasClauses()) {  // coming from older API
     // Accumulating the AST value nodes from the clause list.
     std::vector<tdb_unique_ptr<ASTNode>> ast_nodes;
@@ -1104,17 +1104,17 @@ Status condition_from_capnp(
     // Constructing the tree from the list of AST nodes.
     assert(ast_nodes.size() > 0);
     if (ast_nodes.size() == 1) {
-      condition->set_ast(std::move(ast_nodes[0]));
+      condition = QueryCondition(std::move(ast_nodes[0]));
     } else {
       auto tree_ptr = tdb_unique_ptr<ASTNode>(tdb_new(
           ASTNodeExpr, std::move(ast_nodes), QueryConditionCombinationOp::AND));
-      condition->set_ast(std::move(tree_ptr));
+      condition = QueryCondition(std::move(tree_ptr));
     }
   } else if (condition_reader.hasTree()) {
     // Constructing the query condition from the AST representation.
     // We assume that the deserialized values of the AST are validated properly.
     auto ast_reader = condition_reader.getTree();
-    condition->set_ast(condition_ast_from_capnp(ast_reader));
+    condition = QueryCondition(condition_ast_from_capnp(ast_reader));
   }
   return Status::Ok();
 }
@@ -1145,7 +1145,7 @@ Status reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, condition));
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
@@ -1187,7 +1187,7 @@ Status index_reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, condition));
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
@@ -1230,7 +1230,7 @@ Status dense_reader_from_capnp(
   if (reader_reader.hasCondition()) {
     auto condition_reader = reader_reader.getCondition();
     QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, condition));
     RETURN_NOT_OK(query->set_condition(condition));
   }
 
@@ -1254,7 +1254,7 @@ Status delete_from_capnp(
   if (delete_reader.hasCondition()) {
     auto condition_reader = delete_reader.getCondition();
     QueryCondition condition;
-    RETURN_NOT_OK(condition_from_capnp(condition_reader, &condition));
+    RETURN_NOT_OK(condition_from_capnp(condition_reader, condition));
     RETURN_NOT_OK(query->set_condition(condition));
   }
 

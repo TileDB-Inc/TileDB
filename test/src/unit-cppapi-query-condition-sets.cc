@@ -924,7 +924,7 @@ QueryCondition CPPQueryConditionFx::serialize_deserialize_qc(
   throw_if_not_ok(condition_to_capnp(*qc_ptr, &builder));
 
   // Deserialize the query condition.
-  throw_if_not_ok(condition_from_capnp(builder, ret_ptr));
+  throw_if_not_ok(condition_from_capnp(builder, *ret_ptr));
   REQUIRE(tiledb::test::ast_equal(ret_ptr->ast(), qc_ptr->ast()));
 
   return ret;
