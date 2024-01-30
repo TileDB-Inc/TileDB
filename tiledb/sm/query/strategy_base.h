@@ -38,8 +38,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 namespace tiledb {
 namespace sm {
