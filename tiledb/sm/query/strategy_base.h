@@ -39,6 +39,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 namespace tiledb {
 namespace sm {
@@ -204,6 +205,9 @@ class StrategyBase {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /** Returns the context resources of the writer. */
+  ContextResources* resources() const;
 
   /** Returns `stats_`. */
   stats::Stats* stats() const;

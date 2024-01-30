@@ -84,9 +84,6 @@ class UnorderedWriter : public WriterBase {
   /** Returns the name of the strategy. */
   std::string name();
 
-  /** Returns the context resources of the writer. */
-  ContextResources* resources();
-
   /** Set fragment metadata. */
   void set_frag_meta(shared_ptr<FragmentMetadata> frag_meta) {
     frag_meta_ = frag_meta;
