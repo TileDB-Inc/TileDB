@@ -148,6 +148,7 @@ FragmentMetadata::FragmentMetadata(
     : resources_(resources)
     , memory_tracker_(memory_tracker)
     , array_schema_(array_schema)
+    , array_schema_name_(array_schema->name())
     , dense_(array_schema_->dense())
     , file_sizes_(std::move(file_sizes))
     , file_var_sizes_(std::move(file_var_sizes))

@@ -84,10 +84,7 @@ static FragmentMetadata::LoadedMetadata create_deserialized_loaded_metadata(
         reader.getTileVarSizes().size(),
         loadedValue);
   }
-  if (reader.hasTileValidityOffsets()) {
-    loaded_metadata.tile_validity_offsets_.resize(
-        reader.getTileValidityOffsets().size());
-  }
+  loaded_metadata.tile_validity_offsets_.resize(num_dims_and_attrs);
   if (reader.hasTileMinBuffer()) {
     loaded_metadata.tile_min_.resize(reader.getTileMinBuffer().size());
   }
