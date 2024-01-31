@@ -103,10 +103,12 @@ jobs:
       - name: Package Binary TileDB
         run: cmake --build build --config Release --target package
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tiledb-dist
-          path: tiledb-*.zip,tiledb-*.tag.gz
+          path: |
+            build/tiledb-*.tag.gz
+            build/tiledb-*.zip
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
@@ -117,7 +119,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: tiledb-dist
           path: dist
@@ -134,7 +136,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v4
         with:
           name: tiledb-dist
           path: dist
