@@ -37,8 +37,8 @@
 #include <atomic>
 #include <cstdio>
 #include <iostream>
-#include <vector>
 #include <random>
+#include <vector>
 
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
