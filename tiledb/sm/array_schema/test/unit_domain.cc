@@ -130,3 +130,41 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   CHECK(dim2->cell_val_num() == cell_val_num2);
   CHECK(dim2->filters().size() == num_filters2);
 }
+
+TEST_CASE("Domain: Cells per tile larger than dimension type", "[domain]") {
+  Status rc{};
+
+  // Create dim1.
+  auto dim1 = make_shared<Dimension>(HERE(), "dim1", Datatype::UINT8);
+  uint8_t dim1_tile_extent{17};
+  uint8_t dim1_domain[2]{1, 35};
+  rc = dim1->set_domain(&dim1_domain);
+  REQUIRE(rc.ok());
+  rc = dim1->set_tile_extent(&dim1_tile_extent);
+  REQUIRE(rc.ok());
+
+  // Create dim2.
+  auto dim2 = make_shared<Dimension>(HERE(), "dim2", Datatype::UINT8);
+  uint8_t dim2_tile_extent{19};
+  uint8_t dim2_domain[2]{1, 39};
+  rc = dim2->set_domain(&dim2_domain);
+  REQUIRE(rc.ok());
+  rc = dim2->set_tile_extent(&dim2_tile_extent);
+  REQUIRE(rc.ok());
+
+  // Create dim3.
+  auto dim3 = make_shared<Dimension>(HERE(), "dim3", Datatype::UINT8);
+  uint8_t dim3_tile_extent{3};
+  uint8_t dim3_domain[2]{1, 3};
+  rc = dim3->set_domain(&dim3_domain);
+  REQUIRE(rc.ok());
+  rc = dim3->set_tile_extent(&dim3_tile_extent);
+  REQUIRE(rc.ok());
+
+  // Create the domain.
+  Domain domain{Layout::ROW_MAJOR, {dim1, dim2, dim3}, Layout::ROW_MAJOR};
+
+  // Check the number of cells per tile.
+  uint64_t expected_cell_num_per_tile{17 * 19 * 3};
+  CHECK(domain.cell_num_per_tile() == expected_cell_num_per_tile);
+}
