@@ -98,7 +98,7 @@ TEST_CASE("Config", "[cppapi][config]") {
   CHECK((std::string)cfg["vfs.s3.use_virtual_addressing"] == "true");
 }
 
-TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest2]") {
+TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
   auto array_uri = vfs_test_setup_.array_uri;
   SECTION("Dimensions") {
     ArraySchema schema(ctx, array_uri);
@@ -417,7 +417,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest2]") {
   }
 }
 
-TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest]") {
+TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest-fails]") {
   tiledb::test::VFSTestSetup vfs_test_setup{"cpp_unit_array_1d"};
   Context ctx = vfs_test_setup.ctx;
   auto array_uri = vfs_test_setup.array_uri;
@@ -1112,10 +1112,12 @@ TEST_CASE(
 
   // Write
   std::vector<int> data_w = {1};
-  std::vector<int> coords_w = {0, 0};
+  std::vector<int> rows = {0};
+  std::vector<int> cols = {0};
   Array array_w(ctx, array_uri, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
 
@@ -1551,10 +1553,12 @@ TEST_CASE(
 
   // Write
   std::vector<int> data_w = {1};
-  std::vector<int> coords_w = {0, 0};
+  std::vector<int> rows_w = {0};
+  std::vector<int> cols_w = {0};
   Array array_w(ctx, array_uri, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
 
@@ -1594,10 +1598,12 @@ TEST_CASE(
 
   // Write
   std::vector<int> data_w = {1};
-  std::vector<int> coords_w = {0, 0};
+  std::vector<int> rows_w = {0};
+  std::vector<int> cols_w = {0};
   Array array_w(ctx, array_uri, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("rows", rows_w)
+      .set_data_buffer("cols", cols_w)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
   query_w.submit_and_finalize();
