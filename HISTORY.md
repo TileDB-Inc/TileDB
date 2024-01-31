@@ -1,3 +1,9 @@
+# TileDB v2.19.2 Release Notes
+
+## Build System Changes
+
+* Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+
 # TileDB v2.19.1 Release Notes
 
 ## Improvements
