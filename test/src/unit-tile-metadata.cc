@@ -31,6 +31,8 @@
  * load_tile_*_values and get_tile_* apis of fragment metadata.
  */
 
+#include <random>
+
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
