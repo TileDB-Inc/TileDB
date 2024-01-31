@@ -35,6 +35,7 @@ commence(unit_test array_schema)
         unit_array_schema.cc
         unit_dimension.cc
         unit_dimension_label.cc
+        unit_domain.cc
         unit_domain_data.cc
         unit_tile_domain.cc
     )

@@ -111,9 +111,11 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   dom_buffer_offset<uint64_t, 63>(p) = domain_size2;
   dom_buffer_offset<uint8_t, 71>(p) = null_tile_extent2;
 
+  FilterPipeline coords_filters{};
+
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   auto dom{Domain::deserialize(
-      deserializer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
+      deserializer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR, coords_filters)};
   CHECK(dom->dim_num() == dim_num);
 
   auto dim1{dom->dimension_ptr("d1")};
