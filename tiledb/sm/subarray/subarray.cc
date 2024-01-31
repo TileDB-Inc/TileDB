@@ -3287,5 +3287,15 @@ Subarray::LabelRangeSubset::LabelRangeSubset(
     , ranges_{RangeSetAndSuperset(type, Range(), false, coalesce_ranges)} {
 }
 
+Subarray::LabelRangeSubset::LabelRangeSubset(
+    const std::string& name,
+    Datatype type,
+    std::vector<Range> ranges,
+    bool coalesce_ranges)
+    : name_{name}
+    , ranges_{RangeSetAndSuperset(
+          type, Range(), std::move(ranges), coalesce_ranges)} {
+}
+
 }  // namespace sm
 }  // namespace tiledb

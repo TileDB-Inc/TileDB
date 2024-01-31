@@ -291,11 +291,11 @@ Subarray subarray_from_capnp(
         // Edge case for dimension labels where there are only label ranges set.
         if (ranges.empty()) {
           range_subset[i] = RangeSetAndSuperset(
-              dim->type(), dim->domain(), false, coalesce_ranges);
-        }
-        // Add custom ranges, clearing any implicit ranges previously set.
-        for (const auto& range : ranges) {
-          throw_if_not_ok(range_subset[i].add_range_unrestricted(range));
+              dim->type(), dim->domain(), {dim->domain()}, coalesce_ranges);
+        } else {
+          // Add custom ranges, clearing any implicit ranges previously set.
+          range_subset[i] = RangeSetAndSuperset(
+              dim->type(), dim->domain(), ranges, coalesce_ranges);
         }
       }
     } else {
@@ -320,11 +320,13 @@ Subarray subarray_from_capnp(
 
       // Deserialize ranges for this dim label
       auto range_reader = label_range_reader.getRanges();
-      auto ranges = range_buffers_from_capnp(range_reader);
+      auto label_ranges = range_buffers_from_capnp(range_reader);
 
       // Set ranges for this dim label on the subarray
       label_range_subset[dim_index] = {
-          label_name, dim->type(), coalesce_ranges};
+          label_name, dim->type(), label_ranges, coalesce_ranges};
+      range_subset[dim_index].clear();
+      is_default[dim_index] = false;
     }
   }
 
