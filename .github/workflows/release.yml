@@ -1,6 +1,7 @@
 name: Release
 
 on:
+  workflow_dispatch:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
@@ -85,6 +86,7 @@ jobs:
             -DCMAKE_BUILD_TYPE=Release \
             -DBUILD_SHARED_LIBS=ON \
             -DCMAKE_INSTALL_PREFIX=./dist \
+            -DTILEDB_CMAKE_IDE=ON \
             -DTILEDB_INSTALL_LIBDIR=lib \
             -DTILEDB_S3=ON \
             -DTILEDB_AZURE=ON \
