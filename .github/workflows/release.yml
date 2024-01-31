@@ -101,7 +101,7 @@ jobs:
       - name: Package Source TileDB
         run: cmake --build build --config Release --target package_source
       - name: Package Binary TileDB
-        run: cmake --build build --config Release --target source
+        run: cmake --build build --config Release --target package
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
