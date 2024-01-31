@@ -96,32 +96,15 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
             ${{ matrix.cmake_args }}
         shell: bash
-      - name: Build TileDB
-        run: cmake --build build --config Release
-      - name: Install TileDB
-        run: cmake --build build --config Release --target install-tiledb
-      - name: Archive installed artifacts (non-Windows)
-        if: ${{ !startsWith(matrix.platform, 'windows') }}
-        run: |
-          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz -C dist .
-      - name: Archive installed artifacts (Windows)
-        if: startsWith(matrix.platform, 'windows')
-        run: |
-          Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
-        shell: pwsh
+      - name: Package Source TileDB
+        run: cmake --build build --config Release --target package_source
+      - name: Package Binary TileDB
+        run: cmake --build build --config Release --target source
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
           name: tiledb-dist
-          path: ${{ steps.get-values.outputs.archive_name }}.*
-      - name: Archive build directory
-        run: |
-          tar -czf build-${{ matrix.platform }}.tar.gz -C build .
-      - name: Upload build directory
-        uses: actions/upload-artifact@v3
-        with:
-          name: tiledb-build
-          path: build-${{ matrix.platform }}.tar.gz
+          path: tiledb-*.zip,tiledb-*.tag.gz
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
