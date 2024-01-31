@@ -99,9 +99,13 @@ jobs:
             ${{ matrix.cmake_args }}
         shell: bash
       - name: Package Source TileDB
-        run: cmake --build build --config Release --target package_source
+        run: |
+          cd build
+          cpack --config CPackSourceConfig.cmake
       - name: Package Binary TileDB
-        run: cmake --build build --config Release --target package
+        run: |
+          cd build
+          cpack --config CPackConfig.cmake
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:
