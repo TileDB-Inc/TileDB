@@ -506,6 +506,7 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest-fails]") {
     std::vector<uint64_t> b(3);
 
     a.reserve(10);
+    // The following line makes the test fail on REST-CI.
     a = {};
     const std::vector<int> subarray = {0, 2};
     Query q(ctx, array, TILEDB_READ);
