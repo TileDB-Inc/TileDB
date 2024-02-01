@@ -67,7 +67,9 @@ commence(object_library baseline)
         polymorphic_allocator/polymorphic_allocator.cc
     )
     find_package(Spdlog_EP REQUIRED)
+    find_package(Boost REQUIRED COMPONENTS container)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
+    target_link_libraries(baseline PUBLIC Boost::container)
     target_link_libraries(baseline PUBLIC common)
 conclude(object_library)
 

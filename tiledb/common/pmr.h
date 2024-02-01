@@ -44,16 +44,21 @@
 // #error Missing memory_resources header.
 // #endif
 
+#include <vector>
+
+#include <boost/container/pmr/memory_resource.hpp>
+#include <boost/container/pmr/polymorphic_allocator.hpp>
+#include <boost/container/pmr/vector.hpp>
+
 #include "common.h"
-#include "polymorphic_allocator/pmr_vector.h"
-#include "polymorphic_allocator/polymorphic_allocator.h"
 
 namespace tiledb::common::pmr {
 
-using memory_resource = cpp17::pmr::memory_resource;
+using memory_resource = boost::container::pmr::memory_resource;
 
 template <class Tp>
-using pmr_vector = cpp17::pmr::vector<Tp>;
+using pmr_vector =
+    std::vector<Tp, boost::container::pmr::polymorphic_allocator<Tp>>;
 
 memory_resource* get_default_resource();
 

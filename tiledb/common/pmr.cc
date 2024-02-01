@@ -35,7 +35,7 @@
 namespace tiledb::common::pmr {
 
 memory_resource* get_default_resource() {
-  return cpp17::pmr::get_default_resource();
+  return boost::container::pmr::get_default_resource();
 }
 
 }  // namespace tiledb::common::pmr
