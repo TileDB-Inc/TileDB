@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -28,6 +28,7 @@
 
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/common/random/random_label.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
@@ -68,9 +69,11 @@ std::string generate_timestamped_name(
 std::string generate_consolidated_fragment_name(
     const URI& first, const URI& last, format_version_t format_version) {
   // Get timestamp ranges
-  std::pair<uint64_t, uint64_t> t_first, t_last;
-  throw_if_not_ok(utils::parse::get_timestamp_range(first, &t_first));
-  throw_if_not_ok(utils::parse::get_timestamp_range(last, &t_last));
+  tiledb::sm::FragmentID fragment_id_first{first};
+  auto t_first{fragment_id_first.timestamp_range()};
+
+  tiledb::sm::FragmentID fragment_id_last{last};
+  auto t_last{fragment_id_last.timestamp_range()};
 
   return generate_timestamped_name(
       t_first.first, t_last.second, format_version);

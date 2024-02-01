@@ -59,10 +59,10 @@ class QueryCondition {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
+  /** Default constructor. Should be used only in the C API. */
   QueryCondition();
 
-  /** Constructor for a set membership QueryCondition */
+  /** Constructor for a set membership QueryCondition. */
   QueryCondition(
       const std::string& field_name,
       const void* data,
@@ -246,12 +246,6 @@ class QueryCondition {
    * Reverse the query condition using De Morgan's law.
    */
   QueryCondition negated_condition();
-
-  /**
-   * Sets the AST. This is internal state to only be used in
-   * the serialization path.
-   */
-  void set_ast(tdb_unique_ptr<ASTNode>&& ast);
 
   /**
    * Returns the AST object. This is internal state to only be used in testing

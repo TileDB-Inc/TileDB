@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,12 +38,12 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 namespace tiledb::sm {
 
@@ -1101,16 +1101,12 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       single_fragment_info_vec_.back().meta()->array_schema();
 
   // Get timestamp range
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      nullopt);
-  auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
+  FragmentID fragment_id{new_fragment_uri};
+  auto timestamp_range{fragment_id.timestamp_range()};
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (fragment_version <= 2) {
+  if (fragment_id.array_format_version() <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);

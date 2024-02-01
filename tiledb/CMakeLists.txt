@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2023 TileDB, Inc.
+# Copyright (c) 2017-2024 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -221,6 +221,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/webp_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/noop_filter.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/positive_delta_filter.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_identifier.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
@@ -1053,3 +1054,21 @@ configure_file(
 )
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
+
+# Packaging configuration
+configure_file ("${PROJECT_SOURCE_DIR}/cmake/inputs/CustomCPackOptions.cmake.in"
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake"
+        @ONLY)
+set (CPACK_PROJECT_CONFIG_FILE
+        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
+
+# Not all options can be set in CustomCPackOptions.cmake
+if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+  set(CPACK_SOURCE_GENERATOR "ZIP")
+  set(CPACK_GENERATOR "ZIP")
+else()
+  set(CPACK_SOURCE_GENERATOR "TGZ")
+  set(CPACK_GENERATOR "TGZ")
+endif()
+
+include(CPack)

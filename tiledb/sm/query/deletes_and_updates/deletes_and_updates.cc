@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
@@ -129,12 +130,10 @@ Status DeletesAndUpdates::dowork() {
   // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
-    auto name = uri.remove_trailing_slash().last_path_part();
-    auto format_version = utils::parse::get_fragment_version(name);
-    if (format_version < constants::consolidation_with_timestamps_min_version) {
-      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-      RETURN_NOT_OK(
-          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+    FragmentID fragment_id{uri};
+    if (fragment_id.array_format_version() <
+        constants::consolidation_with_timestamps_min_version) {
+      auto fragment_timestamp_range{fragment_id.timestamp_range()};
       if (timestamp >= fragment_timestamp_range.first &&
           timestamp <= fragment_timestamp_range.second) {
         throw DeleteAndUpdateStatusException(

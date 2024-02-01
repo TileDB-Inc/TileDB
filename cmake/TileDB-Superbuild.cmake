@@ -191,3 +191,10 @@ if (TILEDB_TESTS)
     WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
   )
 endif()
+
+# make package (.tar.gz for Linux and MacOS, .zip for Windows)
+add_custom_target(package
+        DEPENDS tiledb
+        COMMAND ${CMAKE_CPACK_COMMAND} --config CPackConfig.cmake -G "$<IF:$<PLATFORM_ID:Windows>,ZIP,TGZ>"
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/tiledb
+)
