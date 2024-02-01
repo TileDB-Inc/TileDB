@@ -339,7 +339,6 @@ class SparseIndexReaderBase : public ReaderBase {
      * Sets a value in the fragment index vector.
      * @param idx The index of the vector.
      * @param val The value to set frag_idx[idx] to.
-     * @return void
      */
     inline void set_frag_idx(uint64_t idx, FragIdx val) {
       if (idx >= frag_idx_.size()) {
