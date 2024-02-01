@@ -302,12 +302,17 @@ class SparseIndexReaderBase : public ReaderBase {
     /*     CONSTRUCTORS & DESTRUCTORS    */
     /* ********************************* */
 
+    /** Delete default constructor. */
     ReadState() = delete;
 
+    /** Constructor.
+     * @param frag_idxs_len The length of the fragment index vector.
+     */
     ReadState(size_t frag_idxs_len)
         : frag_idx_(frag_idxs_len) {
     }
 
+    /** Constructor used in deserialization. */
     ReadState(std::vector<FragIdx>&& frag_idx, bool done_adding_result_tiles)
         : frag_idx_(std::move(frag_idx))
         , done_adding_result_tiles_(done_adding_result_tiles) {
@@ -321,7 +326,7 @@ class SparseIndexReaderBase : public ReaderBase {
      * Return whether the tiles that will be processed are loaded in memory.
      * @return Done adding result tiles.
      */
-    const bool& done_adding_result_tiles() const {
+    inline bool done_adding_result_tiles() const {
       return done_adding_result_tiles_;
     }
 
@@ -329,7 +334,6 @@ class SparseIndexReaderBase : public ReaderBase {
      * Sets the flag that determines whether the tiles that will be processed
      * are loaded in memory.
      * @param done_adding_result_tiles Done adding result tiles.
-     * @return void
      */
     inline void set_done_adding_result_tiles(bool done_adding_result_tiles) {
       done_adding_result_tiles_ = done_adding_result_tiles;
@@ -355,6 +359,10 @@ class SparseIndexReaderBase : public ReaderBase {
     const std::vector<FragIdx>& frag_idx() const {
       return frag_idx_;
     }
+
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
 
    private:
     /** The tile index inside of each fragments. */
@@ -574,7 +582,6 @@ class SparseIndexReaderBase : public ReaderBase {
    * Sets the new read state. Used only for deserialization.
    *
    * @param read_state New read_state value.
-   * @return void
    */
   void set_read_state(ReadState read_state);
 
