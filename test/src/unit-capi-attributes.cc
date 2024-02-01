@@ -381,13 +381,11 @@ TEST_CASE_METHOD(
         rc = tiledb_array_schema_evolution_drop_attribute(
             ctx_, schema_evolution, attr_name.c_str());
         REQUIRE(rc == TILEDB_OK);
-        if (serialize_) {
-          // Set timestamp to avoid race condition
-          ts_open = tiledb_timestamp_now_ms();
-          ts_open = ts_open + 1;
-          rc = tiledb_array_schema_evolution_set_timestamp_range(
-              ctx_, schema_evolution, ts_open, ts_open);
-        }
+        // Set timestamp to avoid race condition
+        ts_open = tiledb_timestamp_now_ms();
+        ts_open = ts_open + 1;
+        rc = tiledb_array_schema_evolution_set_timestamp_range(
+            ctx_, schema_evolution, ts_open, ts_open);
         rc = tiledb_array_evolve(ctx_, array_name.c_str(), schema_evolution);
         REQUIRE(rc == TILEDB_OK);
 
@@ -404,14 +402,14 @@ TEST_CASE_METHOD(
         rc = tiledb_array_schema_evolution_drop_attribute(
             ctx_, schema_evolution2, "b");
         REQUIRE(rc == TILEDB_OK);
+        // Set timestamp to avoid race condition
+        ts_open = tiledb_timestamp_now_ms();
+        ts_open = ts_open + 2;
+        rc = tiledb_array_schema_evolution_set_timestamp_range(
+            ctx_, schema_evolution2, ts_open, ts_open);
         if (serialize_) {
-          // Set timestamp to avoid race condition
-          ts_open = tiledb_timestamp_now_ms();
-          ts_open = ts_open + 2;
-          rc = tiledb_array_schema_evolution_set_timestamp_range(
-              ctx_, schema_evolution2, ts_open, ts_open);
-          tiledb_buffer_t* buffer;
           // Serialize the array schema evolution
+          tiledb_buffer_t* buffer;
           rc = tiledb_serialize_array_schema_evolution(
               ctx_,
               schema_evolution2,
