@@ -64,7 +64,6 @@ commence(object_library baseline)
         heap_memory.cc
         memory_tracker.cc
         pmr.cc
-        polymorphic_allocator/polymorphic_allocator.cc
     )
     find_package(Spdlog_EP REQUIRED)
     find_package(Boost REQUIRED COMPONENTS container)
