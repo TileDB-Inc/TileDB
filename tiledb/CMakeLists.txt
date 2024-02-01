@@ -874,6 +874,15 @@ if (WIN32 AND BUILD_SHARED_LIBS)
     )
 endif()
 
+if(BUILD_SHARED_LIBS AND (CMAKE_SYSTEM_NAME STREQUAL "Linux" OR MINGW))
+  configure_file(
+          ${CMAKE_CURRENT_SOURCE_DIR}/../cmake/inputs/simple_version_script.map.in
+          ${CMAKE_CURRENT_BINARY_DIR}/simple_version_script.map
+          @ONLY
+  )
+  target_link_options(tiledb PRIVATE --version-script=${CMAKE_CURRENT_BINARY_DIR}/simple_version_script.map)
+endif()
+
 if (TILEDB_VERSION AND CMAKE_SYSTEM_NAME MATCHES "Linux")
   set_target_properties(tiledb
     PROPERTIES
