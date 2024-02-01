@@ -1,6 +1,7 @@
 {
     "builtin-baseline": "72010900b7cee36cea77aebb97695095c9358eaf",
     "dependencies": [
+        "boost-container",
         "bzip2",
         "libmagic",
         "lz4",
