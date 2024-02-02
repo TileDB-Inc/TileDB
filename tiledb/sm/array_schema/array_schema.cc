@@ -101,7 +101,8 @@ ArraySchema::ArraySchema(
     , cell_order_(Layout::ROW_MAJOR)
     , tile_order_(Layout::ROW_MAJOR)
     , capacity_(constants::capacity)
-    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES)) {
+    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -151,13 +152,17 @@ ArraySchema::ArraySchema(
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(dim_label_refs)
+    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_path_map_(enumeration_path_map)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
+  }
+
+  for (auto dim_label : dim_label_refs) {
+    dimension_labels_.push_back(dim_label);
   }
 
   array_schema_init(enumerations);
@@ -194,13 +199,17 @@ ArraySchema::ArraySchema(
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(dimension_labels)
+    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_path_map_(enumeration_path_map)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
+  }
+
+  for (auto dim_label : dimension_labels) {
+    dimension_labels_.push_back(dim_label);
   }
 
   array_schema_init(enumerations);
