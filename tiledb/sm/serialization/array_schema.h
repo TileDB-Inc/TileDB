@@ -111,7 +111,7 @@ Status array_schema_to_capnp(
  * @param uri A URI object
  * @return a new ArraySchema
  */
-ArraySchema array_schema_from_capnp(
+shared_ptr<ArraySchema> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
 
 /**
@@ -152,7 +152,7 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-ArraySchema array_schema_deserialize(
+shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(
@@ -204,7 +204,7 @@ void serialize_load_array_schema_response(
     SerializationType serialization_type,
     Buffer& data);
 
-ArraySchema deserialize_load_array_schema_response(
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type, const Buffer& data);
 
 }  // namespace serialization
