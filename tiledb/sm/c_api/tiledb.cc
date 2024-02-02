@@ -52,6 +52,7 @@
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -258,7 +259,9 @@ int32_t tiledb_array_schema_alloc(
 
   // Create a new ArraySchema object
   (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+      HERE(),
+      make_shared<tiledb::sm::MemoryTracker>(HERE()),
+      static_cast<tiledb::sm::ArrayType>(array_type));
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -3500,10 +3503,9 @@ int32_t tiledb_deserialize_array_schema(
   }
 
   try {
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(),
+    (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
-            (tiledb::sm::SerializationType)serialize_type, buffer->buffer()));
+            (tiledb::sm::SerializationType)serialize_type, buffer->buffer());
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;

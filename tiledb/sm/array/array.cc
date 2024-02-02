@@ -1354,7 +1354,7 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     last_max_buffer_sizes_.clear();
 
     // Get all attributes and coordinates
-    auto attributes = array_schema_latest().attributes();
+    auto& attributes = array_schema_latest().attributes();
     last_max_buffer_sizes_.clear();
     for (const auto& attr : attributes)
       last_max_buffer_sizes_[attr->name()] =

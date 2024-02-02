@@ -110,6 +110,7 @@ enum class MemoryType {
   TILE_MAX_VALS,
   TILE_SUMS,
   TILE_NULL_COUNTS,
+  ATTRIBUTES,
   ENUMERATION
 };
 

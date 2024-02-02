@@ -788,8 +788,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = make_shared<ArraySchema>(
-        HERE(), array_schema_from_capnp(schema_reader, URI()));
+    schema = array_schema_from_capnp(schema_reader, URI());
   }
 
   auto is_relative = dim_label_reader.getRelative();
@@ -914,7 +913,7 @@ Status array_schema_to_capnp(
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema array_schema_from_capnp(
+shared_ptr<ArraySchema> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
@@ -1127,7 +1126,9 @@ ArraySchema array_schema_from_capnp(
     name = schema_reader.getName().cStr();
   }
 
-  return ArraySchema(
+  return make_shared<ArraySchema>(
+      HERE(),
+      make_shared<MemoryTracker>(HERE()),
       uri_deserialized,
       version,
       timestamp_range,
@@ -1201,7 +1202,7 @@ Status array_schema_serialize(
   return Status::Ok();
 }
 
-ArraySchema array_schema_deserialize(
+shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type, const Buffer& serialized_buffer) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
@@ -1963,13 +1964,13 @@ void serialize_load_array_schema_response(
   }
 }
 
-ArraySchema load_array_schema_response_from_capnp(
+shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
     capnp::LoadArraySchemaResponse::Reader& reader) {
   auto schema_reader = reader.getSchema();
   return array_schema_from_capnp(schema_reader, URI());
 }
 
-ArraySchema deserialize_load_array_schema_response(
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type, const Buffer& data) {
   try {
     switch (serialization_type) {
@@ -2016,7 +2017,8 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType, const Buffer&) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2076,7 +2078,7 @@ void serialize_load_array_schema_response(
       "Cannot serialize; serialization not enabled.");
 }
 
-ArraySchema deserialize_load_array_schema_response(
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType, const Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");

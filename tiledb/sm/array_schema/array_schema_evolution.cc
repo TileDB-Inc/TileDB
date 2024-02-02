@@ -106,7 +106,7 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
         "Cannot evolve schema; Input array schema is null");
   }
 
-  auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
+  auto schema = ArraySchema::copy_with_new_memory_tracker(*orig_schema.get());
 
   // Add enumerations. Must be done before attributes so that any attributes
   // referencing enumerations won't fail to be added.
