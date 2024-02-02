@@ -102,7 +102,8 @@ ArraySchema::ArraySchema(
     , tile_order_(Layout::ROW_MAJOR)
     , capacity_(constants::capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS)) {
+    , dimension_labels_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -152,7 +153,8 @@ ArraySchema::ArraySchema(
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , dimension_labels_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_path_map_(enumeration_path_map)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
@@ -199,7 +201,8 @@ ArraySchema::ArraySchema(
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , dimension_labels_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_path_map_(enumeration_path_map)
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
