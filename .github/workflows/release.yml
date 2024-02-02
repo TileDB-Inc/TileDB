@@ -97,6 +97,8 @@ jobs:
             -DVCPKG_TARGET_TRIPLET=${{ matrix.triplet }} \
             ${{ matrix.cmake_args }}
         shell: bash
+      - name: Build TileDB
+        run: cmake --build build --config Release
       - name: Package Source TileDB
         run: |
           cd build/tiledb
