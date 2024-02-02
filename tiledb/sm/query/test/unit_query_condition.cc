@@ -61,7 +61,8 @@ TEST_CASE(
   REQUIRE(query_condition.empty());
   REQUIRE(query_condition.field_names().empty());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
   REQUIRE(
@@ -200,7 +201,8 @@ TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
                   QueryConditionOp::LT)
               .ok());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   shared_ptr<Attribute> attr =
       make_shared<Attribute>(HERE(), "blob_attr", Datatype::BLOB);
   REQUIRE(array_schema->add_attribute(attr).ok());
@@ -1568,7 +1570,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1629,7 +1632,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -1731,7 +1735,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2280,7 +2285,8 @@ void test_apply_dense<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2344,7 +2350,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -2450,7 +2457,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2979,7 +2987,8 @@ void test_apply_sparse<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -3043,7 +3052,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -3815,7 +3825,8 @@ TEST_CASE(
   const Datatype type = Datatype::UINT64;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
@@ -4100,7 +4111,8 @@ TEST_CASE(
   const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4454,7 +4466,8 @@ TEST_CASE(
   const Datatype type = Datatype::STRING_UTF8;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4776,7 +4789,8 @@ TEST_CASE(
   const Datatype type = Datatype::FLOAT32;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(true);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
@@ -4872,7 +4886,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
