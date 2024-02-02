@@ -1,5 +1,3 @@
-set(CPACK_SOURCE_IGNORE_FILES ".*\\.git;.*build.*")
-
 set(CPACK_PACKAGE_VENDOR "TileDB Inc.")
 set(CPACK_PACKAGE_VERSION "@TILEDB_VERSION@")
 

@@ -37,8 +37,8 @@ jobs:
         with:
           name: release
           path: |
-            build/tiledb-*.tar.gz
-            build/tiledb-*.zip
+            build/tiledb-*.tar.gz*
+            build/tiledb-*.zip*
 
   Package-Binary-Release:
     strategy:
@@ -124,8 +124,8 @@ jobs:
         with:
           name: release
           path: |
-            build/tiledb/tiledb-*.tar.gz
-            build/tiledb/tiledb-*.zip
+            build/tiledb/tiledb-*.tar.gz*
+            build/tiledb/tiledb-*.zip*
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
