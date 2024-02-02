@@ -37,7 +37,7 @@ jobs:
         with:
           name: release
           path: |
-            build/tiledb-*.tag.gz
+            build/tiledb-*.tar.gz
             build/tiledb-*.zip
 
   Package-Binary-Release:
@@ -124,7 +124,7 @@ jobs:
         with:
           name: release
           path: |
-            build/tiledb/tiledb-*.tag.gz
+            build/tiledb/tiledb-*.tar.gz
             build/tiledb/tiledb-*.zip
       - name: "Print log files (failed build only)"
         run: |
