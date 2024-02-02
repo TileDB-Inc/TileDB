@@ -20,7 +20,27 @@ on:
       - '*'
 
 jobs:
-  Build-Release:
+  Package-Source-Release:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04, windows-2022]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v3
+      - name: CMake Configure
+        run: cmake -S . -B build
+      - name: CPack Package Source
+        run: cd build && cpack --config CPackSourceConfig.cmake
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: |
+            build/tiledb-*.tag.gz
+            build/tiledb-*.zip
+
+  Package-Binary-Release:
     strategy:
       fail-fast: false
       matrix:
@@ -98,35 +118,27 @@ jobs:
             ${{ matrix.cmake_args }}
         shell: bash
       - name: Build TileDB
-        run: cmake --build build --config Release
-      - name: Package Source TileDB
-        run: |
-          cd build/tiledb
-          cpack --config CPackSourceConfig.cmake
-      - name: Package Binary TileDB
-        run: |
-          cd build/tiledb
-          cpack --config CPackConfig.cmake
+        run: cmake --build build --config Release --target package
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         with:
-          name: tiledb-dist
+          name: release
           path: |
-            build/tiledb-*.tag.gz
-            build/tiledb-*.zip
+            build/tiledb/tiledb-*.tag.gz
+            build/tiledb/tiledb-*.zip
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
-    needs: Build-Release
+    needs: Package-Binary-Release
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
-          name: tiledb-dist
+          name: release
           path: dist
       - name: Test names of release artifacts
         run: |
@@ -136,14 +148,16 @@ jobs:
           fi
 
   Publish-Release:
-    needs: Test-Release-Artifacts
+    needs:
+      - Test-Release-Artifacts
+      - Package-Source-Release
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v3
         with:
-          name: tiledb-dist
+          name: release
           path: dist
       - name: Publish release artifacts
         uses: actions/github-script@v6
