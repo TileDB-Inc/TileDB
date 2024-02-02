@@ -182,28 +182,32 @@ std::string MemoryTrackerManager::to_json() {
   std::lock_guard<std::mutex> lg(mutex_);
   nlohmann::json rv;
 
-  for (auto iter = trackers_.begin(); iter != trackers_.end(); ++iter) {
-    auto ptr = iter->lock();
-    if (ptr) {
-      nlohmann::json val;
-
-      // Set an distinguishing id
-      val["tracker_id"] = std::to_string(ptr->get_id());
-
-      // Mark the stats with the tracker type.
-      val["tracker_type"] = memory_tracker_type_to_str(ptr->get_type());
-
-      // Add memory stats
-      auto [total, by_type] = ptr->get_counts();
-      val["total_memory"] = total;
-      val["by_type"] = nlohmann::json::object();
-      for (auto& [type, count] : by_type) {
-        val["by_type"][memory_type_to_str(type)] = count;
-      }
-      rv.push_back(val);
-    } else {
-      trackers_.erase(iter);
+  size_t idx = 0;
+  while (idx < trackers_.size()) {
+    auto ptr = trackers_[idx].lock();
+    if (!ptr) {
+      trackers_.erase(trackers_.begin() + idx);
+      continue;
     }
+
+    nlohmann::json val;
+
+    // Set an distinguishing id
+    val["tracker_id"] = std::to_string(ptr->get_id());
+
+    // Mark the stats with the tracker type.
+    val["tracker_type"] = memory_tracker_type_to_str(ptr->get_type());
+
+    // Add memory stats
+    auto [total, by_type] = ptr->get_counts();
+    val["total_memory"] = total;
+    val["by_type"] = nlohmann::json::object();
+    for (auto& [type, count] : by_type) {
+      val["by_type"][memory_type_to_str(type)] = count;
+    }
+    rv.push_back(val);
+
+    idx++;
   }
 
   return rv.dump();
