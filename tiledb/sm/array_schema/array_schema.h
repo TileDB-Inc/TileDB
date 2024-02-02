@@ -713,7 +713,7 @@ class ArraySchema {
   std::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
+  tdb::pmr::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
   std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
