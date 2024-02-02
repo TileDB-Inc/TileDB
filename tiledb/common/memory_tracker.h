@@ -111,7 +111,8 @@ enum class MemoryType {
   TILE_SUMS,
   TILE_NULL_COUNTS,
   ATTRIBUTES,
-  ENUMERATION
+  ENUMERATION,
+  DIMENSION_LABELS
 };
 
 /** The type of MemoryTracker. */
