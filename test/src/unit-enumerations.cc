@@ -1189,7 +1189,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Enumeration - Enumeration nullptr Error",
     "[enumeration][array-schema][error]") {
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   REQUIRE_THROWS(schema->add_enumeration(nullptr));
 }
 
@@ -1197,7 +1198,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Basic Enumeration",
     "[enumeration][array-schema][basic]") {
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1520,7 +1522,7 @@ TEST_CASE_METHOD(
   array->load_all_enumerations();
 
   const auto& schema = array->array_schema_latest();
-  auto schema_ptr = ArraySchema::copy_with_new_memory_tracker(schema);
+  auto schema_ptr = schema.clone();
 
   auto enmr = create_empty_enumeration(Datatype::INT32, 1, false, "test_enmr");
 
@@ -1539,7 +1541,7 @@ TEST_CASE_METHOD(
   array->load_all_enumerations();
 
   const auto& schema = array->array_schema_latest();
-  auto schema_ptr = ArraySchema::copy_with_new_memory_tracker(schema);
+  auto schema_ptr = schema.clone();
   auto enmr1 = schema_ptr->get_enumeration("test_enmr");
 
   std::vector<std::string> extra_values = {"manatee", "narwhal", "oppossum"};

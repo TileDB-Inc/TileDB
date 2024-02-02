@@ -82,10 +82,6 @@ class ArraySchemaException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchema::ArraySchema()
-    : ArraySchema(make_shared<MemoryTracker>(HERE()), ArrayType::DENSE) {
-}
-
 ArraySchema::ArraySchema(
     shared_ptr<MemoryTracker> memory_tracker, ArrayType array_type)
     : memory_tracker_(memory_tracker)
@@ -167,59 +163,6 @@ ArraySchema::ArraySchema(
     dimension_labels_.push_back(dim_label);
   }
 
-  array_schema_init(enumerations);
-}
-
-ArraySchema::ArraySchema(
-    shared_ptr<MemoryTracker> memory_tracker,
-    URI uri,
-    uint32_t version,
-    std::pair<uint64_t, uint64_t> timestamp_range,
-    std::string name,
-    ArrayType array_type,
-    bool allows_dups,
-    shared_ptr<Domain> domain,
-    Layout cell_order,
-    Layout tile_order,
-    uint64_t capacity,
-    const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes,
-    std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
-    std::vector<shared_ptr<const Enumeration>> enumerations,
-    std::unordered_map<std::string, std::string> enumeration_path_map,
-    FilterPipeline cell_var_offsets_filters,
-    FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
-    : memory_tracker_(memory_tracker)
-    , uri_(uri)
-    , version_(version)
-    , timestamp_range_(timestamp_range)
-    , name_(name)
-    , array_type_(array_type)
-    , allows_dups_(allows_dups)
-    , domain_(domain)
-    , cell_order_(cell_order)
-    , tile_order_(tile_order)
-    , capacity_(capacity)
-    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , dimension_labels_(
-          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
-    , enumeration_path_map_(enumeration_path_map)
-    , cell_var_offsets_filters_(cell_var_offsets_filters)
-    , cell_validity_filters_(cell_validity_filters)
-    , coords_filters_(coords_filters) {
-  for (auto atr : attributes) {
-    attributes_.push_back(atr);
-  }
-
-  for (auto dim_label : dimension_labels) {
-    dimension_labels_.push_back(dim_label);
-  }
-
-  array_schema_init(enumerations);
-}
-
-void ArraySchema::array_schema_init(
-    std::vector<shared_ptr<const Enumeration>> enumerations) {
   // Create dimension map
   for (dimension_size_type d = 0; d < domain_->dim_num(); ++d) {
     auto dim{domain_->dimension_ptr(d)};
@@ -261,6 +204,43 @@ void ArraySchema::array_schema_init(
   }
 
   check_attribute_dimension_label_names();
+}
+
+ArraySchema::ArraySchema(const ArraySchema& array_schema)
+    : memory_tracker_{array_schema.memory_tracker_}
+    , uri_{array_schema.uri_}
+    , array_uri_{array_schema.array_uri_}
+    , version_{array_schema.version_}
+    , timestamp_range_{array_schema.timestamp_range_}
+    , name_{array_schema.name_}
+    , array_type_{array_schema.array_type_}
+    , allows_dups_{array_schema.allows_dups_}
+    , domain_{}   // copied below by `set_domain`
+    , dim_map_{}  // initialized in `set_domain`
+    , cell_order_{array_schema.cell_order_}
+    , tile_order_{array_schema.tile_order_}
+    , capacity_{array_schema.capacity_}
+    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_{array_schema.attribute_map_}
+    , dimension_labels_(memory_tracker_->get_resource(
+          MemoryType::DIMENSION_LABELS))  // copied in loop below
+    , dimension_label_map_{}              // initialized below
+    , enumeration_map_{array_schema.enumeration_map_}
+    , enumeration_path_map_{array_schema.enumeration_path_map_}
+    , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
+    , cell_validity_filters_{array_schema.cell_validity_filters_}
+    , coords_filters_{array_schema.coords_filters_}
+    , mtx_{} {
+  for (auto atr : array_schema.attributes_) {
+    attributes_.push_back(atr);
+  }
+
+  throw_if_not_ok(set_domain(array_schema.domain_));
+
+  for (const auto& label : array_schema.dimension_labels_) {
+    dimension_labels_.emplace_back(label);
+    dimension_label_map_[label->name()] = label.get();
+  }
 }
 
 /* ****************************** */
@@ -1451,37 +1431,8 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
           version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
 }
 
-shared_ptr<ArraySchema> ArraySchema::copy_with_new_memory_tracker(
-    const ArraySchema& array_schema) {
-  auto ptr = make_shared<ArraySchema>(HERE());
-
-  ptr->uri_ = array_schema.uri_;
-  ptr->array_uri_ = array_schema.array_uri_;
-  ptr->version_ = array_schema.version_;
-  ptr->timestamp_range_ = array_schema.timestamp_range_;
-  ptr->name_ = array_schema.name_;
-  ptr->array_type_ = array_schema.array_type_;
-  ptr->allows_dups_ = array_schema.allows_dups_;
-  ptr->cell_order_ = array_schema.cell_order_;
-  ptr->tile_order_ = array_schema.tile_order_;
-  ptr->capacity_ = array_schema.capacity_;
-  for (auto& atr : array_schema.attributes_) {
-    ptr->attributes_.push_back(atr);
-  }
-  ptr->attribute_map_ = array_schema.attribute_map_;
-  ptr->enumeration_map_ = array_schema.enumeration_map_;
-  ptr->enumeration_path_map_ = array_schema.enumeration_path_map_;
-  ptr->cell_var_offsets_filters_ = array_schema.cell_var_offsets_filters_;
-  ptr->cell_validity_filters_ = array_schema.cell_validity_filters_;
-  ptr->coords_filters_ = array_schema.coords_filters_;
-
-  throw_if_not_ok(ptr->set_domain(array_schema.domain_));
-  for (const auto& label : array_schema.dimension_labels_) {
-    ptr->dimension_labels_.emplace_back(label);
-    ptr->dimension_label_map_[label->name()] = label.get();
-  }
-
-  return ptr;
+shared_ptr<ArraySchema> ArraySchema::clone() const {
+  return make_shared<ArraySchema>(HERE(), *this);
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {
