@@ -269,11 +269,10 @@ Status array_from_capnp(
     if (all_schemas_reader.hasEntries()) {
       auto entries = array_reader.getArraySchemasAll().getEntries();
       for (auto array_schema_build : entries) {
-        auto schema{array_schema_from_capnp(
-            array_schema_build.getValue(), array->array_uri())};
-        schema.set_array_uri(array->array_uri());
-        all_schemas[array_schema_build.getKey()] =
-            make_shared<ArraySchema>(HERE(), schema);
+        auto schema = array_schema_from_capnp(
+            array_schema_build.getValue(), array->array_uri());
+        schema->set_array_uri(array->array_uri());
+        all_schemas[array_schema_build.getKey()] = schema;
       }
     }
     array->set_array_schemas_all(std::move(all_schemas));
@@ -283,9 +282,8 @@ Status array_from_capnp(
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
         array_schema_latest_reader, array->array_uri())};
-    array_schema_latest.set_array_uri(array->array_uri());
-    array->set_array_schema_latest(
-        make_shared<ArraySchema>(HERE(), array_schema_latest));
+    array_schema_latest->set_array_uri(array->array_uri());
+    array->set_array_schema_latest(array_schema_latest);
   }
 
   // Deserialize array directory

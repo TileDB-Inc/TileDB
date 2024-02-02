@@ -36,6 +36,7 @@
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -117,7 +118,9 @@ int32_t tiledb_filestore_schema_create(
     // create copies of the underlying core objects from within
     // the cpp objects constructed here
     (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(), tiledb::sm::ArrayType::DENSE);
+        HERE(),
+        make_shared<tiledb::sm::MemoryTracker>(HERE()),
+        tiledb::sm::ArrayType::DENSE);
     auto& schema = (*array_schema)->array_schema_;
 
     // Define the range of the dimension.

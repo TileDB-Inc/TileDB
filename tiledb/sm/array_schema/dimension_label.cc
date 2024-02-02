@@ -139,6 +139,7 @@ DimensionLabel::DimensionLabel(
           label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
     , schema_(make_shared<ArraySchema>(
           HERE(),
+          make_shared<MemoryTracker>(HERE()),
           label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
                                                      ArrayType::DENSE))
     , is_external_(false)

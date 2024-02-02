@@ -239,10 +239,8 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
       ensure_json_null_delimited_string(&returned_data), nullopt);
   return {
       Status::Ok(),
-      make_shared<ArraySchema>(
-          HERE(),
-          serialization::array_schema_deserialize(
-              serialization_type_, returned_data))};
+      serialization::array_schema_deserialize(
+          serialization_type_, returned_data)};
 }
 
 shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
@@ -289,10 +287,8 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
-  return make_shared<ArraySchema>(
-      HERE(),
-      serialization::deserialize_load_array_schema_response(
-          serialization_type_, returned_data));
+  return serialization::deserialize_load_array_schema_response(
+      serialization_type_, returned_data);
 }
 
 Status RestClient::post_array_schema_to_rest(
