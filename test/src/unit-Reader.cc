@@ -38,6 +38,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/legacy/reader.h"
@@ -246,7 +247,8 @@ TEST_CASE_METHOD(
   CHECK(dom->add_dimension(d1).ok());
   CHECK(dom->add_dimension(d2).ok());
 
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(
+      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;

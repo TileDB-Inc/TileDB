@@ -93,7 +93,7 @@ class ArraySchema {
   /* ********************************* */
 
   /** Constructor. */
-  ArraySchema();
+  ArraySchema() = delete;
 
   /** Constructor.
    * @param memory_tracker The memory tracker of the array this fragment
@@ -144,50 +144,14 @@ class ArraySchema {
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters);
 
-  /** Constructor with pmr vector attributes.
-   * @param memory_tracker The memory tracker of the array this fragment
-   *     metadata corresponds to.
-   * @param uri The URI of the array schema file.
-   * @param version The format version of this array schema.
-   * @param timestamp_range The timestamp the array schema was written.
-   * @param name The file name of the schema in timestamp_timestamp_uuid format.
-   * @param array_type The array type.
-   * @param allows_dups True if the (sparse) array allows coordinate duplicates.
-   * @param domain The array domain.
-   * @param cell_order The cell order.
-   * @param tile_order The tile order.
-   * @param capacity The tile capacity for the case of sparse fragments.
-   * @param attributes The array attributes.
-   * @param dimension_labels The array dimension labels.
-   * @param enumerations The array enumerations
-   * @param enumeration_path_map The array enumeration path map
-   * @param cell_var_offsets_filters
-   *    The filter pipeline run on offset tiles for var-length attributes.
-   * @param cell_validity_filters
-   *    The filter pipeline run on validity tiles for nullable attributes.
-   * @param coords_filters The filter pipeline run on coordinate tiles.
-   **/
-  ArraySchema(
-      shared_ptr<MemoryTracker> memory_tracker,
-      URI uri,
-      uint32_t version,
-      std::pair<uint64_t, uint64_t> timestamp_range,
-      std::string name,
-      ArrayType array_type,
-      bool allows_dups,
-      shared_ptr<Domain> domain,
-      Layout cell_order,
-      Layout tile_order,
-      uint64_t capacity,
-      const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes,
-      std::vector<shared_ptr<const DimensionLabel>> dimension_labels,
-      std::vector<shared_ptr<const Enumeration>> enumerations,
-      std::unordered_map<std::string, std::string> enumeration_path_map,
-      FilterPipeline cell_var_offsets_filters,
-      FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+  /**
+   * Copy constructor. Clones the input.
+   *
+   * @param array_schema The array schema to copy.
+   */
+  ArraySchema(const ArraySchema& array_schema);
 
-  DISABLE_COPY_AND_COPY_ASSIGN(ArraySchema);
+  DISABLE_COPY_ASSIGN(ArraySchema);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ArraySchema);
 
   /** Destructor. */
@@ -518,8 +482,7 @@ class ArraySchema {
       Deserializer& deserializer, const URI& uri);
 
   // TODO: DOCS
-  static shared_ptr<ArraySchema> copy_with_new_memory_tracker(
-      const ArraySchema& array_schema);
+  shared_ptr<ArraySchema> clone() const;
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -775,10 +738,6 @@ class ArraySchema {
 
   /** Clears all members. Use with caution! */
   void clear();
-
-  /** ArraySchema initialization function that does auxiliary processing. */
-  void array_schema_init(
-      std::vector<shared_ptr<const Enumeration>> enumerations);
 };
 
 }  // namespace sm

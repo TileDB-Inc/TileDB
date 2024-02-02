@@ -40,6 +40,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -401,7 +402,8 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   CHECK(dim->set_domain(dim_dom).ok());
   auto domain{make_shared<tiledb::sm::Domain>(HERE())};
   CHECK(domain->add_dimension(dim).ok());
-  tiledb::sm::ArraySchema schema;
+  tiledb::sm::ArraySchema schema(
+      make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
@@ -526,7 +528,8 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   CHECK(dim->set_domain(dim_dom).ok());
   auto domain{make_shared<tiledb::sm::Domain>(HERE())};
   CHECK(domain->add_dimension(dim).ok());
-  tiledb::sm::ArraySchema schema;
+  tiledb::sm::ArraySchema schema(
+      make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
