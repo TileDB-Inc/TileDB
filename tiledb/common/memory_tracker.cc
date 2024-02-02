@@ -183,7 +183,7 @@ std::string MemoryTrackerManager::to_json() {
   nlohmann::json rv;
 
   size_t idx = 0;
-  while(idx < trackers_.size()) {
+  while (idx < trackers_.size()) {
     auto ptr = trackers_[idx].lock();
     if (!ptr) {
       trackers_.erase(trackers_.begin() + idx);
