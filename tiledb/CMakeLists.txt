@@ -1062,7 +1062,7 @@ set (CPACK_PROJECT_CONFIG_FILE
         "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
 
 # Not all options can be set in CustomCPackOptions.cmake
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
+if (CMAKE_SYSTEM_NAME STREQUAL "Windows")
   set(CPACK_SOURCE_GENERATOR "ZIP")
   set(CPACK_GENERATOR "ZIP")
 else()
@@ -1078,9 +1078,9 @@ if(NOT ${COMPILER_SUPPORTS_AVX2})
 endif()
 
 # Properly set system name and architecture
-if(${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
+if(CMAKE_SYSTEM_NAME STREQUAL "Darwin")
   set(CPACK_SYSTEM_NAME "MacOS")
-  if("${CMAKE_OSX_ARCHITECTURES}" STREQUAL "arm64")
+  if(CMAKE_OSX_ARCHITECTURES STREQUAL "arm64")
     set(CPACK_SYSTEM_PROCESSOR ${CMAKE_OSX_ARCHITECTURES})
   else()
     set(CPACK_SYSTEM_PROCESSOR ${CMAKE_SYSTEM_PROCESSOR})
