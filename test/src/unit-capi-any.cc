@@ -34,6 +34,7 @@
 #include <test/support/src/helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
+#include <test/support/src/vfs_helpers.h>
 
 #include <cstring>
 #include <iostream>
@@ -44,11 +45,7 @@ struct AnyFx {
   const float C3 = 1.2f;
   const double C4 = 2.3;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  tiledb::test::ServerQueryBuffers server_buffers_;
+  tiledb::test::VFSTestSetup vfs_test_setup_{"foo"};
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
@@ -58,8 +55,7 @@ struct AnyFx {
 
 // Create a simple dense 1D array
 void AnyFx::create_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
@@ -113,12 +109,10 @@ void AnyFx::create_array(const std::string& array_name) {
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-  tiledb_ctx_free(&ctx);
 }
 
 void AnyFx::write_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
@@ -170,18 +164,10 @@ void AnyFx::write_array(const std::string& array_name) {
       ctx, query, attributes[0], (uint64_t*)buffers[0], &buffer_sizes[0]);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb::test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
-  // Second finalize must create no problem
-  rc =
-      tiledb::test::finalize_query_wrapper(ctx, array_name, &query, serialize_);
-  REQUIRE(rc == TILEDB_OK);
+  // Calling finalize on a Global order write query is not allowed
+  REQUIRE_THROWS(tiledb_query_finalize(ctx, query));
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -190,12 +176,10 @@ void AnyFx::write_array(const std::string& array_name) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void AnyFx::read_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
@@ -230,13 +214,9 @@ void AnyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb::test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx, query);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -264,14 +244,13 @@ void AnyFx::read_array(const std::string& array_name) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
   delete[] buffer_a1_off;
   delete[] buffer_a1_val;
 }
 
 void AnyFx::delete_array(const std::string& array_name) {
   // Create TileDB context
-  tiledb_ctx_t* ctx;
+  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
   int rc = tiledb_ctx_alloc(NULL, &ctx);
   REQUIRE(rc == TILEDB_OK);
 
@@ -283,23 +262,10 @@ void AnyFx::delete_array(const std::string& array_name) {
     rc = tiledb_object_remove(ctx, array_name.c_str());
     REQUIRE(rc == TILEDB_OK);
   }
-
-  // Clean up
-  tiledb_ctx_free(&ctx);
 }
 
-TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  std::string array_name = "foo";
+TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any][rest-fails][sc-40489]") {
+  auto array_name = vfs_test_setup_.array_uri;
   delete_array(array_name);
   create_array(array_name);
   write_array(array_name);

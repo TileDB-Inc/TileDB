@@ -417,7 +417,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
   }
 }
 
-TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest-fails]") {
+TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest-fails][sc-40479]") {
   tiledb::test::VFSTestSetup vfs_test_setup{"cpp_unit_array_1d"};
   Context ctx = vfs_test_setup.ctx;
   auto array_uri = vfs_test_setup.array_uri;
@@ -506,7 +506,6 @@ TEST_CASE("C++ API: Zero length buffer", "[cppapi][zero-length][rest-fails]") {
     std::vector<uint64_t> b(3);
 
     a.reserve(10);
-    // The following line makes the test fail on REST-CI.
     a = {};
     const std::vector<int> subarray = {0, 2};
     Query q(ctx, array, TILEDB_READ);
