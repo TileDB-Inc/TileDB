@@ -2187,7 +2187,7 @@ Status Subarray::compute_est_result_size(
   const auto& array_schema = array_->array_schema_latest();
   auto attribute_num = array_schema.attribute_num();
   auto dim_num = array_schema.dim_num();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   auto num = attribute_num + dim_num + 1;
   auto range_num = this->range_num();
 

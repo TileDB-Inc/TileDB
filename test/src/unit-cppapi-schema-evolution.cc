@@ -808,7 +808,9 @@ TEST_CASE(
   ase->set_timestamp_range(std::make_pair(1, 1));
 
   auto schema = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), tiledb::sm::ArrayType::SPARSE);
+      HERE(),
+      make_shared<tiledb::sm::MemoryTracker>(HERE()),
+      tiledb::sm::ArrayType::SPARSE);
   auto dim = make_shared<tiledb::sm::Dimension>(
       HERE(), "dim1", tiledb::sm::Datatype::INT32);
   int range[2] = {0, 1000};

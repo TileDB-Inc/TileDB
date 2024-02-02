@@ -1320,7 +1320,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
 
   const unsigned idx = iter->second;
 
-  auto attributes = array_schema_->attributes();
+  auto& attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
@@ -4665,7 +4665,7 @@ const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
 void FragmentMetadata::build_idx_map() {
   idx_map_.clear();
 
-  auto attributes = array_schema_->attributes();
+  auto& attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     auto attr_name = attributes[i]->name();
     idx_map_[attr_name] = i;
