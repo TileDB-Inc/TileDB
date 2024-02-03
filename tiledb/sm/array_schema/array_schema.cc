@@ -94,12 +94,19 @@ ArraySchema::ArraySchema(
     , array_type_(array_type)
     , allows_dups_(false)
     , domain_(nullptr)
+    , dim_map_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , cell_order_(Layout::ROW_MAJOR)
     , tile_order_(Layout::ROW_MAJOR)
     , capacity_(constants::capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
     , dimension_labels_(
-          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS)) {
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -145,13 +152,19 @@ ArraySchema::ArraySchema(
     , array_type_(array_type)
     , allows_dups_(allows_dups)
     , domain_(domain)
+    , dim_map_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , cell_order_(cell_order)
     , tile_order_(tile_order)
     , capacity_(capacity)
     , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
     , dimension_labels_(
           memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
-    , enumeration_path_map_(enumeration_path_map)
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
@@ -161,6 +174,10 @@ ArraySchema::ArraySchema(
 
   for (auto dim_label : dim_label_refs) {
     dimension_labels_.push_back(dim_label);
+  }
+
+  for (auto& elem : enumeration_path_map) {
+    enumeration_path_map_.insert(elem);
   }
 
   // Create dimension map
@@ -215,26 +232,32 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , name_{array_schema.name_}
     , array_type_{array_schema.array_type_}
     , allows_dups_{array_schema.allows_dups_}
-    , domain_{}   // copied below by `set_domain`
-    , dim_map_{}  // initialized in `set_domain`
+    , domain_{}  // copied below by `set_domain`
+    , dim_map_(memory_tracker_->get_resource(
+          MemoryType::DIMENSIONS))  // initialized in `set_domain`
     , cell_order_{array_schema.cell_order_}
     , tile_order_{array_schema.tile_order_}
     , capacity_{array_schema.capacity_}
-    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
-    , attribute_map_{array_schema.attribute_map_}
+    , attributes_(
+          array_schema.attributes_,
+          memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(
+          array_schema.attribute_map_,
+          memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
     , dimension_labels_(memory_tracker_->get_resource(
           MemoryType::DIMENSION_LABELS))  // copied in loop below
-    , dimension_label_map_{}              // initialized below
-    , enumeration_map_{array_schema.enumeration_map_}
-    , enumeration_path_map_{array_schema.enumeration_path_map_}
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(
+          array_schema.enumeration_map_,
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          array_schema.enumeration_path_map_,
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
     , mtx_{} {
-  for (auto atr : array_schema.attributes_) {
-    attributes_.push_back(atr);
-  }
-
   throw_if_not_ok(set_domain(array_schema.domain_));
 
   for (const auto& label : array_schema.dimension_labels_) {
