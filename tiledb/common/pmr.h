@@ -44,6 +44,7 @@
 // #error Missing memory_resources header.
 // #endif
 
+#include <unordered_map>
 #include <vector>
 
 #include <boost/container/pmr/memory_resource.hpp>
@@ -56,6 +57,9 @@ namespace tiledb::common::pmr {
 
 using memory_resource = boost::container::pmr::memory_resource;
 
+/* ********************************* */
+/*       PMR VECTOR DECLARATION      */
+/* ********************************* */
 template <class Tp>
 using pmr_vector =
     std::vector<Tp, boost::container::pmr::polymorphic_allocator<Tp>>;
@@ -129,6 +133,157 @@ class vector : public pmr_vector<Tp> {
 
   constexpr vector(std::initializer_list<Tp> init, const allocator_type& alloc)
       : pmr_vector<Tp>(init, alloc) {
+  }
+};
+
+/* ********************************* */
+/*   PMR UNORDERED MAP DECLARATION   */
+/* ********************************* */
+template <
+    class Key,
+    class T,
+    class Hash = std::hash<Key>,
+    class KeyEqual = std::equal_to<Key>>
+using pmr_unordered_map = std::unordered_map<
+    Key,
+    T,
+    Hash,
+    KeyEqual,
+    boost::container::pmr::polymorphic_allocator<std::pair<const Key, T>>>;
+
+template <
+    class Key,
+    class T,
+    class Hash = std::hash<Key>,
+    class KeyEqual = std::equal_to<Key>>
+class unordered_map : public pmr_unordered_map<Key, T, Hash, KeyEqual> {
+  // Type declarations.
+  using key_type = typename pmr_unordered_map<Key, T, Hash, KeyEqual>::key_type;
+  using mapped_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::mapped_type;
+  using value_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::value_type;
+  using size_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::size_type;
+  using difference_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::difference_type;
+  using hasher = typename pmr_unordered_map<Key, T, Hash, KeyEqual>::hasher;
+  using key_equal =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::key_equal;
+  using allocator_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::allocator_type;
+  using reference =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::reference;
+  using const_reference =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::const_reference;
+  using pointer = typename pmr_unordered_map<Key, T, Hash, KeyEqual>::pointer;
+  using const_pointer =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::const_pointer;
+  using iterator = typename pmr_unordered_map<Key, T, Hash, KeyEqual>::iterator;
+  using const_iterator =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::const_iterator;
+  using local_iterator =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::local_iterator;
+  using node_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::node_type;
+  using insert_return_type =
+      typename pmr_unordered_map<Key, T, Hash, KeyEqual>::insert_return_type;
+
+  constexpr unordered_map() = delete;
+  constexpr unordered_map(const unordered_map& other) = delete;
+  constexpr unordered_map(unordered_map&& other) = delete;
+
+  constexpr explicit unordered_map(
+      size_type bucket_count,
+      const Hash& hash,
+      const key_equal& equal,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            bucket_count, hash, equal, alloc) {
+  }
+
+  constexpr unordered_map(size_type bucket_count, const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            bucket_count, Hash(), KeyEqual(), alloc) {
+  }
+
+  constexpr unordered_map(
+      size_type bucket_count, const Hash& hash, const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            bucket_count, hash, KeyEqual(), alloc) {
+  }
+
+  constexpr explicit unordered_map(const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(alloc) {
+  }
+
+  template <class InputIt>
+  constexpr unordered_map(
+      InputIt first,
+      InputIt last,
+      size_type bucket_count,
+      const Hash& hash,
+      const key_equal& equal,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            first, last, bucket_count, hash, equal, alloc) {
+  }
+
+  template <class InputIt>
+  constexpr unordered_map(
+      InputIt first,
+      InputIt last,
+      size_type bucket_count,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            first, last, bucket_count, Hash(), KeyEqual(), alloc) {
+  }
+
+  template <class InputIt>
+  constexpr unordered_map(
+      InputIt first,
+      InputIt last,
+      size_type bucket_count,
+      const Hash& hash,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            first, last, bucket_count, hash, KeyEqual(), alloc) {
+  }
+
+  constexpr unordered_map(
+      const unordered_map& other, const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(other, alloc) {
+  }
+
+  constexpr unordered_map(unordered_map&& other, const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(other, alloc) {
+  }
+
+  constexpr unordered_map(
+      std::initializer_list<value_type> init,
+      size_type bucket_count,
+      const Hash& hash,
+      const key_equal& equal,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            init, bucket_count, hash, equal, alloc) {
+  }
+
+  constexpr unordered_map(
+      std::initializer_list<value_type> init,
+      size_type bucket_count,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            init, bucket_count, Hash(), KeyEqual(), alloc) {
+  }
+
+  constexpr unordered_map(
+      std::initializer_list<value_type> init,
+      size_type bucket_count,
+      const Hash& hash,
+      const allocator_type& alloc)
+      : pmr_unordered_map<Key, T, Hash, KeyEqual>(
+            init, bucket_count, hash, KeyEqual(), alloc) {
   }
 };
 
