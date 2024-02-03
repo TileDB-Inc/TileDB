@@ -626,7 +626,7 @@ class ArraySchema {
   shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  tdb::pmr::unordered_map<std::string, const Dimension*> dim_map_;
 
   /**
    * The cell order. It can be one of the following:
@@ -673,20 +673,21 @@ class ArraySchema {
    * Invariant: The number of entries in `attribute_map_` is the same as the
    *   number of entries in `attributes_`
    */
-  std::unordered_map<std::string, attribute_reference> attribute_map_;
+  tdb::pmr::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
   tdb::pmr::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
+  tdb::pmr::unordered_map<std::string, const DimensionLabel*>
+      dimension_label_map_;
 
   /** A map of Enumeration names to Enumeration pointers. */
-  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumeration_map_;
 
   /** A map of Enumeration names to Enumeration URIs */
-  std::unordered_map<std::string, std::string> enumeration_path_map_;
+  tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;

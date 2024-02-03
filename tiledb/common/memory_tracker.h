@@ -55,7 +55,9 @@ enum class MemoryType {
   TILE_NULL_COUNTS,
   ATTRIBUTES,
   ENUMERATION,
-  DIMENSION_LABELS
+  ENUMERATION_PATHS,
+  DIMENSION_LABELS,
+  DIMENSIONS
 };
 
 enum class MemoryTrackerType {
