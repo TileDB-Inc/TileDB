@@ -157,6 +157,7 @@ template <
     class Hash = std::hash<Key>,
     class KeyEqual = std::equal_to<Key>>
 class unordered_map : public pmr_unordered_map<Key, T, Hash, KeyEqual> {
+ public:
   // Type declarations.
   using key_type = typename pmr_unordered_map<Key, T, Hash, KeyEqual>::key_type;
   using mapped_type =
