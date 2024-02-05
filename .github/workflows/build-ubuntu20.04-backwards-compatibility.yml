@@ -74,6 +74,12 @@ jobs:
       - name: Update tiledb_unit permissions
         run: chmod +x $GITHUB_WORKSPACE/build/tiledb/test/tiledb_unit
 
+      - name: Free disk space
+        run: |
+          sudo swapoff -a
+          sudo rm -f /swapfile
+          sudo apt clean
+
       - name: 'Test backward compatibility'
         id: test
         env:
