@@ -43,6 +43,7 @@
 * Add packaging tests into linux and mac CI pipelines. [#4567](https://github.com/TileDB-Inc/TileDB/pull/4567)
 * Add vcpkg triplets for Address Sanitizer. [#4515](https://github.com/TileDB-Inc/TileDB/pull/4515)
 * Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+* Fix importing TileDB in CMake versions prior to 3.18. [#4671](https://github.com/TileDB-Inc/TileDB/pull/4671)
 
 # TileDB v2.19.0 Release Notes
 
