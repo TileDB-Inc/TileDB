@@ -27,13 +27,6 @@
 #
 
 ############################################################
-# CMake policies
-############################################################
-
-# C++ library, allow the VISIBLITY_PRESET for each c++ target to work
-cmake_policy(SET CMP0063 NEW)
-
-############################################################
 # Find packages needed for object libraries
 ############################################################
 
@@ -184,7 +177,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/group_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/curl/curl_init.cc
