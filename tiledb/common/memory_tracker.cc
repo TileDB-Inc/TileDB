@@ -159,6 +159,13 @@ uint64_t MemoryTracker::generate_id() {
 }
 
 shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
+  class MemoryTrackerCreator : public MemoryTracker {
+   public:
+    MemoryTrackerCreator()
+        : MemoryTracker() {
+    }
+  };
+
   std::lock_guard<std::mutex> lg(mutex_);
 
   // Delete any expired weak_ptr instances
@@ -172,7 +179,7 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
   }
 
   // Create a new tracker
-  auto ret = make_shared<MemoryTracker>(HERE());
+  auto ret = make_shared<MemoryTrackerCreator>(HERE());
   trackers_.emplace(trackers_.begin(), ret);
 
   return ret;

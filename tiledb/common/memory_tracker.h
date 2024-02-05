@@ -98,15 +98,6 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
 
 class MemoryTracker {
  public:
-  /** Constructor. */
-  MemoryTracker()
-      : memory_usage_(0)
-      , memory_budget_(std::numeric_limits<uint64_t>::max())
-      , id_(generate_id())
-      , type_(MemoryTrackerType::ANONYMOUS)
-      , upstream_(tdb::pmr::get_default_resource())
-      , total_counter_(0){};
-
   /** Destructor. */
   ~MemoryTracker();
 
@@ -218,6 +209,29 @@ class MemoryTracker {
     std::lock_guard<std::mutex> lg(mutex_);
     return memory_budget_;
   }
+
+ protected:
+  /**
+   * Constructor.
+   *
+   * This constructor is protected on purpose to discourage creating instances
+   * of this class that aren't connected to a ContextResources. When writing
+   * library code, you should almost always be using an existing instance of
+   * a MemoryTracker from the places those exist, i.e., on an Array, Query,
+   * or in the Consolidator. Occasionally, we'll need to create new instances
+   * for specific reasons. In those cases you need to have a reference to the
+   * ContextResources to call ContextResource::create_memory_tracker().
+   *
+   * For tests that need to have a temporary MemoryTracker instance, there is
+   * a `create_test_memory_tracker()` API available in the test support library.
+   */
+  MemoryTracker()
+      : memory_usage_(0)
+      , memory_budget_(std::numeric_limits<uint64_t>::max())
+      , id_(generate_id())
+      , type_(MemoryTrackerType::ANONYMOUS)
+      , upstream_(tdb::pmr::get_default_resource())
+      , total_counter_(0){};
 
  private:
   /** Protects all non-atomic member variables. */

@@ -254,7 +254,7 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        make_shared<MemoryTracker>(HERE()),
+        create_test_memory_tracker(),
         schema,
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
