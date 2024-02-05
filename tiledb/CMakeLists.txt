@@ -835,6 +835,15 @@ endif()
 # the value of the BUILD_SHARED_LIBS variable.
 add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
+# Export the target as either tiledb_shared or tiledb_static for compatibility.
+# The exported config will create the unified tiledb target that links to either
+# of them.
+if(BUILD_SHARED_LIBS)
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_shared)
+else()
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_static)
+endif()
+
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
