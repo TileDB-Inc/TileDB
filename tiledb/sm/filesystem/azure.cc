@@ -61,11 +61,11 @@ namespace sm {
 /* ********************************* */
 
 Azure::Azure(const Config& config, ThreadPool* thread_pool)
-    : write_cache_max_size_(0)
+    : thread_pool_(thread_pool)
+    , write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , block_list_block_size_(0)
     , use_block_list_upload_(false)
-    , thread_pool_(thread_pool)
     , ssl_cfg_(config) {
   if (thread_pool == nullptr) {
     throw std::invalid_argument("Can't initialize with null thread pool.");
@@ -1131,7 +1131,7 @@ std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
 #else
 #include <azure/core/http/curl_transport.hpp>
 std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
-    tiledb::sm::SSLConfig& ssl_cfg) {
+    const tiledb::sm::SSLConfig& ssl_cfg) {
   ::Azure::Core::Http::CurlTransportOptions transport_opts;
 
   if (!ssl_cfg.ca_file().empty()) {
