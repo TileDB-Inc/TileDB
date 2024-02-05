@@ -302,30 +302,25 @@ TEST_CASE_METHOD(
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
     std::string array_name = temp_dir;
+    std::string attr_name = "a";
     // serialization is not supported for memfs arrays
     if (serialize_ &&
         tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
       continue;
     }
 
-    std::string attr_name = "a";
-
     // Create new TileDB context with file lock config disabled, rest the
     // same.
     tiledb_ctx_free(&ctx_);
     tiledb_vfs_free(&vfs_);
-
     tiledb_config_t* config = nullptr;
     tiledb_error_t* error = nullptr;
     REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
     REQUIRE(error == nullptr);
-
     REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
-
     tiledb_config_free(&config);
 
     create_temp_dir(temp_dir);
-
     create_dense_vector(array_name, attr_name, datatype);
 
     // Prepare cell buffers
@@ -366,12 +361,92 @@ TEST_CASE_METHOD(
     tiledb_array_free(&array);
     tiledb_query_free(&query);
 
+    uint64_t ts_open = 0;
+    if (datatype == TILEDB_BLOB) {
+      // For the BLOB datatype, test with and without schema evolution.
+      auto evolve = GENERATE(true, false);
+      if (evolve) {
+        // Ensure the BLOB type can evolve to both GEOM types.
+        auto new_type = GENERATE(TILEDB_GEOM_WKB, TILEDB_GEOM_WKT);
+        // Add a second attribute on the schema and drop the original.
+        tiledb_array_schema_evolution_t* schema_evolution;
+        rc = tiledb_array_schema_evolution_alloc(ctx_, &schema_evolution);
+        REQUIRE(rc == TILEDB_OK);
+        tiledb_attribute_t* b;
+        rc = tiledb_attribute_alloc(ctx_, "b", TILEDB_BLOB, &b);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_array_schema_evolution_add_attribute(
+            ctx_, schema_evolution, b);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_array_schema_evolution_drop_attribute(
+            ctx_, schema_evolution, attr_name.c_str());
+        REQUIRE(rc == TILEDB_OK);
+        // Set timestamp to avoid race condition
+        ts_open = tiledb_timestamp_now_ms();
+        ts_open = ts_open + 1;
+        rc = tiledb_array_schema_evolution_set_timestamp_range(
+            ctx_, schema_evolution, ts_open, ts_open);
+        rc = tiledb_array_evolve(ctx_, array_name.c_str(), schema_evolution);
+        REQUIRE(rc == TILEDB_OK);
+
+        // Add back the original attribute as new_type and drop "b".
+        tiledb_array_schema_evolution_t* schema_evolution2;
+        rc = tiledb_array_schema_evolution_alloc(ctx_, &schema_evolution2);
+        REQUIRE(rc == TILEDB_OK);
+        tiledb_attribute_t* attr;
+        rc = tiledb_attribute_alloc(ctx_, attr_name.c_str(), new_type, &attr);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_array_schema_evolution_add_attribute(
+            ctx_, schema_evolution2, attr);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_array_schema_evolution_drop_attribute(
+            ctx_, schema_evolution2, "b");
+        REQUIRE(rc == TILEDB_OK);
+        // Set timestamp to avoid race condition
+        ts_open = tiledb_timestamp_now_ms();
+        ts_open = ts_open + 2;
+        rc = tiledb_array_schema_evolution_set_timestamp_range(
+            ctx_, schema_evolution2, ts_open, ts_open);
+        if (serialize_) {
+          // Serialize the array schema evolution
+          tiledb_buffer_t* buffer;
+          rc = tiledb_serialize_array_schema_evolution(
+              ctx_,
+              schema_evolution2,
+              (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+              0,
+              &buffer);
+          REQUIRE(rc == TILEDB_OK);
+          rc = tiledb_deserialize_array_schema_evolution(
+              ctx_,
+              buffer,
+              (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+              1,
+              &schema_evolution2);
+          REQUIRE(rc == TILEDB_OK);
+          tiledb_buffer_free(&buffer);
+        }
+        rc = tiledb_array_evolve(ctx_, array_name.c_str(), schema_evolution2);
+        REQUIRE(rc == TILEDB_OK);
+
+        // Clean up
+        tiledb_attribute_free(&b);
+        tiledb_attribute_free(&attr);
+        tiledb_array_schema_evolution_free(&schema_evolution);
+        tiledb_array_schema_evolution_free(&schema_evolution2);
+      }
+    }
+
     int buffer_read[10];
     uint64_t buffer_read_size = sizeof(buffer_read);
 
     // Open array
     rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
     CHECK(rc == TILEDB_OK);
+    if (ts_open != 0) {
+      rc = tiledb_array_set_open_timestamp_end(ctx_, array, ts_open + 2);
+      REQUIRE(rc == TILEDB_OK);
+    }
     rc = tiledb_array_open(ctx_, array, TILEDB_READ);
     CHECK(rc == TILEDB_OK);
 
