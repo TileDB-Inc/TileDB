@@ -35,3 +35,8 @@ commence(unit_test experimental)
           unit_is_not_experimental.cc>
         )
 conclude(unit_test)
+
+commence(unit_test unit_floating_point_summation)
+    this_target_sources(main.cc unit_floating_point_summation.cc)
+    this_target_link_libraries(tiledb_test_support_lib)
+conclude(unit_test)
