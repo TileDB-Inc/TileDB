@@ -39,7 +39,7 @@ jobs:
       - name: Render template
         run: |
           PATTERN="tiledb-([^-]+)-([^-]+)(-noavx2)?.*"
-          RELLIST="output/rellist.csv"
+          RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
           echo "os,arch,url,sha,noavx2" > $RELLIST
@@ -53,19 +53,20 @@ jobs:
                           NOAVX2=${BASH_REMATCH[3]//-/}
 
                           URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
-                          SHA=$(sha1sum release/$FILE | cut -d " " -f 1)
+                          HASH=$(cat release/$FILE.sha256)
           
-                          echo "${OS},${ARCH},${URL},${SHA},${NOAVX2^^}" >> $RELLIST
+                          echo "${OS},${ARCH},${URL},${HASH},${NOAVX2^^}" >> $RELLIST
                   fi
           done
           
-          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.zipball_url }}
-          SHA_TILEDB_SOURCE=$(curl -sL $URL_TILEDB_SOURCE | sha1sum | cut -d " " -f 1)
+          SOURCE_FILE_NAME="tiledb-source-${{ steps.release_data.outputs.tag_name }}.zip"
+          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$SOURCE_FILE_NAME
+          HASH_TILEDB_SOURCE=$(cat release/$SOURCE_FILE_NAME.sha256)
           
-          echo "source,source,${URL_TILEDB_SOURCE},${SHA_TILEDB_SOURCE},source" >> $RELLIST
+          echo "source,source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},source" >> $RELLIST
           
-          SHA=$(sha1sum $RELLIST | cut -d " " -f 1)
-          echo $SHA > $RELLIST.sha
+          HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
+          echo $HASH > $RELLIST.sha256
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
