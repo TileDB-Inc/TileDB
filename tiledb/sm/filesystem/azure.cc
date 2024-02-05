@@ -43,13 +43,12 @@
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"
-#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
 
 static std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
-    tiledb::sm::SSLConfig& ssl_cfg);
+    const tiledb::sm::SSLConfig& ssl_cfg);
 
 using namespace tiledb::common;
 using tiledb::common::filesystem::directory_entry;
@@ -61,43 +60,30 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Azure::Azure()
+Azure::Azure(const Config& config, ThreadPool* thread_pool)
     : write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , block_list_block_size_(0)
-    , use_block_list_upload_(false) {
-}
-
-Azure::~Azure() {
-}
-
-/* ********************************* */
-/*                 API               */
-/* ********************************* */
-
-Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
+    , use_block_list_upload_(false)
+    , thread_pool_(thread_pool)
+    , ssl_cfg_(config) {
   if (thread_pool == nullptr) {
-    return LOG_STATUS(
-        Status_AzureError("Can't initialize with null thread pool."));
+    throw std::invalid_argument("Can't initialize with null thread pool.");
   }
-
-  thread_pool_ = thread_pool;
-
-  bool found;
   char* tmp = nullptr;
 
-  std::string account_name =
-      config.get("vfs.azure.storage_account_name", &found);
-  assert(found);
-  if (account_name.empty() &&
+  account_name_ = config.get<std::string>(
+      "vfs.azure.storage_account_name", Config::must_find);
+  if (account_name_.empty() &&
       ((tmp = getenv("AZURE_STORAGE_ACCOUNT")) != nullptr)) {
-    account_name = std::string(tmp);
+    account_name_ = std::string(tmp);
   }
 
-  std::string account_key = config.get("vfs.azure.storage_account_key", &found);
-  assert(found);
-  if (account_key.empty() && ((tmp = getenv("AZURE_STORAGE_KEY")) != nullptr)) {
-    account_key = std::string(tmp);
+  account_key_ = config.get<std::string>(
+      "vfs.azure.storage_account_key", Config::must_find);
+  if (account_key_.empty() &&
+      ((tmp = getenv("AZURE_STORAGE_KEY")) != nullptr)) {
+    account_key_ = std::string(tmp);
   }
 
   std::string sas_token =
@@ -107,56 +93,62 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     sas_token = std::string(tmp);
   }
 
-  std::string blob_endpoint = config.get("vfs.azure.blob_endpoint", &found);
-  assert(found);
-  if (blob_endpoint.empty() &&
+  blob_endpoint_ =
+      config.get<std::string>("vfs.azure.blob_endpoint", Config::must_find);
+  if (blob_endpoint_.empty() &&
       ((tmp = getenv("AZURE_BLOB_ENDPOINT")) != nullptr)) {
-    blob_endpoint = std::string(tmp);
+    blob_endpoint_ = std::string(tmp);
   }
-  if (blob_endpoint.empty()) {
-    if (!account_name.empty()) {
-      blob_endpoint = "https://" + account_name + ".blob.core.windows.net";
+  if (blob_endpoint_.empty()) {
+    if (!account_name_.empty()) {
+      blob_endpoint_ = "https://" + account_name_ + ".blob.core.windows.net";
     } else {
       LOG_WARN(
           "Neither the 'vfs.azure.storage_account_name' nor the "
           "'vfs.azure.blob_endpoint' options are specified.");
     }
-  } else if (!(utils::parse::starts_with(blob_endpoint, "http://") ||
-               utils::parse::starts_with(blob_endpoint, "https://"))) {
+  } else if (!(utils::parse::starts_with(blob_endpoint_, "http://") ||
+               utils::parse::starts_with(blob_endpoint_, "https://"))) {
     LOG_WARN(
         "The 'vfs.azure.blob_endpoint' option should include the scheme (HTTP "
         "or HTTPS).");
   }
-  if (!blob_endpoint.empty() && !sas_token.empty()) {
+  if (!blob_endpoint_.empty() && !sas_token.empty()) {
     // The question mark is not strictly part of the SAS token
     // (https://learn.microsoft.com/en-us/azure/storage/common/storage-sas-overview#sas-token),
     // but in the Azure Portal the SAS token starts with one. If it does not, we
     // add the question mark ourselves.
     if (!utils::parse::starts_with(sas_token, "?")) {
-      blob_endpoint += '?';
+      blob_endpoint_ += '?';
     }
-    blob_endpoint += sas_token;
+    blob_endpoint_ += sas_token;
   }
 
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.azure.max_parallel_ops", &max_parallel_ops_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<uint64_t>(
-      "vfs.azure.block_list_block_size", &block_list_block_size_, &found));
-  assert(found);
-  RETURN_NOT_OK(config.get<bool>(
-      "vfs.azure.use_block_list_upload", &use_block_list_upload_, &found));
-  assert(found);
+  max_parallel_ops_ =
+      config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find);
+  block_list_block_size_ = config.get<uint64_t>(
+      "vfs.azure.block_list_block_size", Config::must_find);
+  use_block_list_upload_ =
+      config.get<bool>("vfs.azure.use_block_list_upload", Config::must_find);
 
-  int max_retries =
+  max_retries_ =
       config.get<int32_t>("vfs.azure.max_retries", Config::must_find);
   retry_delay_ = std::chrono::milliseconds(
       config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find));
-  std::chrono::milliseconds max_retry_delay{
+  max_retry_delay_ = std::chrono::milliseconds{
       config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find)};
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
+}
 
+Azure::~Azure() {
+}
+
+/* ********************************* */
+/*                 API               */
+/* ********************************* */
+
+const ::Azure::Storage::Blobs::BlobServiceClient& Azure::client() const {
   // Initialize logging from the Azure SDK.
   static std::once_flag azure_log_sentinel;
   std::call_once(azure_log_sentinel, []() {
@@ -179,33 +171,36 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
         });
   });
 
-  ::Azure::Storage::Blobs::BlobClientOptions options;
-  options.Retry.MaxRetries = max_retries;
-  options.Retry.RetryDelay = retry_delay_;
-  options.Retry.MaxRetryDelay = max_retry_delay;
+  std::lock_guard<std::mutex> lck(client_init_lock_);
 
-  SSLConfig ssl_cfg = SSLConfig(config);
-  options.Transport.Transport = create_transport(ssl_cfg);
+  if (!client_) {
+    ::Azure::Storage::Blobs::BlobClientOptions options;
+    options.Retry.MaxRetries = max_retries_;
+    options.Retry.RetryDelay = retry_delay_;
+    options.Retry.MaxRetryDelay = max_retry_delay_;
 
-  // Construct the Azure SDK blob service client.
-  // We pass a shared key if it was specified.
-  if (!account_key.empty()) {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            blob_endpoint,
-            make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                HERE(), account_name, account_key),
-            options));
-  } else {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            blob_endpoint,
-            options));
+    options.Transport.Transport = create_transport(ssl_cfg_);
+
+    // Construct the Azure SDK blob service client.
+    // We pass a shared key if it was specified.
+    if (!account_key_.empty()) {
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              blob_endpoint_,
+              make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+                  HERE(), account_name_, account_key_),
+              options));
+    } else {
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              blob_endpoint_,
+              options));
+    }
   }
 
-  return Status::Ok();
+  return *client_;
 }
 
 Status Azure::create_container(const URI& uri) const {
@@ -1125,7 +1120,7 @@ std::string Azure::BlockListUploadState::next_block_id() {
 #if defined(_WIN32)
 #include <azure/core/http/win_http_transport.hpp>
 std::shared_ptr<::Azure::Core::Http::HttpTransport> create_transport(
-    tiledb::sm::SSLConfig& ssl_cfg) {
+    const tiledb::sm::SSLConfig& ssl_cfg) {
   ::Azure::Core::Http::WinHttpTransportOptions transport_opts;
 
   if (!ssl_cfg.ca_file().empty()) {
