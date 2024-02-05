@@ -204,8 +204,7 @@ const ::Azure::Storage::Blobs::BlobServiceClient& Azure::client() const {
 }
 
 Status Azure::create_container(const URI& uri) const {
-  assert(client_);
-
+  const auto& c = client();
   if (!uri.is_azure()) {
     return LOG_STATUS(Status_AzureError(
         std::string("URI is not an Azure URI: " + uri.to_string())));
@@ -217,8 +216,7 @@ Status Azure::create_container(const URI& uri) const {
   bool created;
   std::string error_message = "";
   try {
-    created =
-        client_->GetBlobContainerClient(container_name).Create().Value.Created;
+    created = c.GetBlobContainerClient(container_name).Create().Value.Created;
   } catch (const ::Azure::Storage::StorageException& e) {
     created = false;
     error_message = "; " + e.Message;
@@ -233,13 +231,11 @@ Status Azure::create_container(const URI& uri) const {
 }
 
 Status Azure::empty_container(const URI& container) const {
-  assert(client_);
-
   return remove_dir(container);
 }
 
 Status Azure::flush_blob(const URI& uri) {
-  assert(client_);
+  const auto& c = client();
 
   if (!use_block_list_upload_) {
     return flush_blob_direct(uri);
@@ -303,7 +299,7 @@ Status Azure::flush_blob(const URI& uri) {
   finish_block_list_upload(uri);
 
   try {
-    client_->GetBlobContainerClient(container_name)
+    c.GetBlobContainerClient(container_name)
         .GetBlockBlobClient(blob_path)
         .CommitBlockList(std::vector(block_ids.begin(), block_ids.end()));
   } catch (const ::Azure::Storage::StorageException& e) {
@@ -329,6 +325,7 @@ void Azure::finish_block_list_upload(const URI& uri) {
 }
 
 Status Azure::flush_blob_direct(const URI& uri) {
+  auto& c = client();
   if (!uri.is_azure()) {
     return LOG_STATUS(Status_AzureError(
         std::string("URI is not an Azure URI: " + uri.to_string())));
@@ -345,7 +342,7 @@ Status Azure::flush_blob_direct(const URI& uri) {
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
   try {
-    client_->GetBlobContainerClient(container_name)
+    c.GetBlobContainerClient(container_name)
         .GetBlockBlobClient(blob_path)
         .UploadFrom(
             static_cast<uint8_t*>(write_cache_buffer->data()),
@@ -365,7 +362,7 @@ Status Azure::flush_blob_direct(const URI& uri) {
 }
 
 Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
-  assert(client_);
+  const auto& c = client();
   assert(is_empty);
 
   if (!uri.is_azure()) {
@@ -379,7 +376,7 @@ Status Azure::is_empty_container(const URI& uri, bool* is_empty) const {
   ::Azure::Storage::Blobs::ListBlobsOptions options;
   options.PageSizeHint = 1;
   try {
-    *is_empty = client_->GetBlobContainerClient(container_name)
+    *is_empty = c.GetBlobContainerClient(container_name)
                     .ListBlobs(options)
                     .Blobs.empty();
   } catch (const ::Azure::Storage::StorageException& e) {
@@ -406,11 +403,11 @@ Status Azure::is_container(const URI& uri, bool* const is_container) const {
 
 Status Azure::is_container(
     const std::string& container_name, bool* const is_container) const {
-  assert(client_);
+  const auto& c = client();
   assert(is_container);
 
   try {
-    client_->GetBlobContainerClient(container_name).GetProperties();
+    c.GetBlobContainerClient(container_name).GetProperties();
   } catch (const ::Azure::Storage::StorageException& e) {
     if (e.StatusCode == ::Azure::Core::Http::HttpStatusCode::NotFound) {
       *is_container = false;
@@ -426,7 +423,6 @@ Status Azure::is_container(
 }
 
 Status Azure::is_dir(const URI& uri, bool* const exists) const {
-  assert(client_);
   assert(exists);
 
   std::vector<std::string> paths;
@@ -449,11 +445,11 @@ Status Azure::is_blob(
     const std::string& container_name,
     const std::string& blob_path,
     bool* const is_blob) const {
-  assert(client_);
+  const auto& c = client();
   assert(is_blob);
 
   try {
-    client_->GetBlobContainerClient(container_name)
+    c.GetBlobContainerClient(container_name)
         .GetBlobClient(blob_path)
         .GetProperties();
   } catch (const ::Azure::Storage::StorageException& e) {
@@ -498,7 +494,6 @@ Status Azure::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     const int max_paths) const {
-  assert(client_);
   assert(paths);
 
   auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
@@ -513,7 +508,7 @@ Status Azure::ls(
 
 tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
-  assert(client_);
+  const auto& c = client();
 
   const URI uri_dir = uri.add_trailing_slash();
 
@@ -528,7 +523,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
   RETURN_NOT_OK_TUPLE(
       parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
 
-  auto container_client = client_->GetBlobContainerClient(container_name);
+  auto container_client = c.GetBlobContainerClient(container_name);
 
   std::vector<directory_entry> entries;
   ::Azure::Storage::Blobs::ListBlobsOptions options;
@@ -568,14 +563,13 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
 }
 
 Status Azure::move_object(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
   RETURN_NOT_OK(copy_blob(old_uri, new_uri));
   RETURN_NOT_OK(remove_blob(old_uri));
   return Status::Ok();
 }
 
 Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
+  auto& c = client();
 
   if (!old_uri.is_azure()) {
     return LOG_STATUS(Status_AzureError(
@@ -590,7 +584,7 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   std::string old_container_name;
   std::string old_blob_path;
   RETURN_NOT_OK(parse_azure_uri(old_uri, &old_container_name, &old_blob_path));
-  std::string source_uri = client_->GetBlobContainerClient(old_container_name)
+  std::string source_uri = c.GetBlobContainerClient(old_container_name)
                                .GetBlobClient(old_blob_path)
                                .GetUrl();
 
@@ -599,7 +593,7 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
   RETURN_NOT_OK(parse_azure_uri(new_uri, &new_container_name, &new_blob_path));
 
   try {
-    client_->GetBlobContainerClient(new_container_name)
+    c.GetBlobContainerClient(new_container_name)
         .GetBlobClient(new_blob_path)
         .StartCopyFromUri(source_uri)
         .PollUntilDone(retry_delay_);
@@ -612,8 +606,6 @@ Status Azure::copy_blob(const URI& old_uri, const URI& new_uri) {
 }
 
 Status Azure::move_dir(const URI& old_uri, const URI& new_uri) {
-  assert(client_);
-
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(old_uri, &paths, ""));
   for (const auto& path : paths) {
@@ -625,7 +617,7 @@ Status Azure::move_dir(const URI& old_uri, const URI& new_uri) {
 }
 
 Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
-  assert(client_);
+  auto& c = client();
   assert(nbytes);
 
   if (!uri.is_azure()) {
@@ -644,8 +636,7 @@ Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
     options.Prefix = blob_path;
     options.PageSizeHint = 1;
 
-    auto response =
-        client_->GetBlobContainerClient(container_name).ListBlobs(options);
+    auto response = c.GetBlobContainerClient(container_name).ListBlobs(options);
 
     if (response.Blobs.empty()) {
       error_message = "Blob does not exist.";
@@ -671,7 +662,7 @@ Status Azure::read(
     const uint64_t length,
     const uint64_t read_ahead_length,
     uint64_t* const length_returned) const {
-  assert(client_);
+  const auto& c = client();
 
   if (!uri.is_azure()) {
     return LOG_STATUS(Status_AzureError(
@@ -691,7 +682,7 @@ Status Azure::read(
 
   ::Azure::Storage::Blobs::Models::DownloadBlobResult result;
   try {
-    result = client_->GetBlobContainerClient(container_name)
+    result = c.GetBlobContainerClient(container_name)
                  .GetBlobClient(blob_path)
                  .Download(options)
                  .Value;
@@ -712,7 +703,7 @@ Status Azure::read(
 }
 
 Status Azure::remove_container(const URI& uri) const {
-  assert(client_);
+  auto& c = client();
 
   // Empty container
   RETURN_NOT_OK(empty_container(uri));
@@ -723,7 +714,7 @@ Status Azure::remove_container(const URI& uri) const {
   bool deleted;
   std::string error_message = "";
   try {
-    deleted = client_->DeleteBlobContainer(container_name).Value.Deleted;
+    deleted = c.DeleteBlobContainer(container_name).Value.Deleted;
   } catch (const ::Azure::Storage::StorageException& e) {
     deleted = false;
     error_message = "; " + e.Message;
@@ -738,7 +729,7 @@ Status Azure::remove_container(const URI& uri) const {
 }
 
 Status Azure::remove_blob(const URI& uri) const {
-  assert(client_);
+  auto& c = client();
 
   std::string container_name;
   std::string blob_path;
@@ -747,7 +738,7 @@ Status Azure::remove_blob(const URI& uri) const {
   bool deleted;
   std::string error_message = "";
   try {
-    deleted = client_->GetBlobContainerClient(container_name)
+    deleted = c.GetBlobContainerClient(container_name)
                   .DeleteBlob(blob_path)
                   .Value.Deleted;
   } catch (const ::Azure::Storage::StorageException& e) {
@@ -764,8 +755,6 @@ Status Azure::remove_blob(const URI& uri) const {
 }
 
 Status Azure::remove_dir(const URI& uri) const {
-  assert(client_);
-
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
   auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
@@ -778,7 +767,7 @@ Status Azure::remove_dir(const URI& uri) const {
 }
 
 Status Azure::touch(const URI& uri) const {
-  assert(client_);
+  auto& c = client();
 
   if (!uri.is_azure()) {
     return LOG_STATUS(Status_AzureError(
@@ -801,7 +790,7 @@ Status Azure::touch(const URI& uri) const {
   RETURN_NOT_OK(parse_azure_uri(uri, &container_name, &blob_path));
 
   try {
-    client_->GetBlobContainerClient(container_name)
+    c.GetBlobContainerClient(container_name)
         .GetBlockBlobClient(blob_path)
         .UploadFrom(nullptr, 0);
   } catch (const ::Azure::Storage::StorageException& e) {
@@ -1019,10 +1008,11 @@ Status Azure::upload_block(
     const void* const buffer,
     const uint64_t length,
     const std::string& block_id) {
+  const auto& c = client();
   ::Azure::Core::IO::MemoryBodyStream stream(
       static_cast<const uint8_t*>(buffer), static_cast<size_t>(length));
   try {
-    client_->GetBlobContainerClient(container_name)
+    c.GetBlobContainerClient(container_name)
         .GetBlockBlobClient(blob_path)
         .StageBlock(block_id, stream);
   } catch (const ::Azure::Storage::StorageException& e) {

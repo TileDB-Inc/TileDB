@@ -369,7 +369,7 @@ class Azure {
   ThreadPool* thread_pool_;
 
   /** The Azure blob service client. */
-  tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+  mutable tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
 
   /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
@@ -418,7 +418,7 @@ class Azure {
   std::mutex block_list_upload_states_lock_;
 
   /** Protects 'client()'. */
-  std::mutex client_init_lock_;
+  mutable std::mutex client_init_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -485,7 +485,6 @@ class Azure {
    * @param length The length of `buffer`.
    * @param block_id A base64-encoded string that is unique to this block
    * within the blob.
-   * @param result The returned future to fetch the async upload result from.
    * @return Status
    */
   Status upload_block(
