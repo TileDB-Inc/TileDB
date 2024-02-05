@@ -59,7 +59,7 @@ jobs:
                   fi
           done
           
-          SOURCE_FILE_NAME="tiledb-source-${{ steps.release_data.outputs.tag_name }}.zip"
+          SOURCE_FILE_NAME=$(ls tiledb-source-*.zip)
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$SOURCE_FILE_NAME
           HASH_TILEDB_SOURCE=$(cat release/$SOURCE_FILE_NAME.sha256)
           
@@ -67,6 +67,8 @@ jobs:
           
           HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
           echo $HASH > $RELLIST.sha256
+          
+          cat $RELLIST
 
       - name: Upload template to release
         uses: svenstaro/upload-release-action@v2
