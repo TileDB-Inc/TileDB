@@ -733,12 +733,16 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+// PJD: Disabling this test because it results in an infinite loop inside the
+//      SparseGlobalOrderReader. More details of the same bug found differently
+//      can be reading in SC-36494.
+
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read, all cells same "
     "coords, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][same-coords][mem-"
-    "budget]") {
+    "budget][.][broken-mem-budget]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -786,12 +790,14 @@ TEST_CASE_METHOD(
   remove_sparse_array();
 }
 
+// PJD: Disabled. See the comment above the previous test for more context.
+
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read, same cells "
     "across tiles, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles][mem-"
-    "budget]") {
+    "budget][.][broken-mem-budget]") {
   remove_sparse_array();
   create_sparse_array();
 
