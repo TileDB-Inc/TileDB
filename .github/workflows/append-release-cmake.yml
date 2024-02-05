@@ -53,7 +53,7 @@ jobs:
                           NOAVX2=${BASH_REMATCH[3]//-/}
 
                           URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
-                          HASH=$(cat release/$FILE.sha256)
+                          HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           
                           echo "${OS},${ARCH},${URL},${HASH},${NOAVX2^^}" >> $RELLIST
                   fi
@@ -61,7 +61,7 @@ jobs:
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.zip)
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$(basename $SOURCE_FILE_NAME)
-          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256)
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
           
           echo "source,source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},source" >> $RELLIST
           
