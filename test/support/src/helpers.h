@@ -992,6 +992,11 @@ void allocate_query_buffers_server_side(
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers);
 
+/**
+ * Helper function to create test instances of shared_ptr<MemoryTracker>
+ */
+shared_ptr<sm::MemoryTracker> create_test_memory_tracker();
+
 }  // namespace tiledb::test
 
 #endif
