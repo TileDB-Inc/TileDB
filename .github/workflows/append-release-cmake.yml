@@ -60,8 +60,8 @@ jobs:
           done
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.zip)
-          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$SOURCE_FILE_NAME
-          HASH_TILEDB_SOURCE=$(cat release/$SOURCE_FILE_NAME.sha256)
+          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$(basename $SOURCE_FILE_NAME)
+          HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256)
           
           echo "source,source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},source" >> $RELLIST
           
