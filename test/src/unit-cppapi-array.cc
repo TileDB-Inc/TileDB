@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1210,20 +1210,25 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 
+  auto datatype = GENERATE(
+      tiledb_datatype_t::TILEDB_BLOB,
+      tiledb_datatype_t::TILEDB_GEOM_WKB,
+      tiledb_datatype_t::TILEDB_GEOM_WKT);
+
   // Create
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 0}}, 1));
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(
-      Attribute::create(ctx, "a", tiledb_datatype_t::TILEDB_BLOB));
+  schema.add_attribute(Attribute::create(ctx, "a", datatype));
   Array::create(array_name, schema);
 
   // Write
   std::byte data_w{1};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("a", &data_w, 1);
+  query_w.set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", (void*)(&data_w), 1);
 
   SECTION("no serialization") {
     serialize = false;
@@ -1255,7 +1260,7 @@ TEST_CASE(
   std::byte data;
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_subarray(subarray)
-      .set_data_buffer("a", &data, 1);
+      .set_data_buffer("a", (void*)(&data), 1);
   query.submit();
   array.close();
 

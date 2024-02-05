@@ -27,13 +27,6 @@
 #
 
 ############################################################
-# CMake policies
-############################################################
-
-# C++ library, allow the VISIBLITY_PRESET for each c++ target to work
-cmake_policy(SET CMP0063 NEW)
-
-############################################################
 # Find packages needed for object libraries
 ############################################################
 
@@ -184,7 +177,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/group_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/curl/curl_init.cc
@@ -842,6 +834,15 @@ endif()
 # CMake will determine the library's linkage from
 # the value of the BUILD_SHARED_LIBS variable.
 add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
+
+# Export the target as either tiledb_shared or tiledb_static for compatibility.
+# The exported config will create the unified tiledb target that links to either
+# of them.
+if(BUILD_SHARED_LIBS)
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_shared)
+else()
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_static)
+endif()
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
