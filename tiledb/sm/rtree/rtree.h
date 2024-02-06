@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -119,7 +119,7 @@ class RTree {
   const NDRange& leaf(uint64_t leaf_idx) const;
 
   /** Returns the leaves of the tree. */
-  const std::vector<NDRange>& leaves() const;
+  const tdb::pmr::vector<NDRange>& leaves() const;
 
   /**
    * Returns the number of leaves that are stored in a (full) subtree
@@ -152,7 +152,7 @@ class RTree {
    * Sets the input MBRs as leaves. This will destroy the existing
    * RTree.
    */
-  Status set_leaves(const std::vector<NDRange>& mbrs);
+  Status set_leaves(const tdb::pmr::vector<NDRange>& mbrs);
 
   /**
    * Resizes the leaf level. It destroys the upper levels
@@ -169,6 +169,14 @@ class RTree {
    */
   void deserialize(
       Deserializer& deserializer, const Domain* domain, uint32_t version);
+
+  /**
+   * Resets the RTree with the input domain and fanout.
+   *
+   * @param domain The domain to use for the RTree.
+   * @param fanout The fanout of the RTree.
+   */
+  void reset(const Domain* domain, unsigned fanout);
 
  private:
   /* ********************************* */
@@ -197,7 +205,7 @@ class RTree {
    * `levels_`, where the first level is the root. This is how
    * we can infer which tree level each `Level` object corresponds to.
    */
-  typedef std::vector<NDRange> Level;
+  typedef tdb::pmr::vector<NDRange> Level;
 
   /**
    * Defines an R-Tree level entry, which corresponds to a node

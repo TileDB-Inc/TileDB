@@ -1578,7 +1578,7 @@ const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
   return rtree_.leaf(tile_idx);
 }
 
-const std::vector<NDRange>& FragmentMetadata::mbrs() const {
+const tdb::pmr::vector<NDRange>& FragmentMetadata::mbrs() const {
   return rtree_.leaves();
 }
 

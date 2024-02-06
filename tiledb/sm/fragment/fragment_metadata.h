@@ -783,7 +783,7 @@ class FragmentMetadata {
   const NDRange& mbr(uint64_t tile_idx) const;
 
   /** Returns all the MBRs of all tiles in the fragment. */
-  const std::vector<NDRange>& mbrs() const;
+  const tdb::pmr::vector<NDRange>& mbrs() const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
