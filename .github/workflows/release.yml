@@ -1,7 +1,6 @@
 name: Release
 
 on:
-  workflow_dispatch:
   pull_request:
     branches:
       - '*'  # must quote since "*" is a YAML reserved character; we want a string
