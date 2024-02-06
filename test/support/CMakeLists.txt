@@ -41,6 +41,8 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/mem_helpers.h
+  src/mem_helpers.cc
   src/serialization_wrappers.cc
   src/temporary_local_directory.cc
   src/vfs_helpers.cc
