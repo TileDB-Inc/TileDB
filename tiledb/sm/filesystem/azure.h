@@ -70,15 +70,8 @@ class Azure {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor is deleted. */
-  Azure() = delete;
-
-  /** Constructor.
-   *
-   * @param config Configuration parameters.
-   * @param thread_pool The parent VFS thread pool.
-   */
-  Azure(const Config& config, ThreadPool* thread_pool);
+  /** Constructor. */
+  Azure();
 
   /** Destructor. */
   ~Azure();
@@ -86,6 +79,15 @@ class Azure {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Initializes and connects an Azure client.
+   *
+   * @param config Configuration parameters.
+   * @param thread_pool The parent VFS thread pool.
+   * @return Status
+   */
+  Status init(const Config& config, ThreadPool* thread_pool);
 
   /**
    * Creates a container.

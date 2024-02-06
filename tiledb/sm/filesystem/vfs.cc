@@ -64,9 +64,6 @@ VFS::VFS(
     const Config& config)
     : VFSBase(parent_stats)
     , S3_within_VFS(stats_, io_tp, config)
-#ifdef HAVE_AZURE
-    , azure_(config, io_tp)
-#endif
     , config_(config)
     , compute_tp_(compute_tp)
     , io_tp_(io_tp)
@@ -92,9 +89,13 @@ VFS::VFS(
     supported_fs_.insert(Filesystem::S3);
   }
 
-  if constexpr (azure_enabled) {
-    supported_fs_.insert(Filesystem::AZURE);
+#ifdef HAVE_AZURE
+  supported_fs_.insert(Filesystem::AZURE);
+  st = azure_.init(config_, io_tp_);
+  if (!st.ok()) {
+    throw VFSException("Failed to initialize Azure backend.");
   }
+#endif
 
 #ifdef HAVE_GCS
   supported_fs_.insert(Filesystem::GCS);

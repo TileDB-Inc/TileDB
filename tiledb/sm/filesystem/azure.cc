@@ -60,16 +60,26 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Azure::Azure(const Config& config, ThreadPool* thread_pool)
-    : thread_pool_(thread_pool)
-    , write_cache_max_size_(0)
+Azure::Azure()
+    : write_cache_max_size_(0)
     , max_parallel_ops_(1)
     , block_list_block_size_(0)
-    , use_block_list_upload_(false)
-    , ssl_cfg_(config) {
+    , use_block_list_upload_(false) {
+}
+
+Azure::~Azure() {
+}
+
+/* ********************************* */
+/*                 API               */
+/* ********************************* */
+
+Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
   if (thread_pool == nullptr) {
-    throw std::invalid_argument("Can't initialize with null thread pool.");
+    return LOG_STATUS(
+        Status_AzureError("Can't initialize with null thread pool."));
   }
+  thread_pool_ = thread_pool;
   char* tmp = nullptr;
 
   account_name_ = config.get<std::string>(
@@ -139,9 +149,8 @@ Azure::Azure(const Config& config, ThreadPool* thread_pool)
       config.get<uint64_t>("vfs.azure.retry_delay_ms", Config::must_find)};
 
   write_cache_max_size_ = max_parallel_ops_ * block_list_block_size_;
-}
 
-Azure::~Azure() {
+  return Status::Ok();
 }
 
 /* ********************************* */
