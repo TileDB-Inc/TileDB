@@ -67,6 +67,7 @@ if (NOT MSVC)
 endif()
 
 target_link_libraries(tiledb_test_support_lib PRIVATE $<BUILD_INTERFACE:common>)
+target_link_libraries(tiledb_test_support_lib PRIVATE baseline)
 
 target_include_directories(
   tiledb_test_support_lib BEFORE PRIVATE
