@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -53,42 +54,17 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RTree::RTree() {
-  domain_ = nullptr;
-  fanout_ = 0;
-  deserialized_buffer_size_ = 0;
-}
-
-RTree::RTree(const Domain* domain, unsigned fanout)
-    : domain_(domain)
-    , fanout_(fanout) {
+RTree::RTree(
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Domain* domain,
+    unsigned fanout)
+    : memory_tracker_(memory_tracker)
+    , domain_(domain)
+    , fanout_(fanout)
+    , levels_(memory_tracker_->get_resource(MemoryType::RTREE)) {
 }
 
 RTree::~RTree() = default;
-
-RTree::RTree(const RTree& rtree)
-    : RTree() {
-  auto clone = rtree.clone();
-  swap(clone);
-}
-
-RTree::RTree(RTree&& rtree) noexcept
-    : RTree() {
-  swap(rtree);
-}
-
-RTree& RTree::operator=(const RTree& rtree) {
-  auto clone = rtree.clone();
-  swap(clone);
-
-  return *this;
-}
-
-RTree& RTree::operator=(RTree&& rtree) noexcept {
-  swap(rtree);
-
-  return *this;
-}
 
 /* ****************************** */
 /*               API              */
@@ -347,15 +323,6 @@ RTree::Level RTree::build_level(const Level& level) {
   return new_level;
 }
 
-RTree RTree::clone() const {
-  RTree clone;
-  clone.domain_ = domain_;
-  clone.fanout_ = fanout_;
-  clone.levels_ = levels_;
-
-  return clone;
-}
-
 void RTree::deserialize_v1_v4(
     Deserializer& deserializer, const Domain* domain) {
   deserialized_buffer_size_ = deserializer.size();
@@ -422,12 +389,6 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   }
 
   domain_ = domain;
-}
-
-void RTree::swap(RTree& rtree) {
-  std::swap(domain_, rtree.domain_);
-  std::swap(fanout_, rtree.fanout_);
-  std::swap(levels_, rtree.levels_);
 }
 
 }  // namespace sm

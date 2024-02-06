@@ -81,6 +81,7 @@ FragmentMetadata::FragmentMetadata(
     ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
     : resources_(resources)
     , memory_tracker_(memory_tracker)
+    , rtree_(RTree(memory_tracker_, nullptr, constants::rtree_fanout))
     , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
@@ -119,7 +120,8 @@ FragmentMetadata::FragmentMetadata(
     , has_delete_meta_(has_deletes_meta)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
-    , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
+    , rtree_(RTree(
+          memory_tracker_, &array_schema_->domain(), constants::rtree_fanout))
     , tile_index_base_(0)
     , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))

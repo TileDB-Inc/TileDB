@@ -36,6 +36,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
@@ -48,6 +49,7 @@ namespace sm {
 
 class Buffer;
 class ConstBuffer;
+class MemoryTracker;
 
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
@@ -62,27 +64,19 @@ class RTree {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+  RTree() = delete;
 
   /** Constructor. */
-  RTree();
-
-  /** Constructor. */
-  RTree(const Domain* domain, unsigned fanout);
+  RTree(
+      shared_ptr<MemoryTracker> memory_tracker,
+      const Domain* domain,
+      unsigned fanout);
 
   /** Destructor. */
   ~RTree();
 
-  /** Copy constructor. This performs a deep copy. */
-  RTree(const RTree& rtree);
-
-  /** Move constructor. */
-  RTree(RTree&& rtree) noexcept;
-
-  /** Copy-assign operator. This performs a deep copy. */
-  RTree& operator=(const RTree& rtree);
-
-  /** Move-assign operator. */
-  RTree& operator=(RTree&& rtree) noexcept;
+  DISABLE_COPY_AND_COPY_ASSIGN(RTree);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(RTree);
 
   /* ********************************* */
   /*                 API               */
@@ -222,6 +216,9 @@ class RTree {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Memory tracker for the RTree. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /**
    * The domain for which this R-tree provides an index.
    *
@@ -237,7 +234,7 @@ class RTree {
    * The tree levels. The first level is the root. Note that the root
    * always consists of a single MBR.
    */
-  std::vector<Level> levels_;
+  tdb::pmr::vector<Level> levels_;
 
   /**
    * Stores the size of the buffer used to deserialize the data, used for
@@ -251,9 +248,6 @@ class RTree {
 
   /** Builds a single tree level on top of the input level. */
   Level build_level(const Level& level);
-
-  /** Returns a deep copy of this RTree. */
-  RTree clone() const;
 
   /**
    * Deserializes the contents of the object from the input buffer based
@@ -272,12 +266,6 @@ class RTree {
    * Applicable to versions >= 5
    */
   void deserialize_v5(Deserializer& deserializer, const Domain* domain);
-
-  /**
-   * Swaps the contents (all field values) of this RTree with the
-   * given ``rtree``.
-   */
-  void swap(RTree& rtree);
 };
 
 }  // namespace sm

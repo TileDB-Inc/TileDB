@@ -1229,6 +1229,11 @@ class FragmentMetadata {
     return gt_offsets_;
   }
 
+  /** memory_tracker_ accessor */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
   /** set the CR pointer during deserialization*/
   void set_context_resources(ContextResources* cr) {
     resources_ = cr;
