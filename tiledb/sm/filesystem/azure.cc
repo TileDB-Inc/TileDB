@@ -134,6 +134,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
     blob_endpoint_ += sas_token;
   }
 
+  ssl_cfg_ = SSLConfig(config);
+
   max_parallel_ops_ =
       config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find);
   block_list_block_size_ = config.get<uint64_t>(
