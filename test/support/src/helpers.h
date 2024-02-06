@@ -35,6 +35,7 @@
 
 #include <tiledb/common/logger_public.h>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/random/random_label.h"
@@ -991,11 +992,6 @@ void allocate_query_buffers_server_side(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     ServerQueryBuffers& query_buffers);
-
-/**
- * Helper function to create test instances of shared_ptr<MemoryTracker>
- */
-shared_ptr<sm::MemoryTracker> create_test_memory_tracker();
 
 }  // namespace tiledb::test
 

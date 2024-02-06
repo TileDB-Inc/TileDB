@@ -1935,17 +1935,6 @@ void allocate_query_buffers_server_side(
   }
 }
 
-shared_ptr<sm::MemoryTracker> create_test_memory_tracker() {
-  class MemoryTrackerCreator : public sm::MemoryTracker {
-   public:
-    MemoryTrackerCreator()
-        : sm::MemoryTracker() {
-    }
-  };
-
-  return make_shared<MemoryTrackerCreator>(HERE());
-}
-
 template void check_subarray<int8_t>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<int8_t>& ranges);
 template void check_subarray<uint8_t>(
