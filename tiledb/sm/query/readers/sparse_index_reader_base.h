@@ -296,11 +296,79 @@ class SparseIndexReaderBase : public ReaderBase {
    * it is really required to determine if a query is incomplete from the client
    * side of a cloud request.
    */
-  struct ReadState {
+  class ReadState {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /** Delete default constructor. */
+    ReadState() = delete;
+
+    /** Constructor.
+     * @param frag_idxs_len The length of the fragment index vector.
+     */
+    ReadState(size_t frag_idxs_len)
+        : frag_idx_(frag_idxs_len) {
+    }
+
+    /** Constructor used in deserialization. */
+    ReadState(std::vector<FragIdx>&& frag_idx, bool done_adding_result_tiles)
+        : frag_idx_(std::move(frag_idx))
+        , done_adding_result_tiles_(done_adding_result_tiles) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /**
+     * Return whether the tiles that will be processed are loaded in memory.
+     * @return Done adding result tiles.
+     */
+    inline bool done_adding_result_tiles() const {
+      return done_adding_result_tiles_;
+    }
+
+    /**
+     * Sets the flag that determines whether the tiles that will be processed
+     * are loaded in memory.
+     * @param done_adding_result_tiles Done adding result tiles.
+     */
+    inline void set_done_adding_result_tiles(bool done_adding_result_tiles) {
+      done_adding_result_tiles_ = done_adding_result_tiles;
+    }
+
+    /**
+     * Sets a value in the fragment index vector.
+     * @param idx The index of the vector.
+     * @param val The value to set frag_idx[idx] to.
+     */
+    inline void set_frag_idx(uint64_t idx, FragIdx val) {
+      if (idx >= frag_idx_.size()) {
+        throw std::runtime_error(
+            "ReadState::set_frag_idx: idx greater than frag_idx_'s size.");
+      }
+      frag_idx_[idx] = std::move(val);
+    }
+
+    /**
+     * Returns a read-only version of the fragment index vector.
+     * @return The fragment index vector.
+     */
+    const std::vector<FragIdx>& frag_idx() const {
+      return frag_idx_;
+    }
+
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+   private:
     /** The tile index inside of each fragments. */
     std::vector<FragIdx> frag_idx_;
 
-    /** Is the reader done with the query. */
+    /** Have all tiles to be processed been loaded in memory? */
     bool done_adding_result_tiles_;
   };
 
@@ -506,16 +574,16 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Returns the current read state.
    *
-   * @return pointer to the read state.
+   * @return const reference to the read state.
    */
-  const ReadState* read_state() const;
+  const ReadState& read_state() const;
 
   /**
-   * Returns the current read state.
+   * Sets the new read state. Used only for deserialization.
    *
-   * @return pointer to the read state.
+   * @param read_state New read_state value.
    */
-  ReadState* read_state();
+  void set_read_state(ReadState read_state);
 
  protected:
   /* ********************************* */

@@ -94,7 +94,7 @@ SparseGlobalOrderReader<BitmapType>::SparseGlobalOrderReader(
 
 template <class BitmapType>
 bool SparseGlobalOrderReader<BitmapType>::incomplete() const {
-  return !read_state_.done_adding_result_tiles_ ||
+  return !read_state_.done_adding_result_tiles() ||
          memory_used_for_coords_total_ != 0;
 }
 
@@ -131,7 +131,7 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    read_state_.done_adding_result_tiles_ = true;
+    read_state_.set_done_adding_result_tiles(true);
     return Status::Ok();
   }
 
@@ -416,7 +416,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
           auto tile_num = fragment_metadata_[f]->tile_num();
 
           // Figure out the start index.
-          auto start = read_state_.frag_idx_[f].tile_idx_;
+          auto start = read_state_.frag_idx()[f].tile_idx_;
           if (!result_tiles[f].empty()) {
             start = std::max(start, result_tiles[f].back().tile_idx() + 1);
           }
@@ -470,7 +470,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
     logger_->debug("All result tiles loaded");
   }
 
-  read_state_.done_adding_result_tiles_ = done_adding_result_tiles;
+  read_state_.set_done_adding_result_tiles(done_adding_result_tiles);
 
   // Return the list of tiles added.
   std::vector<ResultTile*> created_tiles;
@@ -789,8 +789,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_next_cell_to_queue(
       // Increment the tile index, which should clear all tiles in
       // end_iteration.
       if (!result_tiles[frag_idx].empty()) {
-        read_state_.frag_idx_[frag_idx].tile_idx_++;
-        read_state_.frag_idx_[frag_idx].cell_idx_ = 0;
+        uint64_t new_tile_idx = read_state_.frag_idx()[frag_idx].tile_idx_ + 1;
+        read_state_.set_frag_idx(frag_idx, FragIdx(new_tile_idx, 0));
       }
 
       // This fragment has more tiles potentially.
@@ -876,11 +876,11 @@ void SparseGlobalOrderReader<BitmapType>::compute_hilbert_values(
 template <class BitmapType>
 void SparseGlobalOrderReader<BitmapType>::update_frag_idx(
     GlobalOrderResultTile<BitmapType>* tile, uint64_t c) {
-  auto& frag_idx = read_state_.frag_idx_[tile->frag_idx()];
+  auto& frag_idx = read_state_.frag_idx()[tile->frag_idx()];
   auto t = tile->tile_idx();
   if ((t == frag_idx.tile_idx_ && c > frag_idx.cell_idx_) ||
       t > frag_idx.tile_idx_) {
-    frag_idx = FragIdx(t, c);
+    read_state_.set_frag_idx(tile->frag_idx(), FragIdx(t, c));
   }
 }
 
@@ -932,8 +932,8 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
 
           // Add the tile to the queue.
           uint64_t cell_idx =
-              read_state_.frag_idx_[f].tile_idx_ == rt_it[f]->tile_idx() ?
-                  read_state_.frag_idx_[f].cell_idx_ :
+              read_state_.frag_idx()[f].tile_idx_ == rt_it[f]->tile_idx() ?
+                  read_state_.frag_idx()[f].cell_idx_ :
                   0;
           GlobalOrderResultCoords rc(&*(rt_it[f]), cell_idx);
           bool res = add_next_cell_to_queue(
@@ -1716,8 +1716,9 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
   while (result_cell_slabs.size() > max_cs_idx) {
     // Revert progress for this slab in read state, and pop it.
     auto& last_rcs = result_cell_slabs.back();
-    read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
-        FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_);
+    read_state_.set_frag_idx(
+        last_rcs.tile_->frag_idx(),
+        FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_));
     result_cell_slabs.pop_back();
   }
 
@@ -1758,8 +1759,9 @@ SparseGlobalOrderReader<BitmapType>::compute_var_size_offsets(
     while (query_buffer.original_buffer_var_size_ < new_var_buffer_size) {
       // Revert progress for this slab in read state, and pop it.
       auto& last_rcs = result_cell_slabs.back();
-      read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
-          FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_);
+      read_state_.set_frag_idx(
+          last_rcs.tile_->frag_idx(),
+          FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_));
       result_cell_slabs.pop_back();
 
       // Update the new var buffer size.
@@ -1787,8 +1789,10 @@ SparseGlobalOrderReader<BitmapType>::compute_var_size_offsets(
     new_var_buffer_size = ((OffType*)query_buffer.buffer_)[total_cells];
 
     // Update the cell progress.
-    read_state_.frag_idx_[last_rcs.tile_->frag_idx()] =
-        FragIdx(last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_);
+    read_state_.set_frag_idx(
+        last_rcs.tile_->frag_idx(),
+        FragIdx(
+            last_rcs.tile_->tile_idx(), last_rcs.start_ + last_rcs.length_));
 
     // Remove empty cell slab.
     if (last_rcs.length_ == 0) {
@@ -2192,7 +2196,7 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
       storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
         while (!result_tiles[f].empty() &&
                result_tiles[f].front().tile_idx() <
-                   read_state_.frag_idx_[f].tile_idx_) {
+                   read_state_.frag_idx()[f].tile_idx_) {
           remove_result_tile(f, result_tiles[f].begin(), result_tiles);
         }
 

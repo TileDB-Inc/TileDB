@@ -707,7 +707,7 @@ class Subarray {
    */
   Status precompute_all_ranges_tile_overlap(
       ThreadPool* const compute_tp,
-      std::vector<FragIdx>& frag_tile_idx,
+      const std::vector<FragIdx>& frag_tile_idx,
       ITileRange* tile_ranges);
 
   /**
