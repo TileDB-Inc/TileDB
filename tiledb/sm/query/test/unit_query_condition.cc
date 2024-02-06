@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/ast_helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -1124,7 +1125,7 @@ void test_apply_cells<char*>(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1161,7 +1162,7 @@ void test_apply_cells<char*>(
       frag_md[0] = make_shared<FragmentMetadata>(
           HERE(),
           nullptr,
-          make_shared<MemoryTracker>(HERE()),
+          tiledb::test::create_test_memory_tracker(),
           array_schema,
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1310,7 +1311,7 @@ void test_apply_cells(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1593,7 +1594,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1650,7 +1651,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1763,7 +1764,7 @@ TEST_CASE(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -2311,7 +2312,7 @@ void test_apply_dense<char*>(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -2371,7 +2372,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -2483,7 +2484,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -3013,7 +3014,7 @@ void test_apply_sparse<char*>(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -3073,7 +3074,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -3224,7 +3225,7 @@ void validate_qc_apply(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -3844,7 +3845,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -4131,7 +4132,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -4486,7 +4487,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -4809,7 +4810,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -4909,7 +4910,7 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      make_shared<MemoryTracker>(HERE()),
+      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),

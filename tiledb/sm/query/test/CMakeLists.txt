@@ -26,11 +26,24 @@
 
 include(unit_test)
 
+set(MEM_TEST_SUPPORT_SOURCES
+    ${CMAKE_SOURCE_DIR}/test/support/src/mem_helpers.h
+    ${CMAKE_SOURCE_DIR}/test/support/src/mem_helpers.cc
+)
+
+add_library(mem_test_support_lib STATIC EXCLUDE_FROM_ALL ${MEM_TEST_SUPPORT_SOURCES})
+
+find_package(Boost REQUIRED COMPONENTS container)
+target_include_directories(mem_test_support_lib PRIVATE Boost_INCLUDE_DIRS)
+target_link_libraries(mem_test_support_lib Boost::container)
+
 commence(unit_test query)
     this_target_sources(main.cc unit_validity_vector.cc unit_query_condition.cc)
     # Not actually testing a unit yet, but some things that ought to be units
     this_target_link_libraries(TILEDB_CORE_OBJECTS TILEDB_CORE_OBJECTS_ILIB)
     this_target_link_libraries(ast_test_support_lib)
+    this_target_link_libraries(mem_test_support_lib)
+
 
     # We want tests to continue as normal even as the API is changing,
     # so don't warn for deprecations, since they'll be escalated to errors.
