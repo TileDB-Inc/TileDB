@@ -751,7 +751,10 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
 
   EncryptionKey encryption_key;
   return ArrayDirectory::load_array_schema_from_uri(
-      *resources_, schema_uri, encryption_key);
+      *resources_,
+      schema_uri,
+      encryption_key,
+      resources_->create_memory_tracker());
 }
 
 Status FragmentInfo::get_array_schema_name(

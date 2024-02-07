@@ -37,6 +37,7 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
@@ -317,6 +318,7 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 }
 
 shared_ptr<Domain> Domain::deserialize(
+    shared_ptr<MemoryTracker> memory_tracker,
     Deserializer& deserializer,
     uint32_t version,
     Layout cell_order,
@@ -333,8 +335,8 @@ shared_ptr<Domain> Domain::deserialize(
   std::vector<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto dim{
-        Dimension::deserialize(deserializer, version, type, coords_filters)};
+    auto dim{Dimension::deserialize(
+        memory_tracker, deserializer, version, type, coords_filters)};
     dimensions.emplace_back(std::move(dim));
   }
 
@@ -348,7 +350,8 @@ const Range& Domain::domain(unsigned i) const {
 }
 
 NDRange Domain::domain() const {
-  NDRange ret(dim_num_);
+  // TODO: s/nullptr/MemoryTracker?
+  NDRange ret(dim_num_, {nullptr});
   for (unsigned d = 0; d < dim_num_; ++d)
     ret[d] = dimension_ptrs_[d]->domain();
 

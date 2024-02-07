@@ -468,7 +468,10 @@ class ArraySchema {
    * @param uri The uri of the Array.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(Deserializer& deserializer, const URI& uri);
+  static ArraySchema deserialize(
+      shared_ptr<MemoryTracker> memory_tracker,
+      Deserializer& deserializer,
+      const URI& uri);
 
   /** Returns the array domain. */
   inline const Domain& domain() const {

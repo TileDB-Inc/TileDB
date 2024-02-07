@@ -45,12 +45,14 @@
 #include <string>
 #include <vector>
 
+namespace tiledb::sm {
+class MemoryTracker;
+}  // namespace tiledb::sm
+
 using namespace tiledb::common;
+using tiledb::sm::MemoryTracker;
 
 namespace tiledb::type {
-
-class MemoryTracker;
-
 /**
  * Untyped storage for a closed interval
  *

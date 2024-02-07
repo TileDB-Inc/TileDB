@@ -36,6 +36,7 @@
 #include "dimension_api_external.h"
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
 
 /**
@@ -64,7 +65,8 @@ struct tiledb_dimension_handle_t
   static constexpr std::string_view object_type_name{"dimension"};
 
   tiledb_dimension_handle_t(const std::string& name, tiledb::sm::Datatype type)
-      : dimension_(make_shared<tiledb::sm::Dimension>(HERE(), name, type)) {
+      : dimension_(make_shared<tiledb::sm::Dimension>(
+            HERE(), make_shared<MemoryTracker>(HERE()), name, type)) {
   }
 
   /**

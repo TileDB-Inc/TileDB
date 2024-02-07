@@ -328,7 +328,8 @@ class ArrayDirectory {
   static shared_ptr<ArraySchema> load_array_schema_from_uri(
       ContextResources& resources,
       const URI& array_schema_uri,
-      const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Get the full vac uri using the base URI and a vac uri that might be

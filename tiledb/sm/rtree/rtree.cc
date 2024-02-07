@@ -376,11 +376,12 @@ void RTree::deserialize_v1_v4(
     auto mbr_num = deserializer.read<uint64_t>();
     levels_[l].resize(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      // TODO: RTree::memory_tracker_ from other branch.
+      levels_[l][m].resize(dim_num, {nullptr});
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         auto data = deserializer.get_ptr<void>(r_size);
-        levels_[l][m][d] = Range(data, r_size);
+        levels_[l][m][d] = Range(nullptr, data, r_size);
       }
     }
   }
@@ -403,19 +404,20 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
     levels_[l].resize(mbr_num);
 
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      // TODO: RTree::memory_tracker_ from other branch.
+      levels_[l][m].resize(dim_num, {nullptr});
       for (unsigned d = 0; d < dim_num; ++d) {
         auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size);
+          levels_[l][m][d] = Range(nullptr, data, r_size);
         } else {  // Var-sized
           // range_size | start_size | range
           auto r_size = deserializer.read<uint64_t>();
           auto start_size = deserializer.read<uint64_t>();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size, start_size);
+          levels_[l][m][d] = Range(nullptr, data, r_size, start_size);
         }
       }
     }

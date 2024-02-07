@@ -90,7 +90,10 @@ class Dimension {
    * @param name The name of the dimension.
    * @param type The type of the dimension.
    */
-  Dimension(const std::string& name, Datatype type);
+  Dimension(
+      shared_ptr<MemoryTracker> memory_tracker,
+      const std::string& name,
+      Datatype type);
 
   /**
    * Constructor.
@@ -161,6 +164,7 @@ class Dimension {
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
+      shared_ptr<MemoryTracker> memory_tracker,
       Deserializer& deserializer,
       uint32_t version,
       Datatype type,
@@ -470,7 +474,8 @@ class Dimension {
    * `tile`.
    */
   template <class T>
-  static Range compute_mbr(const WriterTile& tile);
+  static Range compute_mbr(
+      shared_ptr<MemoryTracker> memory_tracker, const WriterTile& tile);
 
   /**
    * Computes the minimum bounding range of the values stored in
@@ -485,7 +490,9 @@ class Dimension {
    */
   template <class T>
   static Range compute_mbr_var(
-      const WriterTile& tile_off, const WriterTile& tile_val);
+      shared_ptr<MemoryTracker> memory_tracker,
+      const WriterTile& tile_off,
+      const WriterTile& tile_val);
 
   /**
    * Crops the input 1D range such that it does not exceed the
@@ -765,6 +772,8 @@ class Dimension {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The number of values per coordinate. */
   unsigned cell_val_num_;
 
@@ -808,13 +817,15 @@ class Dimension {
    * Stores the appropriate templated compute_mbr() function based on the
    * dimension datatype.
    */
-  std::function<Range(const WriterTile&)> compute_mbr_func_;
+  std::function<Range(shared_ptr<MemoryTracker>, const WriterTile&)>
+      compute_mbr_func_;
 
   /**
    * Stores the appropriate templated compute_mbr_var() function based on the
    * dimension datatype.
    */
-  std::function<Range(const WriterTile&, const WriterTile&)>
+  std::function<Range(
+      shared_ptr<MemoryTracker>, const WriterTile&, const WriterTile&)>
       compute_mbr_var_func_;
 
   /**

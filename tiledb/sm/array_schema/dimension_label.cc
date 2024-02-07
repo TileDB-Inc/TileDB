@@ -38,6 +38,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"
+#include "tiledb/common/memory_tracker.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -169,7 +170,7 @@ DimensionLabel::DimensionLabel(
 
   // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
-      make_shared<Dimension>(HERE(), "index", index_type)};
+      make_shared<Dimension>(HERE(), make_shared<MemoryTracker>(HERE()), "index", index_type)};
   throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));

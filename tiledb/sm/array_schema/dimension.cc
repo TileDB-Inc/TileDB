@@ -46,9 +46,10 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-tiledb::common::blank<tiledb::sm::Dimension>::blank()
-    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
-}
+// TODO: Is this used?
+// tiledb::common::blank<tiledb::sm::Dimension>::blank()
+//    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
+//}
 
 namespace tiledb::sm {
 
@@ -63,8 +64,13 @@ class DimensionException : public StatusException {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Dimension::Dimension(const std::string& name, Datatype type)
-    : name_(name)
+Dimension::Dimension(
+    shared_ptr<MemoryTracker> memory_tracker,
+    const std::string& name,
+    Datatype type)
+    : memory_tracker_(memory_tracker)
+    , domain_(memory_tracker_)
+    , name_(name)
     , type_(type) {
   ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
@@ -151,6 +157,7 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
+    shared_ptr<MemoryTracker> memory_tracker,
     Deserializer& deserializer,
     uint32_t version,
     Datatype type,
@@ -191,9 +198,12 @@ shared_ptr<Dimension> Dimension::deserialize(
   } else {
     domain_size = 2 * datatype_size(datatype);
   }
-  Range domain;
+  Range domain(memory_tracker);
   if (domain_size != 0) {
-    domain = Range(deserializer.get_ptr<uint8_t>(domain_size), domain_size);
+    domain = Range(
+        memory_tracker,
+        deserializer.get_ptr<uint8_t>(domain_size),
+        domain_size);
   }
 
   ByteVecValue tile_extent;
@@ -298,7 +308,8 @@ bool Dimension::coincides_with_tiles(const Range& r) const {
 }
 
 template <class T>
-Range Dimension::compute_mbr(const WriterTile& tile) {
+Range Dimension::compute_mbr(
+    shared_ptr<MemoryTracker> memory_tracker, const WriterTile& tile) {
   auto cell_num = tile.cell_num();
   assert(cell_num > 0);
 
@@ -308,7 +319,7 @@ Range Dimension::compute_mbr(const WriterTile& tile) {
   // Initialize MBR with the first tile values
   const T* const data = static_cast<T*>(tile_buffer);
   T res[] = {data[0], data[0]};
-  Range mbr{res, sizeof(res)};
+  Range mbr{memory_tracker, res, sizeof(res)};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c)
@@ -319,12 +330,14 @@ Range Dimension::compute_mbr(const WriterTile& tile) {
 
 Range Dimension::compute_mbr(const WriterTile& tile) const {
   assert(compute_mbr_func_ != nullptr);
-  return compute_mbr_func_(tile);
+  return compute_mbr_func_(memory_tracker_, tile);
 }
 
 template <>
 Range Dimension::compute_mbr_var<char>(
-    const WriterTile& tile_off, const WriterTile& tile_val) {
+    shared_ptr<MemoryTracker> memory_tracker,
+    const WriterTile& tile_off,
+    const WriterTile& tile_val) {
   auto d_val_size = tile_val.size();
   auto cell_num = tile_off.cell_num();
   assert(cell_num > 0);
@@ -337,7 +350,7 @@ Range Dimension::compute_mbr_var<char>(
 
   // Initialize MBR with the first tile values
   auto size_0 = (cell_num == 1) ? d_val_size : d_off[1];
-  Range mbr{d_val, size_0, d_val, size_0};
+  Range mbr{memory_tracker, d_val, size_0, d_val, size_0};
 
   // Expand the MBR with the rest tile values
   for (uint64_t c = 1; c < cell_num; ++c) {
@@ -352,7 +365,7 @@ Range Dimension::compute_mbr_var<char>(
 Range Dimension::compute_mbr_var(
     const WriterTile& tile_off, const WriterTile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
-  return compute_mbr_var_func_(tile_off, tile_val);
+  return compute_mbr_var_func_(memory_tracker_, tile_off, tile_val);
 }
 
 template <class T>
@@ -1315,7 +1328,7 @@ Status Dimension::set_domain(const void* domain) {
 
   if (domain == nullptr)
     return Status::Ok();
-  return set_domain(Range(domain, 2 * coord_size()));
+  return set_domain(Range(memory_tracker_, domain, 2 * coord_size()));
 }
 
 Status Dimension::set_domain(const Range& domain) {
@@ -1329,7 +1342,7 @@ Status Dimension::set_domain(const Range& domain) {
 }
 
 Status Dimension::set_domain_unsafe(const void* domain) {
-  domain_ = Range(domain, 2 * coord_size());
+  domain_ = Range(memory_tracker_, domain, 2 * coord_size());
 
   return Status::Ok();
 }
