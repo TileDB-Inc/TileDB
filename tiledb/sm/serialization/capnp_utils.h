@@ -39,6 +39,7 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -492,8 +493,8 @@ Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
 }
 
 template <typename CapnpT>
-std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
-    CapnpT& reader) {
+NDRange deserialize_non_empty_domain_rv(
+    CapnpT& reader, shared_ptr<MemoryTracker> memory_tracker) {
   capnp::NonEmptyDomainList::Reader r =
       (capnp::NonEmptyDomainList::Reader)reader;
 
@@ -513,14 +514,14 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
 
       if (nonEmptyDomainObj.hasSizes()) {
         auto sizes = nonEmptyDomainObj.getSizes();
-        ndRange.emplace_back(vec.data(), vec.size(), sizes[0]);
+        ndRange.emplace_back(memory_tracker, vec.data(), vec.size(), sizes[0]);
       } else {
-        ndRange.emplace_back(vec.data(), vec.size());
+        ndRange.emplace_back(memory_tracker, vec.data(), vec.size());
       }
     }
   }
 
-  return {Status::Ok(), ndRange};
+  return {ndRange};
 }
 
 /** Deserializes the given from Capnp build to array's nonEmptyDomain
@@ -532,9 +533,9 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
  */
 template <typename CapnpT>
 Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
-  auto&& [status, ndrange] = deserialize_non_empty_domain_rv(reader);
-  RETURN_NOT_OK(status);
-  array->set_non_empty_domain(*ndrange);
+  auto&& ndrange =
+      deserialize_non_empty_domain_rv(reader, array->memory_tracker());
+  array->set_non_empty_domain(ndrange);
   return Status::Ok();
 }
 

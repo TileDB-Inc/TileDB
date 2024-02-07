@@ -642,10 +642,12 @@ std::vector<NDRange> WriterBase::compute_mbrs(
   auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
+  // TODO: tdb::pmr::
   std::vector<NDRange> mbrs(tile_num);
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
-        mbrs[i].resize(dim_num);
+        mbrs[i].resize(
+            dim_num, storage_manager_->resources().create_memory_tracker());
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};

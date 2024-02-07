@@ -602,9 +602,9 @@ Range range_from_capnp(
           "[Deserialization::range_from_capnp] Failed to copy " +
           std::string(dimension_reader.getType().cStr()) + " typed Capnp List");
     }
-    return Range{domain_buffer.data(), datatype_size(dim_type) * 2};
+    return Range{nullptr, domain_buffer.data(), datatype_size(dim_type) * 2};
   } else {
-    return Range{};
+    return Range{nullptr};
   }
 }
 

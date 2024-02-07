@@ -166,16 +166,16 @@ std::vector<Range> range_buffers_from_capnp(
   auto buffer_sizes = range_reader.getBufferSizes();
   auto buffer_start_sizes = range_reader.getBufferStartSizes();
   size_t range_count = buffer_sizes.size();
-  std::vector<Range> ranges(range_count);
+  std::vector<Range> ranges(range_count, {nullptr});
   uint64_t offset = 0;
   for (size_t j = 0; j < range_count; j++) {
     uint64_t range_size = buffer_sizes[j];
     uint64_t range_start_size = buffer_start_sizes[j];
     if (range_start_size != 0) {
       ranges[j] =
-          Range(data_ptr.begin() + offset, range_size, range_start_size);
+          Range(nullptr, data_ptr.begin() + offset, range_size, range_start_size);
     } else {
-      ranges[j] = Range(data_ptr.begin() + offset, range_size);
+      ranges[j] = Range(nullptr, data_ptr.begin() + offset, range_size);
     }
     offset += range_size;
   }
@@ -281,7 +281,7 @@ Status subarray_from_capnp(
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
-      Range range(data_ptr.begin(), data.size());
+      Range range(nullptr, data_ptr.begin(), data.size());
       RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }

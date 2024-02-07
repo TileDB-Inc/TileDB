@@ -66,7 +66,7 @@ struct tiledb_dimension_handle_t
 
   tiledb_dimension_handle_t(const std::string& name, tiledb::sm::Datatype type)
       : dimension_(make_shared<tiledb::sm::Dimension>(
-            HERE(), make_shared<MemoryTracker>(HERE()), name, type)) {
+            HERE(), nullptr, name, type)) {
   }
 
   /**

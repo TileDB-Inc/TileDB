@@ -1150,7 +1150,7 @@ ReaderBase::cache_dimension_label_data() {
   }
 
   return {
-      Range(&min, &max, sizeof(IndexType)),
+      Range(nullptr, &min, &max, sizeof(IndexType)),
       std::move(non_empty_domains),
       std::move(frag_first_array_tile_idx)};
 }

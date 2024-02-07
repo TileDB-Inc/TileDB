@@ -351,7 +351,8 @@ class ArrayDirectory {
    * @return Status, a new ArraySchema
    */
   shared_ptr<ArraySchema> load_array_schema_latest(
-      const EncryptionKey& encryption_key) const;
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /**
    * It loads and returns the latest schema and all the array schemas
@@ -368,7 +369,9 @@ class ArrayDirectory {
   tuple<
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-  load_array_schemas(const EncryptionKey& encryption_key) const;
+  load_array_schemas(
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /**
    * Loads all schemas of an array from persistent storage into memory.
@@ -380,7 +383,9 @@ class ArrayDirectory {
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>>
-  load_all_array_schemas(const EncryptionKey& encryption_key) const;
+  load_all_array_schemas(
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /**
    * Load the enumerations from the provided list of paths.

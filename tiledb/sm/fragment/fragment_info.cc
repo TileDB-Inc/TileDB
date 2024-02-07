@@ -1006,7 +1006,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
   std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
       array_schemas_all;
   std::tie(array_schema_latest, array_schemas_all) =
-      array_dir.load_array_schemas(enc_key);
+      array_dir.load_array_schemas(enc_key, memory_tracker);
 
   const auto filtered_fragment_uris = [&]() {
     auto timer_se =

@@ -123,7 +123,11 @@ int32_t tiledb_filestore_schema_create(
     // Define the range of the dimension.
     uint64_t range_lo = 0;
     uint64_t range_hi = std::numeric_limits<uint64_t>::max() - tile_extent - 1;
-    tiledb::type::Range range_obj(&range_lo, &range_hi, sizeof(uint64_t));
+    tiledb::type::Range range_obj(
+        ctx->resources().create_memory_tracker(),
+        &range_lo,
+        &range_hi,
+        sizeof(uint64_t));
 
     // Define the tile extent as a tiledb::sm::ByteVecValue.
     std::vector<uint8_t> tile_extent_vec(sizeof(uint64_t), 0);
@@ -291,7 +295,9 @@ int32_t tiledb_filestore_uri_import(
       1;
   uint64_t range_arr[] = {static_cast<uint64_t>(0), last_space_tile_boundary};
   tiledb::type::Range subarray_range(
-      static_cast<void*>(range_arr), sizeof(uint64_t) * 2);
+      ctx->resources().create_memory_tracker(),
+      static_cast<void*>(range_arr),
+      sizeof(uint64_t) * 2);
   throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
   query.set_subarray(subarray);
 
@@ -307,7 +313,9 @@ int32_t tiledb_filestore_uri_import(
 
     uint64_t cloud_fix_range_arr[] = {start, end};
     tiledb::type::Range subarray_range_cloud_fix(
-        static_cast<void*>(cloud_fix_range_arr), sizeof(uint64_t) * 2);
+        ctx->resources().create_memory_tracker(),
+        static_cast<void*>(cloud_fix_range_arr),
+        sizeof(uint64_t) * 2);
     throw_if_not_ok(
         subarray_cloud_fix.add_range(0, std::move(subarray_range_cloud_fix)));
     query.set_subarray(subarray_cloud_fix);
@@ -435,7 +443,9 @@ int32_t tiledb_filestore_uri_export(
         context.storage_manager());
     uint64_t subarray_range_arr[] = {start_range, end_range};
     tiledb::type::Range subarray_range(
-        static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
+        ctx->resources().create_memory_tracker(),
+        static_cast<void*>(subarray_range_arr),
+        sizeof(uint64_t) * 2);
     throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
 
     tiledb::sm::Query query(context.storage_manager(), array);
@@ -553,7 +563,9 @@ int32_t tiledb_filestore_buffer_import(
   uint64_t subarray_range_arr[] = {
       static_cast<uint64_t>(0), static_cast<uint64_t>(size - 1)};
   tiledb::type::Range subarray_range(
-      static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
+      ctx->resources().create_memory_tracker(),
+      static_cast<void*>(subarray_range_arr),
+      sizeof(uint64_t) * 2);
   throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
 
   query.set_subarray(subarray);
@@ -614,7 +626,7 @@ int32_t tiledb_filestore_buffer_export(
       context.storage_manager());
   uint64_t subarray_range_arr[] = {
       static_cast<uint64_t>(offset), static_cast<uint64_t>(offset + size - 1)};
-  tiledb::type::Range subarray_range(
+  tiledb::type::Range subarray_range(ctx->resources().create_memory_tracker(),
       static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
   throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
 

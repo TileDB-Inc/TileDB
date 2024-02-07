@@ -382,7 +382,8 @@ Status StorageManager::array_evolve_schema(
         "' not exists"));
   }
 
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key, resources_.create_memory_tracker());
 
   // Load required enumerations before evolution.
   auto enmr_names = schema_evolution->enumeration_names_to_extend();
@@ -455,7 +456,8 @@ Status StorageManagerCanonical::array_upgrade_version(
         static_cast<uint32_t>(encryption_key_from_cfg.size())));
   }
 
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key_cfg, resources_.create_memory_tracker());
 
   if (array_schema->version() < constants::format_version) {
     array_schema->generate_uri();

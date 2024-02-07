@@ -437,6 +437,10 @@ class FragmentMetadata {
       std::vector<bool>& is_default,
       TileOverlap* tile_overlap);
 
+  shared_ptr<MemoryTracker> memory_tracker() const {
+    return memory_tracker_;
+  }
+
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
    */

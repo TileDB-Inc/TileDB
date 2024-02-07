@@ -81,6 +81,7 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     , label_var_size_(array_schema_.attributes()[0]->var_size())
     , increasing_labels_(increasing_labels)
     , index_dim_(array_schema_.domain().dimension_ptr(0))
+    , non_empty_domain_(storage_manager_->resources().create_memory_tracker())
     , result_tiles_(fragment_metadata_.size()) {
   // Sanity checks.
   if (storage_manager_ == nullptr) {
@@ -466,7 +467,10 @@ bool OrderedDimLabelReader::tile_overwritten(
   IndexType tile_range[2]{
       index_dim_->tile_coord_low(tile_idx, domain_low, tile_extent),
       index_dim_->tile_coord_high(tile_idx, domain_low, tile_extent)};
-  Range r(tile_range, 2 * sizeof(IndexType));
+  Range r(
+      storage_manager_->resources().create_memory_tracker(),
+      tile_range,
+      2 * sizeof(IndexType));
 
   // Use the non empty domains for all fragments to see if the tile is
   // covered.

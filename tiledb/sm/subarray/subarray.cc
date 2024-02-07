@@ -271,7 +271,7 @@ void Subarray::add_label_range(
   // Add the label range to this subarray.
   return this->add_label_range(
       dim_label_ref,
-      Range(start, end, datatype_size(dim_label_ref.label_type())),
+      Range(nullptr, start, end, datatype_size(dim_label_ref.label_type())),
       err_on_range_oob_);
 }
 
@@ -298,7 +298,7 @@ void Subarray::add_label_range_var(
   // Add the label range to this subarray.
   return this->add_label_range(
       dim_label_ref,
-      Range(start, start_size, end, end_size),
+      Range(nullptr, start, start_size, end, end_size),
       err_on_range_oob_);
 }
 
@@ -361,7 +361,7 @@ Status Subarray::set_subarray(const void* subarray) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size =
           2 * array_->array_schema_latest().dimension_ptr(d)->coord_size();
-      Range range(&s_ptr[offset], r_size);
+      Range range(nullptr, &s_ptr[offset], r_size);
       RETURN_NOT_OK(this->add_range(d, std::move(range), err_on_range_oob_));
       offset += r_size;
     }
@@ -379,7 +379,7 @@ void Subarray::set_subarray_unsafe(const void* subarray) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size =
           2 * array_->array_schema_latest().dimension_ptr(d)->coord_size();
-      Range range(&s_ptr[offset], r_size);
+      Range range(nullptr, &s_ptr[offset], r_size);
       throw_if_not_ok(this->add_range_unsafe(d, std::move(range)));
       offset += r_size;
     }
@@ -422,7 +422,7 @@ Status Subarray::add_range(
 
   // Add range
   return this->add_range(
-      dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+      dim_idx, Range(nullptr, &range[0], 2 * coord_size), err_on_range_oob_);
 }
 
 Status Subarray::add_point_ranges(
@@ -465,7 +465,7 @@ Status Subarray::add_point_ranges(
 
     // Add range
     auto st = this->add_range(
-        dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+        dim_idx, Range(nullptr, &range[0], 2 * coord_size), err_on_range_oob_);
     if (!st.ok()) {
       return LOG_STATUS(std::move(st));
     }
@@ -513,8 +513,8 @@ Status Subarray::add_ranges_list(
     uint8_t* ptr = (uint8_t*)start + 2 * coord_size * i;
 
     // Add range
-    auto st =
-        this->add_range(dim_idx, Range(ptr, 2 * coord_size), err_on_range_oob_);
+    auto st = this->add_range(
+        dim_idx, Range(nullptr, ptr, 2 * coord_size), err_on_range_oob_);
     if (!st.ok()) {
       return LOG_STATUS(std::move(st));
     }
@@ -577,7 +577,9 @@ Status Subarray::add_range_var(
 
   // Add range
   return this->add_range(
-      dim_idx, Range(start, start_size, end, end_size), err_on_range_oob_);
+      dim_idx,
+      Range(nullptr, start, start_size, end, end_size),
+      err_on_range_oob_);
 }
 
 Status Subarray::add_range_var_by_name(
@@ -1807,7 +1809,7 @@ Status Subarray::split(
 
   auto dim_num = array_->array_schema_latest().dim_num();
 
-  Range sr1, sr2;
+  Range sr1(nullptr), sr2(nullptr);
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& r = range_subset_[d][0];
     if (d == splitting_dim) {
@@ -1841,7 +1843,7 @@ Status Subarray::split(
   const auto& array_schema = array_->array_schema_latest();
   auto dim_num = array_schema.dim_num();
   uint64_t range_num;
-  Range sr1, sr2;
+  Range sr1(nullptr), sr2(nullptr);
 
   for (unsigned d = 0; d < dim_num; ++d) {
     RETURN_NOT_OK(this->get_range_num(d, &range_num));
@@ -3150,7 +3152,8 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
           &overlaps);
 
       if (overlaps) {
-        throw_if_not_ok(ret.add_range_unsafe(d, Range(new_range, r_size)));
+        throw_if_not_ok(
+            ret.add_range_unsafe(d, Range(nullptr, new_range, r_size)));
         ret.original_range_idx_.resize(dim_num());
         ret.original_range_idx_[d].resize(i + 1);
         ret.original_range_idx_[d][i++] = r;
@@ -3252,13 +3255,14 @@ Subarray::LabelRangeSubset::LabelRangeSubset(
     const DimensionLabel& ref, bool coalesce_ranges)
     : name_{ref.name()}
     , ranges_{RangeSetAndSuperset(
-          ref.label_type(), Range(), false, coalesce_ranges)} {
+          ref.label_type(), Range(nullptr), false, coalesce_ranges)} {
 }
 
 Subarray::LabelRangeSubset::LabelRangeSubset(
     const std::string& name, Datatype type, bool coalesce_ranges)
     : name_{name}
-    , ranges_{RangeSetAndSuperset(type, Range(), false, coalesce_ranges)} {
+    , ranges_{
+          RangeSetAndSuperset(type, Range(nullptr), false, coalesce_ranges)} {
 }
 
 }  // namespace sm
