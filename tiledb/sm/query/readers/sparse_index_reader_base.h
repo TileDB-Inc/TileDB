@@ -608,9 +608,6 @@ class SparseIndexReaderBase : public ReaderBase {
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
 
-  /** Memory tracker object for the array. */
-  shared_ptr<MemoryTracker> array_memory_tracker_;
-
   /** Memory used for coordinates tiles. */
   std::atomic<uint64_t> memory_used_for_coords_total_;
 
