@@ -34,6 +34,7 @@
 #define TILEDB_DIMENSION_LABEL_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -107,6 +108,7 @@ class DimensionLabel {
   /**
    * Constructor for an internally generated dimension label.
    *
+   * @param memory_tracker Memory tracker for the dimension label.
    * @param dim_id The index of the dimension the label is attached to.
    * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.
@@ -115,6 +117,7 @@ class DimensionLabel {
    * @param label_type The datatype of the label data.
    */
   DimensionLabel(
+      shared_ptr<MemoryTracker> memory_tracker,
       dimension_size_type dim_id,
       const std::string& dim_label_name,
       const URI& uri,

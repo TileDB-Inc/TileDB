@@ -479,7 +479,9 @@ class ArraySchema {
    * @return A new ArraySchema.
    */
   static shared_ptr<ArraySchema> deserialize(
-      Deserializer& deserializer, const URI& uri);
+      Deserializer& deserializer, 
+      shared_ptr<MemoryTracker> memory_tracker,
+      const URI& uri);
 
   /** Return a cloned copy of this array schema. */
   shared_ptr<ArraySchema> clone() const;
