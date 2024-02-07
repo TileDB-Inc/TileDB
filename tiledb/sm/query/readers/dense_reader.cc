@@ -73,8 +73,7 @@ DenseReader::DenseReader(
     shared_ptr<Logger> logger,
     StrategyParams& params,
     bool remote_query)
-    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params)
-    , array_memory_tracker_(params.array_memory_tracker()) {
+    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params) {
   elements_mode_ = false;
 
   // Sanity checks.
