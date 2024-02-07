@@ -32,8 +32,8 @@
 
 #include <sstream>
 
-#include "test/support/tdb_catch.h"
 #include "test/support/src/mem_helpers.h"
+#include "test/support/tdb_catch.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -1191,7 +1191,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Add Enumeration - Enumeration nullptr Error",
     "[enumeration][array-schema][error]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   REQUIRE_THROWS(schema->add_enumeration(nullptr));
 }
 
@@ -1200,7 +1200,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Add Basic Enumeration",
     "[enumeration][array-schema][basic]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1216,7 +1216,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Get Enumeration",
     "[enumeration][array-schema][get]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr1 = create_enumeration(values);
@@ -1231,7 +1231,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Get Missing Enumeration Error",
     "[enumeration][array-schema][error]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
   REQUIRE_THROWS(schema->get_enumeration("not_an_enumeration"));
 }
 
@@ -1240,7 +1240,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Add Enumeration with Existing Enumeration of same Name",
     "[enumeration][array-schema][eror]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
 
@@ -1253,7 +1253,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Add Attribute with Missing Enumeration Error",
     "[enumeration][array-schema][eror]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
   auto attr = make_shared<Attribute>(HERE(), "an_attr", Datatype::INT32);
   attr->set_enumeration_name("not_an_enumeration");
   REQUIRE(!schema->add_attribute(attr).ok());
@@ -1264,7 +1264,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Get All Enumeration Names Empty",
     "[enumeration][array-schema][get-all][empty]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   auto enmr_names = schema->get_enumeration_names();
   REQUIRE(enmr_names.size() == 0);
 }
@@ -1274,7 +1274,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Get All Enumeration Names",
     "[enumeration][array-schema][get-all]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<float> values = {1.0f, 1.1f, 1.2f, 1.3f, 1.4f};
   auto enmr1 = create_enumeration(values);
@@ -1294,7 +1294,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Attribute with Invalid Datatype",
     "[enumeration][array-schema][error][bad-attr-datatype]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1310,7 +1310,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Attribute with Invalid Cell Val Num",
     "[enumeration][array-schema][error][bad-attr-cell-val-num]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1327,7 +1327,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Store nullptr Enumeration Error",
     "[enumeration][array-schema][error][store-nullptr-enumeration]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   REQUIRE_THROWS(schema->store_enumeration(nullptr));
 }
 
@@ -1336,7 +1336,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Store Enumeration Error",
     "[enumeration][array-schema][error][store-unknown-enumeration]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr =
       create_enumeration(values, false, Datatype::INT32, "unknown_enmr");
@@ -1348,7 +1348,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Store Enumeration Error - Already Loaded",
     "[enumeration][array-schema][error][store-loaded-enumeration]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
 
   std::vector<uint32_t> values = {0, 1, 2, 100000000};
   auto enmr = create_enumeration(values);
@@ -1365,7 +1365,7 @@ TEST_CASE_METHOD(
     "ArraySchema - Attribute Get Enumeration Name From Attribute",
     "[enumeration][array-schema][has-enumeration]") {
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
 
   std::vector<std::string> values = {"a", "spot", "of", "tea", "perhaps?"};
   auto enmr = create_enumeration(values);
@@ -2687,7 +2687,7 @@ std::vector<T> EnumerationFx::as_vector(shared_ptr<const Enumeration> enmr) {
 shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
 
   auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   int range[2] = {0, 1000};
@@ -2751,7 +2751,8 @@ shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
   Buffer buf;
   throw_if_not_ok(serialization::array_schema_serialize(
       *(schema.get()), stype, &buf, client_side));
-  return serialization::array_schema_deserialize(stype, buf);
+  return serialization::array_schema_deserialize(
+      stype, tiledb::test::create_test_memory_tracker(), buf);
 }
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
@@ -2794,8 +2795,12 @@ void EnumerationFx::ser_des_array(
     SerializationType stype) {
   Buffer buf;
   throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
-  throw_if_not_ok(
-      serialization::array_deserialize(out, stype, buf, ctx.storage_manager()));
+  throw_if_not_ok(serialization::array_deserialize(
+      out,
+      tiledb::test::create_test_memory_tracker(),
+      stype,
+      buf,
+      ctx.storage_manager()));
 }
 
 #else  // No TILEDB_SERIALIZATION

@@ -479,7 +479,7 @@ class ArraySchema {
    * @return A new ArraySchema.
    */
   static shared_ptr<ArraySchema> deserialize(
-      Deserializer& deserializer, 
+      Deserializer& deserializer,
       shared_ptr<MemoryTracker> memory_tracker,
       const URI& uri);
 

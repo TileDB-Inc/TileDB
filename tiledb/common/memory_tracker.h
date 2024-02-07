@@ -124,9 +124,11 @@ enum class MemoryTrackerType {
   ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
+  FRAGMENT_INFO_LOAD,
   QUERY_READ,
   QUERY_WRITE,
-  CONSOLIDATOR
+  CONSOLIDATOR,
+  REST_CLIENT
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

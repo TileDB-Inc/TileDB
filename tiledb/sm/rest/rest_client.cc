@@ -81,7 +81,8 @@ RestClient::RestClient()
     : stats_(nullptr)
     , config_(nullptr)
     , compute_tp_(nullptr)
-    , resubmit_incomplete_(true) {
+    , resubmit_incomplete_(true)
+    , memory_tracker_(nullptr) {
   auto st = utils::parse::convert(
       Config::REST_SERIALIZATION_DEFAULT_FORMAT, &serialization_type_);
   throw_if_not_ok(st);
@@ -91,7 +92,8 @@ Status RestClient::init(
     stats::Stats* const parent_stats,
     const Config* config,
     ThreadPool* compute_tp,
-    const std::shared_ptr<Logger>& logger) {
+    const std::shared_ptr<Logger>& logger,
+    ContextResources& resources) {
   if (config == nullptr)
     return LOG_STATUS(
         Status_RestError("Error initializing rest client; config is null."));
@@ -102,6 +104,8 @@ Status RestClient::init(
 
   config_ = config;
   compute_tp_ = compute_tp;
+  memory_tracker_ = resources.create_memory_tracker();
+  memory_tracker_->set_type(MemoryTrackerType::REST_CLIENT);
 
   const char* c_str;
   RETURN_NOT_OK(config_->get("rest.server_address", &c_str));
@@ -240,7 +244,7 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
   return {
       Status::Ok(),
       serialization::array_schema_deserialize(
-          serialization_type_, returned_data)};
+          serialization_type_, memory_tracker_, returned_data)};
 }
 
 shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
@@ -288,7 +292,7 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_array_schema_response(
-      serialization_type_, returned_data);
+      serialization_type_, memory_tracker_, returned_data);
 }
 
 Status RestClient::post_array_schema_to_rest(
@@ -372,7 +376,11 @@ Status RestClient::post_array_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::array_deserialize(
-      array, serialization_type_, returned_data, storage_manager);
+      array,
+      memory_tracker_,
+      serialization_type_,
+      returned_data,
+      storage_manager);
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
@@ -1261,7 +1269,7 @@ Status RestClient::post_fragment_info_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::fragment_info_deserialize(
-      fragment_info, serialization_type_, uri, returned_data);
+      fragment_info, memory_tracker_, serialization_type_, uri, returned_data);
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
@@ -1521,7 +1529,11 @@ RestClient::RestClient() {
 }
 
 Status RestClient::init(
-    stats::Stats*, const Config*, ThreadPool*, const std::shared_ptr<Logger>&) {
+    stats::Stats*,
+    const Config*,
+    ThreadPool*,
+    const std::shared_ptr<Logger>&,
+    ContextResources&) {
   return LOG_STATUS(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
