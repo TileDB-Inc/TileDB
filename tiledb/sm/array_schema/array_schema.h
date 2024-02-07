@@ -481,7 +481,7 @@ class ArraySchema {
   static shared_ptr<ArraySchema> deserialize(
       Deserializer& deserializer, const URI& uri);
 
-  // TODO: DOCS
+  /** Return a cloned copy of this array schema. */
   shared_ptr<ArraySchema> clone() const;
 
   /** Returns the array domain. */
@@ -589,7 +589,7 @@ class ArraySchema {
   /* ********************************* */
 
   /**
-   * The memory tracker of the array this fragment metadata corresponds to.
+   * The memory tracker of the ArraySchema.
    */
   shared_ptr<MemoryTracker> memory_tracker_;
 

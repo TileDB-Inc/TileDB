@@ -64,6 +64,7 @@ enum class MemoryTrackerType {
   ANONYMOUS,
   ARRAY_READ,
   ARRAY_WRITE,
+  ARRAY_CREATE,
   QUERY_READ,
   QUERY_WRITE,
   CONSOLIDATOR
