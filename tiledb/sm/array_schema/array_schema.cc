@@ -195,6 +195,7 @@ ArraySchema::ArraySchema(
     enumeration_map_[enmr->name()] = enmr;
   }
 
+  // Create attribute map
   auto n{attribute_num()};
   for (decltype(n) i = 0; i < n; ++i) {
     auto attr = attributes_[i].get();

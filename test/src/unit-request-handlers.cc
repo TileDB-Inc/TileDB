@@ -33,6 +33,7 @@
 #ifdef TILEDB_SERIALIZATION
 
 #include "test/support/tdb_catch.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/array_schema/enumeration.h"
@@ -95,7 +96,7 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 
   virtual shared_ptr<ArraySchema> create_schema() override {
     auto schema = make_shared<ArraySchema>(
-        HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::SPARSE);
+        HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
     auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
@@ -396,7 +397,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(
-      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::SPARSE);
+      HERE(), create_test_memory_tracker(), ArrayType::SPARSE);
   auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
@@ -443,7 +444,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   auto schema = make_shared<ArraySchema>(
-      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
   schema->set_capacity(10000);
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));

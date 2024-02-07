@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/array_type.h"
@@ -81,7 +82,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 1000;
-  ArraySchema schema(make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+  ArraySchema schema(create_test_memory_tracker(), ArrayType::DENSE);
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
@@ -259,7 +260,7 @@ TEMPLATE_LIST_TEST_CASE(
   auto type = tiledb::impl::type_to_tiledb<T>();
 
   // Generate the array schema.
-  ArraySchema schema(make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+  ArraySchema schema(create_test_memory_tracker(), ArrayType::DENSE);
   schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
@@ -334,7 +335,7 @@ TEST_CASE(
 
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 20;
-  ArraySchema schema(make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+  ArraySchema schema(create_test_memory_tracker(), ArrayType::DENSE);
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
@@ -434,7 +435,7 @@ TEST_CASE(
     "TileMetadataGenerator: var data tiles same string, different lengths",
     "[tile-metadata-generator][var-data][same-length]") {
   // Generate the array schema.
-  ArraySchema schema(make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+  ArraySchema schema(create_test_memory_tracker(), ArrayType::DENSE);
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);

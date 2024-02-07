@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
@@ -248,7 +249,7 @@ TEST_CASE_METHOD(
   CHECK(dom->add_dimension(d2).ok());
 
   auto schema = make_shared<ArraySchema>(
-      HERE(), make_shared<MemoryTracker>(HERE()), ArrayType::DENSE);
+      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
   CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
