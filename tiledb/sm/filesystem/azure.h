@@ -316,7 +316,9 @@ class Azure {
    * Calling code should include the Azure SDK headers to make
    * use of the BlobServiceClient.
    */
-  const ::Azure::Storage::Blobs::BlobServiceClient& client() const;
+  const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
+    return client_holder_.get_or_create_client(*this);
+  }
 
  private:
   /* ********************************* */
@@ -363,6 +365,33 @@ class Azure {
     Status st_;
   };
 
+  /**
+   * Encapsulates access to an Azure BlobServiceClient.
+   *
+   * This class ensures that:
+   * * Callers access the client in an initialized state.
+   * * The client gets initialized only once in the face
+   *   of concurrent accesses.
+   */
+  class LazyClientHolder {
+   public:
+    /**
+     * Gets a reference to the Azure BlobServiceClient, and initializes it if it
+     * is not initialized.
+     *
+     * @param azure A reference to the parent Azure VFS object.
+     */
+    const ::Azure::Storage::Blobs::BlobServiceClient& get_or_create_client(
+        const Azure& azure);
+
+   private:
+    /** The Azure blob service client. */
+    tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+
+    /** Protects from creating the client many times. */
+    std::mutex client_init_mtx_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -370,8 +399,8 @@ class Azure {
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
-  /** The Azure blob service client. */
-  mutable tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+  /** A holder for the Azure blob service client. */
+  mutable LazyClientHolder client_holder_;
 
   /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
@@ -418,9 +447,6 @@ class Azure {
 
   /** Protects 'block_list_upload_states_'. */
   std::mutex block_list_upload_states_lock_;
-
-  /** Protects 'client()'. */
-  mutable std::mutex client_init_lock_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

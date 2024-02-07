@@ -159,7 +159,8 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 /*                 API               */
 /* ********************************* */
 
-const ::Azure::Storage::Blobs::BlobServiceClient& Azure::client() const {
+const ::Azure::Storage::Blobs::BlobServiceClient&
+Azure::LazyClientHolder::get_or_create_client(const Azure& azure) {
   // Initialize logging from the Azure SDK.
   static std::once_flag azure_log_sentinel;
   std::call_once(azure_log_sentinel, []() {
@@ -182,31 +183,31 @@ const ::Azure::Storage::Blobs::BlobServiceClient& Azure::client() const {
         });
   });
 
-  std::lock_guard<std::mutex> lck(client_init_lock_);
+  std::lock_guard<std::mutex> lck(client_init_mtx_);
 
   if (!client_) {
     ::Azure::Storage::Blobs::BlobClientOptions options;
-    options.Retry.MaxRetries = max_retries_;
-    options.Retry.RetryDelay = retry_delay_;
-    options.Retry.MaxRetryDelay = max_retry_delay_;
+    options.Retry.MaxRetries = azure.max_retries_;
+    options.Retry.RetryDelay = azure.retry_delay_;
+    options.Retry.MaxRetryDelay = azure.max_retry_delay_;
 
-    options.Transport.Transport = create_transport(ssl_cfg_);
+    options.Transport.Transport = create_transport(azure.ssl_cfg_);
 
     // Construct the Azure SDK blob service client.
     // We pass a shared key if it was specified.
-    if (!account_key_.empty()) {
+    if (!azure.account_key_.empty()) {
       client_ =
           tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
               ::Azure::Storage::Blobs::BlobServiceClient,
-              blob_endpoint_,
+              azure.blob_endpoint_,
               make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                  HERE(), account_name_, account_key_),
+                  HERE(), azure.account_name_, azure.account_key_),
               options));
     } else {
       client_ =
           tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
               ::Azure::Storage::Blobs::BlobServiceClient,
-              blob_endpoint_,
+              azure.blob_endpoint_,
               options));
     }
   }
