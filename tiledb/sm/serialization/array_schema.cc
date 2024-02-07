@@ -780,7 +780,8 @@ void dimension_label_to_capnp(
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& dim_label_reader) {
+    const capnp::DimensionLabel::Reader& dim_label_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
@@ -788,7 +789,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = array_schema_from_capnp(schema_reader, URI());
+    schema = array_schema_from_capnp(schema_reader, memory_tracker, URI());
   }
 
   auto is_relative = dim_label_reader.getRelative();
@@ -914,7 +915,9 @@ Status array_schema_to_capnp(
 
 // #TODO Add security validation on incoming URI
 shared_ptr<ArraySchema> array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+    const capnp::ArraySchema::Reader& schema_reader,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const URI& uri) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
   Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
@@ -1068,7 +1071,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     try {
       for (auto dim_label_reader : dim_labels_reader) {
         dimension_labels.emplace_back(
-            dimension_label_from_capnp(dim_label_reader));
+            dimension_label_from_capnp(dim_label_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1128,7 +1131,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
 
   return make_shared<ArraySchema>(
       HERE(),
-      make_shared<MemoryTracker>(HERE()),
+      memory_tracker,
       uri_deserialized,
       version,
       timestamp_range,
@@ -1203,7 +1206,9 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+    SerializationType serialize_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Buffer& serialized_buffer) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
 
@@ -1217,7 +1222,8 @@ shared_ptr<ArraySchema> array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, memory_tracker, URI());
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1226,7 +1232,8 @@ shared_ptr<ArraySchema> array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, memory_tracker, URI());
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1965,13 +1972,16 @@ void serialize_load_array_schema_response(
 }
 
 shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
-    capnp::LoadArraySchemaResponse::Reader& reader) {
+    capnp::LoadArraySchemaResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  return array_schema_from_capnp(schema_reader, URI());
+  return array_schema_from_capnp(schema_reader, memory_tracker, URI());
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data) {
+    SerializationType serialization_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Buffer& data) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -1982,7 +1992,7 @@ shared_ptr<ArraySchema> deserialize_load_array_schema_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(data.data())), builder);
         auto reader = builder.asReader();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
@@ -1990,7 +2000,7 @@ shared_ptr<ArraySchema> deserialize_load_array_schema_response(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             data.size() / sizeof(::capnp::word)));
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
         throw Status_SerializationError(
@@ -2018,7 +2028,7 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, const Buffer&) {
+    SerializationType, shared_ptr<MemoryTracker>, const Buffer&) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2079,7 +2089,7 @@ void serialize_load_array_schema_response(
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
-    SerializationType, const Buffer&) {
+    SerializationType, shared_ptr<MemoryTracker>, const Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }

@@ -78,6 +78,7 @@ Status array_to_capnp(
  */
 Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
+    shared_ptr<MemoryTracker> memory_tracker,
     StorageManager* storage_manager,
     Array* array,
     const bool client_side = true);
@@ -133,6 +134,7 @@ Status array_serialize(
 
 Status array_deserialize(
     Array* array,
+    shared_ptr<MemoryTracker> memory_tracker,
     SerializationType serialize_type,
     const Buffer& serialized_buffer,
     StorageManager* storage_manager);

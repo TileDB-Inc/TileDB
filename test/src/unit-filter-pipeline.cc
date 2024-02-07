@@ -404,7 +404,7 @@ TEST_CASE("Filter: Test compression", "[filter][compression]") {
   auto domain{make_shared<tiledb::sm::Domain>(HERE())};
   CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema(
-      create_test_memory_tracker(), ArrayType::DENSE);
+      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());
@@ -530,7 +530,7 @@ TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
   auto domain{make_shared<tiledb::sm::Domain>(HERE())};
   CHECK(domain->add_dimension(dim).ok());
   tiledb::sm::ArraySchema schema(
-      create_test_memory_tracker(), ArrayType::DENSE);
+      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   tiledb::sm::Attribute attr("attr", Datatype::UINT64);
   CHECK(schema.add_attribute(make_shared<tiledb::sm::Attribute>(HERE(), attr))
             .ok());

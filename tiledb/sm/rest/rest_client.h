@@ -66,7 +66,8 @@ class RestClient {
       stats::Stats* parent_stats,
       const Config* config,
       ThreadPool* compute_tp,
-      const std::shared_ptr<Logger>& logger);
+      const std::shared_ptr<Logger>& logger,
+      ContextResources& resources);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
@@ -433,6 +434,9 @@ class RestClient {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** The class MemoryTracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

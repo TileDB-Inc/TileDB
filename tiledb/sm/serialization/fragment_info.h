@@ -63,6 +63,7 @@ namespace serialization {
  */
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
+    shared_ptr<MemoryTracker> memory_tracker,
     const URI& uri,
     FragmentInfo* fragment_info);
 
@@ -128,6 +129,7 @@ Status fragment_info_serialize(
  */
 Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
+    shared_ptr<MemoryTracker> memory_tracker,
     SerializationType serialize_type,
     const URI& uri,
     const Buffer& serialized_buffer);

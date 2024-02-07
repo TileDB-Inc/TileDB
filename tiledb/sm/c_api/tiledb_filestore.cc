@@ -120,9 +120,7 @@ int32_t tiledb_filestore_schema_create(
     auto memory_tracker = context.resources().create_memory_tracker();
     memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
     (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(),
-        memory_tracker,
-        tiledb::sm::ArrayType::DENSE);
+        HERE(), memory_tracker, tiledb::sm::ArrayType::DENSE);
     auto& schema = (*array_schema)->array_schema_;
 
     // Define the range of the dimension.

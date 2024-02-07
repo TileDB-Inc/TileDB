@@ -1062,7 +1062,14 @@ void ArraySchema::add_dimension_label(
 
     // Create the dimension label reference.
     auto dim_label_ref = make_shared<DimensionLabel>(
-        HERE(), memory_tracker_, dim_id, name, uri, dim, label_order, label_type);
+        HERE(),
+        memory_tracker_,
+        dim_id,
+        name,
+        uri,
+        dim,
+        label_order,
+        label_type);
     dimension_labels_.emplace_back(dim_label_ref);
     dimension_label_map_[name] = dim_label_ref.get();
   } catch (...) {
@@ -1290,7 +1297,7 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 
 // #TODO Add security validation on incoming URI
 shared_ptr<ArraySchema> ArraySchema::deserialize(
-    Deserializer& deserializer, 
+    Deserializer& deserializer,
     shared_ptr<MemoryTracker> memory_tracker,
     const URI& uri) {
   Status st;

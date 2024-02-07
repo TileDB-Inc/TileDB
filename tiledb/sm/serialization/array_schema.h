@@ -112,7 +112,9 @@ Status array_schema_to_capnp(
  * @return a new ArraySchema
  */
 shared_ptr<ArraySchema> array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
+    const capnp::ArraySchema::Reader& schema_reader,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const URI& uri);
 
 /**
  * Serialize a dimension label to cap'n proto object
@@ -133,7 +135,8 @@ void dimension_label_to_capnp(
  * @return A new DimensionLabel.
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& reader);
+    const capnp::DimensionLabel::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 #endif  // TILEDB_SERIALIZATION
 
@@ -153,7 +156,9 @@ Status array_schema_serialize(
     const bool client_side);
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
+    SerializationType serialize_type,
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Buffer& serialized_buffer);
 
 Status nonempty_domain_serialize(
     const Array* array,
@@ -205,7 +210,9 @@ void serialize_load_array_schema_response(
     Buffer& data);
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data);
+    SerializationType serialization_type,
+    shared_ptr<MemoryTracker>,
+    const Buffer& data);
 
 }  // namespace serialization
 }  // namespace sm
