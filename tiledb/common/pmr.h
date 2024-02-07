@@ -50,6 +50,7 @@ using memory_resource = boost::container::pmr::memory_resource;
 /* ********************************* */
 /*       PMR VECTOR DECLARATION      */
 /* ********************************* */
+
 template <class Tp>
 using pmr_vector =
     std::vector<Tp, boost::container::pmr::polymorphic_allocator<Tp>>;
@@ -129,6 +130,7 @@ class vector : public pmr_vector<Tp> {
 /* ********************************* */
 /*   PMR UNORDERED MAP DECLARATION   */
 /* ********************************* */
+
 template <
     class Key,
     class T,
