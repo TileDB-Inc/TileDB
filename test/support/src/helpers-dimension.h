@@ -30,6 +30,7 @@
  * Helpers for tests involving dimensions.
  */
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/type/range/range.h"
 
@@ -54,7 +55,8 @@ class TypedRange : public tiledb::type::Range {
    * @param high Upper bound of interval
    * @pre low <= high
    */
-  TypedRange(T low, T high) {
+  TypedRange(T low, T high)
+      : tiledb::type::Range(create_test_memory_tracker()) {
     T x[2] = {low, high};
     set_range(&x[0], 2 * sizeof(T));
     /* Commentary: There's no way of initializing a Range without copying from

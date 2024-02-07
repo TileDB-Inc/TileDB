@@ -32,6 +32,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
@@ -95,7 +96,11 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 
   virtual shared_ptr<ArraySchema> create_schema() override {
     auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
-    auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+    auto dim = make_shared<Dimension>(
+        HERE(),
+        tiledb::test::create_test_memory_tracker(),
+        "dim1",
+        Datatype::INT32);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
     auto dom = make_shared<Domain>(HERE());
@@ -395,7 +400,11 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
-  auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto dim = make_shared<Dimension>(
+      HERE(),
+      tiledb::test::create_test_memory_tracker(),
+      "dim1",
+      Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
@@ -446,9 +455,10 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
   uint32_t dim_domain[] = {1, 10, 1, 10};
 
-  auto dim1 = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  auto dim1 = make_shared<Dimension>(HERE(), tracker, "dim1", Datatype::INT32);
   throw_if_not_ok(dim1->set_domain(&dim_domain[0]));
-  auto dim2 = make_shared<Dimension>(HERE(), "dim2", Datatype::INT32);
+  auto dim2 = make_shared<Dimension>(HERE(), tracker, "dim2", Datatype::INT32);
   throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
 
   auto dom = make_shared<Domain>(HERE());

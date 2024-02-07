@@ -2287,7 +2287,8 @@ TEST_CASE_METHOD(
   // Check unsplittable
   tiledb::sm::Subarray subarray(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray.add_range(0, Range("bb", "bb"), true).ok());
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  CHECK(subarray.add_range(0, Range(tracker, "bb", "bb"), true).ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(
@@ -2323,7 +2324,7 @@ TEST_CASE_METHOD(
   // Check full
   tiledb::sm::Subarray subarray_full(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray_full.add_range(0, Range("a", "bb"), true).ok());
+  CHECK(subarray_full.add_range(0, Range(tracker, "a", "bb"), true).ok());
   SubarrayPartitioner partitioner_full(
       &config,
       subarray_full,
@@ -2350,7 +2351,7 @@ TEST_CASE_METHOD(
   // Check split
   tiledb::sm::Subarray subarray_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray_split.add_range(0, Range("a", "bb"), true).ok());
+  CHECK(subarray_split.add_range(0, Range(tracker, "a", "bb"), true).ok());
   SubarrayPartitioner partitioner_split(
       &config,
       subarray_split,
@@ -2387,7 +2388,7 @@ TEST_CASE_METHOD(
   // Check no split 2 MBRs
   tiledb::sm::Subarray subarray_no_split(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray_no_split.add_range(0, Range("bb", "cc"), true).ok());
+  CHECK(subarray_no_split.add_range(0, Range(tracker, "bb", "cc"), true).ok());
   SubarrayPartitioner partitioner_no_split(
       &config,
       subarray_no_split,
@@ -2416,7 +2417,7 @@ TEST_CASE_METHOD(
   // Check split 2 MBRs
   tiledb::sm::Subarray subarray_split_2(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray_split_2.add_range(0, Range("bb", "cc"), true).ok());
+  CHECK(subarray_split_2.add_range(0, Range(tracker, "bb", "cc"), true).ok());
   SubarrayPartitioner partitioner_split_2(
       &config,
       subarray_split_2,
@@ -2554,7 +2555,12 @@ TEST_CASE_METHOD(
 
   tiledb::sm::Subarray subarray(
       array->array_.get(), layout, &g_helper_stats, g_helper_logger());
-  CHECK(subarray.add_range(0, Range("cc", "ccd"), true).ok());
+  CHECK(subarray
+            .add_range(
+                0,
+                Range(tiledb::test::create_test_memory_tracker(), "cc", "ccd"),
+                true)
+            .ok());
   ThreadPool tp(4);
   Config config;
   SubarrayPartitioner partitioner(

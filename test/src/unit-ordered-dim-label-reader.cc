@@ -123,7 +123,10 @@ struct CPPOrderedDimLabelReaderFixedFx {
     std::vector<Range> input_ranges;
     for (uint64_t r = 0; r < ranges.size() / 2; r++) {
       input_ranges.emplace_back(
-          &ranges[r * 2], &ranges[r * 2 + 1], sizeof(LabelT));
+          tiledb::test::create_test_memory_tracker(),
+          &ranges[r * 2],
+          &ranges[r * 2 + 1],
+          sizeof(LabelT));
     }
 
     Subarray subarray(ctx_, array);
@@ -168,10 +171,12 @@ struct CPPOrderedDimLabelReaderFixedFx {
 
         // Always add range so that the lower bound is less than or equal to the
         // upper bound.
-        increasing_labels_ ? input_ranges.emplace_back(
-                                 &first_label, &second_label, sizeof(LabelT)) :
-                             input_ranges.emplace_back(
-                                 &second_label, &first_label, sizeof(LabelT));
+        auto tracker = tiledb::test::create_test_memory_tracker();
+        increasing_labels_ ?
+            input_ranges.emplace_back(
+                tracker, &first_label, &second_label, sizeof(LabelT)) :
+            input_ranges.emplace_back(
+                tracker, &second_label, &first_label, sizeof(LabelT));
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -254,7 +259,8 @@ TEST_CASE_METHOD(
   // Set attribute ranges.
   double val = 0;
   std::vector<Range> input_ranges;
-  input_ranges.emplace_back(&val, &val, sizeof(double));
+  input_ranges.emplace_back(
+      tiledb::test::create_test_memory_tracker(), &val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
   subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -293,7 +299,8 @@ TEST_CASE_METHOD(
   // Set attribute ranges.
   double val = 0;
   std::vector<Range> input_ranges;
-  input_ranges.emplace_back(&val, &val, sizeof(double));
+  input_ranges.emplace_back(
+      tiledb::test::create_test_memory_tracker(), &val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
   subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -333,7 +340,8 @@ TEST_CASE_METHOD(
   // Set attribute ranges.
   double val = 0;
   std::vector<Range> input_ranges;
-  input_ranges.emplace_back(&val, &val, sizeof(double));
+  input_ranges.emplace_back(
+      tiledb::test::create_test_memory_tracker(), &val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
   subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -373,7 +381,8 @@ TEST_CASE_METHOD(
   // Set attribute ranges.
   double val = 0;
   std::vector<Range> input_ranges;
-  input_ranges.emplace_back(&val, &val, sizeof(double));
+  input_ranges.emplace_back(
+      tiledb::test::create_test_memory_tracker(), &val, &val, sizeof(double));
 
   Subarray subarray(ctx_, array);
   subarray.add_range(0, 1, 1);
@@ -410,7 +419,11 @@ TEST_CASE_METHOD(
   // Set attribute ranges.
   std::vector<double> ranges{0.4, 0.8};
   std::vector<Range> input_ranges;
-  input_ranges.emplace_back(&ranges[0], &ranges[1], sizeof(double));
+  input_ranges.emplace_back(
+      tiledb::test::create_test_memory_tracker(),
+      &ranges[0],
+      &ranges[1],
+      sizeof(double));
 
   Subarray subarray(ctx_, array);
   subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -774,7 +787,11 @@ struct CPPOrderedDimLabelReaderVarFx {
       auto labels_data = stream.str();
 
       input_ranges.emplace_back(
-          labels_data.data(), 4, labels_data.data() + 4, 4);
+          tiledb::test::create_test_memory_tracker(),
+          labels_data.data(),
+          4,
+          labels_data.data() + 4,
+          4);
     }
 
     Subarray subarray(ctx_, array);
@@ -825,11 +842,12 @@ struct CPPOrderedDimLabelReaderVarFx {
 
         // Always add range so that the lower bound is less than or equal to the
         // upper bound.
+        auto tracker = tiledb::test::create_test_memory_tracker();
         increasing_labels_ ?
             input_ranges.emplace_back(
-                labels_data.data(), 4, labels_data.data() + 4, 4) :
+                tracker, labels_data.data(), 4, labels_data.data() + 4, 4) :
             input_ranges.emplace_back(
-                labels_data.data() + 4, 4, labels_data.data(), 4);
+                tracker, labels_data.data() + 4, 4, labels_data.data(), 4);
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -1054,7 +1072,10 @@ TEST_CASE_METHOD(
   std::vector<Range> input_ranges;
   for (uint64_t r = 0; r < ranges.size() / 2; r++) {
     input_ranges.emplace_back(
-        &ranges[r * 2], &ranges[r * 2 + 1], sizeof(double));
+        tiledb::test::create_test_memory_tracker(),
+        &ranges[r * 2],
+        &ranges[r * 2 + 1],
+        sizeof(double));
   }
 
   Subarray subarray(ctx_, array);

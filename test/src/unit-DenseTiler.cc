@@ -146,7 +146,14 @@ void DenseTilerFx::add_ranges(
     uint64_t range_size,
     tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
-    CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
+    CHECK(subarray
+              ->add_range(
+                  (uint32_t)i,
+                  Range(
+                      tiledb::test::create_test_memory_tracker(),
+                      ranges[i],
+                      range_size))
+              .ok());
 }
 
 void DenseTilerFx::open_array(

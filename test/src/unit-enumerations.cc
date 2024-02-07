@@ -32,6 +32,7 @@
 
 #include <sstream>
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -2674,7 +2675,11 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
 
-  auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto dim = make_shared<Dimension>(
+      HERE(),
+      tiledb::test::create_test_memory_tracker(),
+      "dim1",
+      Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
@@ -2724,7 +2729,8 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
 
 shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  return array_dir->load_array_schema_latest(enc_key_);
+  return array_dir->load_array_schema_latest(
+      enc_key_, tiledb::test::create_test_memory_tracker());
 }
 
 #ifdef TILEDB_SERIALIZATION

@@ -955,10 +955,11 @@ TEST_CASE_METHOD(
 
   // Set attribute ranges
   int64_t range_data[6]{-10, -8, -5, 0, -2, 7};
+  auto tracker = tiledb::test::create_test_memory_tracker();
   std::vector<Range> input_ranges{
-      Range(&range_data[0], &range_data[1], sizeof(int64_t)),
-      Range(&range_data[2], &range_data[3], sizeof(int64_t)),
-      Range(&range_data[4], &range_data[5], sizeof(int64_t))};
+      Range(tracker, &range_data[0], &range_data[1], sizeof(int64_t)),
+      Range(tracker, &range_data[2], &range_data[3], sizeof(int64_t)),
+      Range(tracker, &range_data[4], &range_data[5], sizeof(int64_t))};
   subarray->subarray_->set_attribute_ranges("b", input_ranges);
 
   // Get attribute ranges and verify results

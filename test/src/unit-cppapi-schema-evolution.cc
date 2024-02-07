@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -810,7 +811,10 @@ TEST_CASE(
   auto schema = make_shared<tiledb::sm::ArraySchema>(
       HERE(), tiledb::sm::ArrayType::SPARSE);
   auto dim = make_shared<tiledb::sm::Dimension>(
-      HERE(), "dim1", tiledb::sm::Datatype::INT32);
+      HERE(),
+      tiledb::test::create_test_memory_tracker(),
+      "dim1",
+      tiledb::sm::Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 

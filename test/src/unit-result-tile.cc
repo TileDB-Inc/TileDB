@@ -252,22 +252,23 @@ TEST_CASE_METHOD(
   NDRange ranges;
   char temp[2];
   std::vector<uint8_t> exp_result_count;
+  auto tracker = tiledb::test::create_test_memory_tracker();
   SECTION("- First and last cell included") {
-    ranges.resize(2);
+    ranges.resize(2, tracker);
     temp[0] = temp[1] = 'a';
-    ranges[0] = Range(temp, 2, 1);
+    ranges[0] = Range(tracker, temp, 2, 1);
 
     temp[0] = temp[1] = 'h';
-    ranges[1] = Range(temp, 2, 1);
+    ranges[1] = Range(tracker, temp, 2, 1);
 
     exp_result_count = {1, 0, 0, 0, 0, 0, 0, 1};
   }
 
   SECTION("- Middle cells included") {
-    ranges.resize(1);
+    ranges.resize(1, tracker);
     temp[0] = 'b';
     temp[1] = 'g';
-    ranges[0] = Range(temp, 2, 1);
+    ranges[0] = Range(tracker, temp, 2, 1);
 
     exp_result_count = {0, 1, 1, 1, 1, 1, 1, 0};
   }
@@ -362,52 +363,53 @@ TEST_CASE_METHOD(
   NDRange ranges;
   char temp[2];
   std::vector<uint64_t> exp_result_count{8};
+  auto tracker = tiledb::test::create_test_memory_tracker();
   SECTION("- First and last cell included multiple times") {
-    ranges.resize(5);
+    ranges.resize(5, tracker);
     temp[0] = temp[1] = 'a';
-    ranges[0] = Range(temp, 2, 1);
-    ranges[1] = Range(temp, 2, 1);
-    ranges[2] = Range(temp, 2, 1);
+    ranges[0] = Range(tracker, temp, 2, 1);
+    ranges[1] = Range(tracker, temp, 2, 1);
+    ranges[2] = Range(tracker, temp, 2, 1);
 
     temp[0] = temp[1] = 'h';
-    ranges[3] = Range(temp, 2, 1);
-    ranges[4] = Range(temp, 2, 1);
+    ranges[3] = Range(tracker, temp, 2, 1);
+    ranges[4] = Range(tracker, temp, 2, 1);
 
     exp_result_count = {3, 0, 0, 0, 0, 0, 0, 2};
   }
 
   SECTION("- Middle cells included multiple times") {
-    ranges.resize(2);
+    ranges.resize(2, tracker);
     temp[0] = 'b';
     temp[1] = 'g';
-    ranges[0] = Range(temp, 2, 1);
+    ranges[0] = Range(tracker, temp, 2, 1);
 
     temp[0] = 'c';
     temp[1] = 'f';
-    ranges[1] = Range(temp, 2, 1);
+    ranges[1] = Range(tracker, temp, 2, 1);
 
     exp_result_count = {0, 1, 2, 2, 2, 2, 1, 0};
   }
 
   SECTION("- Complex ranges") {
-    ranges.resize(6);
+    ranges.resize(6, tracker);
     temp[0] = 'b';
     temp[1] = 'd';
-    ranges[0] = Range(temp, 2, 1);
+    ranges[0] = Range(tracker, temp, 2, 1);
 
     temp[0] = temp[1] = 'c';
-    ranges[1] = Range(temp, 2, 1);
+    ranges[1] = Range(tracker, temp, 2, 1);
 
     temp[0] = 'f';
     temp[1] = 'h';
-    ranges[2] = Range(temp, 2, 1);
+    ranges[2] = Range(tracker, temp, 2, 1);
 
     temp[0] = temp[1] = 'g';
-    ranges[3] = Range(temp, 2, 1);
-    ranges[4] = Range(temp, 2, 1);
+    ranges[3] = Range(tracker, temp, 2, 1);
+    ranges[4] = Range(tracker, temp, 2, 1);
 
     temp[0] = temp[1] = 'h';
-    ranges[5] = Range(temp, 2, 1);
+    ranges[5] = Range(tracker, temp, 2, 1);
 
     exp_result_count = {0, 1, 2, 1, 0, 1, 3, 2};
   }
