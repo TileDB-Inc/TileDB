@@ -117,9 +117,11 @@ int32_t tiledb_filestore_schema_create(
     // All other calls for adding domains, attributes, etc
     // create copies of the underlying core objects from within
     // the cpp objects constructed here
+    auto memory_tracker = context.resources().create_memory_tracker();
+    memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
     (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
         HERE(),
-        make_shared<tiledb::sm::MemoryTracker>(HERE()),
+        memory_tracker,
         tiledb::sm::ArrayType::DENSE);
     auto& schema = (*array_schema)->array_schema_;
 

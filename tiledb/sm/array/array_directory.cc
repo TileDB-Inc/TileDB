@@ -102,7 +102,9 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
-  return ArraySchema::deserialize(deserializer, schema_uri);
+  auto memory_tracker = resources.create_memory_tracker();
+  memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
+  return ArraySchema::deserialize(deserializer, memory_tracker, schema_uri);
 }
 
 shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
