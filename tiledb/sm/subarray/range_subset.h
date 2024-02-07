@@ -178,7 +178,8 @@ struct MergeStrategy<
     }
 
     // Resize
-    ranges.resize(ranges.size() - merged_cells);
+    ranges.resize(
+        ranges.size() - merged_cells, ranges.front().memory_tracker());
   };
 };
 
@@ -207,7 +208,8 @@ struct MergeStrategy<std::string, std::string> {
     }
 
     // Resize
-    ranges.resize(ranges.size() - merged_cells);
+    ranges.resize(
+        ranges.size() - merged_cells, ranges.front().memory_tracker());
   };
 };
 
@@ -319,7 +321,7 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
 
  private:
   /** Maximum possible range. */
-  Range superset_{};
+  Range superset_;
 };
 
 template <typename T, bool CoalesceAdds>

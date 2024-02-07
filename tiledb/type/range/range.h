@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -48,6 +49,8 @@ using namespace tiledb::common;
 
 namespace tiledb::type {
 
+class MemoryTracker;
+
 /**
  * Untyped storage for a closed interval
  *
@@ -56,6 +59,11 @@ namespace tiledb::type {
  * between fixed and variable size types.
  */
 class Range {
+  /**
+   * The memory tracker for the range.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /**
    * The range is stored as a sequence of bytes with manual memory layout. The
    * memory layout is different for fixed-size and variable-size types.
@@ -103,47 +111,64 @@ class Range {
    *
    * @param size Size of the storage array in bytes
    */
-  explicit Range(size_t size)
-      : range_(size) {
+  explicit Range(std::shared_ptr<MemoryTracker> memory_tracker, size_t size)
+      : memory_tracker_(memory_tracker)
+      , range_(size) {
   }
 
  public:
-  /** Default constructor. */
-  Range()
-      : range_{} {
+  /** Constructor. */
+  Range(std::shared_ptr<MemoryTracker> memory_tracker)
+      : memory_tracker_(memory_tracker)
+      , range_{} {
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* range, uint64_t range_size)
-      : Range() {
+  Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
+      const void* range,
+      uint64_t range_size)
+      : Range(memory_tracker) {
     set_range(range, range_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const void* range, uint64_t range_size, uint64_t range_start_size)
-      : Range() {
+  Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
+      const void* range,
+      uint64_t range_size,
+      uint64_t range_start_size)
+      : Range(memory_tracker) {
     set_range(range, range_size, range_start_size);
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* start, const void* end, uint64_t type_size)
-      : Range() {
+  Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
+      const void* start,
+      const void* end,
+      uint64_t type_size)
+      : Range(memory_tracker) {
     set_range_fixed(start, end, type_size);
   }
 
   /** Constructs a range and sets variable data. */
   Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
       const void* start,
       uint64_t start_size,
       const void* end,
       uint64_t end_size)
-      : Range() {
+      : Range(memory_tracker) {
     set_range_var(start, start_size, end, end_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const std::string& s1, const std::string& s2)
-      : Range() {
+  Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
+      const std::string& s1,
+      const std::string& s2)
+      : Range(memory_tracker) {
     set_str_range(s1, s2);
   }
 
@@ -155,8 +180,9 @@ class Range {
    * this constructor for language type that we use as fixed-length data.
    */
   template <class T>
-  Range(Tag<T>, T first, T second)
-      : Range(2 * sizeof(T)) {
+  Range(
+      Tag<T>, std::shared_ptr<MemoryTracker> memory_tracker, T first, T second)
+      : Range(memory_tracker, 2 * sizeof(T)) {
     auto d{reinterpret_cast<T*>(range_.data())};
     d[0] = first;
     d[1] = second;
@@ -252,6 +278,11 @@ class Range {
     assert(!var_size_);
     assert(range_.size() != 0);
     return range_.data();
+  }
+
+  /** memory_tracker_ accessor */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
   }
 
   /** Copies 'start' into this range's start bytes for fixed-size ranges. */
