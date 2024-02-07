@@ -28,11 +28,6 @@ include(unit_test)
 
 commence(unit_test rtree)
     this_target_sources(main.cc unit_rtree.cc)
-    if (NOT MSVC)
-        target_compile_options(unit_rtree PRIVATE -Wno-deprecated-declarations)
-    endif()
-    target_include_directories(unit_rtree PRIVATE
-        "$<TARGET_PROPERTY:TILEDB_CORE_OBJECTS,INCLUDE_DIRECTORIES>")
     this_target_link_libraries(tiledb_test_support_lib)
     this_target_object_libraries(rtree)
 conclude(unit_test)

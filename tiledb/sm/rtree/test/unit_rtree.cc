@@ -30,7 +30,7 @@
  * Tests the `RTree` class.
  */
 
-#include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -142,7 +142,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
   auto mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
   const Domain d1{dom1};
-  RTree rtree1(create_test_memory_tracker(), &d1, 3);
+  RTree rtree1(tracker, &d1, 3);
   CHECK(!rtree1.set_leaf(0, mbrs_1d[0]).ok());
   CHECK(rtree1.set_leaf_num(mbrs_1d.size()).ok());
   for (size_t m = 0; m < mbrs_1d.size(); ++m)
@@ -203,7 +203,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   auto mbrs_2d = create_mbrs<int64_t, 2>(
       {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31}, tracker);
   const Domain d2{dom2};
-  RTree rtree2(create_test_memory_tracker(), &d2, 5);
+  RTree rtree2(tracker, &d2, 5);
   CHECK(rtree2.set_leaves(mbrs_2d).ok());
   rtree2.build_tree();
   CHECK(rtree2.height() == 2);
@@ -242,7 +242,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   Domain dom2f =
       create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
   const Domain d2f{dom2f};
-  RTree rtreef(create_test_memory_tracker(), &d2f, 5);
+  RTree rtreef(tracker, &d2f, 5);
   CHECK(rtreef.set_leaves(mbrs_f).ok());
   rtreef.build_tree();
 
@@ -847,10 +847,6 @@ tdb::pmr::vector<NDRange> create_str_int32_mbrs(
   }
 
   return {ret, tracker->get_resource(MemoryType::RTREE)};
-}
-
-std::pair<std::string, std::string> range_to_str(const Range& r) {
-  return std::pair<std::string, std::string>(r.start_str(), r.end_str());
 }
 
 TEST_CASE(
