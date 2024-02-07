@@ -123,6 +123,7 @@ DimensionLabel::DimensionLabel(
 }
 
 DimensionLabel::DimensionLabel(
+    shared_ptr<MemoryTracker> memory_tracker,
     dimension_size_type dim_id,
     const std::string& dim_label_name,
     const URI& uri,
@@ -139,7 +140,7 @@ DimensionLabel::DimensionLabel(
           label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
     , schema_(make_shared<ArraySchema>(
           HERE(),
-          make_shared<MemoryTracker>(HERE()),
+          memory_tracker,
           label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
                                                      ArrayType::DENSE))
     , is_external_(false)
