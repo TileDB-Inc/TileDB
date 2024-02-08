@@ -114,28 +114,34 @@ bool MemoryTrackerResource::do_is_equal(
 }
 
 MemoryTracker::~MemoryTracker() {
-  // TODO: Make this spit out some loud log noise if we've not
-  //       properly deallocated all our things.
+  assert(
+      total_counter_.fetch_add(0) == 0 &&
+      "MemoryTracker destructed with outstanding allocations.");
 }
 
 tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
   std::lock_guard<std::mutex> lg(mutex_);
-  auto iter = resources_.find(type);
 
+  // If we've already created an instance for this type, return it.
+  auto iter = resources_.find(type);
   if (iter != resources_.end()) {
     return iter->second.get();
   }
 
-  if (counters_.find(type) != counters_.end() && counters_[type] != 0) {
-    throw MemoryTrackerException("Invalid internal state");
+  // Add a new counter if it doesn't exist.
+  if (counters_.find(type) == counters_.end()) {
+    counters_.emplace(type, 0);
+  } else {
+    // There's no outstanding memory resource for this type, so it must be zero.
+    assert(counters_[type] == 0 && "Invalid memory tracking state.");
   }
 
-  counters_.emplace(type, 0);
-
+  // Create and track a shared_ptr to the new memory resource.
   auto ret = make_shared<MemoryTrackerResource>(
       HERE(), upstream_, total_counter_, counters_[type]);
   resources_.emplace(type, ret);
 
+  // Return the raw memory resource pointer for use by pmr containers.
   return ret.get();
 }
 

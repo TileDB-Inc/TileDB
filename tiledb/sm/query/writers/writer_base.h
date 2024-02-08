@@ -193,6 +193,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   /*         PROTECTED METHODS         */
   /* ********************************* */
 
+  /** Utility function for constructing new FragmentMetadata instances. */
   shared_ptr<FragmentMetadata> create_fragment_metadata();
 
   /** Adss a fragment to `written_fragment_info_`. */

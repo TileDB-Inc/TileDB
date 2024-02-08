@@ -94,6 +94,7 @@ class StrategyParams {
   /*                 API               */
   /* ********************************* */
 
+  /** Return the array memory tracker. */
   inline shared_ptr<MemoryTracker> array_memory_tracker() {
     return array_memory_tracker_;
   }
@@ -204,11 +205,6 @@ class StrategyBase {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
-
-  /** Returns `memory_tracker_`. */
-  inline shared_ptr<MemoryTracker> array_memory_tracker() const {
-    return array_memory_tracker_;
-  }
 
   /** Returns `stats_`. */
   inline stats::Stats* stats() const {

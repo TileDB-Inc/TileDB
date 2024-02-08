@@ -34,16 +34,6 @@
 #ifndef TILEDB_COMMON_PMR_H
 #define TILEDB_COMMON_PMR_H
 
-// Currently, this is fairly broken when building with XCode 15 on macOS 13.x.
-// For now I'm just going to default to using Pablo Halpern's implementation
-// rather than spend time fighting compiler detection and build chains.
-//
-// #if __has_include(<memory_resource>)
-// #include <memory_resource>
-// #else
-// #error Missing memory_resources header.
-// #endif
-
 #include <vector>
 
 #include <boost/container/pmr/memory_resource.hpp>
