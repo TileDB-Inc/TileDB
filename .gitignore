@@ -17,6 +17,8 @@ test/inputs/arrays/read_compatibility_test*
 test/obj/*
 test/regression/foo1
 test/regression/reading_incomplete_array
+test/regression/test_array_schema_dump
+test/regression/test_time_traveling_schema
 test/tiledb_test/*
 Doxyfile.log
 doxyfile.inc
