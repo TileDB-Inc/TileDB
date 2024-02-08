@@ -32,8 +32,8 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/type/range/range.h"
 #include "test/support/src/mem_helpers.h"
+#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;

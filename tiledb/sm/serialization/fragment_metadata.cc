@@ -375,7 +375,8 @@ Status fragment_metadata_from_capnp(
   // above to be properly initialized
   if (frag_meta_reader.hasNonEmptyDomain()) {
     auto reader = frag_meta_reader.getNonEmptyDomain();
-    auto&& ndrange = utils::deserialize_non_empty_domain_rv(reader, frag_meta->memory_tracker());
+    auto&& ndrange = utils::deserialize_non_empty_domain_rv(
+        reader, frag_meta->memory_tracker());
     // Whilst sparse gets its domain calculated, dense needs to have it
     // set here from the deserialized data
     if (array_schema->dense()) {

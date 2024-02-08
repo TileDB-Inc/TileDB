@@ -172,8 +172,8 @@ std::vector<Range> range_buffers_from_capnp(
     uint64_t range_size = buffer_sizes[j];
     uint64_t range_start_size = buffer_start_sizes[j];
     if (range_start_size != 0) {
-      ranges[j] =
-          Range(nullptr, data_ptr.begin() + offset, range_size, range_start_size);
+      ranges[j] = Range(
+          nullptr, data_ptr.begin() + offset, range_size, range_start_size);
     } else {
       ranges[j] = Range(nullptr, data_ptr.begin() + offset, range_size);
     }

@@ -137,7 +137,10 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
 
   Domain d{};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(), tiledb::test::create_test_memory_tracker(), "", tiledb::sm::Datatype::INT32)};
+      HERE(),
+      tiledb::test::create_test_memory_tracker(),
+      "",
+      tiledb::sm::Datatype::INT32)};
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());

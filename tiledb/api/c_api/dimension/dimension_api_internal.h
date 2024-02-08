@@ -65,8 +65,8 @@ struct tiledb_dimension_handle_t
   static constexpr std::string_view object_type_name{"dimension"};
 
   tiledb_dimension_handle_t(const std::string& name, tiledb::sm::Datatype type)
-      : dimension_(make_shared<tiledb::sm::Dimension>(
-            HERE(), nullptr, name, type)) {
+      : dimension_(
+            make_shared<tiledb::sm::Dimension>(HERE(), nullptr, name, type)) {
   }
 
   /**

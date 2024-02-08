@@ -1587,7 +1587,8 @@ void test_apply<char*>(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  auto dim{make_shared<Dimension>(HERE(), memory_tracker, "dim1", Datatype::UINT32)};
+  auto dim{
+      make_shared<Dimension>(HERE(), memory_tracker, "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(memory_tracker, bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());

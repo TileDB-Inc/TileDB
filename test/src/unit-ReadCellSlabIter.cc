@@ -323,8 +323,7 @@ TEST_CASE_METHOD(
   // Create result space tiles
   std::vector<uint64_t> slice = {20, 30};
   auto memory_tracker = create_test_memory_tracker();
-  NDRange ds = {
-      Range(memory_tracker, &slice[0], 2 * sizeof(uint64_t))};
+  NDRange ds = {Range(memory_tracker, &slice[0], 2 * sizeof(uint64_t))};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
