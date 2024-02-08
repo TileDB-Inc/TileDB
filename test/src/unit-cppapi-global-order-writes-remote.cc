@@ -171,7 +171,7 @@ struct RemoteGlobalOrderWriteFx {
       if (i + submit_cell_count_ < total_cell_count_) {
         query.submit();
       } else {
-        if constexpr (rest_tests) {
+        if (vfs_test_setup_.is_rest()) {
           if (check_finalize_fails) {
             CHECK_THROWS_WITH(
                 query.finalize(),

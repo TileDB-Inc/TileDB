@@ -58,8 +58,13 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   bool supports_hdfs = false;
   bool supports_azure = false;
   bool supports_gcs = false;
+  bool supports_rest_s3 = false;
   get_supported_fs(
-      &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
+      &supports_s3,
+      &supports_hdfs,
+      &supports_azure,
+      &supports_gcs,
+      &supports_rest_s3);
 
   if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
@@ -76,6 +81,10 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   if (supports_gcs) {
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
+  }
+
+  if (supports_rest_s3) {
+    fs_vec.emplace_back(std::make_unique<SupportedFsRestS3>());
   }
 
   fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
@@ -207,6 +216,14 @@ std::string SupportedFsS3::temp_dir() {
   return temp_dir_;
 }
 
+std::string SupportedFsS3::type() {
+  return "S3";
+}
+
+std::string SupportedFsRestS3::type() {
+  return "REST-S3";
+}
+
 Status SupportedFsHDFS::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   (void)config;
@@ -228,6 +245,10 @@ Status SupportedFsHDFS::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 std::string SupportedFsHDFS::temp_dir() {
   return temp_dir_;
+}
+
+std::string SupportedFsHDFS::type() {
+  return "HDFS";
 }
 
 Status SupportedFsAzure::prepare_config(
@@ -281,6 +302,10 @@ std::string SupportedFsAzure::temp_dir() {
   return temp_dir_;
 }
 
+std::string SupportedFsAzure::type() {
+  return "Azure";
+}
+
 Status SupportedFsGCS::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   REQUIRE(
@@ -317,6 +342,10 @@ std::string SupportedFsGCS::temp_dir() {
   return temp_dir_;
 }
 
+std::string SupportedFsGCS::type() {
+  return "GCS";
+}
+
 Status SupportedFsLocal::prepare_config(
     tiledb_config_t* config, tiledb_error_t* error) {
   (void)config;
@@ -334,6 +363,10 @@ Status SupportedFsLocal::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
   (void)ctx;
   (void)vfs;
   return Status::Ok();
+}
+
+std::string SupportedFsLocal::type() {
+  return "Local";
 }
 
 #ifdef _WIN32
@@ -379,6 +412,10 @@ Status SupportedFsMem::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 std::string SupportedFsMem::temp_dir() {
   return temp_dir_;
+}
+
+std::string SupportedFsMem::type() {
+  return "Memfs";
 }
 
 void TemporaryDirectoryFixture::alloc_encrypted_ctx(

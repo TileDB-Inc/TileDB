@@ -504,7 +504,8 @@ void get_supported_fs(
     bool* s3_supported,
     bool* hdfs_supported,
     bool* azure_supported,
-    bool* gcs_supported);
+    bool* gcs_supported,
+    bool* rest_s3_supported);
 
 /**
  * Opens an array.

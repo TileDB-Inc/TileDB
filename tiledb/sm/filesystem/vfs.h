@@ -143,6 +143,12 @@ static constexpr bool azure_enabled = true;
 #else
 static constexpr bool azure_enabled = false;
 #endif  // HAVE_AZURE
+
+#ifdef TILEDB_TESTS_ENABLE_REST
+constexpr bool rest_s3_enabled = true;
+#else
+constexpr bool rest_s3_enabled = false;
+#endif  // HAVE_REST_S3
 }  // namespace filesystem
 
 class Tile;
