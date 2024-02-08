@@ -1165,7 +1165,8 @@ TEST_CASE(
   REQUIRE(data == data_w);
 }
 
-TEST_CASE("C++ API: Write cell with large cell val num", "[cppapi][sparse][rest]") {
+TEST_CASE(
+    "C++ API: Write cell with large cell val num", "[cppapi][sparse][rest]") {
   tiledb::test::VFSTestSetup vfs_test_setup{"cpp_unit_array"};
   Context ctx = vfs_test_setup.ctx;
   auto array_uri = vfs_test_setup.array_uri;
