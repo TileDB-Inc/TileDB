@@ -32,9 +32,9 @@
  */
 
 #include <test/support/src/helpers.h>
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/c_api/tiledb.h"
-#include <test/support/src/vfs_helpers.h>
 
 #include <cstring>
 #include <iostream>
@@ -264,7 +264,8 @@ void AnyFx::delete_array(const std::string& array_name) {
   }
 }
 
-TEST_CASE_METHOD(AnyFx, "C API: Test `ANY` datatype", "[capi][any][rest-fails][sc-40489]") {
+TEST_CASE_METHOD(
+    AnyFx, "C API: Test `ANY` datatype", "[capi][any][rest-fails][sc-40489]") {
   auto array_name = vfs_test_setup_.array_uri;
   delete_array(array_name);
   create_array(array_name);
