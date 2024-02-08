@@ -163,6 +163,8 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
   <li><a href="#advanced" id="toc-advanced" class="nav-link" data-scroll-target="#advanced">Advanced</a>
   <ul class="collapse">
   <li><a href="#dependency-management-with-vcpkg" id="toc-dependency-management-with-vcpkg" class="nav-link" data-scroll-target="#dependency-management-with-vcpkg">Dependency management with vcpkg</a></li>
+  <li><a href="#building-with-sanitizers" id="toc-building-with-sanitizers" class="nav-link" data-scroll-target="#building-with-sanitizers">Building with sanitizers</a></li>
+  <li><a href="#building-with-optimizations-and-debug-symbols" id="toc-building-with-optimizations-and-debug-symbols" class="nav-link" data-scroll-target="#building-with-optimizations-and-debug-symbols">Building with optimizations and debug symbols</a></li>
   </ul></li>
   </ul>
 </nav>
@@ -263,102 +265,108 @@ git checkout &lt;version&gt;</code></pre>
 <td>Install files in tree rooted at <code>PREFIX</code> (defaults to <code>TileDB/dist</code>)</td>
 </tr>
 <tr class="even">
+<td><code>--vcpkg-base-triplet=TRIPLET</code></td>
+<td><code>-VcpkgBaseTriplet=TRIPLET</code></td>
+<td><code>TILEDB_VCPKG_BASE_TRIPLET=TRIPLET</code></td>
+<td>Vcpkg base triplet, needed for features like ASAN and RelWithDebInfo</td>
+</tr>
+<tr class="odd">
 <td><code>--linkage=shared/static</code></td>
 <td><code>-Linkage=shared/static</code></td>
 <td><code>BUILD_SHARED_LIBS=ON/OFF</code></td>
 <td>Linkage of the compiled TileDB library (defaults to <code>shared</code>)</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--remove-deprecations</code></td>
 <td><code>-RemoveDeprecations</code></td>
 <td><code>TILEDB_REMOVE_DEPRECATIONS=ON</code></td>
 <td>Build TileDB without deprecated APIs</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--enable-debug</code></td>
 <td><code>-EnableDebug</code></td>
 <td><code>CMAKE_BUILD_TYPE=Debug</code></td>
 <td>Enables debug build</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--enable-release-symbols</code></td>
 <td><code>-EnableReleaseSymbols</code></td>
 <td><code>CMAKE_BUILD_TYPE=RelWithDebInfo</code></td>
 <td>Enables release build with debug symbols</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--enable-coverage</code></td>
 <td><code>-EnableCoverage</code></td>
 <td><code>CMAKE_BUILD_TYPE=Coverage</code></td>
 <td>Enables build with code coverage support</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--enable-verbose</code></td>
 <td><code>-EnableVerbose</code></td>
 <td><code>TILEDB_VERBOSE=ON</code></td>
 <td>Enables verbose status messages</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--enable-hdfs</code></td>
 <td><em>(HDFS is unsupported on Windows)</em></td>
 <td><code>TILEDB_HDFS=ON</code></td>
 <td>Enables building with HDFS storage backend support</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--enable-s3</code></td>
 <td><code>-EnableS3</code></td>
 <td><code>TILEDB_S3=ON</code></td>
 <td>Enables building with S3 storage backend support</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--enable-azure</code></td>
 <td><code>-EnableAzure</code></td>
 <td><code>TILEDB_AZURE=ON</code></td>
 <td>Enables building with Azure Blob Storage backend support</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--enable-gcs</code></td>
 <td><code>-EnableGcs</code></td>
 <td><code>TILEDB_GCS=ON</code></td>
 <td>Enables building with Google Cloud Storage backend support</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--enable-serialization</code></td>
 <td><code>-EnableSerialization</code></td>
 <td><code>TILEDB_SERIALIZATION=ON</code></td>
 <td>Enables building with Serialization and TileDB Cloud support</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--disable-avx2</code></td>
 <td><em>(Unavailable)</em></td>
 <td><code>COMPILER_SUPPORTS_AVX2=FALSE</code></td>
 <td>Disables use of the AVX2 instruction set</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--disable-webp</code></td>
 <td><code>-DisableWebp</code></td>
 <td><code>TILEDB_WEBP=OFF</code></td>
 <td>Disables building with support for the WebP filter</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--disable-werror</code></td>
 <td><code>-DisableWerror</code></td>
 <td><code>TILEDB_WERROR=OFF</code></td>
 <td>Disables building with the <code>-Werror</code> flag</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--disable-cpp-api</code></td>
 <td><code>-DisableCppApi</code></td>
 <td><code>TILEDB_CPP_API=OFF</code></td>
 <td>Disables building the TileDB C++ API</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td><code>--disable-stats</code></td>
 <td><code>-DisableStats</code></td>
 <td><code>TILEDB_STATS=OFF</code></td>
 <td>Disables internal TileDB statistics</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td><code>--disable-tests</code></td>
 <td><code>-DisableTests</code></td>
 <td><code>TILEDB_TESTS=OFF</code></td>
@@ -366,6 +374,13 @@ git checkout &lt;version&gt;</code></pre>
 </tr>
 </tbody>
 </table>
+<p>The supported vcpkg base triplet values are:</p>
+<ul>
+<li><code>arm64-osx</code></li>
+<li><code>x64-linux</code></li>
+<li><code>x64-osx</code></li>
+<li><code>x64-windows</code></li>
+</ul>
 <blockquote class="blockquote">
 <p>[!TIP] You can see all TileDB-specific CMake variables in <a href="../../cmake/Options/BuildOptions.cmake">BuildOptions.cmake</a>.</p>
 </blockquote>
@@ -416,7 +431,29 @@ git checkout &lt;version&gt;</code></pre>
 <li>The <code>TILEDB_DISABLE_AUTO_VCPKG</code> environment variable has been defined.</li>
 <li>The build tree has been configured by directly calling CMake and the <code>CMAKE_TOOLCHAIN_FILE</code> variable has been set by the user.</li>
 </ul>
-<p>In these cases no dependencies CMake will find the dependencies based on the rules of the <a href="https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package"><code>find_package</code></a> command. The user is responsible for providing them.</p>
+<p>In these cases CMake will find the dependencies based on the rules of the <a href="https://cmake.org/cmake/help/latest/command/find_package.html"><code>find_package</code></a> command. The user is responsible for providing the dependencies.</p>
+</section>
+<section id="building-with-sanitizers" class="level3">
+<h3 class="anchored" data-anchor-id="building-with-sanitizers">Building with sanitizers</h3>
+<p>TileDB can be built with <a href="https://clang.llvm.org/docs/AddressSanitizer.html">clang sanitizers</a> enabled. To enable them, you have to bootstrap with the <code>--enable-sanitizer</code> flag, as well as the <a href="#configuration-options">vcpkg base triplet</a> corresponding to your platform:</p>
+<blockquote class="blockquote">
+<p>[!NOTE] Currently only the <code>address</code> sanitizer is supported.</p>
+</blockquote>
+<div class="sourceCode" id="cb7"><pre class="sourceCode bash code-with-copy"><code class="sourceCode bash"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a><span class="bu">cd</span> TileDB <span class="kw">&amp;&amp;</span> <span class="fu">mkdir</span> build-asan <span class="kw">&amp;&amp;</span> <span class="bu">cd</span> build-asan</span>
+<span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a><span class="ex">../bootstrap</span> <span class="at">--enable-sanitizer</span><span class="op">=</span>address <span class="at">--vcpkg-base-triplet</span><span class="op">=</span>x64-linux</span>
+<span id="cb7-3"><a href="#cb7-3" aria-hidden="true" tabindex="-1"></a><span class="fu">make</span> <span class="kw">&amp;&amp;</span> <span class="fu">make</span> check</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<blockquote class="blockquote">
+<p>[!IMPORTANT] To avoid errors, building with sanitizers must be done in a separate build directory.</p>
+</blockquote>
+</section>
+<section id="building-with-optimizations-and-debug-symbols" class="level3">
+<h3 class="anchored" data-anchor-id="building-with-optimizations-and-debug-symbols">Building with optimizations and debug symbols</h3>
+<p>TileDB supports configuring in <code>RelWithDebInfo</code> mode, which compiles code with optimizations while also emitting debug symbols. However on non-Windows platforms the dependencies built by vcpkg do not build by default with symbols. To enable that you have to do either of the following:</p>
+<ul>
+<li><a href="#configuration-options">Specify a vcpkg base triplet</a>.</li>
+<li>Configure by directly calling CMake and setting a vcpkg triplet with the <code>VCPKG_DEFAULT_TRIPLET</code> variable. In this case you are responsible to ensure the appropriate options are passed to the triplet file.</li>
+</ul>
+<p>Configuring in <code>RelWithDebInfo</code> mode and enabling ASAN at the same time is not supported.</p>
 
 
 </section>
