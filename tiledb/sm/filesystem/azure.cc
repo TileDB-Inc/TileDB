@@ -207,15 +207,21 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
       sas_token.empty() &&
       utils::parse::starts_with(blob_endpoint, "https://")) {
     try {
+      ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
+      cred_options.Retry = options.Retry;
+      cred_options.Transport = options.Transport;
       auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
           HERE(),
           std::vector<
               std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
-              make_shared<::Azure::Identity::EnvironmentCredential>(HERE()),
-              make_shared<::Azure::Identity::AzureCliCredential>(HERE()),
-              make_shared<::Azure::Identity::ManagedIdentityCredential>(HERE()),
+              make_shared<::Azure::Identity::EnvironmentCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::AzureCliCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::ManagedIdentityCredential>(
+                  HERE(), cred_options),
               make_shared<::Azure::Identity::WorkloadIdentityCredential>(
-                  HERE())});
+                  HERE(), cred_options)});
       // If a token is not available we wouldn't know it until we make a request
       // and it would be too late. Try getting a token, and if it fails fall
       // back to anonymous authentication.
