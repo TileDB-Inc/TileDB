@@ -164,8 +164,8 @@ class Dimension {
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
-      shared_ptr<MemoryTracker> memory_tracker,
       Deserializer& deserializer,
+      shared_ptr<MemoryTracker> memory_tracker,
       uint32_t version,
       Datatype type,
       FilterPipeline& coords_filters);

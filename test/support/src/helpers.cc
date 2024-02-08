@@ -858,7 +858,8 @@ void create_subarray(
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      type::Range range(nullptr, &ranges[d][2 * j], 2 * sizeof(T));
+      type::Range range(
+          create_test_memory_tracker(), &ranges[d][2 * j], 2 * sizeof(T));
       CHECK(ret.add_range(d, std::move(range), true).ok());
     }
   }

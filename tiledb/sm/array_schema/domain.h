@@ -189,8 +189,8 @@ class Domain {
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
-      shared_ptr<MemoryTracker> memory_tracker,
       Deserializer& deserializer,
+      shared_ptr<MemoryTracker> memory_tracker,
       uint32_t version,
       Layout cell_order,
       Layout tile_order,

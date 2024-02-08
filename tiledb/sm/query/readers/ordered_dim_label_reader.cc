@@ -32,6 +32,7 @@
 #include "tiledb/sm/query/readers/ordered_dim_label_reader.h"
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -467,10 +468,9 @@ bool OrderedDimLabelReader::tile_overwritten(
   IndexType tile_range[2]{
       index_dim_->tile_coord_low(tile_idx, domain_low, tile_extent),
       index_dim_->tile_coord_high(tile_idx, domain_low, tile_extent)};
-  Range r(
-      storage_manager_->resources().create_memory_tracker(),
-      tile_range,
-      2 * sizeof(IndexType));
+  auto memory_tracker = storage_manager_->resources().create_memory_tracker();
+  memory_tracker->set_type(MemoryTrackerType::ARRAY_READ);
+  Range r(memory_tracker, tile_range, 2 * sizeof(IndexType));
 
   // Use the non empty domains for all fragments to see if the tile is
   // covered.

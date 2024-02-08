@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/query/readers/reader_base.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -1149,8 +1150,10 @@ ReaderBase::cache_dimension_label_data() {
     max = std::max(max, ned[1]);
   }
 
+  auto memory_tracker = storage_manager_->resources().create_memory_tracker();
+  memory_tracker->set_type(MemoryTrackerType::ARRAY_READ);
   return {
-      Range(nullptr, &min, &max, sizeof(IndexType)),
+      Range(memory_tracker, &min, &max, sizeof(IndexType)),
       std::move(non_empty_domains),
       std::move(frag_first_array_tile_idx)};
 }

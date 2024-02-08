@@ -559,6 +559,11 @@ class ArrayDirectory {
     return loaded_;
   }
 
+  /** Accessor to ContextResources. */
+  inline ContextResources& resources() {
+    return resources_.get();
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

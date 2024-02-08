@@ -51,7 +51,8 @@ struct CPPOrderedDimLabelReaderFixedFx {
   const char* array_name = "cpp_ordered_dim_label_reader";
 
   CPPOrderedDimLabelReaderFixedFx(IndexT tile_size = 10)
-      : vfs_(ctx_)
+      : memory_tracker_(tiledb::test::create_test_memory_tracker())
+      , vfs_(ctx_)
       , labels_(100, std::numeric_limits<LabelT>::lowest())
       , min_index_(std::numeric_limits<IndexT>::max())
       , max_index_(std::numeric_limits<IndexT>::min()) {
@@ -123,10 +124,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
     std::vector<Range> input_ranges;
     for (uint64_t r = 0; r < ranges.size() / 2; r++) {
       input_ranges.emplace_back(
-          tiledb::test::create_test_memory_tracker(),
-          &ranges[r * 2],
-          &ranges[r * 2 + 1],
-          sizeof(LabelT));
+          memory_tracker_, &ranges[r * 2], &ranges[r * 2 + 1], sizeof(LabelT));
     }
 
     Subarray subarray(ctx_, array);
@@ -171,12 +169,11 @@ struct CPPOrderedDimLabelReaderFixedFx {
 
         // Always add range so that the lower bound is less than or equal to the
         // upper bound.
-        auto tracker = tiledb::test::create_test_memory_tracker();
         increasing_labels_ ?
             input_ranges.emplace_back(
-                tracker, &first_label, &second_label, sizeof(LabelT)) :
+                memory_tracker_, &first_label, &second_label, sizeof(LabelT)) :
             input_ranges.emplace_back(
-                tracker, &second_label, &first_label, sizeof(LabelT));
+                memory_tracker_, &second_label, &first_label, sizeof(LabelT));
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -199,6 +196,7 @@ struct CPPOrderedDimLabelReaderFixedFx {
     }
   }
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   Context ctx_;
   VFS vfs_;
   std::vector<LabelT> labels_;
@@ -698,7 +696,8 @@ struct CPPOrderedDimLabelReaderVarFx {
   const char* array_name = "cpp_ordered_dim_label_reader";
 
   CPPOrderedDimLabelReaderVarFx()
-      : vfs_(ctx_)
+      : memory_tracker_(tiledb::test::create_test_memory_tracker())
+      , vfs_(ctx_)
       , labels_(100, std::numeric_limits<double>::lowest())
       , min_index_(std::numeric_limits<int>::max())
       , max_index_(std::numeric_limits<int>::min()) {
@@ -787,11 +786,7 @@ struct CPPOrderedDimLabelReaderVarFx {
       auto labels_data = stream.str();
 
       input_ranges.emplace_back(
-          tiledb::test::create_test_memory_tracker(),
-          labels_data.data(),
-          4,
-          labels_data.data() + 4,
-          4);
+          memory_tracker_, labels_data.data(), 4, labels_data.data() + 4, 4);
     }
 
     Subarray subarray(ctx_, array);
@@ -842,12 +837,18 @@ struct CPPOrderedDimLabelReaderVarFx {
 
         // Always add range so that the lower bound is less than or equal to the
         // upper bound.
-        auto tracker = tiledb::test::create_test_memory_tracker();
-        increasing_labels_ ?
-            input_ranges.emplace_back(
-                tracker, labels_data.data(), 4, labels_data.data() + 4, 4) :
-            input_ranges.emplace_back(
-                tracker, labels_data.data() + 4, 4, labels_data.data(), 4);
+        increasing_labels_ ? input_ranges.emplace_back(
+                                 memory_tracker_,
+                                 labels_data.data(),
+                                 4,
+                                 labels_data.data() + 4,
+                                 4) :
+                             input_ranges.emplace_back(
+                                 memory_tracker_,
+                                 labels_data.data() + 4,
+                                 4,
+                                 labels_data.data(),
+                                 4);
 
         Subarray subarray(ctx_, array);
         subarray.ptr()->subarray_->set_attribute_ranges("labels", input_ranges);
@@ -870,6 +871,7 @@ struct CPPOrderedDimLabelReaderVarFx {
     }
   }
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   Context ctx_;
   VFS vfs_;
   std::vector<double> labels_;

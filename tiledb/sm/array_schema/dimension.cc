@@ -157,8 +157,8 @@ Status Dimension::set_cell_val_num(unsigned int cell_val_num) {
 }
 
 shared_ptr<Dimension> Dimension::deserialize(
-    shared_ptr<MemoryTracker> memory_tracker,
     Deserializer& deserializer,
+    shared_ptr<MemoryTracker> memory_tracker,
     uint32_t version,
     Datatype type,
     FilterPipeline& coords_filters) {

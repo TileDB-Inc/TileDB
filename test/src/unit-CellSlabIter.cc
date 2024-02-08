@@ -157,6 +157,7 @@ TEST_CASE_METHOD(
   Subarray subarray;
   SubarrayRanges<uint64_t> ranges = {};
   Layout subarray_layout = Layout::ROW_MAJOR;
+  auto memory_tracker = create_test_memory_tracker();
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
 
   // Datatype mismatch

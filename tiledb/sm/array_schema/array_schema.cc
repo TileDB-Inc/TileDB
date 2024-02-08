@@ -1251,8 +1251,8 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 
 // #TODO Add security validation on incoming URI
 ArraySchema ArraySchema::deserialize(
-    shared_ptr<MemoryTracker> memory_tracker,
     Deserializer& deserializer,
+    shared_ptr<MemoryTracker> memory_tracker,
     const URI& uri) {
   Status st;
   // Load version
@@ -1327,8 +1327,8 @@ ArraySchema ArraySchema::deserialize(
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
   auto domain{Domain::deserialize(
-      memory_tracker,
       deserializer,
+      memory_tracker,
       version,
       cell_order,
       tile_order,

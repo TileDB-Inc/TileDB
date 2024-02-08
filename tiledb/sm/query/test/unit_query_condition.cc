@@ -1587,10 +1587,9 @@ void test_apply<char*>(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   Domain domain;
-  auto tracker = tiledb::test::create_test_memory_tracker();
-  auto dim{make_shared<Dimension>(HERE(), tracker, "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(HERE(), memory_tracker, "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
-  Range range(tracker, bounds, 2 * sizeof(uint32_t));
+  Range range(memory_tracker, bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
@@ -1599,7 +1598,7 @@ void test_apply<char*>(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1660,7 +1659,7 @@ void test_apply(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),

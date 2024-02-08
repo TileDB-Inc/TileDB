@@ -247,7 +247,8 @@ TEST_CASE_METHOD(
 
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 100};
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], 2 * sizeof(uint64_t))};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {Range(memory_tracker, &slice[0], 2 * sizeof(uint64_t))};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -257,7 +258,7 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
+      memory_tracker,
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -321,7 +322,9 @@ TEST_CASE_METHOD(
 
   // Create result space tiles
   std::vector<uint64_t> slice = {20, 30};
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], 2 * sizeof(uint64_t))};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {
+      Range(memory_tracker, &slice[0], 2 * sizeof(uint64_t))};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -331,7 +334,7 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
+      memory_tracker,
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -397,8 +400,9 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> slice_1 = {5, 12};
   std::vector<uint64_t> slice_2 = {4, 15};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds1 = {Range(create_test_memory_tracker(), &slice_1[0], size)};
-  NDRange ds2 = {Range(create_test_memory_tracker(), &slice_2[0], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds1 = {Range(memory_tracker, &slice_1[0], size)};
+  NDRange ds2 = {Range(memory_tracker, &slice_2[0], size)};
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -409,7 +413,7 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
+        memory_tracker,
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -481,7 +485,8 @@ TEST_CASE_METHOD(
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 12};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {Range(memory_tracker, &slice[0], size)};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -492,7 +497,7 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
+        memory_tracker,
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -702,7 +707,10 @@ TEST_CASE_METHOD(
   // Create result space tiles
   std::vector<uint64_t> slice = {1, 6, 1, 6};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], size), Range(create_test_memory_tracker(), &slice[2], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {
+      Range(memory_tracker, &slice[0], size),
+      Range(memory_tracker, &slice[2], size)};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -712,7 +720,7 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
+      memory_tracker,
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -888,7 +896,10 @@ TEST_CASE_METHOD(
   // Create result space tiles
   std::vector<uint64_t> slice = {6, 6, 6, 6};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], size), Range(create_test_memory_tracker(), &slice[2], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {
+      Range(memory_tracker, &slice[0], size),
+      Range(memory_tracker, &slice[2], size)};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -898,7 +909,7 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
+      memory_tracker,
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1087,7 +1098,10 @@ TEST_CASE_METHOD(
   // Create result space tiles
   std::vector<uint64_t> slice = {3, 6, 5, 6};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds = {Range(create_test_memory_tracker(), &slice[0], size), Range(create_test_memory_tracker(), &slice[2], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds = {
+      Range(memory_tracker, &slice[0], size),
+      Range(memory_tracker, &slice[2], size)};
   std::vector<NDRange> domain_slices = {ds};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -1097,7 +1111,7 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
+      memory_tracker,
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1331,8 +1345,13 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> slice_1 = {3, 5, 2, 4};
   std::vector<uint64_t> slice_2 = {2, 3, 1, 6};
   auto size = 2 * sizeof(uint64_t);
-  NDRange ds1 = {Range(create_test_memory_tracker(), &slice_1[0], size), Range(create_test_memory_tracker(), &slice_1[2], size)};
-  NDRange ds2 = {Range(create_test_memory_tracker(), &slice_2[0], size), Range(create_test_memory_tracker(), &slice_2[2], size)};
+  auto memory_tracker = create_test_memory_tracker();
+  NDRange ds1 = {
+      Range(memory_tracker, &slice_1[0], size),
+      Range(memory_tracker, &slice_1[2], size)};
+  NDRange ds2 = {
+      Range(memory_tracker, &slice_2[0], size),
+      Range(memory_tracker, &slice_2[2], size)};
   std::vector<NDRange> domain_slices = {ds1, ds2};
   const auto& tile_coords = subarray.tile_coords();
   std::map<const uint64_t*, ResultSpaceTile<uint64_t>> result_space_tiles;
@@ -1343,7 +1362,7 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
+        memory_tracker,
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),

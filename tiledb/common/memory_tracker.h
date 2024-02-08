@@ -116,11 +116,14 @@ enum class MemoryType {
 /** The type of MemoryTracker. */
 enum class MemoryTrackerType {
   ANONYMOUS,
+  ARRAY_CREATE,
+  ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
   QUERY_READ,
   QUERY_WRITE,
-  CONSOLIDATOR
+  CONSOLIDATOR,
+  SUBARRAY
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

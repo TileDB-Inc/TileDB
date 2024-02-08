@@ -318,8 +318,8 @@ void Domain::crop_ndrange(NDRange* ndrange) const {
 }
 
 shared_ptr<Domain> Domain::deserialize(
-    shared_ptr<MemoryTracker> memory_tracker,
     Deserializer& deserializer,
+    shared_ptr<MemoryTracker> memory_tracker,
     uint32_t version,
     Layout cell_order,
     Layout tile_order,
@@ -336,7 +336,7 @@ shared_ptr<Domain> Domain::deserialize(
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
     auto dim{Dimension::deserialize(
-        memory_tracker, deserializer, version, type, coords_filters)};
+        deserializer, memory_tracker, version, type, coords_filters)};
     dimensions.emplace_back(std::move(dim));
   }
 

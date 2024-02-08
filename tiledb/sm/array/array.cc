@@ -1411,7 +1411,7 @@ Status Array::compute_max_buffer_sizes(
 
   // Prepare an NDRange for the subarray
   auto dim_num = array_schema_latest.dim_num();
-  NDRange sub(dim_num, {memory_tracker_});
+  NDRange sub(dim_num, memory_tracker_);
   auto sub_ptr = (const unsigned char*)subarray;
   uint64_t offset = 0;
   for (unsigned d = 0; d < dim_num; ++d) {

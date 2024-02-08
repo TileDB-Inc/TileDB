@@ -521,7 +521,7 @@ NDRange deserialize_non_empty_domain_rv(
     }
   }
 
-  return {ndRange};
+  return ndRange;
 }
 
 /** Deserializes the given from Capnp build to array's nonEmptyDomain

@@ -33,6 +33,7 @@
 #include "tiledb/sm/query/writers/writer_base.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -642,12 +643,12 @@ std::vector<NDRange> WriterBase::compute_mbrs(
   auto dim_num = array_schema_.dim_num();
 
   // Compute MBRs
-  // TODO: tdb::pmr::
   std::vector<NDRange> mbrs(tile_num);
+  auto memory_tracker = storage_manager_->resources().create_memory_tracker();
+  memory_tracker->set_type(MemoryTrackerType::ARRAY_WRITE);
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
-        mbrs[i].resize(
-            dim_num, storage_manager_->resources().create_memory_tracker());
+        mbrs[i].resize(dim_num, memory_tracker);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};

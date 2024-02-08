@@ -469,8 +469,8 @@ class ArraySchema {
    * @return A new ArraySchema.
    */
   static ArraySchema deserialize(
-      shared_ptr<MemoryTracker> memory_tracker,
       Deserializer& deserializer,
+      shared_ptr<MemoryTracker> memory_tracker,
       const URI& uri);
 
   /** Returns the array domain. */

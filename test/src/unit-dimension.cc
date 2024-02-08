@@ -31,10 +31,10 @@
  */
 
 #include "test/support/src/helpers-dimension.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "test/support/src/mem_helpers.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -48,10 +48,11 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, integers",
     "[dimension][map_to_uint64][int]") {
   // Create dimensions
-  Dimension d1(create_test_memory_tracker(), "d1", Datatype::INT32);
+  auto tracker = create_test_memory_tracker();
+  Dimension d1(tracker, "d1", Datatype::INT32);
   int32_t dom1[] = {0, 100};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2(create_test_memory_tracker(), "d2", Datatype::INT32);
+  Dimension d2(tracker, "d2", Datatype::INT32);
   int32_t dom2[] = {0, 200};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -162,10 +163,11 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, int32, negative",
     "[dimension][map_to_uint64][int32][negative]") {
   // Create dimensions
-  Dimension d1(create_test_memory_tracker(), "d1", Datatype::INT32);
+  auto tracker = create_test_memory_tracker();
+  Dimension d1(tracker, "d1", Datatype::INT32);
   int32_t dom1[] = {-50, 50};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2(create_test_memory_tracker(), "d2", Datatype::INT32);
+  Dimension d2(tracker, "d2", Datatype::INT32);
   int32_t dom2[] = {-100, 100};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -276,10 +278,11 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, float32",
     "[dimension][map_to_uint64][float32]") {
   // Create dimensions
-  Dimension d1(create_test_memory_tracker(), "d1", Datatype::FLOAT32);
+  auto tracker = create_test_memory_tracker();
+  Dimension d1(tracker, "d1", Datatype::FLOAT32);
   float dom1[] = {0.0f, 1.0f};
   CHECK(d1.set_domain(dom1).ok());
-  Dimension d2(create_test_memory_tracker(), "d2", Datatype::FLOAT32);
+  Dimension d2(tracker, "d2", Datatype::FLOAT32);
   float dom2[] = {0.0f, 2.0f};
   CHECK(d2.set_domain(dom2).ok());
 
@@ -399,8 +402,9 @@ TEST_CASE(
     "Dimension: Test map_to_uint64, string",
     "[dimension][map_to_uint64][string]") {
   // Create dimensions
-  Dimension d1(create_test_memory_tracker(), "d1", Datatype::STRING_ASCII);
-  Dimension d2(create_test_memory_tracker(), "d2", Datatype::STRING_ASCII);
+  auto tracker = create_test_memory_tracker();
+  Dimension d1(tracker, "d1", Datatype::STRING_ASCII);
+  Dimension d2(tracker, "d2", Datatype::STRING_ASCII);
 
   // Create 2D hilbert curve (auxiliary here)
   Hilbert h(2);

@@ -139,7 +139,7 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   FilterPipeline fp;
   auto dim = Dimension::deserialize(
-      create_test_memory_tracker(), deserializer, 10, Datatype::INT32, fp);
+      deserializer, create_test_memory_tracker(), 10, Datatype::INT32, fp);
 
   // Check name
   CHECK(dim->name() == dimension_name);
@@ -180,7 +180,7 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   FilterPipeline fp;
   auto dim = Dimension::deserialize(
-      create_test_memory_tracker(), deserializer, 10, Datatype::INT32, fp);
+      deserializer, create_test_memory_tracker(), 10, Datatype::INT32, fp);
   // Check name
   CHECK(dim->name() == dimension_name);
   // Check type
@@ -192,6 +192,7 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
 TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   std::string dim_name = "dim";
 
+  auto memory_tracker = create_test_memory_tracker();
   SECTION("- valid and supported Datatypes") {
     std::vector<Datatype> valid_supported_datatypes = {
         Datatype::INT32,          Datatype::INT64,
@@ -214,7 +215,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_supported_datatypes) {
       try {
-        Dimension dim{create_test_memory_tracker(), dim_name, type};
+        Dimension dim{memory_tracker, dim_name, type};
       } catch (...) {
         throw std::logic_error("Uncaught exception in Dimension constructor");
       }
@@ -237,7 +238,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_unsupported_datatypes) {
       try {
-        Dimension dim{create_test_memory_tracker(), dim_name, type};
+        Dimension dim{memory_tracker, dim_name, type};
       } catch (std::exception& e) {
         CHECK(
             e.what() == "Datatype::" + datatype_str(type) +
@@ -252,7 +253,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (auto type : invalid_datatypes) {
       try {
-        Dimension dim{create_test_memory_tracker(), dim_name, Datatype(type)};
+        Dimension dim{memory_tracker, dim_name, Datatype(type)};
       } catch (std::exception& e) {
         CHECK(
             std::string(e.what()) ==

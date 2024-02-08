@@ -121,6 +121,11 @@ class OpenedArray {
     array_dir_ = dir;
   }
 
+  /** Returns the underlying ContextResources. */
+  inline ContextResources& resources() {
+    return array_dir_.value().resources();
+  }
+
   /** Returns the latest array schema. */
   inline const ArraySchema& array_schema_latest() const {
     return *(array_schema_latest_.get());

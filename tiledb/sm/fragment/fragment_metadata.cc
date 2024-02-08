@@ -502,11 +502,11 @@ void FragmentMetadata::add_max_buffer_sizes(
     // Convert subarray to NDRange
     auto dim_num = array_schema_->dim_num();
     auto sub_ptr = (const unsigned char*)subarray;
-    NDRange sub_nd(dim_num, {nullptr});
+    NDRange sub_nd(dim_num, memory_tracker_);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
       auto r_size{2 * array_schema_->dimension_ptr(d)->coord_size()};
-      sub_nd[d] = Range(nullptr, &sub_ptr[offset], r_size);
+      sub_nd[d] = Range(memory_tracker_, &sub_ptr[offset], r_size);
       offset += r_size;
     }
 
@@ -2772,10 +2772,11 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
-    NDRange mbr(dim_num, {nullptr});
+    NDRange mbr(dim_num, memory_tracker_);
     for (unsigned d = 0; d < dim_num; ++d) {
       uint64_t r_size{2 * domain.dimension_ptr(d)->coord_size()};
-      mbr[d] = Range(nullptr, deserializer.get_ptr<char>(r_size), r_size);
+      mbr[d] =
+          Range(memory_tracker_, deserializer.get_ptr<char>(r_size), r_size);
     }
     throw_if_not_ok(rtree_.set_leaf(m, mbr));
   }
@@ -2811,11 +2812,11 @@ void FragmentMetadata::load_non_empty_domain_v1_v2(Deserializer& deserializer) {
     auto dim_num = array_schema_->dim_num();
     std::vector<uint8_t> temp(domain_size);
     deserializer.read(&temp[0], domain_size);
-    non_empty_domain_.resize(dim_num, {nullptr});
+    non_empty_domain_.resize(dim_num, memory_tracker_);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
       auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
-      Range r(nullptr, &temp[offset], 2 * coord_size);
+      Range r(memory_tracker_, &temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
     }
@@ -2845,11 +2846,11 @@ void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
     auto domain_size = 2 * dim_num * coord_size_0;
     std::vector<uint8_t> temp(domain_size);
     deserializer.read(&temp[0], domain_size);
-    non_empty_domain_.resize(dim_num, {nullptr});
+    non_empty_domain_.resize(dim_num, memory_tracker_);
     uint64_t offset = 0;
     for (unsigned d = 0; d < dim_num; ++d) {
       auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
-      Range r(nullptr, &temp[offset], 2 * coord_size);
+      Range r(memory_tracker_, &temp[offset], 2 * coord_size);
       non_empty_domain_[d] = std::move(r);
       offset += 2 * coord_size;
     }
@@ -2876,19 +2877,22 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
   auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
     auto dim_num = array_schema_->dim_num();
-    non_empty_domain_.resize(dim_num, {nullptr});
+    non_empty_domain_.resize(dim_num, memory_tracker_);
     for (unsigned d = 0; d < dim_num; ++d) {
       auto dim{domain.dimension_ptr(d)};
       if (!dim->var_size()) {  // Fixed-sized
         auto r_size = 2 * dim->coord_size();
         non_empty_domain_[d] =
-            Range(nullptr, deserializer.get_ptr<char>(r_size), r_size);
+            Range(memory_tracker_, deserializer.get_ptr<char>(r_size), r_size);
       } else {  // Var-sized
         uint64_t r_size, start_size;
         r_size = deserializer.read<uint64_t>();
         start_size = deserializer.read<uint64_t>();
-        non_empty_domain_[d] =
-            Range(nullptr, deserializer.get_ptr<char>(r_size), r_size, start_size);
+        non_empty_domain_[d] = Range(
+            memory_tracker_,
+            deserializer.get_ptr<char>(r_size),
+            r_size,
+            start_size);
       }
     }
   }
