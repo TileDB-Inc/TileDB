@@ -670,6 +670,10 @@ stats::Stats* SubarrayPartitioner::stats() const {
   return stats_;
 }
 
+void SubarrayPartitioner::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */

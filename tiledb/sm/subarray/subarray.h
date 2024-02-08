@@ -1278,6 +1278,11 @@ class Subarray {
   /** Returns `stats_`. */
   stats::Stats* stats() const;
 
+  /** Populate the owned stats instance with data.
+   * To be removed when the class will get a C41 constructor.
+   */
+  void set_stats(const stats::StatsData& data);
+
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;
 

@@ -3084,6 +3084,10 @@ stats::Stats* Subarray::stats() const {
   return stats_;
 }
 
+void Subarray::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
+}
+
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const auto& ranges = range_subset_[dim_idx].ranges();

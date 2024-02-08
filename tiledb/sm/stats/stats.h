@@ -51,6 +51,28 @@ namespace tiledb {
 namespace sm {
 namespace stats {
 
+class StatsData {
+ public:
+  StatsData() = default;
+
+  StatsData(
+      std::unordered_map<std::string, uint64_t> counters,
+      std::unordered_map<std::string, double> timers)
+      : counters_(counters)
+      , timers_(timers) {
+  }
+  const std::unordered_map<std::string, uint64_t>& counters() const {
+    return counters_;
+  }
+  const std::unordered_map<std::string, double>& timers() const {
+    return timers_;
+  }
+
+ private:
+  std::unordered_map<std::string, uint64_t> counters_;
+  std::unordered_map<std::string, double> timers_;
+};
+
 /**
  * Class that defines stats counters and methods to manipulate them.
  */
@@ -71,6 +93,14 @@ class Stats {
    * @param prefix The stat name prefix.
    */
   Stats(const std::string& prefix);
+
+  /**
+   * Value constructor.
+   *
+   * @param prefix The stat name prefix.
+   * @param data Initial data to populate the Stats object with
+   */
+  Stats(const std::string& prefix, const StatsData& data);
 
   /** Destructor. */
   ~Stats() = default;
@@ -116,11 +146,21 @@ class Stats {
   /** Creates a child instance, managed by this instance. */
   Stats* create_child(const std::string& prefix);
 
+  /** Creates a child instance, managed by this instance, the instance is
+   * constructed with initial data. */
+  Stats* create_child(const std::string& prefix, const StatsData& data);
+
   /** Return pointer to timers map, used for serialization only. */
-  std::unordered_map<std::string, double>* timers();
+  const std::unordered_map<std::string, double>* timers() const;
 
   /** Return pointer to conters map, used for serialization only. */
-  std::unordered_map<std::string, uint64_t>* counters();
+  const std::unordered_map<std::string, uint64_t>* counters() const;
+
+  /** Populate the counters and timers internal maps from a StatsData object
+   * Please be aware that the data is not being added up, it will override the
+   * existing data on the Stats object.
+   */
+  void populate_with_data(const StatsData& data);
 
  private:
   /* ****************************** */

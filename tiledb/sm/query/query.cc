@@ -1663,6 +1663,10 @@ stats::Stats* Query::stats() const {
   return stats_;
 }
 
+void Query::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
+}
+
 shared_ptr<Buffer> Query::rest_scratch() const {
   return rest_scratch_;
 }
