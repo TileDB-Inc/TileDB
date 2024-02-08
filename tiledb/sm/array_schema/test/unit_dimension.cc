@@ -32,11 +32,13 @@
 
 #include <test/support/tdb_catch.h>
 #include "../dimension.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using tiledb::test::create_test_memory_tracker;
 
 using Datatype = tiledb::sm::Datatype;
 
@@ -101,7 +103,7 @@ inline T& dim_buffer_offset(void* p) {
 }
 
 TEST_CASE("Dimension::Dimension") {
-  Dimension x{"", Datatype::UINT32};
+  Dimension x{create_test_memory_tracker(), "", Datatype::UINT32};
 }
 
 TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
@@ -136,7 +138,8 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   FilterPipeline fp;
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
+  auto dim = Dimension::deserialize(
+      create_test_memory_tracker(), deserializer, 10, Datatype::INT32, fp);
 
   // Check name
   CHECK(dim->name() == dimension_name);
@@ -176,7 +179,8 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
   FilterPipeline fp;
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
+  auto dim = Dimension::deserialize(
+      create_test_memory_tracker(), deserializer, 10, Datatype::INT32, fp);
   // Check name
   CHECK(dim->name() == dimension_name);
   // Check type
@@ -210,7 +214,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_supported_datatypes) {
       try {
-        Dimension dim{dim_name, type};
+        Dimension dim{create_test_memory_tracker(), dim_name, type};
       } catch (...) {
         throw std::logic_error("Uncaught exception in Dimension constructor");
       }
@@ -233,7 +237,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_unsupported_datatypes) {
       try {
-        Dimension dim{dim_name, type};
+        Dimension dim{create_test_memory_tracker(), dim_name, type};
       } catch (std::exception& e) {
         CHECK(
             e.what() == "Datatype::" + datatype_str(type) +
@@ -248,7 +252,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (auto type : invalid_datatypes) {
       try {
-        Dimension dim{dim_name, Datatype(type)};
+        Dimension dim{create_test_memory_tracker(), dim_name, Datatype(type)};
       } catch (std::exception& e) {
         CHECK(
             std::string(e.what()) ==
@@ -363,13 +367,14 @@ TEMPLATE_LIST_TEST_CASE(
     "test relevant_ranges", "[dimension][relevant_ranges][fixed]", FixedTypes) {
   typedef TestType T;
   auto tiledb_type = type_to_datatype<T>().datatype;
-  Dimension dim{"", tiledb_type};
+  auto tracker = create_test_memory_tracker();
+  Dimension dim{tracker, "", tiledb_type};
 
   std::vector<T> range_data = {
       1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 5, 7, 8, 9, 50, 56};
   NDRange ranges;
   for (uint64_t r = 0; r < range_data.size() / 2; r++) {
-    ranges.emplace_back(&range_data[r * 2], 2 * sizeof(T));
+    ranges.emplace_back(tracker, &range_data[r * 2], 2 * sizeof(T));
   }
 
   // Test data.
@@ -378,7 +383,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Compute and check relevant ranges.
   for (uint64_t i = 0; i < mbr_data.size(); i++) {
-    Range mbr(mbr_data[i].data(), 2 * sizeof(T));
+    Range mbr(tracker, mbr_data[i].data(), 2 * sizeof(T));
 
     std::vector<uint64_t> relevant_ranges;
     dim.relevant_ranges(ranges, mbr, relevant_ranges);
@@ -387,7 +392,8 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
-  Dimension dim{"", Datatype::STRING_ASCII};
+  auto tracker = create_test_memory_tracker();
+  Dimension dim{tracker, "", Datatype::STRING_ASCII};
 
   std::vector<char> range_data = {
       'a',
@@ -408,7 +414,7 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
       'z'};
   NDRange ranges;
   for (uint64_t r = 0; r < range_data.size() / 2; r++) {
-    ranges.emplace_back(&range_data[r * 2], 2, 1);
+    ranges.emplace_back(tracker, &range_data[r * 2], 2, 1);
   }
 
   // Test data.
@@ -418,7 +424,7 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
 
   // Compute and check relevant ranges.
   for (uint64_t i = 0; i < mbr_data.size(); i++) {
-    Range mbr(mbr_data[i].data(), 2, 1);
+    Range mbr(tracker, mbr_data[i].data(), 2, 1);
 
     std::vector<uint64_t> relevant_ranges;
     dim.relevant_ranges(ranges, mbr, relevant_ranges);
@@ -427,9 +433,10 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
 }
 
 TEST_CASE("Dimension::oob format") {
-  Dimension d("X", Datatype::FLOAT64);
+  auto tracker = create_test_memory_tracker();
+  Dimension d(tracker, "X", Datatype::FLOAT64);
   double d_dom[2]{-682.73999, 929.42999};
-  REQUIRE(d.set_domain(Range(&d_dom, sizeof(d_dom))).ok());
+  REQUIRE(d.set_domain(Range(tracker, &d_dom, sizeof(d_dom))).ok());
   double x{-682.75};
   std::string error{};
   bool b{Dimension::oob<double>(&d, &x, &error)};

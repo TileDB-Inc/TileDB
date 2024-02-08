@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
 
 using namespace tiledb::sm;
@@ -42,10 +43,11 @@ TEST_CASE("TileDomain: Test 1D", "[TileDomain][1d]") {
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * sizeof(int32_t);
+  auto tracker = tiledb::test::create_test_memory_tracker();
   int32_t ds_vec[] = {15, 35};
   int32_t domain_vec[] = {1, 100};
-  NDRange ds = {Range(ds_vec, size)};
-  NDRange domain = {Range(domain_vec, size)};
+  NDRange ds = {Range(tracker, ds_vec, size)};
+  NDRange domain = {Range(tracker, domain_vec, size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
   const auto& td = tile_domain.tile_domain();
@@ -78,8 +80,13 @@ TEST_CASE(
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
   const auto& td = tile_domain.tile_domain();
@@ -121,8 +128,13 @@ TEST_CASE(
   Layout layout = Layout::ROW_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
   const auto& td = tile_domain.tile_domain();
@@ -159,8 +171,13 @@ TEST_CASE(
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
   const auto& td = tile_domain.tile_domain();
@@ -197,8 +214,13 @@ TEST_CASE(
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
   const auto& td = tile_domain.tile_domain();
@@ -234,8 +256,13 @@ TEST_CASE(
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
 
@@ -266,8 +293,13 @@ TEST_CASE(
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
 
@@ -303,8 +335,13 @@ TEST_CASE(
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange ds = {Range(&domain_slice[0], size), Range(&domain_slice[2], size)};
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange ds = {
+      Range(tracker, &domain_slice[0], size),
+      Range(tracker, &domain_slice[2], size)};
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
 
   TileDomain<int32_t> tile_domain(0, domain, ds, tile_extents, layout);
 
@@ -329,11 +366,16 @@ TEST_CASE("TileDomain: Test 2D, covers", "[TileDomain][2d][covers]") {
   Layout layout = Layout::COL_MAJOR;
 
   auto size = 2 * (sizeof(int32_t));
-  NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  NDRange domain = {
+      Range(tracker, &domain_vec[0], size),
+      Range(tracker, &domain_vec[2], size)};
   NDRange ds1 = {
-      Range(&domain_slice_1[0], size), Range(&domain_slice_1[2], size)};
+      Range(tracker, &domain_slice_1[0], size),
+      Range(tracker, &domain_slice_1[2], size)};
   NDRange ds2 = {
-      Range(&domain_slice_2[0], size), Range(&domain_slice_2[2], size)};
+      Range(tracker, &domain_slice_2[0], size),
+      Range(tracker, &domain_slice_2[2], size)};
 
   TileDomain<int32_t> tile_domain_1(1, domain, ds1, tile_extents, layout);
 

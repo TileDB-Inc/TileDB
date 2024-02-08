@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../range_subset.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/type/range/range.h"
 
@@ -39,6 +40,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 using namespace tiledb::type;
+using tiledb::test::create_test_memory_tracker;
 
 /**
  * Check the values of a particular range in a RangeSetAndSuperset object.
@@ -92,7 +94,7 @@ TEMPLATE_TEST_CASE_SIG(
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
   T bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(T)};
+  Range range{create_test_memory_tracker(), bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, true, false};
   CHECK(range_subset.num_ranges() == 1);
   Range default_range = range_subset[0];
@@ -116,14 +118,15 @@ TEMPLATE_TEST_CASE_SIG(
     (uint64_t, Datatype::UINT64),
     (int64_t, Datatype::DATETIME_YEAR)) {
   T bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range range{tracker, bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, false, true};
   CHECK(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
     T data1[2] = {1, 3};
     T data2[2] = {4, 5};
-    Range r1{data1, 2 * sizeof(T)};
-    Range r2{data2, 2 * sizeof(T)};
+    Range r1{tracker, data1, 2 * sizeof(T)};
+    Range r2{tracker, data2, 2 * sizeof(T)};
     range_subset.add_range(r1);
     range_subset.add_range(r2);
     CHECK(range_subset.num_ranges() == 1);
@@ -141,14 +144,15 @@ TEMPLATE_TEST_CASE_SIG(
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
   T bounds[2] = {-1.0, 1.0};
-  Range range{bounds, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range range{tracker, bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, false, true};
   REQUIRE(range_subset.num_ranges() == 0);
   SECTION("Add 2 Overlapping Ranges") {
     T data1[2] = {-0.5, 0.5};
     T data2[2] = {0.5, 0.75};
-    Range r1{data1, 2 * sizeof(T)};
-    Range r2{data2, 2 * sizeof(T)};
+    Range r1{tracker, data1, 2 * sizeof(T)};
+    Range r2{tracker, data2, 2 * sizeof(T)};
     range_subset.add_range(r1);
     range_subset.add_range(r2);
     REQUIRE(range_subset.num_ranges() == 2);
@@ -164,11 +168,12 @@ TEMPLATE_TEST_CASE_SIG(
     (uint32_t, Datatype::UINT32),
     (uint64_t, Datatype::UINT64)) {
   T domain_data[2]{1, 4};
-  Range domain{domain_data, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range domain{tracker, domain_data, 2 * sizeof(T)};
   RangeSetAndSuperset subset{D, domain, false, true};
   SECTION("Test adding subset with lower bound less than superset") {
     T bad_lower[2]{0, 3};
-    Range range{bad_lower, 2 * sizeof(T)};
+    Range range{tracker, bad_lower, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     REQUIRE(warn_message.has_value());
@@ -178,7 +183,7 @@ TEMPLATE_TEST_CASE_SIG(
   }
   SECTION("Test adding a subset with upper bound more than superset") {
     T bad_upper[2]{2, 8};
-    Range range{bad_upper, 2 * sizeof(T)};
+    Range range{tracker, bad_upper, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     REQUIRE(warn_message.has_value());
@@ -188,7 +193,7 @@ TEMPLATE_TEST_CASE_SIG(
   }
   SECTION("Test adding the full typeset") {
     T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
-    Range range{fullset, 2 * sizeof(T)};
+    Range range{tracker, fullset, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -208,11 +213,12 @@ TEMPLATE_TEST_CASE_SIG(
     (int64_t, Datatype::INT64),
     (int64_t, Datatype::DATETIME_MONTH)) {
   T domain_data[2]{-2, 2};
-  Range domain{domain_data, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range domain{tracker, domain_data, 2 * sizeof(T)};
   RangeSetAndSuperset subset{D, domain, false, true};
   SECTION("Test adding subset with lower bound less than superset") {
     T bad_lower[2]{-4, 0};
-    Range range{bad_lower, 2 * sizeof(T)};
+    Range range{tracker, bad_lower, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -221,7 +227,7 @@ TEMPLATE_TEST_CASE_SIG(
   }
   SECTION("Test adding a subset with upper bound more than superset") {
     T bad_upper[2]{0, 8};
-    Range range{bad_upper, 2 * sizeof(T)};
+    Range range{tracker, bad_upper, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -230,7 +236,7 @@ TEMPLATE_TEST_CASE_SIG(
   }
   SECTION("Test adding the full typeset") {
     T fullset[2]{std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
-    Range range{fullset, 2 * sizeof(T)};
+    Range range{tracker, fullset, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -246,11 +252,12 @@ TEMPLATE_TEST_CASE_SIG(
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
   T domain_data[2]{-1.5, 4.5};
-  Range domain{domain_data, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range domain{tracker, domain_data, 2 * sizeof(T)};
   RangeSetAndSuperset subset{D, domain, false, true};
   SECTION("Test adding subset with lower bound less than superset") {
     T bad_lower[2]{-2.0, 3.0};
-    Range range{bad_lower, 2 * sizeof(T)};
+    Range range{tracker, bad_lower, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -259,7 +266,7 @@ TEMPLATE_TEST_CASE_SIG(
   }
   SECTION("Test adding a subset with upper bound more than superset") {
     T bad_upper[2]{2.0, 8.0};
-    Range range{bad_upper, 2 * sizeof(T)};
+    Range range{tracker, bad_upper, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -269,7 +276,7 @@ TEMPLATE_TEST_CASE_SIG(
   SECTION("Test adding the full typeset") {
     T fullset[2]{
         std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max()};
-    Range range{fullset, 2 * sizeof(T)};
+    Range range{tracker, fullset, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -281,7 +288,7 @@ TEMPLATE_TEST_CASE_SIG(
     T infinite[2]{
         -std::numeric_limits<T>::infinity(),
         std::numeric_limits<T>::infinity()};
-    Range range{infinite, 2 * sizeof(T)};
+    Range range{tracker, infinite, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, false);
     CHECK(error_status.ok());
     CHECK(warn_message.has_value());
@@ -306,20 +313,23 @@ TEMPLATE_TEST_CASE_SIG(
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
   T bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range range{tracker, bounds, 2 * sizeof(T)};
   RangeSetAndSuperset subset{D, range, true, false};
   SECTION("Check error for empty range") {
-    Range range{};
+    Range range{
+        tracker,
+    };
     REQUIRE_THROWS(subset.add_range(range, true));
   }
   SECTION("Check error for out-of-order range") {
     T data[2] = {3, 2};
-    Range range{data, 2 * sizeof(T)};
+    Range range{tracker, data, 2 * sizeof(T)};
     REQUIRE_THROWS(subset.add_range(range, true));
   }
   SECTION("Check error for out-of-bounds range") {
     T data[2] = {0, 11};
-    Range range{data, 2 * sizeof(T)};
+    Range range{tracker, data, 2 * sizeof(T)};
     auto&& [error_status, warn_message] = subset.add_range(range, true);
     REQUIRE(!error_status.ok());
   }
@@ -342,7 +352,8 @@ TEMPLATE_TEST_CASE_SIG(
     (double, Datatype::FLOAT64)) {
   bool merge = GENERATE(true, false);
   T bounds[2] = {0, 10};
-  Range range{bounds, 2 * sizeof(T)};
+  auto tracker = create_test_memory_tracker();
+  Range range{tracker, bounds, 2 * sizeof(T)};
   RangeSetAndSuperset range_subset{D, range, false, true};
 
   SECTION("Empty ranges") {
@@ -363,10 +374,10 @@ TEMPLATE_TEST_CASE_SIG(
     T data3[2] = {4, 5};
     T data4[2] = {6, 7};
     std::vector<Range> ranges = {
-        Range(data1, 2 * sizeof(T)),
-        Range(data2, 2 * sizeof(T)),
-        Range(data3, 2 * sizeof(T)),
-        Range(data4, 2 * sizeof(T))};
+        Range(tracker, data1, 2 * sizeof(T)),
+        Range(tracker, data2, 2 * sizeof(T)),
+        Range(tracker, data3, 2 * sizeof(T)),
+        Range(tracker, data4, 2 * sizeof(T))};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -395,10 +406,10 @@ TEMPLATE_TEST_CASE_SIG(
     T data3[2] = {2, 3};
     T data4[2] = {6, 7};
     std::vector<Range> ranges = {
-        Range(data1, 2 * sizeof(T)),
-        Range(data2, 2 * sizeof(T)),
-        Range(data3, 2 * sizeof(T)),
-        Range(data4, 2 * sizeof(T))};
+        Range(tracker, data1, 2 * sizeof(T)),
+        Range(tracker, data2, 2 * sizeof(T)),
+        Range(tracker, data3, 2 * sizeof(T)),
+        Range(tracker, data4, 2 * sizeof(T))};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -436,10 +447,10 @@ TEMPLATE_TEST_CASE_SIG(
     T data3[2] = {3, 6};
     T data4[2] = {5, 8};
     std::vector<Range> ranges = {
-        Range(data1, 2 * sizeof(T)),
-        Range(data2, 2 * sizeof(T)),
-        Range(data3, 2 * sizeof(T)),
-        Range(data4, 2 * sizeof(T))};
+        Range(tracker, data1, 2 * sizeof(T)),
+        Range(tracker, data2, 2 * sizeof(T)),
+        Range(tracker, data3, 2 * sizeof(T)),
+        Range(tracker, data4, 2 * sizeof(T))};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -469,10 +480,10 @@ TEMPLATE_TEST_CASE_SIG(
     T data3[2] = {3, 6};
     T data4[2] = {1, 4};
     std::vector<Range> ranges = {
-        Range(data1, 2 * sizeof(T)),
-        Range(data2, 2 * sizeof(T)),
-        Range(data3, 2 * sizeof(T)),
-        Range(data4, 2 * sizeof(T))};
+        Range(tracker, data1, 2 * sizeof(T)),
+        Range(tracker, data2, 2 * sizeof(T)),
+        Range(tracker, data3, 2 * sizeof(T)),
+        Range(tracker, data4, 2 * sizeof(T))};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -502,10 +513,10 @@ TEMPLATE_TEST_CASE_SIG(
     T data3[2] = {7, 9};
     T data4[2] = {3, 5};
     std::vector<Range> ranges = {
-        Range(data1, 2 * sizeof(T)),
-        Range(data2, 2 * sizeof(T)),
-        Range(data3, 2 * sizeof(T)),
-        Range(data4, 2 * sizeof(T))};
+        Range(tracker, data1, 2 * sizeof(T)),
+        Range(tracker, data2, 2 * sizeof(T)),
+        Range(tracker, data3, 2 * sizeof(T)),
+        Range(tracker, data4, 2 * sizeof(T))};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -534,7 +545,8 @@ TEST_CASE(
     "RangeSetAndSuperset::sort_and_merge_ranges - STRING_ASCII",
     "[sort_and_merge_ranges][string]") {
   bool merge = GENERATE(true, false);
-  Range range{};
+  auto tracker = create_test_memory_tracker();
+  Range range{tracker};
   RangeSetAndSuperset range_subset{Datatype::STRING_ASCII, range, false, false};
 
   SECTION("Empty ranges") {
@@ -551,7 +563,10 @@ TEST_CASE(
   SECTION("Adjacent, sorted ranges") {
     // Note: string ranges do not coalesce
     std::vector<Range> ranges = {
-        Range("a", "b"), Range("c", "d"), Range("ef", "g"), Range("h", "ij")};
+        Range(tracker, "a", "b"),
+        Range(tracker, "c", "d"),
+        Range(tracker, "ef", "g"),
+        Range(tracker, "h", "ij")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -568,7 +583,8 @@ TEST_CASE(
   }
 
   SECTION("Adjacent, unsorted ranges") {
-    std::vector<Range> ranges = {Range("c", "d"), Range("a", "b")};
+    std::vector<Range> ranges = {
+        Range(tracker, "c", "d"), Range(tracker, "a", "b")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -583,7 +599,8 @@ TEST_CASE(
   }
 
   SECTION("Overlapping, sorted ranges") {
-    std::vector<Range> ranges = {Range("a", "c"), Range("b", "d")};
+    std::vector<Range> ranges = {
+        Range(tracker, "a", "c"), Range(tracker, "b", "d")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -603,7 +620,8 @@ TEST_CASE(
   }
 
   SECTION("Overlapping, unsorted ranges") {
-    std::vector<Range> ranges = {Range("b", "d"), Range("a", "c")};
+    std::vector<Range> ranges = {
+        Range(tracker, "b", "d"), Range(tracker, "a", "c")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -624,7 +642,10 @@ TEST_CASE(
 
   SECTION("Partially overlapping") {
     std::vector<Range> ranges = {
-        Range("a", "c"), Range("b", "d"), Range("h", "j"), Range("e", "f")};
+        Range(tracker, "a", "c"),
+        Range(tracker, "b", "d"),
+        Range(tracker, "h", "j"),
+        Range(tracker, "e", "f")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -649,7 +670,9 @@ TEST_CASE(
 
   SECTION("Same first letter") {
     std::vector<Range> ranges = {
-        Range("G1", "G1"), Range("G2", "G2"), Range("G59", "G59")};
+        Range(tracker, "G1", "G1"),
+        Range(tracker, "G2", "G2"),
+        Range(tracker, "G59", "G59")};
     for (auto range : ranges) {
       range_subset.add_range(range);
     }
@@ -673,6 +696,6 @@ TEST_CASE(
 }
 
 TEST_CASE("RangeSetAndSuperset test bad constructor args") {
-  Range range{};
+  Range range{create_test_memory_tracker()};
   REQUIRE_THROWS(RangeSetAndSuperset(Datatype::ANY, range, false, false));
 }

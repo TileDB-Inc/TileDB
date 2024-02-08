@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -51,7 +52,11 @@ TEMPLATE_TEST_CASE(
     double) {
   TestType start{2};
   TestType end{10};
-  Range range{&start, &end, sizeof(TestType)};
+  Range range{
+      tiledb::test::create_test_memory_tracker(),
+      &start,
+      &end,
+      sizeof(TestType)};
   REQUIRE(!range.var_size());
   const auto* data = static_cast<const TestType*>(range.data());
   REQUIRE(data[0] == start);
@@ -64,7 +69,12 @@ TEST_CASE(
     "[range]") {
   std::string start{"x"};
   std::string end{"zzz"};
-  Range range{start.data(), start.size(), end.data(), end.size()};
+  Range range{
+      tiledb::test::create_test_memory_tracker(),
+      start.data(),
+      start.size(),
+      end.data(),
+      end.size()};
   REQUIRE(range.var_size());
   REQUIRE(range.start_str() == start);
   REQUIRE(range.end_str() == end);

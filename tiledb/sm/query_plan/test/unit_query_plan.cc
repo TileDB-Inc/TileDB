@@ -34,6 +34,7 @@
 #include <test/support/tdb_catch.h>
 #include "../query_plan.h"
 #include "external/include/nlohmann/json.hpp"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -58,6 +59,7 @@ struct QueryPlanFx {
 
   URI array_uri(const std::string& uri);
 
+  shared_ptr<MemoryTracker> tracker_;
   TemporaryLocalDirectory temp_dir_;
 
   Config cfg_;
@@ -70,8 +72,8 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   // Create Domain
   uint64_t dim_dom[2]{0, 1};
   uint64_t tile_extent = 1;
-  shared_ptr<Dimension> dim =
-      make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+  shared_ptr<Dimension> dim = make_shared<Dimension>(
+      HERE(), tracker_, std::string("dim"), Datatype::UINT64);
   throw_if_not_ok(dim->set_domain(&dim_dom));
   throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
@@ -109,7 +111,8 @@ URI QueryPlanFx::array_uri(const std::string& array_name) {
 }
 
 QueryPlanFx::QueryPlanFx()
-    : logger_(make_shared<Logger>(HERE(), "foo"))
+    : tracker_(tiledb::test::create_test_memory_tracker())
+    , logger_(make_shared<Logger>(HERE(), "foo"))
     , resources_(cfg_, logger_, 1, 1, "")
     , sm_(make_shared<StorageManager>(resources_, logger_, cfg_)) {
 }

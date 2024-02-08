@@ -32,6 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/type/range/range.h"
@@ -39,6 +40,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 using namespace tiledb::sm;
+using tiledb::test::create_test_memory_tracker;
 
 TEMPLATE_TEST_CASE_SIG(
     "Test range_str for unsigned int types",
@@ -49,7 +51,7 @@ TEMPLATE_TEST_CASE_SIG(
     (uint32_t, Datatype::UINT32),
     (uint64_t, Datatype::UINT64)) {
   T data[2]{1, 10};
-  Range range{&data[0], 2 * sizeof(T)};
+  Range range{create_test_memory_tracker(), &data[0], 2 * sizeof(T)};
   std::string expected_output{"[1, 10]"};
   REQUIRE(range_str(range, D) == expected_output);
 }
@@ -63,7 +65,7 @@ TEMPLATE_TEST_CASE_SIG(
     (int32_t, Datatype::INT32),
     (int64_t, Datatype::INT64)) {
   T data[2]{-4, 4};
-  Range range{&data[0], 2 * sizeof(T)};
+  Range range{create_test_memory_tracker(), &data[0], 2 * sizeof(T)};
   std::string expected_output{"[-4, 4]"};
   REQUIRE(range_str(range, D) == expected_output);
 }
@@ -75,20 +77,20 @@ TEMPLATE_TEST_CASE_SIG(
     (float, Datatype::FLOAT32),
     (double, Datatype::FLOAT64)) {
   T data[2]{-10.5, 10.5};
-  Range range{&data[0], 2 * sizeof(T)};
+  Range range{create_test_memory_tracker(), &data[0], 2 * sizeof(T)};
   std::string expected_output{"[-10.5, 10.5]"};
   REQUIRE(range_str(range, D) == expected_output);
 }
 
 TEST_CASE("Test range_str for empty range", "[range][!mayfail]") {
-  Range range{};
+  Range range{create_test_memory_tracker()};
   REQUIRE(range_str(range, Datatype::STRING_ASCII) == constants::null_str);
 }
 
 TEST_CASE("Test range_str for string range", "[range][!mayfail]") {
   std::string start{"start"};
   std::string end{"end"};
-  Range range{start, end};
+  Range range{create_test_memory_tracker(), start, end};
   std::string expected_output{"[start, end]"};
   REQUIRE(range_str(range, Datatype::STRING_ASCII) == expected_output);
 }

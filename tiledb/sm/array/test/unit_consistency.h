@@ -39,6 +39,7 @@
 
 #include "../array.h"
 #include "../consistency.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -96,8 +97,11 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create Domain
     uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
-    shared_ptr<Dimension> dim =
-        make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+    shared_ptr<Dimension> dim = make_shared<Dimension>(
+        HERE(),
+        tiledb::test::create_test_memory_tracker(),
+        std::string("dim"),
+        Datatype::UINT64);
     throw_if_not_ok(dim->set_domain(&dim_dom));
     throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 

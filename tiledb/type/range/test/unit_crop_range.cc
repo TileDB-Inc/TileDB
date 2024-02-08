@@ -32,6 +32,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
@@ -43,8 +44,9 @@ void test_crop_range(
     const TestType* range_data,
     const TestType* expected_result) {
   // Create ranges.
-  Range bounds{bounds_data, 2 * sizeof(TestType)};
-  Range range{range_data, 2 * sizeof(TestType)};
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  Range bounds{tracker, bounds_data, 2 * sizeof(TestType)};
+  Range range{tracker, range_data, 2 * sizeof(TestType)};
   Status status = Status::Ok();
   // Crop range.
   crop_range<TestType>(bounds, range);

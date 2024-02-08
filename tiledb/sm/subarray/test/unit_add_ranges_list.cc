@@ -40,6 +40,7 @@
 #include <tiledb/sm/enums/encryption_type.h>
 #include <tiledb/sm/storage_manager/context.h>
 #include <tiledb/sm/subarray/subarray.h>
+#include "test/support/src/mem_helpers.h"
 
 #include <test/support/src/helpers.h>
 
@@ -51,10 +52,13 @@ using namespace tiledb::type;
 TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // Setup an Array needed to construct the Subarray for testing
   // add_ranges_list.
+  auto tracker = tiledb::test::create_test_memory_tracker();
   std::shared_ptr<tiledb::sm::Dimension> sp_dim1 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d1", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(), tracker, "d1", Datatype::INT64);
   std::shared_ptr<tiledb::sm::Dimension> sp_dim2 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d2", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(), tracker, "d2", Datatype::INT64);
   uint64_t tile_extents[] = {2, 2};
   std::vector<std::shared_ptr<tiledb::sm::Dimension>> dims{sp_dim1, sp_dim2};
   std::shared_ptr<tiledb::sm::Domain> sp_dom = make_shared<tiledb::sm::Domain>(

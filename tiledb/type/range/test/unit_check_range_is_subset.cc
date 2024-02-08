@@ -33,9 +33,11 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/type/range/range.h"
+#include "test/support/src/mem_helpers.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
+using tiledb::test::create_test_memory_tracker;
 
 TEMPLATE_TEST_CASE(
     "Test check_is_subset for unsigned int types",
@@ -45,32 +47,33 @@ TEMPLATE_TEST_CASE(
     uint32_t,
     uint64_t) {
   TestType superset_data[2]{1, 4};
-  Range superset{&superset_data[0], 2 * sizeof(TestType)};
+  auto tracker = create_test_memory_tracker();
+  Range superset{tracker, &superset_data[0], 2 * sizeof(TestType)};
   SECTION("Test full domain is a valid subset") {
     auto status = check_range_is_subset<TestType>(superset, superset);
     REQUIRE(status.ok());
   }
   SECTION("Test simple proper subset is a valid subset") {
     TestType data[2]{2, 3};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(status.ok());
   }
   SECTION("Test a non-valid subset with lower bound less than superset") {
     TestType data[2]{0, 3};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset with upper bound more than superset") {
     TestType data[2]{2, 8};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is a proper superset") {
     TestType data[2]{0, 6};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -78,7 +81,7 @@ TEMPLATE_TEST_CASE(
     TestType data[2]{
         std::numeric_limits<TestType>::min(),
         std::numeric_limits<TestType>::max()};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -92,32 +95,33 @@ TEMPLATE_TEST_CASE(
     int32_t,
     int64_t) {
   TestType superset_data[2]{-2, 2};
-  Range superset{&superset_data[0], 2 * sizeof(TestType)};
+  auto tracker = create_test_memory_tracker();
+  Range superset{tracker, &superset_data[0], 2 * sizeof(TestType)};
   SECTION("Test full domain is a valid subset") {
     auto status = check_range_is_subset<TestType>(superset, superset);
     REQUIRE(status.ok());
   }
   SECTION("Test simple proper subset is a valid subset") {
     TestType data[2]{-1, 1};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(status.ok());
   }
   SECTION("Test a non-valid subset with lower bound less than superset") {
     TestType data[2]{-4, 0};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset with upper bound more than superset") {
     TestType data[2]{0, 8};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is a proper superset") {
     TestType data[2]{-8, 8};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -125,7 +129,7 @@ TEMPLATE_TEST_CASE(
     TestType data[2]{
         std::numeric_limits<TestType>::lowest(),
         std::numeric_limits<TestType>::max()};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -134,32 +138,33 @@ TEMPLATE_TEST_CASE(
 TEMPLATE_TEST_CASE(
     "Test check_is_subset for floating-point types", "[range]", float, double) {
   TestType superset_data[2]{-10.5, 3.33f};
-  Range superset{&superset_data[0], 2 * sizeof(TestType)};
+  auto tracker = create_test_memory_tracker();
+  Range superset{tracker, &superset_data[0], 2 * sizeof(TestType)};
   SECTION("Test full domain is a valid subset") {
     auto status = check_range_is_subset<TestType>(superset, superset);
     REQUIRE(status.ok());
   }
   SECTION("Test simple proper subset is a valid subset") {
     TestType data[2]{-2.5, 2.5};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(status.ok());
   }
   SECTION("Test a non-valid subset with lower bound less than superset") {
     TestType data[2]{-20.5, 0.0};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset with upper bound more than superset") {
     TestType data[2]{0.0, 20.5};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
   SECTION("Test a non-valid subset that is a proper superset") {
     TestType data[2]{-20.0, 20.0};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -167,7 +172,7 @@ TEMPLATE_TEST_CASE(
     TestType data[2]{
         std::numeric_limits<TestType>::lowest(),
         std::numeric_limits<TestType>::max()};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }
@@ -175,7 +180,7 @@ TEMPLATE_TEST_CASE(
     TestType data[2]{
         -std::numeric_limits<TestType>::infinity(),
         std::numeric_limits<TestType>::infinity()};
-    Range range{&data[0], 2 * sizeof(TestType)};
+    Range range{tracker, &data[0], 2 * sizeof(TestType)};
     auto status = check_range_is_subset<TestType>(superset, range);
     REQUIRE(!status.ok());
   }

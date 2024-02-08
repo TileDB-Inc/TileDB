@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -102,8 +103,11 @@ TEST_CASE(
     // Create dimension label array schema.
     Status st;
     auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
-    std::vector<shared_ptr<Dimension>> dims{
-        make_shared<Dimension>(HERE(), "index", Datatype::UINT32)};
+    std::vector<shared_ptr<Dimension>> dims{make_shared<Dimension>(
+        HERE(),
+        tiledb::test::create_test_memory_tracker(),
+        "index",
+        Datatype::UINT32)};
     uint32_t domain1[2]{1, 64};
     st = dims[0]->set_domain(&domain1[0]);
     REQUIRE(st.ok());

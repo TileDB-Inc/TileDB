@@ -72,6 +72,7 @@
 #include <limits>
 #include <utility>
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -132,7 +133,7 @@ class DatatypeTestTraits<Datatype::UINT32> {
   static /*constinit*/ ByteVecValue default_tile_extent;
 };
 Range DatatypeTestTraits<Datatype::UINT32>::default_range{
-    Tag<uint32_t>{}, 0_n32, 99_n32};
+    Tag<uint32_t>{}, tiledb::test::create_test_memory_tracker(), 0_n32, 99_n32};
 ByteVecValue DatatypeTestTraits<Datatype::UINT32>::default_tile_extent{100_n32};
 
 template <>
@@ -142,7 +143,7 @@ class DatatypeTestTraits<Datatype::UINT64> {
   static /*constinit*/ ByteVecValue default_tile_extent;
 };
 Range DatatypeTestTraits<Datatype::UINT64>::default_range{
-    Tag<uint64_t>{}, 0_n64, 99_n64};
+    Tag<uint64_t>{}, tiledb::test::create_test_memory_tracker(), 0_n64, 99_n64};
 ByteVecValue DatatypeTestTraits<Datatype::UINT64>::default_tile_extent{100_n64};
 
 /*consteval*/ Range default_range(Datatype d) {

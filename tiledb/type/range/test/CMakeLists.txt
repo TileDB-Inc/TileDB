@@ -36,4 +36,5 @@ commence(unit_test range)
         unit_range.cc
         unit_range_str.cc
         )
+    this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
