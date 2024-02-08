@@ -317,7 +317,7 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    return client_holder_.get_or_create_client(*this);
+    return client_singleton_.get(*this);
   }
 
  private:
@@ -373,7 +373,7 @@ class Azure {
    * * The client gets initialized only once in the face
    *   of concurrent accesses.
    */
-  class LazyClientHolder {
+  class AzureClientSingleton {
    public:
     /**
      * Gets a reference to the Azure BlobServiceClient, and initializes it if it
@@ -381,7 +381,7 @@ class Azure {
      *
      * @param azure A reference to the parent Azure VFS object.
      */
-    const ::Azure::Storage::Blobs::BlobServiceClient& get_or_create_client(
+    const ::Azure::Storage::Blobs::BlobServiceClient& get(
         const Azure& azure);
 
    private:
@@ -400,7 +400,7 @@ class Azure {
   ThreadPool* thread_pool_;
 
   /** A holder for the Azure blob service client. */
-  mutable LazyClientHolder client_holder_;
+  mutable AzureClientSingleton client_singleton_;
 
   /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;

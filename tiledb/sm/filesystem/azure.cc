@@ -160,7 +160,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
 /* ********************************* */
 
 const ::Azure::Storage::Blobs::BlobServiceClient&
-Azure::LazyClientHolder::get_or_create_client(const Azure& azure) {
+Azure::AzureClientSingleton::get(const Azure& azure) {
   // Initialize logging from the Azure SDK.
   static std::once_flag azure_log_sentinel;
   std::call_once(azure_log_sentinel, []() {
