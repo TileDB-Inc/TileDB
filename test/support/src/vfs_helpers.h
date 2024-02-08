@@ -50,12 +50,6 @@ constexpr bool aws_s3_config = true;
 constexpr bool aws_s3_config = false;
 #endif
 
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
-
 /**
  * Generates a random temp directory URI for use in VFS tests.
  *
@@ -154,6 +148,13 @@ class SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir() = 0;
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type() = 0;
 };
 
 /**
@@ -162,10 +163,10 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3()
+  SupportedFsS3(std::string prefix = "")
       : s3_prefix_("s3://")
       , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
-      , temp_dir_(s3_bucket_ + "tiledb_test/") {
+      , temp_dir_(prefix + s3_bucket_ + "tiledb_test/") {
   }
 
   ~SupportedFsS3() = default;
@@ -182,7 +183,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param error Error parameter
    * @return Status OK if successful
    */
-  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
 
   /**
    * Creates bucket if does not exist
@@ -191,7 +192,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
-  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Removes bucket if exists
@@ -200,7 +201,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
-  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -209,7 +210,14 @@ class SupportedFsS3 : public SupportedFs {
    */
   virtual std::string temp_dir();
 
- private:
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
+
+ protected:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
@@ -222,6 +230,21 @@ class SupportedFsS3 : public SupportedFs {
 
   /** The directory name of the S3 filesystem. */
   std::string temp_dir_;
+};
+
+class SupportedFsRestS3 : public SupportedFsS3 {
+ public:
+  SupportedFsRestS3()
+      : SupportedFsS3("tiledb://unit/"){};
+
+  ~SupportedFsRestS3() = default;
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  std::string type();
 };
 
 /**
@@ -273,6 +296,13 @@ class SupportedFsHDFS : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
 
  private:
   /* ********************************* */
@@ -335,6 +365,13 @@ class SupportedFsAzure : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
 
  private:
   /* ********************************* */
@@ -402,6 +439,13 @@ class SupportedFsGCS : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
 
  private:
   /* ********************************* */
@@ -483,6 +527,13 @@ class SupportedFsLocal : public SupportedFs {
    */
   std::string file_prefix();
 
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
+
  private:
   /* ********************************* */
   /*           ATTRIBUTES              */
@@ -554,6 +605,13 @@ class SupportedFsMem : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Get the type of the filesystem
+   *
+   * @return string filesystem type
+   */
+  virtual std::string type();
 
  private:
   /* ********************************* */
@@ -758,19 +816,22 @@ struct TemporaryDirectoryFixture {
 struct VFSTestSetup {
   VFSTestSetup() = delete;
 
-  VFSTestSetup(std::string array_name)
+  VFSTestSetup(std::string array_name, tiledb_config_t* config = nullptr)
       : fs_vec(vfs_test_get_fs_vec())
       , ctx_c{nullptr}
-      , vfs_c{nullptr} {
-    vfs_test_init(fs_vec, &ctx_c, &vfs_c).ok();
+      , vfs_c{nullptr}
+      , cfg_c{config} {
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
     ctx = Context(ctx_c, false);
+    cfg = Config(&cfg_c);
     std::string temp_dir = fs_vec[0]->temp_dir();
-    if constexpr (rest_tests) {
-      array_uri = "tiledb://unit/";
-    }
     array_uri += temp_dir + array_name;
     vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
   };
+
+  bool is_rest() {
+    return fs_vec[0]->type() == "REST-S3";
+  }
 
   ~VFSTestSetup() {
     REQUIRE(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
@@ -779,7 +840,9 @@ struct VFSTestSetup {
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
   tiledb_ctx_handle_t* ctx_c;
   tiledb_vfs_handle_t* vfs_c;
+  tiledb_config_handle_t* cfg_c;
   Context ctx;
+  Config cfg;
   std::string array_uri;
 };
 

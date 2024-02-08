@@ -788,16 +788,18 @@ void get_supported_fs(
     bool* s3_supported,
     bool* hdfs_supported,
     bool* azure_supported,
-    bool* gcs_supported) {
+    bool* gcs_supported,
+    bool* rest_s3_supported) {
   // Override VFS support if the user used the '--vfs' command line argument.
   if (g_vfs.empty()) {
     *s3_supported = tiledb::sm::filesystem::s3_enabled;
     *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
     *azure_supported = tiledb::sm::filesystem::azure_enabled;
     *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
+    *rest_s3_supported = tiledb::sm::filesystem::rest_s3_enabled;
   } else {
     if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-          g_vfs == "azure" || g_vfs == "gcs")) {
+          g_vfs == "azure" || g_vfs == "gcs" || g_vfs == "rest_s3")) {
       throw std::runtime_error(
           "Failed to get supported fs. Invalid --vfs command line argument.");
     }
@@ -807,6 +809,7 @@ void get_supported_fs(
       *hdfs_supported = false;
       *azure_supported = false;
       *gcs_supported = false;
+      *rest_s3_supported = false;
     }
 
     if (g_vfs == "s3") {
@@ -814,6 +817,7 @@ void get_supported_fs(
       *hdfs_supported = false;
       *azure_supported = false;
       *gcs_supported = false;
+      *rest_s3_supported = false;
     }
 
     if (g_vfs == "hdfs") {
@@ -821,6 +825,7 @@ void get_supported_fs(
       *hdfs_supported = true;
       *azure_supported = false;
       *gcs_supported = false;
+      *rest_s3_supported = false;
     }
 
     if (g_vfs == "azure") {
@@ -828,6 +833,7 @@ void get_supported_fs(
       *hdfs_supported = false;
       *azure_supported = true;
       *gcs_supported = false;
+      *rest_s3_supported = false;
     }
 
     if (g_vfs == "gcs") {
@@ -835,6 +841,15 @@ void get_supported_fs(
       *hdfs_supported = false;
       *azure_supported = false;
       *gcs_supported = true;
+      *rest_s3_supported = false;
+    }
+
+    if (g_vfs == "rest_s3") {
+      *s3_supported = false;
+      *hdfs_supported = false;
+      *azure_supported = false;
+      *gcs_supported = true;
+      *rest_s3_supported = true;
     }
   }
 }
