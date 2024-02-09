@@ -122,11 +122,12 @@ void SparseUnorderedWithDupsReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
-  // Subarray is not known to be explicitly set until buffers are deserialized
-  include_coords_ = subarray_.is_set();
-
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
+
+  // Subarray is not known to be explicitly set until buffers are deserialized
+  subarray_.reset_default_ranges();
+  include_coords_ = subarray_.is_set();
 
   // Make sure user didn't request delete timestamps.
   if (buffers_.count(constants::delete_timestamps) != 0) {
