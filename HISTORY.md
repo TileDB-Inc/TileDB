@@ -19,7 +19,6 @@
 * Fix traversal limit in array deserialization. [#4606](https://github.com/TileDB-Inc/TileDB/pull/4606)
 * Add function random_label to utilize PRNG for random string generation. [#4564](https://github.com/TileDB-Inc/TileDB/pull/4564)
 * Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
-* Optimize sparse reads when full non empty domain is requested. [#4710](https://github.com/TileDB-Inc/TileDB/pull/4710)
 
 ## Defects removed
 
