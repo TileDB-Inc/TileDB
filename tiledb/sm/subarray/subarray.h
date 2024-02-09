@@ -1306,17 +1306,6 @@ class Subarray {
    */
   void add_default_label_ranges(dimension_size_type dim_num);
 
-  /**
-   * Reset ranges to default if possible before a read operation for sparse
-   * reads. We have a lot of optimizations in the sparse readers when no ranges
-   * are specified. Python will set ranges that are equal to the non empty
-   * domain, which will negate those optimizations. When the non empty domain is
-   * computed for the array, it is low performance cost to see if the ranges set
-   * are equal to the non empty domain. If they are, we can reset them to be
-   * default.
-   */
-  void reset_default_ranges();
-
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
