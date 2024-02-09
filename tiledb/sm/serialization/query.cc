@@ -359,6 +359,7 @@ Subarray subarray_from_capnp(
     }
   }
 
+  auto frag_meta_size = array->opened_array()->fragment_metadata().size();
   return {
       array,
       layout,
@@ -368,7 +369,8 @@ Subarray subarray_from_capnp(
       is_default,
       label_range_subset,
       attr_range_subset,
-      relevant_fragments,
+      reader.hasRelevantFragments() ? relevant_fragments :
+                                      RelevantFragments(frag_meta_size),
       coalesce_ranges};
 }
 

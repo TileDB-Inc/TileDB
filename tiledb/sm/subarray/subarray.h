@@ -350,7 +350,7 @@ class Subarray {
       std::vector<bool> is_default,
       std::vector<optional<LabelRangeSubset>> label_range_subset,
       std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
-      std::vector<unsigned int> relevant_fragments,
+      RelevantFragments relevant_fragments,
       bool coalesce_ranges = true);
 
   /**

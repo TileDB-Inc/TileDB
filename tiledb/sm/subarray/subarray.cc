@@ -159,7 +159,7 @@ Subarray::Subarray(
     std::vector<bool> is_default,
     std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset,
     std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
-    std::vector<unsigned int> relevant_fragments,
+    RelevantFragments relevant_fragments,
     bool coalesce_ranges)
     : stats_(stats)
     , logger_(std::move(logger))
@@ -171,7 +171,7 @@ Subarray::Subarray(
     , attr_range_subset_(std::move(attr_range_subset))
     , is_default_(std::move(is_default))
     , est_result_size_computed_(false)
-    , relevant_fragments_(relevant_fragments)
+    , relevant_fragments_(std::move(relevant_fragments))
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
 }
