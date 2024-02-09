@@ -38,7 +38,8 @@ commence(object_library attribute)
         constants
         filter_pipeline
         range
-        stringx)
+        stringx
+        uuid)
 conclude(object_library)
 
 #
@@ -62,7 +63,7 @@ conclude(object_library)
 #
 commence(object_library enumeration)
     this_target_sources(enumeration.cc)
-    this_target_object_libraries(buffer constants seedable_global_PRNG)
+    this_target_object_libraries(buffer constants uuid)
 conclude(object_library)
 
 #

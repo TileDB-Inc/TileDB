@@ -37,6 +37,7 @@ commence(object_library array)
         baseline
         generic_tile_io
         uri_format
+        uuid
         vfs
     )
     if(TILEDB_STATS)
