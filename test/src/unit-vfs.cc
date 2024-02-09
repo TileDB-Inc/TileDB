@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,12 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_AZURE
+#include "tiledb/sm/filesystem/azure.h"
+#endif
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
@@ -57,11 +61,25 @@ void require_tiledb_err(Status st) {
   REQUIRE(!st.ok());
 }
 
-Config set_config_params() {
+Config set_config_params(
+    bool parallel_ops = false, bool disable_multipart = false) {
   Config config;
 
   if constexpr (tiledb::sm::filesystem::gcs_enabled) {
     require_tiledb_ok(config.set("vfs.gcs.project_id", "TODO"));
+    if (parallel_ops) {
+      require_tiledb_ok(
+          config.set("vfs.gcs.max_parallel_ops", std::to_string(4)));
+      require_tiledb_ok(config.set(
+          "vfs.gcs.multi_part_size", std::to_string(4 * 1024 * 1024)));
+    }
+    if (disable_multipart) {
+      require_tiledb_ok(
+          config.set("vfs.gcs.max_parallel_ops", std::to_string(1)));
+      require_tiledb_ok(config.set("vfs.gcs.use_multi_part_upload", "false"));
+      require_tiledb_ok(config.set(
+          "vfs.gcs.max_direct_upload_size", std::to_string(4 * 1024 * 1024)));
+    }
   }
 
   if constexpr (tiledb::sm::filesystem::s3_enabled) {
@@ -69,6 +87,11 @@ Config set_config_params() {
     require_tiledb_ok(config.set("vfs.s3.scheme", "https"));
     require_tiledb_ok(config.set("vfs.s3.use_virtual_addressing", "false"));
     require_tiledb_ok(config.set("vfs.s3.verify_ssl", "false"));
+    if (disable_multipart) {
+      require_tiledb_ok(config.set("vfs.s3.max_parallel_ops", "1"));
+      require_tiledb_ok(config.set("vfs.s3.multipart_part_size", "10000000"));
+      require_tiledb_ok(config.set("vfs.s3.use_multipart_upload", "false"));
+    }
   }
 
   if constexpr (tiledb::sm::filesystem::azure_enabled) {
@@ -87,6 +110,15 @@ Config set_config_params() {
     // require_tiledb_ok(config.set("vfs.azure.storage_sas_token", ""));
     // require_tiledb_ok(config.set(
     //   "vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount2"));
+    if (parallel_ops) {
+      require_tiledb_ok(
+          config.set("vfs.azure.max_parallel_ops", std::to_string(2)));
+      require_tiledb_ok(config.set(
+          "vfs.azure.block_list_block_size", std::to_string(4 * 1024 * 1024)));
+    }
+    if (disable_multipart) {
+      require_tiledb_ok(config.set("vfs.azure.use_block_list_upload", "false"));
+    }
   }
 
   return config;
@@ -181,6 +213,10 @@ TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
   if constexpr (tiledb::sm::filesystem::gcs_enabled) {
     SECTION("Filesystem: GCS") {
       path = URI("gcs://vfs-" + random_label() + "/");
+    }
+
+    SECTION("Filesystem: GCS, gs extension") {
+      path = URI("gs://vfs-" + random_label() + "/");
     }
   }
 
@@ -399,6 +435,149 @@ TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
   }
 }
 
+TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  bool disable_multipart = GENERATE(true, false);
+  Config config = set_config_params(true, disable_multipart);
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+
+  uint64_t max_parallel_ops = 1;
+  uint64_t chunk_size = 1024 * 1024;
+  int multiplier = 5;
+
+  // Sections to test each enabled filesystem
+  URI path;
+  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
+    SECTION("Filesystem: GCS") {
+      path = URI("gcs://vfs-" + random_label() + "/");
+    }
+
+    SECTION("Filesystem: GCS, gs extension") {
+      path = URI("gs://vfs-" + random_label() + "/");
+    }
+
+    if (!disable_multipart) {
+      // Serial, concurrent
+      max_parallel_ops = GENERATE(1, 4);
+    }
+    chunk_size = 4 * 1024 * 1024;
+    multiplier = 1;
+  }
+
+  if constexpr (tiledb::sm::filesystem::s3_enabled) {
+    SECTION("Filesystem: S3") {
+      path = URI("s3://vfs-" + random_label() + "/");
+    }
+  }
+
+  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
+    SECTION("Filesystem: HDFS") {
+      path = URI("hdfs:///vfs-" + random_label() + "/");
+    }
+  }
+
+  if constexpr (tiledb::sm::filesystem::azure_enabled) {
+    SECTION("Filesystem: Azure") {
+      path = URI("azure://vfs-" + random_label() + "/");
+      max_parallel_ops = 2;
+      chunk_size = 4 * 1024 * 1024;
+    }
+  }
+
+  // Set up
+  bool exists = false;
+  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
+    if (exists) {
+      require_tiledb_ok(vfs.remove_bucket(path));
+    }
+    require_tiledb_ok(vfs.create_bucket(path));
+  } else {
+    require_tiledb_ok(vfs.is_dir(path, &exists));
+    if (exists) {
+      require_tiledb_ok(vfs.remove_dir(path));
+    }
+    require_tiledb_ok(vfs.create_dir(path));
+  }
+
+  // Prepare buffers
+  uint64_t buffer_size = multiplier * max_parallel_ops * chunk_size;
+  auto write_buffer = new char[buffer_size];
+  for (uint64_t i = 0; i < buffer_size; i++)
+    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  URI largefile = URI(path.to_string() + "largefile");
+  require_tiledb_ok(vfs.write(largefile, write_buffer, buffer_size));
+  require_tiledb_ok(
+      vfs.write(URI(largefile), write_buffer_small, buffer_size_small));
+  URI smallfile = URI(path.to_string() + "smallfile");
+  require_tiledb_ok(
+      vfs.write(smallfile, write_buffer_small, buffer_size_small));
+
+  // Before flushing, the files do not exist
+  require_tiledb_ok(vfs.is_file(largefile, &exists));
+  CHECK(!exists);
+  require_tiledb_ok(vfs.is_file(smallfile, &exists));
+  CHECK(!exists);
+
+  // Flush the files
+  require_tiledb_ok(vfs.close_file(largefile));
+  require_tiledb_ok(vfs.close_file(smallfile));
+
+  // After flushing, the files exist
+  require_tiledb_ok(vfs.is_file(largefile, &exists));
+  CHECK(exists);
+  require_tiledb_ok(vfs.is_file(smallfile, &exists));
+  CHECK(exists);
+
+  // Get file sizes
+  uint64_t nbytes = 0;
+  require_tiledb_ok(vfs.file_size(largefile, &nbytes));
+  CHECK(nbytes == (buffer_size + buffer_size_small));
+  require_tiledb_ok(vfs.file_size(smallfile, &nbytes));
+  CHECK(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok);
+
+  // Read from a different offset
+  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok);
+
+  // Clean up
+  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
+    require_tiledb_ok(vfs.remove_bucket(path));
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
+    REQUIRE(!exists);
+  } else {
+    require_tiledb_ok(vfs.remove_dir(path));
+    require_tiledb_ok(vfs.is_dir(path, &exists));
+    REQUIRE(!exists);
+  }
+}
+
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
@@ -542,3 +721,67 @@ TEST_CASE(
         Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 }
+
+#ifdef HAVE_AZURE
+TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
+  std::string sas_token, custom_endpoint, expected_endpoint;
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  SECTION("SAS token without leading question mark") {
+    sas_token = "baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token with leading question mark") {
+    sas_token = "?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token in both endpoint and config option") {
+    sas_token = "baz=qux&foo=bar";
+    custom_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  Config config;
+  require_tiledb_ok(
+      config.set("vfs.azure.storage_account_name", "devstoreaccount1"));
+  require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
+  require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  Azure azure;
+  ThreadPool thread_pool(1);
+  require_tiledb_ok(azure.init(config, &thread_pool));
+  require_tiledb_ok(azure.client().GetUrl() == expected_endpoint);
+}
+#endif
+
+#ifdef HAVE_S3
+TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
+  Config cfg = set_config_params(false, true);
+
+  // Check the edge case of a key matching the ConfigIter prefix.
+  REQUIRE(cfg.set("vfs.s3.custom_headers.", "").ok());
+
+  // Set an unexpected value for Content-MD5, which minio should reject
+  REQUIRE(cfg.set("vfs.s3.custom_headers.Content-MD5", "unexpected").ok());
+
+  // Recreate a new S3 client because config is not dynamic
+  ThreadPool thread_pool(2);
+  S3 s3{&g_helper_stats, &thread_pool, cfg};
+  auto uri = URI("s3://tiledb-" + random_label() + "/writefailure");
+
+  // This is a buffered write, which is why it should not throw.
+  CHECK_NOTHROW(s3.write(uri, "Validate s3 custom headers", 26));
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The Content-Md5 you specified is not valid.");
+  REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+}
+#endif

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -100,79 +100,6 @@ Config S3Fx::set_config_params() {
   REQUIRE(config.set("vfs.s3.verify_ssl", "false").ok());
 #endif
   return config;
-}
-
-TEST_CASE_METHOD(S3Fx, "Test S3 filesystem, file I/O", "[s3]") {
-  // Prepare buffers
-  uint64_t buffer_size = 5 * 1024 * 1024;
-  auto write_buffer = new char[buffer_size];
-  for (uint64_t i = 0; i < buffer_size; i++)
-    write_buffer[i] = (char)('a' + (i % 26));
-  uint64_t buffer_size_small = 1024 * 1024;
-  auto write_buffer_small = new char[buffer_size_small];
-  for (uint64_t i = 0; i < buffer_size_small; i++)
-    write_buffer_small[i] = (char)('a' + (i % 26));
-
-  // Write to two files
-  auto largefile = TEST_DIR + "largefile";
-  CHECK_NOTHROW(s3_.write(URI(largefile), write_buffer, buffer_size));
-  CHECK_NOTHROW(
-      s3_.write(URI(largefile), write_buffer_small, buffer_size_small));
-  auto smallfile = TEST_DIR + "smallfile";
-  CHECK_NOTHROW(
-      s3_.write(URI(smallfile), write_buffer_small, buffer_size_small));
-
-  // Before flushing, the files do not exist
-  bool exists = false;
-  CHECK(s3_.is_object(URI(largefile), &exists).ok());
-  CHECK(!exists);
-  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
-  CHECK(!exists);
-
-  // Flush the files
-  CHECK(s3_.flush_object(URI(largefile)).ok());
-  CHECK(s3_.flush_object(URI(smallfile)).ok());
-
-  // After flushing, the files exist
-  CHECK(s3_.is_object(URI(largefile), &exists).ok());
-  CHECK(exists);
-  CHECK(s3_.is_object(URI(smallfile), &exists).ok());
-  CHECK(exists);
-
-  // Get file sizes
-  uint64_t nbytes = 0;
-  CHECK(s3_.object_size(URI(largefile), &nbytes).ok());
-  CHECK(nbytes == (buffer_size + buffer_size_small));
-  CHECK(s3_.object_size(URI(smallfile), &nbytes).ok());
-  CHECK(nbytes == buffer_size_small);
-
-  // Read from the beginning
-  auto read_buffer = new char[26];
-  uint64_t bytes_read = 0;
-  CHECK_NOTHROW(
-      s3_.read_impl(URI(largefile), 0, read_buffer, 26, 0, &bytes_read));
-  CHECK(26 == bytes_read);
-  bool allok = true;
-  for (int i = 0; i < 26; i++) {
-    if (read_buffer[i] != static_cast<char>('a' + i)) {
-      allok = false;
-      break;
-    }
-  }
-  CHECK(allok);
-
-  // Read from a different offset
-  CHECK_NOTHROW(
-      s3_.read_impl(URI(largefile), 11, read_buffer, 26, 0, &bytes_read));
-  CHECK(26 == bytes_read);
-  allok = true;
-  for (int i = 0; i < 26; i++) {
-    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
-      allok = false;
-      break;
-    }
-  }
-  CHECK(allok);
 }
 
 TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
