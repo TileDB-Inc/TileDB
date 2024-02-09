@@ -1376,7 +1376,7 @@ Status StorageManagerCanonical::store_metadata(
   Serializer serializer(tile.data(), tile.size());
   metadata->serialize(serializer);
 
-  stats()->add_counter("write_meta_size", serializer.size());
+  stats()->add_counter("write_meta_size", size_computation_serializer.size());
 
   // Create a metadata file name
   URI metadata_uri = metadata->get_uri(uri);
