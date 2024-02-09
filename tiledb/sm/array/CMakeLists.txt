@@ -37,6 +37,7 @@ commence(object_library array)
         baseline
         fragment
         generic_tile_io
+        uuid
         vfs
     )
     if(TILEDB_STATS)

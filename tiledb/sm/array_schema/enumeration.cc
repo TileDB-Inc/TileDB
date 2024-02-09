@@ -33,7 +33,7 @@
 #include <iostream>
 #include <sstream>
 
-#include "tiledb/common/random/random_label.h"
+#include "tiledb/sm/misc/uuid.h"
 
 #include "enumeration.h"
 
@@ -71,8 +71,10 @@ Enumeration::Enumeration(
   }
 
   if (path_name_.empty()) {
-    path_name_ = "__" + tiledb::common::random_label() + "_" +
-                 std::to_string(constants::enumerations_version);
+    std::string tmp_uuid;
+    throw_if_not_ok(uuid::generate_uuid(&tmp_uuid, false));
+    path_name_ =
+        "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
   }
 
   if (path_name.find("/") != std::string::npos) {
