@@ -399,17 +399,6 @@ class Subarray {
   Status set_subarray(const void* subarray);
 
   /**
-   * Sets the subarray using a pointer to raw range data that stores one range
-   * per dimension without performing validity checks.
-   *
-   * This is only valid for arrays with homogenous dimension data types. This
-   * function should only be used for deserializing dense write queries.
-   *
-   * @param subarray A pointer to the range data to use.
-   */
-  void set_subarray_unsafe(const void* subarray);
-
-  /**
    * Adds dimension ranges computed from label ranges on the dimension label.
    *
    * @param dim_idx The dimension to add ranges to.

@@ -396,22 +396,6 @@ Status Subarray::set_subarray(const void* subarray) {
   return Status::Ok();
 }
 
-void Subarray::set_subarray_unsafe(const void* subarray) {
-  add_default_ranges();
-  if (subarray != nullptr) {
-    auto dim_num = array_->array_schema_latest().dim_num();
-    auto s_ptr = (const unsigned char*)subarray;
-    uint64_t offset = 0;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size =
-          2 * array_->array_schema_latest().dimension_ptr(d)->coord_size();
-      Range range(&s_ptr[offset], r_size);
-      throw_if_not_ok(this->add_range_unsafe(d, std::move(range)));
-      offset += r_size;
-    }
-  }
-}
-
 Status Subarray::add_range(
     unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num())

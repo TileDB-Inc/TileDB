@@ -1143,7 +1143,7 @@ Status reader_from_capnp(
   auto subarray_reader = reader_reader.getSubarray();
   Subarray subarray = subarray_from_capnp(
       subarray_reader, array, layout, query->stats(), dummy_logger);
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1181,7 +1181,7 @@ Status index_reader_from_capnp(
   auto subarray_reader = reader_reader.getSubarray();
   Subarray subarray = subarray_from_capnp(
       subarray_reader, array, layout, query->stats(), dummy_logger);
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1220,7 +1220,7 @@ Status dense_reader_from_capnp(
   auto subarray_reader = reader_reader.getSubarray();
   Subarray subarray = subarray_from_capnp(
       subarray_reader, array, layout, query->stats(), dummy_logger);
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -2233,7 +2233,7 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
         try {
-          query->set_subarray_unsafe(subarray);
+          query->set_subarray(subarray);
         } catch (...) {
           tdb_free(subarray);
           throw;
@@ -2246,7 +2246,7 @@ Status query_from_capnp(
         auto subarray_reader = writer_reader.getSubarrayRanges();
         Subarray subarray = subarray_from_capnp(
             subarray_reader, array, layout, query->stats(), dummy_logger);
-        RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+        query->set_subarray(subarray);
       }
     }
   } else {
@@ -3200,7 +3200,7 @@ void ordered_dim_label_reader_from_capnp(
   auto subarray_reader = reader_reader.getSubarray();
   Subarray subarray = subarray_from_capnp(
       subarray_reader, array, layout, query->stats(), dummy_logger);
-  throw_if_not_ok(query->set_subarray_unsafe(subarray));
+  query->set_subarray(subarray);
 
   // OrderedDimLabelReader requires an initialized subarray for construction.
   query->set_dimension_label_ordered_read(
