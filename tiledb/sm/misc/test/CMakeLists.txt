@@ -26,7 +26,7 @@
 include(unit_test)
 
 commence(unit_test misc)
-    this_target_object_libraries(math)
+    this_target_object_libraries(math uuid)
     this_target_link_libraries(tiledb_test_support_lib)
     # change to `this_target_include_directories` when available
     target_include_directories(unit_misc PRIVATE "${CMAKE_SOURCE_DIR}")
@@ -36,5 +36,6 @@ commence(unit_test misc)
         unit_hilbert.cc
         unit_integral_type_casts.cc
         unit_math.cc
+        unit_uuid.cc
     )
 conclude(unit_test)
