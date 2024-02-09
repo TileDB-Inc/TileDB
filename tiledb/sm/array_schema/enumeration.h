@@ -306,7 +306,8 @@ class Enumeration {
              size of the buffer pointed to.
    */
   span<uint8_t> data() const {
-    return {static_cast<uint8_t*>(data_.data()), data_.size()};
+    return {
+        static_cast<uint8_t*>(data_.data()), static_cast<size_t>(data_.size())};
   }
 
   /**
@@ -316,7 +317,9 @@ class Enumeration {
    *         the size of the buffer pointed to.
    */
   span<uint8_t> offsets() const {
-    return {static_cast<uint8_t*>(offsets_.data()), offsets_.size()};
+    return {
+        static_cast<uint8_t*>(offsets_.data()),
+        static_cast<size_t>(offsets_.size())};
   }
 
   /**
