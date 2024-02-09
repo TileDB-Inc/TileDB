@@ -2131,6 +2131,29 @@ void Subarray::add_default_label_ranges(dimension_size_type dim_num) {
   label_range_subset_.resize(dim_num, nullopt);
 }
 
+void Subarray::reset_default_ranges() {
+  if (array_->non_empty_domain_computed()) {
+    auto dim_num = array_->array_schema_latest().dim_num();
+    auto& domain{array_->array_schema_latest().domain()};
+
+    // Process all dimensions one by one.
+    for (unsigned d = 0; d < dim_num; d++) {
+      // Only enter the check if there are only one range set on the dimension.
+      if (!is_default_[d] && range_subset_[d].num_ranges() == 1) {
+        // If the range set is the same as the non empty domain.
+        auto& ned = array_->non_empty_domain()[d];
+        if (ned == range_subset_[d][0]) {
+          // Reset the default flag and reset the range subset to be default.
+          is_default_[d] = true;
+          auto dim{domain.dimension_ptr(d)};
+          range_subset_[d] = RangeSetAndSuperset(
+              dim->type(), dim->domain(), true, coalesce_ranges_);
+        }
+      }
+    }
+  }
+}
+
 void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 

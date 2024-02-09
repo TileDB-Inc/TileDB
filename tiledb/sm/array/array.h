@@ -764,6 +764,7 @@ class Array {
    * has not been computed or loaded it will be loaded first
    */
   const NDRange non_empty_domain();
+
   /**
    * Retrieves the array metadata object that is already loaded. If it's not yet
    * loaded it will be empty.
