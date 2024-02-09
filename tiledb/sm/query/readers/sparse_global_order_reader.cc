@@ -119,6 +119,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
 
+  subarray_.reset_default_ranges();
+
   // Check that the query condition is valid.
   if (condition_.has_value()) {
     throw_if_not_ok(condition_->check(array_schema_));
