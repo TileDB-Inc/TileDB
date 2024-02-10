@@ -125,10 +125,6 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
 
-  // Subarray is not known to be explicitly set until buffers are deserialized
-  subarray_.reset_default_ranges();
-  include_coords_ = subarray_.is_set();
-
   // Make sure user didn't request delete timestamps.
   if (buffers_.count(constants::delete_timestamps) != 0) {
     return logger_->status(Status_SparseUnorderedWithDupsReaderError(
@@ -153,6 +149,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     read_state_.set_done_adding_result_tiles(true);
     return Status::Ok();
   }
+
+  // Subarray is not known to be explicitly set until buffers are deserialized
+  subarray_.reset_default_ranges();
+  include_coords_ = subarray_.is_set();
 
   // Load initial data, if not loaded already. Coords are only included if the
   // subarray is set.
