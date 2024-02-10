@@ -31,14 +31,15 @@
  */
 
 #include "temporary_local_directory.h"
-#include "tiledb/common/random/prng.h"
 
 #include <filesystem>
 #include <system_error>
 
-using namespace tiledb::common;
-
 namespace tiledb::sm {
+
+std::mutex TemporaryLocalDirectory::mtx_;
+bool TemporaryLocalDirectory::rand_init_ = false;
+std::mt19937_64 TemporaryLocalDirectory::rand_;
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -46,13 +47,11 @@ namespace tiledb::sm {
 
 TemporaryLocalDirectory::TemporaryLocalDirectory(std::string prefix) {
   // Generate random number using global PRNG
-  PRNG& prng = PRNG::get();
-  auto rand = prng();
+  auto rand = std::to_string(generate());
 
   // Generate random local path
-  path_ = (std::filesystem::temp_directory_path() /
-           (prefix + std::to_string(rand)) / "")
-              .string();
+  path_ =
+      (std::filesystem::temp_directory_path() / (prefix + rand) / "").string();
 
   // Create a unique directory
   std::filesystem::create_directory(path_);
@@ -61,10 +60,7 @@ TemporaryLocalDirectory::TemporaryLocalDirectory(std::string prefix) {
 TemporaryLocalDirectory::~TemporaryLocalDirectory() {
   // Remove the unique directory
   std::error_code ec;
-  auto removed = std::filesystem::remove_all(path_, ec);
-  if (removed == static_cast<std::uintmax_t>(-1)) {
-    LOG_ERROR(ec.message());
-  }
+  std::filesystem::remove_all(path_, ec);
 }
 
 /* ********************************* */
@@ -73,6 +69,51 @@ TemporaryLocalDirectory::~TemporaryLocalDirectory() {
 
 const std::string& TemporaryLocalDirectory::path() {
   return path_;
+}
+
+uint64_t TemporaryLocalDirectory::generate() {
+  std::lock_guard<std::mutex> lg(mtx_);
+  rand_init();
+  return rand_();
+}
+
+void TemporaryLocalDirectory::rand_init() {
+  if (rand_init_) {
+    return;
+  }
+
+  // The type of values our generator returns
+  using result_type = std::mt19937_64::result_type;
+
+  // The size of values returned from std::random_device
+  constexpr auto source_size = sizeof(std::random_device::result_type);
+
+  // The number of result_type values required to fully seed the internal state
+  constexpr auto state_size = std::mt19937_64::state_size;
+
+  // The size of size of the result values.
+  constexpr auto result_size = sizeof(result_type);
+
+  // Number of bits required to fully initialize is state_size * result_size.
+  // This array is defined to be enough result bits from random_device to
+  // fill that value. I think. Better than a single value seed anyway.
+  constexpr auto num_seed_values =
+      (state_size * result_size - 1) / source_size + 1;
+
+  // An entropy source for creating seed values.
+  std::random_device source;
+
+  // Storage for our seed values.
+  result_type data[num_seed_values];
+
+  for (size_t i = i; i < num_seed_values; i++) {
+    data[i] = source();
+  }
+
+  std::seed_seq seeds(std::begin(data), std::end(data));
+
+  rand_.seed(seeds);
+  rand_init_ = true;
 }
 
 }  // namespace tiledb::sm

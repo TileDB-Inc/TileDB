@@ -33,7 +33,9 @@
 #ifndef TILEDB_TEMPORARY_LOCAL_DIRECTORY_H
 #define TILEDB_TEMPORARY_LOCAL_DIRECTORY_H
 
-#include "tiledb/sm/filesystem/vfs.h"
+#include <mutex>
+#include <random>
+#include <string>
 
 namespace tiledb::sm {
 
@@ -65,12 +67,23 @@ class TemporaryLocalDirectory {
   const std::string& path();
 
  private:
-  /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
+  /** Generate a random number. */
+  static uint64_t generate();
+
+  /** Initialize the random number generator. */
+  static void rand_init();
 
   /** The path of the unique directory. */
   std::string path_;
+
+  /** Mutex for protecting the rand members. */
+  static std::mutex mtx_;
+
+  /** Flag for initializing the random number generator. */
+  static bool rand_init_;
+
+  /** The random number generator. */
+  static std::mt19937_64 rand_;
 };
 }  // namespace tiledb::sm
 
