@@ -2209,3 +2209,37 @@ TEST_CASE(
 
   CHECK(i > 0);
 }
+
+TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
+  const std::string array_name_1d = "cpp_unit_array_1d";
+  Context ctx;
+  VFS vfs(ctx);
+
+  bool dups = GENERATE(true, false);
+
+  if (vfs.is_dir(array_name_1d)) {
+    vfs.remove_dir(array_name_1d);
+  }
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
+  schema.set_allows_dups(dups);
+  Array::create(array_name_1d, schema);
+  Array array(ctx, array_name_1d, TILEDB_READ);
+
+  std::vector<int32_t> d(1);
+  std::vector<int32_t> a(1);
+  Query q(ctx, array, TILEDB_READ);
+  q.set_layout(TILEDB_UNORDERED);
+  q.set_data_buffer("d", d);
+  q.set_data_buffer("a", a);
+  q.submit();
+  array.close();
+
+  if (vfs.is_dir(array_name_1d)) {
+    vfs.remove_dir(array_name_1d);
+  }
+}
