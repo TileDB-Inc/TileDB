@@ -280,23 +280,17 @@ Subarray subarray_from_capnp(
     auto dim = array->array_schema_latest().dimension_ptr(i);
 
     bool implicitly_initialized = range_reader.getHasDefaultRange();
-    range_subset[i] =
-        RangeSetAndSuperset(dim->type(), dim->domain(), true, coalesce_ranges);
+    range_subset[i] = RangeSetAndSuperset(
+        dim->type(), dim->domain(), implicitly_initialized, coalesce_ranges);
     is_default[i] = implicitly_initialized;
     if (range_reader.hasBufferSizes()) {
       auto ranges = range_buffers_from_capnp(range_reader);
       // If the range is implicitly initialized, the RangeSetAndSuperset
       // constructor will initialize the ranges to the domain.
       if (!implicitly_initialized) {
-        // Edge case for dimension labels where there are only label ranges set.
-        if (ranges.empty()) {
-          range_subset[i] = RangeSetAndSuperset(
-              dim->type(), dim->domain(), {dim->domain()}, coalesce_ranges);
-        } else {
-          // Add custom ranges, clearing any implicit ranges previously set.
-          range_subset[i] = RangeSetAndSuperset(
-              dim->type(), dim->domain(), ranges, coalesce_ranges);
-        }
+        // Add custom ranges, clearing any implicit ranges previously set.
+        range_subset[i] = RangeSetAndSuperset(
+            dim->type(), dim->domain(), ranges, coalesce_ranges);
       }
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
@@ -325,7 +319,6 @@ Subarray subarray_from_capnp(
       // Set ranges for this dim label on the subarray
       label_range_subset[dim_index] = {
           label_name, dim->type(), label_ranges, coalesce_ranges};
-      range_subset[dim_index].clear();
       is_default[dim_index] = false;
     }
   }
@@ -361,7 +354,7 @@ Subarray subarray_from_capnp(
 
   auto frag_meta_size = array->opened_array()->fragment_metadata().size();
   return {
-      array,
+      array->opened_array(),
       layout,
       reader.hasStats() ? s.stats() : parent_stats,
       logger,

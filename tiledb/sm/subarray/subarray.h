@@ -342,7 +342,7 @@ class Subarray {
    *    with existing ranges as they are added
    */
   Subarray(
-      const Array* array,
+      const shared_ptr<OpenedArray> opened_array,
       Layout layout,
       stats::Stats* stats,
       shared_ptr<tiledb::common::Logger> logger,
@@ -1187,22 +1187,6 @@ class Subarray {
    * @note Intended for serialization only
    */
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
-
-  /**
-   * Directly sets the dimension label ranges for the given dimension index,
-   * making a deep copy.
-   *
-   * @param dim_idx Index of dimension to set
-   * @param name Name of the dimension label to set
-   * @param ranges `Range` vector that will be copied and set
-   * @return Status
-   *
-   * @note Intended for serialization only
-   */
-  void set_label_ranges_for_dim(
-      const uint32_t dim_idx,
-      const std::string& name,
-      const std::vector<Range>& ranges);
 
   /**
    * Splits the subarray along the splitting dimension and value into

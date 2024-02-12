@@ -151,7 +151,7 @@ Subarray::Subarray(
 }
 
 Subarray::Subarray(
-    const Array* array,
+    const shared_ptr<OpenedArray> opened_array,
     Layout layout,
     stats::Stats* stats,
     shared_ptr<Logger> logger,
@@ -163,7 +163,7 @@ Subarray::Subarray(
     bool coalesce_ranges)
     : stats_(stats)
     , logger_(std::move(logger))
-    , array_(array->opened_array())
+    , array_(opened_array)
     , layout_(layout)
     , cell_order_(array_->array_schema_latest().cell_order())
     , range_subset_(std::move(range_subset))
@@ -1789,20 +1789,6 @@ Status Subarray::set_ranges_for_dim(
     throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
   is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
   return Status::Ok();
-}
-
-void Subarray::set_label_ranges_for_dim(
-    const uint32_t dim_idx,
-    const std::string& name,
-    const std::vector<Range>& ranges) {
-  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
-  label_range_subset_[dim_idx] =
-      LabelRangeSubset(name, dim->type(), coalesce_ranges_);
-  for (const auto& range : ranges) {
-    throw_if_not_ok(
-        label_range_subset_[dim_idx].value().ranges_.add_range_unrestricted(
-            range));
-  }
 }
 
 Status Subarray::split(
