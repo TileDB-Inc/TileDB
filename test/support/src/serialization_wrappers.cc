@@ -32,6 +32,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -205,7 +206,7 @@ void tiledb_subarray_serialize(
   // Deserialize
   tiledb_subarray_t* deserialized_subarray;
   auto layout = (*subarray)->subarray_->layout();
-  auto stats = (*subarray)->subarray_->stats();
+  auto stats = ctx->storage_manager()->stats()->create_child("Subarray");
   shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
   tiledb::test::require_tiledb_ok(

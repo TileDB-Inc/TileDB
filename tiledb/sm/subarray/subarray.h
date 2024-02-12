@@ -330,7 +330,8 @@ class Subarray {
    *    if the subarray is used for reads, or of the values provided
    *    by the user for writes).
    * @param parent_stats The parent stats to inherit from.
-   * @param logger The parent logger to clone and use for logging
+   * @param stats_data The stats data to use for the subarray.
+   * @param logger The parent logger to clone and use for logging.
    * @param range_subset Vector of RangeSetAndSuperset for each dimension.
    * @param is_default Vector of boolean indicating if the range is default.
    * @param label_range_subset Vector of optional<LabelRangeSubset> for each
@@ -339,12 +340,13 @@ class Subarray {
    *    each attribute.
    * @param relevant_fragments RelevantFragments object for the subarray.
    * @param coalesce_ranges When enabled, ranges will attempt to coalesce
-   *    with existing ranges as they are added
+   *    with existing ranges as they are added.
    */
   Subarray(
       const shared_ptr<OpenedArray> opened_array,
       Layout layout,
-      stats::Stats* stats,
+      stats::Stats* parent_stats,
+      const stats::StatsData& stats_data,
       shared_ptr<tiledb::common::Logger> logger,
       std::vector<RangeSetAndSuperset> range_subset,
       std::vector<bool> is_default,
@@ -1335,14 +1337,6 @@ class Subarray {
 
   /** Returns `stats_`. */
   const stats::Stats& stats() const;
-
-  /**
-   * Populate the owned stats instance with data.
-   * To be removed when the class will get a C41 constructor.
-   *
-   * @param data Data to populate the stats with.
-   */
-  void set_stats(const stats::StatsData& data);
 
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;

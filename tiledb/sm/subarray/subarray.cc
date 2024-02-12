@@ -153,7 +153,8 @@ Subarray::Subarray(
 Subarray::Subarray(
     const shared_ptr<OpenedArray> opened_array,
     Layout layout,
-    stats::Stats* stats,
+    stats::Stats* parent_stats,
+    const stats::StatsData& stats_data,
     shared_ptr<Logger> logger,
     std::vector<RangeSetAndSuperset> range_subset,
     std::vector<bool> is_default,
@@ -161,7 +162,7 @@ Subarray::Subarray(
     std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
     RelevantFragments relevant_fragments,
     bool coalesce_ranges)
-    : stats_(stats)
+    : stats_(parent_stats->create_child("Subarray", stats_data))
     , logger_(std::move(logger))
     , array_(opened_array)
     , layout_(layout)
@@ -3101,10 +3102,6 @@ RelevantFragments& Subarray::relevant_fragments() {
 
 const stats::Stats& Subarray::stats() const {
   return *stats_;
-}
-
-void Subarray::set_stats(const stats::StatsData& data) {
-  stats_->populate_with_data(data);
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(

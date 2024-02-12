@@ -335,12 +335,7 @@ Subarray subarray_from_capnp(
     }
   }
 
-  // If cap'n proto object has stats set it on c++ object
-  Subarray s(array, layout, parent_stats, logger, true);
-  if (reader.hasStats()) {
-    auto stats_data = stats_from_capnp(reader.getStats());
-    subarray->set_stats(stats_data);
-  }
+  const auto& stats_data = stats_from_capnp(reader.getStats());
 
   std::vector<unsigned> relevant_fragments;
   if (reader.hasRelevantFragments()) {
@@ -356,7 +351,8 @@ Subarray subarray_from_capnp(
   return {
       array->opened_array(),
       layout,
-      reader.hasStats() ? s.stats() : parent_stats,
+      parent_stats,
+      stats_data,
       logger,
       range_subset,
       is_default,
