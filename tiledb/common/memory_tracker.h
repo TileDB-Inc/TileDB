@@ -28,7 +28,63 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class MemoryTracker.
+ * This file contains the definitions for classes related to tracking memory
+ * using the polymorphic memory resources feature introduced in C++17.
+ *
+ * There are four main classes to be aware of:
+ *
+ *   - MemoryTrackerResource
+ *   - MemoryTracker
+ *   - MemoryTrackerManager
+ *   - MemoryTrackerReporter
+ *
+ * MemoryTrackerResource
+ * =====================
+ *
+ * The MemoryTrackerResource class is responsible for actually tracking
+ * individual allocations. Each MemoryTrackerResource represents a single type
+ * of memory as enumerated in the MemoryType enum. To create instances of this
+ * class, users should use the MemoryTrackerManager::get_resource API.
+ *
+ * MemoryTracker
+ * =============
+ *
+ * The MemoryTracker class is responsible for managing instances of
+ * MemoryTrackerResource. A MemoryTracker represents some section or behavior
+ * inside the TileDB library as enumerated in the MemoryTrackerType enum.
+ * Instances of MemoryTracker should be created using the
+ * MemoryTrackerManager::create_tracker() API or via the helper method
+ * ContextResources::create_memory_tracker(). Generally speaking, there should
+ * be very few of these instances outside of test code and instead existing
+ * instances should be referenced.
+ *
+ * For instance, there is currently an existing MemoryTracker member variable
+ * on both Array and Query. Most code in the library should be using one of
+ * these two trackers. There are a few specialized instances like in the
+ * Consolidator or for things like deserializing GenericTileIO tiles.
+ *
+ * MemoryTrackerManager
+ * ====================
+ *
+ * The MemoryTrackerManager is a member variable on the ContextResources
+ * class. Users should not need to interact with this class directly as its
+ * just a container that holds references to all the MemoryTracker instances
+ * for a given context. Its used by the MemoryTrackerReport when logging
+ * memory usage.
+ *
+ * MemoryTrackerReporter
+ * =====================
+ *
+ * The MemoryTrackerReporter class is a member variable on the ContextResources
+ * class. Users should not need to interact with this class directly as its
+ * just used to log memory statistics to a special log file when configured.
+ *
+ * Users wishing to run memory usage experiments should use the
+ * 'sm.memory.tracker.reporter.filename' configuration key to set a filename
+ * that will contain the logged memory statistics in JSONL format (i.e., JSON
+ * objects and arrays encoded one per line). At runtime the reporter appends
+ * a JSON blob once a second to this logfile that can then be analyzed using
+ * whatever scripts or software as appropriate.
  */
 
 #ifndef TILEDB_MEMORY_TRACKER_H
@@ -45,6 +101,7 @@
 namespace tiledb {
 namespace sm {
 
+//** The type of memory to track. */
 enum class MemoryType {
   RTREE,
   FOOTER,
@@ -56,6 +113,7 @@ enum class MemoryType {
   ENUMERATION
 };
 
+/** The type of MemoryTracker. */
 enum class MemoryTrackerType {
   ANONYMOUS,
   ARRAY_READ,
@@ -72,6 +130,7 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerResource);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerResource);
 
+  /** Constructor. */
   explicit MemoryTrackerResource(
       tdb::pmr::memory_resource* upstream,
       std::atomic<uint64_t>& total_counter,
@@ -85,14 +144,24 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
   uint64_t get_count();
 
  protected:
+  /** Perform an allocation, returning a pointer to the allocated memory. */
   void* do_allocate(size_t bytes, size_t alignment) override;
+
+  /** Deallocate a previously allocated chunk of memory. */
   void do_deallocate(void* p, size_t bytes, size_t alignment) override;
+
+  /** Check if two memory trackers are equal. */
   bool do_is_equal(
       const tdb::pmr::memory_resource& other) const noexcept override;
 
  private:
+  /** The upstream memory resource to use for the actual allocation. */
   tdb::pmr::memory_resource* upstream_;
+
+  /** A reference to a total counter for the MemoryTracker. */
   std::atomic<uint64_t>& total_counter_;
+
+  /** A reference to the memory type counter this resource is tracking. */
   std::atomic<uint64_t>& type_counter_;
 };
 

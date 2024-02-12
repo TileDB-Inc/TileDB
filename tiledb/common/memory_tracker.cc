@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file contains the MemoryTracker implementation.
+ * This file contains implementations for the PMR memory tracking classes. See
+ * the top level description in memory_tracker.h.
  */
 
 #include <fstream>
@@ -165,8 +166,22 @@ uint64_t MemoryTracker::generate_id() {
 }
 
 shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
+  /*
+   * The MemoryTracker class has a protected constructor to hopefully help
+   * self-document that instances should almost never be created directly
+   * except in test code. There exists a
+   * `tiledb::test::create_test_memory_tracker()` API that can be used in
+   * tests to create untracked instances of MemoryTracker.
+   *
+   * This just uses the standard private derived class to enable the use of
+   * `make_shared` to create instances in specific bits of code.
+   */
   class MemoryTrackerCreator : public MemoryTracker {
    public:
+    /**
+     * Pass through to the protected MemoryTracker constructor for
+     * make_shared.
+     */
     MemoryTrackerCreator()
         : MemoryTracker() {
     }
@@ -195,9 +210,22 @@ std::string MemoryTrackerManager::to_json() {
   std::lock_guard<std::mutex> lg(mutex_);
   nlohmann::json rv;
 
+  /*
+   * The reason for this being a while-loop instead of a for-loop is that we're
+   * modifying the trackers_ vector while iterating over it. The reference docs
+   * for std::vector::erase make it sound like a standard for-loop with
+   * iterators would work here, but the subtle key point in the docs is that
+   * the end() iterator used during iteration is invalidated after a call to
+   * erase. The end result of which is that it will lead to a subtle bug when
+   * every weak_ptr in the vector is expired (such as at shutdown) which leads
+   * to deleting random bits of memory. Thankfully The address sanitizer
+   * managed to point out the issue rather quickly.
+   */
   size_t idx = 0;
   while (idx < trackers_.size()) {
     auto ptr = trackers_[idx].lock();
+    // If the weak_ptr is expired, we just remove it from trackers_ and
+    // carry on.
     if (!ptr) {
       trackers_.erase(trackers_.begin() + idx);
       continue;
@@ -231,11 +259,16 @@ MemoryTrackerReporter::~MemoryTrackerReporter() {
     return;
   }
 
+  // Scoped lock_guard so we don't hold the lock while waiting for threads
+  // to join.
   {
     std::lock_guard<std::mutex> lg(mutex_);
     stop_ = true;
     cv_.notify_all();
   }
+
+  // Wait for the background thread to quit so that we don't cause a segfault
+  // when we destruct our synchronization primitives.
   try {
     thread_.join();
   } catch (std::exception& exc) {
@@ -253,7 +286,7 @@ void MemoryTrackerReporter::start() {
 
   {
     // Scoped so we release this before the thread starts. Probably unnecessary
-    // by better safe than sorry.
+    // but better safe than sorry.
     std::lock_guard<std::mutex> lg(mutex_);
     if (stop_) {
       throw std::runtime_error("MemoryTrackerReporters cannot be restarted.");
@@ -270,23 +303,18 @@ void MemoryTrackerReporter::start() {
         continue;
       }
 
-      LOG_ERROR(
+      throw MemoryTrackerException(
           "Error starting the MemoryTrackerReporter: " + std::string(e.what()));
     }
   }
 
-  LOG_ERROR("Failed to start the MemoryTrackerReporter thread.");
+  throw MemoryTrackerException(
+      "No threads avaiable to start the MemoryTrackerReporter.");
 }
 
 void MemoryTrackerReporter::run() {
   std::stringstream ss;
   std::ofstream out;
-  out.open(filename_.value(), std::ios::app);
-
-  if (!out) {
-    LOG_ERROR("Error opening MemoryTrackerReporter file: " + filename_.value());
-    return;
-  }
 
   while (true) {
     std::unique_lock<std::mutex> lk(mutex_);
@@ -296,12 +324,27 @@ void MemoryTrackerReporter::run() {
       return;
     }
 
-    if (!out) {
-      LOG_ERROR(
-          "Error writing to MemoryTrackerReporter file: " + filename_.value());
-      return;
+    // Open the log file, possibly re-opening after encountering an error. Log
+    // any errors and continue trying in case whatever issue resolves itself.
+    if (!out.is_open()) {
+      // Clear any error state.
+      out.clear();
+      out.open(filename_.value(), std::ios::app);
     }
 
+    // If we failed to open the file, log a message and try again on the next
+    // iteration of this loop. This logic is in a background thread so the
+    // only real other options would be to crash the entire program or exit
+    // the thread. Retrying to see if its an ephemeral error seems better and
+    // also informs users that something is wrong with their config while not
+    // causing excessive chaos.
+    if (!out) {
+      LOG_ERROR(
+          "Error opening MemoryTrackerReporter file: " + filename_.value());
+      continue;
+    }
+
+    // Generate a JSON report from our MemoryTrackerManager.
     auto json = manager_->to_json();
     if (json == "null") {
       // This happens if the manager doesn't have any trackers registered.
@@ -309,10 +352,21 @@ void MemoryTrackerReporter::run() {
       continue;
     }
 
+    // Append our report to the log.
     ss.str("");
     ss.clear();
     ss << json << std::endl;
     out << ss.str();
+
+    // If writing to the file fails, we make a note, close it and then attempt
+    // to re-open it on the next iteration. See the note above on open errors
+    // for more context.
+    if (!out) {
+      LOG_ERROR(
+          "Error writing to MemoryTrackeReporter file: " + filename_.value());
+      out.close();
+      continue;
+    }
   }
 }
 
