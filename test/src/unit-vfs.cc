@@ -34,6 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
 #ifdef HAVE_AZURE
+#include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
 #endif
 #include "test/support/src/vfs_helpers.h"
@@ -62,14 +63,14 @@ void require_tiledb_err(Status st) {
 }
 
 Config set_config_params(
-    bool parallel_ops = false, bool disable_multipart = false) {
+    bool disable_multipart = false, uint64_t parallel_ops = 1) {
   Config config;
 
   if constexpr (tiledb::sm::filesystem::gcs_enabled) {
     require_tiledb_ok(config.set("vfs.gcs.project_id", "TODO"));
-    if (parallel_ops) {
+    if (parallel_ops != 1) {
       require_tiledb_ok(
-          config.set("vfs.gcs.max_parallel_ops", std::to_string(4)));
+          config.set("vfs.gcs.max_parallel_ops", std::to_string(parallel_ops)));
       require_tiledb_ok(config.set(
           "vfs.gcs.multi_part_size", std::to_string(4 * 1024 * 1024)));
     }
@@ -110,9 +111,9 @@ Config set_config_params(
     // require_tiledb_ok(config.set("vfs.azure.storage_sas_token", ""));
     // require_tiledb_ok(config.set(
     //   "vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount2"));
-    if (parallel_ops) {
-      require_tiledb_ok(
-          config.set("vfs.azure.max_parallel_ops", std::to_string(2)));
+    if (parallel_ops != 1) {
+      require_tiledb_ok(config.set(
+          "vfs.azure.max_parallel_ops", std::to_string(parallel_ops)));
       require_tiledb_ok(config.set(
           "vfs.azure.block_list_block_size", std::to_string(4 * 1024 * 1024)));
     }
@@ -436,12 +437,7 @@ TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
 }
 
 TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
-  ThreadPool compute_tp(4);
-  ThreadPool io_tp(4);
   bool disable_multipart = GENERATE(true, false);
-  Config config = set_config_params(true, disable_multipart);
-  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
-
   uint64_t max_parallel_ops = 1;
   uint64_t chunk_size = 1024 * 1024;
   int multiplier = 5;
@@ -502,8 +498,16 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
       path = URI("azure://vfs-" + random_label() + "/");
       max_parallel_ops = 2;
       chunk_size = 4 * 1024 * 1024;
+      if (disable_multipart) {
+        multiplier = 1;
+      }
     }
   }
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params(disable_multipart, max_parallel_ops);
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
   // Set up
   bool exists = false;
@@ -780,13 +784,13 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
   tiledb::sm::Azure azure;
   ThreadPool thread_pool(1);
   require_tiledb_ok(azure.init(config, &thread_pool));
-  require_tiledb_ok(azure.client().GetUrl() == expected_endpoint);
+  REQUIRE(azure.client().GetUrl() == expected_endpoint);
 }
 #endif
 
 #ifdef HAVE_S3
 TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
-  Config cfg = set_config_params(false, true);
+  Config cfg = set_config_params(true);
 
   // Check the edge case of a key matching the ConfigIter prefix.
   REQUIRE(cfg.set("vfs.s3.custom_headers.", "").ok());
