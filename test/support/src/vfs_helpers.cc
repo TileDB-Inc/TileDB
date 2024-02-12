@@ -84,7 +84,7 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   }
 
   if (supports_rest_s3) {
-    fs_vec.emplace_back(std::make_unique<SupportedFsS3>("rest"));
+    fs_vec.emplace_back(std::make_unique<SupportedFsS3>(true));
   }
 
   fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());

@@ -129,7 +129,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     tiledb::Config cfg;
     cfg["a"] = "1";
     cfg["b"] = "10";
-    Context ctx1(cfg);
+    auto vfs_test_setup1 =
+        tiledb::test::VFSTestSetup("cpp_unit_array", cfg.ptr().get());
+    auto ctx1 = vfs_test_setup1.ctx;
 
     // Create an array with ctx
     Array array(ctx1, array_uri, TILEDB_READ);
@@ -545,7 +547,7 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets][rest]") {
     a_offset = {0, 2, 1};
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(TILEDB_GLOBAL_ORDER);
-    q.set_coordinates(coord);
+    q.set_data_buffer("d", coord);
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     REQUIRE_THROWS(q.submit());
@@ -1196,7 +1198,7 @@ TEST_CASE(
   Query query_w(ctx, array_w);
   query_w.set_layout(TILEDB_UNORDERED)
       .set_data_buffer("a", data_w)
-      .set_coordinates(coords_w)
+      .set_data_buffer("cols", coords_w)
       .submit();
   query_w.finalize();
   array_w.close();
@@ -1208,7 +1210,7 @@ TEST_CASE(
   Query query_r(ctx, array_r);
   query_r.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_r)
-      .set_coordinates(coords_r);
+      .set_data_buffer("cols", coords_r);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   auto result_num = query_r.result_buffer_elements()["a"].second;
@@ -1659,7 +1661,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C++ API: Array open VFS calls, sparse", "[cppapi][sparse][vfs-calls]") {
+    "C++ API: Array open VFS calls, sparse",
+    "[cppapi][sparse][vfs-calls][non-rest]") {
   const std::string array_name = "cpp_unit_array";
   Context ctx;
   VFS vfs(ctx);
@@ -1678,10 +1681,12 @@ TEST_CASE(
 
   // Write
   std::vector<int> data_w = {1};
-  std::vector<int> coords_w = {0, 0};
+  std::vector<int> rows = {0};
+  std::vector<int> cols = {0};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_coordinates(coords_w)
+  query_w.set_data_buffer("rows", rows)
+      .set_data_buffer("cols", cols)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("a", data_w);
   query_w.submit();

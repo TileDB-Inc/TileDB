@@ -184,7 +184,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param error Error parameter
    * @return Status OK if successful
    */
-  Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
+  virtual Status prepare_config(tiledb_config_t* config, tiledb_error_t* error);
 
   /**
    * Creates bucket if does not exist
@@ -193,7 +193,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
-  Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual Status init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Removes bucket if exists
@@ -202,7 +202,7 @@ class SupportedFsS3 : public SupportedFs {
    * @param vfs The VFS object.
    * @return Status OK if successful
    */
-  Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
+  virtual Status close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs);
 
   /**
    * Get the name of the filesystem's directory
@@ -218,7 +218,7 @@ class SupportedFsS3 : public SupportedFs {
    */
   virtual bool is_rest();
 
- protected:
+ private:
   /* ********************************* */
   /*           ATTRIBUTES              */
   /* ********************************* */
