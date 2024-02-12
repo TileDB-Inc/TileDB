@@ -3103,8 +3103,12 @@ RelevantFragments& Subarray::relevant_fragments() {
   return relevant_fragments_;
 }
 
-stats::Stats* Subarray::stats() const {
-  return stats_;
+const stats::Stats& Subarray::stats() const {
+  return *stats_;
+}
+
+void Subarray::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(

@@ -666,8 +666,12 @@ Subarray& SubarrayPartitioner::subarray() {
   return subarray_;
 }
 
-stats::Stats* SubarrayPartitioner::stats() const {
-  return stats_;
+const stats::Stats& SubarrayPartitioner::stats() const {
+  return *stats_;
+}
+
+void SubarrayPartitioner::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 /* ****************************** */

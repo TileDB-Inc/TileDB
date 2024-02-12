@@ -827,6 +827,7 @@ Status Query::process() {
 
     if (!only_dim_label_query()) {
       if (strategy_ != nullptr) {
+        // The strategy destructor should reset its own Stats object here
         dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
         strategy_ = nullptr;
       }
@@ -917,6 +918,7 @@ Status Query::reset_strategy_with_layout(
     Layout layout, bool force_legacy_reader) {
   force_legacy_reader_ = force_legacy_reader;
   if (strategy_ != nullptr) {
+    // The strategy destructor should reset its own Stats object here
     dynamic_cast<StrategyBase*>(strategy_.get())->stats()->reset();
     strategy_ = nullptr;
   }
@@ -1661,6 +1663,10 @@ const Config& Query::config() const {
 
 stats::Stats* Query::stats() const {
   return stats_;
+}
+
+void Query::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 shared_ptr<Buffer> Query::rest_scratch() const {

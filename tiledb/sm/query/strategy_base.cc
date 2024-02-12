@@ -65,6 +65,10 @@ stats::Stats* StrategyBase::stats() const {
   return stats_;
 }
 
+void StrategyBase::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
+}
+
 /* ****************************** */
 /*       PROTECTED METHODS        */
 /* ****************************** */
