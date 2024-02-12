@@ -1280,7 +1280,7 @@ void DenseArrayRESTFx::write_dense_array_missing_attributes(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted reads",
-    "[capi][dense][rest]") {
+    "[capi][dense]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1290,7 +1290,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted writes",
-    "[capi][dense][rest]") {
+    "[capi][dense]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1300,7 +1300,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, simultaneous writes",
-    "[capi][dense][rest][dense-simultaneous-writes]") {
+    "[capi][dense][dense-simultaneous-writes]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1310,7 +1310,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, global order reads",
-    "[capi][dense][rest]") {
+    "[capi][dense]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "global_order_reads/";
@@ -1375,7 +1375,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, missing attributes in writes",
-    "[capi][dense][rest][dense-write-missing-attributes]") {
+    "[capi][dense][dense-write-missing-attributes]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1388,7 +1388,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty cells",
-    "[capi][dense][rest][dense-read-empty]") {
+    "[capi][dense][dense-read-empty]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_read_empty/";
@@ -1471,7 +1471,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty areas, merging "
     "adjacent cell ranges",
-    "[capi][dense][rest][dense-read-empty][dense-read-empty-merge]") {
+    "[capi][dense][dense-read-empty][dense-read-empty-merge]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1554,7 +1554,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, multi-fragment reads",
-    "[capi][dense][rest][dense-multi-fragment]") {
+    "[capi][dense][dense-multi-fragment]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1659,7 +1659,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, check if open",
-    "[capi][dense][rest][dense-is-open]") {
+    "[capi][dense][dense-is-open]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_is_open/";
@@ -1694,7 +1694,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get schema from opened array",
-    "[capi][dense][rest][dense-get-schema]") {
+    "[capi][dense][dense-get-schema]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_get_schema/";
@@ -1724,7 +1724,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, set subarray in sparse writes should error",
-    "[capi][dense][rest][dense-set-subarray-sparse]") {
+    "[capi][dense][dense-set-subarray-sparse]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1765,7 +1765,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, incomplete reads",
-    "[capi][dense][rest][incomplete]") {
+    "[capi][dense][incomplete]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
@@ -1776,7 +1776,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get nonempty domain",
-    "[capi][dense][rest]") {
+    "[capi][dense]") {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -1867,7 +1867,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get max buffer sizes",
-    "[capi][dense][rest]") {
+    "[capi][dense]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1900,7 +1900,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
-    "[capi][dense][rest][rest-no-config]") {
+    "[capi][dense][rest-no-config]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name =
@@ -1939,7 +1939,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, datetimes",
-    "[capi][dense][rest][datetime]") {
+    "[capi][dense][datetime]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "datetime_array";
@@ -2034,7 +2034,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, array metadata",
-    "[capi][dense][rest][metadata]") {
+    "[capi][dense][metadata]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
   std::string array_name = TILEDB_URI_PREFIX + temp_dir + "metadata_array";

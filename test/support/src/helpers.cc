@@ -804,10 +804,10 @@ void get_supported_fs(
     *hdfs_supported = tiledb::sm::filesystem::hdfs_enabled;
     *azure_supported = tiledb::sm::filesystem::azure_enabled;
     *gcs_supported = tiledb::sm::filesystem::gcs_enabled;
-    *rest_s3_supported = tiledb::sm::filesystem::rest_s3_enabled;
+    *rest_s3_supported = false;
   } else {
     if (!(g_vfs == "native" || g_vfs == "s3" || g_vfs == "hdfs" ||
-          g_vfs == "azure" || g_vfs == "gcs" || g_vfs == "rest_s3")) {
+          g_vfs == "azure" || g_vfs == "gcs" || g_vfs == "rest-s3")) {
       throw std::runtime_error(
           "Failed to get supported fs. Invalid --vfs command line argument.");
     }
@@ -852,11 +852,11 @@ void get_supported_fs(
       *rest_s3_supported = false;
     }
 
-    if (g_vfs == "rest_s3") {
+    if (g_vfs == "rest-s3") {
       *s3_supported = false;
       *hdfs_supported = false;
       *azure_supported = false;
-      *gcs_supported = true;
+      *gcs_supported = false;
       *rest_s3_supported = true;
     }
   }

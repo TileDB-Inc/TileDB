@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests serialization of Enumerations via a REST server.
+ * Tests end to end enumerations.
  */
 
 #include "test/support/src/vfs_helpers.h"
@@ -42,30 +42,28 @@ using namespace tiledb;
 
 struct RESTEnumerationFx {
   RESTEnumerationFx();
+
   ~RESTEnumerationFx();
 
-  void create_array(const std::string& array_name);
-  void rm_array();
+  void create_array();
 
-  std::string bucket_;
+  tiledb::test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
-  Config cfg_;
   Context ctx_;
-  VFS vfs_;
 };
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Create array test",
     "[rest][enumeration][create-array]") {
-  create_array("simple-array-create");
+  create_array();
 }
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Simple enumeration query",
     "[rest][enumeration][simple-query]") {
-  create_array("simple-query");
+  create_array();
 
   Array array(ctx_, uri_, TILEDB_READ);
   Subarray subarray(ctx_, array);
@@ -92,7 +90,7 @@ TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Get enumeration",
     "[rest][enumeration][get-enumeration]") {
-  create_array("get-enumeration");
+  create_array();
 
   Array array(ctx_, uri_, TILEDB_READ);
   auto enmr = ArrayExperimental::get_enumeration(ctx_, array, "my_enum");
@@ -105,7 +103,7 @@ TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Get previously loaded enumeration",
     "[rest][enumeration][get-enumeration]") {
-  create_array("get-enumeration");
+  create_array();
 
   Array array(ctx_, uri_, TILEDB_READ);
   auto enmr1 = ArrayExperimental::get_enumeration(ctx_, array, "my_enum");
@@ -121,7 +119,7 @@ TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Enumeration Extension",
     "[rest][enumeration][extension]") {
-  create_array("get-enumeration");
+  create_array();
 
   Array old_array(ctx_, uri_, TILEDB_READ);
   auto old_enmr = ArrayExperimental::get_enumeration(ctx_, old_array, "fruit");
@@ -139,36 +137,19 @@ TEST_CASE_METHOD(
   REQUIRE(enmr.as_vector<std::string>() == fruit);
 }
 
-Config& setup_config(Config& cfg) {
-  cfg["vfs.s3.endpoint_override"] = "localhost:9999";
-  cfg["vfs.s3.scheme"] = "https";
-  cfg["vfs.s3.use_virtual_addressing"] = "false";
-  cfg["ssl.verify"] = "false";
-  return cfg;
-}
-
 RESTEnumerationFx::RESTEnumerationFx()
-    : bucket_("s3://enumeration-tests")
-    , ctx_(setup_config(cfg_))
-    , vfs_(ctx_) {
-  if (!vfs_.is_bucket(bucket_)) {
-    vfs_.create_bucket(bucket_);
-  }
-}
+    : vfs_test_setup_("enumerations")
+    , uri_(vfs_test_setup_.array_uri)
+    , ctx_(vfs_test_setup_.ctx){};
 
 RESTEnumerationFx::~RESTEnumerationFx() {
-  rm_array();
-  if (vfs_.is_bucket(bucket_)) {
-    vfs_.remove_bucket(bucket_);
+  auto obj = Object::object(ctx_, uri_);
+  if (obj.type() == Object::Type::Array) {
+    Array::delete_array(ctx_, uri_);
   }
 }
 
-void RESTEnumerationFx::create_array(const std::string& array_name) {
-  uri_ = "tiledb://unit/" + bucket_ + "/" + array_name;
-
-  // Ensure that no array exists at uri_
-  rm_array();
-
+void RESTEnumerationFx::create_array() {
   // Create a simple array for testing. This ends up with just five elements in
   // the array. dim is an int32_t dimension, attr1 is an enumeration with string
   // values and int32_t attribute values. attr2 is a float attribute.
@@ -225,11 +206,4 @@ void RESTEnumerationFx::create_array(const std::string& array_name) {
   CHECK_NOTHROW(query.submit());
   query.finalize();
   array.close();
-}
-
-void RESTEnumerationFx::rm_array() {
-  auto obj = Object::object(ctx_, uri_);
-  if (obj.type() == Object::Type::Array) {
-    Array::delete_array(ctx_, uri_);
-  }
 }
