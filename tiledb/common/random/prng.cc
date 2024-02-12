@@ -59,7 +59,7 @@ return_size_type random_seed() {
    */
   if constexpr (ret_size == rng_size) {
     return rng();
-  } else if constexpr (ret_size == 2*rng_size) {
+  } else if constexpr (ret_size == 2 * rng_size) {
     return (rng() << rng_size) + rng();
   } else {
     throw std::runtime_error("Unsupported combination of RNG sizes");
@@ -102,7 +102,8 @@ PRNG::PRNG()
 
 PRNG::PRNG(RandomSeedT)
     : prng_(prng_random())
-    , mtx_{} {}
+    , mtx_{} {
+}
 
 /* ********************************* */
 /*                API                */
