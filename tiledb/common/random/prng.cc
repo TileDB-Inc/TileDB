@@ -54,8 +54,8 @@ return_size_type random_seed() {
   static constexpr size_t ret_size = sizeof(return_size_type);
   std::random_device rng{};
   /*
-   * We will need 64 bits to fully seed the PRNG (`ret_size`). We support cases
-   * where the result size of the RNG is 64 or 32 bits (`rng_size`).
+   * We will need 64 bits to adequately seed the PRNG (`ret_size`). We support
+   * cases where the result size of the RNG is 64 or 32 bits (`rng_size`).
    */
   if constexpr (ret_size == rng_size) {
     return rng();
