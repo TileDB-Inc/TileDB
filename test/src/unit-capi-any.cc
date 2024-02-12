@@ -56,14 +56,12 @@ struct AnyFx {
 // Create a simple dense 1D array
 void AnyFx::create_array(const std::string& array_name) {
   tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
-  int rc = tiledb_ctx_alloc(NULL, &ctx);
-  REQUIRE(rc == TILEDB_OK);
 
   // Create dimensions
   uint64_t dim_domain[] = {1, 4};
   uint64_t tile_extent = 2;
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_alloc(
+  int rc = tiledb_dimension_alloc(
       ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
   REQUIRE(rc == TILEDB_OK);
 
@@ -113,12 +111,10 @@ void AnyFx::create_array(const std::string& array_name) {
 
 void AnyFx::write_array(const std::string& array_name) {
   tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
-  int rc = tiledb_ctx_alloc(NULL, &ctx);
-  REQUIRE(rc == TILEDB_OK);
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -166,8 +162,13 @@ void AnyFx::write_array(const std::string& array_name) {
 
   rc = tiledb_query_submit_and_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
-  // Calling finalize on a Global order write query is not allowed
-  REQUIRE_THROWS(tiledb_query_finalize(ctx, query));
+  // Calling finalize on a remote Global order write query is not allowed
+  rc = tiledb_query_finalize(ctx, query);
+  if (vfs_test_setup_.is_rest()) {
+    REQUIRE(rc == TILEDB_ERR);
+  } else {
+    REQUIRE(rc == TILEDB_OK);
+  }
 
   // Close array
   rc = tiledb_array_close(ctx, array);
@@ -180,12 +181,10 @@ void AnyFx::write_array(const std::string& array_name) {
 
 void AnyFx::read_array(const std::string& array_name) {
   tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
-  int rc = tiledb_ctx_alloc(NULL, &ctx);
-  REQUIRE(rc == TILEDB_OK);
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -250,18 +249,7 @@ void AnyFx::read_array(const std::string& array_name) {
 
 void AnyFx::delete_array(const std::string& array_name) {
   // Create TileDB context
-  tiledb_ctx_t* ctx = vfs_test_setup_.ctx_c;
-  int rc = tiledb_ctx_alloc(NULL, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Remove array
-  tiledb_object_t type;
-  rc = tiledb_object_type(ctx, array_name.c_str(), &type);
-  REQUIRE(rc == TILEDB_OK);
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_object_remove(ctx, array_name.c_str());
-    REQUIRE(rc == TILEDB_OK);
-  }
+  tiledb_array_delete(vfs_test_setup_.ctx_c, array_name.c_str());
 }
 
 TEST_CASE_METHOD(

@@ -491,15 +491,17 @@ Status Query::finalize() {
 
   if (array_->is_remote() && type_ == QueryType::WRITE) {
     auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
+    if (rest_client == nullptr) {
       return logger_->status(Status_QueryError(
           "Error in query finalize; remote array with no rest client."));
+    }
 
     if (layout_ == Layout::GLOBAL_ORDER) {
       return logger_->status(Status_QueryError(
-          "Error in query finalize; remote global order writes are only "
+          "Error in query finalize; global order writes are only "
           "allowed to call submit_and_finalize to submit the last tile"));
     }
+
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 

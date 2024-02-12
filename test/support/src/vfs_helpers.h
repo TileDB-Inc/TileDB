@@ -150,11 +150,11 @@ class SupportedFs {
   virtual std::string temp_dir() = 0;
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type() = 0;
+  virtual bool is_rest() = 0;
 };
 
 /**
@@ -163,10 +163,11 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3(std::string prefix = "")
+  SupportedFsS3(bool rest = false)
       : s3_prefix_("s3://")
       , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
-      , temp_dir_(prefix + s3_bucket_ + "tiledb_test/") {
+      , temp_dir_(s3_bucket_ + "tiledb_test/")
+      , rest_(rest) {
   }
 
   ~SupportedFsS3() = default;
@@ -211,11 +212,11 @@ class SupportedFsS3 : public SupportedFs {
   virtual std::string temp_dir();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  virtual bool is_rest();
 
  protected:
   /* ********************************* */
@@ -230,21 +231,9 @@ class SupportedFsS3 : public SupportedFs {
 
   /** The directory name of the S3 filesystem. */
   std::string temp_dir_;
-};
 
-class SupportedFsRestS3 : public SupportedFsS3 {
- public:
-  SupportedFsRestS3()
-      : SupportedFsS3("tiledb://unit/"){};
-
-  ~SupportedFsRestS3() = default;
-
-  /**
-   * Get the type of the filesystem
-   *
-   * @return string filesystem type
-   */
-  std::string type();
+  /** If the filesystem is accessed via REST. */
+  bool rest_;
 };
 
 /**
@@ -298,11 +287,13 @@ class SupportedFsHDFS : public SupportedFs {
   virtual std::string temp_dir();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  inline bool is_rest() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -367,11 +358,13 @@ class SupportedFsAzure : public SupportedFs {
   virtual std::string temp_dir();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  inline bool is_rest() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -441,11 +434,13 @@ class SupportedFsGCS : public SupportedFs {
   virtual std::string temp_dir();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  inline bool is_rest() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -528,11 +523,13 @@ class SupportedFsLocal : public SupportedFs {
   std::string file_prefix();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  inline bool is_rest() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -607,11 +604,13 @@ class SupportedFsMem : public SupportedFs {
   virtual std::string temp_dir();
 
   /**
-   * Get the type of the filesystem
+   * Checks if the filesystem is accessed via REST
    *
-   * @return string filesystem type
+   * @return true if REST, false if local
    */
-  virtual std::string type();
+  inline bool is_rest() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -823,14 +822,16 @@ struct VFSTestSetup {
       , cfg_c{config} {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
     ctx = Context(ctx_c, false);
-    cfg = Config(&cfg_c);
     std::string temp_dir = fs_vec[0]->temp_dir();
+    if (fs_vec[0]->is_rest()) {
+      array_uri = "tiledb://unit/";
+    }
     array_uri += temp_dir + array_name;
     vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
   };
 
   bool is_rest() {
-    return fs_vec[0]->type() == "REST-S3";
+    return fs_vec[0]->is_rest();
   }
 
   ~VFSTestSetup() {
@@ -842,7 +843,6 @@ struct VFSTestSetup {
   tiledb_vfs_handle_t* vfs_c;
   tiledb_config_handle_t* cfg_c;
   Context ctx;
-  Config cfg;
   std::string array_uri;
 };
 
