@@ -291,11 +291,11 @@ const std::unordered_map<std::string, uint64_t>* Stats::counters() const {
 }
 
 void Stats::populate_with_data(const StatsData& data) {
-  auto timers = data.timers();
+  auto& timers = data.timers();
   for (const auto& timer : timers) {
     timers_[timer.first] = timer.second;
   }
-  auto counters = data.counters();
+  auto& counters = data.counters();
   for (const auto& counter : counters) {
     counters_[counter.first] = counter.second;
   }

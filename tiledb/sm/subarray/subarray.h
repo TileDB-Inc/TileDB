@@ -1276,9 +1276,10 @@ class Subarray {
       std::vector<uint64_t>* end_coords) const;
 
   /** Returns `stats_`. */
-  stats::Stats* stats() const;
+  const stats::Stats& stats() const;
 
-  /** Populate the owned stats instance with data.
+  /**
+   * Populate the owned stats instance with data.
    * To be removed when the class will get a C41 constructor.
    */
   void set_stats(const stats::StatsData& data);

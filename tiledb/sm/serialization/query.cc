@@ -88,7 +88,7 @@ namespace serialization {
 
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
-Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
+void stats_to_capnp(const Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
   const auto counters = stats.counters();
   if (counters != nullptr && !counters->empty()) {
@@ -114,8 +114,6 @@ Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
       ++index;
     }
   }
-
-  return Status::Ok();
 }
 
 StatsData stats_from_capnp(const capnp::Stats::Reader& stats_reader) {
@@ -246,11 +244,9 @@ Status subarray_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = subarray->stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = subarray->stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (subarray->relevant_fragments().relevant_fragments_size() > 0) {
     auto relevant_fragments_builder = builder->initRelevantFragments(
@@ -425,11 +421,9 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudgetValidity(mem_budget_validity);
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = partitioner.stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = partitioner.stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -907,11 +901,9 @@ Status reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -941,11 +933,9 @@ Status index_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -976,11 +966,9 @@ Status dense_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1255,11 +1243,9 @@ Status delete_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = delete_strategy.stats();
-  if (stats != nullptr) {
-    auto stats_builder = delete_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *delete_strategy.stats();
+  auto stats_builder = delete_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1283,11 +1269,9 @@ Status writer_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = writer.stats();
-  if (stats != nullptr) {
-    auto stats_builder = writer_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *writer.stats();
+  auto stats_builder = writer_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
     auto& global_writer = dynamic_cast<GlobalOrderWriter&>(writer);
@@ -1536,10 +1520,10 @@ Status query_to_capnp(
   RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = query.stats();
-  if (stats != nullptr) {
+  auto stats = query.stats();
+  if (stats) {
     auto stats_builder = query_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+    stats_to_capnp(*stats, &stats_builder);
   }
 
   auto& written_fragment_info = query.get_written_fragment_info();
@@ -3156,11 +3140,9 @@ void ordered_dim_label_reader_to_capnp(
       query.dimension_label_increasing_order());
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 }
 
 void ordered_dim_label_reader_from_capnp(

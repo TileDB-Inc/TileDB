@@ -51,7 +51,7 @@
 
 /**
  * Documenting the current stats behavior and architecture as close as
- * possible to the code so it's helpful next time some tries to refactor.
+ * possible to the code so it's helpful next time someone tries to refactor.
  *
  * Statistics collection is done at the top level via the GlobalStats class
  * defined in this file.

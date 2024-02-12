@@ -51,25 +51,55 @@ namespace tiledb {
 namespace sm {
 namespace stats {
 
+/**
+ * Class that holds measurement data that Stats objects can be
+ * initialized with.
+ */
 class StatsData {
  public:
+  /* ****************************** */
+  /*   CONSTRUCTORS & DESTRUCTORS   */
+  /* ****************************** */
+
+  /* Default constructor */
   StatsData() = default;
 
+  /**
+   * Value constructor.
+   *
+   * @param counters A map of counters
+   * @param timers A map of timers
+   */
   StatsData(
-      std::unordered_map<std::string, uint64_t> counters,
-      std::unordered_map<std::string, double> timers)
+      std::unordered_map<std::string, uint64_t>& counters,
+      std::unordered_map<std::string, double>& timers)
       : counters_(counters)
       , timers_(timers) {
   }
+
+  /* ****************************** */
+  /*              API               */
+  /* ****************************** */
+
+  /** Get a reference to internal counters */
   const std::unordered_map<std::string, uint64_t>& counters() const {
     return counters_;
   }
+
+  /** Get a reference to internal timers */
   const std::unordered_map<std::string, double>& timers() const {
     return timers_;
   }
 
  private:
+  /* ****************************** */
+  /*       PRIVATE ATTRIBUTES       */
+  /* ****************************** */
+
+  /** Map of counters and values */
   std::unordered_map<std::string, uint64_t> counters_;
+
+  /** Map of timers and values */
   std::unordered_map<std::string, double> timers_;
 };
 
@@ -98,7 +128,7 @@ class Stats {
    * Value constructor.
    *
    * @param prefix The stat name prefix.
-   * @param data Initial data to populate the Stats object with
+   * @param data Initial data to populate the Stats object with.
    */
   Stats(const std::string& prefix, const StatsData& data);
 
@@ -146,8 +176,10 @@ class Stats {
   /** Creates a child instance, managed by this instance. */
   Stats* create_child(const std::string& prefix);
 
-  /** Creates a child instance, managed by this instance, the instance is
-   * constructed with initial data. */
+  /**
+   * Creates a child instance, managed by this instance, the instance is
+   * constructed with initial data.
+   */
   Stats* create_child(const std::string& prefix, const StatsData& data);
 
   /** Return pointer to timers map, used for serialization only. */
@@ -156,7 +188,8 @@ class Stats {
   /** Return pointer to conters map, used for serialization only. */
   const std::unordered_map<std::string, uint64_t>* counters() const;
 
-  /** Populate the counters and timers internal maps from a StatsData object
+  /**
+   * Populate the counters and timers internal maps from a StatsData object
    * Please be aware that the data is not being added up, it will override the
    * existing data on the Stats object.
    */
