@@ -1147,7 +1147,7 @@ TEST_CASE(
       .set_data_buffer("a", (void*)(&data_w), 1);
 
   // Submit query
-  query_w.submit();
+  query_w.submit_and_finalize();
   array_w.close();
 
   // Read
