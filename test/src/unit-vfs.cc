@@ -448,21 +448,41 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
 
   // Sections to test each enabled filesystem
   URI path;
+  std::string local_prefix = "";
+  SECTION("Filesystem: Local") {
+    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
+      local_prefix = "file://";
+    }
+    path = URI(local_prefix + unit_vfs_dir_.path());
+  }
+
   if constexpr (tiledb::sm::filesystem::gcs_enabled) {
+    chunk_size = 4 * 1024 * 1024;
+    multiplier = 1;
+
     SECTION("Filesystem: GCS") {
       path = URI("gcs://vfs-" + random_label() + "/");
+      if (!disable_multipart) {
+        SECTION("serial multipart") {
+          max_parallel_ops = 1;
+        }
+        SECTION("concurrent multipart") {
+          max_parallel_ops = 4;
+        }
+      }
     }
 
     SECTION("Filesystem: GCS, gs extension") {
       path = URI("gs://vfs-" + random_label() + "/");
+      if (!disable_multipart) {
+        SECTION("serial multipart") {
+          max_parallel_ops = 1;
+        }
+        SECTION("concurrent multipart") {
+          max_parallel_ops = 4;
+        }
+      }
     }
-
-    if (!disable_multipart) {
-      // Serial, concurrent
-      max_parallel_ops = GENERATE(1, 4);
-    }
-    chunk_size = 4 * 1024 * 1024;
-    multiplier = 1;
   }
 
   if constexpr (tiledb::sm::filesystem::s3_enabled) {
@@ -520,15 +540,17 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
   require_tiledb_ok(
       vfs.write(smallfile, write_buffer_small, buffer_size_small));
 
-  // Before flushing, the files do not exist
-  require_tiledb_ok(vfs.is_file(largefile, &exists));
-  CHECK(!exists);
-  require_tiledb_ok(vfs.is_file(smallfile, &exists));
-  CHECK(!exists);
+  // On non-local and hdfs systems, before flushing, the files do not exist
+  if (!(path.is_file() || path.is_hdfs())) {
+    require_tiledb_ok(vfs.is_file(largefile, &exists));
+    CHECK(!exists);
+    require_tiledb_ok(vfs.is_file(smallfile, &exists));
+    CHECK(!exists);
 
-  // Flush the files
-  require_tiledb_ok(vfs.close_file(largefile));
-  require_tiledb_ok(vfs.close_file(smallfile));
+    // Flush the files
+    require_tiledb_ok(vfs.close_file(largefile));
+    require_tiledb_ok(vfs.close_file(smallfile));
+  }
 
   // After flushing, the files exist
   require_tiledb_ok(vfs.is_file(largefile, &exists));
@@ -755,7 +777,7 @@ TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
       config.set("vfs.azure.storage_account_name", "devstoreaccount1"));
   require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
   require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
-  Azure azure;
+  tiledb::sm::Azure azure;
   ThreadPool thread_pool(1);
   require_tiledb_ok(azure.init(config, &thread_pool));
   require_tiledb_ok(azure.client().GetUrl() == expected_endpoint);
