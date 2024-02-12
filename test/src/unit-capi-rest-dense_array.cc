@@ -69,31 +69,21 @@ struct DenseArrayRESTFx {
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const int ITER_NUM = 10;
-
-  tiledb_encryption_type_t encryption_type = TILEDB_NO_ENCRYPTION;
-  const char* encryption_key = nullptr;
+  
+  VFSTestSetup vfs_test_setup_;
+  const std::string array_uri_;
 
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Vector of supported filsystems
-  const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-
-  const std::string rest_server_username_ = "unit";
-  const std::string TILEDB_URI_PREFIX =
-      "tiledb://" + rest_server_username_ + "/";
-  std::set<std::string> to_deregister_;
-
   // Functions
   DenseArrayRESTFx();
   ~DenseArrayRESTFx();
-  void create_temp_dir(const std::string& path);
-  void remove_temp_dir(const std::string& path);
-  void check_sorted_reads(const std::string& path);
-  void check_incomplete_reads(const std::string& path);
-  void check_sorted_writes(const std::string& path);
-  void check_simultaneous_writes(const std::string& path);
+  void check_sorted_reads();
+  void check_incomplete_reads();
+  void check_sorted_writes();
+  void check_simultaneous_writes();
   void create_dense_array(const std::string& array_name);
   void create_dense_array_1_attribute(const std::string& array_name);
   void write_dense_array(const std::string& array_name);
@@ -201,38 +191,12 @@ struct DenseArrayRESTFx {
 };
 
 DenseArrayRESTFx::DenseArrayRESTFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
-  // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+    : vfs_test_setup_("capi_dense_array"), array_uri_(vfs_test_setup_.array_uri), ctx_(vfs_test_setup_.ctx_c), vfs_(vfs_test_setup_.vfs_c) {
   std::srand(0);
 }
 
 DenseArrayRESTFx::~DenseArrayRESTFx() {
-  for (const auto& uri : to_deregister_) {
-    // Deregister array and delete data.
-    REQUIRE_NOTHROW(tiledb_array_delete(ctx_, uri.c_str()));
-  }
-
-  // Close vfs test. Removes S3 bucket, Azure container, etc.
-  REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
-
-  tiledb_vfs_free(&vfs_);
-  CHECK(vfs_ == nullptr);
-  tiledb_ctx_free(&ctx_);
-  CHECK(ctx_ == nullptr);
-}
-
-void DenseArrayRESTFx::create_temp_dir(const std::string& path) {
-  remove_temp_dir(path);
-  REQUIRE(tiledb_vfs_create_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-}
-
-void DenseArrayRESTFx::remove_temp_dir(const std::string& path) {
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx_, vfs_, path.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir) {
-    REQUIRE(tiledb_vfs_remove_dir(ctx_, vfs_, path.c_str()) == TILEDB_OK);
-  }
+  REQUIRE_NOTHROW(tiledb_array_delete(ctx_, array_uri_.c_str()));
 }
 
 void DenseArrayRESTFx::create_dense_array_2D(
@@ -287,28 +251,8 @@ void DenseArrayRESTFx::create_dense_array_2D(
   REQUIRE(rc == TILEDB_OK);
 
   // Create the array
-  if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_ctx_free(&ctx_);
-    tiledb_vfs_free(&vfs_);
-    tiledb_config_t* config;
-    tiledb_error_t* error = nullptr;
-    rc = tiledb_config_alloc(&config, &error);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(error == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    rc = tiledb_config_set(
-        config, "sm.encryption_type", encryption_type_string.c_str(), &error);
-    REQUIRE(error == nullptr);
-    rc = tiledb_config_set(config, "sm.encryption_key", encryption_key, &error);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(error == nullptr);
-    REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok());
-    tiledb_config_free(&config);
-  }
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
-  to_deregister_.insert(array_name);
 
   // Clean up
   tiledb_attribute_free(&a);
@@ -366,25 +310,6 @@ int* DenseArrayRESTFx::read_dense_array_2D(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
-    rc = tiledb_config_alloc(&cfg, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    rc = tiledb_config_set(
-        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_array_set_config(ctx_, array, cfg);
-    REQUIRE(rc == TILEDB_OK);
-    tiledb_config_free(&cfg);
-  }
   rc = tiledb_array_open(ctx_, array, query_type);
   CHECK(rc == TILEDB_OK);
 
@@ -462,25 +387,6 @@ void DenseArrayRESTFx::write_dense_array_by_tiles(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    tiledb_config_t* cfg;
-    tiledb_error_t* err = nullptr;
-    rc = tiledb_config_alloc(&cfg, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    rc = tiledb_config_set(
-        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_array_set_config(ctx_, array, cfg);
-    REQUIRE(rc == TILEDB_OK);
-    tiledb_config_free(&cfg);
-  }
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
@@ -582,7 +488,7 @@ void DenseArrayRESTFx::write_dense_subarray_2D(
   tiledb_query_free(&query);
 }
 
-void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
+void DenseArrayRESTFx::check_sorted_reads() {
   // Parameters used in this test
   int64_t domain_size_0 = 5000;
   int64_t domain_size_1 = 10000;
@@ -595,11 +501,10 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
   uint64_t capacity = 1000000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = TILEDB_URI_PREFIX + path + "sorted_reads_array";
 
   // Create a dense integer array
   create_dense_array_2D(
-      array_name,
+      array_uri_,
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -613,7 +518,7 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
   // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
   write_dense_array_by_tiles(
-      array_name, domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
+      array_uri_, domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
 
   // Test random subarrays and check with corresponding value set by
   // row_id*dim1+col_id. Top left corner is always 4,4.
@@ -632,7 +537,7 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
 
     // Read subarray
     int* buffer = read_dense_array_2D(
-        array_name, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
+        array_uri_, d0_lo, d0_hi, d1_lo, d1_hi, TILEDB_READ, TILEDB_ROW_MAJOR);
     REQUIRE(buffer != nullptr);
 
     bool allok = true;
@@ -659,26 +564,10 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
-  if (encryption_type != TILEDB_NO_ENCRYPTION) {
-    rc = tiledb_config_alloc(&cfg, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    std::string encryption_type_string =
-        encryption_type_str((tiledb::sm::EncryptionType)encryption_type);
-    rc = tiledb_config_set(
-        cfg, "sm.encryption_type", encryption_type_string.c_str(), &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_config_set(cfg, "sm.encryption_key", encryption_key, &err);
-    REQUIRE(rc == TILEDB_OK);
-    REQUIRE(err == nullptr);
-    rc = tiledb_array_set_config(ctx_, array, cfg);
-    REQUIRE(rc == TILEDB_OK);
-  }
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
@@ -726,7 +615,7 @@ void DenseArrayRESTFx::check_sorted_reads(const std::string& path) {
   tiledb_query_free(&query);
 }
 
-void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
+void DenseArrayRESTFx::check_incomplete_reads() {
   // Parameters used in this test
   int64_t domain_size_0 = 5000;
   int64_t domain_size_1 = 10000;
@@ -739,11 +628,10 @@ void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
   uint64_t capacity = 1000000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = TILEDB_URI_PREFIX + path + "incomplete_reads_array";
 
   // Create a dense integer array
   create_dense_array_2D(
-      array_name,
+      array_uri_,
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -757,11 +645,11 @@ void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
   // Write array cells with value = row id * COLUMNS + col id
   // to disk tile by tile
   write_dense_array_by_tiles(
-      array_name, domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
+      array_uri_, domain_size_0, domain_size_1, tile_extent_0, tile_extent_1);
 
   // Open array
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
   // Create query
@@ -828,7 +716,7 @@ void DenseArrayRESTFx::check_incomplete_reads(const std::string& path) {
   tiledb_query_free(&query);
 }
 
-void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
+void DenseArrayRESTFx::check_sorted_writes() {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -841,11 +729,10 @@ void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name = TILEDB_URI_PREFIX + path + "sorted_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
-      array_name,
+      array_uri_,
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -879,7 +766,7 @@ void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
 
     // Write 2D subarray
     write_dense_subarray_2D(
-        array_name,
+        array_uri_,
         subarray,
         TILEDB_WRITE,
         TILEDB_ROW_MAJOR,
@@ -888,7 +775,7 @@ void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
 
     // Read back the same subarray
     int* read_buffer = read_dense_array_2D(
-        array_name,
+        array_uri_,
         subarray[0],
         subarray[1],
         subarray[2],
@@ -913,7 +800,7 @@ void DenseArrayRESTFx::check_sorted_writes(const std::string& path) {
   }
 }
 
-void DenseArrayRESTFx::check_simultaneous_writes(const std::string& path) {
+void DenseArrayRESTFx::check_simultaneous_writes() {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -926,12 +813,10 @@ void DenseArrayRESTFx::check_simultaneous_writes(const std::string& path) {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string array_name =
-      TILEDB_URI_PREFIX + path + "simultaneous_writes_array";
 
   // Create a dense integer array
   create_dense_array_2D(
-      array_name,
+      array_uri_,
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -965,7 +850,7 @@ void DenseArrayRESTFx::check_simultaneous_writes(const std::string& path) {
       const int writes_per_thread = 5;
       for (int j = 0; j < writes_per_thread; j++) {
         write_dense_subarray_2D(
-            array_name,
+            array_uri_,
             subarrays[i].data(),
             TILEDB_WRITE,
             TILEDB_ROW_MAJOR,
@@ -1055,7 +940,6 @@ void DenseArrayRESTFx::create_dense_array(const std::string& array_name) {
   // Create array
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   CHECK(rc == TILEDB_OK);
-  to_deregister_.insert(array_name);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -1115,7 +999,6 @@ void DenseArrayRESTFx::create_dense_array_1_attribute(
   // Create array
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   CHECK(rc == TILEDB_OK);
-  to_deregister_.insert(array_name);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -1280,45 +1163,33 @@ void DenseArrayRESTFx::write_dense_array_missing_attributes(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted reads",
-    "[capi][dense]") {
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  check_sorted_reads(temp_dir);
+    "[capi][rest][dense]") {
+  check_sorted_reads();
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted writes",
-    "[capi][dense]") {
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  check_sorted_writes(temp_dir);
+    "[capi][rest][dense]") {
+  check_sorted_writes();
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, simultaneous writes",
-    "[capi][dense][dense-simultaneous-writes]") {
-  // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  check_simultaneous_writes(temp_dir);
+    "[capi][rest][dense][dense-simultaneous-writes]") {
+  check_simultaneous_writes();
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, global order reads",
-    "[capi][dense]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "global_order_reads/";
-  create_dense_array(array_name);
-  write_dense_array(array_name);
+    "[capi][rest][dense]") {
+  create_dense_array(array_uri_);
+  write_dense_array(array_uri_);
 
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
 
   uint64_t subarray[] = {1, 4, 1, 4};
@@ -1375,33 +1246,23 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, missing attributes in writes",
-    "[capi][dense][dense-write-missing-attributes]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "dense_write_missing_attributes/";
-  create_temp_dir(temp_dir);
-  create_dense_array(array_name);
-  write_dense_array_missing_attributes(array_name);
+    "[capi][rest][dense][dense-write-missing-attributes]") {
+  create_dense_array(array_uri_);
+  write_dense_array_missing_attributes(array_uri_);
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty cells",
-    "[capi][dense][dense-read-empty]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_read_empty/";
-  create_temp_dir(temp_dir);
-
-  create_dense_array_1_attribute(array_name);
+    "[capi][rest][dense][dense-read-empty]") {
+  create_dense_array_1_attribute(array_uri_);
 
   // Write a slice
   const char* attributes[] = {"a1"};
   int write_a1[] = {1, 2, 3, 4};
   uint64_t write_a1_size = sizeof(write_a1);
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1444,7 +1305,7 @@ TEST_CASE_METHOD(
       INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1471,21 +1332,15 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty areas, merging "
     "adjacent cell ranges",
-    "[capi][dense][dense-read-empty][dense-read-empty-merge]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "dense_read_empty_merge/";
-  create_temp_dir(temp_dir);
-
-  create_dense_array_1_attribute(array_name);
+    "[capi][rest][dense][dense-read-empty][dense-read-empty-merge]") {
+  create_dense_array_1_attribute(array_uri_);
 
   // Write a slice
   const char* attributes[] = {"a1"};
   int write_a1[] = {1, 2, 3, 4};
   uint64_t write_a1_size = sizeof(write_a1);
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1528,7 +1383,7 @@ TEST_CASE_METHOD(
       INT_MIN};
   int read_a1[16];
   uint64_t read_a1_size = sizeof(read_a1);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1554,20 +1409,14 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, multi-fragment reads",
-    "[capi][dense][dense-multi-fragment]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "dense_multi_fragment/";
-  create_temp_dir(temp_dir);
-
-  create_dense_array_1_attribute(array_name);
+    "[capi][rest][dense][dense-multi-fragment]") {
+  create_dense_array_1_attribute(array_uri_);
 
   // Write slice [1,2], [3,4]
   int write_a1[] = {1, 2, 3, 4, 5, 6, 7, 8};
   uint64_t write_a1_size = sizeof(write_a1);
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1592,7 +1441,7 @@ TEST_CASE_METHOD(
   // Write slice [2,3], [2,3]
   int write_a2[] = {101, 102, 103, 104};
   uint64_t write_a2_size = sizeof(write_a2);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1634,7 +1483,7 @@ TEST_CASE_METHOD(
       INT_MIN};
   int read_a[16];
   uint64_t read_a_size = sizeof(read_a);
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1659,14 +1508,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, check if open",
-    "[capi][dense][dense-is-open]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_is_open/";
-  create_dense_array(array_name);
+    "[capi][rest][dense][dense-is-open]") {
+  create_dense_array(array_uri_);
 
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
 
   int is_open;
@@ -1694,15 +1540,12 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get schema from opened array",
-    "[capi][dense][dense-get-schema]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "dense_get_schema/";
-  create_dense_array(array_name);
+    "[capi][rest][dense][dense-get-schema]") {
+  create_dense_array(array_uri_);
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1724,17 +1567,12 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, set subarray in sparse writes should error",
-    "[capi][dense][dense-set-subarray-sparse]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "dense_set_subarray_sparse";
-  create_temp_dir(temp_dir);
-  create_dense_array(array_name);
+    "[capi][rest][dense][dense-set-subarray-sparse]") {
+  create_dense_array(array_uri_);
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
@@ -1765,18 +1603,15 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, incomplete reads",
-    "[capi][dense][incomplete]") {
+    "[capi][rest][dense][incomplete]") {
   // TODO: refactor for each supported FS.
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  check_incomplete_reads(temp_dir);
-  remove_temp_dir(temp_dir);
+  check_incomplete_reads();
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get nonempty domain",
-    "[capi][dense]") {
+    "[capi][rest][dense]") {
   // Parameters used in this test
   int64_t domain_size_0 = 100;
   int64_t domain_size_1 = 100;
@@ -1789,14 +1624,9 @@ TEST_CASE_METHOD(
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "nonempty_domain_array";
-
   // Create a dense integer array
   create_dense_array_2D(
-      array_name,
+      array_uri_,
       tile_extent_0,
       tile_extent_1,
       domain_0_lo,
@@ -1809,7 +1639,7 @@ TEST_CASE_METHOD(
 
   // Check nonempty domain before writing
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
   int64_t nonempty_domain[4];
   int32_t is_empty;
@@ -1835,7 +1665,7 @@ TEST_CASE_METHOD(
 
   // Write 2D subarray
   write_dense_subarray_2D(
-      array_name,
+      array_uri_,
       subarray,
       TILEDB_WRITE,
       TILEDB_ROW_MAJOR,
@@ -1846,7 +1676,7 @@ TEST_CASE_METHOD(
   delete[] buffer;
 
   // Open array
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1867,16 +1697,12 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get max buffer sizes",
-    "[capi][dense]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "max_buffer_sizes_array";
-  create_dense_array(array_name);
+    "[capi][rest][dense]") {
+  create_dense_array(array_uri_);
 
   // Check max buffer sizes with empty array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1884,10 +1710,10 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Write array
-  write_dense_array(array_name);
+  write_dense_array(array_uri_);
 
   // Check max buffer sizes for whole domain
-  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
@@ -1900,12 +1726,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
-    "[capi][dense][rest-no-config]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name =
-      TILEDB_URI_PREFIX + temp_dir + "dense_set_subarray_sparse";
-  create_dense_array(array_name);
+    "[capi][rest][dense][rest-no-config]") {
+  create_dense_array(array_uri_);
 
   // Set config to use a non-default environment prefix.
   // Prevents test from picking up on REST CI environment configuration.
@@ -1923,7 +1745,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
 
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx, array_uri_.c_str(), &array);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_ERR);
@@ -1939,11 +1761,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, datetimes",
-    "[capi][dense][datetime]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "datetime_array";
-
+    "[capi][rest][dense][datetime]") {
   int64_t dim_domain[] = {1, 10};
   int64_t tile_extents[] = {2};
   tiledb_dimension_t* d1;
@@ -1976,8 +1794,7 @@ TEST_CASE_METHOD(
 
   // Create array
   REQUIRE(
-      tiledb_array_create(ctx_, array_name.c_str(), array_schema) == TILEDB_OK);
-  to_deregister_.insert(array_name);
+      tiledb_array_create(ctx_, array_uri_.c_str(), array_schema) == TILEDB_OK);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -1991,7 +1808,7 @@ TEST_CASE_METHOD(
   void* buffers[] = {buffer_a1};
   uint64_t buffer_sizes[] = {sizeof(buffer_a1)};
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
   tiledb_query_t* query;
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query) == TILEDB_OK);
@@ -2010,7 +1827,7 @@ TEST_CASE_METHOD(
     buffer_a1[i] = 0;
   int64_t subarray[] = {2, 5};
   buffer_sizes[0] = sizeof(buffer_a1);
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
   REQUIRE(tiledb_query_alloc(ctx_, array, TILEDB_READ, &query) == TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
@@ -2034,11 +1851,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, array metadata",
-    "[capi][dense][metadata]") {
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(temp_dir);
-  std::string array_name = TILEDB_URI_PREFIX + temp_dir + "metadata_array";
-
+    "[capi][rest][dense][metadata]") {
   int64_t dim_domain[] = {1, 10};
   int64_t tile_extents[] = {2};
   tiledb_dimension_t* d1;
@@ -2066,8 +1879,7 @@ TEST_CASE_METHOD(
 
   // Create array
   REQUIRE(
-      tiledb_array_create(ctx_, array_name.c_str(), array_schema) == TILEDB_OK);
-  to_deregister_.insert(array_name);
+      tiledb_array_create(ctx_, array_uri_.c_str(), array_schema) == TILEDB_OK);
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -2077,7 +1889,7 @@ TEST_CASE_METHOD(
 
   // Write some metadata values
   tiledb_array_t* array;
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
   int32_t v = 5;
   float f[] = {1.1f, 1.2f};
@@ -2091,7 +1903,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 
   // Read metadata and check values.
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
   uint64_t num_metadata = 0;
   REQUIRE(
@@ -2120,14 +1932,14 @@ TEST_CASE_METHOD(
   std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
   // Open for writing and delete a key.
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_WRITE) == TILEDB_OK);
   REQUIRE(tiledb_array_delete_metadata(ctx_, array, "aaa") == TILEDB_OK);
   REQUIRE(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
 
   // Read metadata and check values again.
-  REQUIRE(tiledb_array_alloc(ctx_, array_name.c_str(), &array) == TILEDB_OK);
+  REQUIRE(tiledb_array_alloc(ctx_, array_uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx_, array, TILEDB_READ) == TILEDB_OK);
   REQUIRE(
       tiledb_array_get_metadata_num(ctx_, array, &num_metadata) == TILEDB_OK);
