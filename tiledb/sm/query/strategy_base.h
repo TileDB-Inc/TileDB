@@ -211,6 +211,8 @@ class StrategyBase {
   /**
    * Populate the owned stats instance with data.
    * To be removed when the class will get a C41 constructor.
+   *
+   * @param data Data to populate the stats with.
    */
   void set_stats(const stats::StatsData& data);
 

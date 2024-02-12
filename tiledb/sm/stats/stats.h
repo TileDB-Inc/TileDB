@@ -179,6 +179,9 @@ class Stats {
   /**
    * Creates a child instance, managed by this instance, the instance is
    * constructed with initial data.
+   *
+   * @param prefix The stat name prefix.
+   * @param data Initial data to populate the Stats object with.
    */
   Stats* create_child(const std::string& prefix, const StatsData& data);
 
@@ -192,6 +195,8 @@ class Stats {
    * Populate the counters and timers internal maps from a StatsData object
    * Please be aware that the data is not being added up, it will override the
    * existing data on the Stats object.
+   *
+   * @param data Data to populate the stats with.
    */
   void populate_with_data(const StatsData& data);
 
