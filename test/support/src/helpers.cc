@@ -45,6 +45,7 @@
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"

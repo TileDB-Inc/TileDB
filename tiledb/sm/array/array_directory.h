@@ -33,7 +33,6 @@
 #ifndef TILEDB_ARRAY_DIRECTORY_H
 #define TILEDB_ARRAY_DIRECTORY_H
 
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -60,6 +59,7 @@ enum class ArrayDirectoryMode {
 };
 
 // Forward declaration
+class MemoryTracker;
 class WhiteboxArrayDirectory;
 
 /**
@@ -391,7 +391,7 @@ class ArrayDirectory {
   std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
       const std::vector<std::string>& enumeration_paths,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -824,7 +824,7 @@ class ArrayDirectory {
   shared_ptr<const Enumeration> load_enumeration(
       const std::string& enumeration_path,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 };
 
 }  // namespace tiledb::sm

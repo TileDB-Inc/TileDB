@@ -32,6 +32,7 @@
 
 #include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -767,7 +768,7 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      nullptr,
+      create_test_memory_tracker(),
       array->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),

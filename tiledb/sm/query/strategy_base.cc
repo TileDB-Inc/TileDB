@@ -47,7 +47,8 @@ namespace sm {
 
 StrategyBase::StrategyBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
-    : stats_(stats)
+    : array_memory_tracker_(params.array_memory_tracker())
+    , stats_(stats)
     , logger_(logger)
     , array_(params.array())
     , array_schema_(params.array()->array_schema_latest())
@@ -59,10 +60,6 @@ StrategyBase::StrategyBase(
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
-}
-
-stats::Stats* StrategyBase::stats() const {
-  return stats_;
 }
 
 void StrategyBase::set_stats(const stats::StatsData& data) {

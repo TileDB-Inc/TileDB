@@ -119,17 +119,7 @@ void generic_tile_offsets_from_capnp(
 Status fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
     const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    shared_ptr<FragmentMetadata> frag_meta,
-    ContextResources* resources,
-    MemoryTracker* memory_tracker) {
-  // TODO: consider a new constructor for fragment meta or using the
-  // existing one
-  if (resources) {
-    frag_meta->set_context_resources(resources);
-  }
-  if (memory_tracker) {
-    frag_meta->set_memory_tracker(memory_tracker);
-  }
+    shared_ptr<FragmentMetadata> frag_meta) {
   if (frag_meta_reader.hasFileSizes()) {
     auto filesizes_reader = frag_meta_reader.getFileSizes();
     frag_meta->file_sizes().reserve(filesizes_reader.size());

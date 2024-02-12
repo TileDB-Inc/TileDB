@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
@@ -69,8 +70,15 @@ class FragmentMetadata {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  FragmentMetadata();
+  /**
+   * Constructor.
+   *
+   * @param resources A context resources instance.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
+   */
+  FragmentMetadata(
+      ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor.
@@ -89,7 +97,7 @@ class FragmentMetadata {
    */
   FragmentMetadata(
       ContextResources* resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -318,53 +326,61 @@ class FragmentMetadata {
   }
 
   /** Returns the tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_offsets() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets()
+      const {
     return tile_offsets_;
   }
 
   /** Returns the variable tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_var_offsets() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets()
+      const {
     return tile_var_offsets_;
   }
 
   /** Returns the sizes of the uncompressed variable tiles. */
-  inline const std::vector<std::vector<uint64_t>>& tile_var_sizes() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes()
+      const {
     return tile_var_sizes_;
   }
 
   /** Returns the validity tile offsets. */
-  inline const std::vector<std::vector<uint64_t>>& tile_validity_offsets()
-      const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
+  tile_validity_offsets() const {
     return tile_validity_offsets_;
   }
 
   /** Returns the tile min buffers. */
-  inline const std::vector<std::vector<uint8_t>>& tile_min_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer()
+      const {
     return tile_min_buffer_;
   }
 
   /** Returns the tile min buffers variable length data. */
-  inline const std::vector<std::vector<char>>& tile_min_var_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer()
+      const {
     return tile_min_var_buffer_;
   }
 
   /** Returns the tile max buffers. */
-  inline const std::vector<std::vector<uint8_t>>& tile_max_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer()
+      const {
     return tile_max_buffer_;
   }
 
   /** Returns the tile max buffers variable length data. */
-  inline const std::vector<std::vector<char>>& tile_max_var_buffer() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer()
+      const {
     return tile_max_var_buffer_;
   }
 
   /** Returns the tile sum values for fixed sized data. */
-  inline const std::vector<std::vector<uint8_t>>& tile_sums() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums() const {
     return tile_sums_;
   }
 
   /** Returns the tile null count values for attributes/dimensions. */
-  inline const std::vector<std::vector<uint64_t>>& tile_null_counts() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts()
+      const {
     return tile_null_counts_;
   }
 
@@ -480,7 +496,7 @@ class FragmentMetadata {
    */
   static std::vector<shared_ptr<FragmentMetadata>> load(
       ContextResources& resources,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema> array_schema,
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
@@ -1104,7 +1120,7 @@ class FragmentMetadata {
   }
 
   /** tile_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets() {
     return tile_offsets_;
   }
 
@@ -1114,7 +1130,7 @@ class FragmentMetadata {
   }
 
   /** tile_var_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_var_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
   }
 
@@ -1124,42 +1140,42 @@ class FragmentMetadata {
   }
 
   /** tile_var_sizes  accessor */
-  std::vector<std::vector<uint64_t>>& tile_var_sizes() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
     return tile_var_sizes_;
   }
 
   /** tile_validity_offsets accessor */
-  std::vector<std::vector<uint64_t>>& tile_validity_offsets() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_validity_offsets() {
     return tile_validity_offsets_;
   }
 
   /** tile_min_buffer accessor */
-  std::vector<std::vector<uint8_t>>& tile_min_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
     return tile_min_buffer_;
   }
 
   /** tile_min_var_buffer accessor */
-  std::vector<std::vector<char>>& tile_min_var_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer() {
     return tile_min_var_buffer_;
   }
 
   /** tile_max_buffer accessor */
-  std::vector<std::vector<uint8_t>>& tile_max_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer() {
     return tile_max_buffer_;
   }
 
   /** tile_max_var_buffer accessor */
-  std::vector<std::vector<char>>& tile_max_var_buffer() {
+  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer() {
     return tile_max_var_buffer_;
   }
 
   /** tile_sums accessor */
-  std::vector<std::vector<uint8_t>>& tile_sums() {
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums() {
     return tile_sums_;
   }
 
   /** tile_null_counts accessor */
-  std::vector<std::vector<uint64_t>>& tile_null_counts() {
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts() {
     return tile_null_counts_;
   }
 
@@ -1218,11 +1234,6 @@ class FragmentMetadata {
     resources_ = cr;
   }
 
-  /** set the memory tracker pointer during deserialization*/
-  void set_memory_tracker(MemoryTracker* memory_tracker) {
-    memory_tracker_ = memory_tracker;
-  }
-
   /** loaded_metadata_.rtree_ accessor */
   void set_rtree_loaded() {
     loaded_metadata_.rtree_ = true;
@@ -1264,7 +1275,7 @@ class FragmentMetadata {
   /**
    * The memory tracker of the array this fragment metadata corresponds to.
    */
-  MemoryTracker* memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The array schema */
   shared_ptr<const ArraySchema> array_schema_;
@@ -1357,57 +1368,57 @@ class FragmentMetadata {
    * The tile offsets in their corresponding attribute files. Meaningful only
    * when there is compression.
    */
-  std::vector<std::vector<uint64_t>> tile_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_offsets_;
 
   /**
    * The variable tile offsets in their corresponding attribute files.
    * Meaningful only for variable-sized tiles.
    */
-  std::vector<std::vector<uint64_t>> tile_var_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_offsets_;
 
   /**
    * The sizes of the uncompressed variable tiles.
    * Meaningful only when there is compression for variable tiles.
    */
-  std::vector<std::vector<uint64_t>> tile_var_sizes_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_sizes_;
 
   /**
    * The validity tile offsets in their corresponding attribute files.
    * Meaningful only when there is compression.
    */
-  std::vector<std::vector<uint64_t>> tile_validity_offsets_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_validity_offsets_;
 
   /**
    * The tile min buffers, for variable attributes/dimensions, this will store
    * offsets.
    */
-  std::vector<std::vector<uint8_t>> tile_min_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_min_buffer_;
 
   /**
    * The tile min buffers variable length data.
    */
-  std::vector<std::vector<char>> tile_min_var_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<char>> tile_min_var_buffer_;
 
   /**
    * The tile max buffers, for variable attributes/dimensions, this will store
    * offsets.
    */
-  std::vector<std::vector<uint8_t>> tile_max_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_max_buffer_;
 
   /**
    * The tile max buffers variable length data.
    */
-  std::vector<std::vector<char>> tile_max_var_buffer_;
+  tdb::pmr::vector<tdb::pmr::vector<char>> tile_max_var_buffer_;
 
   /**
    * The tile sum values, ignored for var sized attributes/dimensions.
    */
-  std::vector<std::vector<uint8_t>> tile_sums_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> tile_sums_;
 
   /**
    * The tile null count values for attributes/dimensions.
    */
-  std::vector<std::vector<uint64_t>> tile_null_counts_;
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_null_counts_;
 
   /**
    * Fragment min values.

@@ -38,7 +38,6 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
@@ -56,6 +55,7 @@ namespace sm {
 class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
+class MemoryTracker;
 enum class QueryType : uint8_t;
 
 /**
@@ -784,7 +784,9 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
@@ -821,9 +823,7 @@ class Array {
   void set_serialized_array_open();
 
   /** Set the query type to open the array for. */
-  inline void set_query_type(QueryType query_type) {
-    query_type_ = query_type;
-  }
+  void set_query_type(QueryType query_type);
 
   /**
    * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
@@ -926,7 +926,7 @@ class Array {
   bool remote_;
 
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;

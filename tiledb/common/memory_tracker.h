@@ -28,38 +28,178 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class MemoryTracker.
+ * This file contains the definitions for classes related to tracking memory
+ * using the polymorphic memory resources feature introduced in C++17.
+ *
+ * There are four main classes to be aware of:
+ *
+ *   - MemoryTrackerResource
+ *   - MemoryTracker
+ *   - MemoryTrackerManager
+ *   - MemoryTrackerReporter
+ *
+ * MemoryTrackerResource
+ * =====================
+ *
+ * The MemoryTrackerResource class is responsible for actually tracking
+ * individual allocations. Each MemoryTrackerResource represents a single type
+ * of memory as enumerated in the MemoryType enum. To create instances of this
+ * class, users should use the MemoryTrackerManager::get_resource API.
+ *
+ * MemoryTracker
+ * =============
+ *
+ * The MemoryTracker class is responsible for managing instances of
+ * MemoryTrackerResource. A MemoryTracker represents some section or behavior
+ * inside the TileDB library as enumerated in the MemoryTrackerType enum.
+ * Instances of MemoryTracker should be created using the
+ * MemoryTrackerManager::create_tracker() API or via the helper method
+ * ContextResources::create_memory_tracker(). Generally speaking, there should
+ * be very few of these instances outside of test code and instead existing
+ * instances should be referenced.
+ *
+ * For instance, there is currently an existing MemoryTracker member variable
+ * on both Array and Query. Most code in the library should be using one of
+ * these two trackers. There are a few specialized instances like in the
+ * Consolidator or for things like deserializing GenericTileIO tiles.
+ *
+ * MemoryTrackerManager
+ * ====================
+ *
+ * The MemoryTrackerManager is a member variable on the ContextResources
+ * class. Users should not need to interact with this class directly as its
+ * just a container that holds references to all the MemoryTracker instances
+ * for a given context. Its used by the MemoryTrackerReport when logging
+ * memory usage.
+ *
+ * MemoryTrackerReporter
+ * =====================
+ *
+ * The MemoryTrackerReporter class is a member variable on the ContextResources
+ * class. Users should not need to interact with this class directly as its
+ * just used to log memory statistics to a special log file when configured.
+ *
+ * Users wishing to run memory usage experiments should use the
+ * 'sm.memory.tracker.reporter.filename' configuration key to set a filename
+ * that will contain the logged memory statistics in JSONL format (i.e., JSON
+ * objects and arrays encoded one per line). At runtime the reporter appends
+ * a JSON blob once a second to this logfile that can then be analyzed using
+ * whatever scripts or software as appropriate.
  */
 
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
+#include <chrono>
+#include <condition_variable>
+#include <thread>
+
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
+#include "tiledb/sm/config/config.h"
 
 namespace tiledb {
 namespace sm {
 
-class MemoryTracker {
+//** The type of memory to track. */
+enum class MemoryType {
+  RTREE,
+  FOOTER,
+  TILE_OFFSETS,
+  TILE_MIN_VALS,
+  TILE_MAX_VALS,
+  TILE_SUMS,
+  TILE_NULL_COUNTS,
+  ENUMERATION
+};
+
+/** The type of MemoryTracker. */
+enum class MemoryTrackerType {
+  ANONYMOUS,
+  ARRAY_READ,
+  ARRAY_WRITE,
+  QUERY_READ,
+  QUERY_WRITE,
+  CONSOLIDATOR
+};
+
+class MemoryTrackerResource : public tdb::pmr::memory_resource {
  public:
-  enum class MemoryType {
-    RTREE,
-    FOOTER,
-    TILE_OFFSETS,
-    MIN_MAX_SUM_NULL_COUNT,
-    ENUMERATION
-  };
+  // Disable all default generated constructors.
+  MemoryTrackerResource() = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerResource);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerResource);
 
   /** Constructor. */
-  MemoryTracker() {
-    memory_usage_ = 0;
-    memory_budget_ = std::numeric_limits<uint64_t>::max();
-  };
+  explicit MemoryTrackerResource(
+      tdb::pmr::memory_resource* upstream,
+      std::atomic<uint64_t>& total_counter,
+      std::atomic<uint64_t>& type_counter)
+      : upstream_(upstream)
+      , total_counter_(total_counter)
+      , type_counter_(type_counter) {
+  }
 
+  /** The number of bytes tracked by this resource. */
+  uint64_t get_count();
+
+ protected:
+  /** Perform an allocation, returning a pointer to the allocated memory. */
+  void* do_allocate(size_t bytes, size_t alignment) override;
+
+  /** Deallocate a previously allocated chunk of memory. */
+  void do_deallocate(void* p, size_t bytes, size_t alignment) override;
+
+  /** Check if two memory trackers are equal. */
+  bool do_is_equal(
+      const tdb::pmr::memory_resource& other) const noexcept override;
+
+ private:
+  /** The upstream memory resource to use for the actual allocation. */
+  tdb::pmr::memory_resource* upstream_;
+
+  /** A reference to a total counter for the MemoryTracker. */
+  std::atomic<uint64_t>& total_counter_;
+
+  /** A reference to the memory type counter this resource is tracking. */
+  std::atomic<uint64_t>& type_counter_;
+};
+
+class MemoryTracker {
+ public:
   /** Destructor. */
-  ~MemoryTracker() = default;
+  ~MemoryTracker();
 
   DISABLE_COPY_AND_COPY_ASSIGN(MemoryTracker);
   DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTracker);
+
+  /** Get the id of this MemoryTracker instance. */
+  inline uint64_t get_id() {
+    return id_;
+  }
+
+  /** Get the type of this memory tracker. */
+  inline MemoryTrackerType get_type() {
+    std::lock_guard<std::mutex> lg(mutex_);
+    return type_;
+  }
+
+  /** Set the type of this memory tracker. */
+  void set_type(MemoryTrackerType type) {
+    std::lock_guard<std::mutex> lg(mutex_);
+    type_ = type;
+  }
+
+  /**
+   * Create a memory resource instance.
+   *
+   * @param type The type of memory that is being tracked.
+   * @return A memory resource derived from std::pmr::memory_resource.
+   */
+  tdb::pmr::memory_resource* get_resource(MemoryType);
+
+  /** Return the total and counts of this tracker. */
+  std::tuple<uint64_t, std::unordered_map<MemoryType, uint64_t>> get_counts();
 
   /**
    * Take memory from the budget.
@@ -139,8 +279,31 @@ class MemoryTracker {
     return memory_budget_;
   }
 
+ protected:
+  /**
+   * Constructor.
+   *
+   * This constructor is protected on purpose to discourage creating instances
+   * of this class that aren't connected to a ContextResources. When writing
+   * library code, you should almost always be using an existing instance of
+   * a MemoryTracker from the places those exist, i.e., on an Array, Query,
+   * or in the Consolidator. Occasionally, we'll need to create new instances
+   * for specific reasons. In those cases you need to have a reference to the
+   * ContextResources to call ContextResource::create_memory_tracker().
+   *
+   * For tests that need to have a temporary MemoryTracker instance, there is
+   * a `create_test_memory_tracker()` API available in the test support library.
+   */
+  MemoryTracker()
+      : memory_usage_(0)
+      , memory_budget_(std::numeric_limits<uint64_t>::max())
+      , id_(generate_id())
+      , type_(MemoryTrackerType::ANONYMOUS)
+      , upstream_(tdb::pmr::get_default_resource())
+      , total_counter_(0){};
+
  private:
-  /** Protects all member variables. */
+  /** Protects all non-atomic member variables. */
   std::mutex mutex_;
 
   /** Memory usage for tracked structures. */
@@ -151,6 +314,108 @@ class MemoryTracker {
 
   /** Memory usage by type. */
   std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+
+  /** The id of this MemoryTracker. */
+  uint64_t id_;
+
+  /** The type of this MemoryTracker. */
+  MemoryTrackerType type_;
+
+  /** The upstream memory resource. */
+  tdb::pmr::memory_resource* upstream_;
+
+  /** MemoryTrackerResource by MemoryType. */
+  std::unordered_map<MemoryType, std::shared_ptr<MemoryTrackerResource>>
+      resources_;
+
+  /** Memory counters by MemoryType. */
+  std::unordered_map<MemoryType, std::atomic<uint64_t>> counters_;
+
+  /** The total memory usage of this MemoryTracker. */
+  std::atomic<uint64_t> total_counter_;
+
+  /** Generate a unique id for this MemoryTracker. */
+  static uint64_t generate_id();
+};
+
+class MemoryTrackerManager {
+ public:
+  /** Constructor. */
+  MemoryTrackerManager() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerManager);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerManager);
+
+  /**
+   * Create a new memory tracker.
+   *
+   * @return The created MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> create_tracker();
+
+  /**
+   * Generate a JSON string representing the current state of tracked memory.
+   *
+   * @return A string containing the JSON representation of tracked memory.
+   */
+  std::string to_json();
+
+ private:
+  /** A mutext to protect our list of trackers. */
+  std::mutex mutex_;
+
+  /** A weak_ptr to the instances of MemoryTracker we create. */
+  std::vector<std::weak_ptr<MemoryTracker>> trackers_;
+};
+
+class MemoryTrackerReporter {
+ public:
+  /**
+   * Constructor.
+   *
+   * @param cfg The Config instance for the parent context.
+   * @param manager The MemoryTrackerManager instance on the context resources.
+   */
+  MemoryTrackerReporter(
+      const Config& cfg, shared_ptr<MemoryTrackerManager> manager)
+      : manager_(manager)
+      , filename_(cfg.get<std::string>("sm.memory.tracker.reporter.filename"))
+      , stop_(false) {
+  }
+
+  /** Destructor. */
+  ~MemoryTrackerReporter();
+
+  DISABLE_COPY_AND_COPY_ASSIGN(MemoryTrackerReporter);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(MemoryTrackerReporter);
+
+  /** Start the background reporter thread if configured. */
+  void start();
+
+  /** Stop the background reporter thread if started. */
+  void stop();
+
+  /** The background reporter thread's main loop. */
+  void run();
+
+ private:
+  /** The MemoryTrackerManager instance on the parent ContextResources. */
+  shared_ptr<MemoryTrackerManager> manager_;
+
+  /** An filename set in the config. */
+  std::optional<std::string> filename_;
+
+  /** The background reporter thread. */
+  std::thread thread_;
+
+  /** A mutex for communication with the background thread. */
+  std::mutex mutex_;
+
+  /** A condition variable for signaling the background thread. */
+  std::condition_variable cv_;
+
+  /** A stop flag to signal shutdown to the background thread. */
+  bool stop_;
 };
 
 }  // namespace sm
