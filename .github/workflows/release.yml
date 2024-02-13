@@ -2,8 +2,6 @@ name: Release
 
 on:
   pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
     paths-ignore:
       - '.github/workflows/quarto-render.yml'
       - '_quarto.yml'
