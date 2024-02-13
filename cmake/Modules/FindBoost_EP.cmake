@@ -91,7 +91,7 @@ if (NOT BOOST_FOUND)
         URL_HASH SHA256=${boost_SHA256}
         BUILD_IN_SOURCE 1
         CONFIGURE_COMMAND bootstrap --with-libraries=container --prefix=${boost_INSTALL}
-        BUILD_COMMAND .\b2 -d0 install link=statu variant=release threading=multi runtime-link=static
+        BUILD_COMMAND .\b2 -d0 install link=static variant=release threading=multi runtime-link=static
         INSTALL_COMMAND ""
         INSTALL_DIR ${boost_INSTALL}
       )
@@ -102,7 +102,7 @@ if (NOT BOOST_FOUND)
         URL_HASH SHA256=${boost_SHA256}
         BUILD_IN_SOURCE 1
         CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=container --prefix=${boost_INSTALL}
-        BUILD_COMMAND ./b2 -d0 install link=statu variant=release threading=multi runtime-link=static
+        BUILD_COMMAND ./b2 -d0 install link=static variant=release threading=multi runtime-link=static
         INSTALL_COMMAND ""
         INSTALL_DIR ${boost_INSTALL}
       )
