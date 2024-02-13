@@ -413,8 +413,7 @@ class Azure {
    *
    * This class ensures that:
    * * Callers access the client in an initialized state.
-   * * The client gets initialized only once in the face
-   *   of concurrent accesses.
+   * * The client gets initialized only once even for concurrent accesses.
    */
   class AzureClientSingleton {
    public:
@@ -451,7 +450,8 @@ class Azure {
   /** Protects 'write_cache_map_'. */
   std::mutex write_cache_map_lock_;
 
-  /** Contains options to configure connection to Azure.
+  /**
+   * Contains options to configure connection to Azure.
    * After the class becomes C.41 compliant, remove the std::optional.
    */
   std::optional<AzureParameters> azure_params_;
