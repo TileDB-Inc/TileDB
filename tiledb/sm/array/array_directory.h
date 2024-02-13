@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,15 +33,14 @@
 #ifndef TILEDB_ARRAY_DIRECTORY_H
 #define TILEDB_ARRAY_DIRECTORY_H
 
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <functional>
 #include <unordered_map>
@@ -60,6 +59,7 @@ enum class ArrayDirectoryMode {
 };
 
 // Forward declaration
+class MemoryTracker;
 class WhiteboxArrayDirectory;
 
 /**
@@ -221,12 +221,8 @@ class ArrayDirectory {
         : uri_(uri)
         , condition_marker_(condition_marker)
         , offset_(offset) {
-      std::pair<uint64_t, uint64_t> timestamps;
-      if (!utils::parse::get_timestamp_range(URI(condition_marker), &timestamps)
-               .ok()) {
-        throw std::logic_error("Error parsing uri.");
-      }
-
+      FragmentID fragment_id{condition_marker};
+      auto timestamps{fragment_id.timestamp_range()};
       timestamp_ = timestamps.first;
     }
 
@@ -395,7 +391,7 @@ class ArrayDirectory {
   std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
       const std::vector<std::string>& enumeration_paths,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 
   /** Returns the array URI. */
   const URI& uri() const;
@@ -828,7 +824,7 @@ class ArrayDirectory {
   shared_ptr<const Enumeration> load_enumeration(
       const std::string& enumeration_path,
       const EncryptionKey& encryption_key,
-      MemoryTracker& memory_tracker) const;
+      shared_ptr<MemoryTracker> memory_tracker) const;
 };
 
 }  // namespace tiledb::sm

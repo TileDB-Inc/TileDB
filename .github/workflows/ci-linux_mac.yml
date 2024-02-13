@@ -63,7 +63,7 @@ env:
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
-  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=x64-${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'linux' || 'osx' }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 

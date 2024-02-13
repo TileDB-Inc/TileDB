@@ -167,9 +167,7 @@ static FragmentMetadata::GenericTileOffsets generic_tile_offsets_from_capnp(
 
 shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
-    const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    ContextResources* resources,
-    MemoryTracker* memory_tracker) {
+    const capnp::FragmentMetadata::Reader& frag_meta_reader) {
   URI fragment_uri;
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name

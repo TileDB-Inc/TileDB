@@ -49,7 +49,8 @@ namespace sm {
 
 StrategyBase::StrategyBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
-    : stats_(stats)
+    : array_memory_tracker_(params.array_memory_tracker())
+    , stats_(stats)
     , logger_(logger)
     , array_(params.array())
     , array_schema_(params.array()->array_schema_latest())
@@ -67,8 +68,8 @@ ContextResources& StrategyBase::resources() const {
   return storage_manager_->resources();
 }
 
-stats::Stats* StrategyBase::stats() const {
-  return stats_;
+void StrategyBase::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 /* ****************************** */

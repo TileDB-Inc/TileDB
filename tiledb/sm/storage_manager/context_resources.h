@@ -44,6 +44,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class MemoryTracker;
+class MemoryTrackerManager;
+class MemoryTrackerReporter;
 class RestClient;
 
 /**
@@ -109,10 +112,23 @@ class ContextResources {
     return rest_client_;
   }
 
+  /**
+   * Create a new MemoryTracker
+   *
+   * @return The created MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> create_memory_tracker() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The MemoryTrackerManager for this context. */
+  mutable shared_ptr<MemoryTrackerManager> memory_tracker_manager_;
+
+  /** The MemoryTrackerReporter for this context. */
+  mutable shared_ptr<MemoryTrackerReporter> memory_tracker_reporter_;
 
   /** The configuration for this ContextResources */
   mutable Config config_;

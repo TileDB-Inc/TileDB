@@ -644,7 +644,7 @@ Status UnorderedWriter::unordered_write() {
     }
 
     // Create new fragment
-    frag_meta_ = make_shared<FragmentMetadata>(HERE());
+    frag_meta_ = this->create_fragment_metadata();
     RETURN_CANCEL_OR_ERROR(create_fragment(false, frag_meta_));
   }
 

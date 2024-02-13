@@ -199,8 +199,7 @@ Status fragment_info_request_deserialize(
 std::tuple<Status, std::optional<SingleFragmentInfo>>
 single_fragment_info_from_capnp(
     const capnp::SingleFragmentInfo::Reader& single_frag_info_reader,
-    const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
-        array_schemas) {
+    FragmentInfo* fragment_info) {
   // Get array schema name
   std::string schema_name;
   if (single_frag_info_reader.hasArraySchemaName()) {
@@ -213,8 +212,8 @@ single_fragment_info_from_capnp(
   }
 
   // Use the array schema name to find the corresponding array schema
-  auto schema = array_schemas.find(schema_name);
-  if (schema == array_schemas.end()) {
+  auto schema = fragment_info->array_schemas_all().find(schema_name);
+  if (schema == fragment_info->array_schemas_all().end()) {
     return {
         Status_SerializationError(
             "Could not find schema" + schema_name +
@@ -308,7 +307,7 @@ Status fragment_info_from_capnp(
         fragment_info_list_reader.size());
     for (auto single_frag_info_reader : fragment_info_list_reader) {
       auto&& [st, single_frag_info] = single_fragment_info_from_capnp(
-          single_frag_info_reader, fragment_info->array_schemas_all());
+          single_frag_info_reader, fragment_info);
       RETURN_NOT_OK(st);
       fragment_info->single_fragment_info_vec().emplace_back(
           single_frag_info.value());

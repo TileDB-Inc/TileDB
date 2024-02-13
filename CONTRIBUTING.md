@@ -61,27 +61,6 @@ Formatting conventions:
 - comments are good, TileDB uses [doxygen](http://www.stack.nl/~dimitri/doxygen/manual/docblocks.html) for class doc strings.
 - format code using [clang-format](https://clang.llvm.org/docs/ClangFormat.html)
 
-### Building with sanitizers
-
-TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as the vcpkg base triplet corresponding to your platform. The following platforms support sanitizers:
-
-* `arm64-osx`
-* `x64-linux`
-* `x64-osx`
-* `x64-windows`
-
-> [!NOTE]
-> Currently only the `address` sanitizer is supported.
-
-```bash
-cd TileDB && mkdir build-asan && cd build-asan
-../bootstrap --enable-sanitizer=address --vcpkg-base-triplet=x64-linux
-make && make check
-```
-
-> [!IMPORTANT]
-> To avoid errors, building with sanitizers must be done in a separate build directory.
-
 ### Pull Requests:
 
 - `dev` is the development branch, all PR’s should be rebased on top of the latest `dev` commit.

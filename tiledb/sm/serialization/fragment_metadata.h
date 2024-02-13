@@ -62,9 +62,7 @@ namespace serialization {
  */
 shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
-    const capnp::FragmentMetadata::Reader& frag_meta_reader,
-    ContextResources* resources = nullptr,
-    MemoryTracker* memory_tracker = nullptr);
+    const capnp::FragmentMetadata::Reader& frag_meta_reader);
 
 /**
  * Serialize Fragment Metadata sizes and offsets
