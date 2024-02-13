@@ -85,23 +85,28 @@ if (NOT BOOST_FOUND)
     set(BOOST_LIB_DIR ${boost_INSTALL}/lib)
 
     if (WIN32)
-      set(boost_CONFIGURE_COMMAND "bootstrap --with-libraries=container --prefix=${boost_INSTALL}")
-      set(boost_BUILD_COMMAND ".\\b2 -d0 install link=statu variant=release threading=multi runtime-link=static")
+      ExternalProject_Add(ep_boost
+        PREFIX boost
+        URL ${boost_URL}
+        URL_HASH SHA256=${boost_SHA256}
+        BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND bootstrap --with-libraries=container --prefix=${boost_INSTALL}
+        BUILD_COMMAND .\b2 -d0 install link=statu variant=release threading=multi runtime-link=static
+        INSTALL_COMMAND ""
+        INSTALL_DIR ${boost_INSTALL}
+      )
     else()
-      set(boost_CONFIGURE_COMMAND "./bootstrap.sh --with-libraries=container --prefix=${boost_INSTALL}")
-      set(boost_BUILD_COMMAND "./b2 -d0 install link=statu variant=release threading=multi runtime-link=static")
+      ExternalProject_Add(ep_boost
+        PREFIX boost
+        URL ${boost_URL}
+        URL_HASH SHA256=${boost_SHA256}
+        BUILD_IN_SOURCE 1
+        CONFIGURE_COMMAND ./bootstrap.sh --with-libraries=container --prefix=${boost_INSTALL}
+        BUILD_COMMAND ./b2 -d0 install link=statu variant=release threading=multi runtime-link=static
+        INSTALL_COMMAND ""
+        INSTALL_DIR ${boost_INSTALL}
+      )
     endif()
-
-    ExternalProject_Add(ep_boost
-      PREFIX boost
-      URL ${boost_URL}
-      URL_HASH SHA256=${boost_SHA256}
-      BUILD_IN_SOURCE 1
-      CONFIGURE_COMMAND ${boost_CONFIGURE_COMMAND}
-      BUILD_COMMAND ${boost_BUILD_COMMAND}
-      INSTALL_COMMAND ""
-      INSTALL_DIR ${boost_INSTALL}
-    )
 
     list(APPEND FORWARD_EP_CMAKE_ARGS -DTILEDB_BOOST_EP_BUILT=TRUE)
     list(APPEND TILEDB_EXTERNAL_PROJECTS ep_boost)
