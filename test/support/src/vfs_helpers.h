@@ -811,7 +811,23 @@ struct TemporaryDirectoryFixture {
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
 };
 
-/* TODO: doc */
+/*
+ * Class to instantiate when setting up a test case to run for all VFSs and
+ * REST
+ *
+ * Example usage: In the beginning of the test define a VFSTestSetup variable
+ * and then just use the Context and the rest of the resources it encapsulates
+ * in the test. The resources will be automatically get freed when the variable
+ * will get out of scope.
+ *
+ * {
+ * tiledb::test::VFSTestSetup vfs_test_setup{"foo_array"};
+ * auto ctx = vfs_test_setup.ctx;
+ * Array array(ctx, array_uri, TILEDB_WRITE);
+ * ...
+ * } // ctx context is destroyed and VFS directories removed
+ *
+ */
 struct VFSTestSetup {
   VFSTestSetup() = delete;
 

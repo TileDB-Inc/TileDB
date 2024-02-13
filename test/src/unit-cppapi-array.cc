@@ -130,11 +130,12 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     cfg["a"] = "1";
     cfg["b"] = "10";
     auto vfs_test_setup1 =
-        tiledb::test::VFSTestSetup("cpp_unit_array", cfg.ptr().get());
+        tiledb::test::VFSTestSetup("cpp_unit_array2", cfg.ptr().get());
     auto ctx1 = vfs_test_setup1.ctx;
+    auto array_uri1 = vfs_test_setup1.array_uri;
 
     // Create an array with ctx
-    Array array(ctx1, array_uri, TILEDB_READ);
+    Array array(ctx1, array_uri1, TILEDB_READ);
 
     // Check that the config values are correct
     CHECK((std::string)array.config()["a"] == "1");
@@ -152,6 +153,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     CHECK((std::string)array.config()["b"] == "5");
 
     array.close();
+    Array::delete_array(ctx1, array_uri1);
   }
 
   SECTION("Read/Write") {
