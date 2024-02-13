@@ -512,17 +512,17 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
   // Set up
   bool exists = false;
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    REQUIRE(vfs.is_bucket(path, &exists).ok());
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
     if (exists) {
-      REQUIRE(vfs.remove_bucket(path).ok());
+      require_tiledb_ok(vfs.remove_bucket(path));
     }
-    REQUIRE(vfs.create_bucket(path).ok());
+    require_tiledb_ok(vfs.create_bucket(path));
   } else {
-    REQUIRE(vfs.is_dir(path, &exists).ok());
+    require_tiledb_ok(vfs.is_dir(path, &exists));
     if (exists) {
-      REQUIRE(vfs.remove_dir(path).ok());
+      require_tiledb_ok(vfs.remove_dir(path));
     }
-    REQUIRE(vfs.create_dir(path).ok());
+    require_tiledb_ok(vfs.create_dir(path));
   }
 
   // Prepare buffers
@@ -537,40 +537,39 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
 
   // Write to two files
   URI largefile = URI(path.to_string() + "largefile");
-  REQUIRE(vfs.write(largefile, write_buffer, buffer_size).ok());
-  REQUIRE(
-      vfs.write(URI(largefile), write_buffer_small, buffer_size_small).ok());
+  require_tiledb_ok(vfs.write(largefile, write_buffer, buffer_size));
   URI smallfile = URI(path.to_string() + "smallfile");
-  REQUIRE(vfs.write(smallfile, write_buffer_small, buffer_size_small).ok());
+  require_tiledb_ok(
+      vfs.write(smallfile, write_buffer_small, buffer_size_small));
 
   // On non-local and hdfs systems, before flushing, the files do not exist
   if (!(path.is_file() || path.is_hdfs())) {
-    REQUIRE(vfs.is_file(largefile, &exists).ok());
+    require_tiledb_ok(vfs.is_file(largefile, &exists));
     CHECK(!exists);
-    REQUIRE(vfs.is_file(smallfile, &exists).ok());
+    require_tiledb_ok(vfs.is_file(smallfile, &exists));
     CHECK(!exists);
 
     // Flush the files
-    REQUIRE(vfs.close_file(largefile).ok());
-    REQUIRE(vfs.close_file(smallfile).ok());
+    require_tiledb_ok(vfs.close_file(largefile));
+    require_tiledb_ok(vfs.close_file(smallfile));
   }
 
   // After flushing, the files exist
-  REQUIRE(vfs.is_file(largefile, &exists).ok());
+  require_tiledb_ok(vfs.is_file(largefile, &exists));
   CHECK(exists);
-  REQUIRE(vfs.is_file(smallfile, &exists).ok());
+  require_tiledb_ok(vfs.is_file(smallfile, &exists));
   CHECK(exists);
 
   // Get file sizes
   uint64_t nbytes = 0;
-  REQUIRE(vfs.file_size(largefile, &nbytes).ok());
-  CHECK(nbytes == (buffer_size + buffer_size_small));
-  REQUIRE(vfs.file_size(smallfile, &nbytes).ok());
+  require_tiledb_ok(vfs.file_size(largefile, &nbytes));
+  CHECK(nbytes == (buffer_size));
+  require_tiledb_ok(vfs.file_size(smallfile, &nbytes));
   CHECK(nbytes == buffer_size_small);
 
   // Read from the beginning
   auto read_buffer = new char[26];
-  REQUIRE(vfs.read(largefile, 0, read_buffer, 26).ok());
+  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
   bool allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + i)) {
@@ -581,7 +580,7 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
   CHECK(allok);
 
   // Read from a different offset
-  REQUIRE(vfs.read(largefile, 11, read_buffer, 26).ok());
+  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
   allok = true;
   for (int i = 0; i < 26; i++) {
     if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
@@ -593,12 +592,12 @@ TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
 
   // Clean up
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
-    REQUIRE(vfs.remove_bucket(path).ok());
-    REQUIRE(vfs.is_bucket(path, &exists).ok());
+    require_tiledb_ok(vfs.remove_bucket(path));
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
     REQUIRE(!exists);
   } else {
-    REQUIRE(vfs.remove_dir(path).ok());
-    REQUIRE(vfs.is_dir(path, &exists).ok());
+    require_tiledb_ok(vfs.remove_dir(path));
+    require_tiledb_ok(vfs.is_dir(path, &exists));
     REQUIRE(!exists);
   }
 }
