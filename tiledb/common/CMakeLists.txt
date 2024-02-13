@@ -66,6 +66,7 @@ commence(object_library baseline)
         pmr.cc
     )
     find_package(Spdlog_EP REQUIRED)
+    set(Boost_NO_SYSTEM_PATHS ON)
     find_package(Boost REQUIRED COMPONENTS container)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
     target_link_libraries(baseline PUBLIC Boost::container)
