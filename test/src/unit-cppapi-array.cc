@@ -1971,9 +1971,9 @@ TEST_CASE(
   // Create bucket on s3
   VFS vfs(ctx);
   if (vfs.is_bucket(array_bucket)) {
-    vfs.remove_bucket(array_bucket);
+    REQUIRE_NOTHROW(vfs.remove_bucket(array_bucket));
   }
-  vfs.create_bucket(array_bucket);
+  REQUIRE_NOTHROW(vfs.create_bucket(array_bucket));
   REQUIRE(vfs.is_bucket(array_bucket));
 
   // Create array with only a __schema folder
@@ -2027,13 +2027,14 @@ TEST_CASE(
   try {
     array.open(TILEDB_READ);
   } catch (std::exception& e) {
+    LOG_ERROR("Successfully introduced the cannot list error.");
     REQUIRE_THAT(
         e.what(), Catch::Matchers::ContainsSubstring("Cannot list given uri"));
   }
 
   // Clean up
   if (vfs.is_bucket(array_bucket)) {
-    vfs.remove_bucket(array_bucket);
+    REQUIRE_NOTHROW(vfs.remove_bucket(array_bucket));
   }
   REQUIRE(!vfs.is_bucket(array_bucket));
 }
