@@ -71,12 +71,15 @@ struct ReaderFx {
   const char* ARRAY_NAME = "reader";
   tiledb_array_t* array_ = nullptr;
 
+  shared_ptr<MemoryTracker> tracker_;
+
   ReaderFx();
   ~ReaderFx();
 };
 
 ReaderFx::ReaderFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : fs_vec_(vfs_test_get_fs_vec())
+    , tracker_(tiledb::test::create_test_memory_tracker()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 
@@ -168,6 +171,7 @@ TEST_CASE_METHOD(
   DefaultChannelAggregates default_channel_aggregates;
   auto params = StrategyParams(
       array.memory_tracker(),
+      tracker_,
       context.storage_manager(),
       array.opened_array(),
       config,

@@ -1807,6 +1807,7 @@ bool Query::is_aggregate(std::string output_field_name) const {
 Status Query::create_strategy(bool skip_checks_serialization) {
   auto params = StrategyParams(
       array_->memory_tracker(),
+      query_memory_tracker_,
       storage_manager_,
       opened_array_,
       config_,
