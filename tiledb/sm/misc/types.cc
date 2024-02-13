@@ -53,7 +53,7 @@ template int8_t ByteVecValue::rvalue_as<int8_t>() const;
 template uint8_t ByteVecValue::rvalue_as<uint8_t>() const;
 template int16_t ByteVecValue::rvalue_as<int16_t>() const;
 template uint16_t ByteVecValue::rvalue_as<uint16_t>() const;
-template int ByteVecValue::rvalue_as<int>() const;
+template int32_t ByteVecValue::rvalue_as<int32_t>() const;
 template uint32_t ByteVecValue::rvalue_as<uint32_t>() const;
 template int64_t ByteVecValue::rvalue_as<int64_t>() const;
 template uint64_t ByteVecValue::rvalue_as<uint64_t>() const;

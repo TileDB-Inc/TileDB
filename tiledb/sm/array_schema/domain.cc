@@ -823,9 +823,9 @@ void Domain::compute_cell_num_per_tile() {
 
   cell_num_per_tile_ = 1;
   for (unsigned d = 0; d < dim_num_; ++d) {
-    auto tile_extent = *(const T*)this->tile_extent(d).data();
-    cell_num_per_tile_ =
-        Dimension::tile_extent_mult<T>(cell_num_per_tile_, tile_extent);
+    auto tile_extent =
+        static_cast<uint64_t>(this->tile_extent(d).rvalue_as<T>());
+    cell_num_per_tile_ *= tile_extent;
   }
 }
 
