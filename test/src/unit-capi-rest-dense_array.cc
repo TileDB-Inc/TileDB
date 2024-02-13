@@ -69,7 +69,7 @@ struct DenseArrayRESTFx {
   const char* DIM2_NAME = "y";
   const tiledb_datatype_t DIM_TYPE = TILEDB_INT64;
   const int ITER_NUM = 10;
-  
+
   VFSTestSetup vfs_test_setup_;
   const std::string array_uri_;
 
@@ -191,7 +191,10 @@ struct DenseArrayRESTFx {
 };
 
 DenseArrayRESTFx::DenseArrayRESTFx()
-    : vfs_test_setup_("capi_dense_array"), array_uri_(vfs_test_setup_.array_uri), ctx_(vfs_test_setup_.ctx_c), vfs_(vfs_test_setup_.vfs_c) {
+    : vfs_test_setup_("capi_dense_array")
+    , array_uri_(vfs_test_setup_.array_uri)
+    , ctx_(vfs_test_setup_.ctx_c)
+    , vfs_(vfs_test_setup_.vfs_c) {
   std::srand(0);
 }
 
@@ -1741,8 +1744,8 @@ TEST_CASE_METHOD(
   CHECK(err == nullptr);
 
   // Create context without a REST config
-  tiledb_ctx_t* ctx;
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
+  VFSTestSetup vfs_test_setup("capi_dense_array", cfg);
+  auto ctx = vfs_test_setup.ctx_c;
 
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx, array_uri_.c_str(), &array);
@@ -1751,11 +1754,10 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_config_free(&cfg);
   tiledb_error_free(&err);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
