@@ -80,18 +80,18 @@ if (NOT BOOST_FOUND)
 
     set(boost_URL "https://boostorg.jfrog.io/artifactory/main/release/1.83.0/source/boost_1_83_0.tar.gz")
     set(boost_SHA256 "c0685b68dd44cc46574cce86c4e17c0f611b15e195be9848dfd0769a0a207628")
-    set(boost_INSTALL ${CMAKE_CURRENT_BINARY_DIR}/third_party/boost)
+    set(boost_INSTALL ${TILEDB_EP_INSTALL_PREFIX})
     set(BOOST_INCLUDE_DIR ${boost_INSTALL}/include)
     set(BOOST_LIB_DIR ${boost_INSTALL}/lib)
 
-    ExternalProject_Add(external_boost
+    ExternalProject_Add(ep_boost
       PREFIX boost
       URL ${boost_URL}
       URL_HASH SHA256=${boost_SHA256}
       BUILD_IN_SOURCE 1
       CONFIGURE_COMMAND ./bootstrap.sh
         --with-libraries=container
-        --prefix=<INSTALL_DIR>
+        --prefix=${boost_INSTALL}
       BUILD_COMMAND
         ./b2 install link=static variant=release threading=multi runtime-link=static
       INSTALL_COMMAND ""
