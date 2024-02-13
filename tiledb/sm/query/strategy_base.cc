@@ -63,8 +63,8 @@ StrategyBase::StrategyBase(
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
 }
 
-ContextResources* StrategyBase::resources() const {
-  return &storage_manager_->resources();
+ContextResources& StrategyBase::resources() const {
+  return storage_manager_->resources();
 }
 
 stats::Stats* StrategyBase::stats() const {

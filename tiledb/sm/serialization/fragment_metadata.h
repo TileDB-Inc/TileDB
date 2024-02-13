@@ -58,6 +58,7 @@ namespace serialization {
  * @param frag_meta_reader cap'n proto class
  * @param resources ContextResources associated
  * @param memory_tracker memory tracker associated
+ * @return shared pointer to deserialized FragmentMetadata
  */
 shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,

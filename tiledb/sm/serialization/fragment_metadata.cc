@@ -204,13 +204,14 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       memory_tracker,
       array_schema,
       utils::capnp_list_to_vector<uint64_t>(
-          frag_meta_reader.hasFileSizes(), frag_meta_reader.getFileSizes()),
+          frag_meta_reader.hasFileSizes(),
+          [&] { return frag_meta_reader.getFileSizes(); }),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFileVarSizes(),
-          frag_meta_reader.getFileVarSizes()),
+          [&] { return frag_meta_reader.getFileVarSizes(); }),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFileValiditySizes(),
-          frag_meta_reader.getFileValiditySizes()),
+          [&] { return frag_meta_reader.getFileValiditySizes(); }),
       std::move(fragment_uri),
       frag_meta_reader.getHasTimestamps(),
       frag_meta_reader.getHasDeleteMeta(),
@@ -219,49 +220,50 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       frag_meta_reader.getTileIndexBase(),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileOffsets(),
-          frag_meta_reader.getTileOffsets(),
+          [&] { return frag_meta_reader.getTileOffsets(); },
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileVarOffsets(),
-          frag_meta_reader.getTileVarOffsets(),
+          [&] { return frag_meta_reader.getTileVarOffsets(); },
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileVarSizes(),
-          frag_meta_reader.getTileVarSizes(),
+          [&] { return frag_meta_reader.getTileVarSizes(); },
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileValidityOffsets(),
-          frag_meta_reader.getTileValidityOffsets(),
+          [&] { return frag_meta_reader.getTileValidityOffsets(); },
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMinBuffer(),
-          frag_meta_reader.getTileMinBuffer()),
+          [&] { return frag_meta_reader.getTileMinBuffer(); }),
       utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMinVarBuffer(),
-          frag_meta_reader.getTileMinVarBuffer()),
+          [&] { return frag_meta_reader.getTileMinVarBuffer(); }),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMaxBuffer(),
-          frag_meta_reader.getTileMaxBuffer()),
+          [&] { return frag_meta_reader.getTileMaxBuffer(); }),
       utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMaxVarBuffer(),
-          frag_meta_reader.getTileMaxVarBuffer()),
+          [&] { return frag_meta_reader.getTileMaxVarBuffer(); }),
       utils::capnp_2d_list_to_vector<uint8_t>(
-          frag_meta_reader.hasTileSums(), frag_meta_reader.getTileSums()),
+          frag_meta_reader.hasTileSums(),
+          [&] { return frag_meta_reader.getTileSums(); }),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileNullCounts(),
-          frag_meta_reader.getTileNullCounts()),
+          [&] { return frag_meta_reader.getTileNullCounts(); }),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMins(),
-          frag_meta_reader.getFragmentMins()),
+          [&] { return frag_meta_reader.getFragmentMins(); }),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMaxs(),
-          frag_meta_reader.getFragmentMaxs()),
+          [&] { return frag_meta_reader.getFragmentMaxs(); }),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFragmentSums(),
-          frag_meta_reader.getFragmentSums()),
+          [&] { return frag_meta_reader.getFragmentSums(); }),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFragmentNullCounts(),
-          frag_meta_reader.getFragmentNullCounts()),
+          [&] { return frag_meta_reader.getFragmentNullCounts(); }),
       frag_meta_reader.getVersion(),
       std::make_pair(
           frag_meta_reader.getTimestampRange()[0],

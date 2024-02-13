@@ -207,7 +207,7 @@ class StrategyBase {
   /* ********************************* */
 
   /** Returns the context resources of the writer. */
-  ContextResources* resources() const;
+  ContextResources& resources() const;
 
   /** Returns `stats_`. */
   stats::Stats* stats() const;

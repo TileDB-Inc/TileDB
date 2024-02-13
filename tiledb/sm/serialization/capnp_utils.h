@@ -159,15 +159,14 @@ inline bool is_aligned(const void* ptr) {
  * Converts a capnproto list of primitives to a vector.
  *
  * @param has_value whether the list actually contains any value.
- * @param list The capnproto list.
+ * @param fGetList a factory function that returns the capnproto list.
  */
 template <class T>
-std::vector<T> capnp_list_to_vector(
-    bool has_value,
-    typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>::Reader list) {
+std::vector<T> capnp_list_to_vector(bool has_value, auto fGetList) {
   if (!has_value) {
     return {};
   }
+  typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>::Reader list{fGetList()};
   return std::vector<T>(list.begin(), list.end());
 }
 
@@ -178,16 +177,16 @@ std::vector<T> capnp_list_to_vector(
  * @tparam TConverted The type of items in the resulting vector.
  * Defaults to T.
  * @param has_value whether the list actually contains any value.
- * @param list The capnproto list.
+ * @param fGetList a factory function that returns the capnproto list.
  */
 template <class T, class TConverted = T>
 std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
-    bool has_value,
-    typename ::capnp::List<
-        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
-        ::capnp::Kind::LIST>::Reader list) {
+    bool has_value, auto fGetList) {
   std::vector<std::vector<TConverted>> result;
   if (has_value) {
+    typename ::capnp::List<
+        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader list{fGetList()};
     result.reserve(list.size());
     for (const auto& t : list) {
       result.emplace_back(t.begin(), t.end());
@@ -204,22 +203,21 @@ std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
  * @tparam TConverted The type of items in the resulting vector.
  * Defaults to T.
  * @param has_value whether the list actually contains any value.
- * @param list The capnproto list.
+ * @param fGetList a factory function that returns the capnproto list.
  * @param size The size of the returned vector.
  */
 template <class T, class TConverted = T>
 std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
-    bool has_value,
-    typename ::capnp::List<
-        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
-        ::capnp::Kind::LIST>::Reader list,
-    uint64_t size) {
-  if (size < list.size()) {
-    throw SerializationStatusException("List contains too few elements");
-  }
+    bool has_value, auto fGetList, uint64_t size) {
   std::vector<std::vector<TConverted>> result(size);
   if (has_value) {
     uint64_t i = 0;
+    typename ::capnp::List<
+        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader list{fGetList()};
+    if (size < list.size()) {
+      throw SerializationStatusException("List contains too few elements");
+    }
     for (const auto& t : list) {
       result[i++] = std::vector<TConverted>(t.begin(), t.end());
     }
