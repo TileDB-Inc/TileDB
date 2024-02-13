@@ -29,7 +29,7 @@ jobs:
     timeout-minutes: 90
     name: Build Docs
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
       - name: 'Print env'
         run: |
           echo "'uname -s' is:"
@@ -42,7 +42,7 @@ jobs:
         shell: bash
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
 
       - name: Install Doxygen
         run: |

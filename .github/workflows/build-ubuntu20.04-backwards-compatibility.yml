@@ -17,14 +17,14 @@ jobs:
     timeout-minutes: 120
     name: Build tiledb_unit
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: 'Print env'
         run: ./scripts/ci/posix/print-env.sh
         shell: bash
 
       # Need this for virtualenv and arrow tests if enabled
-      - uses: actions/setup-python@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.8'
       - run: |
@@ -43,7 +43,7 @@ jobs:
 
       # Save the tiledb_unit binary for use in the next step
       - name: 'Upload Artifact'
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: tiledb_unit
           path: ${{ github.workspace }}/build/tiledb/test/tiledb_unit
@@ -63,10 +63,10 @@ jobs:
     timeout-minutes: 30
     name: ${{ matrix.tiledb_version }}
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
 
       - name: Download a single artifact
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: tiledb_unit
           path: ${{ github.workspace }}/build/tiledb/test/
