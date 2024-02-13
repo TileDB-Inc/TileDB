@@ -443,6 +443,32 @@ void S3::remove_dir(const URI& uri) const {
 
   std::vector<std::string> paths;
   throw_if_not_ok(ls(uri, &paths, ""));
+
+  // Bail early if we don't have anything to delete.
+  if (paths.empty()) {
+    return;
+  }
+
+  throw_if_not_ok(
+      parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+        throw_if_not_ok(remove_object(URI(paths[i])));
+        return Status::Ok();
+      }));
+
+  // Minio changed their delete beahvior when a 0 byte object masks an
+  // underlying object with a matching "directory" prefix. Previously, Minio
+  // would delete anything with the prefix, where as no only the 0 byte object
+  // is deleted. To deal with this, we'll just check if we need to run another
+  // deletion.
+  paths.clear();
+  throw_if_not_ok(ls(uri, &paths, ""));
+
+  // We got everything on the first pass.
+  if (paths.empty()) {
+    return;
+  }
+
+  // Delete the uncovered object prefixes.
   throw_if_not_ok(
       parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
         throw_if_not_ok(remove_object(URI(paths[i])));
