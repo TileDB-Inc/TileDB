@@ -199,7 +199,7 @@ DenseArrayRESTFx::DenseArrayRESTFx()
 }
 
 DenseArrayRESTFx::~DenseArrayRESTFx() {
-  REQUIRE_NOTHROW(tiledb_array_delete(ctx_, array_uri_.c_str()));
+  CHECK(tiledb_array_delete(ctx_, array_uri_.c_str()) == TILEDB_OK);
 }
 
 void DenseArrayRESTFx::create_dense_array_2D(
