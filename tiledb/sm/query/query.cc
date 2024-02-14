@@ -500,7 +500,6 @@ Status Query::finalize() {
           "Error in query finalize; remote global order writes are only "
           "allowed to call submit_and_finalize to submit the last tile"));
     }
-
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 

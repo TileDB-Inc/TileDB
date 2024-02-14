@@ -82,7 +82,7 @@ struct CPPArrayFx {
   }
 
   ~CPPArrayFx() {
-    Array::delete_array(ctx, vfs_test_setup_.array_uri);
+    CHECK_NOTHROW(Array::delete_array(ctx, vfs_test_setup_.array_uri));
   }
 
   test::VFSTestSetup vfs_test_setup_;
@@ -130,11 +130,20 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     cfg["a"] = "1";
     cfg["b"] = "10";
     auto vfs_test_setup1 =
-        tiledb::test::VFSTestSetup("cpp_unit_array2", cfg.ptr().get());
+        tiledb::test::VFSTestSetup("cpp_unit_array", cfg.ptr().get());
     auto ctx1 = vfs_test_setup1.ctx;
     auto array_uri1 = vfs_test_setup1.array_uri;
 
     // Create an array with ctx
+    Domain domain(ctx);
+    auto d1 = Dimension::create<int>(ctx, "d1", {{-100, 100}}, d1_tile);
+    domain.add_dimension(d1);
+    auto a1 = Attribute::create<int>(ctx, "a1");          // (int, 1)
+    ArraySchema schema(ctx, TILEDB_DENSE);
+    schema.set_domain(domain);
+    schema.add_attribute(a1);
+
+    Array::create(array_uri1, schema);
     Array array(ctx1, array_uri1, TILEDB_READ);
 
     // Check that the config values are correct
@@ -153,7 +162,6 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     CHECK((std::string)array.config()["b"] == "5");
 
     array.close();
-    Array::delete_array(ctx1, array_uri1);
   }
 
   SECTION("Read/Write") {
