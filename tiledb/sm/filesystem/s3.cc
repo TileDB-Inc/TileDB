@@ -978,7 +978,34 @@ Status S3::remove_dir(const URI& uri) const {
 
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
+
+  // Bail early if we don't have anything to delete.
+  if (paths.empty()) {
+    return Status::Ok();
+  }
+
   auto status = parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+    RETURN_NOT_OK(remove_object(URI(paths[i])));
+    return Status::Ok();
+  });
+  RETURN_NOT_OK(status);
+
+  // Minio changed their delete behavior when an object masks another object
+  // with the same prefix. Previously, minio would delete any object with
+  // a matching prefix. The new behavior is to only delete the object masking
+  // the "directory" of objects below. To handle this we just run a second
+  // ls to see if we still have paths to remove, and remove them if so.
+
+  paths.clear();
+  RETURN_NOT_OK(ls(uri, &paths, ""));
+
+  // We got everything on the first pass.
+  if (paths.empty()) {
+    return Status::Ok();
+  }
+
+  // Delete the uncovered object prefixes.
+  status = parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
     RETURN_NOT_OK(remove_object(URI(paths[i])));
     return Status::Ok();
   });
