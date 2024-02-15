@@ -42,6 +42,7 @@
 #include <string>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
 
@@ -167,7 +168,9 @@ static FragmentMetadata::GenericTileOffsets generic_tile_offsets_from_capnp(
 
 shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     const shared_ptr<const ArraySchema>& array_schema,
-    const capnp::FragmentMetadata::Reader& frag_meta_reader) {
+    const capnp::FragmentMetadata::Reader& frag_meta_reader,
+    ContextResources* resources,
+    shared_ptr<MemoryTracker> memory_tracker) {
   URI fragment_uri;
   if (frag_meta_reader.hasFragmentUri()) {
     // Reconstruct the fragment uri out of the received fragment name
@@ -219,43 +222,55 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileOffsets(),
           [&] { return frag_meta_reader.getTileOffsets(); },
+          memory_tracker->get_resource(MemoryType::TILE_OFFSETS),
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileVarOffsets(),
           [&] { return frag_meta_reader.getTileVarOffsets(); },
+          memory_tracker->get_resource(MemoryType::TILE_OFFSETS),
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileVarSizes(),
           [&] { return frag_meta_reader.getTileVarSizes(); },
+          memory_tracker->get_resource(MemoryType::TILE_OFFSETS),
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileValidityOffsets(),
           [&] { return frag_meta_reader.getTileValidityOffsets(); },
+          memory_tracker->get_resource(MemoryType::TILE_OFFSETS),
           num_dims_and_attrs),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMinBuffer(),
-          [&] { return frag_meta_reader.getTileMinBuffer(); }),
+          [&] { return frag_meta_reader.getTileMinBuffer(); },
+          memory_tracker->get_resource(MemoryType::TILE_MIN_VALS)),
       utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMinVarBuffer(),
-          [&] { return frag_meta_reader.getTileMinVarBuffer(); }),
+          [&] { return frag_meta_reader.getTileMinVarBuffer(); },
+          memory_tracker->get_resource(MemoryType::TILE_MIN_VALS)),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileMaxBuffer(),
-          [&] { return frag_meta_reader.getTileMaxBuffer(); }),
+          [&] { return frag_meta_reader.getTileMaxBuffer(); },
+          memory_tracker->get_resource(MemoryType::TILE_MAX_VALS)),
       utils::capnp_2d_list_to_vector<uint8_t, char>(
           frag_meta_reader.hasTileMaxVarBuffer(),
-          [&] { return frag_meta_reader.getTileMaxVarBuffer(); }),
+          [&] { return frag_meta_reader.getTileMaxVarBuffer(); },
+          memory_tracker->get_resource(MemoryType::TILE_MAX_VALS)),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasTileSums(),
-          [&] { return frag_meta_reader.getTileSums(); }),
+          [&] { return frag_meta_reader.getTileSums(); },
+          memory_tracker->get_resource(MemoryType::TILE_SUMS)),
       utils::capnp_2d_list_to_vector<uint64_t>(
           frag_meta_reader.hasTileNullCounts(),
-          [&] { return frag_meta_reader.getTileNullCounts(); }),
+          [&] { return frag_meta_reader.getTileNullCounts(); },
+          memory_tracker->get_resource(MemoryType::TILE_NULL_COUNTS)),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMins(),
-          [&] { return frag_meta_reader.getFragmentMins(); }),
+          [&] { return frag_meta_reader.getFragmentMins(); },
+          memory_tracker->get_resource(MemoryType::TILE_MIN_VALS)),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMaxs(),
-          [&] { return frag_meta_reader.getFragmentMaxs(); }),
+          [&] { return frag_meta_reader.getFragmentMaxs(); },
+          memory_tracker->get_resource(MemoryType::TILE_MAX_VALS)),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFragmentSums(),
           [&] { return frag_meta_reader.getFragmentSums(); }),

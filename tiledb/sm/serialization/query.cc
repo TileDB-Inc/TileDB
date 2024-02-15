@@ -2991,7 +2991,8 @@ Status global_write_state_from_capnp(
     write_state->frag_meta_ = fragment_metadata_from_capnp(
         query.array_schema_shared(),
         state_reader.getFragMeta(),
-        &global_writer->resources());
+        &global_writer->resources(),
+        global_writer->resources().create_memory_tracker());
   }
 
   // Deserialize the multipart upload state
@@ -3113,7 +3114,8 @@ Status unordered_write_state_from_capnp(
       unordered_writer->set_frag_meta(fragment_metadata_from_capnp(
           query.array_schema_shared(),
           state_reader.getFragMeta(),
-          &unordered_writer->resources()));
+          &unordered_writer->resources(),
+          unordered_writer->resources().create_memory_tracker()));
     }
   }
 

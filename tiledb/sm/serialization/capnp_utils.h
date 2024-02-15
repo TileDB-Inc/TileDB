@@ -178,18 +178,23 @@ std::vector<T> capnp_list_to_vector(bool has_value, auto fGetList) {
  * Defaults to T.
  * @param has_value whether the list actually contains any value.
  * @param fGetList a factory function that returns the capnproto list.
+ * @param resource the polymorphic memory resource to use.
  */
 template <class T, class TConverted = T>
-std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
-    bool has_value, auto fGetList) {
-  std::vector<std::vector<TConverted>> result;
+tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>>
+capnp_2d_list_to_vector(
+    bool has_value,
+    auto fGetList,
+    tiledb::common::pmr::memory_resource* resource) {
+  tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>> result(
+      resource);
   if (has_value) {
     typename ::capnp::List<
         typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
         ::capnp::Kind::LIST>::Reader list{fGetList()};
     result.reserve(list.size());
     for (const auto& t : list) {
-      result.emplace_back(t.begin(), t.end());
+      result.emplace_back(t.begin(), t.end(), resource);
     }
   }
   return result;
@@ -204,12 +209,18 @@ std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
  * Defaults to T.
  * @param has_value whether the list actually contains any value.
  * @param fGetList a factory function that returns the capnproto list.
+ * @param resource the polymorphic memory resource to use.
  * @param size The size of the returned vector.
  */
 template <class T, class TConverted = T>
-std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
-    bool has_value, auto fGetList, uint64_t size) {
-  std::vector<std::vector<TConverted>> result(size);
+tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>>
+capnp_2d_list_to_vector(
+    bool has_value,
+    auto fGetList,
+    tiledb::common::pmr::memory_resource* resource,
+    uint64_t size) {
+  tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>> result(
+      size, resource);
   if (has_value) {
     uint64_t i = 0;
     typename ::capnp::List<
@@ -219,7 +230,8 @@ std::vector<std::vector<TConverted>> capnp_2d_list_to_vector(
       throw SerializationStatusException("List contains too few elements");
     }
     for (const auto& t : list) {
-      result[i++] = std::vector<TConverted>(t.begin(), t.end());
+      result[i++] =
+          tiledb::common::pmr::vector<TConverted>(t.begin(), t.end(), resource);
     }
   }
   return result;

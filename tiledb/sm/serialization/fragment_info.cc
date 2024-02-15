@@ -229,7 +229,10 @@ single_fragment_info_from_capnp(
         nullopt};
   }
   shared_ptr<FragmentMetadata> meta = fragment_metadata_from_capnp(
-      schema->second, single_frag_info_reader.getMeta());
+      schema->second,
+      single_frag_info_reader.getMeta(),
+      fragment_info->resources(),
+      fragment_info->resources()->create_memory_tracker());
 
   auto expanded_non_empty_domain = meta->non_empty_domain();
   if (meta->dense()) {
