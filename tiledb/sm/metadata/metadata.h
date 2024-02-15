@@ -40,6 +40,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -50,6 +51,7 @@ namespace tiledb::sm {
 
 class Buffer;
 class ConstBuffer;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 
 /**
@@ -87,17 +89,18 @@ class Metadata {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  explicit Metadata();
+  /** No default constructor. */
+  Metadata() = delete;
+
+  Metadata(shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor. */
-  Metadata(const std::map<std::string, MetadataValue>& metadata_map);
+  Metadata(
+      const std::map<std::string, MetadataValue>& metadata_map,
+      shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Copy constructor. */
-  Metadata(const Metadata& rhs);
-
-  /** Copy assignment. */
-  Metadata& operator=(const Metadata& other);
+  DISABLE_COPY_AND_COPY_ASSIGN(Metadata);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
 
   /** Destructor. */
   ~Metadata();
@@ -121,7 +124,8 @@ class Metadata {
    * deleted or overwritten metadata items considering the order.
    */
   static Metadata deserialize(
-      const std::vector<shared_ptr<Tile>>& metadata_tiles);
+      const std::vector<shared_ptr<Tile>>& metadata_tiles,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;
@@ -198,16 +202,13 @@ class Metadata {
    * to this object.
    */
   void set_loaded_metadata_uris(
-      const std::vector<TimestampedURI>& loaded_metadata_uris);
+      const tdb::pmr::vector<TimestampedURI>& loaded_metadata_uris);
 
   /**
    * Returns the URIs of the metadata files that have been loaded
    * to this object.
    */
-  const std::vector<URI>& loaded_metadata_uris() const;
-
-  /** Swaps the contents between the object and the input. */
-  void swap(Metadata* metadata);
+  const tdb::pmr::vector<URI>& loaded_metadata_uris() const;
 
   /**
    * Clears the metadata and assigns the input timestamp to
@@ -233,6 +234,9 @@ class Metadata {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** A map from metadata key to metadata value. */
   std::map<std::string, MetadataValue> metadata_map_;
 
@@ -256,7 +260,7 @@ class Metadata {
    * The URIs of the metadata files that have been loaded to this object.
    * This is needed to know which files to delete upon consolidation.
    */
-  std::vector<URI> loaded_metadata_uris_;
+  tdb::pmr::vector<URI> loaded_metadata_uris_;
 
   /** The URI of the array metadata file. */
   URI uri_;

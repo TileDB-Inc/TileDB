@@ -110,7 +110,8 @@ enum class MemoryType {
   TILE_MAX_VALS,
   TILE_SUMS,
   TILE_NULL_COUNTS,
-  ENUMERATION
+  ENUMERATION,
+  METADATA
 };
 
 /** The type of MemoryTracker. */
