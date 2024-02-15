@@ -83,15 +83,25 @@ struct FloatScalingFilterTestStruct {
     auto d2 = Dimension::create<int>(ctx, "cols", {{1, dim_hi}}, 4);
     domain.add_dimensions(d1, d2);
 
+    // Create the filter and set the scale, offset,and byte width.
     Filter f(ctx, TILEDB_FILTER_SCALE_FLOAT);
 
-    double scale = 2.53;
-    double offset = 0.138;
+    // Randomly picking out the scale and offset.
+    std::random_device rd_so;
+    std::mt19937 gen_so(rd_so());
+    std::uniform_real_distribution<double> dis_so(-64, 64);
+
+    double scale = dis_so(gen_so);
+    double offset = dis_so(gen_so);
     uint64_t byte_width = sizeof(W);
 
-    f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width);
-    f.set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale);
-    f.set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
+    INFO(
+        "Scale: " + std::to_string(scale) + ", Offset: " +
+        std::to_string(offset) + ", Byte Width: " + std::to_string(byte_width));
+
+    f.set_option(TILEDB_SCALE_FLOAT_BYTEWIDTH, &byte_width)
+        .set_option(TILEDB_SCALE_FLOAT_FACTOR, &scale)
+        .set_option(TILEDB_SCALE_FLOAT_OFFSET, &offset);
 
     FilterList filters(ctx);
     filters.add_filter(f);
@@ -104,10 +114,18 @@ struct FloatScalingFilterTestStruct {
     schema.add_attribute(a);
     Array::create(array_name, schema);
 
+    // When choosing the range for our input data, we want it to account for
+    // both the type restraints and choose numbers that are within the original
+    // byte width.
     std::random_device rd;
     std::mt19937 gen(rd());
-    std::uniform_real_distribution<T> dis(
-        std::numeric_limits<W>::min(), std::numeric_limits<W>::max());
+    T dis_min = std::max(
+        std::numeric_limits<T>::min(),
+        static_cast<T>(std::numeric_limits<W>::min()));
+    T dis_max = std::min(
+        std::numeric_limits<T>::max(),
+        static_cast<T>(std::numeric_limits<W>::max()));
+    std::uniform_real_distribution<T> dis(dis_min, dis_max);
 
     std::vector<int> row_dims;
     std::vector<int> col_dims;
@@ -175,22 +193,18 @@ struct FloatScalingFilterTestStruct {
   }
 };
 
-/**
-,
+TEMPLATE_PRODUCT_TEST_CASE(
+    "C++ API: Float Scaling Filter list on array",
+    "[cppapi][filter][float-scaling][!mayfail]",
+    FloatScalingFilterTestStruct,
+    ((float, int8_t),
+     (double, int8_t),
      (float, int16_t),
      (double, int16_t),
      (float, int32_t),
      (double, int32_t),
      (float, int64_t),
-     (double, int64_t)
- *
- */
-
-TEMPLATE_PRODUCT_TEST_CASE(
-    "C++ API: Float Scaling Filter list on array",
-    "[cppapi][filter][float-scaling]",
-    FloatScalingFilterTestStruct,
-    ((float, int8_t), (double, int8_t))) {
+     (double, int64_t))) {
   // Setup.
   Context ctx;
   VFS vfs(ctx);

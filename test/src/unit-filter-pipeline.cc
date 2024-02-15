@@ -61,6 +61,7 @@
 #include "tiledb/stdx/utility/to_underlying.h"
 
 #include <test/support/tdb_catch.h>
+#include <algorithm>
 #include <functional>
 #include <random>
 
@@ -1239,8 +1240,17 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
   }
 }
 
-template <typename FloatingType, typename IntType>
-void testing_float_scaling_filter() {
+enum class FloatScaleTestType : uint8_t {
+  DISTRIBUTION_TEST,
+  ZERO_TEST,
+  DENORM_TEST,
+  NAN_TEST,
+  INF_TEST
+};
+
+template <typename FloatingType, typename IntType, FloatScaleTestType FSTType>
+void testing_float_scaling_filter_helper(
+    std::optional<FloatingType> opt_val = std::nullopt) {
   tiledb::sm::Config config;
 
   // Set up test data
@@ -1266,43 +1276,65 @@ void testing_float_scaling_filter() {
 
   WriterTile tile(constants::format_version, t, cell_size, tile_size);
 
-  std::vector<FloatingType> float_result_vec;
-  double scale = 2.53;
-  double foffset = 0.31589;
+  // When choosing the range for our input data, we want it to account for
+  // the type restraints and choose numbers that are within the original byte
+  // width.
+  std::random_device rd_so;
+  std::mt19937_64 gen_so(rd_so());
+  double dis_min = std::max(
+      static_cast<double>(std::numeric_limits<IntType>::min()),
+      std::numeric_limits<double>::min());
+  double dis_max = std::min(
+      static_cast<double>(std::numeric_limits<IntType>::max()),
+      std::numeric_limits<double>::max());
+  std::uniform_real_distribution<double> dis_so(dis_min, dis_max);
+
+  double scale = dis_so(gen_so);
+  double foffset = dis_so(gen_so);
   uint64_t byte_width = sizeof(IntType);
+  std::vector<FloatingType> float_result_vec;
 
   std::random_device rd;
-  std::mt19937 gen(rd());
-  std::uniform_real_distribution<FloatingType> dis(0.0, 213.0);
+  std::mt19937_64 gen(rd());
+  IntType smallest_val = 1.0f;
+  IntType largest_val = std::numeric_limits<IntType>::max();
+  std::uniform_real_distribution<FloatingType> dis(smallest_val, largest_val);
 
   for (uint64_t i = 0; i < nelts; i++) {
-    FloatingType f = dis(gen);
+    FloatingType f = 0.0f;
+    if constexpr (FSTType == FloatScaleTestType::DISTRIBUTION_TEST) {
+      f = dis(gen);
+    } else {
+      f = opt_val.value();
+    }
     CHECK_NOTHROW(
         tile.write(&f, i * sizeof(FloatingType), sizeof(FloatingType)));
 
-    IntType val = static_cast<IntType>(round(
-        (f - static_cast<FloatingType>(foffset)) /
-        static_cast<FloatingType>(scale)));
+    if constexpr (
+        FSTType != FloatScaleTestType::INF_TEST &&
+        FSTType != FloatScaleTestType::NAN_TEST) {
+      IntType val = static_cast<IntType>(round(
+          (f - static_cast<FloatingType>(foffset)) /
+          static_cast<FloatingType>(scale)));
 
-    FloatingType val_float = static_cast<FloatingType>(
-        scale * static_cast<FloatingType>(val) + foffset);
-    float_result_vec.push_back(val_float);
+      FloatingType val_float = static_cast<FloatingType>(
+          scale * static_cast<FloatingType>(val) + foffset);
+      float_result_vec.push_back(val_float);
+    }
   }
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
-  pipeline.add_filter(FloatScalingFilter(t));
-  CHECK(pipeline.get_filter<FloatScalingFilter>()
-            ->set_option(FilterOption::SCALE_FLOAT_BYTEWIDTH, &byte_width)
-            .ok());
-  CHECK(pipeline.get_filter<FloatScalingFilter>()
-            ->set_option(FilterOption::SCALE_FLOAT_FACTOR, &scale)
-            .ok());
-  CHECK(pipeline.get_filter<FloatScalingFilter>()
-            ->set_option(FilterOption::SCALE_FLOAT_OFFSET, &foffset)
-            .ok());
+  pipeline.add_filter(FloatScalingFilter(byte_width, scale, foffset, t));
+  bool run_forward_result =
+      pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok();
 
-  CHECK(pipeline.run_forward(&test::g_helper_stats, &tile, nullptr, &tp).ok());
+  if constexpr (
+      FSTType == FloatScaleTestType::INF_TEST ||
+      FSTType == FloatScaleTestType::NAN_TEST) {
+    CHECK(!run_forward_result);
+    return;
+  }
 
   // Check new size and number of chunks
   CHECK(tile.size() == 0);
@@ -1325,8 +1357,126 @@ TEMPLATE_TEST_CASE(
     int16_t,
     int32_t,
     int64_t) {
-  testing_float_scaling_filter<float, TestType>();
-  testing_float_scaling_filter<double, TestType>();
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::DISTRIBUTION_TEST>();
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::DISTRIBUTION_TEST>();
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, zero array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  // Positive zero
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::ZERO_TEST>(0.0f);
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::ZERO_TEST>(0.0f);
+
+  // Negative zero
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::ZERO_TEST>(-0.0f);
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::ZERO_TEST>(-0.0f);
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, NaN array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::NAN_TEST>(nanf(""));
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::NAN_TEST>(nan(""));
+
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::NAN_TEST>(-1.0f * nanf(""));
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::NAN_TEST>(-1.0f * nan(""));
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, infinity array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::INF_TEST>(std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::INF_TEST>(std::numeric_limits<double>::infinity());
+
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::INF_TEST>(
+      -1.0f * std::numeric_limits<float>::infinity());
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::INF_TEST>(
+      -1.0f * std::numeric_limits<double>::infinity());
+}
+
+TEMPLATE_TEST_CASE(
+    "Filter: Test float scaling, denormalized array",
+    "[filter][float-scaling]",
+    int8_t,
+    int16_t,
+    int32_t,
+    int64_t) {
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::DENORM_TEST>(
+      std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::DENORM_TEST>(
+      std::numeric_limits<double>::denorm_min());
+
+  testing_float_scaling_filter_helper<
+      float,
+      TestType,
+      FloatScaleTestType::DENORM_TEST>(
+      -1.0f * std::numeric_limits<float>::denorm_min());
+  testing_float_scaling_filter_helper<
+      double,
+      TestType,
+      FloatScaleTestType::DENORM_TEST>(
+      -1.0f * std::numeric_limits<double>::denorm_min());
 }
 
 /*
