@@ -35,6 +35,7 @@
 
 #include <test/support/tdb_catch.h>
 #include <algorithm>
+#include <numeric>
 #include <optional>
 #include "tiledb/sm/tile/tile.h"
 
