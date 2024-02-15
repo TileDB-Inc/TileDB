@@ -33,12 +33,11 @@
 #ifndef TILEDB_CONTEXT_RESOURCES_H
 #define TILEDB_CONTEXT_RESOURCES_H
 
-#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;
 
@@ -112,6 +111,10 @@ class ContextResources {
     return rest_client_;
   }
 
+  [[nodiscard]] inline ConsistencyController& consistency_controller() const {
+    return consistency_controller_;
+  }
+
   /**
    * Create a new MemoryTracker
    *
@@ -153,6 +156,9 @@ class ContextResources {
 
   /** The rest client (may be null if none was configured). */
   shared_ptr<RestClient> rest_client_;
+
+  /** The array consistency controller. */
+  mutable ConsistencyController consistency_controller_;
 };
 
 }  // namespace tiledb::sm

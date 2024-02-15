@@ -72,14 +72,16 @@ class ArrayException : public StatusException {
 
 void ensure_supported_schema_version_for_read(format_version_t version);
 
-ConsistencyController& controller() {
-  static ConsistencyController controller;
-  return controller;
-}
-
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
+
+Array::Array(const URI& array_uri, StorageManager* storage_manager)
+    : Array(
+          array_uri,
+          storage_manager,
+          storage_manager->resources().consistency_controller()) {
+}
 
 Array::Array(
     const URI& array_uri,
@@ -1666,7 +1668,7 @@ void Array::ensure_array_is_valid_for_delete(const URI& uri) {
   }
 
   // Check that array is open
-  if (!is_open() && !controller().is_open(uri)) {
+  if (!is_open() && !consistency_controller_.is_open(uri)) {
     throw ArrayException("[ensure_array_is_valid_for_delete] Array is closed");
   }
 

@@ -255,7 +255,7 @@ class OpenedArray {
 /**
  * Free function that returns a reference to the ConsistencyController object.
  */
-ConsistencyController& controller();
+ConsistencyController& controller(ContextResources& resources);
 
 /**
  * An array object to be opened for reads/writes. An ``Array`` instance
@@ -282,10 +282,13 @@ class Array {
   /* ********************************* */
 
   /** Constructor. */
+  Array(const URI& array_uri, StorageManager* storage_manager);
+
+  /** Constructor. */
   Array(
       const URI& array_uri,
       StorageManager* storage_manager,
-      ConsistencyController& cc = controller());
+      ConsistencyController& cc);
 
   /** Destructor. */
   ~Array() = default;

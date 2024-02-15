@@ -33,6 +33,7 @@
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/stats/global_stats.h"
 
 using namespace tiledb::common;
 

@@ -33,6 +33,8 @@
 #include <test/support/tdb_catch.h>
 #include <iostream>
 
+#include "tiledb/common/logger.h"
+
 #include "unit_consistency.h"
 
 using namespace tiledb;

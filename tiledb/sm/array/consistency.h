@@ -33,11 +33,8 @@
 #ifndef TILEDB_CONSISTENCY_H
 #define TILEDB_CONSISTENCY_H
 
-#include <iterator>
 #include <map>
 
-#include "tiledb/common/common.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/uri.h"
 

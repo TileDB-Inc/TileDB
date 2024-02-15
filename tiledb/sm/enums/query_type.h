@@ -34,7 +34,7 @@
 #ifndef TILEDB_QUERY_TYPE_H
 #define TILEDB_QUERY_TYPE_H
 
-#include <cassert>
+#include "tiledb/common/exception/status.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 
@@ -84,7 +84,7 @@ inline Status query_type_enum(
   else if (query_type_str == constants::query_type_modify_exclusive_str)
     *query_type = QueryType::MODIFY_EXCLUSIVE;
   else {
-    return Status_Error("Invalid QueryType " + query_type_str);
+    return tiledb::common::Status_Error("Invalid QueryType " + query_type_str);
   }
   return Status::Ok();
 }
