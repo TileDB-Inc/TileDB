@@ -18,7 +18,6 @@
 * Fix consolidation plan to print relative paths in output. [#4604](https://github.com/TileDB-Inc/TileDB/pull/4604)
 * Fix traversal limit in array deserialization. [#4606](https://github.com/TileDB-Inc/TileDB/pull/4606)
 * Add function random_label to utilize PRNG for random string generation. [#4564](https://github.com/TileDB-Inc/TileDB/pull/4564)
-* Remove uuid in favor of random_label. [#4589](https://github.com/TileDB-Inc/TileDB/pull/4589)
 * Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
 
 ## Defects removed
@@ -43,6 +42,7 @@
 * Add packaging tests into linux and mac CI pipelines. [#4567](https://github.com/TileDB-Inc/TileDB/pull/4567)
 * Add vcpkg triplets for Address Sanitizer. [#4515](https://github.com/TileDB-Inc/TileDB/pull/4515)
 * Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+* Fix importing TileDB in CMake versions prior to 3.18. [#4671](https://github.com/TileDB-Inc/TileDB/pull/4671)
 
 # TileDB v2.19.1 Release Notes
 
