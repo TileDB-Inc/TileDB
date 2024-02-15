@@ -419,6 +419,9 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
  */
 class RangeSetAndSuperset {
  public:
+  /** Friend Subarray for calling `add_range_unrestricted` */
+  friend class Subarray;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -453,7 +456,7 @@ class RangeSetAndSuperset {
   RangeSetAndSuperset(
       Datatype datatype,
       const Range& superset,
-      std::vector<Range> subset,
+      std::vector<Range>&& subset,
       bool coalesce_ranges);
 
   /** Destructor. */
@@ -483,16 +486,6 @@ class RangeSetAndSuperset {
    **/
   tuple<Status, optional<std::string>> add_range(
       Range& range, const bool read_range_oob_error = true);
-
-  /**
-   * Adds a range to the range manager without performing any checkes.
-   *
-   * If the ranges are currently implicitly initialized, then they will be
-   * cleared before the new range is added.
-   *
-   * @param range The range to add.
-   */
-  Status add_range_unrestricted(const Range& range);
 
   /**
    * Removes all ranges.
@@ -559,6 +552,10 @@ class RangeSetAndSuperset {
   void sort_and_merge_ranges(ThreadPool* const compute_tp, bool merge = false);
 
  private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
   /** Pointer to typed implementation details. */
   shared_ptr<detail::RangeSetAndSupersetImpl> impl_ = nullptr;
 
@@ -571,6 +568,20 @@ class RangeSetAndSuperset {
 
   /** Stored ranges. */
   std::vector<Range> ranges_{};
+
+  /* ********************************* */
+  /*          PRIVATE METHODS          */
+  /* ********************************* */
+
+  /**
+   * Adds a range to the range manager without performing any checkes.
+   *
+   * If the ranges are currently implicitly initialized, then they will be
+   * cleared before the new range is added.
+   *
+   * @param range The range to add.
+   */
+  Status add_range_unrestricted(const Range& range);
 };
 
 }  // namespace tiledb::sm

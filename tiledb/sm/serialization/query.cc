@@ -271,33 +271,35 @@ Subarray subarray_from_capnp(
   auto ranges_reader = reader.getRanges();
 
   uint32_t dim_num = ranges_reader.size();
-  std::vector<RangeSetAndSuperset> range_subset(dim_num);
+  std::vector<RangeSetAndSuperset> range_subset;
+  range_subset.reserve(dim_num);
   std::vector<bool> is_default(dim_num, false);
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
-    Datatype type = Datatype::UINT8;
-    throw_if_not_ok(datatype_enum(range_reader.getType(), &type));
+    Datatype type = datatype_enum(range_reader.getType());
     auto dim = array->array_schema_latest().dimension_ptr(i);
 
-    bool implicitly_initialized = range_reader.getHasDefaultRange();
-    range_subset[i] = RangeSetAndSuperset(
-        dim->type(), dim->domain(), implicitly_initialized, coalesce_ranges);
-    is_default[i] = implicitly_initialized;
-    if (range_reader.hasBufferSizes()) {
-      auto ranges = range_buffers_from_capnp(range_reader);
+    is_default[i] = range_reader.getHasDefaultRange();
+    if (is_default[i]) {
       // If the range is implicitly initialized, the RangeSetAndSuperset
       // constructor will initialize the ranges to the domain.
-      if (!implicitly_initialized) {
-        // Add custom ranges, clearing any implicit ranges previously set.
-        range_subset[i] = RangeSetAndSuperset(
-            dim->type(), dim->domain(), ranges, coalesce_ranges);
-      }
+      range_subset.emplace_back(
+          type, dim->domain(), is_default[i], coalesce_ranges);
     } else {
-      // Handle 1.7 style ranges where there is a single range with no sizes
-      auto data = range_reader.getBuffer();
-      auto data_ptr = data.asBytes();
-      Range range(data_ptr.begin(), data.size());
-      throw_if_not_ok(range_subset[i].add_range_unrestricted(range));
+      std::vector<Range> ranges;
+      if (range_reader.hasBufferSizes()) {
+        ranges = range_buffers_from_capnp(range_reader);
+        // Add custom ranges, clearing any implicit ranges previously set.
+        range_subset.emplace_back(
+            type, dim->domain(), std::move(ranges), coalesce_ranges);
+      } else {
+        // Handle 1.7 style ranges where there is a single range with no sizes
+        auto data = range_reader.getBuffer();
+        auto data_ptr = data.asBytes();
+        ranges.emplace_back(data_ptr.begin(), data.size());
+        range_subset.emplace_back(
+            type, dim->domain(), std::move(ranges), coalesce_ranges);
+      }
     }
   }
 

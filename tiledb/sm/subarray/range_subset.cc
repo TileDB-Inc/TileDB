@@ -135,10 +135,11 @@ RangeSetAndSuperset::RangeSetAndSuperset(
 RangeSetAndSuperset::RangeSetAndSuperset(
     Datatype datatype,
     const Range& superset,
-    std::vector<Range> subset,
+    std::vector<Range>&& subset,
     bool coalesce_ranges)
-    : RangeSetAndSuperset(datatype, superset, false, coalesce_ranges) {
-  ranges_ = std::move(subset);
+    : impl_(range_subset_internals(datatype, superset, coalesce_ranges))
+    , is_implicitly_initialized_(false)
+    , ranges_(subset) {
 }
 
 void RangeSetAndSuperset::sort_and_merge_ranges(
@@ -171,19 +172,19 @@ tuple<Status, optional<std::string>> RangeSetAndSuperset::add_range(
   }
 }
 
+void RangeSetAndSuperset::check_oob() {
+  for (auto& range : ranges_) {
+    impl_->check_range_is_valid(range);
+    throw_if_not_ok(impl_->check_range_is_subset(range));
+  }
+}
+
 Status RangeSetAndSuperset::add_range_unrestricted(const Range& range) {
   if (is_implicitly_initialized_) {
     ranges_.clear();
     is_implicitly_initialized_ = false;
   }
   return impl_->add_range(ranges_, range);
-}
-
-void RangeSetAndSuperset::check_oob() {
-  for (auto& range : ranges_) {
-    impl_->check_range_is_valid(range);
-    throw_if_not_ok(impl_->check_range_is_subset(range));
-  }
 }
 
 }  // namespace tiledb::sm
