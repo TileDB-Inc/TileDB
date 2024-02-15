@@ -103,6 +103,7 @@ namespace sm {
 
 //** The type of memory to track. */
 enum class MemoryType {
+  RANGE,
   RTREE,
   FOOTER,
   TILE_OFFSETS,

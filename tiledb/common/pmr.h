@@ -86,6 +86,7 @@ class vector : public pmr_vector<Tp> {
   using reverse_iterator = typename pmr_vector<Tp>::reverse_iterator;
   using const_reverse_iterator =
       typename pmr_vector<Tp>::const_reverse_iterator;
+  using propagate_on_container_swap = std::true_type;
 
   // Delete all default constructors because they don't require an allocator
   constexpr vector() noexcept(noexcept(allocator_type())) = delete;

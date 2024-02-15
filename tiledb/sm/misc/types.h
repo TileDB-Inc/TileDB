@@ -45,7 +45,7 @@ namespace tiledb::sm {
 /* ********************************* */
 
 /** An N-dimensional range, consisting of a vector of 1D ranges. */
-using NDRange = std::vector<Range>;
+using NDRange = tdb::pmr::vector<Range>;
 
 /** An untyped value, barely more than raw storage. This class is only
  * transitional. All uses should be rewritten to use ordinary types. Consider

@@ -27,12 +27,30 @@
  */
 
 #include "tiledb/type/range/range.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::type {
+
+Range::Range(std::shared_ptr<MemoryTracker> memory_tracker, size_t size)
+    : memory_tracker_(memory_tracker)
+    , range_(size, memory_tracker_->get_resource(sm::MemoryType::RANGE)) {
+}
+
+Range::Range(std::shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , range_{memory_tracker_->get_resource(sm::MemoryType::RANGE)} {
+}
+
+void swap(Range& e, Range& b) {
+  b.range_.swap(e.range_);
+  std::swap(b.range_start_size_, e.range_start_size_);
+  std::swap(b.var_size_, e.var_size_);
+  std::swap(b.partition_depth_, e.partition_depth_);
+}
 
 std::string range_str(const Range& range, const tiledb::sm::Datatype type) {
   if (range.empty())

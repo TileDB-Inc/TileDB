@@ -77,7 +77,7 @@ class Range {
    *   lower limit: range_start_size_
    *   upper limit: range_size() - range_start_size_
    */
-  std::vector<uint8_t> range_;
+  tdb::pmr::vector<uint8_t> range_;
 
   /**
    * The byte size of the lower limit of the range. Applicable only to variable
@@ -113,17 +113,13 @@ class Range {
    *
    * @param size Size of the storage array in bytes
    */
-  explicit Range(std::shared_ptr<MemoryTracker> memory_tracker, size_t size)
-      : memory_tracker_(memory_tracker)
-      , range_(size) {
-  }
+  explicit Range(std::shared_ptr<MemoryTracker> memory_tracker, size_t size);
 
  public:
+  friend void swap(Range& a, Range& b);
+
   /** Constructor. */
-  Range(std::shared_ptr<MemoryTracker> memory_tracker)
-      : memory_tracker_(memory_tracker)
-      , range_{} {
-  }
+  explicit Range(std::shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructs a range and sets fixed data. */
   Range(
@@ -152,6 +148,12 @@ class Range {
       uint64_t type_size)
       : Range(memory_tracker) {
     set_range_fixed(start, end, type_size);
+  }
+
+  Range(
+      std::shared_ptr<MemoryTracker> memory_tracker,
+      const pmr::vector<Range>&)
+      : Range(memory_tracker) {
   }
 
   /** Constructs a range and sets variable data. */
@@ -190,20 +192,11 @@ class Range {
     d[1] = second;
   }
 
-  /** Copy constructor. */
-  Range(const Range&) = default;
-
-  /** Move constructor. */
-  Range(Range&&) = default;
-
   /** Destructor. */
   ~Range() = default;
 
-  /** Copy-assign operator.*/
-  Range& operator=(const Range&) = default;
-
-  /** Move-assign operator. */
-  Range& operator=(Range&&) = default;
+  DISABLE_COPY_AND_COPY_ASSIGN(Range);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Range);
 
   /** Sets a fixed-sized range serialized in `r`. */
   void set_range(const void* r, uint64_t r_size) {
@@ -284,6 +277,11 @@ class Range {
 
   /** memory_tracker_ accessor */
   inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
+  /** memory_tracker_ accessor */
+  inline shared_ptr<MemoryTracker> memory_tracker() const {
     return memory_tracker_;
   }
 

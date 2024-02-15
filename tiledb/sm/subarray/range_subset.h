@@ -54,7 +54,7 @@ namespace detail {
 /** Default add strategy: simple add. */
 template <typename T, bool Coalesce, typename Enable = T>
 struct AddStrategy {
-  static Status add_range(std::vector<Range>& ranges, const Range& new_range) {
+  static Status add_range(tdb::pmr::vector<Range>& ranges, const Range& new_range) {
     ranges.emplace_back(new_range);
     return Status::Ok();
   };
@@ -66,7 +66,7 @@ struct AddStrategy<
     T,
     true,
     typename std::enable_if<std::is_integral<T>::value, T>::type> {
-  static Status add_range(std::vector<Range>& ranges, const Range& new_range) {
+  static Status add_range(tdb::pmr::vector<Range>& ranges, const Range& new_range) {
     if (ranges.empty()) {
       ranges.emplace_back(new_range);
       return Status::Ok();
@@ -96,7 +96,7 @@ struct AddStrategy<
  */
 template <typename T, typename Enable = T>
 struct SortStrategy {
-  static void sort(ThreadPool* const, std::vector<Range>&);
+  static void sort(ThreadPool* const, tdb::pmr::vector<Range>&);
 };
 
 /**
@@ -108,7 +108,7 @@ template <typename T>
 struct SortStrategy<
     T,
     typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
-  static void sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
+  static void sort(ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) {
     parallel_sort(
         compute_tp,
         ranges.begin(),
@@ -129,7 +129,8 @@ struct SortStrategy<
  */
 template <>
 struct SortStrategy<std::string, std::string> {
-  static void sort(ThreadPool* const compute_tp, std::vector<Range>& ranges) {
+  static void sort(ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) {
+  // TODO FIXME
     parallel_sort(
         compute_tp,
         ranges.begin(),
@@ -144,7 +145,7 @@ struct SortStrategy<std::string, std::string> {
 /** Default merge behavior: merging is not enabled. */
 template <typename T, typename Enable = T>
 struct MergeStrategy {
-  static void merge_sorted_ranges(std::vector<Range>&);
+  static void merge_sorted_ranges(tdb::pmr::vector<Range>&);
 };
 
 /** Merge algorithm for numeric-type ranges. */
@@ -152,7 +153,7 @@ template <typename T>
 struct MergeStrategy<
     T,
     typename std::enable_if<std::is_arithmetic<T>::value, T>::type> {
-  static void merge_sorted_ranges(std::vector<Range>& ranges) {
+  static void merge_sorted_ranges(tdb::pmr::vector<Range>& ranges) {
     auto head = ranges.begin();
     size_t merged_cells = 0;
 
@@ -173,20 +174,20 @@ struct MergeStrategy<
         merged_cells++;
       } else {
         head++;
-        std::swap(*head, *tail);
+        swap(*head, *tail);
       }
     }
 
     // Resize
     ranges.resize(
-        ranges.size() - merged_cells, ranges.front().memory_tracker());
+        ranges.size() - merged_cells, Range(ranges.front().memory_tracker()));
   };
 };
 
 /** Merge algorithm for string-ASCII-type ranges. */
 template <>
 struct MergeStrategy<std::string, std::string> {
-  static void merge_sorted_ranges(std::vector<Range>& ranges) {
+  static void merge_sorted_ranges(tdb::pmr::vector<Range>& ranges) {
     auto head = ranges.begin();
     size_t merged_cells = 0;
 
@@ -203,13 +204,13 @@ struct MergeStrategy<std::string, std::string> {
         merged_cells++;
       } else {
         head++;
-        std::swap(*head, *tail);
+        swap(*head, *tail);
       }
     }
 
     // Resize
     ranges.resize(
-        ranges.size() - merged_cells, ranges.front().memory_tracker());
+        ranges.size() - merged_cells, Range(ranges.front().memory_tracker()));
   };
 };
 
@@ -231,7 +232,7 @@ class RangeSetAndSupersetImpl {
    * @param new_range The range to add.
    */
   virtual Status add_range(
-      std::vector<Range>& ranges, const Range& range) const = 0;
+      tdb::pmr::vector<Range>& ranges, const Range& range) const = 0;
 
   /**
    * Performs correctness checks for a valid range.
@@ -265,24 +266,33 @@ class RangeSetAndSupersetImpl {
    * @param compute_tp The compute thread pool.
    */
   virtual void sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) const = 0;
+      ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) const = 0;
 
   /**
    * Merges sorted ranges in the range manager.
    *
    * @param ranges The sorted ranges to be merged.
    */
-  virtual void merge_ranges(std::vector<Range>& ranges) const = 0;
+  virtual void merge_ranges(tdb::pmr::vector<Range>& ranges) const = 0;
 };
 
 template <typename T, bool CoalesceAdds>
 class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
  public:
-  TypedRangeSetAndSupersetImpl(const Range& superset)
-      : superset_(superset){};
+  /** Deleted default constructor. */
+  TypedRangeSetAndSupersetImpl() = delete;
+
+  explicit TypedRangeSetAndSupersetImpl(const Range& superset)
+      : superset_(superset.memory_tracker(), superset.data(), superset.size()){};
+
+  ~TypedRangeSetAndSupersetImpl() = default;
+
+  // TODO: Can we enable since Range encapsulates tdb::pmr::vector?
+  DISABLE_COPY_AND_COPY_ASSIGN(TypedRangeSetAndSupersetImpl);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TypedRangeSetAndSupersetImpl);
 
   Status add_range(
-      std::vector<Range>& ranges, const Range& new_range) const override {
+      tdb::pmr::vector<Range>& ranges, const Range& new_range) const override {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
   }
 
@@ -311,11 +321,11 @@ class TypedRangeSetAndSupersetImpl : public RangeSetAndSupersetImpl {
   }
 
   void sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+      ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) const override {
     SortStrategy<T>::sort(compute_tp, ranges);
   }
 
-  void merge_ranges(std::vector<Range>& ranges) const override {
+  void merge_ranges(tdb::pmr::vector<Range>& ranges) const override {
     MergeStrategy<T>::merge_sorted_ranges(ranges);
   }
 
@@ -330,7 +340,7 @@ class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
   TypedRangeSetAndFullsetImpl() = default;
 
   Status add_range(
-      std::vector<Range>& ranges, const Range& new_range) const override {
+      tdb::pmr::vector<Range>& ranges, const Range& new_range) const override {
     return AddStrategy<T, CoalesceAdds>::add_range(ranges, new_range);
   }
 
@@ -349,11 +359,11 @@ class TypedRangeSetAndFullsetImpl : public RangeSetAndSupersetImpl {
   }
 
   void sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+      ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) const override {
     SortStrategy<T>::sort(compute_tp, ranges);
   }
 
-  void merge_ranges(std::vector<Range>& ranges) const override {
+  void merge_ranges(tdb::pmr::vector<Range>& ranges) const override {
     MergeStrategy<T>::merge_sorted_ranges(ranges);
   }
 };
@@ -369,7 +379,7 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
   TypedRangeSetAndFullsetImpl() = default;
 
   Status add_range(
-      std::vector<Range>& ranges, const Range& new_range) const override {
+      tdb::pmr::vector<Range>& ranges, const Range& new_range) const override {
     return AddStrategy<std::string, CoalesceAdds>::add_range(ranges, new_range);
   }
 
@@ -388,11 +398,11 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
   }
 
   void sort_ranges(
-      ThreadPool* const compute_tp, std::vector<Range>& ranges) const override {
+      ThreadPool* const compute_tp, tdb::pmr::vector<Range>& ranges) const override {
     SortStrategy<std::string>::sort(compute_tp, ranges);
   }
 
-  void merge_ranges(std::vector<Range>& ranges) const override {
+  void merge_ranges(tdb::pmr::vector<Range>& ranges) const override {
     MergeStrategy<std::string>::merge_sorted_ranges(ranges);
   }
 };
@@ -425,8 +435,8 @@ class RangeSetAndSuperset {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  RangeSetAndSuperset() = default;
+  /** Deleted default constructor. */
+  RangeSetAndSuperset() = delete;
 
   /** General constructor
    *
@@ -444,6 +454,9 @@ class RangeSetAndSuperset {
 
   /** Destructor. */
   ~RangeSetAndSuperset() = default;
+
+  DISABLE_COPY_AND_COPY_ASSIGN(RangeSetAndSuperset);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(RangeSetAndSuperset);
 
   /**
    * Access specified element.
@@ -491,7 +504,7 @@ class RangeSetAndSuperset {
   }
 
   /** Returns a const reference to the stored ranges. */
-  inline const std::vector<Range>& ranges() const {
+  inline const tdb::pmr::vector<Range>& ranges() const {
     return ranges_;
   };
 
@@ -556,7 +569,7 @@ class RangeSetAndSuperset {
   bool is_implicitly_initialized_ = true;
 
   /** Stored ranges. */
-  std::vector<Range> ranges_{};
+  tdb::pmr::vector<Range> ranges_;
 };
 
 }  // namespace tiledb::sm

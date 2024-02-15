@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/subarray/range_subset.h"
+#include "tiledb/common/memory_tracker.h"
 
 #include <iostream>
 

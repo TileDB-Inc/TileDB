@@ -97,14 +97,16 @@ Dimension::Dimension(
 }
 
 Dimension::Dimension(
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::string& name,
     Datatype type,
     uint32_t cell_val_num,
     const Range& domain,
     const FilterPipeline& filter_pipeline,
     const ByteVecValue& tile_extent)
-    : cell_val_num_(cell_val_num)
-    , domain_(domain)
+    : memory_tracker_(memory_tracker)
+    , cell_val_num_(cell_val_num)
+    , domain_(memory_tracker_, domain.data(), domain.size())
     , filters_(filter_pipeline)
     , name_(name)
     , tile_extent_(tile_extent)
@@ -200,10 +202,7 @@ shared_ptr<Dimension> Dimension::deserialize(
   }
   Range domain(memory_tracker);
   if (domain_size != 0) {
-    domain = Range(
-        memory_tracker,
-        deserializer.get_ptr<uint8_t>(domain_size),
-        domain_size);
+    domain.set_range(deserializer.get_ptr<uint8_t>(domain_size), domain_size);
   }
 
   ByteVecValue tile_extent;
@@ -217,6 +216,7 @@ shared_ptr<Dimension> Dimension::deserialize(
 
   return tiledb::common::make_shared<Dimension>(
       HERE(),
+      memory_tracker,
       name,
       datatype,
       cell_val_num,
@@ -325,7 +325,7 @@ Range Dimension::compute_mbr(
   for (uint64_t c = 1; c < cell_num; ++c)
     expand_range_v<T>(&data[c], &mbr);
 
-  return mbr;
+  return {memory_tracker, mbr.data(), mbr.size()};
 }
 
 Range Dimension::compute_mbr(const WriterTile& tile) const {
@@ -359,7 +359,7 @@ Range Dimension::compute_mbr_var<char>(
     expand_range_var_v(&d_val[d_off[c]], size, &mbr);
   }
 
-  return mbr;
+  return {memory_tracker, mbr.data(), mbr.size()};
 }
 
 Range Dimension::compute_mbr_var(
@@ -1335,14 +1335,14 @@ Status Dimension::set_domain(const Range& domain) {
   if (domain.empty())
     return Status::Ok();
 
-  domain_ = domain;
+  domain_.set_range(domain.data(), domain.size());
   RETURN_NOT_OK_ELSE(check_domain(), domain_.clear());
 
   return Status::Ok();
 }
 
 Status Dimension::set_domain_unsafe(const void* domain) {
-  domain_ = Range(memory_tracker_, domain, 2 * coord_size());
+  domain_.set_range(domain, 2 * coord_size());
 
   return Status::Ok();
 }

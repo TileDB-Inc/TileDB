@@ -106,6 +106,7 @@ class Dimension {
    * @param tile_extent The tile extent of the dimension.
    */
   Dimension(
+      shared_ptr<MemoryTracker> memory_tracker,
       const std::string& name,
       Datatype type,
       uint32_t cell_val_num,

@@ -351,11 +351,15 @@ const Range& Domain::domain(unsigned i) const {
 
 NDRange Domain::domain() const {
   // TODO: s/nullptr/MemoryTracker?
-  NDRange ret(dim_num_, {nullptr});
-  for (unsigned d = 0; d < dim_num_; ++d)
-    ret[d] = dimension_ptrs_[d]->domain();
+  NDRange ret(dimension_ptrs_[0]->domain().memory_tracker()->get_resource(
+      MemoryType::RANGE));
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    const auto& domain = dimension_ptrs_[d]->domain();
+    ret.emplace_back(domain.memory_tracker(), domain.data(), domain.size());
+    ret[d].set_range(domain.data(), domain.size());
+  }
 
-  return ret;
+  return NDRange(ret, nullptr);
 }
 
 const Dimension* Domain::dimension_ptr(const std::string& name) const {
@@ -388,6 +392,7 @@ void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   // Assign r1 to r2 if r2 is empty
   if (r2->empty()) {
     *r2 = r1;
+    r2->assign(r1.cbegin(), r1.cend());
     return;
   }
 

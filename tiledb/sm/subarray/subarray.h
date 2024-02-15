@@ -1074,7 +1074,7 @@ class Subarray {
    * Returns the `Range` vector for the given dimension index.
    * @note Intended for serialization only
    */
-  inline const std::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
+  inline const tdb::pmr::vector<Range>& ranges_for_dim(uint32_t dim_idx) const {
     return range_subset_[dim_idx].ranges();
   }
 
@@ -1380,7 +1380,7 @@ class Subarray {
     LabelRangeSubset(
         const std::string& name, Datatype type, bool coalesce_ranges = true);
 
-    inline const std::vector<Range>& get_ranges() const {
+    inline const tdb::pmr::vector<Range>& get_ranges() const {
       return ranges_.ranges();
     }
 
