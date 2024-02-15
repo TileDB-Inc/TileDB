@@ -784,7 +784,7 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  inline shared_ptr<MemoryTracker> memory_tracker() {
+  inline shared_ptr<MemoryTracker> memory_tracker() const {
     return memory_tracker_;
   }
 

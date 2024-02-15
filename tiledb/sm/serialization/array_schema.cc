@@ -1537,7 +1537,7 @@ Status nonempty_domain_serialize(
     ::capnp::MallocMessageBuilder message;
     auto builder = message.initRoot<capnp::NonEmptyDomainList>();
 
-    RETURN_NOT_OK(utils::serialize_non_empty_domain(builder, array));
+    utils::serialize_non_empty_domain(builder, array);
 
     // Copy to buffer
     serialized_buffer->reset_size();
@@ -1599,7 +1599,7 @@ Status nonempty_domain_deserialize(
         auto reader = builder.asReader();
 
         // Deserialize
-        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        utils::deserialize_non_empty_domain(reader, array);
         break;
       }
       case SerializationType::CAPNP: {
@@ -1611,7 +1611,7 @@ Status nonempty_domain_deserialize(
         auto reader = msg_reader.getRoot<capnp::NonEmptyDomainList>();
 
         // Deserialize
-        RETURN_NOT_OK(utils::deserialize_non_empty_domain(reader, array));
+        utils::deserialize_non_empty_domain(reader, array);
         break;
       }
       default: {

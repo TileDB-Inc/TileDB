@@ -227,7 +227,7 @@ bool ReaderBase::need_timestamped_conditions() {
       for (auto& delete_and_update_condition : delete_and_update_conditions_) {
         auto delete_timestamp =
             delete_and_update_condition.condition_timestamp();
-        auto& frag_timestamps = fragment_metadata_[i]->timestamp_range();
+        auto frag_timestamps = fragment_metadata_[i]->timestamp_range();
         if (delete_timestamp >= frag_timestamps.first &&
             delete_timestamp <= frag_timestamps.second) {
           make_timestamped_conditions = true;

@@ -37,6 +37,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query_buffer.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 namespace tiledb {
 namespace sm {

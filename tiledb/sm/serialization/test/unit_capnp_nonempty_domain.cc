@@ -55,14 +55,12 @@ TEST_CASE(
   ::capnp::MallocMessageBuilder message;
   tiledb::sm::serialization::capnp::NonEmptyDomainList::Builder builder =
       message.initRoot<tiledb::sm::serialization::capnp::NonEmptyDomainList>();
-  st = tiledb::sm::serialization::utils::serialize_non_empty_domain_rv(
+  tiledb::sm::serialization::utils::serialize_non_empty_domain_rv(
       builder, nd_list, 1);
-  REQUIRE(st.ok());
 
-  auto&& [status, clone] =
+  auto clone =
       tiledb::sm::serialization::utils::deserialize_non_empty_domain_rv(
           builder);
 
-  REQUIRE(status.ok());
-  REQUIRE(clone.value()[0].var_size() == false);
+  REQUIRE(clone[0].var_size() == false);
 }

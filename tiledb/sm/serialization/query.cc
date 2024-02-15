@@ -2988,10 +2988,11 @@ Status global_write_state_from_capnp(
   write_state->last_hilbert_value_ = state_reader.getLastHilbertValue();
 
   if (state_reader.hasFragMeta()) {
-    auto frag_meta = write_state->frag_meta_;
-    auto frag_meta_reader = state_reader.getFragMeta();
-    RETURN_NOT_OK(fragment_metadata_from_capnp(
-        query.array_schema_shared(), frag_meta_reader, frag_meta));
+    write_state->frag_meta_ = fragment_metadata_from_capnp(
+        query.array_schema_shared(),
+        state_reader.getFragMeta(),
+        &global_writer->resources(),
+        global_writer->resources().create_memory_tracker());
   }
 
   // Deserialize the multipart upload state
@@ -3110,12 +3111,12 @@ Status unordered_write_state_from_capnp(
     // Fragment metadata is not allocated when deserializing into a new Query
     // object.
     if (unordered_writer->frag_meta() == nullptr) {
-      RETURN_NOT_OK(unordered_writer->alloc_frag_meta());
+      unordered_writer->set_frag_meta(fragment_metadata_from_capnp(
+          query.array_schema_shared(),
+          state_reader.getFragMeta(),
+          &unordered_writer->resources(),
+          unordered_writer->resources().create_memory_tracker()));
     }
-    auto frag_meta = unordered_writer->frag_meta();
-    auto frag_meta_reader = state_reader.getFragMeta();
-    RETURN_NOT_OK(fragment_metadata_from_capnp(
-        query.array_schema_shared(), frag_meta_reader, frag_meta));
   }
 
   return Status::Ok();
