@@ -178,8 +178,6 @@ jobs:
     needs: Publish-Release
     if: failure() || cancelled()
     steps:
-      - name: Checkout TileDB `dev`
-        uses: actions/checkout@v3
       - name: Create Issue if Build Fails
         uses: TileDB-Inc/github-actions/open-issue@main
         with:
