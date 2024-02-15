@@ -38,7 +38,6 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query_buffer.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb {
 namespace sm {
@@ -62,10 +61,6 @@ StrategyBase::StrategyBase(
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
-}
-
-ContextResources& StrategyBase::resources() const {
-  return storage_manager_->resources();
 }
 
 void StrategyBase::set_stats(const stats::StatsData& data) {

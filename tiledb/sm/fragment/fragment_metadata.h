@@ -791,7 +791,7 @@ class FragmentMetadata {
   URI validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
-  const std::string& array_schema_name() const {
+  inline const std::string& array_schema_name() const {
     return array_schema_name_;
   }
 
@@ -1122,7 +1122,7 @@ class FragmentMetadata {
    *
    * @return
    */
-  const shared_ptr<const ArraySchema>& array_schema() const {
+  inline const shared_ptr<const ArraySchema>& array_schema() const {
     return array_schema_;
   }
 
