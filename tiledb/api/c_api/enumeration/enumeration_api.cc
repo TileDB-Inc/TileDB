@@ -34,10 +34,12 @@
 #include "../string/string_api_internal.h"
 #include "enumeration_api_experimental.h"
 #include "enumeration_api_internal.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_enumeration_alloc(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker,
     const char* name,
     tiledb_datatype_t type,
     uint32_t cell_val_num,
@@ -66,6 +68,7 @@ capi_return_t tiledb_enumeration_alloc(
 
   try {
     *enumeration = tiledb_enumeration_handle_t::make_handle(
+        memory_tracker,
         std::string(name),
         datatype,
         cell_val_num,
@@ -191,8 +194,11 @@ CAPI_INTERFACE(
     const void* offsets,
     uint64_t offsets_size,
     tiledb_enumeration_t** enumeration) {
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ENUMERATION_CREATE);
   return api_entry_context<tiledb::api::tiledb_enumeration_alloc>(
       ctx,
+      memory_tracker,
       name,
       type,
       cell_val_num,

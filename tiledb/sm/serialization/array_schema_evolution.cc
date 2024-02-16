@@ -156,6 +156,7 @@ Status array_schema_evolution_to_capnp(
 }
 
 tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
+    shared_ptr<MemoryTracker> memory_tracker,
     const capnp::ArraySchemaEvolution::Reader& evolution_reader) {
   // Create attributes to add
   std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
@@ -177,7 +178,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
   std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add;
   auto enmrs_to_add_reader = evolution_reader.getEnumerationsToAdd();
   for (auto enmr_reader : enmrs_to_add_reader) {
-    auto enmr = enumeration_from_capnp(enmr_reader);
+    auto enmr = enumeration_from_capnp(memory_tracker, enmr_reader);
     enmrs_to_add[enmr->name()] = enmr;
   }
 
@@ -186,7 +187,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_extend;
   auto enmrs_to_extend_reader = evolution_reader.getEnumerationsToExtend();
   for (auto enmr_reader : enmrs_to_extend_reader) {
-    auto enmr = enumeration_from_capnp(enmr_reader);
+    auto enmr = enumeration_from_capnp(memory_tracker, enmr_reader);
     enmrs_to_extend[enmr->name()] = enmr;
   }
 
@@ -275,7 +276,8 @@ Status array_schema_evolution_serialize(
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     tdb_unique_ptr<ArraySchemaEvolution> decoded_array_schema_evolution =
         nullptr;
@@ -291,8 +293,8 @@ Status array_schema_evolution_deserialize(
             array_schema_evolution_builder);
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
-        decoded_array_schema_evolution =
-            array_schema_evolution_from_capnp(array_schema_evolution_reader);
+        decoded_array_schema_evolution = array_schema_evolution_from_capnp(
+            memory_tracker, array_schema_evolution_reader);
         break;
       }
       case SerializationType::CAPNP: {
@@ -303,8 +305,8 @@ Status array_schema_evolution_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
-        decoded_array_schema_evolution =
-            array_schema_evolution_from_capnp(array_schema_evolution_reader);
+        decoded_array_schema_evolution = array_schema_evolution_from_capnp(
+            memory_tracker, array_schema_evolution_reader);
         break;
       }
       default: {
@@ -343,7 +345,10 @@ Status array_schema_evolution_serialize(
 }
 
 Status array_schema_evolution_deserialize(
-    ArraySchemaEvolution**, SerializationType, const Buffer&) {
+    ArraySchemaEvolution**,
+    SerializationType,
+    const Buffer&,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }

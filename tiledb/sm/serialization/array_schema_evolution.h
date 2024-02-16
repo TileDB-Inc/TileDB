@@ -35,6 +35,7 @@
 
 #include <unordered_map>
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -69,7 +70,8 @@ Status array_schema_evolution_serialize(
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
     SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization
 }  // namespace sm

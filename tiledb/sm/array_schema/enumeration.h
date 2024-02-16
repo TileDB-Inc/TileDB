@@ -36,6 +36,8 @@
 #include <iostream>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/types/untyped_datum.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -87,6 +89,7 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
+      shared_ptr<MemoryTracker> memory_tracker,
       const std::string& name,
       Datatype type,
       uint32_t cell_val_num,
@@ -96,6 +99,7 @@ class Enumeration {
       const void* offsets,
       uint64_t offsets_size) {
     return create(
+        memory_tracker,
         name,
         "",
         type,
@@ -125,6 +129,7 @@ class Enumeration {
    * @return shared_ptr<Enumeration> The created enumeration.
    */
   static shared_ptr<const Enumeration> create(
+      shared_ptr<MemoryTracker> memory_tracker,
       const std::string& name,
       const std::string& path_name,
       Datatype type,
@@ -136,6 +141,7 @@ class Enumeration {
       uint64_t offsets_size) {
     struct EnableMakeShared : public Enumeration {
       EnableMakeShared(
+          shared_ptr<MemoryTracker> memory_tracker,
           const std::string& name,
           const std::string& path_name,
           Datatype type,
@@ -146,6 +152,7 @@ class Enumeration {
           const void* offsets,
           uint64_t offsets_size)
           : Enumeration(
+                memory_tracker,
                 name,
                 path_name,
                 type,
@@ -159,6 +166,7 @@ class Enumeration {
     };
     return make_shared<EnableMakeShared>(
         HERE(),
+        memory_tracker,
         name,
         path_name,
         type,
@@ -173,13 +181,15 @@ class Enumeration {
   /**
    * Deserialize an enumeration
    *
+   * @param memory_tracker The memory tracker associated with this Enumeration.
    * @param deserializer The deserializer to deserialize from.
    * @return A new Enumeration.
    */
-  static shared_ptr<const Enumeration> deserialize(Deserializer& deserializer);
+  static shared_ptr<const Enumeration> deserialize(
+      shared_ptr<MemoryTracker> memory_tracker, Deserializer& deserializer);
 
   /**
-   * Create a new enumeration by extending an existing enumeration's
+   * Create a new enumeration by extending an existinsg enumeration's
    * list of values.
    *
    * The returned Enumeration can then be used by the
@@ -346,6 +356,7 @@ class Enumeration {
 
   /** Constructor
    *
+   * @param memory_tracker The memory tracker.
    * @param name The name of this Enumeration as referenced by attributes.
    * @param path_name The last URI path component of the Enumeration.
    * @param type The datatype of the enumeration values.
@@ -361,6 +372,7 @@ class Enumeration {
    *        zero of cell_var_num is not var_num.
    */
   Enumeration(
+      shared_ptr<MemoryTracker> memory_tracker,
       const std::string& name,
       const std::string& path_name,
       Datatype type,
@@ -374,6 +386,11 @@ class Enumeration {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /**
+   * The memory tracker of the Enumeration.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The name of this Enumeration stored in the enumerations directory. */
   std::string name_;
@@ -397,7 +414,7 @@ class Enumeration {
   Buffer offsets_;
 
   /** Map of values to indices */
-  std::unordered_map<std::string_view, uint64_t> value_map_;
+  tdb::pmr::unordered_map<std::string_view, uint64_t> value_map_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

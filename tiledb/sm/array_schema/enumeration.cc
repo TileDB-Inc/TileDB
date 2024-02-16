@@ -48,6 +48,7 @@ class EnumerationException : public StatusException {
 };
 
 Enumeration::Enumeration(
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::string& name,
     const std::string& path_name,
     Datatype type,
@@ -57,13 +58,15 @@ Enumeration::Enumeration(
     uint64_t data_size,
     const void* offsets,
     uint64_t offsets_size)
-    : name_(name)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
     , path_name_(path_name)
     , type_(type)
     , cell_val_num_(cell_val_num)
     , ordered_(ordered)
     , data_(data_size)
-    , offsets_(offsets_size) {
+    , offsets_(offsets_size)
+    , value_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
   ensure_datatype_is_valid(type);
 
   if (name.empty()) {
@@ -178,7 +181,7 @@ Enumeration::Enumeration(
 }
 
 shared_ptr<const Enumeration> Enumeration::deserialize(
-    Deserializer& deserializer) {
+    shared_ptr<MemoryTracker> memory_tracker, Deserializer& deserializer) {
   auto disk_version = deserializer.read<uint32_t>();
   if (disk_version > constants::enumerations_version) {
     throw EnumerationException(
@@ -216,6 +219,7 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
   }
 
   return create(
+      memory_tracker,
       name,
       path_name,
       static_cast<Datatype>(type),
@@ -296,6 +300,7 @@ shared_ptr<const Enumeration> Enumeration::extend(
   }
 
   return create(
+      memory_tracker_,
       name_,
       "",
       type_,
