@@ -55,9 +55,9 @@ namespace sm {
 /* ****************************** */
 
 RTree::RTree(
-    shared_ptr<MemoryTracker> memory_tracker,
     const Domain* domain,
-    unsigned fanout)
+    unsigned fanout,
+    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , domain_(domain)
     , fanout_(fanout)

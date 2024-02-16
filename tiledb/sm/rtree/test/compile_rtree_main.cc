@@ -29,6 +29,6 @@
 #include "../rtree.h"
 
 int main() {
-  tiledb::sm::RTree x{nullptr, nullptr, 0};
+  tiledb::sm::RTree x{nullptr, 0, nullptr};
   return 0;
 }

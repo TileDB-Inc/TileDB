@@ -68,9 +68,9 @@ class RTree {
 
   /** Constructor. */
   RTree(
-      shared_ptr<MemoryTracker> memory_tracker,
       const Domain* domain,
-      unsigned fanout);
+      unsigned fanout,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Destructor. */
   ~RTree();
