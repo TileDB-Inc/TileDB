@@ -35,6 +35,7 @@
 
 #include <unordered_map>
 
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 

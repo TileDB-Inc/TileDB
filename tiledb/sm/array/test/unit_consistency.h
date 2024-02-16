@@ -36,6 +36,7 @@
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
+#include "test/support/src/mem_helpers.h"
 
 #include "../array.h"
 #include "../consistency.h"
@@ -106,8 +107,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
         make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
 
     // Create the ArraySchema
-    shared_ptr<ArraySchema> schema =
-        make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+    shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
+        HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
     throw_if_not_ok(schema->set_domain(domain));
     throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(
