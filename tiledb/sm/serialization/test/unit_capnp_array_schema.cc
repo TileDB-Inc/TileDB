@@ -154,7 +154,7 @@ TEST_CASE(
   tiledb::sm::serialization::dimension_label_to_capnp(
       *dim_label.get(), &builder, true);
   auto dim_label_clone = tiledb::sm::serialization::dimension_label_from_capnp(
-      builder, create_test_memory_tracker());
+      builder, tiledb::test::create_test_memory_tracker());
 
   // Check dimension label properties and components.
   CHECK(dim_label->has_schema() == dim_label_clone->has_schema());

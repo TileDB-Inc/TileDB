@@ -253,7 +253,7 @@ TEST_CASE_METHOD(
   CHECK(dom->add_dimension(d2).ok());
 
   auto schema = make_shared<ArraySchema>(
-      HERE(), create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
   CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
