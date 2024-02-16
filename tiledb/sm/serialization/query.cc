@@ -303,8 +303,9 @@ Subarray subarray_from_capnp(
     }
   }
 
-  std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset(
-      dim_num, nullopt);
+  std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset;
+  label_range_subset.reserve(dim_num);
+  uint32_t last_dim = 0;
   if (reader.hasLabelRanges()) {
     auto label_ranges_reader = reader.getLabelRanges();
     uint32_t label_num = label_ranges_reader.size();
@@ -312,6 +313,11 @@ Subarray subarray_from_capnp(
       auto label_range_reader = label_ranges_reader[i];
       auto dim_index = label_range_reader.getDimensionId();
       auto dim = array->array_schema_latest().dimension_ptr(dim_index);
+
+      // Fill in any missing dimensions with nullopt
+      for (; last_dim < dim_index; last_dim++) {
+        label_range_subset.emplace_back(std::nullopt);
+      }
       auto label_name = label_range_reader.getName();
 
       // Deserialize ranges for this dim label
@@ -319,10 +325,18 @@ Subarray subarray_from_capnp(
       auto label_ranges = range_buffers_from_capnp(range_reader);
 
       // Set ranges for this dim label on the subarray
-      label_range_subset[dim_index] = {
-          label_name, dim->type(), label_ranges, coalesce_ranges};
+      label_range_subset.emplace_back(
+          std::in_place,
+          label_name,
+          dim->type(),
+          label_ranges,
+          coalesce_ranges);
       is_default[dim_index] = false;
     }
+  }
+  // Fill in label ranges with nullopt for any remaining dimensions
+  for (; last_dim < dim_num; last_dim++) {
+    label_range_subset.emplace_back(std::nullopt);
   }
 
   std::unordered_map<std::string, std::vector<Range>> attr_range_subset;
