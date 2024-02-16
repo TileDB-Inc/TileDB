@@ -64,6 +64,8 @@ struct ReadCellSlabIterFx {
   const char* ARRAY_NAME = "read_cell_slab_iter";
   tiledb_array_t* array_ = nullptr;
 
+  shared_ptr<MemoryTracker> tracker_;
+
   ReadCellSlabIterFx();
   ~ReadCellSlabIterFx();
 
@@ -83,7 +85,8 @@ struct ReadCellSlabIterFx {
 };
 
 ReadCellSlabIterFx::ReadCellSlabIterFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : fs_vec_(vfs_test_get_fs_vec())
+    , tracker_(tiledb::test::create_test_memory_tracker()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 
@@ -167,6 +170,7 @@ void ReadCellSlabIterFx::create_result_space_tiles(
 }
 
 void set_result_tile_dim(
+    shared_ptr<MemoryTracker> tracker,
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::string dim,
@@ -186,7 +190,8 @@ void set_result_tile_dim(
       dim,
       tile_sizes,
       tile_data,
-      dim_idx);
+      dim_idx,
+      tracker);
   auto tile_tuple = result_tile.tile_tuple(dim);
   REQUIRE(tile_tuple != nullptr);
   uint64_t* data = tile_tuple->fixed_tile().data_as<uint64_t>();
@@ -516,11 +521,11 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
   set_result_tile_dim(
-      array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
+      tracker_, array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
   set_result_tile_dim(
-      array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
+      tracker_, array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
   set_result_tile_dim(
-      array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
+      tracker_, array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
 
   result_coords.emplace_back(&result_tile_2_0, 1);
   result_coords.emplace_back(&result_tile_2_0, 3);
@@ -1366,13 +1371,23 @@ TEST_CASE_METHOD(
   ResultTile result_tile_3_1(2, 1, *fragments[1]);
 
   set_result_tile_dim(
-      array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
+      tracker_,
+      array_schema,
+      result_tile_3_0,
+      "d1",
+      0,
+      {{1000, 3, 1000, 1000}});
   set_result_tile_dim(
-      array_schema, result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
+      tracker_,
+      array_schema,
+      result_tile_3_0,
+      "d2",
+      1,
+      {{1000, 3, 1000, 1000}});
   set_result_tile_dim(
-      array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
+      tracker_, array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
   set_result_tile_dim(
-      array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
+      tracker_, array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
 
   result_coords.emplace_back(&result_tile_3_0, 1);
   result_coords.emplace_back(&result_tile_3_1, 0);

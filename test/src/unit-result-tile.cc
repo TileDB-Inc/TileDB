@@ -62,6 +62,7 @@ struct CResultTileFx {
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
   std::shared_ptr<FragmentMetadata> frag_md_;
+  shared_ptr<MemoryTracker> tracker_;
 
   CResultTileFx();
   ~CResultTileFx();
@@ -76,6 +77,8 @@ CResultTileFx::CResultTileFx() {
   REQUIRE(error == nullptr);
   REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
+
+  tracker_ = tiledb::test::create_test_memory_tracker();
 
   // Create temporary directory based on the supported filesystem.
 #ifdef _WIN32
@@ -214,7 +217,8 @@ TEST_CASE_METHOD(
         "d1",
         tile_sizes,
         tile_data,
-        0);
+        0,
+        tracker_);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -231,7 +235,8 @@ TEST_CASE_METHOD(
       dim_name,
       tile_sizes,
       tile_data,
-      dim_idx);
+      dim_idx,
+      tracker_);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
@@ -324,7 +329,8 @@ TEST_CASE_METHOD(
         "d1",
         tile_sizes,
         tile_data,
-        0);
+        0,
+        tracker_);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -341,7 +347,8 @@ TEST_CASE_METHOD(
       dim_name,
       tile_sizes,
       tile_data,
-      dim_idx);
+      dim_idx,
+      tracker_);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();

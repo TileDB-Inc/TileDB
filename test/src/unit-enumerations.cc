@@ -32,6 +32,7 @@
 
 #include <sstream>
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -144,6 +145,7 @@ struct EnumerationFx {
   Config cfg_;
   Context ctx_;
   EncryptionKey enc_key_;
+  shared_ptr<MemoryTracker> tracker_;
 };
 
 template <typename T>
@@ -1115,9 +1117,8 @@ TEST_CASE_METHOD(
 
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  auto tracker = ctx_.resources().create_memory_tracker();
   auto loaded =
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker);
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker_);
   REQUIRE(loaded.size() == 1);
 
   auto enmr = loaded[0];
@@ -1139,7 +1140,6 @@ TEST_CASE_METHOD(
 
   auto schema = get_array_schema_latest();
   auto ad = get_array_directory();
-  auto tracker = ctx_.resources().create_memory_tracker();
 
   // Check that this function throws an exception when attempting to load
   // an unknown enumeration
@@ -1148,7 +1148,7 @@ TEST_CASE_METHOD(
   auto windows_matcher = Catch::Matchers::ContainsSubstring(
       "The system cannot find the file specified.");
   REQUIRE_THROWS_WITH(
-      ad->load_enumerations_from_paths({"unknown_enmr"}, enc_key_, tracker),
+      ad->load_enumerations_from_paths({"unknown_enmr"}, enc_key_, tracker_),
       posix_matcher || windows_matcher);
 }
 
@@ -1164,21 +1164,20 @@ TEST_CASE_METHOD(
   auto enmr_name = schema->attribute("attr1")->get_enumeration_name();
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  auto tracker = ctx_.resources().create_memory_tracker();
-  tracker->set_budget(1);
+  tracker_->set_budget(1);
 
   // Check that this function throws an exception when attempting to load
   // an enumeration that exceeds the memory budget.
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Error loading enumeration; Insufficient memory budget;");
   REQUIRE_THROWS_WITH(
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker),
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker_),
       matcher);
 
   // Check that the fix is to increase the memory budget.
-  tracker->set_budget(std::numeric_limits<uint64_t>::max());
+  tracker_->set_budget(std::numeric_limits<uint64_t>::max());
   REQUIRE_NOTHROW(
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker));
+      ad->load_enumerations_from_paths({enmr_path}, enc_key_, tracker_));
 }
 
 /* ********************************* */
@@ -2399,7 +2398,8 @@ struct TypeParams {
 
 EnumerationFx::EnumerationFx()
     : uri_("enumeration_test_array")
-    , ctx_(cfg_) {
+    , ctx_(cfg_)
+    , tracker_(tiledb::test::create_test_memory_tracker()) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 }
@@ -2626,7 +2626,7 @@ WriterTile EnumerationFx::serialize_to_tile(
   SizeComputationSerializer size_serializer;
   enmr->serialize(size_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(size_serializer.size(), tracker_)};
   Serializer serializer(tile.data(), tile.size());
   enmr->serialize(serializer);
 
@@ -2724,7 +2724,7 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
 
 shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  return array_dir->load_array_schema_latest(enc_key_);
+  return array_dir->load_array_schema_latest(enc_key_, tracker_);
 }
 
 #ifdef TILEDB_SERIALIZATION
