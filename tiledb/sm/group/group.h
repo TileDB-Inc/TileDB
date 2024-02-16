@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -195,7 +195,7 @@ class Group {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
-  Status metadata(Metadata** metadata);
+  shared_ptr<Metadata> metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -208,7 +208,19 @@ class Group {
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* unsafe_metadata();
-  const Metadata* metadata() const;
+
+  /**
+   * Set the metadata `shared_ptr`.
+   *
+   * @warning This function directly violates C.41 compliance of class
+   * `Group`, and its use is _highly discouraged_. It exists _solely_ to
+   * support group metadata consolidation, maintaining a swap-like logic of
+   * group metadata which does not compromise PMR tracking. As such, the _only_
+   * call-site should be in `GroupMetaConsoliator::consolidate`.
+   **/
+  inline void unsafe_set_metadata(shared_ptr<Metadata> metadata) {
+    metadata_ = metadata;
+  }
 
   /**
    * Set metadata loaded
@@ -382,6 +394,11 @@ class Group {
    */
   const shared_ptr<GroupDetails> group_details() const;
 
+  /** Returns the memory tracker. */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
@@ -402,7 +419,7 @@ class Group {
   bool remote_;
 
   /** The group metadata. */
-  Metadata metadata_;
+  shared_ptr<Metadata> metadata_;
 
   /** True if the group metadata is loaded. */
   bool metadata_loaded_;
@@ -446,6 +463,9 @@ class Group {
   /** The ContextResources class. */
   ContextResources& resources_;
 
+  /** Memory tracker for the group. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -460,8 +480,7 @@ class Group {
    */
   void load_metadata_from_storage(
       const shared_ptr<GroupDirectory>& group_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
+      const EncryptionKey& encryption_key);
 
   /** Opens an group for reads. */
   void group_open_for_reads();

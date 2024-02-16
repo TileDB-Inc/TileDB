@@ -66,6 +66,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileNullCounts";
     case MemoryType::ENUMERATION:
       return "Enumeration";
+    case MemoryType::METADATA:
+      return "Metadata";
     default:
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory type: " + val);

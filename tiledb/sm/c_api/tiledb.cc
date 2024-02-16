@@ -4007,9 +4007,13 @@ int32_t tiledb_serialize_array_metadata(
   auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
-  tiledb::sm::Metadata* metadata;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->metadata(&metadata))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+  shared_ptr<tiledb::sm::Metadata> metadata;
+  try {
+    metadata = array->array_->metadata();
+  } catch (StatusException& e) {
+    auto st = Status_Error(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -4017,7 +4021,7 @@ int32_t tiledb_serialize_array_metadata(
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::metadata_serialize(
-              metadata,
+              metadata.get(),
               (tiledb::sm::SerializationType)serialize_type,
               &(buf->buffer())))) {
     tiledb_buffer_handle_t::break_handle(buf);

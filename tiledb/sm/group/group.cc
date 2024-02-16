@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -74,7 +75,8 @@ Group::Group(
     , timestamp_start_(0)
     , timestamp_end_(UINT64_MAX)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
-    , resources_(resources) {
+    , resources_(resources)
+    , memory_tracker_(resources.create_memory_tracker()) {
 }
 
 Status Group::open(
@@ -139,7 +141,7 @@ Status Group::open(
   RETURN_NOT_OK(
       encryption_key_->set_key(encryption_type, encryption_key, key_length));
 
-  metadata_.clear();
+  metadata_->clear();
   metadata_loaded_ = false;
 
   if (remote_) {
@@ -183,7 +185,7 @@ Status Group::open(
 
     group_open_for_writes();
 
-    metadata_.reset(timestamp_end);
+    metadata_->reset(timestamp_end);
   }
 
   // Handle new empty group
@@ -219,7 +221,7 @@ Status Group::close() {
     // user
     if (query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-      if (metadata_.num() > 0) {
+      if (metadata_->num() > 0) {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
         metadata_loaded_ = true;
@@ -255,7 +257,7 @@ Status Group::close() {
     }
   }
 
-  metadata_.clear();
+  metadata_->clear();
   metadata_loaded_ = false;
   is_open_ = false;
   clear();
@@ -330,7 +332,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     storage_manager_->delete_group(uri.c_str());
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
-  metadata_.clear();
+  metadata_->clear();
   group_details_->clear();
 
   // Close the deleted group
@@ -353,7 +355,7 @@ void Group::delete_metadata(const char* key) {
   if (key == nullptr)
     throw GroupStatusException("Cannot delete metadata. Key cannot be null");
 
-  metadata_.del(key);
+  metadata_->del(key);
 }
 
 void Group::put_metadata(
@@ -380,7 +382,7 @@ void Group::put_metadata(
   if (value_type == Datatype::ANY)
     throw GroupStatusException("Cannot put metadata; Value type cannot be ANY");
 
-  metadata_.put(key, value_type, value_num, value);
+  metadata_->put(key, value_type, value_num, value);
 }
 
 void Group::get_metadata(
@@ -405,7 +407,7 @@ void Group::get_metadata(
   if (!metadata_loaded_)
     load_metadata();
 
-  metadata_.get(key, value_type, value_num, value);
+  metadata_->get(key, value_type, value_num, value);
 }
 
 void Group::get_metadata(
@@ -428,7 +430,7 @@ void Group::get_metadata(
   if (!metadata_loaded_)
     load_metadata();
 
-  metadata_.get(index, key, key_len, value_type, value_num, value);
+  metadata_->get(index, key, key_len, value_type, value_num, value);
 }
 
 uint64_t Group::get_metadata_num() {
@@ -446,7 +448,7 @@ uint64_t Group::get_metadata_num() {
   if (!metadata_loaded_)
     load_metadata();
 
-  return metadata_.num();
+  return metadata_->num();
 }
 
 std::optional<Datatype> Group::metadata_type(const char* key) {
@@ -467,25 +469,19 @@ std::optional<Datatype> Group::metadata_type(const char* key) {
   if (!metadata_loaded_)
     load_metadata();
 
-  return metadata_.metadata_type(key);
+  return metadata_->metadata_type(key);
 }
 
 Metadata* Group::unsafe_metadata() {
-  return &metadata_;
+  return metadata_.get();
 }
 
-const Metadata* Group::metadata() const {
-  return &metadata_;
-}
-
-Status Group::metadata(Metadata** metadata) {
+shared_ptr<Metadata> Group::metadata() {
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
     load_metadata();
 
-  *metadata = &metadata_;
-
-  return Status::Ok();
+  return metadata_;
 }
 
 void Group::set_metadata_loaded(const bool metadata_loaded) {
@@ -712,22 +708,16 @@ void Group::load_metadata() {
         rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    load_metadata_from_storage(group_dir_, *encryption_key_, &metadata_);
+    load_metadata_from_storage(group_dir_, *encryption_key_);
   }
   metadata_loaded_ = true;
 }
 
 void Group::load_metadata_from_storage(
     const shared_ptr<GroupDirectory>& group_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
+    const EncryptionKey& encryption_key) {
   [[maybe_unused]] auto timer_se =
       resources_.stats().start_timer("group_load_metadata_from_storage");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
 
   // Determine which group metadata to load
   const auto& group_metadata_to_load = group_dir->group_meta_uris();
@@ -753,8 +743,8 @@ void Group::load_metadata_from_storage(
   resources_.stats().add_counter("group_read_group_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = Metadata::deserialize(metadata_tiles);
-  metadata->set_loaded_metadata_uris(group_metadata_to_load);
+  unsafe_set_metadata(Metadata::deserialize(metadata_tiles, memory_tracker_));
+  metadata_->set_loaded_metadata_uris(group_metadata_to_load);
 }
 
 void Group::group_open_for_reads() {

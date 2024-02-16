@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -98,8 +98,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 //** The type of memory to track. */
 enum class MemoryType {
@@ -110,7 +109,8 @@ enum class MemoryType {
   TILE_MAX_VALS,
   TILE_SUMS,
   TILE_NULL_COUNTS,
-  ENUMERATION
+  ENUMERATION,
+  METADATA
 };
 
 /** The type of MemoryTracker. */
@@ -418,7 +418,6 @@ class MemoryTrackerReporter {
   bool stop_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_OPEN_ARRAY_MEMORY_TRACKER_H

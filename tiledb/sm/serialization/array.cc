@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,9 +55,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 class ArraySerializationException : public StatusException {
  public:
@@ -206,10 +204,8 @@ Status array_to_capnp(
       // If this is the Cloud server, it should load and serialize metadata
       // If this is the client, it should have previously received the array
       // metadata from the Cloud server, so it should just serialize it
-      Metadata* metadata = nullptr;
-      // Get metadata. If not loaded, load it first.
-      RETURN_NOT_OK(array->metadata(&metadata));
-      RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
+      shared_ptr<Metadata> metadata = array->metadata();
+      RETURN_NOT_OK(metadata_to_capnp(metadata.get(), &array_metadata_builder));
     }
   } else {
     if (array->non_empty_domain_computed()) {
@@ -735,6 +731,4 @@ Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

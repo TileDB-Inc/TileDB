@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -81,30 +81,19 @@ Status GroupMetaConsolidator::consolidate(
       group_for_writes.open(QueryType::WRITE),
       throw_if_not_ok(group_for_reads.close()));
 
-  // Swap the in-memory metadata between the two groups.
-  // After that, the group for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the group for reads
-  Metadata* metadata_r;
-  auto st = group_for_reads.metadata(&metadata_r);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
-  }
-  Metadata* metadata_w;
-  st = group_for_writes.metadata(&metadata_w);
-  if (!st.ok()) {
-    throw_if_not_ok(group_for_reads.close());
-    throw_if_not_ok(group_for_writes.close());
-    return st;
-  }
-  metadata_r->swap(metadata_w);
-
-  // Metadata uris to delete
-  const auto to_vacuum = metadata_w->loaded_metadata_uris();
-
-  // Get the new URI name for consolidated metadata
-  URI new_uri = metadata_w->get_uri(group_uri);
+  /**
+   * "Swap" the in-memory metadata between the two groups.
+   * After that, the group for writes will store the (consolidated by
+   * the way metadata loading works) metadata of the group for reads
+   *
+   * Note: `Group::unsafe_set_metadata` exists _only_ to support this action.
+   * PMRs cannot be moved or copied, so this is a hacky workaround.
+   */
+  auto metadata_r = group_for_reads.metadata();
+  URI new_uri = metadata_r->get_uri(group_uri);
+  group_for_writes.unsafe_set_metadata(metadata_r);
+  auto metadata_w = group_for_writes.metadata();
+  const auto& to_vacuum = metadata_w->loaded_metadata_uris();
 
   // Close groups
   RETURN_NOT_OK_ELSE(
@@ -113,7 +102,6 @@ Status GroupMetaConsolidator::consolidate(
 
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
   std::stringstream ss;
   for (const auto& uri : to_vacuum)
     ss << uri.to_string() << "\n";

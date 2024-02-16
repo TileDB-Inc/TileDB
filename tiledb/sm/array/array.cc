@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,8 +60,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArrayException : public StatusException {
  public:
@@ -139,6 +138,7 @@ Status Array::open_without_fragments(
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       encryption_type,
       encryption_key,
@@ -317,6 +317,7 @@ Status Array::open(
     opened_array_ = make_shared<OpenedArray>(
         HERE(),
         resources_,
+        memory_tracker_,
         array_uri_,
         encryption_type,
         encryption_key,
@@ -379,7 +380,7 @@ Status Array::open(
       set_array_schemas_all(std::move(array_schemas.value()));
 
       // Set the timestamp
-      opened_array_->metadata().reset(timestamp_for_new_component());
+      opened_array_->metadata()->reset(timestamp_for_new_component());
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
@@ -420,7 +421,7 @@ Status Array::open(
       }
 
       // Updates the timestamp to use for metadata.
-      opened_array_->metadata().reset(timestamp_for_new_component());
+      opened_array_->metadata()->reset(timestamp_for_new_component());
     } else {
       throw ArrayException("Cannot open array; Unsupported query type.");
     }
@@ -452,7 +453,7 @@ Status Array::close() {
       // user
       if ((query_type_ == QueryType::WRITE ||
            query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
-          opened_array_->metadata().num() > 0) {
+          opened_array_->metadata()->num() > 0) {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
         set_metadata_loaded(true);
@@ -471,7 +472,7 @@ Status Array::close() {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->store_metadata(
-            array_uri_, *encryption_key(), &opened_array_->metadata());
+            array_uri_, *encryption_key(), opened_array_->metadata().get());
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -831,6 +832,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       key->encryption_type(),
       key->key().data(),
@@ -908,7 +910,7 @@ void Array::delete_metadata(const char* key) {
     throw ArrayException("Cannot delete metadata. Key cannot be null");
   }
 
-  opened_array_->metadata().del(key);
+  opened_array_->metadata()->del(key);
 }
 
 void Array::put_metadata(
@@ -939,7 +941,7 @@ void Array::put_metadata(
     throw ArrayException("Cannot put metadata; Value type cannot be ANY");
   }
 
-  opened_array_->metadata().put(key, value_type, value_num, value);
+  opened_array_->metadata()->put(key, value_type, value_num, value);
 }
 
 void Array::get_metadata(
@@ -968,7 +970,7 @@ void Array::get_metadata(
     throw_if_not_ok(load_metadata());
   }
 
-  opened_array_->metadata().get(key, value_type, value_num, value);
+  opened_array_->metadata()->get(key, value_type, value_num, value);
 }
 
 void Array::get_metadata(
@@ -994,7 +996,7 @@ void Array::get_metadata(
     throw_if_not_ok(load_metadata());
   }
 
-  opened_array_->metadata().get(
+  opened_array_->metadata()->get(
       index, key, key_len, value_type, value_num, value);
 }
 
@@ -1015,7 +1017,7 @@ uint64_t Array::metadata_num() {
     throw_if_not_ok(load_metadata());
   }
 
-  return opened_array_->metadata().num();
+  return opened_array_->metadata()->num();
 }
 
 std::optional<Datatype> Array::metadata_type(const char* key) {
@@ -1040,22 +1042,20 @@ std::optional<Datatype> Array::metadata_type(const char* key) {
     throw_if_not_ok(load_metadata());
   }
 
-  return opened_array_->metadata().metadata_type(key);
+  return opened_array_->metadata()->metadata_type(key);
 }
 
 Metadata* Array::unsafe_metadata() {
-  return &opened_array_->metadata();
+  return opened_array_->metadata().get();
 }
 
-Status Array::metadata(Metadata** metadata) {
+shared_ptr<Metadata> Array::metadata() {
   // Load array metadata for array opened for reads, if not loaded yet
   if (query_type_ == QueryType::READ && !metadata_loaded()) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *metadata = &opened_array_->metadata();
-
-  return Status::Ok();
+  return opened_array_->metadata();
 }
 
 const NDRange Array::non_empty_domain() {
@@ -1493,10 +1493,11 @@ void Array::do_load_metadata() {
   }
   resources_.stats().add_counter("read_array_meta_size", meta_size);
 
-  opened_array_->metadata() = Metadata::deserialize(metadata_tiles);
+  opened_array_->unsafe_set_metadata(
+      Metadata::deserialize(metadata_tiles, memory_tracker_));
 
   // Sets the loaded metadata URIs
-  opened_array_->metadata().set_loaded_metadata_uris(array_metadata_to_load);
+  opened_array_->metadata()->set_loaded_metadata_uris(array_metadata_to_load);
 }
 
 Status Array::load_metadata() {
@@ -1619,6 +1620,7 @@ void Array::set_serialized_array_open() {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -1690,5 +1692,4 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

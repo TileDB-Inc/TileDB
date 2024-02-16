@@ -34,6 +34,7 @@
 #ifndef TILEDB_COMMON_PMR_H
 #define TILEDB_COMMON_PMR_H
 
+#include <map>
 #include <unordered_map>
 #include <vector>
 
@@ -182,9 +183,14 @@ class unordered_map : public pmr_unordered_map<Key, T, Hash, KeyEqual> {
   using insert_return_type =
       typename pmr_unordered_map<Key, T, Hash, KeyEqual>::insert_return_type;
 
+  // Delete all default constructors because they don't require an allocator
   constexpr unordered_map() = delete;
   constexpr unordered_map(const unordered_map& other) = delete;
   constexpr unordered_map(unordered_map&& other) = delete;
+
+  // Delete non-allocator aware copy and move assign.
+  constexpr unordered_map& operator=(const unordered_map& other) = delete;
+  constexpr unordered_map& operator=(unordered_map&& other) noexcept = delete;
 
   constexpr explicit unordered_map(
       size_type bucket_count,
@@ -278,6 +284,99 @@ class unordered_map : public pmr_unordered_map<Key, T, Hash, KeyEqual> {
       : pmr_unordered_map<Key, T, Hash, KeyEqual>(
             init, bucket_count, hash, KeyEqual(), alloc) {
   }
+};
+
+/* ********************************* */
+/*         PMR MAP DECLARATION       */
+/* ********************************* */
+template <class Key, class T, class Compare = std::less<Key>>
+using pmr_map = std::map<
+    Key,
+    T,
+    Compare,
+    boost::container::pmr::polymorphic_allocator<std::pair<const Key, T>>>;
+
+template <class Key, class T, class Compare = std::less<Key>>
+class map : public pmr_map<Key, T, Compare> {
+ public:
+  // Type declarations.
+  using key_type = typename pmr_map<Key, T, Compare>::key_type;
+  using mapped_type = typename pmr_map<Key, T, Compare>::mapped_type;
+  using value_type = typename pmr_map<Key, T, Compare>::value_type;
+  using size_type = typename pmr_map<Key, T, Compare>::size_type;
+  using difference_type = typename pmr_map<Key, T, Compare>::difference_type;
+  using key_compare = typename pmr_map<Key, T, Compare>::key_compare;
+  using allocator_type = typename pmr_map<Key, T, Compare>::allocator_type;
+  using reference = typename pmr_map<Key, T, Compare>::reference;
+  using const_reference = typename pmr_map<Key, T, Compare>::const_reference;
+  using pointer = typename pmr_map<Key, T, Compare>::pointer;
+  using const_pointer = typename pmr_map<Key, T, Compare>::const_pointer;
+  using iterator = typename pmr_map<Key, T, Compare>::iterator;
+  using const_iterator = typename pmr_map<Key, T, Compare>::const_iterator;
+  using reverse_iterator = typename pmr_map<Key, T, Compare>::reverse_iterator;
+  using const_reverse_iterator =
+      typename pmr_map<Key, T, Compare>::const_reverse_iterator;
+  using node_type = typename pmr_map<Key, T, Compare>::node_type;
+  using insert_return_type =
+      typename pmr_map<Key, T, Compare>::insert_return_type;
+
+  // Delete all default constructors because they don't require an allocator
+  constexpr map() = delete;
+  constexpr map(const map& other) = delete;
+  constexpr map(map&& other) = delete;
+
+  // Delete non-allocator aware copy and move assign.
+  constexpr map& operator=(const map& other) = delete;
+  constexpr map& operator=(map&& other) noexcept = delete;
+
+  constexpr explicit map(const Compare& comp, const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(comp, alloc) {
+  }
+
+  constexpr explicit map(const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(alloc) {
+  }
+
+  template <class InputIt>
+  constexpr map(
+      InputIt first,
+      InputIt last,
+      const Compare& comp,
+      const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(first, last, comp, alloc) {
+  }
+
+  template <class InputIt>
+  constexpr map(InputIt first, InputIt last, const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(first, last, Compare(), alloc) {
+  }
+
+  constexpr map(const map& other, const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(other, alloc) {
+  }
+
+  constexpr map(map&& other, const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(other, alloc) {
+  }
+
+  constexpr map(
+      std::initializer_list<value_type> init,
+      const Compare& comp,
+      const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(init, comp, alloc) {
+  }
+
+  constexpr map(
+      std::initializer_list<value_type> init, const allocator_type& alloc)
+      : pmr_map<Key, T, Compare>(init, Compare(), alloc) {
+  }
+
+  // Declare member class value_compare.
+  class value_compare : public pmr_map<Key, T, Compare>::value_compare {
+   public:
+    constexpr bool operator()(
+        const value_type& lhs, const value_type& rhs) const;
+  };
 };
 
 }  // namespace tiledb::common::pmr
