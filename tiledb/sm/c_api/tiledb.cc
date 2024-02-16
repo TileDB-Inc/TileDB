@@ -512,8 +512,11 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -603,8 +606,11 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;

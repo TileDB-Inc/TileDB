@@ -182,6 +182,7 @@ Status OrderedWriter::ordered_write() {
 
   // Create a dense tiler
   DenseTiler<T> dense_tiler(
+      query_memory_tracker_,
       &buffers_,
       &subarray_,
       stats_,
@@ -318,7 +319,13 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
+          array_schema_,
+          cell_num_per_tile,
+          var,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_));
     }
 
     {

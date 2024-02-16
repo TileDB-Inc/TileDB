@@ -100,9 +100,11 @@ storage_size_t get_serialized_condition_size(
   return size_computation_serializer.size();
 }
 
-WriterTile serialize_condition(const QueryCondition& query_condition) {
+WriterTile serialize_condition(
+    const QueryCondition& query_condition,
+    shared_ptr<MemoryTracker> memory_tracker) {
   WriterTile tile{WriterTile::from_generic(
-      get_serialized_condition_size(query_condition.ast()))};
+      get_serialized_condition_size(query_condition.ast()), memory_tracker)};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);
@@ -196,10 +198,12 @@ storage_size_t get_serialized_update_condition_and_values_size(
 
 WriterTile serialize_update_condition_and_values(
     const QueryCondition& query_condition,
-    const std::vector<UpdateValue>& update_values) {
-  WriterTile tile{
-      WriterTile::from_generic(get_serialized_update_condition_and_values_size(
-          query_condition.ast(), update_values))};
+    const std::vector<UpdateValue>& update_values,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  WriterTile tile{WriterTile::from_generic(
+      get_serialized_update_condition_and_values_size(
+          query_condition.ast(), update_values),
+      memory_tracker)};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_condition_impl(query_condition.ast(), serializer);

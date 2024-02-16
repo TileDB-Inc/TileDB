@@ -34,6 +34,7 @@
 #define TILEDB_TILE_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
@@ -45,6 +46,8 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
+
+class MemoryTracker;
 
 /**
  * Base class for common code between Tile and WriterTile objects.
@@ -63,7 +66,8 @@ class TileBase {
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
-      const uint64_t size);
+      const uint64_t size,
+      tdb::pmr::memory_resource* resource);
 
   /** Move constructor. */
   TileBase(TileBase&& tile);
@@ -147,13 +151,11 @@ class TileBase {
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * The buffer backing the tile data.
-   *
-   * TODO: Convert to regular allocations once tdb_realloc is not used for var
-   * size data anymore and remove custom deleter.
-   */
-  std::unique_ptr<char, void (*)(void*)> data_;
+  /** The memory resource to use. */
+  tdb::pmr::memory_resource* resource_;
+
+  /** The buffer backing the tile data. */
+  tdb::pmr::unique_ptr<std::byte> data_;
 
   /** Size of the data. */
   uint64_t size_;
@@ -179,7 +181,8 @@ class Tile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static Tile from_generic(storage_size_t tile_size);
+  static Tile from_generic(
+      storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -204,7 +207,30 @@ class Tile : public TileBase {
       const unsigned int zipped_coords_dim_num,
       const uint64_t size,
       void* filtered_data,
-      uint64_t filtered_size);
+      uint64_t filtered_size,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param zipped_coords_dim_num The number of dimensions in case the tile
+   *      stores coordinates.
+   * @param size The size of the tile.
+   * @param filtered_data Pointer to the external filtered data.
+   * @param filtered_size The filtered size to allocate.
+   */
+  Tile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const unsigned int zipped_coords_dim_num,
+      const uint64_t size,
+      void* filtered_data,
+      uint64_t filtered_size,
+      tdb::pmr::memory_resource* resource);
 
   /** Move constructor. */
   Tile(Tile&& tile);
@@ -355,7 +381,8 @@ class WriterTile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static WriterTile from_generic(storage_size_t tile_size);
+  static WriterTile from_generic(
+      storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Computes the chunk size for a tile.
@@ -390,7 +417,23 @@ class WriterTile : public TileBase {
       const format_version_t format_version,
       const Datatype type,
       const uint64_t cell_size,
-      const uint64_t size);
+      const uint64_t size,
+      shared_ptr<MemoryTracker> memory_tracker);
+
+  /**
+   * Constructor.
+   *
+   * @param format_version The format version.
+   * @param type The data type.
+   * @param cell_size The cell size.
+   * @param size The size of the tile.
+   */
+  WriterTile(
+      const format_version_t format_version,
+      const Datatype type,
+      const uint64_t cell_size,
+      const uint64_t size,
+      tdb::pmr::memory_resource* resource);
 
   /** Move constructor. */
   WriterTile(WriterTile&& tile);

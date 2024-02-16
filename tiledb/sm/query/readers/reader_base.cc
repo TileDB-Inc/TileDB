@@ -680,13 +680,24 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         for (uint64_t d = 0; d < dim_num; ++d) {
           if (array_schema->dimension_ptr(d)->name() == name) {
             tile->init_coord_tile(
-                format_version, array_schema_, name, tile_sizes, tile_data, d);
+                format_version,
+                array_schema_,
+                name,
+                tile_sizes,
+                tile_data,
+                d,
+                array_memory_tracker_);
             break;
           }
         }
       } else {
         tile->init_attr_tile(
-            format_version, array_schema_, name, tile_sizes, tile_data);
+            format_version,
+            array_schema_,
+            name,
+            tile_sizes,
+            tile_data,
+            array_memory_tracker_);
       }
     }
   }

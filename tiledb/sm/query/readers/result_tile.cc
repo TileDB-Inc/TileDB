@@ -173,9 +173,15 @@ void ResultTile::init_attr_tile(
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes,
-    const TileData tile_data) {
-  auto tuple =
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data);
+    const TileData tile_data,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  auto tuple = TileTuple(
+      format_version,
+      array_schema,
+      name,
+      tile_sizes,
+      tile_data,
+      memory_tracker);
 
   if (name == constants::coords) {
     coords_tile_ = std::move(tuple);
@@ -212,10 +218,17 @@ void ResultTile::init_coord_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data,
-    unsigned dim_idx) {
+    unsigned dim_idx,
+    shared_ptr<MemoryTracker> memory_tracker) {
   coord_tiles_[dim_idx] = std::pair<std::string, TileTuple>(
       name,
-      TileTuple(format_version, array_schema, name, tile_sizes, tile_data));
+      TileTuple(
+          format_version,
+          array_schema,
+          name,
+          tile_sizes,
+          tile_data,
+          memory_tracker));
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.

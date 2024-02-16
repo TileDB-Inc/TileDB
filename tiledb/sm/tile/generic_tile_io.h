@@ -126,7 +126,8 @@ class GenericTileIO {
       ContextResources& resources,
       const URI& uri,
       uint64_t offset,
-      const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
@@ -146,7 +147,8 @@ class GenericTileIO {
   Tile read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
-      const Config& config);
+      const Config& config,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Reads the generic tile header from the file.

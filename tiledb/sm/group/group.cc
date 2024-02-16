@@ -740,7 +740,12 @@ void Group::load_metadata_from_storage(
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = group_metadata_to_load[m].uri_;
 
-        auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
+        auto&& tile = GenericTileIO::load(
+            resources_,
+            uri,
+            0,
+            encryption_key,
+            storage_manager_->resources().ephemeral_memory_tracker());
         metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
         return Status::Ok();
@@ -795,7 +800,12 @@ void Group::load_group_from_uri(const URI& uri) {
   [[maybe_unused]] auto timer_se =
       resources_.stats().start_timer("load_group_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key());
+  auto&& tile = GenericTileIO::load(
+      resources_,
+      uri,
+      0,
+      *encryption_key(),
+      storage_manager_->resources().ephemeral_memory_tracker());
 
   resources_.stats().add_counter("read_group_size", tile.size());
 
@@ -815,8 +825,12 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
 
   std::vector<shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
-    auto&& tile =
-        GenericTileIO::load(resources_, uri.uri_, 0, *encryption_key());
+    auto&& tile = GenericTileIO::load(
+        resources_,
+        uri.uri_,
+        0,
+        *encryption_key(),
+        storage_manager_->resources().ephemeral_memory_tracker());
 
     resources_.stats().add_counter("read_group_size", tile.size());
 

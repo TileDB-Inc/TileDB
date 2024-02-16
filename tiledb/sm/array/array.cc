@@ -1265,7 +1265,8 @@ Array::open_for_reads_without_fragments() {
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto result = array_directory().load_array_schemas(*encryption_key());
+  auto result =
+      array_directory().load_array_schemas(*encryption_key(), memory_tracker_);
 
   auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
@@ -1290,7 +1291,7 @@ Array::open_for_writes() {
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
-      array_directory().load_array_schemas(*encryption_key());
+      array_directory().load_array_schemas(*encryption_key(), memory_tracker_);
 
   // If building experimentally, this library should not be able to
   // write to newer-versioned or older-versioned arrays
@@ -1479,8 +1480,8 @@ void Array::do_load_metadata() {
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = array_metadata_to_load[m].uri_;
 
-        auto&& tile =
-            GenericTileIO::load(resources_, uri, 0, *encryption_key());
+        auto&& tile = GenericTileIO::load(
+            resources_, uri, 0, *encryption_key(), memory_tracker_);
         metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
 
         return Status::Ok();

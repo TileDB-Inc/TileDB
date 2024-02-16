@@ -153,10 +153,12 @@ Status DeletesAndUpdates::dowork() {
   WriterTile serialized_condition =
       update_values_.empty() ?
           tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-              condition_->negated_condition()) :
+              condition_->negated_condition(), query_memory_tracker_) :
           tiledb::sm::deletes_and_updates::serialization::
               serialize_update_condition_and_values(
-                  condition_->negated_condition(), update_values_);
+                  condition_->negated_condition(),
+                  update_values_,
+                  query_memory_tracker_);
   new_fragment_str += update_values_.empty() ? constants::delete_file_suffix :
                                                constants::update_file_suffix;
 
