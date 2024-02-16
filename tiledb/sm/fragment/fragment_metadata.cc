@@ -81,6 +81,7 @@ FragmentMetadata::FragmentMetadata(
     ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
     : resources_(resources)
     , memory_tracker_(memory_tracker)
+    , rtree_(RTree(nullptr, constants::rtree_fanout, memory_tracker_))
     , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
@@ -119,7 +120,8 @@ FragmentMetadata::FragmentMetadata(
     , has_delete_meta_(has_deletes_meta)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
-    , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
+    , rtree_(RTree(
+          &array_schema_->domain(), constants::rtree_fanout, memory_tracker_))
     , tile_index_base_(0)
     , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
@@ -1576,7 +1578,7 @@ const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
   return rtree_.leaf(tile_idx);
 }
 
-const std::vector<NDRange>& FragmentMetadata::mbrs() const {
+const tdb::pmr::vector<NDRange>& FragmentMetadata::mbrs() const {
   return rtree_.leaves();
 }
 

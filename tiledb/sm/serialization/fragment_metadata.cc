@@ -358,7 +358,7 @@ Status fragment_metadata_from_capnp(
     auto data = frag_meta_reader.getRtree();
     auto& domain = array_schema->domain();
     // If there are no levels, we still need domain_ properly initialized
-    frag_meta->rtree() = RTree(&domain, constants::rtree_fanout);
+    frag_meta->rtree().reset(&domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
     // What we actually deserialize is not something written on disk in a
     // possibly historical format, but what has been serialized in
