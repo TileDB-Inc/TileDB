@@ -266,8 +266,10 @@ class ResultTile {
         const ArraySchema& array_schema,
         const std::string& name,
         const TileSizes tile_sizes,
-        const TileData tile_data)
-        : fixed_tile_(
+        const TileData tile_data,
+        shared_ptr<MemoryTracker> memory_tracker)
+        : memory_tracker_(memory_tracker)
+        , fixed_tile_(
               format_version,
               tile_sizes.has_var_tile() ? constants::cell_var_offset_type :
                                           array_schema.type(name),
@@ -276,7 +278,8 @@ class ResultTile {
               (name == constants::coords) ? array_schema.dim_num() : 0,
               tile_sizes.tile_size(),
               tile_data.fixed_filtered_data(),
-              tile_sizes.tile_persisted_size()) {
+              tile_sizes.tile_persisted_size(),
+              memory_tracker_) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
         var_tile_.emplace(
@@ -286,7 +289,8 @@ class ResultTile {
             0,
             tile_sizes.tile_var_size(),
             tile_data.var_filtered_data(),
-            tile_sizes.tile_var_persisted_size());
+            tile_sizes.tile_var_persisted_size(),
+            memory_tracker_);
       }
 
       if (tile_sizes.has_validity_tile()) {
@@ -297,7 +301,8 @@ class ResultTile {
             0,
             tile_sizes.tile_validity_size(),
             tile_data.validity_filtered_data(),
-            tile_sizes.tile_validity_persisted_size());
+            tile_sizes.tile_validity_persisted_size(),
+            memory_tracker_);
       }
     }
 
@@ -339,6 +344,9 @@ class ResultTile {
     /* ********************************* */
     /*        PRIVATE ATTRIBUTES         */
     /* ********************************* */
+
+    /** The memory tracker. */
+    shared_ptr<MemoryTracker> memory_tracker_;
 
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
@@ -406,7 +414,8 @@ class ResultTile {
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
-      const TileData tile_data);
+      const TileData tile_data,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
@@ -415,7 +424,8 @@ class ResultTile {
       const std::string& name,
       const TileSizes tile_sizes,
       const TileData tile_data,
-      unsigned dim_idx);
+      unsigned dim_idx,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);

@@ -27,6 +27,10 @@
 include(unit_test)
 
 commence(unit_test tile)
+    this_target_sources(
+        main.cc
+        unit_tile.cc
+        ${CMAKE_SOURCE_DIR}/test/support/src/mem_helpers.cc
+    )
     this_target_object_libraries(tile)
-    this_target_sources(main.cc unit_tile.cc)
 conclude(unit_test)

@@ -30,6 +30,7 @@
  * This file defines a test `main()`
  */
 
+#include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "../metadata.h"
 #include "tiledb/common/common.h"
@@ -50,6 +51,8 @@ inline T& buffer_metadata(void* p) {
 
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+
   std::vector<shared_ptr<Tile>> metadata_tiles;
 
   Metadata metadata_to_serialize1, metadata_to_serialize2,
@@ -74,8 +77,8 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer1;
   metadata_to_serialize1.serialize(size_computation_serializer1);
-  WriterTile tile1{
-      WriterTile::from_generic(size_computation_serializer1.size())};
+  WriterTile tile1{WriterTile::from_generic(
+      size_computation_serializer1.size(), memory_tracker)};
 
   Serializer serializer1(tile1.data(), tile1.size());
   metadata_to_serialize1.serialize(serializer1);
@@ -84,8 +87,8 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer2;
   metadata_to_serialize2.serialize(size_computation_serializer2);
-  WriterTile tile2{
-      WriterTile::from_generic(size_computation_serializer2.size())};
+  WriterTile tile2{WriterTile::from_generic(
+      size_computation_serializer2.size(), memory_tracker)};
 
   Serializer serializer2(tile2.data(), tile2.size());
   metadata_to_serialize2.serialize(serializer2);
@@ -95,8 +98,8 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer3;
   metadata_to_serialize3.serialize(size_computation_serializer3);
-  WriterTile tile3{
-      WriterTile::from_generic(size_computation_serializer3.size())};
+  WriterTile tile3{WriterTile::from_generic(
+      size_computation_serializer3.size(), memory_tracker)};
 
   Serializer serializer3(tile3.data(), tile3.size());
   metadata_to_serialize3.serialize(serializer3);
@@ -110,7 +113,8 @@ TEST_CASE(
       0,
       tile1.size(),
       tile1.filtered_buffer().data(),
-      tile1.filtered_buffer().size());
+      tile1.filtered_buffer().size(),
+      memory_tracker);
   memcpy(metadata_tiles[0]->data(), tile1.data(), tile1.size());
 
   metadata_tiles[1] = tdb::make_shared<Tile>(
@@ -121,7 +125,8 @@ TEST_CASE(
       0,
       tile2.size(),
       tile2.filtered_buffer().data(),
-      tile2.filtered_buffer().size());
+      tile2.filtered_buffer().size(),
+      memory_tracker);
   memcpy(metadata_tiles[1]->data(), tile2.data(), tile2.size());
 
   metadata_tiles[2] = tdb::make_shared<Tile>(
@@ -132,7 +137,8 @@ TEST_CASE(
       0,
       tile3.size(),
       tile3.filtered_buffer().data(),
-      tile3.filtered_buffer().size());
+      tile3.filtered_buffer().size(),
+      memory_tracker);
   memcpy(metadata_tiles[2]->data(), tile3.data(), tile3.size());
 
   auto meta{Metadata::deserialize(metadata_tiles)};

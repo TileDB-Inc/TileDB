@@ -1618,7 +1618,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile<char*>(field_name, cells, array_schema, &result_tile);
 }
@@ -1673,7 +1674,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile<T>(field_name, cells, array_schema, &result_tile);
 }
@@ -1788,7 +1790,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
@@ -2336,7 +2339,8 @@ void test_apply_dense<char*>(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile_dense<char*>(field_name, cells, array_schema, &result_tile);
 }
@@ -2394,7 +2398,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile_dense<T>(field_name, cells, array_schema, &result_tile);
 }
@@ -2508,7 +2513,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 
@@ -3038,7 +3044,8 @@ void test_apply_sparse<char*>(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile_sparse<char*>(field_name, cells, array_schema, &result_tile);
 }
@@ -3096,7 +3103,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   test_apply_tile_sparse<T>(field_name, cells, array_schema, &result_tile);
 }
@@ -3867,7 +3875,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
@@ -4155,7 +4164,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
@@ -4568,7 +4578,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->var_tile();
@@ -4832,7 +4843,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
   Tile* const tile = &tile_tuple->fixed_tile();
 
@@ -4934,7 +4946,8 @@ TEST_CASE(
       *array_schema,
       field_name,
       tile_sizes,
-      tile_data);
+      tile_data,
+      tiledb::test::create_test_memory_tracker());
 
   ResultTile::TileTuple* const tile_tuple = result_tile.tile_tuple(field_name);
 

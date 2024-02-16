@@ -138,28 +138,57 @@ void ResultTile::init_attr_tile(
     const ArraySchema& array_schema,
     const std::string& name,
     const TileSizes tile_sizes,
-    const TileData tile_data) {
+    const TileData tile_data,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  auto tuple = TileTuple(
+      format_version,
+      array_schema,
+      name,
+      tile_sizes,
+      tile_data,
+      memory_tracker);
+
   if (name == constants::coords) {
     coords_tile_.emplace(
-        format_version, array_schema, name, tile_sizes, tile_data);
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker);
     return;
   }
 
   if (name == constants::timestamps) {
     timestamps_tile_.emplace(
-        format_version, array_schema, name, tile_sizes, tile_data);
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker);
     return;
   }
 
   if (name == constants::delete_timestamps) {
     delete_timestamps_tile_.emplace(
-        format_version, array_schema, name, tile_sizes, tile_data);
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker);
     return;
   }
 
   if (name == constants::delete_condition_index) {
     delete_condition_index_tile_.emplace(
-        format_version, array_schema, name, tile_sizes, tile_data);
+        format_version,
+        array_schema,
+        name,
+        tile_sizes,
+        tile_data,
+        memory_tracker);
     return;
   }
 
@@ -167,7 +196,12 @@ void ResultTile::init_attr_tile(
   for (auto& at : attr_tiles_) {
     if (at.first == name && at.second == nullopt) {
       at.second.emplace(
-          format_version, array_schema, name, tile_sizes, tile_data);
+          format_version,
+          array_schema,
+          name,
+          tile_sizes,
+          tile_data,
+          memory_tracker);
       return;
     }
   }
@@ -179,10 +213,16 @@ void ResultTile::init_coord_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data,
-    unsigned dim_idx) {
+    unsigned dim_idx,
+    shared_ptr<MemoryTracker> memory_tracker) {
   coord_tiles_[dim_idx].first = name;
   coord_tiles_[dim_idx].second.emplace(
-      format_version, array_schema, name, tile_sizes, tile_data);
+      format_version,
+      array_schema,
+      name,
+      tile_sizes,
+      tile_data,
+      memory_tracker);
 
   // When at least one unzipped coordinate has been initialized, we will
   // use the unzipped `coord()` implementation.

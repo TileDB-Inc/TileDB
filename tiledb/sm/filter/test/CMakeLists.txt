@@ -37,7 +37,6 @@ commence(unit_test filter_pipeline)
 conclude(unit_test)
 
 commence(unit_test run_filter_pipeline)
-    this_target_object_libraries(filter_pipeline)
     this_target_sources(
         main.cc
         add_1_in_place_filter.cc
@@ -48,6 +47,7 @@ commence(unit_test run_filter_pipeline)
         pseudo_checksum_filter.cc
         unit_run_filter_pipeline.cc
     )
+    this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
 
 commence(unit_test float_scale_input_val)

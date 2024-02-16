@@ -30,6 +30,7 @@
  * Tests the `Tile` class.
  */
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -39,6 +40,9 @@
 using namespace tiledb::sm;
 
 TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
+  // Create our test memory tracker.
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Initialize the test Tile.
   const format_version_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
@@ -46,7 +50,14 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
   Tile tile(
-      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
+      format_version,
+      data_type,
+      cell_size,
+      dim_num,
+      tile_size,
+      nullptr,
+      0,
+      tracker);
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.

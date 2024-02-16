@@ -218,7 +218,8 @@ TEST_CASE_METHOD(
         "d1",
         tile_sizes,
         tile_data,
-        0);
+        0,
+        memory_tracker_);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -235,7 +236,8 @@ TEST_CASE_METHOD(
       dim_name,
       tile_sizes,
       tile_data,
-      dim_idx);
+      dim_idx,
+      memory_tracker_);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();
@@ -328,7 +330,8 @@ TEST_CASE_METHOD(
         "d1",
         tile_sizes,
         tile_data,
-        0);
+        0,
+        memory_tracker_);
   }
 
   ResultTile::TileSizes tile_sizes(
@@ -345,7 +348,8 @@ TEST_CASE_METHOD(
       dim_name,
       tile_sizes,
       tile_data,
-      dim_idx);
+      dim_idx,
+      memory_tracker_);
   auto tile_tuple = rt.tile_tuple(dim_name);
   Tile* const t = &tile_tuple->fixed_tile();
   Tile* const t_var = &tile_tuple->var_tile();

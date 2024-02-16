@@ -33,11 +33,9 @@
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/common/exception/exception.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/storage_format/serialization/serializers.h"
-
-#include <iostream>
 
 using namespace tiledb::common;
 
@@ -60,7 +58,7 @@ uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 /*           STATIC API           */
 /* ****************************** */
 
-shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size) {
+shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker) {
   return make_shared<Tile>(
       HERE(),
       0,
@@ -69,15 +67,18 @@ shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size) {
       0,
       tile_size,
       nullptr,
-      0);
+      0,
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 }
 
-WriterTile WriterTile::from_generic(storage_size_t tile_size) {
+WriterTile WriterTile::from_generic(
+    storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker) {
   return {
       0,
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
-      tile_size};
+      tile_size,
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO)};
 }
 
 uint32_t WriterTile::compute_chunk_size(
@@ -107,8 +108,10 @@ TileBase::TileBase(
     const format_version_t format_version,
     const Datatype type,
     const uint64_t cell_size,
-    const uint64_t size)
-    : data_(static_cast<char*>(tdb_malloc(size)), tiledb_free)
+    const uint64_t size,
+    tdb::pmr::memory_resource* resource)
+    : resource_(resource)
+    , data_(tdb::pmr::make_unique<std::byte>(resource_, size))
     , size_(size)
     , cell_size_(cell_size)
     , format_version_(format_version)
@@ -124,7 +127,8 @@ TileBase::TileBase(
 }
 
 TileBase::TileBase(TileBase&& tile)
-    : data_(std::move(tile.data_))
+    : resource_(std::move(tile.resource_))
+    , data_(std::move(tile.data_))
     , size_(std::move(tile.size_))
     , cell_size_(std::move(tile.cell_size_))
     , format_version_(std::move(tile.format_version_))
@@ -145,8 +149,29 @@ Tile::Tile(
     const unsigned int zipped_coords_dim_num,
     const uint64_t size,
     void* filtered_data,
-    uint64_t filtered_size)
-    : TileBase(format_version, type, cell_size, size)
+    uint64_t filtered_size,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : Tile(
+          format_version,
+          type,
+          cell_size,
+          zipped_coords_dim_num,
+          size,
+          filtered_data,
+          filtered_size,
+          memory_tracker->get_resource(MemoryType::TILE_DATA)) {
+}
+
+Tile::Tile(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const unsigned int zipped_coords_dim_num,
+    const uint64_t size,
+    void* filtered_data,
+    uint64_t filtered_size,
+    tdb::pmr::memory_resource* resource)
+    : TileBase(format_version, type, cell_size, size, resource)
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size) {
@@ -156,8 +181,24 @@ WriterTile::WriterTile(
     const format_version_t format_version,
     const Datatype type,
     const uint64_t cell_size,
-    const uint64_t size)
-    : TileBase(format_version, type, cell_size, size)
+    const uint64_t size,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : TileBase(
+          format_version,
+          type,
+          cell_size,
+          size,
+          memory_tracker->get_resource(MemoryType::TILE_WRITER_DATA))
+    , filtered_buffer_(0) {
+}
+
+WriterTile::WriterTile(
+    const format_version_t format_version,
+    const Datatype type,
+    const uint64_t cell_size,
+    const uint64_t size,
+    tdb::pmr::memory_resource* resource)
+    : TileBase(format_version, type, cell_size, size, resource)
     , filtered_buffer_(0) {
 }
 
@@ -261,12 +302,15 @@ void WriterTile::write_var(const void* data, uint64_t offset, uint64_t nbytes) {
     while (new_alloc_size < offset + nbytes)
       new_alloc_size *= 2;
 
-    auto new_data =
-        static_cast<char*>(tdb_realloc(data_.release(), new_alloc_size));
+    auto new_data = tdb::pmr::make_unique<std::byte>(resource_, new_alloc_size);
+
     if (new_data == nullptr) {
       throw TileException("Cannot reallocate buffer; Memory allocation failed");
     }
-    data_.reset(new_data);
+
+    std::memcpy(new_data.get(), data_.get(), std::min(size_, new_alloc_size));
+
+    data_ = std::move(new_data);
     size_ = new_alloc_size;
   }
 
