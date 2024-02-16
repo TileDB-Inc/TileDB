@@ -67,6 +67,7 @@ void enumeration_to_capnp(
  * @return A new Enumeration
  */
 shared_ptr<const Enumeration> enumeration_from_capnp(
+    shared_ptr<MemoryTracker> memory_tracker,
     const capnp::Enumeration::Reader& reader);
 
 #endif
@@ -87,7 +88,9 @@ void serialize_load_enumerations_response(
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
-    SerializationType serialization_type, const Buffer& response);
+    SerializationType serialization_type,
+    const Buffer& response,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization
 }  // namespace tiledb::sm

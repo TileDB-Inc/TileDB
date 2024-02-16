@@ -385,6 +385,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
   }
 
   return Enumeration::create(
+      tiledb::test::create_test_memory_tracker(),
       name,
       Datatype::STRING_ASCII,
       constants::var_num,
