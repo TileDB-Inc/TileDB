@@ -797,7 +797,8 @@ TEST_CASE(
 TEST_CASE(
     "SchemaEvolution Error Handling Tests",
     "[cppapi][schema][evolution][errors]") {
-  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(
+      HERE(), tiledb::test::create_test_memory_tracker());
   REQUIRE_THROWS(ase->evolve_schema(nullptr));
   REQUIRE_THROWS(ase->add_attribute(nullptr));
 

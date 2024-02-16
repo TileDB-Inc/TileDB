@@ -71,10 +71,15 @@ class ArraySchemaEvolutionException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchemaEvolution::ArraySchemaEvolution() {
+ArraySchemaEvolution::ArraySchemaEvolution(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
+    shared_ptr<MemoryTracker> memory_tracker,
     std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
     std::unordered_set<std::string> attrs_to_drop,
     std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add,
@@ -82,12 +87,17 @@ ArraySchemaEvolution::ArraySchemaEvolution(
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range)
-    : attributes_to_add_map_(attrs_to_add)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , attributes_to_drop_(attrs_to_drop)
     , enumerations_to_add_map_(enmrs_to_add)
     , enumerations_to_extend_map_(enmrs_to_extend)
     , enumerations_to_drop_(enmrs_to_drop)
     , timestamp_range_(timestamp_range) {
+  for (auto& elem : attrs_to_add) {
+    attributes_to_add_map_.insert(elem);
+  }
 }
 
 ArraySchemaEvolution::~ArraySchemaEvolution() {

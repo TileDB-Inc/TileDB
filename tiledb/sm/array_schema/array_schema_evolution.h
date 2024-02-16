@@ -36,8 +36,9 @@
 
 #include <unordered_map>
 #include <unordered_set>
-
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
@@ -68,7 +69,10 @@ class ArraySchemaEvolution {
   /* ********************************* */
 
   /** Constructor. */
-  ArraySchemaEvolution();
+  ArraySchemaEvolution() = delete;
+
+  /** Constructor with memory tracker. */
+  ArraySchemaEvolution(shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor.
    * @param attrs_to_add Attributes to add to the schema.
@@ -77,6 +81,7 @@ class ArraySchemaEvolution {
    * @param timestamp_range Timestamp range to use for the new schema.
    */
   ArraySchemaEvolution(
+      shared_ptr<MemoryTracker> memory_tracker,
       std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
       std::unordered_set<std::string> attrs_to_drop,
       std::unordered_map<std::string, shared_ptr<const Enumeration>>
@@ -184,9 +189,15 @@ class ArraySchemaEvolution {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * The memory tracker of the ArraySchema.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The array attributes to be added. */
   /** It maps each attribute name to the corresponding attribute object. */
-  std::unordered_map<std::string, shared_ptr<Attribute>> attributes_to_add_map_;
+  tdb::pmr::unordered_map<std::string, shared_ptr<Attribute>>
+      attributes_to_add_map_;
 
   /** The names of array attributes to be dropped. */
   std::unordered_set<std::string> attributes_to_drop_;
