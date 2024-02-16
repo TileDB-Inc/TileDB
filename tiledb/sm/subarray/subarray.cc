@@ -358,17 +358,6 @@ Status Subarray::add_range(
   return Status::Ok();
 }
 
-Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
-  // Must reset the result size and tile overlap
-  est_result_size_computed_ = false;
-  tile_overlap_.clear();
-
-  // Add the range
-  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
-  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
-  return Status::Ok();
-}
-
 Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema_latest().domain().all_dims_same_type())
     return LOG_STATUS(
@@ -2121,6 +2110,17 @@ void Subarray::add_default_ranges() {
   }
   is_default_.resize(dim_num, true);
   add_default_label_ranges(dim_num);
+}
+
+Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
+  // Must reset the result size and tile overlap
+  est_result_size_computed_ = false;
+  tile_overlap_.clear();
+
+  // Add the range
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
+  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  return Status::Ok();
 }
 
 void Subarray::add_default_label_ranges(dimension_size_type dim_num) {
