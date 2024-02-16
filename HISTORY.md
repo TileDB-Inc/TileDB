@@ -1,3 +1,9 @@
+# TileDB v2.20.1 Release Notes
+
+## Build System Changes
+
+* Reintroduce the `TILEDB_STATIC` option under a deprecation warning. [#4732](https://github.com/TileDB-Inc/TileDB/pull/4732)
+
 # TileDB v2.20.0 Release Notes
 
 ## Breaking behavior
