@@ -65,10 +65,11 @@ commence(object_library baseline)
         memory_tracker.cc
         pmr.cc
     )
+    if (TILEDB_USE_CPP17_PMR)
+      this_target_sources(polymorphic_allocator/polymorphic_allocator.cc)
+    endif()
     find_package(Spdlog_EP REQUIRED)
-    find_package(Boost REQUIRED COMPONENTS container)
     target_link_libraries(baseline PUBLIC spdlog::spdlog)
-    target_link_libraries(baseline PUBLIC Boost::container)
     target_link_libraries(baseline PUBLIC common)
 conclude(object_library)
 

@@ -37,25 +37,39 @@
 #include <unordered_map>
 #include <vector>
 
-#include <boost/container/pmr/memory_resource.hpp>
-#include <boost/container/pmr/polymorphic_allocator.hpp>
-#include <boost/container/pmr/vector.hpp>
+#ifdef USE_CPP17_PMR
+#include "polymorphic_allocator/polymorphic_allocator.h"
+#else
+#include <memory_resource>
+#endif
 
 #include "common.h"
 
 namespace tiledb::common::pmr {
 
-using memory_resource = boost::container::pmr::memory_resource;
+#ifdef USE_CPP17_PMR
+
+using memory_resource = cpp17::pmr::memory_resource;
+
+template <class Tp>
+using polymorphic_allocator = cpp17::pmr::polymorphic_allocator<Tp>;
+
+#else
+
+using memory_resource = std::pmr::memory_resource;
+
+template <class Tp>
+using polymorphic_allocator = std::pmr::polymorphic_allocator<Tp>;
+#endif
+
+memory_resource* get_default_resource();
 
 /* ********************************* */
 /*       PMR VECTOR DECLARATION      */
 /* ********************************* */
 
 template <class Tp>
-using pmr_vector =
-    std::vector<Tp, boost::container::pmr::polymorphic_allocator<Tp>>;
-
-memory_resource* get_default_resource();
+using pmr_vector = std::vector<Tp, polymorphic_allocator<Tp>>;
 
 template <class Tp>
 class vector : public pmr_vector<Tp> {
@@ -141,7 +155,7 @@ using pmr_unordered_map = std::unordered_map<
     T,
     Hash,
     KeyEqual,
-    boost::container::pmr::polymorphic_allocator<std::pair<const Key, T>>>;
+    polymorphic_allocator<std::pair<const Key, T>>>;
 
 template <
     class Key,
