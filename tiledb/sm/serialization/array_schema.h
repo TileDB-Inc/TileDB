@@ -35,7 +35,6 @@
 
 #include <unordered_map>
 
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 
@@ -52,6 +51,7 @@ class Array;
 class Buffer;
 class ArraySchema;
 class Dimension;
+class MemoryTracker;
 enum class SerializationType : uint8_t;
 
 namespace serialization {

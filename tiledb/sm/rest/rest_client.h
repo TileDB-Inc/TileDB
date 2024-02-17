@@ -53,6 +53,7 @@ class ArraySchemaEvolution;
 class Config;
 class FragmentInfo;
 class Query;
+class MemoryTracker;
 
 enum class SerializationType : uint8_t;
 

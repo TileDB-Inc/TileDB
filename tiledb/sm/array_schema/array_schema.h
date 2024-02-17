@@ -37,7 +37,6 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -57,6 +56,7 @@ class Dimension;
 class DimensionLabel;
 class Domain;
 class Enumeration;
+class MemoryTracker;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
