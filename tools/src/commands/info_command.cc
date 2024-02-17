@@ -131,7 +131,7 @@ void InfoCommand::print_tile_sizes() const {
   // Compute and report mean persisted tile sizes over all attributes.
   const auto& schema = array.array_schema_latest();
   auto fragment_metadata = array.fragment_metadata();
-  auto attributes = schema.attributes();
+  auto& attributes = schema.attributes();
   uint64_t total_persisted_size = 0, total_in_memory_size = 0;
 
   // Helper function for processing each attribute.
