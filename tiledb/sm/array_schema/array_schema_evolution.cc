@@ -35,6 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -79,14 +80,14 @@ ArraySchemaEvolution::ArraySchemaEvolution(
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
-    shared_ptr<MemoryTracker> memory_tracker,
     std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
     std::unordered_set<std::string> attrs_to_drop,
     std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add,
     std::unordered_map<std::string, shared_ptr<const Enumeration>>
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
-    std::pair<uint64_t, uint64_t> timestamp_range)
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
           memory_tracker->get_resource(MemoryType::ATTRIBUTES))

@@ -156,8 +156,8 @@ Status array_schema_evolution_to_capnp(
 }
 
 tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
-    shared_ptr<MemoryTracker> memory_tracker,
-    const capnp::ArraySchemaEvolution::Reader& evolution_reader) {
+    const capnp::ArraySchemaEvolution::Reader& evolution_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Create attributes to add
   std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
   auto attrs_to_add_reader = evolution_reader.getAttributesToAdd();
@@ -209,13 +209,13 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
 
   return tdb_unique_ptr<ArraySchemaEvolution>(tdb_new(
       ArraySchemaEvolution,
-      memory_tracker,
       attrs_to_add,
       attrs_to_drop,
       enmrs_to_add,
       enmrs_to_extend,
       enmrs_to_drop,
-      ts_range));
+      ts_range,
+      memory_tracker));
 }
 
 Status array_schema_evolution_serialize(
@@ -295,7 +295,7 @@ Status array_schema_evolution_deserialize(
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(
-            memory_tracker, array_schema_evolution_reader);
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -307,7 +307,7 @@ Status array_schema_evolution_deserialize(
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(
-            memory_tracker, array_schema_evolution_reader);
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       default: {

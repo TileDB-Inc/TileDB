@@ -37,7 +37,6 @@
 #include <unordered_map>
 #include <unordered_set>
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
@@ -54,6 +53,7 @@ class ConstBuffer;
 class Dimension;
 class Domain;
 class Enumeration;
+class MemoryTracker;
 class ArraySchema;
 
 enum class ArrayType : uint8_t;
@@ -79,9 +79,9 @@ class ArraySchemaEvolution {
    * @param enmrs_to_add Enumerations to add to the schema.
    * @param attrs_to_drop Attributes to remove from the schema.
    * @param timestamp_range Timestamp range to use for the new schema.
+   * @param memory_tracker Memory tracker to use for the new schema.
    */
   ArraySchemaEvolution(
-      shared_ptr<MemoryTracker> memory_tracker,
       std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add,
       std::unordered_set<std::string> attrs_to_drop,
       std::unordered_map<std::string, shared_ptr<const Enumeration>>
@@ -89,7 +89,8 @@ class ArraySchemaEvolution {
       std::unordered_map<std::string, shared_ptr<const Enumeration>>
           enmrs_to_extend,
       std::unordered_set<std::string> enmrs_to_drop,
-      std::pair<uint64_t, uint64_t> timestamp_range);
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Destructor. */
   ~ArraySchemaEvolution();
