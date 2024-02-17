@@ -109,10 +109,10 @@ CResultCoordsFx::CResultCoordsFx(uint64_t num_cells) {
   frag_md_ = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 }
 

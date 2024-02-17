@@ -114,8 +114,8 @@ Status array_schema_to_capnp(
  */
 shared_ptr<ArraySchema> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const URI& uri);
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a dimension label to cap'n proto object
@@ -158,8 +158,8 @@ Status array_schema_serialize(
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const Buffer& serialized_buffer);
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 Status nonempty_domain_serialize(
     const Array* array,
@@ -212,8 +212,8 @@ void serialize_load_array_schema_response(
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type,
-    shared_ptr<MemoryTracker>,
-    const Buffer& data);
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization
 }  // namespace sm

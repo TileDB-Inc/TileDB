@@ -62,6 +62,7 @@ struct CResultTileFx {
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
   std::shared_ptr<FragmentMetadata> frag_md_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   CResultTileFx();
   ~CResultTileFx();
@@ -109,13 +110,16 @@ CResultTileFx::CResultTileFx() {
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
+  // Create test memory tracker.
+  memory_tracker_ = tiledb::test::create_test_memory_tracker();
+
   frag_md_ = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      memory_tracker_,
       false);
 }
 
@@ -191,10 +195,10 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      memory_tracker_,
       true);
   ResultTile rt(0, 0, frag_md);
 
@@ -301,10 +305,10 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      memory_tracker_,
       true);
   ResultTile rt(0, 0, frag_md);
 

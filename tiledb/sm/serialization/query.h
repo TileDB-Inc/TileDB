@@ -140,10 +140,10 @@ using CopyState =
  */
 Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
-    shared_ptr<MemoryTracker> memory_tracker,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager);
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a query

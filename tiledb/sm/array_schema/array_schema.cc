@@ -35,6 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -68,8 +69,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class MemoryTracker;
-
 /** Class for locally generated status exceptions. */
 class ArraySchemaException : public StatusException {
  public:
@@ -83,7 +82,7 @@ class ArraySchemaException : public StatusException {
 /* ****************************** */
 
 ArraySchema::ArraySchema(
-    shared_ptr<MemoryTracker> memory_tracker, ArrayType array_type)
+    ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(URI())
     , array_uri_(URI())
@@ -126,7 +125,6 @@ ArraySchema::ArraySchema(
 }
 
 ArraySchema::ArraySchema(
-    shared_ptr<MemoryTracker> memory_tracker,
     URI uri,
     uint32_t version,
     std::pair<uint64_t, uint64_t> timestamp_range,
@@ -143,7 +141,8 @@ ArraySchema::ArraySchema(
     std::unordered_map<std::string, std::string> enumeration_path_map,
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
+    FilterPipeline coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
     , version_(version)
@@ -1063,13 +1062,13 @@ void ArraySchema::add_dimension_label(
     // Create the dimension label reference.
     auto dim_label_ref = make_shared<DimensionLabel>(
         HERE(),
-        memory_tracker_,
         dim_id,
         name,
         uri,
         dim,
         label_order,
-        label_type);
+        label_type,
+        memory_tracker_);
     dimension_labels_.emplace_back(dim_label_ref);
     dimension_label_map_[name] = dim_label_ref.get();
   } catch (...) {
@@ -1298,8 +1297,8 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 // #TODO Add security validation on incoming URI
 shared_ptr<ArraySchema> ArraySchema::deserialize(
     Deserializer& deserializer,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const URI& uri) {
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load version
   // #TODO Add security validation
@@ -1442,7 +1441,6 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
 
   return make_shared<ArraySchema>(
       HERE(),
-      memory_tracker,
       uri,
       version,
       timestamp_range,
@@ -1461,7 +1459,8 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       cell_validity_filters,
       FilterPipeline(
           coords_filters,
-          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
+          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64),
+      memory_tracker);
 }
 
 shared_ptr<ArraySchema> ArraySchema::clone() const {

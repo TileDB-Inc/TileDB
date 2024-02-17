@@ -99,11 +99,9 @@ class ArraySchema {
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    */
-  ArraySchema(shared_ptr<MemoryTracker> memory_tracker, ArrayType array_type);
+  ArraySchema(ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor with std::vector attributes.
-   * @param memory_tracker The memory tracker of the array this fragment
-   *     metadata corresponds to.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
@@ -123,9 +121,10 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    **/
   ArraySchema(
-      shared_ptr<MemoryTracker> memory_tracker,
       URI uri,
       uint32_t version,
       std::pair<uint64_t, uint64_t> timestamp_range,
@@ -142,7 +141,8 @@ class ArraySchema {
       std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+      FilterPipeline coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Copy constructor. Clones the input.
@@ -480,8 +480,8 @@ class ArraySchema {
    */
   static shared_ptr<ArraySchema> deserialize(
       Deserializer& deserializer,
-      shared_ptr<MemoryTracker> memory_tracker,
-      const URI& uri);
+      const URI& uri,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Return a cloned copy of this array schema. */
   shared_ptr<ArraySchema> clone() const;

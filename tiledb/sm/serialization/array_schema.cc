@@ -789,7 +789,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
-    schema = array_schema_from_capnp(schema_reader, memory_tracker, URI());
+    schema = array_schema_from_capnp(schema_reader, URI(), memory_tracker);
   }
 
   auto is_relative = dim_label_reader.getRelative();
@@ -916,8 +916,8 @@ Status array_schema_to_capnp(
 // #TODO Add security validation on incoming URI
 shared_ptr<ArraySchema> array_schema_from_capnp(
     const capnp::ArraySchema::Reader& schema_reader,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const URI& uri) {
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
   Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
@@ -1131,7 +1131,6 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
 
   return make_shared<ArraySchema>(
       HERE(),
-      memory_tracker,
       uri_deserialized,
       version,
       timestamp_range,
@@ -1148,7 +1147,8 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
       enmr_path_map,
       cell_var_offsets_filters,
       cell_validity_filters,
-      coords_filters);
+      coords_filters,
+      memory_tracker);
 }
 
 Status array_schema_serialize(
@@ -1207,8 +1207,8 @@ Status array_schema_serialize(
 
 shared_ptr<ArraySchema> array_schema_deserialize(
     SerializationType serialize_type,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
 
@@ -1223,7 +1223,7 @@ shared_ptr<ArraySchema> array_schema_deserialize(
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
         return array_schema_from_capnp(
-            array_schema_reader, memory_tracker, URI());
+            array_schema_reader, URI(), memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1233,7 +1233,7 @@ shared_ptr<ArraySchema> array_schema_deserialize(
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
         return array_schema_from_capnp(
-            array_schema_reader, memory_tracker, URI());
+            array_schema_reader, URI(), memory_tracker);
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1975,13 +1975,13 @@ shared_ptr<ArraySchema> load_array_schema_response_from_capnp(
     capnp::LoadArraySchemaResponse::Reader& reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  return array_schema_from_capnp(schema_reader, memory_tracker, URI());
+  return array_schema_from_capnp(schema_reader, URI(), memory_tracker);
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType serialization_type,
-    shared_ptr<MemoryTracker> memory_tracker,
-    const Buffer& data) {
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -2028,7 +2028,7 @@ Status array_schema_serialize(
 }
 
 shared_ptr<ArraySchema> array_schema_deserialize(
-    SerializationType, shared_ptr<MemoryTracker>, const Buffer&) {
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2089,7 +2089,7 @@ void serialize_load_array_schema_response(
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
-    SerializationType, shared_ptr<MemoryTracker>, const Buffer&) {
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }

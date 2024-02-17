@@ -792,10 +792,10 @@ Status WriterBase::create_fragment(
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       &storage_manager_->resources(),
-      array_memory_tracker_,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
+      array_memory_tracker_,
       dense,
       has_timestamps,
       has_delete_metadata);

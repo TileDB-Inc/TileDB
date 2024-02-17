@@ -83,7 +83,7 @@ TEMPLATE_LIST_TEST_CASE(
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 1000;
   ArraySchema schema(
-      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(num_cells);
   Attribute a("a", tiledb_type);
   a.set_cell_val_num(cell_val_num);
@@ -262,7 +262,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   // Generate the array schema.
   ArraySchema schema(
-      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(4);
   Attribute a("a", (Datatype)type.tiledb_type);
   CHECK(schema.add_attribute(make_shared<Attribute>(HERE(), a)).ok());
@@ -338,7 +338,7 @@ TEST_CASE(
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 20;
   ArraySchema schema(
-      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(num_cells);
   Attribute a("a", Datatype::STRING_ASCII);
   a.set_cell_val_num(constants::var_num);
@@ -439,7 +439,7 @@ TEST_CASE(
     "[tile-metadata-generator][var-data][same-length]") {
   // Generate the array schema.
   ArraySchema schema(
-      tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+      ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema.set_capacity(2);
   Attribute a("a", Datatype::CHAR);
   a.set_cell_val_num(constants::var_num);

@@ -1591,10 +1591,10 @@ int array_open_wrapper(
   // in the same way that rest_client does.
   auto st = tiledb::sm::serialization::array_deserialize(
       (*open_array)->array_.get(),
-      create_test_memory_tracker(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      client_ctx->storage_manager());
+      client_ctx->storage_manager(),
+      tiledb::test::create_test_memory_tracker());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

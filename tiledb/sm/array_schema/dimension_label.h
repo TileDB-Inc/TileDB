@@ -34,7 +34,6 @@
 #define TILEDB_DIMENSION_LABEL_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -49,6 +48,7 @@ class ArraySchema;
 class Buffer;
 class ConstBuffer;
 class Dimension;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class DataOrder : uint8_t;
 
@@ -117,13 +117,13 @@ class DimensionLabel {
    * @param label_type The datatype of the label data.
    */
   DimensionLabel(
-      shared_ptr<MemoryTracker> memory_tracker,
       dimension_size_type dim_id,
       const std::string& dim_label_name,
       const URI& uri,
       const Dimension* dim,
       DataOrder label_order,
-      Datatype label_type);
+      Datatype label_type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Populates the object members from the data in the input binary buffer.

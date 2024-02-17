@@ -108,7 +108,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
 
     // Create the ArraySchema
     shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
-        HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+        HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
     throw_if_not_ok(schema->set_domain(domain));
     throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(

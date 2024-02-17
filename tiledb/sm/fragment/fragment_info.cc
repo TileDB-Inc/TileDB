@@ -1123,10 +1123,10 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
       resources_,
-      resources_->create_memory_tracker(),
       array_schema_latest,
       new_fragment_uri,
       timestamp_range,
+      resources_->create_memory_tracker(),
       !sparse);
   meta->load(enc_key_, nullptr, 0, array_schemas_all_);
 

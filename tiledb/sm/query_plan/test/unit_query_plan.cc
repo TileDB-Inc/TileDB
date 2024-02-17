@@ -30,6 +30,7 @@
  * This file tests the QueryPlan class
  */
 
+#include <test/support/src/mem_helpers.h>
 #include <test/support/src/temporary_local_directory.h>
 #include <test/support/tdb_catch.h>
 #include "../query_plan.h"
@@ -80,8 +81,8 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
       make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
 
   // Create the ArraySchema
-  shared_ptr<ArraySchema> schema =
-      make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   throw_if_not_ok(schema->set_domain(domain));
   throw_if_not_ok(schema->add_attribute(
       make_shared<Attribute>(

@@ -97,7 +97,7 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
 
   virtual shared_ptr<ArraySchema> create_schema() override {
     auto schema = make_shared<ArraySchema>(
-        HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
+        HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
     auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
@@ -398,7 +398,7 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
   auto schema = make_shared<ArraySchema>(
-      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::SPARSE);
+      HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
@@ -442,12 +442,12 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
   auto memory_tracker =
       ctx.ptr()->context().resources().create_memory_tracker();
   return serialization::deserialize_load_array_schema_response(
-      stype, memory_tracker, resp_buf->buffer());
+      stype, resp_buf->buffer(), memory_tracker);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   auto schema = make_shared<ArraySchema>(
-      HERE(), tiledb::test::create_test_memory_tracker(), ArrayType::DENSE);
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema->set_capacity(10000);
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));

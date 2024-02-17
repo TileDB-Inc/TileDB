@@ -104,6 +104,10 @@ Status RestClient::init(
 
   config_ = config;
   compute_tp_ = compute_tp;
+
+  // Setting the type of the memory tracker as MemoryTrackerType::REST_CLIENT
+  // for now. This is because the class is used in many places not directly tied
+  // to an array.
   memory_tracker_ = resources.create_memory_tracker();
   memory_tracker_->set_type(MemoryTrackerType::REST_CLIENT);
 
@@ -244,7 +248,7 @@ RestClient::get_array_schema_from_rest(const URI& uri) {
   return {
       Status::Ok(),
       serialization::array_schema_deserialize(
-          serialization_type_, memory_tracker_, returned_data)};
+          serialization_type_, returned_data, memory_tracker_)};
 }
 
 shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
@@ -292,7 +296,7 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_array_schema_response(
-      serialization_type_, memory_tracker_, returned_data);
+      serialization_type_, returned_data, memory_tracker_);
 }
 
 Status RestClient::post_array_schema_to_rest(
@@ -377,10 +381,10 @@ Status RestClient::post_array_from_rest(
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::array_deserialize(
       array,
-      memory_tracker_,
       serialization_type_,
       returned_data,
-      storage_manager);
+      storage_manager,
+      memory_tracker_);
 }
 
 void RestClient::delete_array_from_rest(const URI& uri) {
@@ -1269,7 +1273,7 @@ Status RestClient::post_fragment_info_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::fragment_info_deserialize(
-      fragment_info, memory_tracker_, serialization_type_, uri, returned_data);
+      fragment_info, serialization_type_, uri, returned_data, memory_tracker_);
 }
 
 Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {

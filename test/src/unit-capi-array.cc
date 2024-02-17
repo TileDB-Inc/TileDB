@@ -2589,10 +2589,10 @@ TEST_CASE_METHOD(
   auto memory_tracker = ctx_->resources().create_memory_tracker();
   auto st = tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
-      memory_tracker,
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      ctx_->storage_manager());
+      ctx_->storage_manager(),
+      memory_tracker);
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

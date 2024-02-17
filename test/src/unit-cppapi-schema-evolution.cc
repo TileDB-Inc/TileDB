@@ -810,8 +810,8 @@ TEST_CASE(
 
   auto schema = make_shared<tiledb::sm::ArraySchema>(
       HERE(),
-      tiledb::test::create_test_memory_tracker(),
-      tiledb::sm::ArrayType::SPARSE);
+      tiledb::sm::ArrayType::SPARSE,
+      tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<tiledb::sm::Dimension>(
       HERE(), "dim1", tiledb::sm::Datatype::INT32);
   int range[2] = {0, 1000};

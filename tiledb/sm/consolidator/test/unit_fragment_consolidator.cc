@@ -49,8 +49,8 @@ shared_ptr<ArraySchema> make_schema(
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
       HERE(),
-      tiledb::test::create_test_memory_tracker(),
-      sparse ? ArrayType::SPARSE : ArrayType::DENSE);
+      sparse ? ArrayType::SPARSE : ArrayType::DENSE,
+      tiledb::test::create_test_memory_tracker());
 
   // Create the domain/dimensions.
   Domain domain;
