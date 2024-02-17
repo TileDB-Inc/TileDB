@@ -92,6 +92,9 @@ class ArraySchemaEvolution {
       std::pair<uint64_t, uint64_t> timestamp_range,
       shared_ptr<MemoryTracker> memory_tracker);
 
+  DISABLE_COPY_AND_COPY_ASSIGN(ArraySchemaEvolution);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ArraySchemaEvolution);
+
   /** Destructor. */
   ~ArraySchemaEvolution();
 
@@ -204,11 +207,11 @@ class ArraySchemaEvolution {
   std::unordered_set<std::string> attributes_to_drop_;
 
   /** Enumerations to add with any attribute. */
-  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumerations_to_add_map_;
 
   /** Enumerations to extend. */
-  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumerations_to_extend_map_;
 
   /** The names of array enumerations to be dropped. */

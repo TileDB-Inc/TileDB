@@ -76,7 +76,11 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
-          memory_tracker->get_resource(MemoryType::ATTRIBUTES)) {
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -92,12 +96,22 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     , attributes_to_add_map_(
           memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , attributes_to_drop_(attrs_to_drop)
-    , enumerations_to_add_map_(enmrs_to_add)
-    , enumerations_to_extend_map_(enmrs_to_extend)
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_drop_(enmrs_to_drop)
     , timestamp_range_(timestamp_range) {
   for (auto& elem : attrs_to_add) {
     attributes_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_add) {
+    enumerations_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_extend) {
+    enumerations_to_extend_map_.insert(elem);
   }
 }
 
