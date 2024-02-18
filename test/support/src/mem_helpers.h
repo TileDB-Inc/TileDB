@@ -39,6 +39,18 @@
 namespace tiledb::test {
 
 /**
+ * Helper function get the test instance of a shared_ptr<MemoryTracker>
+ *
+ * This is the preferred function. The create_test_memory_tracker will be
+ * replaced shortly and only serves as a proxy to this function while we
+ * transition the first few PRs to use this new function.
+ *
+ * The reasoning here is that creating memory trackers has turned out to be a
+ * bit of a footgun with lifetime issues.
+ */
+shared_ptr<sm::MemoryTracker> get_test_memory_tracker();
+
+/**
  * Helper function to create test instances of shared_ptr<MemoryTracker>
  */
 shared_ptr<sm::MemoryTracker> create_test_memory_tracker();
