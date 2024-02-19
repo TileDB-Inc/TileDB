@@ -1453,19 +1453,16 @@ TEST_CASE(
     Group g{ctx, temp_dir.path(), TILEDB_READ};
 
     CHECK(g.dump(false) != "");
-    CHECK(g.member_count() == 2);
+    CHECK(g.member_count() == 1);
   }
 
   // Add a member to the group
   {
     Group g{ctx, temp_dir.path(), TILEDB_WRITE};
 
-    if (Object::object(ctx, temp_dir.path() + "/subgroup3").type() ==
-        Object::Type::Invalid) {
-      Group::create(ctx, temp_dir.path() + "/subgroup3");
-    }
+    Group::create(ctx, temp_dir.path() + "/subgroup2");
 
-    g.add_member("subgroup3", true, "subgroup3");
+    g.add_member("subgroup2", true, "subgroup2");
 
     g.close();
   }
@@ -1475,16 +1472,15 @@ TEST_CASE(
     Group g{ctx, temp_dir.path(), TILEDB_READ};
 
     CHECK(g.dump(false) != "");
-    CHECK(g.member_count() == 3);
-    CHECK(g.member(2).name() == "subgroup3");
+    CHECK(g.member_count() == 2);
+    CHECK(g.member(1).name() == "subgroup2");
   }
 
   // Read the raw group details files
   auto children = vfs.ls(temp_dir.path() + "/__group");
-  CHECK(children.size() == 3);
+  CHECK(children.size() == 2);
   std::sort(children.begin(), children.end());
   CHECK(!tiledb::sm::utils::parse::ends_with(children[0], "_1"));
-  CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
   // This is the file written by this test.
-  CHECK(tiledb::sm::utils::parse::ends_with(children[2], "_1"));
+  CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
 }
