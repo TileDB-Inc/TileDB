@@ -240,6 +240,7 @@ jobs:
 
           # CMake exits with non-0 status if there are any warnings during the build, so
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target unit_vfs --config $CMakeBuildType -- /verbosity:minimal
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
 

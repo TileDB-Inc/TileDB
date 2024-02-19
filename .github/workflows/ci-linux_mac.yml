@@ -191,6 +191,7 @@ jobs:
           ./tiledb/test/regression/tiledb_regression -d yes
           ./tiledb/test/ci/test_assert -d yes
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           ###################################################
           # Stop helper processes, if applicable
