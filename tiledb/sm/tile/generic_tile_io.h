@@ -162,6 +162,20 @@ class GenericTileIO {
       ContextResources& resources, const URI& uri, uint64_t file_offset);
 
   /**
+   * Writes a generic tile to a file.
+   *
+   * @param resources The ContextResources instance to use for writing.
+   * @param uri The URI of the generic tile.
+   * @param tile The tile to write.
+   * @param encryption_key The encryption key to use.
+   */
+  static void store_generic(
+      ContextResources& resources,
+      const URI& uri,
+      WriterTile& tile,
+      const EncryptionKey& encryption_key);
+
+  /**
    * Writes a tile generically to the file. This means that a header will be
    * prepended to the file before writing the tile contents. The reason is
    * that there will be no tile metadata retrieved from another source,

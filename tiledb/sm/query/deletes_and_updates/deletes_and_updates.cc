@@ -36,6 +36,7 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
@@ -161,8 +162,11 @@ Status DeletesAndUpdates::dowork() {
                                                constants::update_file_suffix;
 
   auto uri = commit_uri.join_path(new_fragment_str);
-  RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
-      serialized_condition, uri, *array_->encryption_key()));
+  GenericTileIO::store_generic(
+      storage_manager_->resources(),
+      uri,
+      serialized_condition,
+      *array_->encryption_key());
 
   return Status::Ok();
 }

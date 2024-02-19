@@ -168,6 +168,17 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
   return header;
 }
 
+void GenericTileIO::store_generic(
+    ContextResources& resources,
+    const URI& uri,
+    WriterTile& tile,
+    const EncryptionKey& encryption_key) {
+  GenericTileIO tile_io(resources, uri);
+  uint64_t nbytes = 0;
+  tile_io.write_generic(&tile, encryption_key, &nbytes);
+  throw_if_not_ok(resources.vfs().close_file(uri));
+}
+
 void GenericTileIO::write_generic(
     WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
   // Create a header
