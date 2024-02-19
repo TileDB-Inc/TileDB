@@ -1278,8 +1278,7 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
-  GenericTileIO::store_data(
-      resources_, group_detail_uri, tile, encryption_key);
+  GenericTileIO::store_data(resources_, group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
 }
@@ -1347,8 +1346,7 @@ Status StorageManagerCanonical::store_array_schema(
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    GenericTileIO::store_data(
-        resources_, abs_enmr_uri, tile, encryption_key);
+    GenericTileIO::store_data(resources_, abs_enmr_uri, tile, encryption_key);
   }
 
   return Status::Ok();
