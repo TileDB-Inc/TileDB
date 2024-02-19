@@ -168,7 +168,7 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
   return header;
 }
 
-void GenericTileIO::store_generic(
+void GenericTileIO::store_data(
     ContextResources& resources,
     const URI& uri,
     WriterTile& tile,

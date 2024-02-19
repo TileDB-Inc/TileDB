@@ -1278,7 +1278,7 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
-  GenericTileIO::store_generic(
+  GenericTileIO::store_data(
       resources_, group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
@@ -1315,7 +1315,7 @@ Status StorageManagerCanonical::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
-  GenericTileIO::store_generic(resources_, schema_uri, tile, encryption_key);
+  GenericTileIO::store_data(resources_, schema_uri, tile, encryption_key);
 
   // Create the `__enumerations` directory under `__schema` if it doesn't
   // exist. This might happen if someone tries to add an enumeration to an
@@ -1347,7 +1347,7 @@ Status StorageManagerCanonical::store_array_schema(
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    GenericTileIO::store_generic(
+    GenericTileIO::store_data(
         resources_, abs_enmr_uri, tile, encryption_key);
   }
 
@@ -1380,7 +1380,7 @@ Status StorageManagerCanonical::store_metadata(
   // Create a metadata file name
   URI metadata_uri = metadata->get_uri(uri);
 
-  GenericTileIO::store_generic(resources_, metadata_uri, tile, encryption_key);
+  GenericTileIO::store_data(resources_, metadata_uri, tile, encryption_key);
 
   return Status::Ok();
 }

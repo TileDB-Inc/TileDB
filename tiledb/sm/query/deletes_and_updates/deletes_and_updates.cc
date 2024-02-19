@@ -162,7 +162,7 @@ Status DeletesAndUpdates::dowork() {
                                                constants::update_file_suffix;
 
   auto uri = commit_uri.join_path(new_fragment_str);
-  GenericTileIO::store_generic(
+  GenericTileIO::store_data(
       storage_manager_->resources(),
       uri,
       serialized_condition,

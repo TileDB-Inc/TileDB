@@ -167,7 +167,7 @@ class GenericTileIO {
    * @param tile The tile to write.
    * @param encryption_key The encryption key to use.
    */
-  static void store_generic(
+  static void store_data(
       ContextResources& resources,
       const URI& uri,
       WriterTile& tile,
