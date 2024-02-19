@@ -34,12 +34,15 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/misc/constants.h"
 
 #include <chrono>
+#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <thread>
@@ -51,6 +54,9 @@ namespace {
 
 static const std::string arrays_dir =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays";
+
+static const std::string groups_dir =
+    std::string(TILEDB_TEST_INPUTS_DIR) + "/groups";
 
 template <typename T>
 void set_query_coords(
@@ -1419,4 +1425,54 @@ TEST_CASE(
     assert_group_metadata<uint64_t>(
         g, "u64", TILEDB_UINT64, 0x7777777777777777);
   }
+}
+
+TEST_CASE(
+    "Backwards compatibility: Test v1 groups",
+    "[backwards-compat][group][v1]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  // Copy the group to a temporary directory because we will be modifying it.
+  tiledb::sm::TemporaryLocalDirectory temp_dir;
+  std::filesystem::copy(
+      groups_dir + "/group_v1",
+      temp_dir.path(),
+      std::filesystem::copy_options::recursive);
+
+  // Read the group
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_READ};
+
+    CHECK(g.dump(false) != "");
+    CHECK(g.member_count() == 1);
+  }
+
+  // Add a member to the group
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_WRITE};
+
+    Group::create(ctx, temp_dir.path() + "/subgroup2");
+
+    g.add_member("subgroup2", true, "subgroup2");
+
+    g.close();
+  }
+
+  // Read the group again
+  {
+    Group g{ctx, temp_dir.path(), TILEDB_READ};
+
+    CHECK(g.dump(false) != "");
+    CHECK(g.member_count() == 2);
+    CHECK(g.member(1).name() == "subgroup2");
+  }
+
+  // Read the raw group details files
+  auto children = vfs.ls(temp_dir.path() + "/__group");
+  CHECK(children.size() == 2);
+  std::sort(children.begin(), children.end());
+  CHECK(!tiledb::sm::utils::parse::ends_with(children[0], "_1"));
+  // This is the file written by this test.
+  CHECK(tiledb::sm::utils::parse::ends_with(children[1], "_1"));
 }
