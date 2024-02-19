@@ -33,6 +33,7 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -775,8 +776,12 @@ void Group::load_group_details() {
 
   // V1 groups did not have the version appended so only have 4 "_"
   // (__<timestamp>_<timestamp>_<uuid>)
+  // Since 2.19, V1 groups also have the version appended so we have
+  // to check for that as well
   auto part = latest_group_uri.last_path_part();
-  if (std::count(part.begin(), part.end(), '_') == 4) {
+  auto underscoreCount = std::count(part.begin(), part.end(), '_');
+  if (underscoreCount == 4 ||
+      (underscoreCount == 5 && utils::parse::ends_with(part, "_1"))) {
     load_group_from_uri(latest_group_uri);
     return;
   }
