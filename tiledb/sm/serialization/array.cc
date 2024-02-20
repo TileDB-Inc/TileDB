@@ -204,8 +204,8 @@ Status array_to_capnp(
       // If this is the Cloud server, it should load and serialize metadata
       // If this is the client, it should have previously received the array
       // metadata from the Cloud server, so it should just serialize it
-      shared_ptr<Metadata> metadata = array->metadata();
-      RETURN_NOT_OK(metadata_to_capnp(metadata.get(), &array_metadata_builder));
+      auto& metadata = array->metadata();
+      RETURN_NOT_OK(metadata_to_capnp(&metadata, &array_metadata_builder));
     }
   } else {
     if (array->non_empty_domain_computed()) {

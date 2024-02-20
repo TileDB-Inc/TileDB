@@ -380,7 +380,7 @@ Status Array::open(
       set_array_schemas_all(std::move(array_schemas.value()));
 
       // Set the timestamp
-      opened_array_->metadata()->reset(timestamp_for_new_component());
+      opened_array_->metadata().reset(timestamp_for_new_component());
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
@@ -421,7 +421,7 @@ Status Array::open(
       }
 
       // Updates the timestamp to use for metadata.
-      opened_array_->metadata()->reset(timestamp_for_new_component());
+      opened_array_->metadata().reset(timestamp_for_new_component());
     } else {
       throw ArrayException("Cannot open array; Unsupported query type.");
     }
@@ -453,7 +453,7 @@ Status Array::close() {
       // user
       if ((query_type_ == QueryType::WRITE ||
            query_type_ == QueryType::MODIFY_EXCLUSIVE) &&
-          opened_array_->metadata()->num() > 0) {
+          opened_array_->metadata().num() > 0) {
         // Set metadata loaded to be true so when serialization fetchs the
         // metadata it won't trigger a deadlock
         set_metadata_loaded(true);
@@ -472,7 +472,7 @@ Status Array::close() {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
         st = storage_manager_->store_metadata(
-            array_uri_, *encryption_key(), opened_array_->metadata().get());
+            array_uri_, *encryption_key(), &opened_array_->metadata());
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -910,7 +910,7 @@ void Array::delete_metadata(const char* key) {
     throw ArrayException("Cannot delete metadata. Key cannot be null");
   }
 
-  opened_array_->metadata()->del(key);
+  opened_array_->metadata().del(key);
 }
 
 void Array::put_metadata(
@@ -941,7 +941,7 @@ void Array::put_metadata(
     throw ArrayException("Cannot put metadata; Value type cannot be ANY");
   }
 
-  opened_array_->metadata()->put(key, value_type, value_num, value);
+  opened_array_->metadata().put(key, value_type, value_num, value);
 }
 
 void Array::get_metadata(
@@ -970,7 +970,7 @@ void Array::get_metadata(
     throw_if_not_ok(load_metadata());
   }
 
-  opened_array_->metadata()->get(key, value_type, value_num, value);
+  opened_array_->metadata().get(key, value_type, value_num, value);
 }
 
 void Array::get_metadata(
@@ -996,7 +996,7 @@ void Array::get_metadata(
     throw_if_not_ok(load_metadata());
   }
 
-  opened_array_->metadata()->get(
+  opened_array_->metadata().get(
       index, key, key_len, value_type, value_num, value);
 }
 
@@ -1017,7 +1017,7 @@ uint64_t Array::metadata_num() {
     throw_if_not_ok(load_metadata());
   }
 
-  return opened_array_->metadata()->num();
+  return opened_array_->metadata().num();
 }
 
 std::optional<Datatype> Array::metadata_type(const char* key) {
@@ -1042,14 +1042,14 @@ std::optional<Datatype> Array::metadata_type(const char* key) {
     throw_if_not_ok(load_metadata());
   }
 
-  return opened_array_->metadata()->metadata_type(key);
+  return opened_array_->metadata().metadata_type(key);
 }
 
 Metadata* Array::unsafe_metadata() {
-  return opened_array_->metadata().get();
+  return &opened_array_->metadata();
 }
 
-shared_ptr<Metadata> Array::metadata() {
+Metadata& Array::metadata() {
   // Load array metadata for array opened for reads, if not loaded yet
   if (query_type_ == QueryType::READ && !metadata_loaded()) {
     throw_if_not_ok(load_metadata());
@@ -1493,11 +1493,12 @@ void Array::do_load_metadata() {
   }
   resources_.stats().add_counter("read_array_meta_size", meta_size);
 
-  opened_array_->unsafe_set_metadata(
-      Metadata::deserialize(metadata_tiles, memory_tracker_));
+  Metadata metadata(memory_tracker_);
+  Metadata::deserialize(metadata, metadata_tiles);
+  opened_array_->metadata().replace(metadata);
 
   // Sets the loaded metadata URIs
-  opened_array_->metadata()->set_loaded_metadata_uris(array_metadata_to_load);
+  opened_array_->metadata().set_loaded_metadata_uris(array_metadata_to_load);
 }
 
 Status Array::load_metadata() {

@@ -119,6 +119,12 @@ class Metadata {
   /** Clears the metadata. */
   void clear();
 
+  /** Replace the metadata with the contents of other. */
+  void replace(const Metadata& other);
+
+  /** Replace the metadata's contents with the content's of metadata_map. */
+  void replace(const std::map<std::string, MetadataValue>& metadata_map);
+
   /** Retrieves the array metadata URI. */
   URI get_uri(const URI& array_uri);
 
@@ -130,9 +136,8 @@ class Metadata {
    * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static shared_ptr<Metadata> deserialize(
-      const std::vector<shared_ptr<Tile>>& metadata_tiles,
-      shared_ptr<MemoryTracker> memory_tracker);
+  static void deserialize(
+      Metadata& metadata, const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;

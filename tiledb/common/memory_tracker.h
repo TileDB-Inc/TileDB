@@ -120,7 +120,8 @@ enum class MemoryTrackerType {
   ARRAY_WRITE,
   QUERY_READ,
   QUERY_WRITE,
-  CONSOLIDATOR
+  CONSOLIDATOR,
+  GROUP
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

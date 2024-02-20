@@ -195,7 +195,7 @@ class Group {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
-  shared_ptr<Metadata> metadata();
+  Metadata* metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -208,19 +208,6 @@ class Group {
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* unsafe_metadata();
-
-  /**
-   * Set the metadata `shared_ptr`.
-   *
-   * @warning This function directly violates C.41 compliance of class
-   * `Group`, and its use is _highly discouraged_. It exists _solely_ to
-   * support group metadata consolidation, maintaining a swap-like logic of
-   * group metadata which does not compromise PMR tracking. As such, the _only_
-   * call-site should be in `GroupMetaConsoliator::consolidate`.
-   **/
-  inline void unsafe_set_metadata(shared_ptr<Metadata> metadata) {
-    metadata_ = metadata;
-  }
 
   /**
    * Set metadata loaded
@@ -403,6 +390,10 @@ class Group {
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+
+  /** Memory tracker for the group. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The group URI. */
   URI group_uri_;
 
@@ -419,7 +410,7 @@ class Group {
   bool remote_;
 
   /** The group metadata. */
-  shared_ptr<Metadata> metadata_;
+  Metadata metadata_;
 
   /** True if the group metadata is loaded. */
   bool metadata_loaded_;
@@ -462,9 +453,6 @@ class Group {
 
   /** The ContextResources class. */
   ContextResources& resources_;
-
-  /** Memory tracker for the group. */
-  shared_ptr<MemoryTracker> memory_tracker_;
 
   /* ********************************* */
   /*         PROTECTED METHODS         */

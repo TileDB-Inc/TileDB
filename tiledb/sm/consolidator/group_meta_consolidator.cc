@@ -91,7 +91,7 @@ Status GroupMetaConsolidator::consolidate(
    */
   auto metadata_r = group_for_reads.metadata();
   URI new_uri = metadata_r->get_uri(group_uri);
-  group_for_writes.unsafe_set_metadata(metadata_r);
+  group_for_writes.metadata()->replace(*metadata_r);
   auto metadata_w = group_for_writes.metadata();
   const auto& to_vacuum = metadata_w->loaded_metadata_uris();
 

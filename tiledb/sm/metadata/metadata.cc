@@ -89,6 +89,19 @@ void Metadata::clear() {
   uri_ = URI();
 }
 
+void Metadata::replace(const Metadata& other) {
+  replace(other.metadata_map_);
+}
+
+void Metadata::replace(
+    const std::map<std::string, MetadataValue>& metadata_map) {
+  clear();
+  for (auto& [k, v] : metadata_map) {
+    metadata_map_.emplace(k, v);
+  }
+  build_metadata_index();
+}
+
 URI Metadata::get_uri(const URI& array_uri) {
   if (uri_.to_string().empty())
     generate_uri(array_uri);
@@ -103,12 +116,10 @@ void Metadata::generate_uri(const URI& array_uri) {
              .join_path(ts_name);
 }
 
-shared_ptr<Metadata> Metadata::deserialize(
-    const std::vector<shared_ptr<Tile>>& metadata_tiles,
-    shared_ptr<MemoryTracker> memory_tracker) {
-  if (metadata_tiles.empty()) {
-    return make_shared<Metadata>(HERE(), memory_tracker);
-  }
+void Metadata::deserialize(
+    Metadata& metadata, const std::vector<shared_ptr<Tile>>& metadata_tiles) {
+  metadata.clear();
+
   std::map<std::string, MetadataValue> metadata_map;
 
   Status st;
@@ -146,7 +157,7 @@ shared_ptr<Metadata> Metadata::deserialize(
     }
   }
 
-  return make_shared<Metadata>(HERE(), metadata_map, memory_tracker);
+  metadata.replace(metadata_map);
 }
 
 void Metadata::serialize(Serializer& serializer) const {

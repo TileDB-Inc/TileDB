@@ -101,7 +101,7 @@ class OpenedArray {
       bool is_remote)
       : array_dir_(ArrayDirectory(resources, array_uri))
       , array_schema_latest_(nullptr)
-      , metadata_(make_shared<Metadata>(HERE(), memory_tracker))
+      , metadata_(memory_tracker)
       , metadata_loaded_(false)
       , non_empty_domain_computed_(false)
       , encryption_key_(make_shared<EncryptionKey>(HERE()))
@@ -151,27 +151,13 @@ class OpenedArray {
   }
 
   /** Gets a reference to the metadata. */
-  inline shared_ptr<Metadata> metadata() {
+  inline Metadata& metadata() {
     return metadata_;
   }
 
   /** Get a reference to the `metadata_loaded_` value. */
   inline bool& metadata_loaded() {
     return metadata_loaded_;
-  }
-
-  /**
-   * Set the metadata `shared_ptr`.
-   *
-   * @warning This function directly violates C.41 compliance of class
-   * `OpenArray`, and its use is _highly discouraged_. It exists _solely_ to
-   * support array metadata consolidation and serialization, maintaining a
-   * swap-like logic of array metadata which does not compromise PMR tracking.
-   * As such, the _only_ call-sites should be in
-   * `ArrayMetaConsoliator::consolidate` and `Array::do_load_metadata`.
-   **/
-  inline void unsafe_set_metadata(shared_ptr<Metadata> metadata) {
-    metadata_ = metadata;
   }
 
   /** Get a reference to the `non_empty_domain_computed_` value. */
@@ -234,7 +220,7 @@ class OpenedArray {
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas_all_;
 
   /** The array metadata. */
-  shared_ptr<Metadata> metadata_;
+  Metadata metadata_;
 
   /** True if the array metadata is loaded. */
   bool metadata_loaded_;
@@ -745,7 +731,7 @@ class Array {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
-  shared_ptr<Metadata> metadata();
+  Metadata& metadata();
 
   /**
    * Retrieves the array metadata object.

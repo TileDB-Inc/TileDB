@@ -540,10 +540,10 @@ capi_return_t tiledb_serialize_group_metadata(
   auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
-  shared_ptr<tiledb::sm::Metadata> metadata = group->group().metadata();
+  auto metadata = group->group().metadata();
 
   auto st = tiledb::sm::serialization::metadata_serialize(
-      metadata.get(),
+      metadata,
       static_cast<tiledb::sm::SerializationType>(serialize_type),
       &(buf->buffer()));
 
