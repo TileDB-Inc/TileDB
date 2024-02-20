@@ -281,12 +281,9 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
           
-          ls $env:BUILD_BUILDDIRECTORY\tiledb
-          ls $env:BUILD_BUILDDIRECTORY\tiledb\tiledb
-          ls $env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\
           ls $env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\
           
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\$CMakeBuildType\tiledb\sm\filesystem\test\unit_vfs -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\$CMakeBuildType\unit_vfs -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
