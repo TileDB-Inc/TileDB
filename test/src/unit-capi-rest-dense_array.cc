@@ -71,7 +71,7 @@ struct DenseArrayRESTFx {
   const int ITER_NUM = 10;
 
   VFSTestSetup vfs_test_setup_;
-  const std::string array_uri_;
+  std::string array_uri_;
 
   // TileDB context and VFS
   tiledb_ctx_t* ctx_;
@@ -191,15 +191,16 @@ struct DenseArrayRESTFx {
 };
 
 DenseArrayRESTFx::DenseArrayRESTFx()
-    : vfs_test_setup_("capi_dense_array")
-    , array_uri_(vfs_test_setup_.array_uri)
-    , ctx_(vfs_test_setup_.ctx_c)
+    : ctx_(vfs_test_setup_.ctx_c)
     , vfs_(vfs_test_setup_.vfs_c) {
   std::srand(0);
 }
 
 DenseArrayRESTFx::~DenseArrayRESTFx() {
-  CHECK(tiledb_array_delete(ctx_, array_uri_.c_str()) == TILEDB_OK);
+  auto obj = tiledb::Object::object(vfs_test_setup_.ctx, array_uri_);
+  if (obj.type() == tiledb::Object::Type::Array) {
+    CHECK(tiledb_array_delete(ctx_, array_uri_.c_str()) == TILEDB_OK);
+  }
 }
 
 void DenseArrayRESTFx::create_dense_array_2D(
@@ -504,6 +505,7 @@ void DenseArrayRESTFx::check_sorted_reads() {
   uint64_t capacity = 1000000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  array_uri_ = vfs_test_setup_.array_uri("sorted_reads_array");
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -631,6 +633,7 @@ void DenseArrayRESTFx::check_incomplete_reads() {
   uint64_t capacity = 1000000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  array_uri_ = vfs_test_setup_.array_uri("incomplete_reads_array");
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -732,6 +735,7 @@ void DenseArrayRESTFx::check_sorted_writes() {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  array_uri_ = vfs_test_setup_.array_uri("sorted_writes_array");
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -816,6 +820,7 @@ void DenseArrayRESTFx::check_simultaneous_writes() {
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  array_uri_ = vfs_test_setup_.array_uri("simultaneous_writes_array");
 
   // Create a dense integer array
   create_dense_array_2D(
@@ -1002,6 +1007,8 @@ void DenseArrayRESTFx::create_dense_array_1_attribute(
   // Create array
   rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   CHECK(rc == TILEDB_OK);
+  // this is needed for test cleanup to know the array needs to be deleted
+  array_uri_ = array_name;
 
   // Clean up
   tiledb_attribute_free(&a1);
@@ -1173,7 +1180,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, sorted writes",
-    "[capi][rest][dense]") {
+    "[capi][rest][dense][interference]") {
   check_sorted_writes();
 }
 
@@ -1188,6 +1195,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, global order reads",
     "[capi][rest][dense]") {
+  array_uri_ = vfs_test_setup_.array_uri("global_order_reads");
   create_dense_array(array_uri_);
   write_dense_array(array_uri_);
 
@@ -1250,6 +1258,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, missing attributes in writes",
     "[capi][rest][dense][dense-write-missing-attributes]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_write_missing_attributes");
   create_dense_array(array_uri_);
   write_dense_array_missing_attributes(array_uri_);
 }
@@ -1258,6 +1267,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, read subarrays with empty cells",
     "[capi][rest][dense][dense-read-empty]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_read_empty");
   create_dense_array_1_attribute(array_uri_);
 
   // Write a slice
@@ -1336,6 +1346,7 @@ TEST_CASE_METHOD(
     "C API: REST Test dense array, read subarrays with empty areas, merging "
     "adjacent cell ranges",
     "[capi][rest][dense][dense-read-empty][dense-read-empty-merge]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_read_empty_merge");
   create_dense_array_1_attribute(array_uri_);
 
   // Write a slice
@@ -1413,6 +1424,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, multi-fragment reads",
     "[capi][rest][dense][dense-multi-fragment]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_multi_fragment");
   create_dense_array_1_attribute(array_uri_);
 
   // Write slice [1,2], [3,4]
@@ -1512,6 +1524,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, check if open",
     "[capi][rest][dense][dense-is-open]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_is_open");
   create_dense_array(array_uri_);
 
   tiledb_array_t* array;
@@ -1544,6 +1557,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get schema from opened array",
     "[capi][rest][dense][dense-get-schema]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_get_schema");
   create_dense_array(array_uri_);
 
   // Open array
@@ -1571,6 +1585,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, set subarray in sparse writes should error",
     "[capi][rest][dense][dense-set-subarray-sparse]") {
+  array_uri_ = vfs_test_setup_.array_uri("dense_set_subarray_sparse");
   create_dense_array(array_uri_);
 
   // Open array
@@ -1627,6 +1642,8 @@ TEST_CASE_METHOD(
   uint64_t capacity = 1000;
   tiledb_layout_t cell_order = TILEDB_ROW_MAJOR;
   tiledb_layout_t tile_order = TILEDB_ROW_MAJOR;
+  array_uri_ = vfs_test_setup_.array_uri("nonempty_domain_array");
+
   // Create a dense integer array
   create_dense_array_2D(
       array_uri_,
@@ -1701,6 +1718,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, get max buffer sizes",
     "[capi][rest][dense]") {
+  array_uri_ = vfs_test_setup_.array_uri("max_buffer_sizes_array");
   create_dense_array(array_uri_);
 
   // Check max buffer sizes with empty array
@@ -1726,17 +1744,58 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 }
 
-TEST_CASE_METHOD(
-    DenseArrayRESTFx,
+TEST_CASE(
     "C API: REST Test dense array, error without rest server configured",
     "[capi][rest][dense][rest-no-config]") {
-  create_dense_array(array_uri_);
+  tiledb_ctx_t* ctx;
+  tiledb_vfs_t* vfs;
+  auto fs_vec = vfs_test_get_fs_vec();
+  // Initialize vfs test
+  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
+
+  std::string temp_dir = fs_vec[0]->temp_dir();
+  int is_dir = 0;
+  REQUIRE(tiledb_vfs_is_dir(ctx, vfs, temp_dir.c_str(), &is_dir) == TILEDB_OK);
+  if (is_dir) {
+    REQUIRE(tiledb_vfs_remove_dir(ctx, vfs, temp_dir.c_str()) == TILEDB_OK);
+  }
+  REQUIRE(tiledb_vfs_create_dir(ctx, vfs, temp_dir.c_str()) == TILEDB_OK);
+  std::string array_name =
+      "tiledb://unit/" + temp_dir + "dense_set_subarray_sparse";
+
+  // Create array
+  uint64_t dim_domain[] = {1, 4};
+  uint64_t tile_extents[] = {2};
+  tiledb_dimension_t* d1;
+  int rc = tiledb_dimension_alloc(
+      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
+  CHECK(rc == TILEDB_OK);
+  tiledb_domain_t* domain;
+  rc = tiledb_domain_alloc(ctx, &domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_domain_add_dimension(ctx, domain, d1);
+  tiledb_attribute_t* a1;
+  rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_INT32, &a1);
+  CHECK(rc == TILEDB_OK);
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a1);
+  CHECK(rc == TILEDB_OK);
+  // Check array schema
+  rc = tiledb_array_schema_check(ctx, array_schema);
+  CHECK(rc == TILEDB_OK);
+  // Create array
+  rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
+  CHECK(rc == TILEDB_OK);
 
   // Set config to use a non-default environment prefix.
   // Prevents test from picking up on REST CI environment configuration.
   tiledb_config_t* cfg;
   tiledb_error_t* err;
-  int rc = tiledb_config_alloc(&cfg, &err);
+  rc = tiledb_config_alloc(&cfg, &err);
   CHECK(rc == TILEDB_OK);
   CHECK(err == nullptr);
   rc = tiledb_config_set(cfg, "config.env_var_prefix", "UNIT_", &err);
@@ -1744,26 +1803,37 @@ TEST_CASE_METHOD(
   CHECK(err == nullptr);
 
   // Create context without a REST config
-  VFSTestSetup vfs_test_setup("capi_dense_array", cfg);
-  auto ctx = vfs_test_setup.ctx_c;
+  tiledb_ctx_t* ctx2;
+  REQUIRE(tiledb_ctx_alloc(cfg, &ctx2) == TILEDB_OK);
 
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_uri_.c_str(), &array);
+  rc = tiledb_array_alloc(ctx2, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx2, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_ERR);
 
   // Clean up
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx2, array) == TILEDB_OK);
+
+  // Close vfs test. Removes S3 bucket, Azure container, etc.
+  CHECK(vfs_test_close(fs_vec, ctx, vfs).ok());
+
+  tiledb_attribute_free(&a1);
+  tiledb_dimension_free(&d1);
+  tiledb_domain_free(&domain);
+  tiledb_array_schema_free(&array_schema);
   tiledb_config_free(&cfg);
   tiledb_error_free(&err);
   tiledb_array_free(&array);
+  tiledb_ctx_free(&ctx);
+  tiledb_ctx_free(&ctx2);
 }
 
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, datetimes",
     "[capi][rest][dense][datetime]") {
+  array_uri_ = vfs_test_setup_.array_uri("datetime_array");
   int64_t dim_domain[] = {1, 10};
   int64_t tile_extents[] = {2};
   tiledb_dimension_t* d1;
@@ -1854,6 +1924,7 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, array metadata",
     "[capi][rest][dense][metadata]") {
+  array_uri_ = vfs_test_setup_.array_uri("metadata_array");
   int64_t dim_domain[] = {1, 10};
   int64_t tile_extents[] = {2};
   tiledb_dimension_t* d1;

@@ -138,8 +138,7 @@ TEST_CASE_METHOD(
 }
 
 RESTEnumerationFx::RESTEnumerationFx()
-    : vfs_test_setup_("enumerations")
-    , uri_(vfs_test_setup_.array_uri)
+    : uri_(vfs_test_setup_.array_uri("enumerations"))
     , ctx_(vfs_test_setup_.ctx){};
 
 RESTEnumerationFx::~RESTEnumerationFx() {
