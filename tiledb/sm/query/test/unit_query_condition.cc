@@ -1586,15 +1586,15 @@ void test_apply<char*>(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -1646,15 +1646,15 @@ void test_apply(
   attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -1755,7 +1755,7 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -1763,10 +1763,8 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> frag_md(1);
   frag_md[0] = make_shared<FragmentMetadata>(
@@ -2305,7 +2303,7 @@ void test_apply_dense<char*>(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2313,10 +2311,8 @@ void test_apply_dense<char*>(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -2365,7 +2361,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2373,10 +2369,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -2477,7 +2471,7 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2485,10 +2479,8 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -3007,7 +2999,7 @@ void test_apply_sparse<char*>(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -3015,10 +3007,8 @@ void test_apply_sparse<char*>(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -3067,7 +3057,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -3075,10 +3065,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -3838,7 +3826,7 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -3846,10 +3834,8 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -4128,15 +4114,15 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -4483,15 +4469,15 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -4803,7 +4789,7 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -4811,10 +4797,8 @@ TEST_CASE(
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(
-      array_schema->set_domain(make_shared<tiledb::sm::Domain>(HERE(), domain))
-          .ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,
@@ -4906,15 +4890,15 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  Domain domain(memory_tracker);
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
   uint32_t tile_extent = 10;
   REQUIRE(dim->set_tile_extent(&tile_extent).ok());
-  REQUIRE(domain.add_dimension(dim).ok());
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(domain->add_dimension(dim).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   FragmentMetadata frag_md(
       nullptr,

@@ -86,12 +86,6 @@ class Domain {
       Layout tile_order,
       shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Copy constructor. */
-  Domain(const Domain&) = default;
-
-  /** Move constructor. */
-  Domain(Domain&& rhs);
-
   /** Destructor. */
   ~Domain() = default;
 
@@ -99,11 +93,8 @@ class Domain {
   /*             OPERATORS             */
   /* ********************************* */
 
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Domain);
-
-  /** Move-assignment operator. */
-  Domain& operator=(Domain&& rhs);
+  DISABLE_COPY_AND_COPY_ASSIGN(Domain);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Domain);
 
   /* ********************************* */
   /*                 API               */

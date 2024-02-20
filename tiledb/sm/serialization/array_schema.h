@@ -134,7 +134,7 @@ void dimension_label_to_capnp(
  * Deserialize a dimension label from a cap'n proto object
  *
  * @param reader Cap'n proto reader object.
-* @param memory_tracker The memory tracker to use.
+ * @param memory_tracker The memory tracker to use.
  * @return A new DimensionLabel.
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(

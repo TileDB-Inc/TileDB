@@ -96,32 +96,6 @@ Domain::Domain(
   set_tile_cell_order_cmp_funcs();
 }
 
-Domain::Domain(Domain&& rhs)
-    : cell_num_per_tile_(rhs.cell_num_per_tile_)
-    , cell_order_(rhs.cell_order_)
-    , dimensions_(move(rhs.dimensions_))
-    , dimension_ptrs_(move(rhs.dimension_ptrs_))
-    , dim_num_(rhs.dim_num_)
-    , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
-}
-
-Domain& Domain::operator=(Domain&& rhs) {
-  cell_num_per_tile_ = rhs.cell_num_per_tile_;
-  cell_order_ = rhs.cell_order_;
-  dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
-  dimensions_ = move(rhs.dimensions_);
-  dimension_ptrs_ = move(rhs.dimension_ptrs_);
-  tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
-
-  return *this;
-}
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */
