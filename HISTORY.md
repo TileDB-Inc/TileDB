@@ -1,5 +1,9 @@
 # TileDB v2.20.1 Release Notes
 
+## Defects removed
+
+* Support reading V1 group details with explicit version in the name. [#4744](https://github.com/TileDB-Inc/TileDB/pull/4744)
+
 ## Build System Changes
 
 * Reintroduce the `TILEDB_STATIC` option under a deprecation warning. [#4732](https://github.com/TileDB-Inc/TileDB/pull/4732)
