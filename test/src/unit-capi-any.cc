@@ -45,7 +45,7 @@ struct AnyFx {
   const float C3 = 1.2f;
   const double C4 = 2.3;
 
-  tiledb::test::VFSTestSetup vfs_test_setup_{"foo"};
+  tiledb::test::VFSTestSetup vfs_test_setup_;
 
   void create_array(const std::string& array_name);
   void delete_array(const std::string& array_name);
@@ -248,13 +248,15 @@ void AnyFx::read_array(const std::string& array_name) {
 }
 
 void AnyFx::delete_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_array_delete(vfs_test_setup_.ctx_c, array_name.c_str());
+  auto obj = tiledb::Object::object(vfs_test_setup_.ctx, array_name);
+  if (obj.type() == tiledb::Object::Type::Array) {
+    tiledb_array_delete(vfs_test_setup_.ctx_c, array_name.c_str());
+  }
 }
 
 TEST_CASE_METHOD(
     AnyFx, "C API: Test `ANY` datatype", "[capi][any][rest-fails][sc-40489]") {
-  auto array_name = vfs_test_setup_.array_uri;
+  auto array_name = vfs_test_setup_.array_uri("foo");
   delete_array(array_name);
   create_array(array_name);
   write_array(array_name);

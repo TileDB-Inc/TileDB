@@ -829,9 +829,7 @@ struct TemporaryDirectoryFixture {
  *
  */
 struct VFSTestSetup {
-  VFSTestSetup() = delete;
-
-  VFSTestSetup(std::string array_name, tiledb_config_t* config = nullptr)
+  VFSTestSetup(tiledb_config_t* config = nullptr)
       : fs_vec(vfs_test_get_fs_vec())
       , ctx_c{nullptr}
       , vfs_c{nullptr}
@@ -839,15 +837,17 @@ struct VFSTestSetup {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
     ctx = Context(ctx_c, false);
     std::string temp_dir = fs_vec[0]->temp_dir();
-    if (fs_vec[0]->is_rest()) {
-      array_uri = "tiledb://unit/";
-    }
-    array_uri += temp_dir + array_name;
     vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
   };
 
   bool is_rest() {
     return fs_vec[0]->is_rest();
+  }
+
+  std::string array_uri(const std::string& array_name) {
+    return (
+        fs_vec[0]->is_rest() ? "tiledb://unit/" + temp_dir + array_name :
+                               temp_dir + array_name);
   }
 
   ~VFSTestSetup() {
@@ -859,7 +859,7 @@ struct VFSTestSetup {
   tiledb_vfs_handle_t* vfs_c;
   tiledb_config_handle_t* cfg_c;
   Context ctx;
-  std::string array_uri;
+  std::string temp_dir;
 };
 
 /**

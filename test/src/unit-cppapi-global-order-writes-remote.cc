@@ -55,12 +55,14 @@ struct RemoteGlobalOrderWriteFx {
       , total_cell_count_(total_cells)
       , extent_(extent)
       , array_name_{"global-array-" + std::to_string(total_cell_count_)}
-      , vfs_test_setup_{array_name_}
-      , array_uri_(vfs_test_setup_.array_uri)
+      , array_uri_(vfs_test_setup_.array_uri(array_name_))
       , ctx_{vfs_test_setup_.ctx} {};
 
   ~RemoteGlobalOrderWriteFx() {
-    Array::delete_array(ctx_, array_uri_);
+    auto obj = Object::object(ctx_, array_uri_);
+    if (obj.type() == Object::Type::Array) {
+      Array::delete_array(ctx_, array_uri_);
+    }
   }
 
   // Create a simple dense array
