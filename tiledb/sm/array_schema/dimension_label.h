@@ -48,6 +48,7 @@ class ArraySchema;
 class Buffer;
 class ConstBuffer;
 class Dimension;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class DataOrder : uint8_t;
 
@@ -120,7 +121,8 @@ class DimensionLabel {
       const URI& uri,
       const Dimension* dim,
       DataOrder label_order,
-      Datatype label_type);
+      Datatype label_type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Populates the object members from the data in the input binary buffer.

@@ -32,6 +32,7 @@
 
 #include <sstream>
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
@@ -140,6 +141,7 @@ struct EnumerationFx {
 
   void rm_array();
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   URI uri_;
   Config cfg_;
   Context ctx_;
@@ -2398,7 +2400,8 @@ struct TypeParams {
 };
 
 EnumerationFx::EnumerationFx()
-    : uri_("enumeration_test_array")
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , uri_("enumeration_test_array")
     , ctx_(cfg_) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
@@ -2678,7 +2681,7 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 
@@ -2724,7 +2727,7 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
 
 shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  return array_dir->load_array_schema_latest(enc_key_);
+  return array_dir->load_array_schema_latest(enc_key_, memory_tracker_);
 }
 
 #ifdef TILEDB_SERIALIZATION
@@ -2736,7 +2739,7 @@ ArraySchema EnumerationFx::ser_des_array_schema(
   Buffer buf;
   throw_if_not_ok(serialization::array_schema_serialize(
       *(schema.get()), stype, &buf, client_side));
-  return serialization::array_schema_deserialize(stype, buf);
+  return serialization::array_schema_deserialize(stype, buf, memory_tracker_);
 }
 
 shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
@@ -2779,8 +2782,8 @@ void EnumerationFx::ser_des_array(
     SerializationType stype) {
   Buffer buf;
   throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
-  throw_if_not_ok(
-      serialization::array_deserialize(out, stype, buf, ctx.storage_manager()));
+  throw_if_not_ok(serialization::array_deserialize(
+      out, stype, buf, ctx.storage_manager(), memory_tracker_));
 }
 
 #else  // No TILEDB_SERIALIZATION

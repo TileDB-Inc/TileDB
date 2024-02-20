@@ -128,7 +128,8 @@ DimensionLabel::DimensionLabel(
     const URI& uri,
     const Dimension* dim,
     DataOrder label_order,
-    Datatype label_type)
+    Datatype label_type,
+    shared_ptr<MemoryTracker> memory_tracker)
     : dim_id_(dim_id)
     , dim_label_name_(dim_label_name)
     , uri_(uri)
@@ -174,7 +175,11 @@ DimensionLabel::DimensionLabel(
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));
   throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
-      HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
+      HERE(),
+      Layout::ROW_MAJOR,
+      index_dims,
+      Layout::ROW_MAJOR,
+      memory_tracker)));
 
   // Create and set dimension label attribute.
   auto label_attr = make_shared<Attribute>(

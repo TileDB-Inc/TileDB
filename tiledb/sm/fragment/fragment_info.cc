@@ -33,6 +33,7 @@
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -750,8 +751,10 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
   }
 
   EncryptionKey encryption_key;
+  auto memory_tracker = resources_->create_memory_tracker();
+  memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
   return ArrayDirectory::load_array_schema_from_uri(
-      *resources_, schema_uri, encryption_key);
+      *resources_, schema_uri, encryption_key, memory_tracker);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -1003,7 +1006,7 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
   std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
       array_schemas_all;
   std::tie(array_schema_latest, array_schemas_all) =
-      array_dir.load_array_schemas(enc_key);
+      array_dir.load_array_schemas(enc_key, memory_tracker);
 
   const auto filtered_fragment_uris = [&]() {
     auto timer_se =

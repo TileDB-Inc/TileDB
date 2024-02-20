@@ -705,7 +705,8 @@ Status domain_to_capnp(
 
 /* Deserialize a domain from a cap'n proto object. */
 shared_ptr<Domain> domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader) {
+    const capnp::Domain::Reader& domain_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize and validate cell order
@@ -748,7 +749,8 @@ shared_ptr<Domain> domain_from_capnp(
     dims.emplace_back(dimension_from_capnp(dimension));
   }
 
-  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
+  return make_shared<Domain>(
+      HERE(), cell_order, dims, tile_order, memory_tracker);
 }
 
 void dimension_label_to_capnp(
@@ -780,7 +782,8 @@ void dimension_label_to_capnp(
 }
 
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& dim_label_reader) {
+    const capnp::DimensionLabel::Reader& dim_label_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
   Datatype datatype = Datatype::ANY;
   throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
@@ -789,7 +792,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
   if (dim_label_reader.hasSchema()) {
     auto schema_reader = dim_label_reader.getSchema();
     schema = make_shared<ArraySchema>(
-        HERE(), array_schema_from_capnp(schema_reader, URI()));
+        HERE(), array_schema_from_capnp(schema_reader, URI(), memory_tracker));
   }
 
   auto is_relative = dim_label_reader.getRelative();
@@ -915,7 +918,9 @@ Status array_schema_to_capnp(
 
 // #TODO Add security validation on incoming URI
 ArraySchema array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri) {
+    const capnp::ArraySchema::Reader& schema_reader,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Deserialize and validate array_type
   ArrayType array_type = ArrayType::DENSE;
   Status st = array_type_enum(schema_reader.getArrayType(), &array_type);
@@ -996,7 +1001,7 @@ ArraySchema array_schema_from_capnp(
   // Deserialize domain
   // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
-  auto domain{domain_from_capnp(domain_reader)};
+  auto domain{domain_from_capnp(domain_reader, memory_tracker)};
 
   // Set coords filter pipelines
   // Note: Security validation delegated to invoked API
@@ -1069,7 +1074,7 @@ ArraySchema array_schema_from_capnp(
     try {
       for (auto dim_label_reader : dim_labels_reader) {
         dimension_labels.emplace_back(
-            dimension_label_from_capnp(dim_label_reader));
+            dimension_label_from_capnp(dim_label_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(
@@ -1202,7 +1207,9 @@ Status array_schema_serialize(
 }
 
 ArraySchema array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer) {
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   capnp::ArraySchema::Reader array_schema_reader;
   ::capnp::MallocMessageBuilder message_builder;
 
@@ -1216,7 +1223,8 @@ ArraySchema array_schema_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_schema_builder);
         array_schema_reader = array_schema_builder.asReader();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes =
@@ -1225,7 +1233,8 @@ ArraySchema array_schema_deserialize(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             serialized_buffer.size() / sizeof(::capnp::word)));
         array_schema_reader = reader.getRoot<capnp::ArraySchema>();
-        return array_schema_from_capnp(array_schema_reader, URI());
+        return array_schema_from_capnp(
+            array_schema_reader, URI(), memory_tracker);
       }
       default: {
         throw StatusException(Status_SerializationError(
@@ -1964,13 +1973,16 @@ void serialize_load_array_schema_response(
 }
 
 ArraySchema load_array_schema_response_from_capnp(
-    capnp::LoadArraySchemaResponse::Reader& reader) {
+    capnp::LoadArraySchemaResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto schema_reader = reader.getSchema();
-  return array_schema_from_capnp(schema_reader, URI());
+  return array_schema_from_capnp(schema_reader, URI(), memory_tracker);
 }
 
 ArraySchema deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data) {
+    SerializationType serialization_type,
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -1981,7 +1993,7 @@ ArraySchema deserialize_load_array_schema_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(data.data())), builder);
         auto reader = builder.asReader();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(data.data());
@@ -1989,7 +2001,7 @@ ArraySchema deserialize_load_array_schema_response(
             reinterpret_cast<const ::capnp::word*>(mBytes),
             data.size() / sizeof(::capnp::word)));
         auto reader = array_reader.getRoot<capnp::LoadArraySchemaResponse>();
-        return load_array_schema_response_from_capnp(reader);
+        return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
         throw Status_SerializationError(
@@ -2016,7 +2028,8 @@ Status array_schema_serialize(
       "Cannot serialize; serialization not enabled."));
 }
 
-ArraySchema array_schema_deserialize(SerializationType, const Buffer&) {
+ArraySchema array_schema_deserialize(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw StatusException(Status_SerializationError(
       "Cannot serialize; serialization not enabled."));
 }
@@ -2077,7 +2090,7 @@ void serialize_load_array_schema_response(
 }
 
 ArraySchema deserialize_load_array_schema_response(
-    SerializationType, const Buffer&) {
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }

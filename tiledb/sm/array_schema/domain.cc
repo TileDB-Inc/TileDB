@@ -37,6 +37,7 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
@@ -57,7 +58,8 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain() {
+Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -67,8 +69,10 @@ Domain::Domain() {
 Domain::Domain(
     Layout cell_order,
     const std::vector<shared_ptr<Dimension>> dimensions,
-    Layout tile_order)
-    : cell_order_(cell_order)
+    Layout tile_order,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , cell_order_(cell_order)
     , dimensions_(dimensions)
     , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
     , tile_order_(tile_order) {
@@ -321,7 +325,8 @@ shared_ptr<Domain> Domain::deserialize(
     uint32_t version,
     Layout cell_order,
     Layout tile_order,
-    FilterPipeline& coords_filters) {
+    FilterPipeline& coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
@@ -339,7 +344,7 @@ shared_ptr<Domain> Domain::deserialize(
   }
 
   return tiledb::common::make_shared<Domain>(
-      HERE(), cell_order, dimensions, tile_order);
+      HERE(), cell_order, dimensions, tile_order, memory_tracker);
 }
 
 const Range& Domain::domain(unsigned i) const {

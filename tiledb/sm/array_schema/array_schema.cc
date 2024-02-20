@@ -1023,7 +1023,14 @@ void ArraySchema::add_dimension_label(
 
     // Create the dimension label reference.
     auto dim_label_ref = make_shared<DimensionLabel>(
-        HERE(), dim_id, name, uri, dim, label_order, label_type);
+        HERE(),
+        dim_id,
+        name,
+        uri,
+        dim,
+        label_order,
+        label_type,
+        domain_->memory_tracker());
     dimension_labels_.emplace_back(dim_label_ref);
     dimension_label_map_[name] = dim_label_ref.get();
   } catch (...) {
@@ -1251,7 +1258,9 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 
 // #TODO Add security validation on incoming URI
 ArraySchema ArraySchema::deserialize(
-    Deserializer& deserializer, const URI& uri) {
+    Deserializer& deserializer,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load version
   // #TODO Add security validation
@@ -1325,7 +1334,12 @@ ArraySchema ArraySchema::deserialize(
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
   auto domain{Domain::deserialize(
-      deserializer, version, cell_order, tile_order, coords_filters)};
+      deserializer,
+      version,
+      cell_order,
+      tile_order,
+      coords_filters,
+      memory_tracker)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API

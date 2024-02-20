@@ -138,7 +138,8 @@ int32_t tiledb_filestore_schema_create(
         tiledb::sm::FilterPipeline{},
         tiledb::sm::ByteVecValue(std::move(tile_extent_vec)));
 
-    auto domain = make_shared<tiledb::sm::Domain>(HERE());
+    auto memory_tracker = ctx->resources().create_memory_tracker();
+    auto domain = make_shared<tiledb::sm::Domain>(HERE(), memory_tracker);
     throw_if_not_ok(domain->add_dimension(dim));
 
     auto attr = make_shared<tiledb::sm::Attribute>(

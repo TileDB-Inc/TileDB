@@ -1593,7 +1593,8 @@ int array_open_wrapper(
       (*open_array)->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      client_ctx->storage_manager());
+      client_ctx->storage_manager(),
+      tiledb::test::create_test_memory_tracker());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

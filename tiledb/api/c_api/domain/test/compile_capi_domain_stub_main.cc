@@ -30,6 +30,6 @@
 
 int main() {
   // Domain is easy to deal with because it has a default constructor.
-  tiledb_domain_handle_t x{};
+  tiledb_domain_handle_t x{(shared_ptr<tiledb::sm::Domain>)nullptr};
   return 0;
 }

@@ -90,7 +90,8 @@ Domain create_domain(
     const std::vector<std::string>& dim_names,
     const std::vector<Datatype>& dim_types,
     const std::vector<const void*>& dim_domains,
-    const std::vector<const void*>& dim_tile_extents) {
+    const std::vector<const void*>& dim_tile_extents,
+    shared_ptr<MemoryTracker> memory_tracker) {
   assert(!dim_names.empty());
   assert(dim_names.size() == dim_types.size());
   assert(dim_names.size() == dim_domains.size());
@@ -121,7 +122,8 @@ Domain create_domain(
     dimensions.emplace_back(std::move(dim));
   }
 
-  return Domain(Layout::ROW_MAJOR, dimensions, Layout::ROW_MAJOR);
+  return Domain(
+      Layout::ROW_MAJOR, dimensions, Layout::ROW_MAJOR, memory_tracker);
 }
 
 TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
@@ -138,8 +140,8 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   // 1D
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
-  Domain dom1 =
-      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
+  Domain dom1 = create_domain(
+      {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   auto mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
   const Domain d1{dom1};
   RTree rtree1(&d1, 3, tracker);
@@ -199,7 +201,8 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       {"d1", "d2"},
       {Datatype::INT64, Datatype::INT64},
       {dim_dom_2, dim_dom_2},
-      {&dim_extent_2, &dim_extent_2});
+      {&dim_extent_2, &dim_extent_2},
+      tracker);
   auto mbrs_2d = create_mbrs<int64_t, 2>(
       {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31}, tracker);
   const Domain d2{dom2};
@@ -239,10 +242,9 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   float dim_extent_f = 10.0;
   auto mbrs_f =
       create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f}, tracker);
-  Domain dom2f =
-      create_domain({"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f});
-  const Domain d2f{dom2f};
-  RTree rtreef(&d2f, 5, tracker);
+  Domain dom2f = create_domain(
+      {"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f}, tracker);
+  RTree rtreef(&dom2f, 5, tracker);
   CHECK(rtreef.set_leaves(mbrs_f).ok());
   rtreef.build_tree();
 
@@ -282,8 +284,8 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
   std::vector<bool> is_default(1, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
-  Domain dom1 =
-      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
+  Domain dom1 = create_domain(
+      {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   auto mbrs = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
   const Domain d1{dom1};
   RTree rtree(&d1, 3, tracker);
@@ -331,10 +333,9 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   int32_t dim_extent = 10;
   auto mbrs = create_mbrs<int32_t, 1>(
       {1, 3, 5, 10, 20, 22, 30, 35, 36, 38, 40, 49, 50, 51, 65, 69}, tracker);
-  Domain dom1 =
-      create_domain({"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent});
-  const Domain d1(dom1);
-  RTree rtree(&d1, 3, tracker);
+  Domain dom1 = create_domain(
+      {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
+  RTree rtree(&dom1, 3, tracker);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -400,7 +401,8 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
       {"d1", "d2"},
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
-      {&dim_extent, &dim_extent});
+      {&dim_extent, &dim_extent},
+      tracker);
   auto mbrs = create_mbrs<int32_t, 2>(
       {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15}, tracker);
   const Domain d2{dom2};
@@ -454,7 +456,8 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
       {"d1", "d2"},
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
-      {&dim_extent, &dim_extent});
+      {&dim_extent, &dim_extent},
+      tracker);
   auto mbrs = create_mbrs<int32_t, 2>(
       {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15, 11, 15, 20, 22, 16, 16,
        23, 23, 19, 20, 24, 26, 25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42},
@@ -535,7 +538,8 @@ TEST_CASE(
       {"d1", "d2"},
       {Datatype::UINT8, Datatype::INT32},
       {uint8_dom, int32_dom},
-      {&uint8_extent, &int32_extent});
+      {&uint8_extent, &int32_extent},
+      tracker);
   auto mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9}, tracker);
   const Domain d1{dom};
@@ -592,7 +596,8 @@ TEST_CASE(
       {"d1", "d2"},
       {Datatype::UINT64, Datatype::FLOAT32},
       {uint64_dom, float_dom},
-      {&uint64_extent, &float_extent});
+      {&uint64_extent, &float_extent},
+      tracker);
   auto mbrs =
       create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f}, tracker);
   const Domain d1{dom};
@@ -649,7 +654,8 @@ TEST_CASE(
       {"d1", "d2"},
       {Datatype::UINT8, Datatype::INT32},
       {uint8_dom, int32_dom},
-      {&uint8_extent, &int32_extent});
+      {&uint8_extent, &int32_extent},
+      tracker);
   auto mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20}, {5, 6, 7, 9, 11, 30}, tracker);
   const Domain d1{dom};
@@ -719,7 +725,8 @@ TEST_CASE(
       {"d1", "d2"},
       {Datatype::UINT8, Datatype::INT32},
       {uint8_dom, int32_dom},
-      {&uint8_extent, &int32_extent});
+      {&uint8_extent, &int32_extent},
+      tracker);
   auto mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20, 21, 26}, {5, 6, 7, 9, 11, 30, 31, 40}, tracker);
   const Domain d1{dom};
@@ -855,8 +862,8 @@ TEST_CASE(
   // Build tree
   auto tracker = create_test_memory_tracker();
   std::vector<bool> is_default(1, false);
-  Domain dom1 =
-      create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
+  Domain dom1 = create_domain(
+      {"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr}, tracker);
   auto mbrs =
       create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"}, tracker);
 
@@ -934,8 +941,8 @@ TEST_CASE(
   // Build tree
   auto tracker = create_test_memory_tracker();
   std::vector<bool> is_default(1, false);
-  Domain dom1 =
-      create_domain({"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr});
+  Domain dom1 = create_domain(
+      {"d"}, {Datatype::STRING_ASCII}, {nullptr}, {nullptr}, tracker);
   auto mbrs = create_str_mbrs<1>(
       {"aa",
        "b",
@@ -1032,7 +1039,8 @@ TEST_CASE(
       {"d1", "d2"},
       {Datatype::STRING_ASCII, Datatype::STRING_ASCII},
       {nullptr, nullptr},
-      {nullptr, nullptr});
+      {nullptr, nullptr},
+      tracker);
   auto mbrs = create_str_mbrs<2>(
       {"aa", "b", "eee", "g", "gggg", "ii", "jj", "lll", "m", "n", "oo", "qqq"},
       tracker);
@@ -1135,12 +1143,13 @@ TEST_CASE(
   std::vector<bool> is_default(2, false);
   int32_t dom_int32[] = {1, 20};
   int32_t tile_extent = 5;
+  auto tracker = create_test_memory_tracker();
   Domain dom = create_domain(
       {"d1", "d2"},
       {Datatype::STRING_ASCII, Datatype::INT32},
       {nullptr, dom_int32},
-      {nullptr, &tile_extent});
-  auto tracker = create_test_memory_tracker();
+      {nullptr, &tile_extent},
+      tracker);
   auto mbrs = create_str_int32_mbrs(
       {"aa", "b", "eee", "g", "gggg", "ii"}, {1, 5, 7, 8, 10, 14}, tracker);
 

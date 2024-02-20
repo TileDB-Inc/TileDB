@@ -39,6 +39,7 @@
 
 #include "../array.h"
 #include "../consistency.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -62,8 +63,14 @@ using array_entry = std::tuple<Array&, const QueryType>;
 using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
+  /** The memory tracker to use for the fixture */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
  public:
-  WhiteboxConsistencyController() = default;
+  WhiteboxConsistencyController()
+      : memory_tracker_(tiledb::test::create_test_memory_tracker()) {
+  }
+
   ~WhiteboxConsistencyController() = default;
 
   entry_type register_array(
@@ -102,8 +109,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
     throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
     std::vector<shared_ptr<Dimension>> dims = {dim};
-    shared_ptr<Domain> domain =
-        make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
+    shared_ptr<Domain> domain = make_shared<Domain>(
+        HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker_);
 
     // Create the ArraySchema
     shared_ptr<ArraySchema> schema =

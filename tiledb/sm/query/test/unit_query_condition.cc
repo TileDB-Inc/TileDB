@@ -1554,13 +1554,20 @@ void test_apply_tile(
  */
 template <typename T>
 void test_apply(
-    const Datatype type, bool var_size = false, bool nullable = false);
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Datatype type,
+    bool var_size = false,
+    bool nullable = false);
 
 /**
  * C-string template-specialization for `test_apply`.
  */
 template <>
-void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
+void test_apply<char*>(
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Datatype type,
+    bool var_size,
+    bool nullable) {
   REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
@@ -1579,7 +1586,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  Domain domain(memory_tracker);
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
@@ -1591,7 +1598,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1623,7 +1630,11 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  * Non-specialized template type for `test_apply`.
  */
 template <typename T>
-void test_apply(const Datatype type, bool var_size, bool nullable) {
+void test_apply(
+    shared_ptr<MemoryTracker> memory_tracker,
+    const Datatype type,
+    bool var_size,
+    bool nullable) {
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
@@ -1635,7 +1646,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  Domain domain(memory_tracker);
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
@@ -1647,7 +1658,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -1674,45 +1685,46 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 }
 
 TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
-  test_apply<int8_t>(Datatype::INT8);
-  test_apply<uint8_t>(Datatype::UINT8);
-  test_apply<int16_t>(Datatype::INT16);
-  test_apply<uint16_t>(Datatype::UINT16);
-  test_apply<int32_t>(Datatype::INT32);
-  test_apply<uint32_t>(Datatype::UINT32);
-  test_apply<int64_t>(Datatype::INT64);
-  test_apply<uint64_t>(Datatype::UINT64);
-  test_apply<float>(Datatype::FLOAT32);
-  test_apply<double>(Datatype::FLOAT64);
-  test_apply<char>(Datatype::CHAR);
-  test_apply<int64_t>(Datatype::DATETIME_YEAR);
-  test_apply<int64_t>(Datatype::DATETIME_MONTH);
-  test_apply<int64_t>(Datatype::DATETIME_WEEK);
-  test_apply<int64_t>(Datatype::DATETIME_DAY);
-  test_apply<int64_t>(Datatype::DATETIME_HR);
-  test_apply<int64_t>(Datatype::DATETIME_MIN);
-  test_apply<int64_t>(Datatype::DATETIME_SEC);
-  test_apply<int64_t>(Datatype::DATETIME_MS);
-  test_apply<int64_t>(Datatype::DATETIME_US);
-  test_apply<int64_t>(Datatype::DATETIME_NS);
-  test_apply<int64_t>(Datatype::DATETIME_PS);
-  test_apply<int64_t>(Datatype::DATETIME_FS);
-  test_apply<int64_t>(Datatype::DATETIME_AS);
-  test_apply<int64_t>(Datatype::TIME_HR);
-  test_apply<int64_t>(Datatype::TIME_MIN);
-  test_apply<int64_t>(Datatype::TIME_SEC);
-  test_apply<int64_t>(Datatype::TIME_MS);
-  test_apply<int64_t>(Datatype::TIME_US);
-  test_apply<int64_t>(Datatype::TIME_NS);
-  test_apply<int64_t>(Datatype::TIME_PS);
-  test_apply<int64_t>(Datatype::TIME_FS);
-  test_apply<int64_t>(Datatype::TIME_AS);
-  test_apply<char*>(Datatype::STRING_ASCII);
-  test_apply<char*>(Datatype::STRING_ASCII, true);
-  test_apply<char*>(Datatype::STRING_ASCII, false, true);
-  test_apply<char*>(Datatype::STRING_UTF8);
-  test_apply<char*>(Datatype::STRING_UTF8, true);
-  test_apply<char*>(Datatype::STRING_UTF8, false, true);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+  test_apply<int8_t>(tracker, Datatype::INT8);
+  test_apply<uint8_t>(tracker, Datatype::UINT8);
+  test_apply<int16_t>(tracker, Datatype::INT16);
+  test_apply<uint16_t>(tracker, Datatype::UINT16);
+  test_apply<int32_t>(tracker, Datatype::INT32);
+  test_apply<uint32_t>(tracker, Datatype::UINT32);
+  test_apply<int64_t>(tracker, Datatype::INT64);
+  test_apply<uint64_t>(tracker, Datatype::UINT64);
+  test_apply<float>(tracker, Datatype::FLOAT32);
+  test_apply<double>(tracker, Datatype::FLOAT64);
+  test_apply<char>(tracker, Datatype::CHAR);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_YEAR);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_MONTH);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_WEEK);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_DAY);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_HR);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_MIN);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_SEC);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_MS);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_US);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_NS);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_PS);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_FS);
+  test_apply<int64_t>(tracker, Datatype::DATETIME_AS);
+  test_apply<int64_t>(tracker, Datatype::TIME_HR);
+  test_apply<int64_t>(tracker, Datatype::TIME_MIN);
+  test_apply<int64_t>(tracker, Datatype::TIME_SEC);
+  test_apply<int64_t>(tracker, Datatype::TIME_MS);
+  test_apply<int64_t>(tracker, Datatype::TIME_US);
+  test_apply<int64_t>(tracker, Datatype::TIME_NS);
+  test_apply<int64_t>(tracker, Datatype::TIME_PS);
+  test_apply<int64_t>(tracker, Datatype::TIME_FS);
+  test_apply<int64_t>(tracker, Datatype::TIME_AS);
+  test_apply<char*>(tracker, Datatype::STRING_ASCII);
+  test_apply<char*>(tracker, Datatype::STRING_ASCII, true);
+  test_apply<char*>(tracker, Datatype::STRING_ASCII, false, true);
+  test_apply<char*>(tracker, Datatype::STRING_UTF8);
+  test_apply<char*>(tracker, Datatype::STRING_UTF8, true);
+  test_apply<char*>(tracker, Datatype::STRING_UTF8, false, true);
 }
 
 TEST_CASE(
@@ -1742,7 +1754,8 @@ TEST_CASE(
 
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2291,7 +2304,8 @@ void test_apply_dense<char*>(
 
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2350,7 +2364,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2461,7 +2476,8 @@ TEST_CASE(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -2990,7 +3006,8 @@ void test_apply_sparse<char*>(
 
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -3049,7 +3066,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   attr.set_fill_value(&fill_value, sizeof(T));
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -3819,7 +3837,8 @@ TEST_CASE(
   Attribute attr(field_name, type);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -4108,7 +4127,8 @@ TEST_CASE(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
@@ -4462,7 +4482,8 @@ TEST_CASE(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
@@ -4781,7 +4802,8 @@ TEST_CASE(
   attr.set_nullable(true);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{
       make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -4883,7 +4905,8 @@ TEST_CASE(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));

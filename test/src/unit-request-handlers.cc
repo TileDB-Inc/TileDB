@@ -32,6 +32,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
@@ -60,6 +61,7 @@ struct RequestHandlerFx {
 
   shared_ptr<Array> get_array(QueryType type);
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   URI uri_;
   Config cfg_;
   Context ctx_;
@@ -98,7 +100,7 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
     auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
-    auto dom = make_shared<Domain>(HERE());
+    auto dom = make_shared<Domain>(HERE(), memory_tracker_);
     throw_if_not_ok(dom->add_dimension(dim));
     throw_if_not_ok(schema->set_domain(dom));
     return schema;
@@ -333,7 +335,8 @@ TEST_CASE_METHOD(
 /* ********************************* */
 
 RequestHandlerFx::RequestHandlerFx(const std::string uri)
-    : uri_(uri)
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , uri_(uri)
     , ctx_(cfg_) {
   delete_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
@@ -399,7 +402,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 
@@ -436,7 +439,7 @@ ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
   REQUIRE(rval == TILEDB_OK);
 
   return serialization::deserialize_load_array_schema_response(
-      stype, resp_buf->buffer());
+      stype, resp_buf->buffer(), memory_tracker_);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
@@ -451,7 +454,7 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   auto dim2 = make_shared<Dimension>(HERE(), "dim2", Datatype::INT32);
   throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim1));
   throw_if_not_ok(dom->add_dimension(dim2));
   throw_if_not_ok(schema->set_domain(dom));

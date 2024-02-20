@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
@@ -58,6 +59,7 @@ class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
 class FilterPipeline;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -74,14 +76,15 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Empty constructor. */
-  Domain();
+  /** Constructor. */
+  Domain(shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor.*/
   Domain(
       Layout cell_order,
       const std::vector<shared_ptr<Dimension>> dimensions,
-      Layout tile_order);
+      Layout tile_order,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Copy constructor. */
   Domain(const Domain&) = default;
@@ -105,6 +108,10 @@ class Domain {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /**
    * Adds a dimension to the domain.
@@ -186,6 +193,7 @@ class Domain {
    * @param cell_order Cell order.
    * @param tile_order Tile order.
    * @param coords_filters Coords filters to replace empty coords pipelines.
+   * @param memory_tracker The memory tracker to use.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
@@ -193,7 +201,8 @@ class Domain {
       uint32_t version,
       Layout cell_order,
       Layout tile_order,
-      FilterPipeline& coords_filters);
+      FilterPipeline& coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the cell order. */
   Layout cell_order() const;
@@ -504,6 +513,9 @@ class Domain {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The memory tracker for this Domain. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The number of cells per tile. Meaningful only for the **dense** case. */
   uint64_t cell_num_per_tile_;

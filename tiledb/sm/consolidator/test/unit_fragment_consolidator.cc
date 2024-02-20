@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../fragment_consolidator.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -50,7 +51,8 @@ shared_ptr<ArraySchema> make_schema(
       HERE(), sparse ? ArrayType::SPARSE : ArrayType::DENSE);
 
   // Create the domain/dimensions.
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain domain(memory_tracker);
   for (uint64_t d = 0; d < dim_types.size(); d++) {
     auto dim{make_shared<Dimension>(
         HERE(), "d" + std::to_string(d + 1), dim_types[d])};
