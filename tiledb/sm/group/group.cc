@@ -745,7 +745,7 @@ void Group::load_metadata_from_storage(
   resources_.stats().add_counter("group_read_group_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
-  Metadata::deserialize(metadata_, metadata_tiles);
+  metadata_ = Metadata::deserialize(metadata_tiles);
   metadata_.set_loaded_metadata_uris(group_metadata_to_load);
 }
 

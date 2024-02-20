@@ -100,11 +100,8 @@ class Metadata {
       const std::map<std::string, MetadataValue>& metadata_map,
       shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Copy constructor. */
-  Metadata(const Metadata& other);
-
-  /** Move constructor. */
-  Metadata(Metadata&& other);
+  DISABLE_COPY(Metadata);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
 
   /** Destructor. */
   ~Metadata();
@@ -114,10 +111,10 @@ class Metadata {
   /* ********************************* */
 
   /** Copy assignment. */
-  Metadata& operator=(const Metadata& other);
+  Metadata& operator=(Metadata& other);
 
-  /** Move assignment. */
-  Metadata& operator=(Metadata&& other);
+  /** Assignment via std::map. */
+  Metadata& operator=(std::map<std::string, MetadataValue>&& md_map);
 
   /** Returns the memory tracker. */
   inline shared_ptr<MemoryTracker> memory_tracker() {
@@ -126,12 +123,6 @@ class Metadata {
 
   /** Clears the metadata. */
   void clear();
-
-  /** Replace the metadata with the contents of other. */
-  void replace(const Metadata& other);
-
-  /** Replace the metadata's contents with the content's of metadata_map. */
-  void replace(const std::map<std::string, MetadataValue>& metadata_map);
 
   /** Retrieves the array metadata URI. */
   URI get_uri(const URI& array_uri);
@@ -144,8 +135,8 @@ class Metadata {
    * assumed to be sorted on time. The function will take care of any
    * deleted or overwritten metadata items considering the order.
    */
-  static void deserialize(
-      Metadata& metadata, const std::vector<shared_ptr<Tile>>& metadata_tiles);
+  static std::map<std::string, MetadataValue> deserialize(
+      const std::vector<shared_ptr<Tile>>& metadata_tiles);
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;

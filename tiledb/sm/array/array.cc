@@ -1493,9 +1493,7 @@ void Array::do_load_metadata() {
   }
   resources_.stats().add_counter("read_array_meta_size", meta_size);
 
-  Metadata metadata(memory_tracker_);
-  Metadata::deserialize(metadata, metadata_tiles);
-  opened_array_->metadata().replace(metadata);
+  opened_array_->metadata() = Metadata::deserialize(metadata_tiles);
 
   // Sets the loaded metadata URIs
   opened_array_->metadata().set_loaded_metadata_uris(array_metadata_to_load);

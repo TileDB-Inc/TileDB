@@ -90,10 +90,10 @@ Status GroupMetaConsolidator::consolidate(
    * PMRs cannot be moved or copied, so this is a hacky workaround.
    */
   auto metadata_r = group_for_reads.metadata();
+  *(group_for_writes.metadata()) = *metadata_r;
+
   URI new_uri = metadata_r->get_uri(group_uri);
-  group_for_writes.metadata()->replace(*metadata_r);
-  auto metadata_w = group_for_writes.metadata();
-  const auto& to_vacuum = metadata_w->loaded_metadata_uris();
+  const auto& to_vacuum = metadata_r->loaded_metadata_uris();
 
   // Close groups
   RETURN_NOT_OK_ELSE(

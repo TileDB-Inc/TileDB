@@ -95,10 +95,10 @@ Status ArrayMetaConsolidator::consolidate(
    * PMRs cannot be moved or copied, so this is a hacky workaround.
    */
   auto& metadata_r = array_for_reads.metadata();
+  array_for_writes.opened_array()->metadata() = metadata_r;
+
   URI new_uri = metadata_r.get_uri(array_uri);
-  array_for_writes.opened_array()->metadata().replace(metadata_r);
-  auto& metadata_w = array_for_writes.metadata();
-  const auto& to_vacuum = metadata_w.loaded_metadata_uris();
+  const auto& to_vacuum = metadata_r.loaded_metadata_uris();
 
   // Write vac files relative to the array URI. This was fixed for reads in
   // version 19 so only do this for arrays starting with version 19.
