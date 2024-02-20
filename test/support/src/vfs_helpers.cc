@@ -137,16 +137,16 @@ Status vfs_test_close(
 void vfs_test_remove_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
+  CHECK(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir) {
-    REQUIRE(tiledb_vfs_remove_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+    CHECK(tiledb_vfs_remove_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
   }
 }
 
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   vfs_test_remove_temp_dir(ctx, vfs, path);
-  REQUIRE(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+  CHECK(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
 }
 
 Status SupportedFsS3::prepare_config(

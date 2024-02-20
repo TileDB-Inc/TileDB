@@ -817,10 +817,12 @@ class Config {
    *    together with the open array <br>
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
    * - `rest.use_refactored_array_open_and_query_submit` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    and submitting a query will be used <br>
    *    **Default**: false

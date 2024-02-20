@@ -781,6 +781,11 @@ Status StorageManagerCanonical::array_get_encryption(
         "Cannot get array encryption; Invalid array URI"));
   }
 
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
   // Load URIs from the array directory
   optional<tiledb::sm::ArrayDirectory> array_dir;
   array_dir.emplace(

@@ -45,7 +45,7 @@ struct RESTEnumerationFx {
 
   ~RESTEnumerationFx();
 
-  void create_array();
+  void create_array(const std::string& array_name);
 
   tiledb::test::VFSTestSetup vfs_test_setup_;
   std::string uri_;
@@ -56,14 +56,16 @@ TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Create array test",
     "[rest][enumeration][create-array]") {
-  create_array();
+  uri_ = vfs_test_setup_.array_uri("simple-array-create");
+  create_array(uri_);
 }
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Simple enumeration query",
     "[rest][enumeration][simple-query]") {
-  create_array();
+  uri_ = vfs_test_setup_.array_uri("simple-query");
+  create_array(uri_);
 
   Array array(ctx_, uri_, TILEDB_READ);
   Subarray subarray(ctx_, array);
@@ -84,26 +86,30 @@ TEST_CASE_METHOD(
   REQUIRE(query.submit() == Query::Status::COMPLETE);
   REQUIRE(attr1_read[1] == 1);
   REQUIRE(attr1_read[3] == 1);
+  array.close();
 }
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Get enumeration",
     "[rest][enumeration][get-enumeration]") {
-  create_array();
+  uri_ = vfs_test_setup_.array_uri("get-enumeration");
+  create_array(uri_);
 
   Array array(ctx_, uri_, TILEDB_READ);
   auto enmr = ArrayExperimental::get_enumeration(ctx_, array, "my_enum");
 
   std::vector<std::string> expected = {"fred", "wilma", "barney", "pebbles"};
   REQUIRE(enmr.as_vector<std::string>() == expected);
+  array.close();
 }
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Get previously loaded enumeration",
     "[rest][enumeration][get-enumeration]") {
-  create_array();
+  uri_ = vfs_test_setup_.array_uri("get-enumeration");
+  create_array(uri_);
 
   Array array(ctx_, uri_, TILEDB_READ);
   auto enmr1 = ArrayExperimental::get_enumeration(ctx_, array, "my_enum");
@@ -113,16 +119,19 @@ TEST_CASE_METHOD(
 
   std::vector<std::string> expected = {"fred", "wilma", "barney", "pebbles"};
   REQUIRE(enmr2.as_vector<std::string>() == expected);
+  array.close();
 }
 
 TEST_CASE_METHOD(
     RESTEnumerationFx,
     "Enumeration Extension",
     "[rest][enumeration][extension]") {
-  create_array();
+  uri_ = vfs_test_setup_.array_uri("extension");
+  create_array(uri_);
 
   Array old_array(ctx_, uri_, TILEDB_READ);
   auto old_enmr = ArrayExperimental::get_enumeration(ctx_, old_array, "fruit");
+  old_array.close();
 
   std::vector<std::string> fruit = {
       "apple", "blueberry", "cherry", "durian", "elderberry"};
@@ -135,11 +144,11 @@ TEST_CASE_METHOD(
   Array new_array(ctx_, uri_, TILEDB_READ);
   auto enmr = ArrayExperimental::get_enumeration(ctx_, new_array, "fruit");
   REQUIRE(enmr.as_vector<std::string>() == fruit);
+  new_array.close();
 }
 
 RESTEnumerationFx::RESTEnumerationFx()
-    : uri_(vfs_test_setup_.array_uri("enumerations"))
-    , ctx_(vfs_test_setup_.ctx()){};
+    : ctx_(vfs_test_setup_.ctx()){};
 
 RESTEnumerationFx::~RESTEnumerationFx() {
   auto obj = Object::object(ctx_, uri_);
@@ -148,7 +157,7 @@ RESTEnumerationFx::~RESTEnumerationFx() {
   }
 }
 
-void RESTEnumerationFx::create_array() {
+void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in
   // the array. dim is an int32_t dimension, attr1 is an enumeration with string
   // values and int32_t attribute values. attr2 is a float attribute.
@@ -186,14 +195,14 @@ void RESTEnumerationFx::create_array() {
   AttributeExperimental::set_enumeration_name(ctx_, attr3, "fruit");
   schema.add_attribute(attr3);
 
-  Array::create(uri_, schema);
+  Array::create(array_name, schema);
 
   // Attribute data
   std::vector<int> attr1_values = {0, 1, 2, 1, 0};
   std::vector<float> attr2_values = {1.0f, 2.0f, 3.0f, 4.0f, 5.0f};
   std::vector<int> attr3_values = {0, 1, 2, 3, 4};
 
-  Array array(ctx_, uri_, TILEDB_WRITE);
+  Array array(ctx_, array_name, TILEDB_WRITE);
   Subarray subarray(ctx_, array);
   subarray.set_subarray({1, 5});
   Query query(ctx_, array);

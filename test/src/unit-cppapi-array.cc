@@ -1414,6 +1414,7 @@ TEST_CASE(
 
   // Close array
   array_r.close();
+  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(

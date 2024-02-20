@@ -152,9 +152,16 @@ class SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   virtual bool is_rest() = 0;
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  virtual bool is_local() = 0;
 };
 
 /**
@@ -214,9 +221,18 @@ class SupportedFsS3 : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   virtual bool is_rest();
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -289,9 +305,18 @@ class SupportedFsHDFS : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
     return false;
   }
 
@@ -360,9 +385,18 @@ class SupportedFsAzure : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
     return false;
   }
 
@@ -436,9 +470,18 @@ class SupportedFsGCS : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
     return false;
   }
 
@@ -525,10 +568,19 @@ class SupportedFsLocal : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   inline bool is_rest() {
     return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return true;
   }
 
  private:
@@ -606,10 +658,19 @@ class SupportedFsMem : public SupportedFs {
   /**
    * Checks if the filesystem is accessed via REST
    *
-   * @return true if REST, false if local
+   * @return true if REST, false if not
    */
   inline bool is_rest() {
     return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return true;
   }
 
  private:
@@ -835,12 +896,16 @@ struct VFSTestSetup {
       , vfs_c{nullptr}
       , cfg_c{config} {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
-    std::string temp_dir = fs_vec[0]->temp_dir();
+    temp_dir = fs_vec[0]->temp_dir();
     vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
   };
 
   bool is_rest() {
     return fs_vec[0]->is_rest();
+  }
+
+  bool is_local() {
+    return fs_vec[0]->is_local();
   }
 
   std::string array_uri(const std::string& array_name) {
@@ -854,6 +919,7 @@ struct VFSTestSetup {
   }
 
   ~VFSTestSetup() {
+    vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
     CHECK(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
   };
 
