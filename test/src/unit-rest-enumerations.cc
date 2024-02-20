@@ -139,7 +139,7 @@ TEST_CASE_METHOD(
 
 RESTEnumerationFx::RESTEnumerationFx()
     : uri_(vfs_test_setup_.array_uri("enumerations"))
-    , ctx_(vfs_test_setup_.ctx){};
+    , ctx_(vfs_test_setup_.ctx()){};
 
 RESTEnumerationFx::~RESTEnumerationFx() {
   auto obj = Object::object(ctx_, uri_);

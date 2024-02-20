@@ -197,7 +197,7 @@ DenseArrayRESTFx::DenseArrayRESTFx()
 }
 
 DenseArrayRESTFx::~DenseArrayRESTFx() {
-  auto obj = tiledb::Object::object(vfs_test_setup_.ctx, array_uri_);
+  auto obj = tiledb::Object::object(vfs_test_setup_.ctx(), array_uri_);
   if (obj.type() == tiledb::Object::Type::Array) {
     CHECK(tiledb_array_delete(ctx_, array_uri_.c_str()) == TILEDB_OK);
   }

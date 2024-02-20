@@ -56,7 +56,7 @@ struct RemoteGlobalOrderWriteFx {
       , extent_(extent)
       , array_name_{"global-array-" + std::to_string(total_cell_count_)}
       , array_uri_(vfs_test_setup_.array_uri(array_name_))
-      , ctx_{vfs_test_setup_.ctx} {};
+      , ctx_{vfs_test_setup_.ctx()} {};
 
   ~RemoteGlobalOrderWriteFx() {
     auto obj = Object::object(ctx_, array_uri_);

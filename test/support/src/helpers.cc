@@ -812,53 +812,11 @@ void get_supported_fs(
           "Failed to get supported fs. Invalid --vfs command line argument.");
     }
 
-    if (g_vfs == "native") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-      *rest_s3_supported = false;
-    }
-
-    if (g_vfs == "s3") {
-      *s3_supported = true;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-      *rest_s3_supported = false;
-    }
-
-    if (g_vfs == "hdfs") {
-      *s3_supported = false;
-      *hdfs_supported = true;
-      *azure_supported = false;
-      *gcs_supported = false;
-      *rest_s3_supported = false;
-    }
-
-    if (g_vfs == "azure") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = true;
-      *gcs_supported = false;
-      *rest_s3_supported = false;
-    }
-
-    if (g_vfs == "gcs") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = true;
-      *rest_s3_supported = false;
-    }
-
-    if (g_vfs == "rest-s3") {
-      *s3_supported = false;
-      *hdfs_supported = false;
-      *azure_supported = false;
-      *gcs_supported = false;
-      *rest_s3_supported = true;
-    }
+    *s3_supported = g_vfs == "s3";
+    *hdfs_supported = g_vfs == "hdfs";
+    *azure_supported = g_vfs == "azure";
+    *gcs_supported = g_vfs == "gcs";
+    *rest_s3_supported = g_vfs == "rest-s3";
   }
 }
 

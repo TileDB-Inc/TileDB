@@ -822,7 +822,7 @@ struct TemporaryDirectoryFixture {
  *
  * {
  * tiledb::test::VFSTestSetup vfs_test_setup{"foo_array"};
- * auto ctx = vfs_test_setup.ctx;
+ * auto ctx = vfs_test_setup.ctx();
  * Array array(ctx, array_uri, TILEDB_WRITE);
  * ...
  * } // ctx context is destroyed and VFS directories removed
@@ -835,7 +835,6 @@ struct VFSTestSetup {
       , vfs_c{nullptr}
       , cfg_c{config} {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
-    ctx = Context(ctx_c, false);
     std::string temp_dir = fs_vec[0]->temp_dir();
     vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
   };
@@ -850,15 +849,18 @@ struct VFSTestSetup {
                                temp_dir + array_name);
   }
 
+  Context ctx() {
+    return Context(ctx_c, false);
+  }
+
   ~VFSTestSetup() {
-    REQUIRE(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
+    CHECK(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
   };
 
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
   tiledb_ctx_handle_t* ctx_c;
   tiledb_vfs_handle_t* vfs_c;
   tiledb_config_handle_t* cfg_c;
-  Context ctx;
   std::string temp_dir;
 };
 
