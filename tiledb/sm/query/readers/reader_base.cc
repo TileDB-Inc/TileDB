@@ -110,7 +110,8 @@ void ReaderBase::compute_result_space_tiles(
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) {
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto fragment_num = (unsigned)frag_tile_domains.size();
   auto dim_num = array_tile_domain.dim_num();
   std::vector<T> start_coords;
@@ -123,7 +124,8 @@ void ReaderBase::compute_result_space_tiles(
     start_coords = array_tile_domain.start_coords(coords);
 
     // Create result space tile and insert into the map
-    auto r = result_space_tiles.emplace(coords, ResultSpaceTile<T>());
+    auto r =
+        result_space_tiles.emplace(coords, ResultSpaceTile<T>(memory_tracker));
     auto& result_space_tile = r.first->second;
     result_space_tile.set_start_coords(start_coords);
 
@@ -153,7 +155,10 @@ void ReaderBase::compute_result_space_tiles(
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
       ResultTile result_tile(
-          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
+          frag_idx,
+          tile_idx,
+          *fragment_metadata[frag_idx].get(),
+          memory_tracker);
       result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
@@ -1114,7 +1119,8 @@ void ReaderBase::compute_result_space_tiles(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      query_memory_tracker_);
 }
 
 bool ReaderBase::has_coords() const {
@@ -1185,7 +1191,8 @@ void ReaderBase::validate_attribute_order(
   auto index_name = index_dim->name();
 
   // See if some values will already be processed by previous fragments.
-  AttributeOrderValidator validator(attribute_name, fragment_metadata_.size());
+  AttributeOrderValidator validator(
+      attribute_name, fragment_metadata_.size(), query_memory_tracker_);
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,

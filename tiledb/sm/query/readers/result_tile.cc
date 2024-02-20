@@ -67,9 +67,17 @@ bool result_tile_cmp(const ResultTile* a, const ResultTile* b) {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
+ResultTile::ResultTile(shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker) {
+}
+
 ResultTile::ResultTile(
-    unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-    : domain_(&frag_md.array_schema()->domain())
+    unsigned frag_idx,
+    uint64_t tile_idx,
+    const FragmentMetadata& frag_md,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , domain_(&frag_md.array_schema()->domain())
     , frag_idx_(frag_idx)
     , tile_idx_(tile_idx)
     , cell_num_(frag_md.cell_num(tile_idx)) {
@@ -102,6 +110,7 @@ ResultTile& ResultTile::operator=(ResultTile&& other) {
 }
 
 void ResultTile::swap(ResultTile& tile) {
+  std::swap(memory_tracker_, tile.memory_tracker_);
   std::swap(domain_, tile.domain_);
   std::swap(frag_idx_, tile.frag_idx_);
   std::swap(tile_idx_, tile.tile_idx_);

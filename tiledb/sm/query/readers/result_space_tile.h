@@ -82,7 +82,12 @@ template <class T>
 class ResultSpaceTile {
  public:
   /** Default constructor. */
-  ResultSpaceTile() = default;
+  ResultSpaceTile() = delete;
+
+  /** Constructor. */
+  ResultSpaceTile(shared_ptr<MemoryTracker> memory_tracker)
+      : memory_tracker_(memory_tracker) {
+  }
 
   /** Default destructor. */
   ~ResultSpaceTile() = default;
@@ -128,7 +133,7 @@ class ResultSpaceTile {
   /** Sets the input result tile for the given fragment. */
   void set_result_tile(unsigned frag_idx, ResultTile& result_tile) {
     assert(result_tiles_.count(frag_idx) == 0);
-    result_tiles_[frag_idx] = std::move(result_tile);
+    result_tiles_.emplace(frag_idx, std::move(result_tile));
   }
 
   /** Returns the result tile for the input fragment. */
@@ -175,10 +180,18 @@ class ResultSpaceTile {
           "fragment domain.");
     }
 
-    return result_tiles_[frag_domains_[0].fid()];
+    auto iter = result_tiles_.find(frag_domains_[0].fid());
+    if (iter == result_tiles_.end()) {
+      throw std::runtime_error("Invalid internal state getting result tile.");
+    }
+
+    return iter->second;
   }
 
  private:
+  /** The memory tracker for this ResultSpaceTile. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The (global) coordinates of the first cell in the space tile. */
   std::vector<T> start_coords_;
 

@@ -1529,7 +1529,8 @@ TEST_CASE_METHOD(
   // Make a vector of tiles.
   std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
@@ -1745,7 +1746,8 @@ TEST_CASE_METHOD(
   // Make a vector of tiles.
   std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {

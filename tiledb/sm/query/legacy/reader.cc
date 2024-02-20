@@ -711,7 +711,8 @@ Status Reader::compute_sparse_result_tiles(
           auto pair = std::pair<unsigned, uint64_t>(f, t);
           // Add tile only if it does not already exist
           if (result_tile_map->find(pair) == result_tile_map->end()) {
-            result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
+            result_tiles.emplace_back(
+                f, t, *fragment_metadata_[f].get(), query_memory_tracker_);
             (*result_tile_map)[pair] = result_tiles.size() - 1;
           }
           // Always check range for multiple fragments or fragments with
@@ -730,7 +731,8 @@ Status Reader::compute_sparse_result_tiles(
         auto pair = std::pair<unsigned, uint64_t>(f, t);
         // Add tile only if it does not already exist
         if (result_tile_map->find(pair) == result_tile_map->end()) {
-          result_tiles.emplace_back(f, t, *fragment_metadata_[f].get());
+          result_tiles.emplace_back(
+              f, t, *fragment_metadata_[f].get(), query_memory_tracker_);
           (*result_tile_map)[pair] = result_tiles.size() - 1;
         }
         // Always check range for multiple fragments or fragments with

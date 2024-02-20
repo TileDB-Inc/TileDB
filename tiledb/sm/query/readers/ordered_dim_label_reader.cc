@@ -522,7 +522,10 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
                   std::piecewise_construct,
                   std::forward_as_tuple(tile_idx),
                   std::forward_as_tuple(
-                      f, frag_tile_idx, *fragment_metadata_[f].get()));
+                      f,
+                      frag_tile_idx,
+                      *fragment_metadata_[f].get(),
+                      query_memory_tracker_));
             } else {
               if (r == 0) {
                 throw OrderedDimLabelReaderStatusException(

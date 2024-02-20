@@ -165,7 +165,8 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_domain_free(&domain);
 
-  UnorderedWithDupsResultTile<uint8_t> tile(0, 0, *frag_md_);
+  UnorderedWithDupsResultTile<uint8_t> tile(
+      0, 0, *frag_md_, tiledb::test::get_test_memory_tracker());
 
   // Check the function with an empty bitmap.
   CHECK(tile.result_num_between_pos(2, 10) == 8);
@@ -199,7 +200,7 @@ TEST_CASE_METHOD(
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       true);
-  ResultTile rt(0, 0, frag_md);
+  ResultTile rt(0, 0, frag_md, tiledb::test::get_test_memory_tracker());
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
@@ -311,7 +312,7 @@ TEST_CASE_METHOD(
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       true);
-  ResultTile rt(0, 0, frag_md);
+  ResultTile rt(0, 0, frag_md, tiledb::test::get_test_memory_tracker());
 
   // Make sure cell_num() will return the correct value.
   if (!first_dim) {
