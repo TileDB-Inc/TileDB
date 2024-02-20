@@ -75,11 +75,46 @@ Metadata::Metadata(
   build_metadata_index();
 }
 
+Metadata::Metadata(const Metadata& other)
+    : memory_tracker_(other.memory_tracker_)
+    , timestamp_range_(other.timestamp_range_)
+    , loaded_metadata_uris_(
+          memory_tracker_->get_resource(MemoryType::METADATA)) {
+  for (auto& [k, v] : other.metadata_map_) {
+    metadata_map_.emplace(k, v);
+  }
+  build_metadata_index();
+}
+
+Metadata::Metadata(Metadata&& other)
+    : memory_tracker_(other.memory_tracker_)
+    , timestamp_range_(other.timestamp_range_)
+    , loaded_metadata_uris_(
+          memory_tracker_->get_resource(MemoryType::METADATA)) {
+  for (auto& [k, v] : other.metadata_map_) {
+    metadata_map_.emplace(k, v);
+  }
+  build_metadata_index();
+}
+
 Metadata::~Metadata() = default;
 
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+Metadata& Metadata::operator=(const Metadata& other) {
+  clear();
+  for (auto& [k, v] : other.metadata_map_) {
+    metadata_map_.emplace(k, v);
+  }
+  build_metadata_index();
+
+  for (auto& uri : other.loaded_metadata_uris_) {
+  }
+
+  return *this;
+}
 
 void Metadata::clear() {
   metadata_map_.clear();

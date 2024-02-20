@@ -100,9 +100,11 @@ class Metadata {
       const std::map<std::string, MetadataValue>& metadata_map,
       shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Copy constructors are deleted. */
-  DISABLE_COPY_AND_COPY_ASSIGN(Metadata);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
+  /** Copy constructor. */
+  Metadata(const Metadata& other);
+
+  /** Move constructor. */
+  Metadata(Metadata&& other);
 
   /** Destructor. */
   ~Metadata();
@@ -110,6 +112,12 @@ class Metadata {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  /** Copy assignment. */
+  Metadata& operator=(const Metadata& other);
+
+  /** Move assignment. */
+  Metadata& operator=(Metadata&& other);
 
   /** Returns the memory tracker. */
   inline shared_ptr<MemoryTracker> memory_tracker() {
