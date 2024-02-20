@@ -1744,89 +1744,43 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 }
 
-TEST_CASE(
+TEST_CASE_METHOD(
+    DenseArrayRESTFx,
     "C API: REST Test dense array, error without rest server configured",
     "[capi][rest][dense][rest-no-config]") {
-  tiledb_ctx_t* ctx;
-  tiledb_vfs_t* vfs;
-  auto fs_vec = vfs_test_get_fs_vec();
-  // Initialize vfs test
-  REQUIRE(vfs_test_init(fs_vec, &ctx, &vfs).ok());
+  // test only applies to REST
+  array_uri_ = vfs_test_setup_.array_uri("dense_set_subarray_sparse");
+  create_dense_array(array_uri_);
 
-  std::string temp_dir = fs_vec[0]->temp_dir();
-  int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx, vfs, temp_dir.c_str(), &is_dir) == TILEDB_OK);
-  if (is_dir) {
-    REQUIRE(tiledb_vfs_remove_dir(ctx, vfs, temp_dir.c_str()) == TILEDB_OK);
+  if (vfs_test_setup_.is_rest()) {
+    // Set config to use a non-default environment prefix.
+    // Prevents test from picking up on REST CI environment configuration.
+    tiledb_config_t* cfg;
+    tiledb_error_t* err;
+    int rc = tiledb_config_alloc(&cfg, &err);
+    CHECK(rc == TILEDB_OK);
+    CHECK(err == nullptr);
+    rc = tiledb_config_set(cfg, "config.env_var_prefix", "UNIT_", &err);
+    CHECK(rc == TILEDB_OK);
+    CHECK(err == nullptr);
+
+    // Create context without a REST config
+    tiledb_ctx_t* ctx2;
+    REQUIRE(tiledb_ctx_alloc(cfg, &ctx2) == TILEDB_OK);
+
+    tiledb_array_t* array;
+    rc = tiledb_array_alloc(ctx2, array_uri_.c_str(), &array);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx2, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_ERR);
+
+    // Clean up
+    CHECK(tiledb_array_close(ctx2, array) == TILEDB_OK);
+    tiledb_config_free(&cfg);
+    tiledb_error_free(&err);
+    tiledb_array_free(&array);
+    tiledb_ctx_free(&ctx2);
   }
-  REQUIRE(tiledb_vfs_create_dir(ctx, vfs, temp_dir.c_str()) == TILEDB_OK);
-  std::string array_name =
-      "tiledb://unit/" + temp_dir + "dense_set_subarray_sparse";
-
-  // Create array
-  uint64_t dim_domain[] = {1, 4};
-  uint64_t tile_extents[] = {2};
-  tiledb_dimension_t* d1;
-  int rc = tiledb_dimension_alloc(
-      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extents[0], &d1);
-  CHECK(rc == TILEDB_OK);
-  tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_domain_add_dimension(ctx, domain, d1);
-  tiledb_attribute_t* a1;
-  rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_INT32, &a1);
-  CHECK(rc == TILEDB_OK);
-  // Create array schema
-  tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a1);
-  CHECK(rc == TILEDB_OK);
-  // Check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
-  CHECK(rc == TILEDB_OK);
-  // Create array
-  rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
-  CHECK(rc == TILEDB_OK);
-
-  // Set config to use a non-default environment prefix.
-  // Prevents test from picking up on REST CI environment configuration.
-  tiledb_config_t* cfg;
-  tiledb_error_t* err;
-  rc = tiledb_config_alloc(&cfg, &err);
-  CHECK(rc == TILEDB_OK);
-  CHECK(err == nullptr);
-  rc = tiledb_config_set(cfg, "config.env_var_prefix", "UNIT_", &err);
-  CHECK(rc == TILEDB_OK);
-  CHECK(err == nullptr);
-
-  // Create context without a REST config
-  tiledb_ctx_t* ctx2;
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx2) == TILEDB_OK);
-
-  tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx2, array_name.c_str(), &array);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx2, array, TILEDB_WRITE);
-  CHECK(rc == TILEDB_ERR);
-
-  // Clean up
-  CHECK(tiledb_array_close(ctx2, array) == TILEDB_OK);
-
-  // Close vfs test. Removes S3 bucket, Azure container, etc.
-  CHECK(vfs_test_close(fs_vec, ctx, vfs).ok());
-
-  tiledb_attribute_free(&a1);
-  tiledb_dimension_free(&d1);
-  tiledb_domain_free(&domain);
-  tiledb_array_schema_free(&array_schema);
-  tiledb_config_free(&cfg);
-  tiledb_error_free(&err);
-  tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
-  tiledb_ctx_free(&ctx2);
 }
 
 TEST_CASE_METHOD(
