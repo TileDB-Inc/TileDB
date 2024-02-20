@@ -281,7 +281,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
           
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\$CMakeBuildType\sm\filesystem\test\unit_vfs -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\$CMakeBuildType\tiledb\sm\filesystem\test\unit_vfs -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
