@@ -248,7 +248,7 @@ void AnyFx::read_array(const std::string& array_name) {
 }
 
 void AnyFx::delete_array(const std::string& array_name) {
-  auto obj = tiledb::Object::object(vfs_test_setup_.ctx, array_name);
+  auto obj = tiledb::Object::object(vfs_test_setup_.ctx(), array_name);
   if (obj.type() == tiledb::Object::Type::Array) {
     tiledb_array_delete(vfs_test_setup_.ctx_c, array_name.c_str());
   }

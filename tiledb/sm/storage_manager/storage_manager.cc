@@ -774,15 +774,22 @@ Status StorageManagerCanonical::array_get_non_empty_domain_var_from_name(
 }
 
 Status StorageManagerCanonical::array_get_encryption(
-    const ArrayDirectory& array_dir, EncryptionType* encryption_type) {
-  const URI& uri = array_dir.uri();
-
+    const URI& uri, EncryptionType* encryption_type) {
   if (uri.is_invalid()) {
     return logger_->status(Status_StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
   }
 
-  const URI& schema_uri = array_dir.latest_array_schema_uri();
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      resources_,
+      uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  const URI& schema_uri = array_dir->latest_array_schema_uri();
 
   // Read tile header
   auto&& header =
