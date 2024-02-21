@@ -142,8 +142,10 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   int32_t dim_extent = 10;
   Domain dom1 = create_domain(
       {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
+  const Domain d1 = create_domain(
+      {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   auto mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
-  RTree rtree1(&dom1, 3, tracker);
+  RTree rtree1(&d1, 3, tracker);
   CHECK(!rtree1.set_leaf(0, mbrs_1d[0]).ok());
   CHECK(rtree1.set_leaf_num(mbrs_1d.size()).ok());
   for (size_t m = 0; m < mbrs_1d.size(); ++m)
@@ -202,9 +204,15 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       {dim_dom_2, dim_dom_2},
       {&dim_extent_2, &dim_extent_2},
       tracker);
+  const Domain d2 = create_domain(
+      {"d1", "d2"},
+      {Datatype::INT64, Datatype::INT64},
+      {dim_dom_2, dim_dom_2},
+      {&dim_extent_2, &dim_extent_2},
+      tracker);
   auto mbrs_2d = create_mbrs<int64_t, 2>(
       {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31}, tracker);
-  RTree rtree2(&dom2, 5, tracker);
+  RTree rtree2(&d2, 5, tracker);
   CHECK(rtree2.set_leaves(mbrs_2d).ok());
   rtree2.build_tree();
   CHECK(rtree2.height() == 2);
@@ -242,7 +250,9 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       create_mbrs<float, 1>({1.0f, 3.0f, 5.0f, 10.0f, 20.0f, 22.0f}, tracker);
   Domain dom2f = create_domain(
       {"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f}, tracker);
-  RTree rtreef(&dom2f, 5, tracker);
+  const Domain d2f = create_domain(
+      {"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f}, tracker);
+  RTree rtreef(&d2f, 5, tracker);
   CHECK(rtreef.set_leaves(mbrs_f).ok());
   rtreef.build_tree();
 
@@ -394,7 +404,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
   std::vector<bool> is_default(2, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
-  Domain dom2 = create_domain(
+  Domain dom1 = create_domain(
       {"d1", "d2"},
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
@@ -402,7 +412,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
       tracker);
   auto mbrs = create_mbrs<int32_t, 2>(
       {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15}, tracker);
-  RTree rtree(&dom2, 3, tracker);
+  RTree rtree(&dom1, 3, tracker);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -448,7 +458,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
   std::vector<bool> is_default(2, false);
   int32_t dim_dom[] = {1, 1000};
   int32_t dim_extent = 10;
-  Domain dom2 = create_domain(
+  Domain dom1 = create_domain(
       {"d1", "d2"},
       {Datatype::INT32, Datatype::INT32},
       {dim_dom, dim_dom},
@@ -458,7 +468,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
       {1,  3,  2,  4,  5,  7,  6,  9,  10, 12, 10, 15, 11, 15, 20, 22, 16, 16,
        23, 23, 19, 20, 24, 26, 25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42},
       tracker);
-  RTree rtree(&dom2, 3, tracker);
+  RTree rtree(&dom1, 3, tracker);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
   CHECK(rtree.height() == 3);
@@ -529,7 +539,13 @@ TEST_CASE(
   int32_t int32_dom[] = {5, 10};
   uint8_t uint8_extent = 2;
   int32_t int32_extent = 2;
-  Domain dom = create_domain(
+  Domain dom1 = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT8, Datatype::INT32},
+      {uint8_dom, int32_dom},
+      {&uint8_extent, &int32_extent},
+      tracker);
+  const Domain d1 = create_domain(
       {"d1", "d2"},
       {Datatype::UINT8, Datatype::INT32},
       {uint8_dom, int32_dom},
@@ -537,7 +553,7 @@ TEST_CASE(
       tracker);
   auto mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9}, tracker);
-  RTree rtree(&dom, 5, tracker);
+  RTree rtree(&d1, 5, tracker);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -552,7 +568,7 @@ TEST_CASE(
   int32_t int32_r_no[] = {1, 10};
   range_no[0] = Range(uint8_r_no, sizeof(uint8_r_no));
   range_no[1] = Range(int32_r_no, sizeof(int32_r_no));
-  double ratio = dom.overlap_ratio(range_no, is_default, mbrs[0]);
+  double ratio = dom1.overlap_ratio(range_no, is_default, mbrs[0]);
   CHECK(ratio == 0.0);
 
   // Check full domain overlap
@@ -561,9 +577,9 @@ TEST_CASE(
   int32_t int32_r_full[] = {1, 10};
   range_full[0] = Range(uint8_r_full, sizeof(uint8_r_full));
   range_full[1] = Range(int32_r_full, sizeof(int32_r_full));
-  ratio = dom.overlap_ratio(range_full, is_default, mbrs[0]);
+  ratio = dom1.overlap_ratio(range_full, is_default, mbrs[0]);
   CHECK(ratio == 1.0);
-  ratio = dom.overlap_ratio(range_full, is_default, mbrs[1]);
+  ratio = dom1.overlap_ratio(range_full, is_default, mbrs[1]);
   CHECK(ratio == 1.0);
 
   // Check partial domain overlap
@@ -572,7 +588,7 @@ TEST_CASE(
   int32_t int32_r_part[] = {5, 5};
   range_part[0] = Range(uint8_r_part, sizeof(uint8_r_part));
   range_part[1] = Range(int32_r_part, sizeof(int32_r_part));
-  ratio = dom.overlap_ratio(range_part, is_default, mbrs[0]);
+  ratio = dom1.overlap_ratio(range_part, is_default, mbrs[0]);
   CHECK(ratio == 0.25);
 }
 
@@ -586,7 +602,13 @@ TEST_CASE(
   float float_dom[] = {0.1f, 0.9f};
   uint64_t uint64_extent = 2;
   float float_extent = 0.1f;
-  Domain dom = create_domain(
+  Domain dom1 = create_domain(
+      {"d1", "d2"},
+      {Datatype::UINT64, Datatype::FLOAT32},
+      {uint64_dom, float_dom},
+      {&uint64_extent, &float_extent},
+      tracker);
+  const Domain d1 = create_domain(
       {"d1", "d2"},
       {Datatype::UINT64, Datatype::FLOAT32},
       {uint64_dom, float_dom},
@@ -594,7 +616,7 @@ TEST_CASE(
       tracker);
   auto mbrs =
       create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f}, tracker);
-  RTree rtree(&dom, 5, tracker);
+  RTree rtree(&d1, 5, tracker);
   CHECK(rtree.set_leaves(mbrs).ok());
   rtree.build_tree();
   CHECK(rtree.height() == 2);
@@ -609,7 +631,7 @@ TEST_CASE(
   float float_r_no[] = {.1f, .9f};
   range_no[0] = Range(uint64_r_no, sizeof(uint64_r_no));
   range_no[1] = Range(float_r_no, sizeof(float_r_no));
-  double ratio = dom.overlap_ratio(range_no, is_default, mbrs[0]);
+  double ratio = dom1.overlap_ratio(range_no, is_default, mbrs[0]);
   CHECK(ratio == 0.0);
 
   // Check full domain overlap
@@ -618,9 +640,9 @@ TEST_CASE(
   float float_r_full[] = {.1f, 1.0f};
   range_full[0] = Range(uint64_r_full, sizeof(uint64_r_full));
   range_full[1] = Range(float_r_full, sizeof(float_r_full));
-  ratio = dom.overlap_ratio(range_full, is_default, mbrs[0]);
+  ratio = dom1.overlap_ratio(range_full, is_default, mbrs[0]);
   CHECK(ratio == 1.0);
-  ratio = dom.overlap_ratio(range_full, is_default, mbrs[1]);
+  ratio = dom1.overlap_ratio(range_full, is_default, mbrs[1]);
   CHECK(ratio == 1.0);
 
   // Check partial domain overlap
@@ -629,7 +651,7 @@ TEST_CASE(
   float float_r_part[] = {.5f, .55f};
   range_part[0] = Range(uint64_r_part, sizeof(uint64_r_part));
   range_part[1] = Range(float_r_part, sizeof(float_r_part));
-  ratio = dom.overlap_ratio(range_part, is_default, mbrs[0]);
+  ratio = dom1.overlap_ratio(range_part, is_default, mbrs[0]);
   CHECK(ratio == 0.25);
 }
 
