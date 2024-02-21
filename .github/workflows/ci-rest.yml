@@ -22,8 +22,8 @@ jobs:
         # Skip if no PAT is set (e.g. for PRs from forks).
         if: env.TILEDB_REST_CI_PAT != null
         with:
-          repo: TileDB-Inc/TileDB-REST-CI
-          # Trigger workflow on TileDB-REST-CI at this ref.
+          repo: TileDB-Inc/TileDB-Internal
+          # Trigger workflow on TileDB-Internal at this ref.
           ref: "main"
           workflow: full-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
