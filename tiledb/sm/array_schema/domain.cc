@@ -586,12 +586,14 @@ const ByteVecValue& Domain::tile_extent(unsigned i) const {
   return dimension_ptrs_[i]->tile_extent();
 }
 
-std::vector<ByteVecValue> Domain::tile_extents() const {
-  std::vector<ByteVecValue> ret(dim_num_);
-  for (unsigned d = 0; d < dim_num_; ++d)
+tdb::pmr::vector<ByteVecValue> Domain::tile_extents() const {
+  tdb::pmr::vector<ByteVecValue> ret(
+      dim_num_, memory_tracker_->get_resource(MemoryType::DOMAIN));
+  for (unsigned d = 0; d < dim_num_; ++d) {
     ret[d] = tile_extent(d);
+  }
 
-  return ret;
+  return {ret, memory_tracker_->get_resource(MemoryType::DOMAIN)};
 }
 
 uint64_t Domain::tile_num(const NDRange& ndrange) const {

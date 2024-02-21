@@ -40,6 +40,7 @@ constexpr bool webp_filter_exists = false;
 #endif  // TILEDB_WEBP
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"
@@ -266,7 +267,7 @@ class WebpFilter : public Filter {
    * @param extents Extents retrieved from array Domain object.
    */
   template <typename T>
-  void set_extents(const std::vector<ByteVecValue>& extents);
+  void set_extents(const tdb::pmr::vector<ByteVecValue>& extents);
 
   /**
    * Get tile extents currently in use by this WebpFilter

@@ -441,7 +441,7 @@ class Domain {
   const ByteVecValue& tile_extent(unsigned i) const;
 
   /** Returns the tile extents. */
-  std::vector<ByteVecValue> tile_extents() const;
+  tdb::pmr::vector<ByteVecValue> tile_extents() const;
 
   /**
    * Returns the number of tiles intersecting the input ND range.
