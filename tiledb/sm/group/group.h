@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -195,7 +195,7 @@ class Group {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata* metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -208,7 +208,6 @@ class Group {
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* unsafe_metadata();
-  const Metadata* metadata() const;
 
   /**
    * Set metadata loaded
@@ -382,10 +381,18 @@ class Group {
    */
   const shared_ptr<GroupDetails> group_details() const;
 
+  /** Returns the memory tracker. */
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
+
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+  /** Memory tracker for the group. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The group URI. */
   URI group_uri_;
 
@@ -460,8 +467,7 @@ class Group {
    */
   void load_metadata_from_storage(
       const shared_ptr<GroupDirectory>& group_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
+      const EncryptionKey& encryption_key);
 
   /** Opens an group for reads. */
   void group_open_for_reads();

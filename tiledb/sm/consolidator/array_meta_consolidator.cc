@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -86,30 +86,13 @@ Status ArrayMetaConsolidator::consolidate(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
       throw_if_not_ok(array_for_reads.close()));
 
-  // Swap the in-memory metadata between the two arrays.
+  // "Swap" the in-memory metadata between the two arrays.
   // After that, the array for writes will store the (consolidated by
   // the way metadata loading works) metadata of the array for reads
-  Metadata* metadata_r;
-  auto st = array_for_reads.metadata(&metadata_r);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-  Metadata* metadata_w;
-  st = array_for_writes.metadata(&metadata_w);
-  if (!st.ok()) {
-    throw_if_not_ok(array_for_reads.close());
-    throw_if_not_ok(array_for_writes.close());
-    return st;
-  }
-  metadata_r->swap(metadata_w);
-
-  // Metadata uris to delete
-  const auto to_vacuum = metadata_w->loaded_metadata_uris();
-
-  // Get the new URI name for consolidated metadata
-  URI new_uri = metadata_w->get_uri(array_uri);
+  auto& metadata_r = array_for_reads.metadata();
+  array_for_writes.opened_array()->metadata() = metadata_r;
+  URI new_uri = metadata_r.get_uri(array_uri);
+  const auto& to_vacuum = metadata_r.loaded_metadata_uris();
 
   // Write vac files relative to the array URI. This was fixed for reads in
   // version 19 so only do this for arrays starting with version 19.
@@ -119,23 +102,20 @@ Status ArrayMetaConsolidator::consolidate(
     base_uri_size = array_for_reads.array_uri().to_string().size();
   }
 
-  // Close arrays
-  RETURN_NOT_OK_ELSE(
-      array_for_reads.close(), throw_if_not_ok(array_for_writes.close()));
-  throw_if_not_ok(array_for_writes.close());
-
   // Write vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
-
   std::stringstream ss;
   for (const auto& uri : to_vacuum) {
     ss << uri.to_string().substr(base_uri_size) << "\n";
   }
-
   auto data = ss.str();
   RETURN_NOT_OK(
       storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+
+  // Close arrays
+  throw_if_not_ok(array_for_reads.close());
+  throw_if_not_ok(array_for_writes.close());
 
   return Status::Ok();
 }

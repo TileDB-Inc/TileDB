@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -60,8 +60,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArrayException : public StatusException {
  public:
@@ -139,6 +138,7 @@ Status Array::open_without_fragments(
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       encryption_type,
       encryption_key,
@@ -317,6 +317,7 @@ Status Array::open(
     opened_array_ = make_shared<OpenedArray>(
         HERE(),
         resources_,
+        memory_tracker_,
         array_uri_,
         encryption_type,
         encryption_key,
@@ -831,6 +832,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       key->encryption_type(),
       key->key().data(),
@@ -1047,15 +1049,13 @@ Metadata* Array::unsafe_metadata() {
   return &opened_array_->metadata();
 }
 
-Status Array::metadata(Metadata** metadata) {
+Metadata& Array::metadata() {
   // Load array metadata for array opened for reads, if not loaded yet
   if (query_type_ == QueryType::READ && !metadata_loaded()) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *metadata = &opened_array_->metadata();
-
-  return Status::Ok();
+  return opened_array_->metadata();
 }
 
 const NDRange Array::non_empty_domain() {
@@ -1619,6 +1619,7 @@ void Array::set_serialized_array_open() {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -1690,5 +1691,4 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
