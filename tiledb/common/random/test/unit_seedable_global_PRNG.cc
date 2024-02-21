@@ -96,6 +96,8 @@ TEST_CASE(
     "SeedableGlobalPRNG: operator",
     "[SeedableGlobalPRNG][operator][multiple]") {
   PRNG& prng = PRNG::get();
+  // Verify that a second call succeeds.
+  CHECK_NOTHROW(PRNG::get());
   auto rand_num1 = prng();
   CHECK(rand_num1 != 0);
 
@@ -112,7 +114,11 @@ TEST_CASE(
 TEST_CASE(
     "SeedableGlobalPRNG: Seeder singleton, errors",
     "[SeedableGlobalPRNG][Seeder][singleton][errors]") {
-  // Note: these errors will occur because PRNG sets and uses the singleton.
+  /*
+   * Retrieve a  PRNG object explicitly. This will cause the PRNG to use the
+   * singleton seeder, after which subsequent calls should fail.
+   */
+  [[maybe_unused]] auto& x{PRNG::get()};
   Seeder& seeder_ = Seeder::get();
 
   SECTION("try to set new seed after it's been set") {
@@ -126,6 +132,16 @@ TEST_CASE(
         seeder_.seed(),
         Catch::Matchers::ContainsSubstring("Seed can only be used once"));
   }
+}
+
+/*
+ * Verify that randomly-seeded PRNG return different numbers. This is the best
+ * we can do within the ordinary way within a single-process test, the only kind
+ * readily available within Catch2.
+ */
+TEST_CASE("SeedableGlobalPRNG: Random seeding", "[SeedableGlobalPRNG]") {
+  PRNG x(RandomSeed), y(RandomSeed);
+  CHECK(x() != y());
 }
 
 TEST_CASE("random_label", "[random_label]") {

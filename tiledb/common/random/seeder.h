@@ -48,8 +48,10 @@ namespace tiledb::common {
  * default   (set_seed)   seed is set  (seed)  seed is used
  *                        but unused
  *
- * Note that each transition may occur only once.
- * i.e. A seed may only be set one time and may only be used one time.
+ * Note that each transition may occur only once, i.e. a seed may only be set
+ * one time and may only be used one time. This is an explicit design choice to
+ * ensure that a singleton PRNG is only initialized once, and to prevent the
+ * case where a seeming initialization is not the actual initialization.
  */
 class Seeder {
  public:
