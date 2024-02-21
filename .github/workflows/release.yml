@@ -22,7 +22,7 @@ jobs:
   Package-Source-Release:
     strategy:
       matrix:
-        os: [ubuntu-20.04, windows-2022]
+        os: [ubuntu-20.04]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout TileDB
@@ -37,7 +37,6 @@ jobs:
           name: release
           path: |
             build/tiledb-*.tar.gz*
-            build/tiledb-*.zip*
 
   Package-Binary-Release:
     strategy:
