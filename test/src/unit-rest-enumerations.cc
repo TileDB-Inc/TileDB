@@ -43,8 +43,6 @@ using namespace tiledb;
 struct RESTEnumerationFx {
   RESTEnumerationFx();
 
-  ~RESTEnumerationFx();
-
   void create_array(const std::string& array_name);
 
   tiledb::test::VFSTestSetup vfs_test_setup_;
@@ -149,13 +147,6 @@ TEST_CASE_METHOD(
 
 RESTEnumerationFx::RESTEnumerationFx()
     : ctx_(vfs_test_setup_.ctx()){};
-
-RESTEnumerationFx::~RESTEnumerationFx() {
-  auto obj = Object::object(ctx_, uri_);
-  if (obj.type() == Object::Type::Array) {
-    Array::delete_array(ctx_, uri_);
-  }
-}
 
 void RESTEnumerationFx::create_array(const std::string& array_name) {
   // Create a simple array for testing. This ends up with just five elements in
