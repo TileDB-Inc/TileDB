@@ -607,7 +607,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       nullptr,
-      offsets.size() * sizeof(uint64_t)));
+      offsets.size() * sizeof(uint64_t),
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -986,8 +987,7 @@ TEST_CASE_METHOD(
   memset(data, 1, 4);
 
   Deserializer deserializer(tile.data(), tile.size());
-  REQUIRE_THROWS(Enumeration::deserialize(
-      tiledb::test::create_test_memory_tracker(), deserializer));
+  REQUIRE_THROWS(Enumeration::deserialize(deserializer, memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -2631,8 +2631,7 @@ void EnumerationFx::check_storage_deserialization(
   auto tile = serialize_to_tile(enmr);
 
   Deserializer deserializer(tile.data(), tile.size());
-  auto deserialized = Enumeration::deserialize(
-      tiledb::test::create_test_memory_tracker(), deserializer);
+  auto deserialized = Enumeration::deserialize(deserializer, memory_tracker_);
 
   REQUIRE(deserialized->name() == enmr->name());
   REQUIRE(deserialized->path_name().empty() == false);
@@ -2828,7 +2827,7 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
 
   ArraySchemaEvolution* ret;
   throw_if_not_ok(serialization::array_schema_evolution_deserialize(
-      &ret, stype, buf, tiledb::test::create_test_memory_tracker()));
+      &ret, stype, buf, memory_tracker_));
 
   return shared_ptr<ArraySchemaEvolution>(ret);
 }
