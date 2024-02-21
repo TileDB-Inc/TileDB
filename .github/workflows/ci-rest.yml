@@ -10,11 +10,11 @@ jobs:
 
     steps:
       # For easy access to lookup dispatched CI job.
-      - name: Print URL for TileDB-REST-CI actions
-        run: echo https://github.com/TileDB-Inc/TileDB-REST-CI/actions
+      - name: Print URL for REST CI actions
+        run: echo https://github.com/TileDB-Inc/TileDB-Internal/actions
 
       # If this workflow fails on the remote repository, this CI job will also fail.
-      - name: Workflow dispatch to TileDB-REST-CI
+      - name: Workflow dispatch to REST CI
         id: trigger-step
         uses: aurelien-baudet/workflow-dispatch@v2
         env:
