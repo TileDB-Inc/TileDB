@@ -111,7 +111,7 @@ enum class MemoryType {
   TILE_SUMS,
   TILE_NULL_COUNTS,
   ENUMERATION,
-  DOMAIN,
+  DOMAINS,
   DIMENSIONS,
 };
 

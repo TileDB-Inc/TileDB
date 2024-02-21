@@ -187,7 +187,7 @@ TEST_CASE_METHOD(
   NDRange domain = {Range(&domain_vec[0], size), Range(&domain_vec[2], size)};
   std::vector<int32_t> tile_extents_vec = {2, 5};
   tdb::pmr::vector<ByteVecValue> tile_extents(
-      2, tracker_->get_resource(MemoryType::DOMAIN));
+      2, tracker_->get_resource(MemoryType::DOMAINS));
   tile_extents[0].assign_as<int32_t>(tile_extents_vec[0]);
   tile_extents[1].assign_as<int32_t>(tile_extents_vec[1]);
   Layout layout = Layout::ROW_MAJOR;

@@ -60,11 +60,11 @@ namespace tiledb::sm {
 
 Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , dimensions_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , dimensions_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
-    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN))
-    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAIN))
-    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN)) {
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -81,13 +81,13 @@ Domain::Domain(
     , dimensions_(
           dimensions.begin(),
           dimensions.end(),
-          memory_tracker_->get_resource(MemoryType::DOMAIN))
+          memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
     , tile_order_(tile_order)
-    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN))
-    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAIN))
-    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN)) {
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
    * class invariant. Initialize the dimensions mirror.
@@ -588,12 +588,12 @@ const ByteVecValue& Domain::tile_extent(unsigned i) const {
 
 tdb::pmr::vector<ByteVecValue> Domain::tile_extents() const {
   tdb::pmr::vector<ByteVecValue> ret(
-      dim_num_, memory_tracker_->get_resource(MemoryType::DOMAIN));
+      dim_num_, memory_tracker_->get_resource(MemoryType::DOMAINS));
   for (unsigned d = 0; d < dim_num_; ++d) {
     ret[d] = tile_extent(d);
   }
 
-  return {ret, memory_tracker_->get_resource(MemoryType::DOMAIN)};
+  return {ret, memory_tracker_->get_resource(MemoryType::DOMAINS)};
 }
 
 uint64_t Domain::tile_num(const NDRange& ndrange) const {
