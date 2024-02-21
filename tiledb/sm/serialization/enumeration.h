@@ -64,11 +64,13 @@ void enumeration_to_capnp(
  * Deserialize an enumeration from a cap'n proto object
  *
  * @param reader Cap'n proto reader object
+ * @param memory_tracker The memory tracker associated with the Enumeration
+ * object.
  * @return A new Enumeration
  */
 shared_ptr<const Enumeration> enumeration_from_capnp(
-    shared_ptr<MemoryTracker> memory_tracker,
-    const capnp::Enumeration::Reader& reader);
+    const capnp::Enumeration::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 #endif
 

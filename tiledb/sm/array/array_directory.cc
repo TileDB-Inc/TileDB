@@ -1335,7 +1335,7 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
   }
 
   Deserializer deserializer(tile.data(), tile.size());
-  return Enumeration::deserialize(memory_tracker, deserializer);
+  return Enumeration::deserialize(deserializer, memory_tracker);
 }
 
 }  // namespace tiledb::sm

@@ -156,8 +156,8 @@ Status array_schema_evolution_to_capnp(
 }
 
 tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
-    shared_ptr<MemoryTracker> memory_tracker,
-    const capnp::ArraySchemaEvolution::Reader& evolution_reader) {
+    const capnp::ArraySchemaEvolution::Reader& evolution_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Create attributes to add
   std::unordered_map<std::string, shared_ptr<Attribute>> attrs_to_add;
   auto attrs_to_add_reader = evolution_reader.getAttributesToAdd();
@@ -178,7 +178,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
   std::unordered_map<std::string, shared_ptr<const Enumeration>> enmrs_to_add;
   auto enmrs_to_add_reader = evolution_reader.getEnumerationsToAdd();
   for (auto enmr_reader : enmrs_to_add_reader) {
-    auto enmr = enumeration_from_capnp(memory_tracker, enmr_reader);
+    auto enmr = enumeration_from_capnp(enmr_reader, memory_tracker);
     enmrs_to_add[enmr->name()] = enmr;
   }
 
@@ -187,7 +187,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_extend;
   auto enmrs_to_extend_reader = evolution_reader.getEnumerationsToExtend();
   for (auto enmr_reader : enmrs_to_extend_reader) {
-    auto enmr = enumeration_from_capnp(memory_tracker, enmr_reader);
+    auto enmr = enumeration_from_capnp(enmr_reader, memory_tracker);
     enmrs_to_extend[enmr->name()] = enmr;
   }
 
@@ -294,7 +294,7 @@ Status array_schema_evolution_deserialize(
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             array_schema_evolution_builder.asReader();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(
-            memory_tracker, array_schema_evolution_reader);
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -306,7 +306,7 @@ Status array_schema_evolution_deserialize(
         capnp::ArraySchemaEvolution::Reader array_schema_evolution_reader =
             reader.getRoot<capnp::ArraySchemaEvolution>();
         decoded_array_schema_evolution = array_schema_evolution_from_capnp(
-            memory_tracker, array_schema_evolution_reader);
+            array_schema_evolution_reader, memory_tracker);
         break;
       }
       default: {

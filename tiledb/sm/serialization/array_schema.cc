@@ -1088,7 +1088,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
     try {
       for (auto&& enmr_reader : enmr_readers) {
         enumerations.emplace_back(
-            enumeration_from_capnp(memory_tracker, enmr_reader));
+            enumeration_from_capnp(enmr_reader, memory_tracker));
       }
     } catch (const std::exception& e) {
       std::throw_with_nested(std::runtime_error(

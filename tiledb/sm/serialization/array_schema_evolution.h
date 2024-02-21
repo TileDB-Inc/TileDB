@@ -35,7 +35,6 @@
 
 #include <unordered_map>
 
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 
 using namespace tiledb::common;
@@ -48,12 +47,13 @@ class Buffer;
 class ArraySchema;
 class ArraySchemaEvolution;
 class Dimension;
+class MemoryTracker;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
 
 /**
- * Serialize an array schema evolution via Cap'n Prto
+ * Serialize an array schema evolution via Cap'n Proto
  * @param array_schema_evolution evolution object to serialize
  * @param serialize_type format to serialize into Cap'n Proto or JSON
  * @param serialized_buffer buffer to store serialized bytes in
@@ -67,6 +67,14 @@ Status array_schema_evolution_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
+/**
+ * Deserialize an array schema evolution via Cap'n Proto
+ * @param array_schema_evolution pointer to store evolution object in
+ * @param serialize_type format to serialize into Cap'n Proto or JSON
+ * @param serialized_buffer buffer where serialized bytes are stored
+ * @param memory_tracker memory tracker associated with the evolution object
+ * @return
+ */
 Status array_schema_evolution_deserialize(
     ArraySchemaEvolution** array_schema_evolution,
     SerializationType serialize_type,

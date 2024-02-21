@@ -71,8 +71,8 @@ void enumeration_to_capnp(
 }
 
 shared_ptr<const Enumeration> enumeration_from_capnp(
-    shared_ptr<MemoryTracker> memory_tracker,
-    const capnp::Enumeration::Reader& reader) {
+    const capnp::Enumeration::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto name = reader.getName();
   auto path_name = reader.getPathName();
   Datatype datatype = Datatype::ANY;
@@ -97,7 +97,6 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
   }
 
   return Enumeration::create(
-      memory_tracker,
       name,
       path_name,
       datatype,
@@ -106,7 +105,8 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
       data,
       data_size,
       offsets,
-      offsets_size);
+      offsets_size,
+      memory_tracker);
 }
 
 void load_enumerations_request_to_capnp(
@@ -152,13 +152,13 @@ void load_enumerations_response_to_capnp(
 
 std::vector<shared_ptr<const Enumeration>>
 load_enumerations_response_from_capnp(
-    shared_ptr<MemoryTracker> memory_tracker,
-    const capnp::LoadEnumerationsResponse::Reader& reader) {
+    const capnp::LoadEnumerationsResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   std::vector<shared_ptr<const Enumeration>> ret;
   if (reader.hasEnumerations()) {
     auto enmr_readers = reader.getEnumerations();
     for (auto enmr_reader : enmr_readers) {
-      ret.push_back(enumeration_from_capnp(memory_tracker, enmr_reader));
+      ret.push_back(enumeration_from_capnp(enmr_reader, memory_tracker));
     }
   }
   return ret;
@@ -322,7 +322,7 @@ deserialize_load_enumerations_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(response.data())), builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
-        return load_enumerations_response_from_capnp(memory_tracker, reader);
+        return load_enumerations_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
@@ -331,7 +331,7 @@ deserialize_load_enumerations_response(
             response.size() / sizeof(::capnp::word)));
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
-        return load_enumerations_response_from_capnp(memory_tracker, reader);
+        return load_enumerations_response_from_capnp(reader, memory_tracker);
       }
       default: {
         throw Status_SerializationError(

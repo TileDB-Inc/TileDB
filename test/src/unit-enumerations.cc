@@ -159,7 +159,6 @@ QueryCondition create_qc(
 TEST_CASE_METHOD(
     EnumerationFx, "Create Empty Enumeration", "[enumeration][empty]") {
   Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -167,7 +166,8 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 }
 
 TEST_CASE_METHOD(
@@ -175,7 +175,6 @@ TEST_CASE_METHOD(
     "Create Empty Var Sized Enumeration",
     "[enumeration][empty]") {
   Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -183,7 +182,8 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 }
 
 TEST_CASE_METHOD(
@@ -256,7 +256,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-offsets-args]") {
   uint64_t offsets = 0;
   auto enmr = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -264,7 +263,9 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       &offsets,
-      sizeof(uint64_t));
+      sizeof(uint64_t),
+      memory_tracker_);
+
   std::vector<std::string> values = {""};
   check_enumeration(
       enmr,
@@ -326,7 +327,6 @@ TEST_CASE_METHOD(
     "[enumeration][basic][fixed][multi-cell-val-num]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   auto enmr = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       2,
@@ -334,7 +334,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0);
+      0,
+      memory_tracker_);
   check_enumeration(enmr, default_enmr_name, values, Datatype::INT32, 2, false);
 }
 
@@ -346,7 +347,6 @@ TEST_CASE_METHOD(
       "Invalid data buffer must not be nullptr for fixed sized data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::INT32,
           1,
@@ -354,7 +354,8 @@ TEST_CASE_METHOD(
           nullptr,
           10,
           nullptr,
-          0),
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -367,7 +368,6 @@ TEST_CASE_METHOD(
       "Invalid data size; must be non-zero for fixed size data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::INT32,
           1,
@@ -375,7 +375,8 @@ TEST_CASE_METHOD(
           &val,
           0,
           nullptr,
-          0),
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -388,7 +389,6 @@ TEST_CASE_METHOD(
       "Var sized enumeration values require a non-null offsets pointer.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -396,7 +396,8 @@ TEST_CASE_METHOD(
           val,
           strlen(val),
           nullptr,
-          8),
+          8,
+          memory_tracker_),
       matcher);
 }
 
@@ -410,7 +411,6 @@ TEST_CASE_METHOD(
       "Var sized enumeration values require a non-zero offsets size.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -418,7 +418,8 @@ TEST_CASE_METHOD(
           val,
           strlen(val),
           &offset,
-          0),
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -432,7 +433,6 @@ TEST_CASE_METHOD(
       "is non-zero.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -440,7 +440,8 @@ TEST_CASE_METHOD(
           nullptr,
           5,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -454,7 +455,6 @@ TEST_CASE_METHOD(
       "require data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -462,7 +462,8 @@ TEST_CASE_METHOD(
           nullptr,
           5,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -477,7 +478,6 @@ TEST_CASE_METHOD(
       "offset.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          tiledb::test::create_test_memory_tracker(),
           default_enmr_name,
           Datatype::STRING_ASCII,
           constants::var_num,
@@ -485,7 +485,8 @@ TEST_CASE_METHOD(
           data,
           2,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -495,7 +496,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       std::string(),
       Datatype::INT32,
       2,
@@ -503,7 +503,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -512,7 +513,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       "",
       Datatype::INT32,
       2,
@@ -520,7 +520,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -529,7 +530,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-name]") {
   std::vector<int> values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       "an/bad/path",
       Datatype::INT32,
@@ -538,7 +538,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -547,7 +548,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][invalid-cell-val-num]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       0,
@@ -555,7 +555,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -564,7 +565,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][data-nullptr]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -572,7 +572,8 @@ TEST_CASE_METHOD(
       nullptr,
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -581,7 +582,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][data-zero-size]") {
   std::vector<int> values = {1, 2, 3};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -589,7 +589,8 @@ TEST_CASE_METHOD(
       values.data(),
       0,
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -599,7 +600,6 @@ TEST_CASE_METHOD(
   auto data = "foobarbazbam";
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -617,7 +617,6 @@ TEST_CASE_METHOD(
   auto data = "foobarbazbam";
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -625,7 +624,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -635,7 +635,6 @@ TEST_CASE_METHOD(
   std::vector<int> values = {0, 1, 2, 3, 4};
   std::vector<uint64_t> offsets = {0, 3, 6, 9};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -643,7 +642,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       offsets.data(),
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -652,7 +652,6 @@ TEST_CASE_METHOD(
     "[enumeration][error][offsets-not-required]") {
   std::vector<int> values = {0, 1, 2, 3, 4};
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -660,7 +659,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      100));
+      100,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -672,7 +672,6 @@ TEST_CASE_METHOD(
   // Passing 3 for the offsets size is incorrect because the offsets size has
   // to be a multiple of `sizeof(uint64_t)`
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -680,7 +679,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      3));
+      3,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -691,7 +691,6 @@ TEST_CASE_METHOD(
   std::vector<uint64_t> offsets = {0, 3, 6, 100};
   // The last offset is larger than data_size
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -699,7 +698,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      offsets.size() * sizeof(uint64_t)));
+      offsets.size() * sizeof(uint64_t),
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -710,7 +710,6 @@ TEST_CASE_METHOD(
   // Passing 3 for the data size is invalid as its not a multiple of
   // sizeof(int)
   REQUIRE_THROWS(Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       1,
@@ -718,7 +717,8 @@ TEST_CASE_METHOD(
       values.data(),
       3,
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -781,7 +781,6 @@ TEST_CASE_METHOD(
   std::vector<int> extend_values = {5, 6, 7, 8, 9, 10};
   std::vector<int> final_values = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
   auto enmr1 = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       default_enmr_name,
       Datatype::INT32,
       2,
@@ -789,7 +788,8 @@ TEST_CASE_METHOD(
       init_values.data(),
       init_values.size() * sizeof(int),
       nullptr,
-      0);
+      0,
+      memory_tracker_);
   auto enmr2 = extend_enumeration(enmr1, extend_values);
   check_enumeration(
       enmr2, default_enmr_name, final_values, Datatype::INT32, 2, false);
@@ -1432,7 +1432,6 @@ TEST_CASE_METHOD(
   std::vector<uint8_t> data(1024 * 1024 * 10 + 1);
   std::vector<uint64_t> offsets = {0};
   auto enmr = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       "enmr_name",
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -1440,7 +1439,8 @@ TEST_CASE_METHOD(
       data.data(),
       data.size(),
       offsets.data(),
-      offsets.size() * constants::cell_var_offset_size);
+      offsets.size() * constants::cell_var_offset_size,
+      memory_tracker_);
 
   schema->add_enumeration(enmr);
 
@@ -1462,7 +1462,6 @@ TEST_CASE_METHOD(
   // Create more than 50MiB of enumeration data
   for (size_t i = 0; i < 10; i++) {
     auto enmr = Enumeration::create(
-        tiledb::test::create_test_memory_tracker(),
         "enmr_name_" + std::to_string(i),
         Datatype::STRING_ASCII,
         constants::var_num,
@@ -1470,7 +1469,8 @@ TEST_CASE_METHOD(
         data.data(),
         data.size(),
         offsets.data(),
-        offsets.size() * constants::cell_var_offset_size);
+        offsets.size() * constants::cell_var_offset_size,
+        memory_tracker_);
     schema->add_enumeration(enmr);
   }
 
@@ -1591,7 +1591,6 @@ TEST_CASE_METHOD(
 
   // We have to force this condition by hand
   auto enmr3 = tiledb::sm::Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       enmr2->name(),
       // Notice we're reusing the existing path name from enmr1
       enmr1->path_name(),
@@ -1601,7 +1600,8 @@ TEST_CASE_METHOD(
       enmr2->data().data(),
       enmr2->data().size(),
       enmr2->offsets().data(),
-      enmr2->offsets().size());
+      enmr2->offsets().size(),
+      memory_tracker_);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Enumeration path name for 'test_enmr' already exists in this schema.");
@@ -2190,7 +2190,6 @@ TEST_CASE_METHOD(
   auto schema1 = create_schema();
 
   auto enmr1 = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       "empty_fixed",
       Datatype::INT32,
       1,
@@ -2198,9 +2197,9 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
   auto enmr2 = Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       "empty_var",
       Datatype::STRING_ASCII,
       constants::var_num,
@@ -2208,7 +2207,8 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 
   schema1->add_enumeration(enmr1);
   schema1->add_enumeration(enmr2);
@@ -2496,7 +2496,6 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
       raw_values[i] = values[i] ? 1 : 0;
     }
     return Enumeration::create(
-        tiledb::test::create_test_memory_tracker(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2504,10 +2503,10 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         raw_values.data(),
         raw_values.size() * sizeof(uint8_t),
         nullptr,
-        0);
+        0,
+        memory_tracker_);
   } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
-        tiledb::test::create_test_memory_tracker(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2515,7 +2514,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         values.data(),
         values.size() * sizeof(T),
         nullptr,
-        0);
+        0,
+        memory_tracker_);
   } else {
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -2534,7 +2534,6 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
     }
 
     return Enumeration::create(
-        tiledb::test::create_test_memory_tracker(),
         name,
         tp.type_,
         tp.cell_val_num_,
@@ -2542,14 +2541,14 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         data.data(),
         total_size,
         offsets.data(),
-        offsets.size() * sizeof(uint64_t));
+        offsets.size() * sizeof(uint64_t),
+        memory_tracker_);
   }
 }
 
 shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
     Datatype type, uint32_t cell_val_num, bool ordered, std::string name) {
   return Enumeration::create(
-      tiledb::test::create_test_memory_tracker(),
       name,
       type,
       cell_val_num,
@@ -2557,7 +2556,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 }
 
 template <typename T>
