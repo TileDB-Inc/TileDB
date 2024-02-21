@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class SchemaEvolution;
@@ -81,6 +80,7 @@ class OpenedArray {
    * Construct a new Opened Array object.
    *
    * @param resources The context resources to use.
+   * @param memory_tracker The array's MemoryTracker.
    * @param array_uri The URI of the array.
    * @param encryption_type Encryption type.
    * @param key_bytes Encryption key data.
@@ -91,6 +91,7 @@ class OpenedArray {
    */
   OpenedArray(
       ContextResources& resources,
+      shared_ptr<MemoryTracker> memory_tracker,
       const URI& array_uri,
       EncryptionType encryption_type,
       const void* key_bytes,
@@ -100,7 +101,7 @@ class OpenedArray {
       bool is_remote)
       : array_dir_(ArrayDirectory(resources, array_uri))
       , array_schema_latest_(nullptr)
-      , metadata_()
+      , metadata_(memory_tracker)
       , metadata_loaded_(false)
       , non_empty_domain_computed_(false)
       , encryption_key_(make_shared<EncryptionKey>(HERE()))
@@ -730,7 +731,7 @@ class Array {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata& metadata();
 
   /**
    * Retrieves the array metadata object.
@@ -1050,7 +1051,6 @@ class Array {
   void set_array_closed();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_H

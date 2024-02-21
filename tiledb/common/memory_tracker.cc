@@ -80,6 +80,10 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileSums";
     case MemoryType::TILE_WRITER_DATA:
       return "TileWriterData";
+    case MemoryType::ENUMERATION:
+      return "Enumeration";
+    case MemoryType::METADATA:
+      return "Metadata";
     default:
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory type: " + val);
@@ -112,6 +116,8 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       return "Ephemeral";
     case MemoryTrackerType::SCHEMA_EVOLUTION:
       return "SchemaEvolution";
+    case MemoryTrackerType::GROUP:
+      return "Group";
     default:
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory tracker type: " + val);
