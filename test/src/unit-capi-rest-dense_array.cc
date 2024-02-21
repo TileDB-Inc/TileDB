@@ -79,7 +79,6 @@ struct DenseArrayRESTFx {
 
   // Functions
   DenseArrayRESTFx();
-  ~DenseArrayRESTFx();
   void check_sorted_reads();
   void check_incomplete_reads();
   void check_sorted_writes();
@@ -194,13 +193,6 @@ DenseArrayRESTFx::DenseArrayRESTFx()
     : ctx_(vfs_test_setup_.ctx_c)
     , vfs_(vfs_test_setup_.vfs_c) {
   std::srand(0);
-}
-
-DenseArrayRESTFx::~DenseArrayRESTFx() {
-  auto obj = tiledb::Object::object(vfs_test_setup_.ctx(), array_uri_);
-  if (obj.type() == tiledb::Object::Type::Array) {
-    CHECK(tiledb_array_delete(ctx_, array_uri_.c_str()) == TILEDB_OK);
-  }
 }
 
 void DenseArrayRESTFx::create_dense_array_2D(

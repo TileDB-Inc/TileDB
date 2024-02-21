@@ -79,13 +79,6 @@ struct CPPArrayFx {
     Array::create(array_uri_, schema);
   }
 
-  ~CPPArrayFx() {
-    auto obj = Object::object(ctx, array_uri_);
-    if (obj.type() == Object::Type::Array) {
-      Array::delete_array(ctx, array_uri_);
-    }
-  }
-
   test::VFSTestSetup vfs_test_setup_;
   Context ctx;
   std::string array_uri_;
@@ -565,7 +558,6 @@ TEST_CASE("C++ API: Incorrect offsets", "[cppapi][invalid-offsets][rest]") {
   }
 
   array.close();
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -625,8 +617,6 @@ TEST_CASE(
         for (int i = 0; i < 16; i++) {
           REQUIRE(data[i] == i + 1);
         }
-
-        Array::delete_array(ctx, array_name);
       }
     }
   }
@@ -887,7 +877,6 @@ TEST_CASE(
   REQUIRE(reloaded_schema.attribute_num() == 1);
 
   array.close();
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
@@ -981,7 +970,6 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
   query_r_reopen_at.submit();
   CHECK(std::equal(a_r_reopen_at.begin(), a_r_reopen_at.end(), a_w.begin()));
   array_reopen_at.close();
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1124,7 +1112,6 @@ TEST_CASE(
   array.close();
 
   REQUIRE(data[0] == 1);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1171,7 +1158,6 @@ TEST_CASE(
   array.close();
 
   REQUIRE(data == data_w);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1226,7 +1212,6 @@ TEST_CASE(
     REQUIRE(data_r[i] == 2 * i);
 
   array_r.close();
-  Array::delete_array(ctx, array_uri);
 }
 
 using namespace tiledb::test;
@@ -1289,7 +1274,6 @@ TEST_CASE(
   CHECK(buff_d1 == buff_d1_r);
   CHECK(buff_d2 == buff_d2_r);
   CHECK(buff_a == buff_a_r);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1477,7 +1461,6 @@ TEST_CASE(
 
   // Close array
   array_r.close();
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1522,7 +1505,6 @@ TEST_CASE(
   array.close();
 
   REQUIRE(rows[0] == 0);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1568,7 +1550,6 @@ TEST_CASE(
   array.close();
 
   REQUIRE(rows[0] == 0);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1617,7 +1598,6 @@ TEST_CASE(
   for (int i = 8; i < 12; i++) {
     REQUIRE(data[i] == i + 5);
   }
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -1672,7 +1652,6 @@ TEST_CASE(
   CHECK(
       stats.find("\"Context.StorageManager.VFS.file_size_num\": 1") !=
       std::string::npos);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE(
@@ -2042,7 +2021,6 @@ TEST_CASE(
   }
 
   CHECK(i > 0);
-  Array::delete_array(ctx, array_uri);
 }
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
