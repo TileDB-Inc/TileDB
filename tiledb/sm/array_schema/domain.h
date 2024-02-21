@@ -523,7 +523,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<shared_ptr<Dimension>> dimensions_;
+  tdb::pmr::vector<shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.
@@ -535,7 +535,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<const Dimension*> dimension_ptrs_;
+  tdb::pmr::vector<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
@@ -551,7 +551,7 @@ class Domain {
    * - buff: The buffer that stores all coorinates;
    * - a, b: The positions of the two coordinates in the buffer to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b)>
       cell_order_cmp_func_;
 
@@ -561,7 +561,7 @@ class Domain {
    *
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(const void* coord_a, const void* coord_b)>
+  tdb::pmr::vector<int (*)(const void* coord_a, const void* coord_b)>
       cell_order_cmp_func_2_;
 
   /**
@@ -571,7 +571,7 @@ class Domain {
    * - dim: The dimension to compare on.
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const void* coord_a, const void* coord_b)>
       tile_order_cmp_func_;
 

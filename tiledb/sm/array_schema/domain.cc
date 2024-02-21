@@ -59,7 +59,12 @@ namespace tiledb::sm {
 /* ********************************* */
 
 Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
-    : memory_tracker_(memory_tracker) {
+    : memory_tracker_(memory_tracker)
+    , dimensions_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN)) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -73,9 +78,16 @@ Domain::Domain(
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , cell_order_(cell_order)
-    , dimensions_(dimensions)
+    , dimensions_(
+          dimensions.begin(),
+          dimensions.end(),
+          memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
-    , tile_order_(tile_order) {
+    , tile_order_(tile_order)
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAIN))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAIN)) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
    * class invariant. Initialize the dimensions mirror.
