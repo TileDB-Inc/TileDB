@@ -192,7 +192,7 @@ class Enumeration {
       Deserializer& deserializer, shared_ptr<MemoryTracker> memory_tracker);
 
   /**
-   * Create a new enumeration by extending an existinsg enumeration's
+   * Create a new enumeration by extending an existing enumeration's
    * list of values.
    *
    * The returned Enumeration can then be used by the
