@@ -18,5 +18,4 @@ trigger_pipeline:
     TILEDB_REF: ${CI_COMMIT_REF_NAME}
   trigger:
     project: tiledb-inc/tiledb-internal
-    branch: dt/sc-40467/increase-limits
     strategy: depend    
