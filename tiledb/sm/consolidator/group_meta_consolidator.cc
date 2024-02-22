@@ -64,7 +64,6 @@ GroupMetaConsolidator::GroupMetaConsolidator(
 Status GroupMetaConsolidator::consolidate(
     const char* group_name, EncryptionType, const void*, uint32_t) {
   auto timer_se = stats_->start_timer("consolidate_group_meta");
-
   check_array_uri(group_name);
 
   // Open group for reading
@@ -81,28 +80,28 @@ Status GroupMetaConsolidator::consolidate(
       group_for_writes.open(QueryType::WRITE),
       throw_if_not_ok(group_for_reads.close()));
 
-  // "Swap" the in-memory metadata between the two groups.
-  // After that, the group for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the group for reads
+  // Copy-assign the read metadata into the metadata of the group for writes
   auto metadata_r = group_for_reads.metadata();
   *(group_for_writes.metadata()) = *metadata_r;
   URI new_uri = metadata_r->get_uri(group_uri);
   const auto& to_vacuum = metadata_r->loaded_metadata_uris();
 
-  // Write vacuum file
+  // Prepare vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
   std::stringstream ss;
   for (const auto& uri : to_vacuum) {
     ss << uri.to_string() << "\n";
   }
   auto data = ss.str();
+
+  // Close groups
+  throw_if_not_ok(group_for_reads.close());
+  throw_if_not_ok(group_for_writes.close());
+
+  // Write vacuum file
   RETURN_NOT_OK(
       storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
-
-  // Close groups
-  RETURN_NOT_OK(group_for_reads.close());
-  RETURN_NOT_OK(group_for_writes.close());
 
   return Status::Ok();
 }

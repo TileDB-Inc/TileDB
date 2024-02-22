@@ -80,8 +80,6 @@ Metadata::Metadata(
   build_metadata_index();
 }
 
-Metadata::~Metadata() = default;
-
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -139,9 +137,11 @@ void Metadata::generate_uri(const URI& array_uri) {
 
 std::map<std::string, Metadata::MetadataValue> Metadata::deserialize(
     const std::vector<shared_ptr<Tile>>& metadata_tiles) {
-  std::map<std::string, MetadataValue> metadata_map;
+  if (metadata_tiles.empty()) {
+    return {};
+  }
 
-  Status st;
+  std::map<std::string, MetadataValue> metadata_map;
   uint32_t key_len;
   char del;
   size_t value_len;
