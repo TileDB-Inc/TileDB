@@ -240,6 +240,7 @@ jobs:
 
           # CMake exits with non-0 status if there are any warnings during the build, so
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target unit_vfs --config $CMakeBuildType -- /verbosity:minimal
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
           cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
 
@@ -277,6 +278,14 @@ jobs:
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. tiledb_unit exit status: " $LastExitCocde
+             $host.SetShouldExit($LastExitCode)
+          }
+          
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\$CMakeBuildType\unit_vfs -d=yes"
+          Write-Host "cmds: '$cmds'"
+          Invoke-Expression $cmds
+          if ($LastExitCode -ne 0) {
+             Write-Host "Tests failed. tiledb_vfs exit status: " $LastExitCocde
              $host.SetShouldExit($LastExitCode)
           }
 
