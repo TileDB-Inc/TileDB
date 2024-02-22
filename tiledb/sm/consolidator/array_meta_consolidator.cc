@@ -65,7 +65,6 @@ Status ArrayMetaConsolidator::consolidate(
     const void* encryption_key,
     uint32_t key_length) {
   auto timer_se = stats_->start_timer("consolidate_array_meta");
-
   check_array_uri(array_name);
 
   // Open array for reading
@@ -86,9 +85,7 @@ Status ArrayMetaConsolidator::consolidate(
           QueryType::WRITE, encryption_type, encryption_key, key_length),
       throw_if_not_ok(array_for_reads.close()));
 
-  // "Swap" the in-memory metadata between the two arrays.
-  // After that, the array for writes will store the (consolidated by
-  // the way metadata loading works) metadata of the array for reads
+  // Copy-assign the read metadata into the metadata of the array for writes
   auto& metadata_r = array_for_reads.metadata();
   array_for_writes.opened_array()->metadata() = metadata_r;
   URI new_uri = metadata_r.get_uri(array_uri);
@@ -102,20 +99,22 @@ Status ArrayMetaConsolidator::consolidate(
     base_uri_size = array_for_reads.array_uri().to_string().size();
   }
 
-  // Write vacuum file
+  // Prepare vacuum file
   URI vac_uri = URI(new_uri.to_string() + constants::vacuum_file_suffix);
   std::stringstream ss;
   for (const auto& uri : to_vacuum) {
     ss << uri.to_string().substr(base_uri_size) << "\n";
   }
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
 
   // Close arrays
   throw_if_not_ok(array_for_reads.close());
   throw_if_not_ok(array_for_writes.close());
+
+  // Write vacuum file
+  RETURN_NOT_OK(
+      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
+  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
 
   return Status::Ok();
 }

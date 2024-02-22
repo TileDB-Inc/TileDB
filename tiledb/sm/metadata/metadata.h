@@ -104,7 +104,7 @@ class Metadata {
   DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
 
   /** Destructor. */
-  ~Metadata();
+  ~Metadata() = default;
 
   /* ********************************* */
   /*                API                */
