@@ -32,6 +32,7 @@
 
 #include "dimension.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -46,10 +47,6 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-tiledb::common::blank<tiledb::sm::Dimension>::blank()
-    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
-}
-
 namespace tiledb::sm {
 
 class DimensionException : public StatusException {
@@ -63,8 +60,12 @@ class DimensionException : public StatusException {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Dimension::Dimension(const std::string& name, Datatype type)
-    : name_(name)
+Dimension::Dimension(
+    const std::string& name,
+    Datatype type,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
     , type_(type) {
   ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
@@ -96,8 +97,10 @@ Dimension::Dimension(
     uint32_t cell_val_num,
     const Range& domain,
     const FilterPipeline& filter_pipeline,
-    const ByteVecValue& tile_extent)
-    : cell_val_num_(cell_val_num)
+    const ByteVecValue& tile_extent,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , cell_val_num_(cell_val_num)
     , domain_(domain)
     , filters_(filter_pipeline)
     , name_(name)
@@ -154,7 +157,8 @@ shared_ptr<Dimension> Dimension::deserialize(
     Deserializer& deserializer,
     uint32_t version,
     Datatype type,
-    FilterPipeline& coords_filters) {
+    FilterPipeline& coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -212,7 +216,8 @@ shared_ptr<Dimension> Dimension::deserialize(
       cell_val_num,
       domain,
       filter_pipeline,
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 const Range& Dimension::domain() const {

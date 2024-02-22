@@ -321,7 +321,8 @@ shared_ptr<Domain> Domain::deserialize(
     uint32_t version,
     Layout cell_order,
     Layout tile_order,
-    FilterPipeline& coords_filters) {
+    FilterPipeline& coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
@@ -333,8 +334,8 @@ shared_ptr<Domain> Domain::deserialize(
   std::vector<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto dim{
-        Dimension::deserialize(deserializer, version, type, coords_filters)};
+    auto dim{Dimension::deserialize(
+        deserializer, version, type, coords_filters, memory_tracker)};
     dimensions.emplace_back(std::move(dim));
   }
 

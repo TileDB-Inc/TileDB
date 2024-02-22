@@ -37,12 +37,15 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
 #include "tiledb/common/blank.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/macros.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
@@ -90,7 +93,10 @@ class Dimension {
    * @param name The name of the dimension.
    * @param type The type of the dimension.
    */
-  Dimension(const std::string& name, Datatype type);
+  Dimension(
+      const std::string& name,
+      Datatype type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor.
@@ -108,33 +114,14 @@ class Dimension {
       uint32_t cell_val_num,
       const Range& domain,
       const FilterPipeline& filter_pipeline,
-      const ByteVecValue& tile_extent);
+      const ByteVecValue& tile_extent,
+      shared_ptr<MemoryTracker> memory_tracker);
 
-  /**
-   * Copy constructor is deleted.
-   *
-   * `Dimension` objects are stored as `shared_ptr` within C API handles and
-   * within `Domain`. Instead of copying a `Dimension` one can copy a pointer.
-   */
-  Dimension(const Dimension&) = delete;
-
-  /**
-   * Copy assignment is deleted.
-   */
-  Dimension& operator=(const Dimension&) = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(Dimension);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Dimension);
 
   /** Destructor. */
   ~Dimension() = default;
-
-  /**
-   * Move constructor is default
-   */
-  Dimension(Dimension&&) = default;
-
-  /**
-   * Move assignment is default
-   */
-  Dimension& operator=(Dimension&&) = default;
 
   /* ********************************* */
   /*                API                */
@@ -158,13 +145,15 @@ class Dimension {
    * @param version The array schema version.
    * @param type The type of the dimension.
    * @param coords_filters Coords filters to replace empty coords pipelines.
+   * @param memory_tracker The memory tracker to use.
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Datatype type,
-      FilterPipeline& coords_filters);
+      FilterPipeline& coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -764,6 +753,9 @@ class Dimension {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The memory tracker for the dimension. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The number of values per coordinate. */
   unsigned cell_val_num_;

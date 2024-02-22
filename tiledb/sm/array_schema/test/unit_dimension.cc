@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../dimension.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 
 using namespace tiledb;
@@ -101,7 +102,8 @@ inline T& dim_buffer_offset(void* p) {
 }
 
 TEST_CASE("Dimension::Dimension") {
-  Dimension x{"", Datatype::UINT32};
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  Dimension x{"", Datatype::UINT32, memory_tracker};
 }
 
 TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
@@ -135,8 +137,10 @@ TEST_CASE("Dimension: Test deserialize,int32", "[dimension][deserialize]") {
   dim_buffer_offset<int32_t, 36>(p) = tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   FilterPipeline fp;
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
+  auto dim = Dimension::deserialize(
+      deserializer, 10, Datatype::INT32, fp, memory_tracker);
 
   // Check name
   CHECK(dim->name() == dimension_name);
@@ -175,8 +179,10 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
   dim_buffer_offset<uint8_t, 27>(p) = null_tile_extent;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   FilterPipeline fp;
-  auto dim = Dimension::deserialize(deserializer, 10, Datatype::INT32, fp);
+  auto dim = Dimension::deserialize(
+      deserializer, 10, Datatype::INT32, fp, memory_tracker);
   // Check name
   CHECK(dim->name() == dimension_name);
   // Check type
@@ -187,6 +193,7 @@ TEST_CASE("Dimension: Test deserialize,string", "[dimension][deserialize]") {
 
 TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
   std::string dim_name = "dim";
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
 
   SECTION("- valid and supported Datatypes") {
     std::vector<Datatype> valid_supported_datatypes = {
@@ -210,7 +217,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_supported_datatypes) {
       try {
-        Dimension dim{dim_name, type};
+        Dimension dim{dim_name, type, memory_tracker};
       } catch (...) {
         throw std::logic_error("Uncaught exception in Dimension constructor");
       }
@@ -233,7 +240,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (Datatype type : valid_unsupported_datatypes) {
       try {
-        Dimension dim{dim_name, type};
+        Dimension dim{dim_name, type, memory_tracker};
       } catch (std::exception& e) {
         CHECK(
             e.what() == "Datatype::" + datatype_str(type) +
@@ -248,7 +255,7 @@ TEST_CASE("Dimension: Test datatypes", "[dimension][datatypes]") {
 
     for (auto type : invalid_datatypes) {
       try {
-        Dimension dim{dim_name, Datatype(type)};
+        Dimension dim{dim_name, Datatype(type), memory_tracker};
       } catch (std::exception& e) {
         CHECK(
             std::string(e.what()) ==
@@ -363,7 +370,8 @@ TEMPLATE_LIST_TEST_CASE(
     "test relevant_ranges", "[dimension][relevant_ranges][fixed]", FixedTypes) {
   typedef TestType T;
   auto tiledb_type = type_to_datatype<T>().datatype;
-  Dimension dim{"", tiledb_type};
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  Dimension dim{"", tiledb_type, memory_tracker};
 
   std::vector<T> range_data = {
       1, 1, 1, 1, 2, 2, 3, 4, 5, 6, 5, 7, 8, 9, 50, 56};
@@ -387,7 +395,8 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
-  Dimension dim{"", Datatype::STRING_ASCII};
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  Dimension dim{"", Datatype::STRING_ASCII, memory_tracker};
 
   std::vector<char> range_data = {
       'a',
@@ -427,7 +436,8 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
 }
 
 TEST_CASE("Dimension::oob format") {
-  Dimension d("X", Datatype::FLOAT64);
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  Dimension d("X", Datatype::FLOAT64, memory_tracker);
   double d_dom[2]{-682.73999, 929.42999};
   REQUIRE(d.set_domain(Range(&d_dom, sizeof(d_dom))).ok());
   double x{-682.75};

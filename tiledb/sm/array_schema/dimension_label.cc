@@ -171,7 +171,7 @@ DimensionLabel::DimensionLabel(
 
   // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
-      make_shared<Dimension>(HERE(), "index", index_type)};
+      make_shared<Dimension>(HERE(), "index", index_type, memory_tracker)};
   throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));

@@ -2754,7 +2754,8 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
 
-  auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto dim =
+      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
