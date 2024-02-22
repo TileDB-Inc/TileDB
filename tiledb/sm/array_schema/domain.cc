@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -918,6 +918,8 @@ void Domain::set_tile_cell_order_cmp_funcs() {
         cell_order_cmp_func_2_[d] = nullptr;
         break;
       case Datatype::BLOB:
+      case Datatype::GEOM_WKB:
+      case Datatype::GEOM_WKT:
       case Datatype::CHAR:
       case Datatype::BOOL:
       case Datatype::STRING_UTF8:
@@ -926,9 +928,8 @@ void Domain::set_tile_cell_order_cmp_funcs() {
       case Datatype::STRING_UCS2:
       case Datatype::STRING_UCS4:
       case Datatype::ANY:
-        tile_order_cmp_func_[d] = nullptr;
-        cell_order_cmp_func_[d] = nullptr;
-        cell_order_cmp_func_2_[d] = nullptr;
+        throw std::invalid_argument(
+            "Unsupported dimension datatype " + datatype_str(type));
     }
   }
 }

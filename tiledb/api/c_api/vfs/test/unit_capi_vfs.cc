@@ -730,7 +730,7 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: CallbackWrapper operator() validation",
+    "C API: CallbackWrapperCAPI operator() validation",
     "[ls-recursive][callback][wrapper]") {
   tiledb::sm::LsObjects data;
   auto cb = [](const char* path,
@@ -748,7 +748,7 @@ TEST_CASE(
     ls_data->push_back({{path, path_len}, object_size});
     return 1;
   };
-  tiledb::sm::CallbackWrapper wrapper(cb, &data);
+  tiledb::sm::CallbackWrapperCAPI wrapper(cb, &data);
 
   SECTION("Callback return 1 signals to continue traversal") {
     CHECK(wrapper("file.txt", 10) == 1);
@@ -763,21 +763,21 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "C API: CallbackWrapper construction validation",
+    "C API: CallbackWrapperCAPI construction validation",
     "[ls-recursive][callback][wrapper]") {
-  using tiledb::sm::CallbackWrapper;
+  using tiledb::sm::CallbackWrapperCAPI;
   tiledb::sm::LsObjects data;
   auto cb = [](const char*, size_t, uint64_t, void*) -> int32_t { return 1; };
   SECTION("Null callback") {
-    CHECK_THROWS(CallbackWrapper(nullptr, &data));
+    CHECK_THROWS(CallbackWrapperCAPI(nullptr, &data));
   }
   SECTION("Null data") {
-    CHECK_THROWS(CallbackWrapper(cb, nullptr));
+    CHECK_THROWS(CallbackWrapperCAPI(cb, nullptr));
   }
   SECTION("Null callback and data") {
-    CHECK_THROWS(CallbackWrapper(nullptr, nullptr));
+    CHECK_THROWS(CallbackWrapperCAPI(nullptr, nullptr));
   }
   SECTION("Valid callback and data") {
-    CHECK_NOTHROW(CallbackWrapper(cb, &data));
+    CHECK_NOTHROW(CallbackWrapperCAPI(cb, &data));
   }
 }

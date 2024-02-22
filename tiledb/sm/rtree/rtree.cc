@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -53,42 +54,17 @@ namespace sm {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-RTree::RTree() {
-  domain_ = nullptr;
-  fanout_ = 0;
-  deserialized_buffer_size_ = 0;
-}
-
-RTree::RTree(const Domain* domain, unsigned fanout)
-    : domain_(domain)
-    , fanout_(fanout) {
+RTree::RTree(
+    const Domain* domain,
+    unsigned fanout,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , domain_(domain)
+    , fanout_(fanout)
+    , levels_(memory_tracker_->get_resource(MemoryType::RTREE)) {
 }
 
 RTree::~RTree() = default;
-
-RTree::RTree(const RTree& rtree)
-    : RTree() {
-  auto clone = rtree.clone();
-  swap(clone);
-}
-
-RTree::RTree(RTree&& rtree) noexcept
-    : RTree() {
-  swap(rtree);
-}
-
-RTree& RTree::operator=(const RTree& rtree) {
-  auto clone = rtree.clone();
-  swap(clone);
-
-  return *this;
-}
-
-RTree& RTree::operator=(RTree&& rtree) noexcept {
-  swap(rtree);
-
-  return *this;
-}
 
 /* ****************************** */
 /*               API              */
@@ -240,7 +216,7 @@ const NDRange& RTree::leaf(uint64_t leaf_idx) const {
   return levels_.back()[leaf_idx];
 }
 
-const std::vector<NDRange>& RTree::leaves() const {
+const tdb::pmr::vector<NDRange>& RTree::leaves() const {
   assert(!levels_.empty());
   return levels_.back();
 }
@@ -297,10 +273,10 @@ Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   return Status::Ok();
 }
 
-Status RTree::set_leaves(const std::vector<NDRange>& mbrs) {
+Status RTree::set_leaves(const tdb::pmr::vector<NDRange>& mbrs) {
   levels_.clear();
   levels_.resize(1);
-  levels_[0] = mbrs;
+  levels_[0].assign(mbrs.begin(), mbrs.end());
   return Status::Ok();
 }
 
@@ -328,13 +304,21 @@ void RTree::deserialize(
   deserialize_v5(deserializer, domain);
 }
 
+void RTree::reset(const Domain* domain, unsigned int fanout) {
+  domain_ = domain;
+  fanout_ = fanout;
+  free_memory();
+}
+
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
 RTree::Level RTree::build_level(const Level& level) {
   auto cur_mbr_num = (uint64_t)level.size();
-  Level new_level((uint64_t)std::ceil((double)cur_mbr_num / fanout_));
+  Level new_level(
+      (uint64_t)std::ceil((double)cur_mbr_num / fanout_),
+      memory_tracker_->get_resource(MemoryType::RTREE));
   auto new_mbr_num = (uint64_t)new_level.size();
 
   uint64_t mbrs_visited = 0;
@@ -344,16 +328,7 @@ RTree::Level RTree::build_level(const Level& level) {
       domain_->expand_ndrange(level[mbrs_visited], &new_level[i]);
   }
 
-  return new_level;
-}
-
-RTree RTree::clone() const {
-  RTree clone;
-  clone.domain_ = domain_;
-  clone.fanout_ = fanout_;
-  clone.levels_ = levels_;
-
-  return clone;
+  return {new_level, memory_tracker_->get_resource(MemoryType::RTREE)};
 }
 
 void RTree::deserialize_v1_v4(
@@ -422,12 +397,6 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   }
 
   domain_ = domain;
-}
-
-void RTree::swap(RTree& rtree) {
-  std::swap(domain_, rtree.domain_);
-  std::swap(fanout_, rtree.fanout_);
-  std::swap(levels_, rtree.levels_);
 }
 
 }  // namespace sm

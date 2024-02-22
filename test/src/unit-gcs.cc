@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -118,137 +118,6 @@ TEST_CASE_METHOD(GCSFx, "Test GCS init", "[gcs]") {
         "runner.");
     REQUIRE(false);
   }
-}
-
-TEST_CASE_METHOD(GCSFx, "Test GCS filesystem, file management", "[gcs]") {
-  Config config;
-  REQUIRE(config.set("vfs.gcs.use_multi_part_upload", "true").ok());
-  init_gcs(std::move(config));
-
-  /* Create the following file hierarchy:
-   *
-   * TEST_DIR/dir/subdir/file1
-   * TEST_DIR/dir/subdir/file2
-   * TEST_DIR/dir/file3
-   * TEST_DIR/file4
-   * TEST_DIR/file5
-   */
-  auto dir = TEST_DIR + "dir/";
-  auto dir2 = TEST_DIR + "dir2/";
-  auto subdir = dir + "subdir/";
-  auto file1 = subdir + "file1";
-  auto file2 = subdir + "file2";
-  auto file3 = dir + "file3";
-  auto file4 = TEST_DIR + "file4";
-  auto file5 = TEST_DIR + "file5";
-  auto file6 = TEST_DIR + "file6";
-
-  // Check that bucket is empty
-  bool is_empty;
-  REQUIRE(gcs_.is_empty_bucket(GCS_BUCKET, &is_empty).ok());
-  REQUIRE(is_empty);
-
-  // Continue building the hierarchy
-  bool is_object = false;
-  REQUIRE(gcs_.touch(URI(file1)).ok());
-  REQUIRE(gcs_.is_object(URI(file1), &is_object).ok());
-  REQUIRE(is_object);
-  REQUIRE(gcs_.touch(URI(file2)).ok());
-  REQUIRE(gcs_.is_object(URI(file2), &is_object).ok());
-  REQUIRE(is_object);
-  REQUIRE(gcs_.touch(URI(file3)).ok());
-  REQUIRE(gcs_.is_object(URI(file3), &is_object).ok());
-  REQUIRE(is_object);
-  REQUIRE(gcs_.touch(URI(file4)).ok());
-  REQUIRE(gcs_.is_object(URI(file4), &is_object).ok());
-  REQUIRE(is_object);
-  REQUIRE(gcs_.touch(URI(file5)).ok());
-  REQUIRE(gcs_.is_object(URI(file5), &is_object).ok());
-  REQUIRE(is_object);
-
-  // Check that bucket is not empty
-  REQUIRE(gcs_.is_empty_bucket(GCS_BUCKET, &is_empty).ok());
-  REQUIRE(!is_empty);
-
-  // Check invalid file
-  REQUIRE(gcs_.is_object(URI(TEST_DIR + "foo"), &is_object).ok());
-  REQUIRE(!is_object);
-
-  // List with prefix
-  std::vector<std::string> paths;
-  REQUIRE(gcs_.ls(URI(TEST_DIR), &paths).ok());
-  REQUIRE(paths.size() == 3);
-  paths.clear();
-  REQUIRE(gcs_.ls(URI(dir), &paths).ok());
-  REQUIRE(paths.size() == 2);
-  paths.clear();
-  REQUIRE(gcs_.ls(URI(subdir), &paths).ok());
-  REQUIRE(paths.size() == 2);
-  paths.clear();
-  REQUIRE(gcs_.ls(GCS_BUCKET, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Check if a directory exists
-  bool is_dir = false;
-  REQUIRE(gcs_.is_dir(URI(file1), &is_dir).ok());
-  REQUIRE(!is_dir);  // Not a dir
-  REQUIRE(gcs_.is_dir(URI(file4), &is_dir).ok());
-  REQUIRE(!is_dir);  // Not a dir
-  REQUIRE(gcs_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
-  REQUIRE(gcs_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
-
-  // ls_with_sizes
-  std::string s = "abcdef";
-  CHECK(gcs_.write(URI(file3), s.data(), s.size()).ok());
-  REQUIRE(gcs_.flush_object(URI(file3)).ok());
-
-  auto&& [status, rv] = gcs_.ls_with_sizes(URI(dir));
-  auto children = *rv;
-  REQUIRE(status.ok());
-
-  REQUIRE(children.size() == 2);
-  CHECK(children[0].path().native() == file3);
-  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
-
-  CHECK(children[0].file_size() == s.size());
-  // Directories don't get a size
-  CHECK(children[1].file_size() == 0);
-
-  // Move file
-  REQUIRE(gcs_.move_object(URI(file5), URI(file6)).ok());
-  REQUIRE(gcs_.is_object(URI(file5), &is_object).ok());
-  REQUIRE(!is_object);
-  REQUIRE(gcs_.is_object(URI(file6), &is_object).ok());
-  REQUIRE(is_object);
-  paths.clear();
-  REQUIRE(gcs_.ls(GCS_BUCKET, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Move directory
-  REQUIRE(gcs_.move_dir(URI(dir), URI(dir2)).ok());
-  REQUIRE(gcs_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(!is_dir);
-  REQUIRE(gcs_.is_dir(URI(dir2), &is_dir).ok());
-  REQUIRE(is_dir);
-  paths.clear();
-  REQUIRE(gcs_.ls(GCS_BUCKET, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Remove files
-  REQUIRE(gcs_.remove_object(URI(file4)).ok());
-  REQUIRE(gcs_.is_object(URI(file4), &is_object).ok());
-  REQUIRE(!is_object);
-
-  // Remove directories
-  REQUIRE(gcs_.remove_dir(URI(dir2)).ok());
-  REQUIRE(gcs_.is_object(URI(file1), &is_object).ok());
-  REQUIRE(!is_object);
-  REQUIRE(gcs_.is_object(URI(file2), &is_object).ok());
-  REQUIRE(!is_object);
-  REQUIRE(gcs_.is_object(URI(file3), &is_object).ok());
-  REQUIRE(!is_object);
 }
 
 TEST_CASE_METHOD(

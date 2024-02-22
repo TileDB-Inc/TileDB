@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,8 +50,7 @@ tiledb::common::blank<tiledb::sm::Dimension>::blank()
     : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
 }
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class DimensionException : public StatusException {
  public:
@@ -1555,6 +1554,8 @@ void Dimension::ensure_datatype_is_supported(Datatype type) const {
   switch (type) {
     case Datatype::CHAR:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::BOOL:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
@@ -1795,5 +1796,4 @@ void Dimension::set_smaller_than_func() {
   apply_with_type(g, type_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

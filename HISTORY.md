@@ -1,3 +1,154 @@
+# TileDB v2.20.0 Release Notes
+
+## Breaking behavior
+
+* The minimum supported macOS version on x64 is 11. [#4561](https://github.com/TileDB-Inc/TileDB/pull/4561)
+
+## New features
+
+* Add internal definitions for S3 ls recursive [#4467](https://github.com/TileDB-Inc/TileDB/pull/4467)
+* Add experimental C API for ls_recursive. [#4615](https://github.com/TileDB-Inc/TileDB/pull/4615)
+* Add experimental CPP API for ls_recursive. [#4625](https://github.com/TileDB-Inc/TileDB/pull/4625)
+
+## Improvements
+
+* Keep opened array resources alive until query ends. [#4601](https://github.com/TileDB-Inc/TileDB/pull/4601)
+* Avoid needless buffer reallocations when consolidating fragments. [#4614](https://github.com/TileDB-Inc/TileDB/pull/4614)
+* Update the AWS SDK to version 1.11.215. [#4551](https://github.com/TileDB-Inc/TileDB/pull/4551)
+* Fix consolidation plan to print relative paths in output. [#4604](https://github.com/TileDB-Inc/TileDB/pull/4604)
+* Fix traversal limit in array deserialization. [#4606](https://github.com/TileDB-Inc/TileDB/pull/4606)
+* Add function random_label to utilize PRNG for random string generation. [#4564](https://github.com/TileDB-Inc/TileDB/pull/4564)
+* Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
+
+## Defects removed
+
+* Fix regression when libraries were sometimes installed in the `lib64` directory. [#4562](https://github.com/TileDB-Inc/TileDB/pull/4562)
+* Don't segfault in ArraySchema::dump when enums are not loaded. [#4583](https://github.com/TileDB-Inc/TileDB/pull/4583)
+* Fix out of order consolidation. [#4597](https://github.com/TileDB-Inc/TileDB/pull/4597)
+* Finalize should error out for remote global order writes. [#4600](https://github.com/TileDB-Inc/TileDB/pull/4600)
+* Fix aggregate leak when field doesn't exist. [#4610](https://github.com/TileDB-Inc/TileDB/pull/4610)
+* Fix HTTP requests for AWS assume role not honoring config options. [#4616](https://github.com/TileDB-Inc/TileDB/pull/4616)
+* Fix recursively dumping a group with a nonexistent subgroup. [#4582](https://github.com/TileDB-Inc/TileDB/pull/4582)
+* Fix HTTP requests for AWS assume role with web identity not honoring config options. [#4641](https://github.com/TileDB-Inc/TileDB/pull/4641)
+
+## Build System Changes
+
+* Adds centos stream 9 dockerfile that builds tiledb [#4591](https://github.com/TileDB-Inc/TileDB/pull/4591)
+* Export a `TileDB::tiledb` CMake target regardless of static or dynamic linkage. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* Add a document with build instructions. [#4581](https://github.com/TileDB-Inc/TileDB/pull/4581)
+* Remove the `TILEDB_STATIC` option and replace it with `BUILD_SHARED_LIBS`. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* The build system supports building only a static or shared library from the same buildtree. [#4528](https://github.com/TileDB-Inc/TileDB/pull/4528)
+* `BUILD_SHARED_LIBS` is enabled by default. [#4569](https://github.com/TileDB-Inc/TileDB/pull/4569)
+* Add packaging tests into linux and mac CI pipelines. [#4567](https://github.com/TileDB-Inc/TileDB/pull/4567)
+* Add vcpkg triplets for Address Sanitizer. [#4515](https://github.com/TileDB-Inc/TileDB/pull/4515)
+* Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+* Fix importing TileDB in CMake versions prior to 3.18. [#4671](https://github.com/TileDB-Inc/TileDB/pull/4671)
+
+# TileDB v2.19.1 Release Notes
+
+## Improvements
+
+* Improve large dense aggregate reads with tile metadata only. [#4657](https://github.com/TileDB-Inc/TileDB/pull/4657)
+
+## Defects removed
+
+* Fix HTTP requests for AWS assume role with web identity not honoring config options. [#4641](https://github.com/TileDB-Inc/TileDB/pull/4641)
+* Fix HTTP requests for AWS assume role not honoring config options. [#4616](https://github.com/TileDB-Inc/TileDB/pull/4616)
+
+# TileDB v2.19.0 Release Notes
+
+## Announcements
+
+* TileDB 2.19, targeted for release in December 2023, includes performance improvements to the aggregate pushdown APIs.
+
+## Breaking behavior
+
+* The Windows release artifacts no longer include static libraries. [#4469](https://github.com/TileDB-Inc/TileDB/pull/4469)
+
+## New features
+
+* Allow aggregates to pipeline the processing of full tiles. [#4465](https://github.com/TileDB-Inc/TileDB/pull/4465)
+* Add class TemporaryDirectory to generate a PRNG-seeded unique directory. [#4498](https://github.com/TileDB-Inc/TileDB/pull/4498)
+* Add sm.consolidation.total_buffer_size setting. [#4550](https://github.com/TileDB-Inc/TileDB/pull/4550)
+* Use tile metadata in aggregates. [#4468](https://github.com/TileDB-Inc/TileDB/pull/4468)
+* Load validity tiles only for null count aggregates when possible. [#4513](https://github.com/TileDB-Inc/TileDB/pull/4513)
+* Prevent reading tiles when using fragment metadata in aggregates. [#4481](https://github.com/TileDB-Inc/TileDB/pull/4481)
+
+## Improvements
+
+* Refactor the fragment info loading code to reduce coupling. [#4453](https://github.com/TileDB-Inc/TileDB/pull/4453)
+* Fragment metadata: adding get_tile_metadata. [#4466](https://github.com/TileDB-Inc/TileDB/pull/4466)
+* Improve error reporting when performing too large GCS direct uploads. [#4047](https://github.com/TileDB-Inc/TileDB/pull/4047)
+* Refactor filestore API so that it uses internal TileDB library calls. [#3763](https://github.com/TileDB-Inc/TileDB/pull/3763)
+* Encode Win32 error messages in UTF-8. [#3987](https://github.com/TileDB-Inc/TileDB/pull/3987)
+* Remove unused compression defines. [#4480](https://github.com/TileDB-Inc/TileDB/pull/4480)
+* Integrate baseline object library into the main build. [#4446](https://github.com/TileDB-Inc/TileDB/pull/4446)
+* Internal clean-up of array timestamps. [#3633](https://github.com/TileDB-Inc/TileDB/pull/3633)
+* Add base class for VFS filesystems. [#4497](https://github.com/TileDB-Inc/TileDB/pull/4497)
+* Remove extraneous TILEDB_EXPORT tags. [#4507](https://github.com/TileDB-Inc/TileDB/pull/4507)
+* Query Plan REST support - part 1: handler. [#4516](https://github.com/TileDB-Inc/TileDB/pull/4516)
+* Use StorageFormat APIs to generate timestamped uris. [#4530](https://github.com/TileDB-Inc/TileDB/pull/4530)
+* Refactor the group code. [#4378](https://github.com/TileDB-Inc/TileDB/pull/4378)
+* Consolidation plan REST support - part1: handler. [#4534](https://github.com/TileDB-Inc/TileDB/pull/4534)
+* Use constexpr to check for filesystem support. [#4548](https://github.com/TileDB-Inc/TileDB/pull/4548)
+* Add vfs.gcs.max_direct_upload_size config option. [#4047](https://github.com/TileDB-Inc/TileDB/pull/4047)
+* Migrate fragment_name parsing into StorageFormat. [#4520](https://github.com/TileDB-Inc/TileDB/pull/4520)
+* Add setting to disable install_sigpipe_handler on S3. [#4573](https://github.com/TileDB-Inc/TileDB/pull/4573)
+
+## Defects removed
+
+* Group metadata doesn't get serialized. [#3147](https://github.com/TileDB-Inc/TileDB/pull/3147)
+* Added `#include <array>` to `tiledb/sm/cpp_api/type.h`. [#4504](https://github.com/TileDB-Inc/TileDB/pull/4504)
+* Fix broken linking tests against a shared WebP library. [#4525](https://github.com/TileDB-Inc/TileDB/pull/4525)
+* Fix delta filter deserialization for format ver 19. [#4541](https://github.com/TileDB-Inc/TileDB/pull/4541)
+* Fix array schema selection when time traveling. [#4549](https://github.com/TileDB-Inc/TileDB/pull/4549)
+
+## Documentation
+
+* Add a table with the history of the storage format versions. [#4487](https://github.com/TileDB-Inc/TileDB/pull/4487)
+* Add timestamped_name file to the Format Spec. [#4533](https://github.com/TileDB-Inc/TileDB/pull/4533)
+
+## API changes
+
+### C API
+
+* Add tiledb_group_get_member_by{index|name}_v2 (and deprecate tiledb_group_get_member_by_{index|name}). [#4019](https://github.com/TileDB-Inc/TileDB/pull/4019)
+* `tiledb_group_create` is no longer marked as deprecated. [#4522](https://github.com/TileDB-Inc/TileDB/pull/4522)
+
+### C++ API
+
+* Improve error message in C++ API for bad filter option type. [#4503](https://github.com/TileDB-Inc/TileDB/pull/4503)
+
+## Build System Changes
+
+* Improve building the Windows binaries for the R API. [#4448](https://github.com/TileDB-Inc/TileDB/pull/4448)
+* Update curl to version 8.4.0. [#4523](https://github.com/TileDB-Inc/TileDB/pull/4523)
+* Clean-up unused build system code. [#4527](https://github.com/TileDB-Inc/TileDB/pull/4527)
+* Cache more information when configuring the CMake project. [#4449](https://github.com/TileDB-Inc/TileDB/pull/4449)
+* Remove the vcpkg submodule and download it automatically when configuring. [#4484](https://github.com/TileDB-Inc/TileDB/pull/4484)
+* Use the provided CMake packages to import the compression libraries when vcpkg is enabled. [#4500](https://github.com/TileDB-Inc/TileDB/pull/4500)
+* Remove bundling our static library dependencies; they are now found from the CMake config file. [#4505](https://github.com/TileDB-Inc/TileDB/pull/4505)
+* Remove the CMake and bootstrap script options related to abseil and crc32c linkage tests. [#4527](https://github.com/TileDB-Inc/TileDB/pull/4527)
+* Move documentation generation and source formatting into dedicated CMake modules. [#4538](https://github.com/TileDB-Inc/TileDB/pull/4538)
+* Fix regression when libraries were sometimes installed in the `lib64` directory. [#4572](https://github.com/TileDB-Inc/TileDB/pull/4572)
+
+## Test only changes
+
+* Remove UnitTestConfig::array_encryption_key_length. [#4482](https://github.com/TileDB-Inc/TileDB/pull/4482)
+
+# TileDB v2.18.4 Release Notes
+
+## Defects removed
+
+* Fix HTTP requests for AWS assume role not honoring config options. [#4616](https://github.com/TileDB-Inc/TileDB/pull/4616)
+* Fix HTTP requests for AWS assume role with web identity not honoring config options. [#4641](https://github.com/TileDB-Inc/TileDB/pull/4641)
+
+# TileDB v2.18.3 Release Notes
+
+## New features
+
+* Add setting to disable install_sigpipe_handler on S3. [#4573](https://github.com/TileDB-Inc/TileDB/pull/4573)
+
 # TileDB v2.18.2 Release Notes
 
 ## Defects removed

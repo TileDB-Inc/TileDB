@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -131,146 +131,11 @@ std::string AzureFx::random_container_name(const std::string& prefix) {
   return ss.str();
 }
 
-TEST_CASE_METHOD(AzureFx, "Test Azure filesystem, file management", "[azure]") {
-  Config config;
-  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
-
-  auto settings =
-      GENERATE(from_range(test_settings.begin(), test_settings.end()));
-  init_azure(std::move(config), settings);
-
-  /* Create the following file hierarchy:
-   *
-   * TEST_DIR/dir/subdir/file1
-   * TEST_DIR/dir/subdir/file2
-   * TEST_DIR/dir/file3
-   * TEST_DIR/file4
-   * TEST_DIR/file5
-   */
-  auto dir = TEST_DIR + "dir/";
-  auto dir2 = TEST_DIR + "dir2/";
-  auto subdir = dir + "subdir/";
-  auto file1 = subdir + "file1";
-  auto file2 = subdir + "file2";
-  auto file3 = dir + "file3";
-  auto file4 = TEST_DIR + "file4";
-  auto file5 = TEST_DIR + "file5";
-  auto file6 = TEST_DIR + "file6";
-
-  // Check that container is empty
-  bool is_empty;
-  REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
-  REQUIRE(is_empty);
-
-  // Continue building the hierarchy
-  bool is_blob = false;
-  REQUIRE(azure_.touch(URI(file1)).ok());
-  REQUIRE(azure_.is_blob(URI(file1), &is_blob).ok());
-  REQUIRE(is_blob);
-  REQUIRE(azure_.touch(URI(file2)).ok());
-  REQUIRE(azure_.is_blob(URI(file2), &is_blob).ok());
-  REQUIRE(is_blob);
-  REQUIRE(azure_.touch(URI(file3)).ok());
-  REQUIRE(azure_.is_blob(URI(file3), &is_blob).ok());
-  REQUIRE(is_blob);
-  REQUIRE(azure_.touch(URI(file4)).ok());
-  REQUIRE(azure_.is_blob(URI(file4), &is_blob).ok());
-  REQUIRE(is_blob);
-  REQUIRE(azure_.touch(URI(file5)).ok());
-  REQUIRE(azure_.is_blob(URI(file5), &is_blob).ok());
-  REQUIRE(is_blob);
-
-  // Check that container is not empty
-  REQUIRE(azure_.is_empty_container(AZURE_CONTAINER, &is_empty).ok());
-  REQUIRE(!is_empty);
-
-  // Check invalid file
-  REQUIRE(azure_.is_blob(URI(TEST_DIR + "foo"), &is_blob).ok());
-  REQUIRE(!is_blob);
-
-  // List with prefix
-  std::vector<std::string> paths;
-  REQUIRE(azure_.ls(URI(TEST_DIR), &paths).ok());
-  REQUIRE(paths.size() == 3);
-  paths.clear();
-  REQUIRE(azure_.ls(URI(dir), &paths).ok());
-  REQUIRE(paths.size() == 2);
-  paths.clear();
-  REQUIRE(azure_.ls(URI(subdir), &paths).ok());
-  REQUIRE(paths.size() == 2);
-  paths.clear();
-  REQUIRE(azure_.ls(AZURE_CONTAINER, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Check if a directory exists
-  bool is_dir = false;
-  REQUIRE(azure_.is_dir(URI(file1), &is_dir).ok());
-  REQUIRE(!is_dir);  // Not a dir
-  REQUIRE(azure_.is_dir(URI(file4), &is_dir).ok());
-  REQUIRE(!is_dir);  // Not a dir
-  REQUIRE(azure_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
-  REQUIRE(azure_.is_dir(URI(TEST_DIR + "dir"), &is_dir).ok());
-  REQUIRE(is_dir);  // This is viewed as a dir
-
-  // ls_with_sizes
-  std::string s = "abcdef";
-  CHECK(azure_.write(URI(file3), s.data(), s.size()).ok());
-  REQUIRE(azure_.flush_blob(URI(file3)).ok());
-
-  auto&& [status, rv] = azure_.ls_with_sizes(URI(dir));
-  auto children = *rv;
-  REQUIRE(status.ok());
-
-  REQUIRE(children.size() == 2);
-  CHECK(children[0].path().native() == file3);
-  CHECK(children[1].path().native() == subdir.substr(0, subdir.size() - 1));
-
-  CHECK(children[0].file_size() == s.size());
-  // Directories don't get a size
-  CHECK(children[1].file_size() == 0);
-
-  // Move file
-  REQUIRE(azure_.move_object(URI(file5), URI(file6)).ok());
-  REQUIRE(azure_.is_blob(URI(file5), &is_blob).ok());
-  REQUIRE(!is_blob);
-  REQUIRE(azure_.is_blob(URI(file6), &is_blob).ok());
-  REQUIRE(is_blob);
-  paths.clear();
-  REQUIRE(azure_.ls(AZURE_CONTAINER, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Move directory
-  REQUIRE(azure_.move_dir(URI(dir), URI(dir2)).ok());
-  REQUIRE(azure_.is_dir(URI(dir), &is_dir).ok());
-  REQUIRE(!is_dir);
-  REQUIRE(azure_.is_dir(URI(dir2), &is_dir).ok());
-  REQUIRE(is_dir);
-  paths.clear();
-  REQUIRE(azure_.ls(AZURE_CONTAINER, &paths, "").ok());  // No delimiter
-  REQUIRE(paths.size() == 5);
-
-  // Remove files
-  REQUIRE(azure_.remove_blob(URI(file4)).ok());
-  REQUIRE(azure_.is_blob(URI(file4), &is_blob).ok());
-  REQUIRE(!is_blob);
-
-  // Remove directories
-  REQUIRE(azure_.remove_dir(URI(dir2)).ok());
-  REQUIRE(azure_.is_blob(URI(file1), &is_blob).ok());
-  REQUIRE(!is_blob);
-  REQUIRE(azure_.is_blob(URI(file2), &is_blob).ok());
-  REQUIRE(!is_blob);
-  REQUIRE(azure_.is_blob(URI(file3), &is_blob).ok());
-  REQUIRE(!is_blob);
-}
-
 TEST_CASE_METHOD(
     AzureFx, "Test Azure filesystem, file I/O", "[azure][multipart]") {
   Config config;
   const uint64_t max_parallel_ops = 2;
   const uint64_t block_list_block_size = 4 * 1024 * 1024;
-  REQUIRE(config.set("vfs.azure.use_block_list_upload", "true").ok());
   REQUIRE(
       config.set("vfs.azure.max_parallel_ops", std::to_string(max_parallel_ops))
           .ok());

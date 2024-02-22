@@ -167,53 +167,6 @@ class StorageManagerCanonical {
   Status group_close_for_writes(tiledb::sm::Group* group);
 
   /**
-   * Loads the group metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_group_metadata(
-      const tdb_shared_ptr<GroupDirectory>& group_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
-   * Load a group detail from URI
-   *
-   * @param group_uri group uri
-   * @param uri location to load
-   * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
-      const URI& group_uri,
-      const URI& uri,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Load a group detail from URIs
-   *
-   * @param group_uri group uri
-   * @param uri location to load
-   * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
-      const URI& group_uri,
-      const std::vector<TimestampedURI>& uris,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Load group details based on group directory
-   *
-   * @param group_directory
-   * @param encryption_key encryption key
-   *
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
-      const shared_ptr<GroupDirectory>& group_directory,
-      const EncryptionKey& encryption_key);
-
-  /**
    * Store the group details
    *
    * @param group_detail_folder_uri group details folder
@@ -227,79 +180,6 @@ class StorageManagerCanonical {
       const URI& group_detail_uri,
       tdb_shared_ptr<GroupDetails> group,
       const EncryptionKey& encryption_key);
-
-  /**
-   * Opens an group for reads.
-   *
-   * @param group The group to be opened.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
-   */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_reads(Group* group);
-
-  /** Opens an group for writes.
-   *
-   * @param group The group to open.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
-   */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_writes(Group* group);
-
-  /**
-   * Consolidates the fragments of an array into a single one.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config& config);
-
-  /**
-   * Consolidates the fragments of an array into a single one.
-   *
-   * @param array_name The name of the array to be consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param fragment_uris URIs of the fragments to consolidate.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status fragments_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const std::vector<std::string> fragment_uris,
-      const Config& config);
-
-  /**
-   * Writes a consolidated commits file.
-   *
-   * @param write_version Write version.
-   * @param array_dir ArrayDirectory where the data is stored.
-   * @param commit_uris Commit files to include.
-   */
-  void write_consolidated_commits_file(
-      format_version_t write_version,
-      ArrayDirectory array_dir,
-      const std::vector<URI>& commit_uris);
 
   /**
    * Cleans up the array data.
@@ -324,37 +204,6 @@ class StorageManagerCanonical {
    * @param group_name The name of the group whose data is to be deleted.
    */
   void delete_group(const char* group_name);
-
-  /**
-   * Cleans up the array, such as its consolidated fragments and array
-   * metadata. Note that this will coarsen the granularity of time traveling
-   * (see docs for more information).
-   *
-   * @param array_name The name of the array to be vacuumed.
-   * @param config Configuration parameters for vacuuming.
-   */
-  void array_vacuum(const char* array_name, const Config& config);
-
-  /**
-   * Consolidates the metadata of an array into a single file.
-   *
-   * @param array_name The name of the array whose metadata will be
-   *     consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_metadata_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const Config& config);
 
   /**
    * Creates a TileDB array storing its schema.
@@ -845,24 +694,11 @@ class StorageManagerCanonical {
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
 
-  /**
-   * The condition variable for exlcusively locking arrays. This is used
-   * to wait for an array to be closed, before being exclusively locked
-   * by `array_xlock`.
-   */
-  std::condition_variable xlock_cv_;
-
   /** Mutex for providing thread-safety upon creating TileDB objects. */
   std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;
-
-  /** Keeps track of which groups are open. */
-  std::set<Group*> open_groups_;
-
-  /** Mutex for managing open groups. */
-  std::mutex open_groups_mtx_;
 
   /** Count of the number of queries currently in progress. */
   uint64_t queries_in_progress_;

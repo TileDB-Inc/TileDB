@@ -70,10 +70,10 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     StrategyParams& params,
     bool include_coords)
     : ReaderBase(stats, logger, params)
+    , read_state_(array_->fragment_metadata().size())
     , tmp_read_state_(array_->fragment_metadata().size())
     , memory_budget_(config_, reader_string)
     , include_coords_(include_coords)
-    , array_memory_tracker_(params.memory_tracker())
     , memory_used_for_coords_total_(0)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
@@ -131,13 +131,13 @@ SparseIndexReaderBase::SparseIndexReaderBase(
 /*        PROTECTED METHODS       */
 /* ****************************** */
 
-const typename SparseIndexReaderBase::ReadState*
+const typename SparseIndexReaderBase::ReadState&
 SparseIndexReaderBase::read_state() const {
-  return &read_state_;
+  return read_state_;
 }
 
-typename SparseIndexReaderBase::ReadState* SparseIndexReaderBase::read_state() {
-  return &read_state_;
+void SparseIndexReaderBase::set_read_state(ReadState read_state) {
+  read_state_ = std::move(read_state);
 }
 
 uint64_t SparseIndexReaderBase::available_memory() {
@@ -319,11 +319,10 @@ Status SparseIndexReaderBase::load_initial_data() {
   }
 
   auto timer_se = stats_->start_timer("load_initial_data");
-  read_state_.done_adding_result_tiles_ = false;
+  read_state_.set_done_adding_result_tiles(false);
 
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();
-  auto fragment_num = fragment_metadata_.size();
 
   // Load delete conditions.
   auto&& [st, conditions, update_values] =
@@ -366,9 +365,6 @@ Status SparseIndexReaderBase::load_initial_data() {
     }
   }
 
-  // Make sure there is enough space for tiles data.
-  read_state_.frag_idx_.resize(fragment_num);
-
   // Calculate ranges of tiles in the subarray, if set.
   if (subarray_.is_set()) {
     // At this point, full memory budget is available.
@@ -385,7 +381,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     // below.
     RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
         storage_manager_->compute_tp(),
-        read_state_.frag_idx_,
+        read_state_.frag_idx(),
         &tmp_read_state_));
 
     if (tmp_read_state_.memory_used_tile_ranges() >

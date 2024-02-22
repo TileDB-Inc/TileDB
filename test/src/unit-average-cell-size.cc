@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
@@ -166,9 +167,8 @@ struct CPPAverageCellSizeFx {
     REQUIRE(query.submit() == Query::Status::COMPLETE);
 
     auto uri = sm::URI(query.fragment_uri(0));
-    std::pair<uint64_t, uint64_t> timestamps;
-    REQUIRE(sm::utils::parse::get_timestamp_range(uri, &timestamps).ok());
-    return {uri, timestamps};
+    sm::FragmentID fragment_id{uri};
+    return {uri, fragment_id.timestamp_range()};
   }
 
   /**

@@ -45,7 +45,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         # Inspired from https://github.com/Azure/azure-sdk-for-cpp/blob/azure-core_1.10.3/cmake-modules/AzureVcpkg.cmake
         message("TILEDB_DISABLE_AUTO_VCPKG is not defined. Fetch a local copy of vcpkg.")
         # To help with resolving conflicts, when you update the commit, also update its date.
-        set(VCPKG_COMMIT_STRING ac2a14f35fcd57d7a38f09af75dd5258e96dd6ac) # 2023-11-16
+        set(VCPKG_COMMIT_STRING 72010900b7cee36cea77aebb97695095c9358eaf) # 2023-12-05
         message("Vcpkg commit string used: ${VCPKG_COMMIT_STRING}")
         include(FetchContent)
         FetchContent_Declare(
@@ -63,6 +63,21 @@ if(TILEDB_SANITIZER STREQUAL "address")
         message(FATAL_ERROR "TILEDB_VCPKG_BASE_TRIPLET must be defined when building with ASAN.")
     endif()
     set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-asan")
+endif()
+
+get_cmake_property(is_multi_config GENERATOR_IS_MULTI_CONFIG)
+# On Windows vcpkg always builds dependencies with symbols.
+# https://github.com/microsoft/vcpkg/blob/master/scripts/toolchains/windows.cmake
+if(NOT WIN32 AND NOT is_multi_config AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" AND NOT VCPKG_TARGET_TRIPLET)
+    if(TILEDB_SANITIZER STREQUAL "address")
+        message(FATAL_ERROR "Cannot enable both RelWithDebInfo and ASAN at the same time.")
+    endif()
+    if(TILEDB_VCPKG_BASE_TRIPLET)
+        message(STATUS "Overriding vcpkg triplet to ${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+        set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+    else()
+        message(WARNING "Dependencies will be built without symbols. You have to set either VCPKG_TARGET_TRIPLET or TILEDB_VCPKG_BASE_TRIPLET.")
+    endif()
 endif()
 
 set(VCPKG_INSTALL_OPTIONS "--no-print-usage")

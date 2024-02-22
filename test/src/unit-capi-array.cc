@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -53,10 +53,10 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/fragments.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <chrono>
 #include <climits>
@@ -142,13 +142,10 @@ void ArrayFx::remove_temp_dir(const std::string& path) {
 
 int ArrayFx::get_fragment_timestamps(const char* path, void* data) {
   auto data_vec = (std::vector<uint64_t>*)data;
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  if (tiledb::sm::utils::parse::ends_with(
-          path, tiledb::sm::constants::write_file_suffix)) {
-    auto uri = tiledb::sm::URI(path);
-    if (tiledb::sm::utils::parse::get_timestamp_range(uri, &timestamp_range)
-            .ok())
-      data_vec->push_back(timestamp_range.first);
+  if (utils::parse::ends_with(path, constants::write_file_suffix)) {
+    FragmentID fragment_id{path};
+    auto timestamp_range{fragment_id.timestamp_range()};
+    data_vec->push_back(timestamp_range.first);
   }
 
   return 1;

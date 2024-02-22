@@ -40,28 +40,6 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-namespace tiledb::sm {
-class WhiteboxFragmentConsolidator {
- public:
-  static FragmentConsolidationWorkspace create_buffers(
-      stats::Stats* stats,
-      const bool with_timestamps,
-      const bool with_delete_meta,
-      const uint64_t buffer_size,
-      const ArraySchema& schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
-    // Create config.
-    FragmentConsolidationConfig cfg;
-    cfg.with_timestamps_ = with_timestamps;
-    cfg.with_delete_meta_ = with_delete_meta;
-    cfg.buffer_size_ = buffer_size;
-
-    return FragmentConsolidator::create_buffers(
-        stats, cfg, schema, avg_cell_sizes);
-  }
-};
-}  // namespace tiledb::sm
-
 shared_ptr<ArraySchema> make_schema(
     const bool sparse,
     const std::vector<Datatype> dim_types,
@@ -232,15 +210,14 @@ TEST_CASE(
   }
 
   // Create buffers.
-  FragmentConsolidationWorkspace cw{
-      WhiteboxFragmentConsolidator::create_buffers(
-          &statistics,
-          with_timestamps,
-          with_delete_meta,
-          1000,
-          *schema,
-          avg_cell_sizes)};
-  std::vector<ByteVec>& buffers{cw.buffers()};
+  FragmentConsolidationConfig cfg;
+  cfg.with_timestamps_ = with_timestamps;
+  cfg.with_delete_meta_ = with_delete_meta;
+  cfg.buffer_size_ = 1000;
+
+  FragmentConsolidationWorkspace cw;
+  cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
+  std::vector<span<std::byte>>& buffers{cw.buffers()};
   std::vector<uint64_t>& buffer_sizes{cw.sizes()};
 
   // Validate.

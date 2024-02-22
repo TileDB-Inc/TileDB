@@ -107,42 +107,35 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
  * Consolidation workspace holds the large buffers used by the operation.
  */
 class FragmentConsolidationWorkspace {
-  std::vector<ByteVec> buffers_;
-  std::vector<uint64_t> sizes_;
-
  public:
-  FragmentConsolidationWorkspace() = delete;
-  explicit FragmentConsolidationWorkspace(size_t n)
-      : buffers_(n)
-      , sizes_(n) {
-  }
-  /**
-   * Copy constructor is deleted to avoid copying large amounts of memory
-   */
-  FragmentConsolidationWorkspace(const FragmentConsolidationWorkspace&) =
-      delete;
+  FragmentConsolidationWorkspace() = default;
+
+  // Disable copy and move construction/assignment so we don't have
+  // to think about it.
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentConsolidationWorkspace);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentConsolidationWorkspace);
 
   /**
-   * Move constructor
+   * Resize the buffers that will be used upon reading the input fragments and
+   * writing into the new fragment. It also retrieves the number of buffers
+   * created.
+   *
+   * @param stats The stats.
+   * @param config The consolidation config.
+   * @param array_schema The array schema.
+   * @param avg_cell_sizes The average cell sizes.
+   * @return a consolidation workspace containing the buffers
    */
-  FragmentConsolidationWorkspace(FragmentConsolidationWorkspace&&) = default;
-
-  /**
-   * Copy assignment is deleted to avoid copying large amounts of memory
-   */
-  const FragmentConsolidationWorkspace& operator=(
-      const FragmentConsolidationWorkspace&) = delete;
-
-  /**
-   * Move assignment is deleted for convenience
-   */
-  const FragmentConsolidationWorkspace& operator=(
-      FragmentConsolidationWorkspace&&) = delete;
+  void resize_buffers(
+      stats::Stats* stats,
+      const FragmentConsolidationConfig& config,
+      const ArraySchema& array_schema,
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
   /**
    * Accessor for buffers
    */
-  std::vector<ByteVec>& buffers() {
+  std::vector<span<std::byte>>& buffers() {
     return buffers_;
   }
 
@@ -152,6 +145,16 @@ class FragmentConsolidationWorkspace {
   std::vector<uint64_t>& sizes() {
     return sizes_;
   };
+
+ private:
+  /*** The backing buffer used for all buffers. */
+  std::vector<std::byte> backing_buffer_;
+
+  /*** Spans that point to non-overlapping sections of the buffer. */
+  std::vector<span<std::byte>> buffers_;
+
+  /*** The size of each span. */
+  std::vector<uint64_t> sizes_;
 };
 
 /** Handles fragment consolidation. */
@@ -196,7 +199,7 @@ class FragmentConsolidator : public Consolidator {
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Consolidates only the fragments of the input array using a list of
@@ -226,7 +229,7 @@ class FragmentConsolidator : public Consolidator {
    *
    * @param array_name URI of array to vacuum.
    */
-  void vacuum(const char* array_name);
+  void vacuum(const char* array_name) override;
 
  private:
   /* ********************************* */
@@ -274,6 +277,7 @@ class FragmentConsolidator : public Consolidator {
    *     fragments are *not* all sparse.
    * @param new_fragment_uri The URI of the fragment created after
    *     consolidating the `to_consolidate` fragments.
+   * @param cw A workspace containing buffers for the queries
    * @return Status
    */
   Status consolidate_internal(
@@ -281,7 +285,8 @@ class FragmentConsolidator : public Consolidator {
       shared_ptr<Array> array_for_writes,
       const std::vector<TimestampedURI>& to_consolidate,
       const NDRange& union_non_empty_domains,
-      URI* new_fragment_uri);
+      URI* new_fragment_uri,
+      FragmentConsolidationWorkspace& cw);
 
   /**
    * Copies the array by reading from the fragments to be consolidated
@@ -294,23 +299,6 @@ class FragmentConsolidator : public Consolidator {
    */
   void copy_array(
       Query* query_r, Query* query_w, FragmentConsolidationWorkspace& cw);
-
-  /**
-   * Creates the buffers that will be used upon reading the input fragments and
-   * writing into the new fragment. It also retrieves the number of buffers
-   * created.
-   *
-   * @param stats The stats.
-   * @param config The consolidation config.
-   * @param array_schema The array schema.
-   * @param avg_cell_sizes The average cell sizes.
-   * @return a consolidation workspace containing the buffers
-   */
-  static FragmentConsolidationWorkspace create_buffers(
-      stats::Stats* stats,
-      const FragmentConsolidationConfig& config,
-      const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
   /**
    * Creates the queries needed for consolidation. It also retrieves

@@ -1,22 +1,13 @@
 name: Release
 
 on:
-  pull_request:
-    branches:
-      - '*'  # must quote since "*" is a YAML reserved character; we want a string
-    paths-ignore:
-      - '.github/workflows/quarto-render.yml'
-      - '_quarto.yml'
-      - 'quarto-materials/*'
-      - '**/.md'
-      - 'tiledb/doxygen/source/*'
-      - 'tiledb/sm/c_api/tiledb_version.h'
   push:
     branches:
       - dev
       - 'release-*'
     tags:
       - '*'
+  workflow_dispatch:
 
 jobs:
   Build-Release:
@@ -56,6 +47,9 @@ jobs:
       - name: Checkout TileDB
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
+      - name: 'Homebrew setup'
+        run: brew install automake pkg-config
+        if: ${{ startsWith(matrix.os, 'macos-') == true }}
       - name: Export GitHub Actions cache variables
         uses: actions/github-script@v6
         with:
@@ -176,3 +170,17 @@ jobs:
                 data: fs.readFileSync(file)
               });
             }
+
+  Create-Issue-On-Fail:
+    permissions:
+      issues: write
+    runs-on: ubuntu-latest
+    needs: Publish-Release
+    if: (failure() || cancelled()) && github.event_name != 'workflow_dispatch'
+    steps:
+      - name: Create Issue if Build Fails
+        uses: TileDB-Inc/github-actions/open-issue@main
+        with:
+          name: Release failed
+          label: bug
+          assignee: KiterLuc,teo-tsirpanis,davisp

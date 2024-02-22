@@ -151,7 +151,7 @@ struct tiledb_vfs_handle_t
       const tiledb::sm::URI& parent,
       tiledb_ls_callback_t cb,
       void* data) const {
-    tiledb::sm::CallbackWrapper wrapper(cb, data);
+    tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
     vfs_.ls_recursive(parent, wrapper);
   }
 };

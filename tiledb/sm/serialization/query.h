@@ -239,9 +239,8 @@ Status unordered_write_state_from_capnp(
     UnorderedWriter* runordered_writer,
     SerializationContext context);
 
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
+QueryCondition condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader);
 
 Status condition_to_capnp(
     const QueryCondition& condition,
@@ -275,7 +274,8 @@ Status query_from_capnp(
     void* buffer_start,
     CopyState* const copy_state,
     Query* const query,
-    ThreadPool* compute_tp);
+    ThreadPool* compute_tp,
+    const bool allocate_buffers);
 
 #endif
 

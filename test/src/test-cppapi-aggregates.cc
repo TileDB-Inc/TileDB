@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -516,7 +516,7 @@ std::vector<uint8_t> CppAggregatesFx<T>::make_data_buff(
     }
   } else {
     for (auto& v : values) {
-      data.emplace_back(v);
+      data.emplace_back(static_cast<T>(v));
     }
   }
 
@@ -2607,7 +2607,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppAggregatesFx<int32_t>,
     "CPP: Aggregates - Basic",
-    "[aggregates][cpp_api][args]") {
+    "[cppapi][aggregates][args]") {
   dense_ = false;
   nullable_ = false;
   allow_dups_ = false;
@@ -2638,4 +2638,49 @@ TEST_CASE_METHOD(
   CHECK_THROWS(
       QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1"));
   CHECK_THROWS(default_channel.apply_aggregate("Something", operation));
+}
+
+typedef tuple<std::byte> BlobTypeUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "C++ API: Aggregates basic sum, std::byte",
+    "[cppapi][aggregates][basic][sum][byte]",
+    BlobTypeUnderTest) {
+  const std::string array_name = "test_byte_aggregates";
+  auto datatype = GENERATE(
+      tiledb_datatype_t::TILEDB_BLOB,
+      tiledb_datatype_t::TILEDB_GEOM_WKB,
+      tiledb_datatype_t::TILEDB_GEOM_WKT);
+
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create domain.
+  Domain domain(ctx);
+  auto d = Dimension::create<uint64_t>(ctx, "d", {{1, 999}}, 2);
+  domain.add_dimension(d);
+
+  // Create array schema.
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create(ctx, "a", datatype));
+
+  // Create array and query.
+  Array::create(array_name, schema);
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+
+  // Add a sum aggregator to the query.
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  REQUIRE_THROWS_WITH(
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "a"),
+      Catch::Matchers::ContainsSubstring("not a valid Datatype"));
+
+  // Clean up.
+  array.close();
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
 }

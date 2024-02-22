@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -124,105 +124,5 @@ TEST_CASE(
             end, start, constants::format_version),
         Catch::Matchers::ContainsSubstring(
             "start timestamp cannot be after end timestamp"));
-  }
-}
-
-TEST_CASE(
-    "StorageFormat: Parse: get_timestamp_range",
-    "[storage_format][parse][get_timestamp_range]") {
-  std::pair<uint64_t, uint64_t> range;
-
-  SECTION("name version 1") {
-    // Note: the end timestamp may or may not be present.
-    // If present, this version sets both range values to the end timestamp.
-    // As such, if the end_timestamp < start_timestamp, no error is thrown.
-    SECTION("valid timestamps") {
-      tiledb::sm::URI frag;
-
-      SECTION("with end timestamp") {
-        // Create fragment at timestamp 1-2
-        frag = tiledb::sm::URI(
-            "file:///array_name/__fragments/"
-            "__44318efd44f546b18db13edc8d10805b_1_2");
-      }
-
-      SECTION("without end timestamp") {
-        // Create fragment at timestamp 2
-        frag = tiledb::sm::URI(
-            "file:///array_name/__fragments/"
-            "__44318efd44f546b18db13edc8d10805b_2");
-      }
-
-      // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
-      CHECK(range.first == 2);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__44318efd44f546b18db13edc8d10805b_2_1");
-
-      // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
-      CHECK(range.first == 1);
-      CHECK(range.second == 1);
-    }
-  }
-
-  SECTION("name version 2") {
-    SECTION("valid timestamps") {
-      // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b");
-
-      // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
-      CHECK(range.first == 1);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b");
-
-      // Try to get timestamp range
-      REQUIRE_THROWS_WITH(
-          get_timestamp_range(frag, &range),
-          Catch::Matchers::ContainsSubstring(
-              "start timestamp cannot be after end timestamp"));
-    }
-  }
-
-  SECTION("name version 3") {
-    SECTION("valid timestamps") {
-      // Create fragment at timestamp 1-2
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__1_2_44318efd44f546b18db13edc8d10805b_5");
-
-      // Check timestamp range
-      REQUIRE(get_timestamp_range(frag, &range).ok());
-      CHECK(range.first == 1);
-      CHECK(range.second == 2);
-    }
-
-    SECTION("invalid timestamps") {
-      // Create fragment at timestamp 2-1
-      auto frag = tiledb::sm::URI(
-          "file:///array_name/__fragments/"
-          "__2_1_44318efd44f546b18db13edc8d10805b_5");
-
-      // Try to get timestamp range
-      REQUIRE_THROWS_WITH(
-          get_timestamp_range(frag, &range),
-          Catch::Matchers::ContainsSubstring(
-              "start timestamp cannot be after end timestamp"));
-    }
   }
 }

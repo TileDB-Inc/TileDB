@@ -40,8 +40,11 @@
 // clang-format on
 
 #include "tiledb/sm/query_plan/query_plan.h"
+
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/enums/array_type.h"
+#include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/query_plan.h"
@@ -75,23 +78,69 @@ void query_plan_request_from_capnp(
         nullptr,
         nullptr,
         &query,
-        &compute_tp));
+        &compute_tp,
+        false));
   }
 }
 
 void query_plan_response_to_capnp(
-    capnp::QueryPlanResponse::Builder& builder, const std::string& query_plan) {
-  builder.setQueryPlan(query_plan);
-}
-
-std::string query_plan_response_from_capnp(
-    const capnp::QueryPlanResponse::Reader& reader) {
-  std::string query_plan;
-  if (reader.hasQueryPlan()) {
-    query_plan = reader.getQueryPlan().cStr();
+    capnp::QueryPlanResponse::Builder& builder, const QueryPlan& query_plan) {
+  builder.setQueryLayout(layout_str(query_plan.query_layout()));
+  builder.setStrategyName(query_plan.strategy());
+  builder.setArrayType(array_type_str(query_plan.array_type()));
+  const auto& attributes = query_plan.attributes();
+  if (!attributes.empty()) {
+    auto attributes_builder = builder.initAttributeNames(attributes.size());
+    for (size_t i = 0; i < attributes.size(); i++) {
+      attributes_builder.set(i, attributes[i]);
+    }
   }
 
-  return query_plan;
+  const auto& dimensions = query_plan.dimensions();
+  if (!dimensions.empty()) {
+    auto dimensions_builder = builder.initDimensionNames(dimensions.size());
+    for (size_t i = 0; i < dimensions.size(); i++) {
+      dimensions_builder.set(i, dimensions[i]);
+    }
+  }
+}
+
+QueryPlan query_plan_response_from_capnp(
+    const capnp::QueryPlanResponse::Reader& reader, Query& query) {
+  auto layout{Layout::ROW_MAJOR};
+  if (reader.hasQueryLayout()) {
+    throw_if_not_ok(layout_enum(reader.getQueryLayout().cStr(), &layout));
+  }
+
+  std::string strategy{};
+  if (reader.hasStrategyName()) {
+    strategy = reader.getStrategyName().cStr();
+  }
+
+  auto array_type{ArrayType::DENSE};
+  if (reader.hasQueryLayout()) {
+    throw_if_not_ok(array_type_enum(reader.getArrayType().cStr(), &array_type));
+  }
+
+  std::vector<std::string> attributes;
+  if (reader.hasAttributeNames()) {
+    auto attribute_names = reader.getAttributeNames();
+    attributes.reserve(attribute_names.size());
+    for (auto attr : attribute_names) {
+      attributes.emplace_back(attr);
+    }
+  }
+
+  std::vector<std::string> dimensions;
+  if (reader.hasDimensionNames()) {
+    auto dimension_names = reader.getDimensionNames();
+    dimensions.reserve(dimension_names.size());
+    for (auto dim : dimension_names) {
+      dimensions.emplace_back(dim);
+    }
+  }
+
+  return QueryPlan(query, layout, strategy, array_type, attributes, dimensions);
 }
 
 void serialize_query_plan_request(
@@ -193,7 +242,7 @@ void deserialize_query_plan_request(
 }
 
 void serialize_query_plan_response(
-    const std::string& query_plan,
+    const QueryPlan& query_plan,
     SerializationType serialization_type,
     Buffer& response) {
   try {
@@ -243,8 +292,10 @@ void serialize_query_plan_response(
   }
 }
 
-std::string deserialize_query_plan_response(
-    SerializationType serialization_type, const Buffer& response) {
+QueryPlan deserialize_query_plan_response(
+    Query& query,
+    SerializationType serialization_type,
+    const Buffer& response) {
   try {
     switch (serialization_type) {
       case SerializationType::JSON: {
@@ -255,7 +306,7 @@ std::string deserialize_query_plan_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(response.data())), builder);
         capnp::QueryPlanResponse::Reader reader = builder.asReader();
-        return query_plan_response_from_capnp(reader);
+        return query_plan_response_from_capnp(reader, query);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
@@ -264,7 +315,7 @@ std::string deserialize_query_plan_response(
             response.size() / sizeof(::capnp::word)));
         capnp::QueryPlanResponse::Reader reader =
             array_reader.getRoot<capnp::QueryPlanResponse>();
-        return query_plan_response_from_capnp(reader);
+        return query_plan_response_from_capnp(reader, query);
       }
       default: {
         throw Status_SerializationError(
@@ -298,13 +349,13 @@ void deserialize_query_plan_request(
 }
 
 void serialize_query_plan_response(
-    const std::string&, const SerializationType, Buffer&) {
+    const QueryPlan&, const SerializationType, Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }
 
-std::string deserialize_query_plan_response(
-    const SerializationType, const Buffer&) {
+QueryPlan deserialize_query_plan_response(
+    Query&, const SerializationType, const Buffer&) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }

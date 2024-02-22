@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
@@ -53,7 +54,6 @@
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/storage_format/serialization/serializers.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -64,8 +64,7 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class FragmentMetadataStatusException : public StatusException {
  public:
@@ -78,12 +77,30 @@ class FragmentMetadataStatusException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-FragmentMetadata::FragmentMetadata() {
+FragmentMetadata::FragmentMetadata(
+    ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
+    : resources_(resources)
+    , memory_tracker_(memory_tracker)
+    , rtree_(RTree(nullptr, constants::rtree_fanout, memory_tracker_))
+    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_validity_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_min_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
+    , tile_null_counts_(
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS)) {
 }
 
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
@@ -103,8 +120,23 @@ FragmentMetadata::FragmentMetadata(
     , has_delete_meta_(has_deletes_meta)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
-    , rtree_(RTree(&array_schema_->domain(), constants::rtree_fanout))
+    , rtree_(RTree(
+          &array_schema_->domain(), constants::rtree_fanout, memory_tracker_))
     , tile_index_base_(0)
+    , tile_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_validity_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_min_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
+    , tile_null_counts_(
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
@@ -113,51 +145,6 @@ FragmentMetadata::FragmentMetadata(
 }
 
 FragmentMetadata::~FragmentMetadata() = default;
-
-// Copy initialization
-FragmentMetadata::FragmentMetadata(const FragmentMetadata& other) {
-  resources_ = other.resources_;
-  array_schema_ = other.array_schema_;
-  dense_ = other.dense_;
-  fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
-  has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
-  has_timestamps_ = other.has_timestamps_;
-  has_delete_meta_ = other.has_delete_meta_;
-  sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
-  array_uri_ = other.array_uri_;
-}
-
-FragmentMetadata& FragmentMetadata::operator=(const FragmentMetadata& other) {
-  resources_ = other.resources_;
-  array_schema_ = other.array_schema_;
-  dense_ = other.dense_;
-  fragment_uri_ = other.fragment_uri_;
-  timestamp_range_ = other.timestamp_range_;
-  has_consolidated_footer_ = other.has_consolidated_footer_;
-  rtree_ = other.rtree_;
-  meta_file_size_ = other.meta_file_size_;
-  version_ = other.version_;
-  tile_index_base_ = other.tile_index_base_;
-  has_timestamps_ = other.has_timestamps_;
-  has_delete_meta_ = other.has_delete_meta_;
-  sparse_tile_num_ = other.sparse_tile_num_;
-  footer_size_ = other.footer_size_;
-  footer_offset_ = other.footer_offset_;
-  idx_map_ = other.idx_map_;
-  array_schema_name_ = other.array_schema_name_;
-  array_uri_ = other.array_uri_;
-
-  return *this;
-}
 
 /* ****************************** */
 /*                API             */
@@ -454,6 +441,8 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
               compute_fragment_min_max_sum<char>(name);
               break;
             case Datatype::BLOB:
+            case Datatype::GEOM_WKB:
+            case Datatype::GEOM_WKT:
               compute_fragment_min_max_sum<std::byte>(name);
               break;
             default:
@@ -776,7 +765,7 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
 
 std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     ContextResources& resources,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema> array_schema_latest,
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
@@ -793,18 +782,15 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
   auto status =
       parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
         const auto& sf = fragments_to_load[f];
-
         URI coords_uri =
             sf.uri_.join_path(constants::coords + constants::file_suffix);
-
-        auto name = sf.uri_.remove_trailing_slash().last_path_part();
-        auto format_version = utils::parse::get_fragment_version(name);
 
         // Note that the fragment metadata version is >= the array schema
         // version. Therefore, the check below is defensive and will always
         // ensure backwards compatibility.
         shared_ptr<FragmentMetadata> metadata;
-        if (format_version <= 2) {
+        FragmentID fragment_id{sf.uri_};
+        if (fragment_id.array_format_version() <= 2) {
           bool sparse;
           RETURN_NOT_OK(resources.vfs().is_file(coords_uri, &sparse));
           metadata = make_shared<FragmentMetadata>(
@@ -833,7 +819,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
 
         auto it = offsets.end();
         if (metadata->format_version() >= 9) {
-          it = offsets.find(name);
+          it = offsets.find(fragment_id.name());
         } else {
           it = offsets.find(sf.uri_.to_string());
         }
@@ -868,10 +854,8 @@ void FragmentMetadata::load(
   }
 
   // Get fragment name version
-  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  auto format_version = utils::parse::get_fragment_version(name);
-
-  if (format_version <= 2) {
+  FragmentID fragment_id{fragment_uri_};
+  if (fragment_id.array_format_version() <= 2) {
     return load_v1_v2(encryption_key, array_schemas);
   } else {
     return load_v3_or_higher(
@@ -1594,7 +1578,7 @@ const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
   return rtree_.leaf(tile_idx);
 }
 
-const std::vector<NDRange>& FragmentMetadata::mbrs() const {
+const tdb::pmr::vector<NDRange>& FragmentMetadata::mbrs() const {
   return rtree_.leaves();
 }
 
@@ -2101,8 +2085,7 @@ void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
   if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(
-          tile.size(), MemoryTracker::MemoryType::RTREE)) {
+      !memory_tracker_->take_memory(tile.size(), MemoryType::RTREE)) {
     throw FragmentMetadataStatusException(
         "Cannot load R-tree; Insufficient memory budget; Needed " +
         std::to_string(tile.size()) + " but only had " +
@@ -2119,7 +2102,7 @@ void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
 void FragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
   if (memory_tracker_ != nullptr) {
-    memory_tracker_->release_memory(freed, MemoryTracker::MemoryType::RTREE);
+    memory_tracker_->release_memory(freed, MemoryType::RTREE);
   }
   loaded_metadata_.rtree_ = false;
 }
@@ -2129,8 +2112,7 @@ void FragmentMetadata::free_tile_offsets() {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
-          tile_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          tile_offsets_[i].size() * sizeof(uint64_t), MemoryType::TILE_OFFSETS);
     }
     tile_offsets_[i].clear();
     loaded_metadata_.tile_offsets_[i] = false;
@@ -2141,7 +2123,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_var_offsets_[i].clear();
     loaded_metadata_.tile_var_offsets_[i] = false;
@@ -2151,8 +2133,7 @@ void FragmentMetadata::free_tile_offsets() {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
-          tile_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          tile_offsets_[i].size() * sizeof(uint64_t), MemoryType::TILE_OFFSETS);
     }
     tile_offsets_[i].clear();
     loaded_metadata_.tile_offsets_[i] = false;
@@ -2163,7 +2144,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_validity_offsets_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_validity_offsets_[i].clear();
     loaded_metadata_.tile_validity_offsets_[i] = false;
@@ -2174,7 +2155,7 @@ void FragmentMetadata::free_tile_offsets() {
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
           tile_var_sizes_[i].size() * sizeof(uint64_t),
-          MemoryTracker::MemoryType::TILE_OFFSETS);
+          MemoryType::TILE_OFFSETS);
     }
     tile_var_sizes_[i].clear();
     loaded_metadata_.tile_var_sizes_[i] = false;
@@ -2203,8 +2184,8 @@ uint64_t FragmentMetadata::footer_size() const {
 
 void FragmentMetadata::get_footer_offset_and_size(
     uint64_t* offset, uint64_t* size) const {
-  auto name = fragment_uri_.remove_trailing_slash().last_path_part();
-  auto fragment_format_version = utils::parse::get_fragment_version(name);
+  FragmentID fragment_id{fragment_uri_};
+  auto fragment_format_version{fragment_id.array_format_version()};
   auto all_fixed = array_schema_->domain().all_dims_fixed();
   if (all_fixed && fragment_format_version < 5) {
     *size = footer_size_v3_v4();
@@ -2940,8 +2921,7 @@ void FragmentMetadata::load_tile_offsets(Deserializer& deserializer) {
 
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -2970,8 +2950,7 @@ void FragmentMetadata::load_tile_offsets(
   if (tile_offsets_num != 0) {
     auto size = tile_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile offsets; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3012,8 +2991,7 @@ void FragmentMetadata::load_tile_var_offsets(Deserializer& deserializer) {
 
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
@@ -3043,8 +3021,7 @@ void FragmentMetadata::load_tile_var_offsets(
   if (tile_var_offsets_num != 0) {
     auto size = tile_var_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var offsets; Insufficient memory budget; "
           "Needed " +
@@ -3083,8 +3060,7 @@ void FragmentMetadata::load_tile_var_sizes(Deserializer& deserializer) {
 
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
@@ -3113,8 +3089,7 @@ void FragmentMetadata::load_tile_var_sizes(
   if (tile_var_sizes_num != 0) {
     auto size = tile_var_sizes_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile var sizes; Insufficient memory budget; "
           "Needed " +
@@ -3144,8 +3119,7 @@ void FragmentMetadata::load_tile_validity_offsets(
   if (tile_validity_offsets_num != 0) {
     auto size = tile_validity_offsets_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::TILE_OFFSETS)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
       throw FragmentMetadataStatusException(
           "Cannot load tile validity offsets; Insufficient memory budget; "
           "Needed " +
@@ -3189,8 +3163,7 @@ void FragmentMetadata::load_tile_min_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_MIN_VALS)) {
       throw FragmentMetadataStatusException(
           "Cannot load min values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3234,8 +3207,7 @@ void FragmentMetadata::load_tile_max_values(
   if (buffer_size != 0) {
     auto size = buffer_size + var_buffer_size;
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_MAX_VALS)) {
       throw FragmentMetadataStatusException(
           "Cannot load max values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3273,8 +3245,7 @@ void FragmentMetadata::load_tile_sum_values(
   if (tile_sum_num != 0) {
     auto size = tile_sum_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_SUMS)) {
       throw FragmentMetadataStatusException(
           "Cannot load sum values; Insufficient memory budget; Needed " +
           std::to_string(size) + " but only had " +
@@ -3306,8 +3277,7 @@ void FragmentMetadata::load_tile_null_count_values(
   if (tile_null_count_num != 0) {
     auto size = tile_null_count_num * sizeof(uint64_t);
     if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(
-            size, MemoryTracker::MemoryType::MIN_MAX_SUM_NULL_COUNT)) {
+        !memory_tracker_->take_memory(size, MemoryType::TILE_NULL_COUNTS)) {
       throw FragmentMetadataStatusException(
           "Cannot load null count values; Insufficient memory budget; "
           "Needed " +
@@ -3993,8 +3963,7 @@ void FragmentMetadata::read_file_footer(
   resources_->stats().add_counter("read_frag_meta_size", *footer_size);
 
   if (memory_tracker_ != nullptr &&
-      !memory_tracker_->take_memory(
-          *footer_size, MemoryTracker::MemoryType::FOOTER)) {
+      !memory_tracker_->take_memory(*footer_size, MemoryType::FOOTER)) {
     throw FragmentMetadataStatusException(
         "Cannot load file footer; Insufficient memory budget; Needed " +
         std::to_string(*footer_size) + " but only had " +
@@ -4801,5 +4770,4 @@ template std::byte FragmentMetadata::get_tile_max_as<std::byte>(
 template char FragmentMetadata::get_tile_max_as<char>(
     const std::string& name, uint64_t tile_idx) const;
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

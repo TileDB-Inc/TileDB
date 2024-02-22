@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2020-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2020-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,23 +38,18 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
-
-FragmentInfo::FragmentInfo()
-    : resources_(nullptr)
-    , unconsolidated_metadata_num_(0) {
-}
 
 FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
     : array_uri_(array_uri)
@@ -64,28 +59,6 @@ FragmentInfo::FragmentInfo(const URI& array_uri, ContextResources& resources)
 }
 
 FragmentInfo::~FragmentInfo() = default;
-
-FragmentInfo::FragmentInfo(const FragmentInfo& fragment_info)
-    : FragmentInfo() {
-  auto clone = fragment_info.clone();
-  swap(clone);
-}
-
-FragmentInfo::FragmentInfo(FragmentInfo&& fragment_info)
-    : FragmentInfo() {
-  swap(fragment_info);
-}
-
-FragmentInfo& FragmentInfo::operator=(const FragmentInfo& fragment_info) {
-  auto clone = fragment_info.clone();
-  swap(clone);
-  return *this;
-}
-
-FragmentInfo& FragmentInfo::operator=(FragmentInfo&& fragment_info) {
-  swap(fragment_info);
-  return *this;
-}
 
 /* ********************************* */
 /*                API                */
@@ -883,10 +856,11 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   }
 
   // Get the array schemas and fragment metadata.
+  auto memory_tracker = resources_->create_memory_tracker();
   std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
   std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
       load_array_schemas_and_fragment_metadata(
-          *resources_, array_dir, nullptr, enc_key_);
+          *resources_, array_dir, memory_tracker, enc_key_);
   auto fragment_num = (uint32_t)fragment_metadata.size();
 
   // Get fragment sizes
@@ -1019,7 +993,7 @@ std::tuple<
 FragmentInfo::load_array_schemas_and_fragment_metadata(
     ContextResources& resources,
     const ArrayDirectory& array_dir,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const EncryptionKey& enc_key) {
   auto timer_se = resources.stats().start_timer(
       "sm_load_array_schemas_and_fragment_metadata");
@@ -1128,16 +1102,12 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       single_fragment_info_vec_.back().meta()->array_schema();
 
   // Get timestamp range
-  std::pair<uint64_t, uint64_t> timestamp_range;
-  RETURN_NOT_OK_TUPLE(
-      utils::parse::get_timestamp_range(new_fragment_uri, &timestamp_range),
-      nullopt);
-  auto name = new_fragment_uri.remove_trailing_slash().last_path_part();
-  auto fragment_version = utils::parse::get_fragment_version(name);
+  FragmentID fragment_id{new_fragment_uri};
+  auto timestamp_range{fragment_id.timestamp_range()};
 
   // Check if fragment is sparse
   bool sparse = false;
-  if (fragment_version <= 2) {
+  if (fragment_id.array_format_version() <= 2) {
     URI coords_uri =
         new_fragment_uri.join_path(constants::coords + constants::file_suffix);
     RETURN_NOT_OK_TUPLE(vfs.is_file(coords_uri, &sparse), nullopt);
@@ -1153,7 +1123,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
       resources_,
-      nullptr,
+      resources_->create_memory_tracker(),
       array_schema_latest,
       new_fragment_uri,
       timestamp_range,
@@ -1219,38 +1189,6 @@ Status FragmentInfo::replace(
   (void)old_fragment_num;  // When running in release mode, this is not used
 
   return Status::Ok();
-}
-
-FragmentInfo FragmentInfo::clone() const {
-  FragmentInfo clone;
-  clone.array_uri_ = array_uri_;
-  clone.array_schema_latest_ = array_schema_latest_;
-  clone.array_schemas_all_ = array_schemas_all_;
-  clone.config_ = config_;
-  clone.single_fragment_info_vec_ = single_fragment_info_vec_;
-  clone.resources_ = resources_;
-  clone.to_vacuum_ = to_vacuum_;
-  clone.unconsolidated_metadata_num_ = unconsolidated_metadata_num_;
-  clone.anterior_ndrange_ = anterior_ndrange_;
-  clone.timestamp_start_ = timestamp_start_;
-  clone.timestamp_end_ = timestamp_end_;
-
-  return clone;
-}
-
-void FragmentInfo::swap(FragmentInfo& fragment_info) {
-  std::swap(array_uri_, fragment_info.array_uri_);
-  std::swap(array_schema_latest_, fragment_info.array_schema_latest_);
-  std::swap(array_schemas_all_, fragment_info.array_schemas_all_);
-  std::swap(config_, fragment_info.config_);
-  std::swap(single_fragment_info_vec_, fragment_info.single_fragment_info_vec_);
-  std::swap(resources_, fragment_info.resources_);
-  std::swap(to_vacuum_, fragment_info.to_vacuum_);
-  std::swap(
-      unconsolidated_metadata_num_, fragment_info.unconsolidated_metadata_num_);
-  std::swap(anterior_ndrange_, fragment_info.anterior_ndrange_);
-  std::swap(timestamp_start_, fragment_info.timestamp_start_);
-  std::swap(timestamp_end_, fragment_info.timestamp_end_);
 }
 
 }  // namespace tiledb::sm

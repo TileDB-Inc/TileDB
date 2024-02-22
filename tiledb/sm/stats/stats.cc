@@ -48,9 +48,14 @@ namespace stats {
 /* ****************************** */
 
 Stats::Stats(const std::string& prefix)
+    : Stats(prefix, StatsData{}) {
+}
+
+Stats::Stats(const std::string& prefix, const StatsData& data)
     : enabled_(true)
     , prefix_(prefix + ".")
     , parent_(nullptr) {
+  this->populate_with_data(data);
 }
 
 /* ****************************** */
@@ -246,8 +251,12 @@ Stats* Stats::parent() {
 }
 
 Stats* Stats::create_child(const std::string& prefix) {
+  return create_child(prefix, StatsData{});
+}
+
+Stats* Stats::create_child(const std::string& prefix, const StatsData& data) {
   std::unique_lock<std::mutex> lck(mtx_);
-  children_.emplace_back(prefix_ + prefix);
+  children_.emplace_back(prefix_ + prefix, data);
   Stats* const child = &children_.back();
   child->parent_ = this;
   return child;
@@ -272,13 +281,24 @@ void Stats::populate_flattened_stats(
   }
 }
 
-std::unordered_map<std::string, double>* Stats::timers() {
+const std::unordered_map<std::string, double>* Stats::timers() const {
   return &timers_;
 }
 
 /** Return pointer to conters map, used for serialization only. */
-std::unordered_map<std::string, uint64_t>* Stats::counters() {
+const std::unordered_map<std::string, uint64_t>* Stats::counters() const {
   return &counters_;
+}
+
+void Stats::populate_with_data(const StatsData& data) {
+  auto& timers = data.timers();
+  for (const auto& timer : timers) {
+    timers_[timer.first] = timer.second;
+  }
+  auto& counters = data.counters();
+  for (const auto& counter : counters) {
+    counters_[counter.first] = counter.second;
+  }
 }
 
 }  // namespace stats

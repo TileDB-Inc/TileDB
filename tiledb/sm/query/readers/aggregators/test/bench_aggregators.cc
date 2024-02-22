@@ -30,6 +30,8 @@
  * Benchmarks the `AggregateWithCount` class.
  */
 
+#include <random>
+
 #include "tiledb/common/common.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_buffer.h"
 #include "tiledb/sm/query/readers/aggregators/aggregate_with_count.h"
