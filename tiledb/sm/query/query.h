@@ -54,6 +54,7 @@
 #include "tiledb/sm/query/readers/aggregators/query_channel.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
 
