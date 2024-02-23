@@ -103,10 +103,6 @@ class Domain {
   /*                 API               */
   /* ********************************* */
 
-  inline shared_ptr<MemoryTracker> memory_tracker() {
-    return memory_tracker_;
-  }
-
   /**
    * Adds a dimension to the domain.
    *
