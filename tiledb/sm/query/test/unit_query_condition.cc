@@ -1578,8 +1578,8 @@ void test_apply<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1644,8 +1644,8 @@ void test_apply(
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -1749,8 +1749,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2298,8 +2298,8 @@ void test_apply_dense<char*>(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2362,8 +2362,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -2468,8 +2468,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2997,8 +2997,8 @@ void test_apply_sparse<char*>(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -3061,8 +3061,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -3833,8 +3833,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
@@ -4117,8 +4117,9 @@ TEST_CASE(
   const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4126,7 +4127,6 @@ TEST_CASE(
 
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
-  auto memory_tracker = memory_tracker;
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
   uint32_t bounds[2] = {1, cells};
@@ -4474,8 +4474,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4798,8 +4798,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(true);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
@@ -4894,8 +4894,8 @@ TEST_CASE(
 
   // Initialize the array schema.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, memory_tracker);
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);

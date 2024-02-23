@@ -385,8 +385,7 @@ Status StorageManager::array_evolve_schema(
 
   auto memory_tracker = resources_.create_memory_tracker();
   memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
-  auto&& array_schema =
-      array_dir.load_array_schema_latest(encryption_key, memory_tracker);
+  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
 
   // Load required enumerations before evolution.
   auto enmr_names = schema_evolution->enumeration_names_to_extend();
@@ -461,8 +460,7 @@ Status StorageManagerCanonical::array_upgrade_version(
 
   auto memory_tracker = resources_.create_memory_tracker();
   memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
-  auto&& array_schema =
-      array_dir.load_array_schema_latest(encryption_key_cfg, memory_tracker);
+  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
 
   if (array_schema->version() < constants::format_version) {
     array_schema->generate_uri();

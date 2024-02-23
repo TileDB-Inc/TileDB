@@ -146,7 +146,6 @@ struct EnumerationFx {
   Config cfg_;
   Context ctx_;
   EncryptionKey enc_key_;
-  shared_ptr<MemoryTracker> memory_tracker_;
 };
 
 template <typename T>
@@ -2743,7 +2742,7 @@ shared_ptr<ArrayDirectory> EnumerationFx::get_array_directory() {
 
 shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
   auto array_dir = get_array_directory();
-  return array_dir->load_array_schema_latest(enc_key_, memory_tracker_);
+  return array_dir->load_array_schema_latest(enc_key_);
 }
 
 #ifdef TILEDB_SERIALIZATION

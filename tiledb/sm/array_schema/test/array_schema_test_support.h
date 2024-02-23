@@ -293,7 +293,6 @@ class TestArraySchema {
    */
   TestArraySchema() = delete;
 
-  // TODO: Use TestArraySchema::memory_tracker_?
   /**
    * The simplest array constructor has defaults for everything but the list of
    * dimensions and attributes. Note that the domain is not specified

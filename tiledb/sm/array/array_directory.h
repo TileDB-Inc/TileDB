@@ -329,8 +329,7 @@ class ArrayDirectory {
   static shared_ptr<ArraySchema> load_array_schema_from_uri(
       ContextResources& resources,
       const URI& array_schema_uri,
-      const EncryptionKey& encryption_key,
-      shared_ptr<MemoryTracker> memory_tracker);
+      const EncryptionKey& encryption_key);
 
   /**
    * Get the full vac uri using the base URI and a vac uri that might be
@@ -353,8 +352,7 @@ class ArrayDirectory {
    * @return Status, a new ArraySchema
    */
   shared_ptr<ArraySchema> load_array_schema_latest(
-      const EncryptionKey& encryption_key,
-      shared_ptr<MemoryTracker> memory_tracker) const;
+      const EncryptionKey& encryption_key) const;
 
   /**
    * It loads and returns the latest schema and all the array schemas
@@ -372,9 +370,7 @@ class ArrayDirectory {
   tuple<
       shared_ptr<ArraySchema>,
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-  load_array_schemas(
-      const EncryptionKey& encryption_key,
-      shared_ptr<MemoryTracker> memory_tracker) const;
+  load_array_schemas(const EncryptionKey& encryption_key) const;
 
   /**
    * Loads all schemas of an array from persistent storage into memory.
@@ -387,9 +383,7 @@ class ArrayDirectory {
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>>
-  load_all_array_schemas(
-      const EncryptionKey& encryption_key,
-      shared_ptr<MemoryTracker> memory_tracker) const;
+  load_all_array_schemas(const EncryptionKey& encryption_key) const;
 
   /**
    * Load the enumerations from the provided list of paths.
