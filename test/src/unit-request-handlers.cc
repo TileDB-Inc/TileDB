@@ -32,8 +32,10 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include "test/support/src/mem_helpers.h"
 #include "test/support/tdb_catch.h"
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -72,7 +74,7 @@ struct HandleLoadArraySchemaRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override;
-  ArraySchema call_handler(
+  shared_ptr<ArraySchema> call_handler(
       serialization::LoadArraySchemaRequest req, SerializationType stype);
 
   shared_ptr<const Enumeration> create_string_enumeration(
@@ -94,7 +96,8 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override {
-    auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+    auto schema = make_shared<ArraySchema>(
+        HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
     auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
@@ -118,8 +121,8 @@ TEST_CASE_METHOD(
   create_array();
   auto schema =
       call_handler(serialization::LoadArraySchemaRequest(false), stype);
-  REQUIRE(schema.has_enumeration("enmr"));
-  REQUIRE(schema.get_loaded_enumeration_names().size() == 0);
+  REQUIRE(schema->has_enumeration("enmr"));
+  REQUIRE(schema->get_loaded_enumeration_names().size() == 0);
 }
 
 TEST_CASE_METHOD(
@@ -131,10 +134,10 @@ TEST_CASE_METHOD(
   create_array();
   auto schema =
       call_handler(serialization::LoadArraySchemaRequest(true), stype);
-  REQUIRE(schema.has_enumeration("enmr"));
-  REQUIRE(schema.get_loaded_enumeration_names().size() == 1);
-  REQUIRE(schema.get_loaded_enumeration_names()[0] == "enmr");
-  REQUIRE(schema.get_enumeration("enmr") != nullptr);
+  REQUIRE(schema->has_enumeration("enmr"));
+  REQUIRE(schema->get_loaded_enumeration_names().size() == 1);
+  REQUIRE(schema->get_loaded_enumeration_names()[0] == "enmr");
+  REQUIRE(schema->get_enumeration("enmr") != nullptr);
 }
 
 TEST_CASE_METHOD(
@@ -394,7 +397,8 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
@@ -414,7 +418,7 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   return schema;
 }
 
-ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
+shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
     serialization::LoadArraySchemaRequest req, SerializationType stype) {
   // If this looks weird, its because we're using the public C++ API to create
   // these objets instead of the internal APIs elsewhere in this test suite.
@@ -435,12 +439,15 @@ ArraySchema HandleLoadArraySchemaRequestFx::call_handler(
       resp_buf);
   REQUIRE(rval == TILEDB_OK);
 
+  auto memory_tracker =
+      ctx.ptr()->context().resources().create_memory_tracker();
   return serialization::deserialize_load_array_schema_response(
-      stype, resp_buf->buffer());
+      stype, resp_buf->buffer(), memory_tracker);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   schema->set_capacity(10000);
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));

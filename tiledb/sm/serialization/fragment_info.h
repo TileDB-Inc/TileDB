@@ -64,7 +64,8 @@ namespace serialization {
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& uri,
-    FragmentInfo* fragment_info);
+    FragmentInfo* fragment_info,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Convert Fragment Info to Cap'n Proto message.
@@ -130,7 +131,8 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer);
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a fragment info request via Cap'n Proto.

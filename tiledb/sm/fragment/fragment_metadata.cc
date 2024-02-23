@@ -100,10 +100,10 @@ FragmentMetadata::FragmentMetadata(
 
 FragmentMetadata::FragmentMetadata(
     ContextResources* resources,
-    shared_ptr<MemoryTracker> memory_tracker,
     const shared_ptr<const ArraySchema>& array_schema,
     const URI& fragment_uri,
     const std::pair<uint64_t, uint64_t>& timestamp_range,
+    shared_ptr<MemoryTracker> memory_tracker,
     bool dense,
     bool has_timestamps,
     bool has_deletes_meta)
@@ -796,20 +796,20 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
           metadata = make_shared<FragmentMetadata>(
               HERE(),
               &resources,
-              memory_tracker,
               array_schema_latest,
               sf.uri_,
               sf.timestamp_range_,
+              memory_tracker,
               !sparse);
         } else {
           // Fragment format version > 2
           metadata = make_shared<FragmentMetadata>(
               HERE(),
               &resources,
-              memory_tracker,
               array_schema_latest,
               sf.uri_,
-              sf.timestamp_range_);
+              sf.timestamp_range_,
+              memory_tracker);
         }
 
         // Potentially find the basic fragment metadata in the consolidated
@@ -1316,7 +1316,7 @@ std::string FragmentMetadata::encode_name(const std::string& name) const {
 
   const unsigned idx = iter->second;
 
-  auto attributes = array_schema_->attributes();
+  auto& attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     const std::string attr_name = attributes[i]->name();
     if (attr_name == name) {
@@ -4661,7 +4661,7 @@ const shared_ptr<const ArraySchema>& FragmentMetadata::array_schema() const {
 void FragmentMetadata::build_idx_map() {
   idx_map_.clear();
 
-  auto attributes = array_schema_->attributes();
+  auto& attributes = array_schema_->attributes();
   for (unsigned i = 0; i < attributes.size(); ++i) {
     auto attr_name = attributes[i]->name();
     idx_map_[attr_name] = i;

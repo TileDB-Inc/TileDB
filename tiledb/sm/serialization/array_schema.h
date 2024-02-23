@@ -51,6 +51,7 @@ class Array;
 class Buffer;
 class ArraySchema;
 class Dimension;
+class MemoryTracker;
 enum class SerializationType : uint8_t;
 
 namespace serialization {
@@ -111,8 +112,10 @@ Status array_schema_to_capnp(
  * @param uri A URI object
  * @return a new ArraySchema
  */
-ArraySchema array_schema_from_capnp(
-    const capnp::ArraySchema::Reader& schema_reader, const URI& uri);
+shared_ptr<ArraySchema> array_schema_from_capnp(
+    const capnp::ArraySchema::Reader& schema_reader,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a dimension label to cap'n proto object
@@ -133,7 +136,8 @@ void dimension_label_to_capnp(
  * @return A new DimensionLabel.
  */
 shared_ptr<DimensionLabel> dimension_label_from_capnp(
-    const capnp::DimensionLabel::Reader& reader);
+    const capnp::DimensionLabel::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 #endif  // TILEDB_SERIALIZATION
 
@@ -152,8 +156,10 @@ Status array_schema_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-ArraySchema array_schema_deserialize(
-    SerializationType serialize_type, const Buffer& serialized_buffer);
+shared_ptr<ArraySchema> array_schema_deserialize(
+    SerializationType serialize_type,
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 Status nonempty_domain_serialize(
     const Array* array,
@@ -204,8 +210,10 @@ void serialize_load_array_schema_response(
     SerializationType serialization_type,
     Buffer& data);
 
-ArraySchema deserialize_load_array_schema_response(
-    SerializationType serialization_type, const Buffer& data);
+shared_ptr<ArraySchema> deserialize_load_array_schema_response(
+    SerializationType serialization_type,
+    const Buffer& data,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 }  // namespace serialization
 }  // namespace sm

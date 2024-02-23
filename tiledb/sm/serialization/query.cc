@@ -2284,7 +2284,8 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager) {
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -2299,7 +2300,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -2327,7 +2332,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       default:
@@ -3189,7 +3198,11 @@ Status query_deserialize(
 }
 
 Status array_from_query_deserialize(
-    const Buffer&, SerializationType, Array&, StorageManager*) {
+    const Buffer&,
+    SerializationType,
+    Array&,
+    StorageManager*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

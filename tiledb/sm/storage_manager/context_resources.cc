@@ -76,7 +76,7 @@ ContextResources::ContextResources(
     auto server_address = config_.get<std::string>("rest.server_address");
     if (server_address) {
       auto client = tdb::make_shared<RestClient>(HERE());
-      auto st = client->init(&stats(), &config_, &compute_tp(), logger_);
+      auto st = client->init(&stats(), &config_, &compute_tp(), logger_, *this);
       throw_if_not_ok(st);
       rest_client_ = client;
     }

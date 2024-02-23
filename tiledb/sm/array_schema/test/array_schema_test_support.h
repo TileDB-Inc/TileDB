@@ -72,6 +72,7 @@
 #include <limits>
 #include <utility>
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -313,7 +314,8 @@ class TestArraySchema {
             {},  // the second enumeration thing
             FilterPipeline(),
             FilterPipeline(),
-            FilterPipeline()) {
+            FilterPipeline(),
+            tiledb::test::create_test_memory_tracker()) {
   }
 
   /**
