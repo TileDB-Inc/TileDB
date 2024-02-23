@@ -349,7 +349,8 @@ TEMPLATE_LIST_TEST_CASE(
 }
 
 void check_relevant_ranges(
-    std::vector<uint64_t>& relevant_ranges, std::vector<uint64_t>& expected) {
+    tdb::pmr::vector<uint64_t>& relevant_ranges,
+    std::vector<uint64_t>& expected) {
   CHECK(relevant_ranges.size() == expected.size());
   for (uint64_t r = 0; r < expected.size(); r++) {
     CHECK(relevant_ranges[r] == expected[r]);
@@ -388,7 +389,8 @@ TEMPLATE_LIST_TEST_CASE(
   for (uint64_t i = 0; i < mbr_data.size(); i++) {
     Range mbr(mbr_data[i].data(), 2 * sizeof(T));
 
-    std::vector<uint64_t> relevant_ranges;
+    tdb::pmr::vector<uint64_t> relevant_ranges(
+        memory_tracker->get_resource(MemoryType::DIMENSIONS));
     dim.relevant_ranges(ranges, mbr, relevant_ranges);
     check_relevant_ranges(relevant_ranges, expected[i]);
   }
@@ -429,7 +431,8 @@ TEST_CASE("test relevant_ranges", "[dimension][relevant_ranges][string]") {
   for (uint64_t i = 0; i < mbr_data.size(); i++) {
     Range mbr(mbr_data[i].data(), 2, 1);
 
-    std::vector<uint64_t> relevant_ranges;
+    tdb::pmr::vector<uint64_t> relevant_ranges(
+        memory_tracker->get_resource(MemoryType::DIMENSIONS));
     dim.relevant_ranges(ranges, mbr, relevant_ranges);
     check_relevant_ranges(relevant_ranges, expected[i]);
   }

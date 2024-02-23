@@ -719,7 +719,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) const {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) const {
   assert(relevant_ranges_func_ != nullptr);
   return relevant_ranges_func_(ranges, mbr, relevant_ranges);
 }
@@ -728,7 +728,7 @@ template <>
 void Dimension::relevant_ranges<char>(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto& mbr_start = mbr.start_str();
   const auto& mbr_end = mbr.end_str();
 
@@ -777,7 +777,7 @@ template <class T>
 void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto mbr_data = (const T*)mbr.start_fixed();
   const auto mbr_start = mbr_data[0];
   const auto mbr_end = mbr_data[1];
@@ -818,23 +818,29 @@ void Dimension::relevant_ranges(
   }
 }
 
-std::vector<bool> Dimension::covered_vec(
+tdb::pmr::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) const {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges) const {
   assert(covered_vec_func_ != nullptr);
-  return covered_vec_func_(ranges, mbr, relevant_ranges);
+  auto ret = covered_vec_func_(ranges, mbr, relevant_ranges);
+  return {
+      ret.begin(),
+      ret.end(),
+      memory_tracker_->get_resource(MemoryType::DIMENSIONS)};
 }
 
 template <>
-std::vector<bool> Dimension::covered_vec<char>(
+tdb::pmr::vector<bool> Dimension::covered_vec<char>(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges,
+    shared_ptr<MemoryTracker> memory_tracker) {
   const auto& range_start = mbr.start_str();
   const auto& range_end = mbr.end_str();
 
-  std::vector<bool> covered;
+  tdb::pmr::vector<bool> covered(
+      memory_tracker->get_resource(MemoryType::DIMENSIONS));
   covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
@@ -844,17 +850,19 @@ std::vector<bool> Dimension::covered_vec<char>(
     covered[i] = range_start >= r2_start && range_end <= r2_end;
   }
 
-  return covered;
+  return {covered, memory_tracker->get_resource(MemoryType::DIMENSIONS)};
 }
 
 template <class T>
-std::vector<bool> Dimension::covered_vec(
+tdb::pmr::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto d1 = (const T*)mbr.start_fixed();
 
-  std::vector<bool> covered;
+  tdb::pmr::vector<bool> covered(
+      memory_tracker->get_resource(MemoryType::DIMENSIONS));
   covered.resize(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
@@ -863,7 +871,7 @@ std::vector<bool> Dimension::covered_vec(
     covered[i] = d1[0] >= d2[0] && d1[1] <= d2[1];
   }
 
-  return covered;
+  return {covered, memory_tracker->get_resource(MemoryType::DIMENSIONS)};
 }
 
 template <>
@@ -1173,7 +1181,11 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <class T>
 ByteVecValue Dimension::map_from_uint64(
-    const Dimension* dim, uint64_t value, int, uint64_t max_bucket_val) {
+    const Dimension* dim,
+    uint64_t value,
+    int,
+    uint64_t max_bucket_val,
+    shared_ptr<MemoryTracker>) {
   assert(dim != nullptr);
   assert(!dim->domain().empty());
 
@@ -1206,8 +1218,14 @@ ByteVecValue Dimension::map_from_uint64(
 
 template <>
 ByteVecValue Dimension::map_from_uint64<char>(
-    const Dimension*, uint64_t value, int bits, uint64_t) {
-  std::vector<uint8_t> ret(sizeof(uint64_t));  // 8 bytes
+    const Dimension*,
+    uint64_t value,
+    int bits,
+    uint64_t,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  tdb::pmr::vector<uint8_t> ret(
+      sizeof(uint64_t),
+      memory_tracker->get_resource(MemoryType::DIMENSIONS));  // 8 bytes
 
   uint64_t ret_uint64 = (value << (64 - bits));
   int ret_c;
@@ -1224,7 +1242,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
   if (ret.back() != 128)
     ret.push_back(128);
 
-  return ByteVecValue(std::move(ret));
+  return ByteVecValue(std::vector<uint8_t>{ret.begin(), ret.end()});
 }
 
 bool Dimension::smaller_than(
@@ -1738,7 +1756,12 @@ void Dimension::set_covered_vec_func() {
       assert(var_size());
     }
     if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      covered_vec_func_ = covered_vec<decltype(T)>;
+      covered_vec_func_ = std::bind(
+          covered_vec<decltype(T)>,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3,
+          memory_tracker_);
     }
   };
   apply_with_type(g, type_);
@@ -1786,7 +1809,13 @@ void Dimension::set_map_to_uint64_2_func() {
 void Dimension::set_map_from_uint64_func() {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      map_from_uint64_func_ = map_from_uint64<decltype(T)>;
+      map_from_uint64_func_ = std::bind(
+          map_from_uint64<decltype(T)>,
+          std::placeholders::_1,
+          std::placeholders::_2,
+          std::placeholders::_3,
+          std::placeholders::_4,
+          memory_tracker_);
     }
   };
   apply_with_type(g, type_);

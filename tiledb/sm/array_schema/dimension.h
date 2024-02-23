@@ -586,27 +586,28 @@ class Dimension {
   void relevant_ranges(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint64_t>& relevant_ranges) const;
+      tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute relevant ranges for a set of ranges. */
   template <class T>
   static void relevant_ranges(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint64_t>& relevant_ranges);
+      tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
-  std::vector<bool> covered_vec(
+  tdb::pmr::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges) const;
+      const tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute covered on a set of relevant ranges. */
   template <class T>
-  static std::vector<bool> covered_vec(
+  static tdb::pmr::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges);
+      const tdb::pmr::vector<uint64_t>& relevant_ranges,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -678,7 +679,11 @@ class Dimension {
    */
   template <class T>
   static ByteVecValue map_from_uint64(
-      const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
+      const Dimension* dim,
+      uint64_t value,
+      int bits,
+      uint64_t max_bucket_val,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns `true` if `value` is smaller than the start of `range`. */
   bool smaller_than(const ByteVecValue& value, const Range& range) const;
@@ -868,15 +873,15 @@ class Dimension {
    * Stores the appropriate templated relevant_ranges() function based
    * on the dimension datatype.
    */
-  std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
+  std::function<void(const NDRange&, const Range&, tdb::pmr::vector<uint64_t>&)>
       relevant_ranges_func_;
 
   /**
    * Stores the appropriate templated covered_vec() function based on the
    * dimension datatype.
    */
-  std::function<std::vector<bool>(
-      const NDRange&, const Range&, const std::vector<uint64_t>&)>
+  std::function<tdb::pmr::vector<bool>(
+      const NDRange&, const Range&, const tdb::pmr::vector<uint64_t>&)>
       covered_vec_func_;
 
   /**
