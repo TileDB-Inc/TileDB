@@ -116,7 +116,7 @@ struct EnumerationFx {
   shared_ptr<ArraySchema> get_array_schema_latest();
 
   // Serialization helpers
-  ArraySchema ser_des_array_schema(
+  shared_ptr<ArraySchema> ser_des_array_schema(
       shared_ptr<const ArraySchema> schema,
       bool client_side,
       SerializationType stype);
@@ -146,6 +146,7 @@ struct EnumerationFx {
   Config cfg_;
   Context ctx_;
   EncryptionKey enc_key_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 };
 
 template <typename T>
@@ -1191,7 +1192,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Enumeration - Enumeration nullptr Error",
     "[enumeration][array-schema][error]") {
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   REQUIRE_THROWS(schema->add_enumeration(nullptr));
 }
 
@@ -1199,7 +1201,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Basic Enumeration",
     "[enumeration][array-schema][basic]") {
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1214,7 +1217,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Get Enumeration",
     "[enumeration][array-schema][get]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr1 = create_enumeration(values);
@@ -1228,7 +1232,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Get Missing Enumeration Error",
     "[enumeration][array-schema][error]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   REQUIRE_THROWS(schema->get_enumeration("not_an_enumeration"));
 }
 
@@ -1236,7 +1241,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Enumeration with Existing Enumeration of same Name",
     "[enumeration][array-schema][eror]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
 
@@ -1248,7 +1254,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Add Attribute with Missing Enumeration Error",
     "[enumeration][array-schema][eror]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   auto attr = make_shared<Attribute>(HERE(), "an_attr", Datatype::INT32);
   attr->set_enumeration_name("not_an_enumeration");
   REQUIRE(!schema->add_attribute(attr).ok());
@@ -1258,7 +1265,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Get All Enumeration Names Empty",
     "[enumeration][array-schema][get-all][empty]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   auto enmr_names = schema->get_enumeration_names();
   REQUIRE(enmr_names.size() == 0);
 }
@@ -1267,7 +1275,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Get All Enumeration Names",
     "[enumeration][array-schema][get-all]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<float> values = {1.0f, 1.1f, 1.2f, 1.3f, 1.4f};
   auto enmr1 = create_enumeration(values);
@@ -1286,7 +1295,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Attribute with Invalid Datatype",
     "[enumeration][array-schema][error][bad-attr-datatype]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1301,7 +1311,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Attribute with Invalid Cell Val Num",
     "[enumeration][array-schema][error][bad-attr-cell-val-num]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
@@ -1317,7 +1328,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Store nullptr Enumeration Error",
     "[enumeration][array-schema][error][store-nullptr-enumeration]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   REQUIRE_THROWS(schema->store_enumeration(nullptr));
 }
 
@@ -1325,7 +1337,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Store Enumeration Error",
     "[enumeration][array-schema][error][store-unknown-enumeration]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr =
       create_enumeration(values, false, Datatype::INT32, "unknown_enmr");
@@ -1336,7 +1349,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Store Enumeration Error - Already Loaded",
     "[enumeration][array-schema][error][store-loaded-enumeration]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
 
   std::vector<uint32_t> values = {0, 1, 2, 100000000};
   auto enmr = create_enumeration(values);
@@ -1352,7 +1366,8 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchema - Attribute Get Enumeration Name From Attribute",
     "[enumeration][array-schema][has-enumeration]") {
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
 
   std::vector<std::string> values = {"a", "spot", "of", "tea", "perhaps?"};
   auto enmr = create_enumeration(values);
@@ -1429,10 +1444,8 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema][copy-ctor]") {
   auto schema = create_schema();
 
-  // Check that the schema is valid and that we can copy it using the
-  // copy constructor.
+  // Check that the schema is valid.
   CHECK_NOTHROW(schema->check(cfg_));
-  CHECK_NOTHROW(make_shared<ArraySchema>(HERE(), *(schema.get())));
 }
 
 TEST_CASE_METHOD(
@@ -1511,7 +1524,8 @@ TEST_CASE_METHOD(
   auto array = get_array(QueryType::READ);
   array->load_all_enumerations();
 
-  auto schema = make_shared<ArraySchema>(HERE(), array->array_schema_latest());
+  auto schema = array->array_schema_latest().clone();
+
   auto enmr = create_empty_enumeration(Datatype::INT32, 1, false, "test_enmr");
 
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -1528,7 +1542,7 @@ TEST_CASE_METHOD(
   auto array = get_array(QueryType::READ);
   array->load_all_enumerations();
 
-  auto schema = make_shared<ArraySchema>(HERE(), array->array_schema_latest());
+  auto schema = array->array_schema_latest().clone();
   auto enmr1 = schema->get_enumeration("test_enmr");
 
   std::vector<std::string> extra_values = {"manatee", "narwhal", "oppossum"};
@@ -2084,11 +2098,11 @@ TEST_CASE_METHOD(
   auto schema2 = ser_des_array_schema(schema1, client_side, ser_type);
 
   auto all_names1 = schema1->get_enumeration_names();
-  auto all_names2 = schema2.get_enumeration_names();
+  auto all_names2 = schema2->get_enumeration_names();
   REQUIRE(vec_cmp(all_names1, all_names2));
 
   auto loaded_names1 = schema1->get_loaded_enumeration_names();
-  auto loaded_names2 = schema2.get_loaded_enumeration_names();
+  auto loaded_names2 = schema2->get_loaded_enumeration_names();
   REQUIRE(vec_cmp(loaded_names1, loaded_names2));
 
   // This is a new schema in RAM, so the loaded names should be the same
@@ -2110,13 +2124,13 @@ TEST_CASE_METHOD(
   auto schema2 = ser_des_array_schema(schema1, client_side, ser_type);
 
   auto all_names1 = schema1->get_enumeration_names();
-  auto all_names2 = schema2.get_enumeration_names();
+  auto all_names2 = schema2->get_enumeration_names();
   REQUIRE(vec_cmp(all_names1, all_names2));
 
   // This schema was deserialized from disk without any enumerations loaded
   // so both of these should be empty.
   auto loaded_names1 = schema1->get_loaded_enumeration_names();
-  auto loaded_names2 = schema2.get_loaded_enumeration_names();
+  auto loaded_names2 = schema2->get_loaded_enumeration_names();
 
   REQUIRE(loaded_names1.empty());
   REQUIRE(loaded_names2.empty());
@@ -2151,7 +2165,7 @@ TEST_CASE_METHOD(
   auto schema2 = ser_des_array_schema(schema1, client_side, ser_type);
 
   auto all_names1 = schema1->get_enumeration_names();
-  auto all_names2 = schema2.get_enumeration_names();
+  auto all_names2 = schema2->get_enumeration_names();
   REQUIRE(vec_cmp(all_names1, all_names2));
 }
 
@@ -2405,6 +2419,7 @@ EnumerationFx::EnumerationFx()
     , ctx_(cfg_) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  memory_tracker_ = tiledb::test::create_test_memory_tracker();
 }
 
 EnumerationFx::~EnumerationFx() {
@@ -2675,7 +2690,8 @@ std::vector<T> EnumerationFx::as_vector(shared_ptr<const Enumeration> enmr) {
 
 shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   // Create a schema to serialize
-  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::SPARSE);
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
 
   auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
   int range[2] = {0, 1000};
@@ -2732,7 +2748,7 @@ shared_ptr<ArraySchema> EnumerationFx::get_array_schema_latest() {
 
 #ifdef TILEDB_SERIALIZATION
 
-ArraySchema EnumerationFx::ser_des_array_schema(
+shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
     shared_ptr<const ArraySchema> schema,
     bool client_side,
     SerializationType stype) {
@@ -2788,7 +2804,7 @@ void EnumerationFx::ser_des_array(
 
 #else  // No TILEDB_SERIALIZATION
 
-ArraySchema EnumerationFx::ser_des_array_schema(
+shared_ptr<ArraySchema> EnumerationFx::ser_des_array_schema(
     shared_ptr<const ArraySchema>, bool, SerializationType) {
   throw std::logic_error("Serialization not enabled.");
 }

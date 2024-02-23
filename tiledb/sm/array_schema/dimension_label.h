@@ -108,6 +108,7 @@ class DimensionLabel {
   /**
    * Constructor for an internally generated dimension label.
    *
+   * @param memory_tracker Memory tracker for the dimension label.
    * @param dim_id The index of the dimension the label is attached to.
    * @param dim_label_name The name of the dimension label.
    * @param uri The URI of an external dimension label.

@@ -258,8 +258,10 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
   (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+      HERE(), static_cast<tiledb::sm::ArrayType>(array_type), memory_tracker);
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -3512,12 +3514,11 @@ int32_t tiledb_deserialize_array_schema(
   try {
     auto memory_tracker = ctx->context().resources().create_memory_tracker();
     memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(),
+    (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
             (tiledb::sm::SerializationType)serialize_type,
             buffer->buffer(),
-            memory_tracker));
+            memory_tracker);
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;

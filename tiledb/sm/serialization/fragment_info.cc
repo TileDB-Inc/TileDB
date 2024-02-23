@@ -284,9 +284,8 @@ Status fragment_info_from_capnp(
         fragment_info_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
         array_schema_latest_reader, array_uri, memory_tracker)};
-    array_schema_latest.set_array_uri(array_uri);
-    fragment_info->array_schema_latest() =
-        make_shared<ArraySchema>(HERE(), array_schema_latest);
+    array_schema_latest->set_array_uri(array_uri);
+    fragment_info->array_schema_latest() = array_schema_latest;
   }
 
   // Get array_schemas_all from capnp
@@ -298,12 +297,11 @@ Status fragment_info_from_capnp(
       for (auto array_schema_build : entries) {
         auto schema{array_schema_from_capnp(
             array_schema_build.getValue(), array_uri, memory_tracker)};
-        schema.set_array_uri(array_uri);
+        schema->set_array_uri(array_uri);
         auto key = std::string_view{
             array_schema_build.getKey().cStr(),
             array_schema_build.getKey().size()};
-        fragment_info->array_schemas_all()[std::string{key}] =
-            make_shared<ArraySchema>(HERE(), schema);
+        fragment_info->array_schemas_all()[std::string{key}] = schema;
       }
     }
   }

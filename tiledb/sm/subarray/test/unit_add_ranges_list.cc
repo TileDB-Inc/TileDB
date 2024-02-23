@@ -37,11 +37,13 @@
 #endif
 #include <tiledb/sm/array/array.h>
 #include <tiledb/sm/array_schema/dimension.h>
+#include <tiledb/sm/enums/array_type.h>
 #include <tiledb/sm/enums/encryption_type.h>
 #include <tiledb/sm/storage_manager/context.h>
 #include <tiledb/sm/subarray/subarray.h>
 
 #include <test/support/src/helpers.h>
+#include <test/support/src/mem_helpers.h>
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -70,7 +72,10 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   tiledb::sm::Domain dom{
       Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker};
   std::shared_ptr<tiledb::sm::ArraySchema> sp_as =
-      make_shared<tiledb::sm::ArraySchema>(HERE());
+      make_shared<tiledb::sm::ArraySchema>(
+          HERE(),
+          tiledb::sm::ArrayType::DENSE,
+          tiledb::test::create_test_memory_tracker());
   CHECK(sp_as->set_domain(sp_dom).ok());
   CHECK(sp_as->add_attribute(sp_attrib).ok());
   tiledb::sm::Config cfg;

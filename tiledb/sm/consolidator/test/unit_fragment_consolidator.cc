@@ -48,7 +48,9 @@ shared_ptr<ArraySchema> make_schema(
     const std::vector<bool> attr_nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), sparse ? ArrayType::SPARSE : ArrayType::DENSE);
+      HERE(),
+      sparse ? ArrayType::SPARSE : ArrayType::DENSE,
+      tiledb::test::create_test_memory_tracker());
 
   // Create the domain/dimensions.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();

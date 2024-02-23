@@ -75,6 +75,7 @@ Status array_to_capnp(
  * @param memory_tracker Memory tracker to use for memory allocations.
  * serializing, the client (1) or the Cloud server (0). This is sometimes needed
  * since they are both using the same Core library APIs for serialization.
+ * @param memory_tracker Memory tracker to use on the deserialized object.
  * @return Status
  */
 Status array_from_capnp(

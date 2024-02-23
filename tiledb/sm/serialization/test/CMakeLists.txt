@@ -40,6 +40,7 @@ commence(unit_test capnp_array_schema)
 
   # Enable serialization
   target_compile_definitions(unit_capnp_array_schema PRIVATE -DTILEDB_SERIALIZATION)
+  this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)
 
 commence(unit_test capnp_nonempty_domain)

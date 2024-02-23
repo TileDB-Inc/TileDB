@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
@@ -38,6 +39,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/query/legacy/reader.h"
@@ -251,7 +253,7 @@ TEST_CASE_METHOD(
   CHECK(dom->add_dimension(d1).ok());
   CHECK(dom->add_dimension(d2).ok());
 
-  auto schema = make_shared<ArraySchema>(HERE());
+  auto schema = make_shared<ArraySchema>(HERE(), ArrayType::DENSE, tracker_);
   CHECK(schema->set_domain(dom).ok());
 
   std::vector<shared_ptr<FragmentMetadata>> fragments;
@@ -259,10 +261,10 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
         schema,
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
+        tracker_,
         true);
     fragments.emplace_back(std::move(fragment));
   }

@@ -110,9 +110,12 @@ enum class MemoryType {
   TILE_MAX_VALS,
   TILE_SUMS,
   TILE_NULL_COUNTS,
+  ATTRIBUTES,
   ENUMERATION,
-  DOMAINS,
+  ENUMERATION_PATHS,
+  DIMENSION_LABELS,
   DIMENSIONS,
+  DOMAINS
 };
 
 /** The type of MemoryTracker. */
@@ -126,7 +129,7 @@ enum class MemoryTrackerType {
   QUERY_READ,
   QUERY_WRITE,
   CONSOLIDATOR,
-  REST_CLIENT,
+  REST_CLIENT
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

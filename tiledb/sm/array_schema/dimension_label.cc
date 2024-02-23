@@ -141,8 +141,9 @@ DimensionLabel::DimensionLabel(
           label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
     , schema_(make_shared<ArraySchema>(
           HERE(),
-          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
-                                                     ArrayType::DENSE))
+          (label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                      ArrayType::DENSE),
+          memory_tracker))
     , is_external_(false)
     , relative_uri_(true) {
   auto index_type{dim->type()};

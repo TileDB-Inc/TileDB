@@ -72,7 +72,7 @@
 #include <limits>
 #include <utility>
 
-#include "src/mem_helpers.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -293,6 +293,7 @@ class TestArraySchema {
    */
   TestArraySchema() = delete;
 
+  // TODO: Use TestArraySchema::memory_tracker_?
   /**
    * The simplest array constructor has defaults for everything but the list of
    * dimensions and attributes. Note that the domain is not specified
@@ -325,7 +326,8 @@ class TestArraySchema {
             {},  // the second enumeration thing
             FilterPipeline(),
             FilterPipeline(),
-            FilterPipeline()) {
+            FilterPipeline(),
+            tiledb::test::create_test_memory_tracker()) {
   }
 
   /**

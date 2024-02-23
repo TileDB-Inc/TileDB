@@ -37,12 +37,12 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -56,6 +56,7 @@ class Dimension;
 class DimensionLabel;
 class Domain;
 class Enumeration;
+class MemoryTracker;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -92,12 +93,15 @@ class ArraySchema {
   /* ********************************* */
 
   /** Constructor. */
-  ArraySchema();
-
-  /** Constructor. */
-  ArraySchema(ArrayType array_type);
+  ArraySchema() = delete;
 
   /** Constructor.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
+   */
+  ArraySchema(ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Constructor with std::vector attributes.
    * @param uri The URI of the array schema file.
    * @param version The format version of this array schema.
    * @param timestamp_range The timestamp the array schema was written.
@@ -117,6 +121,8 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
    **/
   ArraySchema(
       URI uri,
@@ -135,14 +141,18 @@ class ArraySchema {
       std::unordered_map<std::string, std::string> enumeration_path_map,
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
-      FilterPipeline coords_filters);
+      FilterPipeline coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
-   * Constructor. Clones the input.
+   * Copy constructor. Clones the input.
    *
    * @param array_schema The array schema to copy.
    */
-  explicit ArraySchema(const ArraySchema& array_schema);
+  ArraySchema(const ArraySchema& array_schema);
+
+  DISABLE_COPY_ASSIGN(ArraySchema);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(ArraySchema);
 
   /** Destructor. */
   ~ArraySchema() = default;
@@ -202,7 +212,7 @@ class ArraySchema {
   }
 
   /** Returns the attributes. */
-  const std::vector<shared_ptr<const Attribute>>& attributes() const;
+  const tdb::pmr::vector<shared_ptr<const Attribute>>& attributes() const;
 
   /** Returns the capacity. */
   uint64_t capacity() const;
@@ -469,10 +479,13 @@ class ArraySchema {
    * @param memory_tracker The memory tracker to use.
    * @return A new ArraySchema.
    */
-  static ArraySchema deserialize(
+  static shared_ptr<ArraySchema> deserialize(
       Deserializer& deserializer,
       const URI& uri,
       shared_ptr<MemoryTracker> memory_tracker);
+
+  /** Return a cloned copy of this array schema. */
+  shared_ptr<ArraySchema> clone() const;
 
   /** Returns the array domain. */
   inline const Domain& domain() const {
@@ -578,6 +591,11 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * The memory tracker of the ArraySchema.
+   */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The URI of the array schema file. */
   URI uri_;
 
@@ -611,7 +629,7 @@ class ArraySchema {
   shared_ptr<Domain> domain_;
 
   /** It maps each dimension name to the corresponding dimension object. */
-  std::unordered_map<std::string, const Dimension*> dim_map_;
+  tdb::pmr::unordered_map<std::string, const Dimension*> dim_map_;
 
   /**
    * The cell order. It can be one of the following:
@@ -637,7 +655,7 @@ class ArraySchema {
    * within this array schema. Other member variables reference objects within
    * this container.
    */
-  std::vector<shared_ptr<const Attribute>> attributes_;
+  tdb::pmr::vector<shared_ptr<const Attribute>> attributes_;
 
   /**
    * Type for the range of the map that is member `attribute_map_`. See the
@@ -658,20 +676,21 @@ class ArraySchema {
    * Invariant: The number of entries in `attribute_map_` is the same as the
    *   number of entries in `attributes_`
    */
-  std::unordered_map<std::string, attribute_reference> attribute_map_;
+  tdb::pmr::unordered_map<std::string, attribute_reference> attribute_map_;
 
   /** The array dimension labels. */
-  std::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
+  tdb::pmr::vector<shared_ptr<const DimensionLabel>> dimension_labels_;
 
   /** A map from the dimension label names to the label schemas. */
-  std::unordered_map<std::string, const DimensionLabel*> dimension_label_map_;
+  tdb::pmr::unordered_map<std::string, const DimensionLabel*>
+      dimension_label_map_;
 
   /** A map of Enumeration names to Enumeration pointers. */
-  std::unordered_map<std::string, shared_ptr<const Enumeration>>
+  tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>
       enumeration_map_;
 
   /** A map of Enumeration names to Enumeration URIs */
-  std::unordered_map<std::string, std::string> enumeration_path_map_;
+  tdb::pmr::unordered_map<std::string, std::string> enumeration_path_map_;
 
   /** The filter pipeline run on offset tiles for var-length attributes. */
   FilterPipeline cell_var_offsets_filters_;
