@@ -323,7 +323,6 @@ class ArrayDirectory {
    *
    * @param array_schema_uri The URI path of the array schema.
    * @param encryption_key The encryption key to use.
-   * @param memory_tracker The memory tracker to use.
    * @return Status, the loaded array schema
    */
   static shared_ptr<ArraySchema> load_array_schema_from_uri(
@@ -348,7 +347,6 @@ class ArrayDirectory {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @param memory_tracker The memory tracker to use.
    * @return Status, a new ArraySchema
    */
   shared_ptr<ArraySchema> load_array_schema_latest(
@@ -361,7 +359,6 @@ class ArrayDirectory {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @param memory_tracker The memory tracker to use.
    * @return tuple of Status, latest array schema and all array schemas.
    *   Status Ok on success, else error
    *   ArraySchema The latest array schema.
@@ -376,7 +373,6 @@ class ArrayDirectory {
    * Loads all schemas of an array from persistent storage into memory.
    *
    * @param encryption_key The encryption key to use.
-   * @param memory_tracker The memory tracker to use.
    * @return tuple of Status and optional unordered map. If Status is an error
    * the unordered_map will be nullopt
    *        Status Ok on success, else error
