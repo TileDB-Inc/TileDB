@@ -167,7 +167,13 @@ TEST_CASE_METHOD(
     CResultCoordsFxSmall,
     "GlobalOrderResultCoords: test max_slab_length",
     "[globalorderresultcoords][max_slab_length]") {
-  GlobalOrderResultTile<uint8_t> tile(0, 0, false, false, *fx_.frag_md_);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
 
   // Test max_slab_length with no bitmap.
   GlobalOrderResultCoords rc1(&tile, 1);
@@ -194,7 +200,13 @@ TEST_CASE_METHOD(
     CResultCoordsFxSmall,
     "GlobalOrderResultCoords: test max_slab_length with comparator",
     "[globalorderresultcoords][max_slab_length_with_comp]") {
-  GlobalOrderResultTile<uint8_t> tile(0, 0, false, false, *fx_.frag_md_);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
   Cmp cmp;
 
   // Test max_slab_length with no bitmap and comparator.
@@ -224,7 +236,13 @@ TEST_CASE_METHOD(
     CResultCoordsFxLarge,
     "GlobalOrderResultCoords: test max_slab_length with comparator, large tile",
     "[globalorderresultcoords][max_slab_length_with_comp]") {
-  GlobalOrderResultTile<uint8_t> tile(0, 0, false, false, *fx_.frag_md_);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
   Cmp cmp;
 
   GlobalOrderResultCoords rc1(&tile, 1);
@@ -241,7 +259,13 @@ TEST_CASE_METHOD(
     CResultCoordsFxSmall,
     "GlobalOrderResultCoords: advance_to_next_cell",
     "[globalorderresultcoords][advance_to_next_cell]") {
-  GlobalOrderResultTile<uint8_t> tile(0, 0, false, false, *fx_.frag_md_);
+  GlobalOrderResultTile<uint8_t> tile(
+      0,
+      0,
+      false,
+      false,
+      *fx_.frag_md_,
+      tiledb::test::get_test_memory_tracker());
   Cmp cmp;
 
   GlobalOrderResultCoords rc1(&tile, 0);

@@ -362,15 +362,25 @@ class ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  ResultTile() = default;
+  /** No Default constructor. */
+  ResultTile() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param memory_tracker The memory tracker to use.
+   */
+  ResultTile(shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
   ResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md);
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
@@ -414,8 +424,7 @@ class ResultTile {
       const ArraySchema& array_schema,
       const std::string& name,
       const TileSizes tile_sizes,
-      const TileData tile_data,
-      shared_ptr<MemoryTracker> memory_tracker);
+      const TileData tile_data);
 
   /** Initializes the result tile for the given dimension name and index. */
   void init_coord_tile(
@@ -424,8 +433,7 @@ class ResultTile {
       const std::string& name,
       const TileSizes tile_sizes,
       const TileData tile_data,
-      unsigned dim_idx,
-      shared_ptr<MemoryTracker> memory_tracker);
+      unsigned dim_idx);
 
   /** Returns the tile pair for the input attribute or dimension. */
   TileTuple* tile_tuple(const std::string& name);
@@ -669,6 +677,9 @@ class ResultTile {
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The array domain. */
   const Domain* domain_;
 
@@ -808,11 +819,23 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-  ResultTileWithBitmap() = default;
+  ResultTileWithBitmap() = delete;
+
+  /**
+   * Constructor
+   *
+   * @param memory_tracker The memory tracker to use.
+   */
+  ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTile(memory_tracker) {
+  }
 
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTile(frag_idx, tile_idx, frag_md)
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTile(frag_idx, tile_idx, frag_md, memory_tracker)
       , result_num_(cell_num_) {
   }
 
@@ -943,13 +966,19 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  /** No default constructor. */
+  GlobalOrderResultTile() = delete;
+
   GlobalOrderResultTile(
       unsigned frag_idx,
       uint64_t tile_idx,
       bool dups,
       bool include_delete_meta,
-      const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTileWithBitmap<BitmapType>(
+            frag_idx, tile_idx, frag_md, memory_tracker)
       , post_dedup_bitmap_(
             !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
                                            nullopt)
@@ -1141,9 +1170,16 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+  /** No default memory tracker. */
+  UnorderedWithDupsResultTile() = delete;
+
   UnorderedWithDupsResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTileWithBitmap<BitmapType>(
+            frag_idx, tile_idx, frag_md, memory_tracker) {
   }
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWithDupsResultTile);

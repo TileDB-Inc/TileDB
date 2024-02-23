@@ -166,11 +166,11 @@ void ReadCellSlabIterFx::create_result_space_tiles(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      tiledb::test::get_test_memory_tracker());
 }
 
 void set_result_tile_dim(
-    shared_ptr<MemoryTracker> tracker,
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     std::string dim,
@@ -190,8 +190,7 @@ void set_result_tile_dim(
       dim,
       tile_sizes,
       tile_data,
-      dim_idx,
-      tracker);
+      dim_idx);
   auto tile_tuple = result_tile.tile_tuple(dim);
   REQUIRE(tile_tuple != nullptr);
   uint64_t* data = tile_tuple->fixed_tile().data_as<uint64_t>();
@@ -516,16 +515,19 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(1, 0, *fragments[0]);
-  ResultTile result_tile_3_0(2, 0, *fragments[0]);
-  ResultTile result_tile_3_1(2, 1, *fragments[1]);
+  ResultTile result_tile_2_0(
+      1, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_0(
+      2, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_1(
+      2, 1, *fragments[1], tiledb::test::get_test_memory_tracker());
 
   set_result_tile_dim(
-      tracker_, array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
+      array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
   set_result_tile_dim(
-      tracker_, array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
+      array_schema, result_tile_3_0, "d", 0, {{1000, 1000, 8, 9}});
   set_result_tile_dim(
-      tracker_, array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
+      array_schema, result_tile_3_1, "d", 0, {{1000, 12, 19, 1000}});
 
   result_coords.emplace_back(&result_tile_2_0, 1);
   result_coords.emplace_back(&result_tile_2_0, 3);
@@ -1367,27 +1369,19 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(2, 0, *fragments[0]);
-  ResultTile result_tile_3_1(2, 1, *fragments[1]);
+  ResultTile result_tile_3_0(
+      2, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_1(
+      2, 1, *fragments[1], tiledb::test::get_test_memory_tracker());
 
   set_result_tile_dim(
-      tracker_,
-      array_schema,
-      result_tile_3_0,
-      "d1",
-      0,
-      {{1000, 3, 1000, 1000}});
+      array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});
   set_result_tile_dim(
-      tracker_,
-      array_schema,
-      result_tile_3_0,
-      "d2",
-      1,
-      {{1000, 3, 1000, 1000}});
+      array_schema, result_tile_3_0, "d2", 1, {{1000, 3, 1000, 1000}});
   set_result_tile_dim(
-      tracker_, array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
+      array_schema, result_tile_3_1, "d1", 0, {{5, 1000, 5, 1000}});
   set_result_tile_dim(
-      tracker_, array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
+      array_schema, result_tile_3_1, "d2", 1, {{5, 1000, 6, 1000}});
 
   result_coords.emplace_back(&result_tile_3_0, 1);
   result_coords.emplace_back(&result_tile_3_1, 0);
