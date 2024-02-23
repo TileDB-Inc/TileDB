@@ -179,7 +179,7 @@ class Tile : public TileBase {
    *
    * @param tile_size to be provided to init_unfiltered call
    */
-  static Tile from_generic(storage_size_t tile_size);
+  static shared_ptr<Tile> from_generic(storage_size_t tile_size);
 
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -206,12 +206,7 @@ class Tile : public TileBase {
       void* filtered_data,
       uint64_t filtered_size);
 
-  /** Move constructor. */
-  Tile(Tile&& tile);
-
-  /** Move-assign operator. */
-  Tile& operator=(Tile&& tile);
-
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Tile);
   DISABLE_COPY_AND_COPY_ASSIGN(Tile);
 
   /* ********************************* */
@@ -473,13 +468,13 @@ class WriterTile : public TileBase {
  */
 class TileDeserializer : public Deserializer {
  public:
-  explicit TileDeserializer(Tile&& tile)
-      : Deserializer(tile.data(), tile.size())
-      , tile_(std::move(tile)) {
+  explicit TileDeserializer(shared_ptr<Tile> tile)
+      : Deserializer(tile->data(), tile->size())
+      , tile_(tile) {
   }
 
  private:
-  Tile tile_;
+  shared_ptr<Tile> tile_;
 };
 
 }  // namespace sm

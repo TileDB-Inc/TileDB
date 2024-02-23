@@ -60,15 +60,16 @@ uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 /*           STATIC API           */
 /* ****************************** */
 
-Tile Tile::from_generic(storage_size_t tile_size) {
-  return {
+shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size) {
+  return make_shared<Tile>(
+      HERE(),
       0,
       constants::generic_tile_datatype,
       constants::generic_tile_cell_size,
       0,
       tile_size,
       nullptr,
-      0};
+      0);
 }
 
 WriterTile WriterTile::from_generic(storage_size_t tile_size) {
@@ -149,20 +150,6 @@ Tile::Tile(
     , zipped_coords_dim_num_(zipped_coords_dim_num)
     , filtered_data_(filtered_data)
     , filtered_size_(filtered_size) {
-}
-
-Tile::Tile(Tile&& tile)
-    : TileBase(std::move(tile))
-    , zipped_coords_dim_num_(std::move(tile.zipped_coords_dim_num_))
-    , filtered_data_(std::move(tile.filtered_data_))
-    , filtered_size_(std::move(tile.filtered_size_)) {
-}
-
-Tile& Tile::operator=(Tile&& tile) {
-  // Swap with the argument
-  swap(tile);
-
-  return *this;
 }
 
 WriterTile::WriterTile(

@@ -492,7 +492,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::list<ResultTile>& result_tiles,
     std::vector<std::vector<ResultCoords>>& range_result_coords) {
   auto timer_se = stats_->start_timer("compute_range_result_coords");
 
@@ -547,7 +547,7 @@ Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     uint32_t fragment_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::list<ResultTile>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
@@ -568,12 +568,14 @@ Status Reader::compute_range_result_coords(
         auto tile_it = result_tile_map.find(pair);
         assert(tile_it != result_tile_map.end());
         auto tile_idx = tile_it->second;
-        auto& tile = result_tiles[tile_idx];
+
+        auto tile = result_tiles.begin();
+        std::advance(tile, tile_idx);
 
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
         if (!sparse_tile_overwritten(fragment_idx, i))
-          RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
+          RETURN_NOT_OK(get_all_result_coords(&*tile, range_result_coords));
       }
       ++tr;
     } else {
@@ -582,15 +584,16 @@ Status Reader::compute_range_result_coords(
       auto tile_it = result_tile_map.find(pair);
       assert(tile_it != result_tile_map.end());
       auto tile_idx = tile_it->second;
-      auto& tile = result_tiles[tile_idx];
+      auto tile = result_tiles.begin();
+      std::advance(tile, tile_idx);
       if (t->second == 1.0) {  // Full overlap
         // Add results only if the sparse tile MBR is not fully
         // covered by a more recent fragment's non-empty domain
         if (!sparse_tile_overwritten(fragment_idx, t->first))
-          RETURN_NOT_OK(get_all_result_coords(&tile, range_result_coords));
+          RETURN_NOT_OK(get_all_result_coords(&*tile, range_result_coords));
       } else {  // Partial overlap
         RETURN_NOT_OK(compute_range_result_coords(
-            subarray, fragment_idx, &tile, range_idx, range_result_coords));
+            subarray, fragment_idx, &*tile, range_idx, range_result_coords));
       }
       ++t;
     }
@@ -603,7 +606,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::vector<ResultTile>& result_tiles,
+    std::list<ResultTile>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
@@ -678,7 +681,7 @@ Status Reader::compute_subarray_coords(
 }
 
 Status Reader::compute_sparse_result_tiles(
-    std::vector<ResultTile>& result_tiles,
+    std::list<ResultTile>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
@@ -1580,7 +1583,7 @@ Status Reader::compute_result_cell_slabs_global(
 }
 
 Status Reader::compute_result_coords(
-    std::vector<ResultTile>& result_tiles,
+    std::list<ResultTile>& result_tiles,
     std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_result_coords");
 
@@ -1719,7 +1722,7 @@ Status Reader::dense_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::vector<ResultTile> sparse_result_tiles;
+  std::list<ResultTile> sparse_result_tiles;
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
@@ -1975,7 +1978,7 @@ Status Reader::sparse_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::vector<ResultTile> sparse_result_tiles;
+  std::list<ResultTile> sparse_result_tiles;
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
@@ -2057,7 +2060,7 @@ bool Reader::sparse_tile_overwritten(
   return false;
 }
 
-void Reader::erase_coord_tiles(std::vector<ResultTile>& result_tiles) const {
+void Reader::erase_coord_tiles(std::list<ResultTile>& result_tiles) const {
   for (auto& tile : result_tiles) {
     auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)

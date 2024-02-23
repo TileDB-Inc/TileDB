@@ -152,9 +152,8 @@ void ReaderBase::compute_result_space_tiles(
       auto frag_idx = frag_tile_domains[f].id();
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
-      ResultTile result_tile(
+      result_space_tile.set_result_tile(
           frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
-      result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
 }

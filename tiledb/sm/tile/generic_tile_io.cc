@@ -67,7 +67,7 @@ GenericTileIO::GenericTileIO(ContextResources& resources, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-Tile GenericTileIO::load(
+shared_ptr<Tile> GenericTileIO::load(
     ContextResources& resources,
     const URI& uri,
     uint64_t offset,
@@ -85,7 +85,7 @@ Tile GenericTileIO::load(
   stdx::unreachable();
 }
 
-Tile GenericTileIO::read_generic(
+shared_ptr<Tile> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
     const Config& config) {
@@ -106,7 +106,8 @@ Tile GenericTileIO::read_generic(
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   std::vector<char> filtered_data(header.persisted_size);
-  Tile tile(
+  shared_ptr<Tile> tile = make_shared<Tile>(
+      HERE(),
       header.version_number,
       (Datatype)header.datatype,
       header.cell_size,
@@ -119,13 +120,13 @@ Tile GenericTileIO::read_generic(
   throw_if_not_ok(resources_.vfs().read(
       uri_,
       file_offset + tile_data_offset,
-      tile.filtered_data(),
+      tile->filtered_data(),
       header.persisted_size));
 
   // Unfilter
-  assert(tile.filtered());
-  header.filters.run_reverse_generic_tile(&resources_.stats(), tile, config);
-  assert(!tile.filtered());
+  assert(tile->filtered());
+  header.filters.run_reverse_generic_tile(&resources_.stats(), *tile, config);
+  assert(!tile->filtered());
 
   return tile;
 }
