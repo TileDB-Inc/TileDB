@@ -29,6 +29,6 @@
 #include "../domain_api_internal.h"
 
 int main() {
-  tiledb_domain_handle_t x{(shared_ptr<tiledb::sm::Domain>)nullptr};
+  tiledb_domain_handle_t x{shared_ptr<tiledb::sm::Domain>()};
   return 0;
 }

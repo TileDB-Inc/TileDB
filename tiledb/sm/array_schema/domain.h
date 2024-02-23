@@ -76,6 +76,9 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Deleted default constructor */
+  Domain() = delete;
+
   /** Constructor. */
   Domain(shared_ptr<MemoryTracker> memory_tracker);
 
