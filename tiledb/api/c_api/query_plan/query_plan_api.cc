@@ -34,6 +34,8 @@
 #include "query_plan_api_external_experimental.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/query_status.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include "tiledb/sm/query_plan/query_plan.h"
 
@@ -49,14 +51,23 @@ capi_return_t tiledb_query_get_plan(
   }
 
   if ((*query->query_).array()->is_remote()) {
-    throw std::logic_error(
-        "Failed to create a query plan; Remote arrays"
-        "are not currently supported.");
+    auto rest_client = query->query_->rest_client();
+    if (!rest_client) {
+      throw std::runtime_error(
+          "Failed to create a query plan; Remote query"
+          "with no REST client.");
+    }
+
+    auto plan = rest_client->post_query_plan_from_rest(
+        query->query_->array()->array_uri(), *query->query_);
+    *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
+    // We need to transition the query status to INITIALIZED to mimic the
+    // behavior of getting a query plan locally
+    query->query_->set_status(sm::QueryStatus::INITIALIZED);
+  } else {
+    sm::QueryPlan plan(*query->query_);
+    *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
   }
-
-  sm::QueryPlan plan(*query->query_);
-
-  *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
 
   return TILEDB_OK;
 }

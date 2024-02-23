@@ -40,6 +40,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/group/group.h"
+#include "tiledb/sm/query_plan/query_plan.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -255,6 +256,15 @@ class RestClient {
       uint64_t timestamp_end,
       Array* array,
       const std::vector<std::string>& enumeration_names);
+
+  /**
+   * Get the requested query plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param query Query to fetch query plan for.
+   * @return The requested query plan
+   */
+  QueryPlan post_query_plan_from_rest(const URI& uri, Query& query);
 
   /**
    * Post a data query to rest server
