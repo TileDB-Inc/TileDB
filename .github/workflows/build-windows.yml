@@ -62,6 +62,12 @@ jobs:
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
+      - name: Setup MSVC toolset (VS 2022)
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: matrix.os == 'windows-2022'
+        with:
+          arch: x64
+          toolset: 14.39
       - name: 'tiledb env prep'
         run: |
           $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
