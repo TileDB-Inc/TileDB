@@ -10,7 +10,7 @@ env:
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -CMakeGenerator Ninja'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
 
 jobs:
   build:
@@ -147,7 +147,7 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + '${{ matrix.os == 'windows-2022' && ' -CMakeGenerator Ninja' || '' }}'
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
@@ -245,10 +245,7 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target unit_vfs --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType -- ${{ matrix.os == 'windows-2019' && '/verbosity:minimal' || '' }}
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
