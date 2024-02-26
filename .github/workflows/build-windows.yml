@@ -64,6 +64,9 @@ jobs:
       CONFIG_PATH_FIXUP: ${{ matrix.os == 'windows-2019' && 'Release' || '' }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
+      # By default Visual Studio chooses the earliest installed toolset version
+      # for the main build and vcpkg chooses the latest. Force it to use the
+      # latest (14.39 currently).
       - name: Setup MSVC toolset (VS 2022)
         uses: TheMrMilchmann/setup-msvc-dev@v3
         if: matrix.os == 'windows-2022'
