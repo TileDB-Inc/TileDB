@@ -60,6 +60,8 @@ jobs:
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
+      # On windows-2019 we are using the Visual Studio generator, which is multi-config and places the build artifacts in a subdirectory
+      CONFIG_PATH_FIXUP: ${{ matrix.os == 'windows-2019' && 'Release' || '' }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
       - name: Setup MSVC toolset (VS 2022)
@@ -150,7 +152,7 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + "${{ matrix.os == 'windows-2022' && ' -CMakeGenerator Ninja' || '' }}"
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + " -CMakeGenerator ${{ matrix.os == 'windows-2022' && 'Ninja' || '`"Visual Studio 16 2019`"' }}"
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
@@ -207,14 +209,16 @@ jobs:
       - name: Build TileDB
         shell: pwsh
         run: |
-          cmake --build $env:BUILD_BUILDDIRECTORY -j 2>&1
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
+
+          cmake --build $env:BUILD_BUILDDIRECTORY --config $CMakeBuildType -j 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Build failed. CMake exit status: " $LastExitCocde
             exit $LastExitCode
           }
 
-          cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb 2>&1
+          cmake --build $env:BUILD_BUILDDIRECTORY --target install-tiledb --config $CMakeBuildType 2>&1
 
           if ($LastExitCode -ne 0) {
             Write-Host "Installation failed."
@@ -225,6 +229,8 @@ jobs:
         id: test
         shell: pwsh
         run: |
+          $CMakeBuildType = $env:TILEDB_CMAKE_BUILD_TYPE
+
           # Clone backwards compatibility test arrays
           if ($env:BACKWARDS_COMPATIBILITY_ARRAYS -eq "ON") {
             git clone https://github.com/TileDB-Inc/TileDB-Unit-Test-Arrays.git --branch 2.5.0 $env:BUILD_SOURCESDIRECTORY/test/inputs/arrays/read_compatibility_test
@@ -244,7 +250,7 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -275,7 +281,7 @@ jobs:
 
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$env:CONFIG_PATH_FIXUP\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
@@ -283,7 +289,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
           
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\unit_vfs -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\$env:CONFIG_PATH_FIXUP\unit_vfs -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
@@ -291,7 +297,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\test_assert.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\$env:CONFIG_PATH_FIXUP\test_assert.exe -d=yes"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
@@ -313,7 +319,7 @@ jobs:
 
           $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\") -Filter *.exe |
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$env:CONFIG_PATH_FIXUP\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -346,7 +352,7 @@ jobs:
 
           $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api")
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\") -Filter *.exe |
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$env:CONFIG_PATH_FIXUP\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -391,12 +397,12 @@ jobs:
           cd build
 
           # Build zip artifact
-          cmake -G Ninja -DCMAKE_BUILD_TYPE="$CMakeBuildType" -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
+          cmake ${{ matrix.os != 'windows-2019' && '-G Ninja' || '' }} -DCMAKE_BUILD_TYPE="$CMakeBuildType" -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
 
-          cmake --build . -v
+          cmake --build . --config $CMakeBuildType -v
 
-          #.\ExampleExe.exe
-          $cmd = ".\ExampleExe.exe"
+          #.\$env:CONFIG_PATH_FIXUP\ExampleExe.exe
+          $cmd = ".\$env:CONFIG_PATH_FIXUP\ExampleExe.exe"
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
