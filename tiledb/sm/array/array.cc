@@ -1480,8 +1480,8 @@ void Array::do_load_metadata() {
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = array_metadata_to_load[m].uri_;
 
-        metadata_tiles[m] =
-            GenericTileIO::load(resources_, uri, 0, *encryption_key(), memory_tracker_);
+        metadata_tiles[m] = GenericTileIO::load(
+            resources_, uri, 0, *encryption_key(), memory_tracker_);
 
         return Status::Ok();
       }));

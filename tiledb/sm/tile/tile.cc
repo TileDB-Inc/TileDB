@@ -58,7 +58,8 @@ uint64_t WriterTile::max_tile_chunk_size_ = constants::max_tile_chunk_size;
 /*           STATIC API           */
 /* ****************************** */
 
-shared_ptr<Tile> Tile::from_generic(storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker) {
+shared_ptr<Tile> Tile::from_generic(
+    storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker) {
   return make_shared<Tile>(
       HERE(),
       0,
