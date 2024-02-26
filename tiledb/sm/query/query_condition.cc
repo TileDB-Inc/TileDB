@@ -2757,10 +2757,6 @@ uint64_t QueryCondition::condition_index() const {
   return condition_index_;
 }
 
-void QueryCondition::set_ast(tdb_unique_ptr<ASTNode>&& ast) {
-  tree_ = std::move(ast);
-}
-
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
     const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);

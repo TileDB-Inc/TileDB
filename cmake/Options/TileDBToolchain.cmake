@@ -65,6 +65,21 @@ if(TILEDB_SANITIZER STREQUAL "address")
     set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-asan")
 endif()
 
+get_cmake_property(is_multi_config GENERATOR_IS_MULTI_CONFIG)
+# On Windows vcpkg always builds dependencies with symbols.
+# https://github.com/microsoft/vcpkg/blob/master/scripts/toolchains/windows.cmake
+if(NOT WIN32 AND NOT is_multi_config AND CMAKE_BUILD_TYPE STREQUAL "RelWithDebInfo" AND NOT VCPKG_TARGET_TRIPLET)
+    if(TILEDB_SANITIZER STREQUAL "address")
+        message(FATAL_ERROR "Cannot enable both RelWithDebInfo and ASAN at the same time.")
+    endif()
+    if(TILEDB_VCPKG_BASE_TRIPLET)
+        message(STATUS "Overriding vcpkg triplet to ${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+        set(VCPKG_TARGET_TRIPLET "${TILEDB_VCPKG_BASE_TRIPLET}-relwithdebinfo")
+    else()
+        message(WARNING "Dependencies will be built without symbols. You have to set either VCPKG_TARGET_TRIPLET or TILEDB_VCPKG_BASE_TRIPLET.")
+    endif()
+endif()
+
 set(VCPKG_INSTALL_OPTIONS "--no-print-usage")
 
 macro(tiledb_vcpkg_enable_if tiledb_feature vcpkg_feature)

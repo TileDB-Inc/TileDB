@@ -40,6 +40,15 @@ option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
+if (DEFINED TILEDB_STATIC)
+  message(DEPRECATION "TILEDB_STATIC is deprecated and will be removed in version 2.28, to be released in Q3 2024. Use BUILD_SHARED_LIBS INSTEAD. Building both static and shared libraries is no longer available.")
+  if (TILEDB_STATIC)
+    set(BUILD_SHARED_LIBS OFF)
+  else()
+    set(BUILD_SHARED_LIBS ON)
+  endif()
+endif()
+
 if (NOT TILEDB_VCPKG)
   message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
 endif()

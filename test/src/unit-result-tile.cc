@@ -29,6 +29,8 @@
  *
  * Tests for the ResultTile classes.
  */
+
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/misc/types.h"
@@ -59,7 +61,7 @@ struct CResultTileFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_result_coords";
   tiledb_array_t* array_;
-  std::unique_ptr<FragmentMetadata> frag_md_;
+  std::shared_ptr<FragmentMetadata> frag_md_;
 
   CResultTileFx();
   ~CResultTileFx();
@@ -107,13 +109,14 @@ CResultTileFx::CResultTileFx() {
   rc = tiledb_array_open(ctx_, array_, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 
-  frag_md_.reset(new FragmentMetadata(
+  frag_md_ = make_shared<FragmentMetadata>(
+      HERE(),
       nullptr,
-      nullptr,
+      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      false));
+      false);
 }
 
 CResultTileFx::~CResultTileFx() {
@@ -188,7 +191,7 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      nullptr,
+      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
@@ -298,7 +301,7 @@ TEST_CASE_METHOD(
   auto& array_schema = array_->array_->array_schema_latest();
   FragmentMetadata frag_md(
       nullptr,
-      nullptr,
+      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),

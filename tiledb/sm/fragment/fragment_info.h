@@ -313,7 +313,7 @@ class FragmentInfo {
   load_array_schemas_and_fragment_metadata(
       ContextResources& resources,
       const ArrayDirectory& array_dir,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const EncryptionKey& enc_key);
 
   /** Returns the vector with the info about individual fragments. */
@@ -347,6 +347,11 @@ class FragmentInfo {
   /** Returns the config. */
   inline const Config& config() const {
     return config_;
+  }
+
+  /** Returns the context resources. */
+  inline ContextResources* resources() const {
+    return resources_;
   }
 
   // Accessors

@@ -220,7 +220,7 @@ void check_run_pipeline_roundtrip(
     WriterTile& tile,
     std::optional<WriterTile>& offsets_tile,
     FilterPipeline& pipeline,
-    TileDataGenerator* test_data) {
+    const TileDataGenerator* test_data) {
   // Run the pipeline forward.
   CHECK(pipeline
             .run_forward(
@@ -979,6 +979,103 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     // Check the pipelines run forward and backward without error and return the
     // input data.
     // Run the pipeline tests.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+}
+
+TEST_CASE("Filter: Test compression", "[filter][compression]") {
+  // Create resources for running pipeline tests.
+  Config config;
+  ThreadPool tp(4);
+  FilterPipeline pipeline;
+
+  //  Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+
+  SECTION("- Simple") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+
+  SECTION("- With checksum stage") {
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+
+  SECTION("- With multiple stages") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+}
+
+TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
+  // Create TileDB resources for running the filter pipeline.
+  Config config;
+  ThreadPool tp(4);
+
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+
+  FilterPipeline pipeline;
+
+  SECTION("- Simple") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+
+  SECTION("- With checksum stage") {
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+  }
+
+  SECTION("- With multiple stages") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
     check_run_pipeline_roundtrip(
         config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
   }

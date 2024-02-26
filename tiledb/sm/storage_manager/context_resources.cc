@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/rest/rest_client.h"
 
 using namespace tiledb::common;
@@ -53,7 +54,10 @@ ContextResources::ContextResources(
     size_t compute_thread_count,
     size_t io_thread_count,
     std::string stats_name)
-    : config_(config)
+    : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
+    , memory_tracker_reporter_(make_shared<MemoryTrackerReporter>(
+          HERE(), config, memory_tracker_manager_))
+    , config_(config)
     , logger_(logger)
     , compute_tp_(compute_thread_count)
     , io_tp_(io_thread_count)
@@ -77,6 +81,12 @@ ContextResources::ContextResources(
       rest_client_ = client;
     }
   }
+
+  memory_tracker_reporter_->start();
+}
+
+shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
+  return memory_tracker_manager_->create_tracker();
 }
 
 }  // namespace tiledb::sm

@@ -37,6 +37,7 @@
 #include <atomic>
 #include <cstdio>
 #include <iostream>
+#include <random>
 #include <vector>
 
 #include "tiledb/common/thread_pool.h"

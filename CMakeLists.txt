@@ -109,6 +109,9 @@ endif()
 set(CMAKE_C_VISIBILITY_PRESET hidden)
 set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 
+# Disable warnings from Boost
+set(Boost_NO_WARN_NEW_VERSIONS ON)
+
 ############################################################
 # Superbuild setup
 ############################################################
@@ -253,6 +256,15 @@ endif()
 
 if(TILEDB_SANITIZER)
   validate_sanitizer_options()
+endif()
+
+include(DetectStdPmr)
+
+if(TILEDB_USE_CPP17_PMR)
+  message(STATUS "Building with cpp17::pmr")
+  add_definitions(-DUSE_CPP17_PMR)
+else()
+  message(STATUS "Building with std::pmr")
 endif()
 
 #######################################################

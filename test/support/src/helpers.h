@@ -35,6 +35,7 @@
 
 #include <tiledb/common/logger_public.h>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/random/random_label.h"

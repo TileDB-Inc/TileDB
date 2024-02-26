@@ -49,6 +49,8 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class ContextResources;
+
 class GroupDetailsException : public StatusException {
  public:
   explicit GroupDetailsException(const std::string& message)
@@ -58,7 +60,23 @@ class GroupDetailsException : public StatusException {
 
 class Group {
  public:
-  Group(const URI& group_uri, StorageManager* storage_manager);
+  /**
+   * Constructs a Group object given a uri and a ContextResources reference.
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Group class on StorageManager. For
+   * now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * Group(ContextResources&, const URI&).
+   *
+   * @param resources A ContextResources reference
+   * @param group_uri The location of the group
+   * @param storage_manager A StorageManager pointer
+   *    (this will go away in the near future)
+   */
+  Group(
+      ContextResources& resources,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~Group() = default;
@@ -425,6 +443,9 @@ class Group {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
+  /** The ContextResources class. */
+  ContextResources& resources_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -433,6 +454,39 @@ class Group {
    * Load group metadata, handles remote groups vs non-remote groups
    */
   void load_metadata();
+
+  /**
+   * Load group metadata from disk
+   */
+  void load_metadata_from_storage(
+      const shared_ptr<GroupDirectory>& group_dir,
+      const EncryptionKey& encryption_key,
+      Metadata* metadata);
+
+  /** Opens an group for reads. */
+  void group_open_for_reads();
+
+  /**
+   * Load group details from disk
+   */
+  void load_group_details();
+
+  /**
+   * Load a group detail from URI
+   *
+   * @param uri location to load
+   */
+  void load_group_from_uri(const URI& uri);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param uris locations to load
+   */
+  void load_group_from_all_uris(const std::vector<TimestampedURI>& uris);
+
+  /** Opens an group for writes. */
+  void group_open_for_writes();
 };
 }  // namespace tiledb::sm
 

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -1210,20 +1210,25 @@ TEST_CASE(
     vfs.remove_dir(array_name);
   }
 
+  auto datatype = GENERATE(
+      tiledb_datatype_t::TILEDB_BLOB,
+      tiledb_datatype_t::TILEDB_GEOM_WKB,
+      tiledb_datatype_t::TILEDB_GEOM_WKT);
+
   // Create
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 0}}, 1));
   ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(
-      Attribute::create(ctx, "a", tiledb_datatype_t::TILEDB_BLOB));
+  schema.add_attribute(Attribute::create(ctx, "a", datatype));
   Array::create(array_name, schema);
 
   // Write
   std::byte data_w{1};
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w);
-  query_w.set_layout(TILEDB_GLOBAL_ORDER).set_data_buffer("a", &data_w, 1);
+  query_w.set_layout(TILEDB_GLOBAL_ORDER)
+      .set_data_buffer("a", (void*)(&data_w), 1);
 
   SECTION("no serialization") {
     serialize = false;
@@ -1255,7 +1260,7 @@ TEST_CASE(
   std::byte data;
   query.set_layout(TILEDB_ROW_MAJOR)
       .set_subarray(subarray)
-      .set_data_buffer("a", &data, 1);
+      .set_data_buffer("a", (void*)(&data), 1);
   query.submit();
   array.close();
 
@@ -2203,4 +2208,38 @@ TEST_CASE(
   }
 
   CHECK(i > 0);
+}
+
+TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {
+  const std::string array_name_1d = "cpp_unit_array_1d";
+  Context ctx;
+  VFS vfs(ctx);
+
+  bool dups = GENERATE(true, false);
+
+  if (vfs.is_dir(array_name_1d)) {
+    vfs.remove_dir(array_name_1d);
+  }
+
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int32_t>(ctx, "d", {{0, 1000}}, 1001));
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create<int32_t>(ctx, "a"));
+  schema.set_allows_dups(dups);
+  Array::create(array_name_1d, schema);
+  Array array(ctx, array_name_1d, TILEDB_READ);
+
+  std::vector<int32_t> d(1);
+  std::vector<int32_t> a(1);
+  Query q(ctx, array, TILEDB_READ);
+  q.set_layout(TILEDB_UNORDERED);
+  q.set_data_buffer("d", d);
+  q.set_data_buffer("a", a);
+  q.submit();
+  array.close();
+
+  if (vfs.is_dir(array_name_1d)) {
+    vfs.remove_dir(array_name_1d);
+  }
 }

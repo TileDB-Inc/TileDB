@@ -856,10 +856,11 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
   }
 
   // Get the array schemas and fragment metadata.
+  auto memory_tracker = resources_->create_memory_tracker();
   std::vector<std::shared_ptr<FragmentMetadata>> fragment_metadata;
   std::tie(array_schema_latest_, array_schemas_all_, fragment_metadata) =
       load_array_schemas_and_fragment_metadata(
-          *resources_, array_dir, nullptr, enc_key_);
+          *resources_, array_dir, memory_tracker, enc_key_);
   auto fragment_num = (uint32_t)fragment_metadata.size();
 
   // Get fragment sizes
@@ -992,7 +993,7 @@ std::tuple<
 FragmentInfo::load_array_schemas_and_fragment_metadata(
     ContextResources& resources,
     const ArrayDirectory& array_dir,
-    MemoryTracker* memory_tracker,
+    shared_ptr<MemoryTracker> memory_tracker,
     const EncryptionKey& enc_key) {
   auto timer_se = resources.stats().start_timer(
       "sm_load_array_schemas_and_fragment_metadata");
@@ -1122,7 +1123,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
   auto meta = make_shared<FragmentMetadata>(
       HERE(),
       resources_,
-      nullptr,
+      resources_->create_memory_tracker(),
       array_schema_latest,
       new_fragment_uri,
       timestamp_range,
