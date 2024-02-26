@@ -10,7 +10,7 @@ env:
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: OFF
   TILEDB_TOOLS: ON
-  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose -CMakeGenerator Ninja'
+  TILEDB_BASE_BOOTSTRAP_OPTIONS: '-EnableVerbose'
 
 jobs:
   build:
@@ -68,8 +68,9 @@ jobs:
         with:
           arch: x64
           toolset: 14.39
-      - name: Install Ninja (VS 2019)
+      - name: Install Ninja (VS 2022)
         uses: seanmiddleditch/gha-setup-ninja@v4
+        if: matrix.os == 'windows-2022'
       - name: 'tiledb env prep'
         run: |
           $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
@@ -149,7 +150,7 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + "${{ matrix.os == 'windows-2022' && ' -CMakeGenerator Ninja' || '' }}"
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
