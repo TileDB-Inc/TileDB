@@ -103,8 +103,11 @@ TEST_CASE(
     Status st;
     auto schema = make_shared<ArraySchema>(
         HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
-    std::vector<shared_ptr<Dimension>> dims{
-        make_shared<Dimension>(HERE(), "index", Datatype::UINT32)};
+    std::vector<shared_ptr<Dimension>> dims{make_shared<Dimension>(
+        HERE(),
+        "index",
+        Datatype::UINT32,
+        tiledb::test::get_test_memory_tracker())};
     uint32_t domain1[2]{1, 64};
     st = dims[0]->set_domain(&domain1[0]);
     REQUIRE(st.ok());

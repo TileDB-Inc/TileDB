@@ -37,6 +37,7 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -610,7 +611,8 @@ Range range_from_capnp(
 
 /** Deserialize a dimension from a cap'n proto object. */
 shared_ptr<Dimension> dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader) {
+    const capnp::Dimension::Reader& dimension_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize datatype
@@ -678,7 +680,8 @@ shared_ptr<Dimension> dimension_from_capnp(
       cell_val_num,
       domain,
       *(filters.get()),
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 Status domain_to_capnp(
@@ -705,7 +708,8 @@ Status domain_to_capnp(
 
 /* Deserialize a domain from a cap'n proto object. */
 shared_ptr<Domain> domain_from_capnp(
-    const capnp::Domain::Reader& domain_reader) {
+    const capnp::Domain::Reader& domain_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize and validate cell order
@@ -745,7 +749,7 @@ shared_ptr<Domain> domain_from_capnp(
   std::vector<shared_ptr<Dimension>> dims;
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    dims.emplace_back(dimension_from_capnp(dimension));
+    dims.emplace_back(dimension_from_capnp(dimension, memory_tracker));
   }
 
   return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
@@ -998,7 +1002,7 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
   // Deserialize domain
   // Note: Security validation delegated to invoked API
   auto domain_reader = schema_reader.getDomain();
-  auto domain{domain_from_capnp(domain_reader)};
+  auto domain{domain_from_capnp(domain_reader, memory_tracker)};
 
   // Set coords filter pipelines
   // Note: Security validation delegated to invoked API
