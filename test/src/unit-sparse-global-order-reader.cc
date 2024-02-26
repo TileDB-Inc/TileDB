@@ -739,12 +739,10 @@ TEST_CASE_METHOD(
                      "computed size") != std::string::npos);
 }
 
-// PJD: Another disabled test due to changes in memory budget math.
-
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: coords budget forcing one tile at a time",
-    "[sparse-global-order][small-coords-budget][.][bad-mem-budget]") {
+    "[sparse-global-order][small-coords-budget]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -779,7 +777,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "10500";
   ratio_coords_ = "0.30";
   update_config();
 
@@ -1312,13 +1310,10 @@ TEST_CASE(
   }
 }
 
-// PJD: Disabling as this appears to be another case of tests that fail due
-// to changes in memory sizes of class instances.
-
 TEST_CASE_METHOD(
     CSparseGlobalOrderFx,
     "Sparse global order reader: no new coords tile",
-    "[sparse-global-order][no-new-coords-tile][.][bad-mem-budget]") {
+    "[sparse-global-order][no-new-coords-tile]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1353,7 +1348,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "10500";
   ratio_coords_ = "0.30";
   update_config();
 
