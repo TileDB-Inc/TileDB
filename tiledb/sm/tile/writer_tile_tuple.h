@@ -56,7 +56,8 @@ class WriterTileTuple {
       const bool var_size,
       const bool nullable,
       const uint64_t cell_size,
-      const Datatype type);
+      const Datatype type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Move constructor. */
   WriterTileTuple(WriterTileTuple&& tile);
@@ -222,6 +223,9 @@ class WriterTileTuple {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /**
    * Fixed data tile. Contains offsets for var size attribute/dimension and

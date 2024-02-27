@@ -92,13 +92,15 @@ ArrayDirectory::ArrayDirectory(
 shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
     ContextResources& resources,
     const URI& schema_uri,
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto timer_se =
       resources.stats().start_timer("sm_load_array_schema_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources, schema_uri, 0, encryption_key);
+  auto tile = GenericTileIO::load(
+      resources, schema_uri, 0, encryption_key, memory_tracker);
 
-  resources.stats().add_counter("read_array_schema_size", tile.size());
+  resources.stats().add_counter("read_array_schema_size", tile->size());
 
   // Deserialize
   Deserializer deserializer(tile.data(), tile.size());
@@ -108,7 +110,8 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_from_uri(
 }
 
 shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) const {
   auto timer_se =
       resources_.get().stats().start_timer("sm_load_array_schema_latest");
 
@@ -119,8 +122,8 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
 
   // Load schema from URI
   const URI& schema_uri = latest_array_schema_uri();
-  auto&& array_schema =
-      load_array_schema_from_uri(resources_.get(), schema_uri, encryption_key);
+  auto&& array_schema = load_array_schema_from_uri(
+      resources_.get(), schema_uri, encryption_key, memory_tracker);
 
   array_schema->set_array_uri(uri_);
 
@@ -130,9 +133,11 @@ shared_ptr<ArraySchema> ArrayDirectory::load_array_schema_latest(
 tuple<
     shared_ptr<ArraySchema>,
     std::unordered_map<std::string, shared_ptr<ArraySchema>>>
-ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
+ArrayDirectory::load_array_schemas(
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) const {
   // Load all array schemas
-  auto&& array_schemas = load_all_array_schemas(encryption_key);
+  auto&& array_schemas = load_all_array_schemas(encryption_key, memory_tracker);
 
   // Locate the latest array schema
   const auto& array_schema_latest_name =
@@ -145,7 +150,8 @@ ArrayDirectory::load_array_schemas(const EncryptionKey& encryption_key) const {
 
 std::unordered_map<std::string, shared_ptr<ArraySchema>>
 ArrayDirectory::load_all_array_schemas(
-    const EncryptionKey& encryption_key) const {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) const {
   auto timer_se =
       resources_.get().stats().start_timer("sm_load_all_array_schemas");
 
@@ -169,7 +175,7 @@ ArrayDirectory::load_all_array_schemas(
         auto& schema_uri = schema_uris[schema_ith];
         try {
           auto&& array_schema = load_array_schema_from_uri(
-              resources_.get(), schema_uri, encryption_key);
+              resources_.get(), schema_uri, encryption_key, memory_tracker);
           array_schema->set_array_uri(uri_);
           schema_vector[schema_ith] = array_schema;
         } catch (std::exception& e) {
@@ -1323,13 +1329,14 @@ shared_ptr<const Enumeration> ArrayDirectory::load_enumeration(
                       .join_path(constants::array_enumerations_dir_name)
                       .join_path(enumeration_path);
 
-  auto&& tile = GenericTileIO::load(resources_, enmr_uri, 0, encryption_key);
-  resources_.get().stats().add_counter("read_enumeration_size", tile.size());
+  auto tile = GenericTileIO::load(
+      resources_, enmr_uri, 0, encryption_key, memory_tracker);
+  resources_.get().stats().add_counter("read_enumeration_size", tile->size());
 
-  if (!memory_tracker->take_memory(tile.size(), MemoryType::ENUMERATION)) {
+  if (!memory_tracker->take_memory(tile->size(), MemoryType::ENUMERATION)) {
     throw ArrayDirectoryException(
         "Error loading enumeration; Insufficient memory budget; Needed " +
-        std::to_string(tile.size()) + " but only had " +
+        std::to_string(tile->size()) + " but only had " +
         std::to_string(memory_tracker->get_memory_available()) +
         " from budget " + std::to_string(memory_tracker->get_memory_budget()));
   }

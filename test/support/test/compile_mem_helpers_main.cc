@@ -1,11 +1,11 @@
 /**
- * @file mem_helpers.h
+ * @file test/support/test/compile_mem_helpers_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,37 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares some test suite helper functions specific to memory
- * tracking.
  */
 
-#ifndef TILEDB_MEM_HELPERS_H
-#define TILEDB_MEM_HELPERS_H
+#include "../src/mem_helpers.h"
 
-#include "tiledb/common/memory_tracker.h"
-
-namespace tiledb::test {
-
-/**
- * Helper function get the test instance of a shared_ptr<MemoryTracker>
- *
- * This is the preferred function. The create_test_memory_tracker will be
- * replaced shortly and only serves as a proxy to this function while we
- * transition the first few PRs to use this new function.
- *
- * The reasoning here is that creating memory trackers has turned out to be a
- * bit of a footgun with lifetime issues.
- */
-shared_ptr<sm::MemoryTracker> get_test_memory_tracker();
-
-/**
- * Helper function to create test instances of shared_ptr<MemoryTracker>
- */
-shared_ptr<sm::MemoryTracker> create_test_memory_tracker();
-
-}  // namespace tiledb::test
-
-#endif  //  TILEDB_MEM_HELPERS_H
+int main() {
+  tiledb::test::get_test_memory_tracker();
+  return 0;
+}

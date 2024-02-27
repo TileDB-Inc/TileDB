@@ -200,7 +200,8 @@ class ReaderBase : public StrategyBase {
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
-      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Computes the minimum and maximum indexes of tile chunks to process based on

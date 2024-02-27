@@ -10,7 +10,26 @@ on:
   workflow_dispatch:
 
 jobs:
-  Build-Release:
+  Package-Source-Release:
+    strategy:
+      matrix:
+        os: [ubuntu-20.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout TileDB
+        uses: actions/checkout@v3
+      - name: CMake Configure
+        run: cmake -S . -B build -DTILEDB_CMAKE_IDE=ON
+      - name: CPack Package Source
+        run: cd build && cpack --config CPackSourceConfig.cmake
+      - name: Upload Release Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release
+          path: |
+            build/tiledb-*.tar.gz*
+
+  Package-Binary-Release:
     strategy:
       fail-fast: false
       matrix:
@@ -88,44 +107,27 @@ jobs:
             ${{ matrix.cmake_args }}
         shell: bash
       - name: Build TileDB
-        run: cmake --build build --config Release
-      - name: Install TileDB
-        run: cmake --build build --config Release --target install-tiledb
-      - name: Archive installed artifacts (non-Windows)
-        if: ${{ !startsWith(matrix.platform, 'windows') }}
-        run: |
-          tar -czf ${{ steps.get-values.outputs.archive_name }}.tar.gz -C dist .
-      - name: Archive installed artifacts (Windows)
-        if: startsWith(matrix.platform, 'windows')
-        run: |
-          Compress-Archive -Path dist\* -DestinationPath ${{ steps.get-values.outputs.archive_name }}.zip
-        shell: pwsh
+        run: cmake --build build --config Release --target package
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: tiledb-dist
-          path: ${{ steps.get-values.outputs.archive_name }}.*
-      - name: Archive build directory
-        run: |
-          tar -czf build-${{ matrix.platform }}.tar.gz -C build .
-      - name: Upload build directory
-        uses: actions/upload-artifact@v3
-        with:
-          name: tiledb-build
-          path: build-${{ matrix.platform }}.tar.gz
+          name: release
+          path: |
+            build/tiledb/tiledb-*.tar.gz*
+            build/tiledb/tiledb-*.zip*
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
         if: failure() # only run this job if the build step failed
 
   Test-Release-Artifacts:
-    needs: Build-Release
+    needs: Package-Binary-Release
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
-          name: tiledb-dist
+          name: release
           path: dist
       - name: Test names of release artifacts
         run: |
@@ -135,14 +137,16 @@ jobs:
           fi
 
   Publish-Release:
-    needs: Test-Release-Artifacts
+    needs:
+      - Test-Release-Artifacts
+      - Package-Source-Release
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-latest
     steps:
       - name: Download release artifacts
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         with:
-          name: tiledb-dist
+          name: release
           path: dist
       - name: Publish release artifacts
         uses: actions/github-script@v6

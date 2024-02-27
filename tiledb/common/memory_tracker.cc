@@ -50,22 +50,28 @@ class MemoryTrackerException : public common::StatusException {
 
 std::string memory_type_to_str(MemoryType type) {
   switch (type) {
-    case MemoryType::RTREE:
-      return "RTree";
-    case MemoryType::FOOTER:
-      return "Footer";
-    case MemoryType::TILE_OFFSETS:
-      return "TileOffsets";
-    case MemoryType::TILE_MIN_VALS:
-      return "TileMinVals";
-    case MemoryType::TILE_MAX_VALS:
-      return "TileMaxVals";
-    case MemoryType::TILE_SUMS:
-      return "TileSums";
-    case MemoryType::TILE_NULL_COUNTS:
-      return "TileNullCounts";
     case MemoryType::ENUMERATION:
       return "Enumeration";
+    case MemoryType::FOOTER:
+      return "Footer";
+    case MemoryType::GENERIC_TILE_IO:
+      return "GenericTileIO";
+    case MemoryType::RTREE:
+      return "RTree";
+    case MemoryType::TILE_DATA:
+      return "TileData";
+    case MemoryType::TILE_OFFSETS:
+      return "TileOffsets";
+    case MemoryType::TILE_MAX_VALS:
+      return "TileMaxVals";
+    case MemoryType::TILE_MIN_VALS:
+      return "TileMinVals";
+    case MemoryType::TILE_NULL_COUNTS:
+      return "TileNullCounts";
+    case MemoryType::TILE_SUMS:
+      return "TileSums";
+    case MemoryType::TILE_WRITER_DATA:
+      return "TileWriterData";
     default:
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory type: " + val);

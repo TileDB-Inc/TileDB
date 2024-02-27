@@ -35,15 +35,25 @@
 
 namespace tiledb::test {
 
-shared_ptr<sm::MemoryTracker> create_test_memory_tracker() {
+shared_ptr<sm::MemoryTracker> get_test_memory_tracker() {
   class MemoryTrackerCreator : public sm::MemoryTracker {
    public:
     MemoryTrackerCreator()
         : sm::MemoryTracker() {
     }
+
+    static shared_ptr<MemoryTracker> get_instance() {
+      static shared_ptr<MemoryTrackerCreator> tracker{
+          new MemoryTrackerCreator()};
+      return tracker;
+    }
   };
 
-  return make_shared<MemoryTrackerCreator>(HERE());
+  return MemoryTrackerCreator::get_instance();
+}
+
+shared_ptr<sm::MemoryTracker> create_test_memory_tracker() {
+  return get_test_memory_tracker();
 }
 
 }  // namespace tiledb::test

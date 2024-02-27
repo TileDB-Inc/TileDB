@@ -750,8 +750,9 @@ shared_ptr<ArraySchema> FragmentInfo::get_array_schema(uint32_t fid) {
   }
 
   EncryptionKey encryption_key;
+  auto tracker = resources_->ephemeral_memory_tracker();
   return ArrayDirectory::load_array_schema_from_uri(
-      *resources_, schema_uri, encryption_key);
+      *resources_, schema_uri, encryption_key, tracker);
 }
 
 Status FragmentInfo::get_array_schema_name(
@@ -952,9 +953,12 @@ Status FragmentInfo::load_and_replace(
   return Status::Ok();
 }
 
-tuple<Tile, std::vector<std::pair<std::string, uint64_t>>>
+tuple<shared_ptr<Tile>, std::vector<std::pair<std::string, uint64_t>>>
 load_consolidated_fragment_meta(
-    ContextResources& resources, const URI& uri, const EncryptionKey& enc_key) {
+    ContextResources& resources,
+    const URI& uri,
+    const EncryptionKey& enc_key,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto timer_se =
       resources.stats().start_timer("sm_read_load_consolidated_frag_meta");
 
@@ -963,12 +967,12 @@ load_consolidated_fragment_meta(
     throw StatusException(Status_FragmentInfoError(
         "Cannot load consolidated fragment metadata; URI is empty."));
 
-  auto&& tile = GenericTileIO::load(resources, uri, 0, enc_key);
+  auto tile = GenericTileIO::load(resources, uri, 0, enc_key, memory_tracker);
 
-  resources.stats().add_counter("consolidated_frag_meta_size", tile.size());
+  resources.stats().add_counter("consolidated_frag_meta_size", tile->size());
 
   uint32_t fragment_num;
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   fragment_num = deserializer.read<uint32_t>();
 
   uint64_t name_size, offset;
@@ -983,7 +987,7 @@ load_consolidated_fragment_meta(
     ret.emplace_back(name, offset);
   }
 
-  return {std::move(tile), std::move(ret)};
+  return {tile, std::move(ret)};
 }
 
 std::tuple<
@@ -999,11 +1003,12 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
       "sm_load_array_schemas_and_fragment_metadata");
 
   // Load array schemas
+  auto tracker = resources.ephemeral_memory_tracker();
   std::shared_ptr<ArraySchema> array_schema_latest;
   std::unordered_map<std::string, std::shared_ptr<ArraySchema>>
       array_schemas_all;
   std::tie(array_schema_latest, array_schemas_all) =
-      array_dir.load_array_schemas(enc_key);
+      array_dir.load_array_schemas(enc_key, tracker);
 
   const auto filtered_fragment_uris = [&]() {
     auto timer_se =
@@ -1019,10 +1024,9 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
       meta_uris.size());
   throw_if_not_ok(
       parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
-        auto&& [tile_opt, offsets] =
-            load_consolidated_fragment_meta(resources, meta_uris[i], enc_key);
-        fragment_metadata_tiles[i] =
-            make_shared<Tile>(HERE(), std::move(tile_opt));
+        auto&& [tile_opt, offsets] = load_consolidated_fragment_meta(
+            resources, meta_uris[i], enc_key, memory_tracker);
+        fragment_metadata_tiles[i] = tile_opt;
         offsets_vectors[i] = std::move(offsets);
         return Status::Ok();
       }));
