@@ -52,6 +52,7 @@
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -257,8 +258,10 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
   (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+      HERE(), static_cast<tiledb::sm::ArrayType>(array_type), memory_tracker);
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -512,8 +515,11 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -603,8 +609,11 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -3438,13 +3447,16 @@ int32_t tiledb_deserialize_array(
     return TILEDB_OOM;
   }
 
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
-              ctx->storage_manager()))) {
+              ctx->storage_manager(),
+              memory_tracker))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -3500,10 +3512,13 @@ int32_t tiledb_deserialize_array_schema(
   }
 
   try {
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(),
+    auto memory_tracker = ctx->context().resources().create_memory_tracker();
+    memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
+    (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
-            (tiledb::sm::SerializationType)serialize_type, buffer->buffer()));
+            (tiledb::sm::SerializationType)serialize_type,
+            buffer->buffer(),
+            memory_tracker);
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
@@ -3766,11 +3781,14 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   // First deserialize the array included in the query
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_LOAD);
   throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       *(*array)->array_,
-      ctx->storage_manager()));
+      ctx->storage_manager(),
+      memory_tracker));
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
@@ -4271,13 +4289,16 @@ int32_t tiledb_deserialize_fragment_info(
     return TILEDB_ERR;
   }
 
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::FRAGMENT_INFO_LOAD);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_deserialize(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
               uri,
-              buffer->buffer()))) {
+              buffer->buffer(),
+              memory_tracker))) {
     return TILEDB_ERR;
   }
 

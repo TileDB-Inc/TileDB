@@ -276,16 +276,16 @@ Status single_fragment_info_to_capnp(
 Status fragment_info_from_capnp(
     const capnp::FragmentInfo::Reader& fragment_info_reader,
     const URI& array_uri,
-    FragmentInfo* fragment_info) {
+    FragmentInfo* fragment_info,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // Get array_schema_latest from capnp
   if (fragment_info_reader.hasArraySchemaLatest()) {
     auto array_schema_latest_reader =
         fragment_info_reader.getArraySchemaLatest();
-    auto array_schema_latest{
-        array_schema_from_capnp(array_schema_latest_reader, array_uri)};
-    array_schema_latest.set_array_uri(array_uri);
-    fragment_info->array_schema_latest() =
-        make_shared<ArraySchema>(HERE(), array_schema_latest);
+    auto array_schema_latest{array_schema_from_capnp(
+        array_schema_latest_reader, array_uri, memory_tracker)};
+    array_schema_latest->set_array_uri(array_uri);
+    fragment_info->array_schema_latest() = array_schema_latest;
   }
 
   // Get array_schemas_all from capnp
@@ -295,14 +295,13 @@ Status fragment_info_from_capnp(
     if (all_schemas_reader.hasEntries()) {
       auto entries = fragment_info_reader.getArraySchemasAll().getEntries();
       for (auto array_schema_build : entries) {
-        auto schema{
-            array_schema_from_capnp(array_schema_build.getValue(), array_uri)};
-        schema.set_array_uri(array_uri);
+        auto schema{array_schema_from_capnp(
+            array_schema_build.getValue(), array_uri, memory_tracker)};
+        schema->set_array_uri(array_uri);
         auto key = std::string_view{
             array_schema_build.getKey().cStr(),
             array_schema_build.getKey().size()};
-        fragment_info->array_schemas_all()[std::string{key}] =
-            make_shared<ArraySchema>(HERE(), schema);
+        fragment_info->array_schemas_all()[std::string{key}] = schema;
       }
     }
   }
@@ -453,7 +452,8 @@ Status fragment_info_deserialize(
     FragmentInfo* fragment_info,
     SerializationType serialize_type,
     const URI& uri,
-    const Buffer& serialized_buffer) {
+    const Buffer& serialized_buffer,
+    shared_ptr<MemoryTracker> memory_tracker) {
   if (fragment_info == nullptr)
     return LOG_STATUS(
         Status_SerializationError("Error deserializing fragment info; null "
@@ -471,7 +471,8 @@ Status fragment_info_deserialize(
         auto reader = builder.asReader();
 
         // Deserialize
-        RETURN_NOT_OK(fragment_info_from_capnp(reader, uri, fragment_info));
+        RETURN_NOT_OK(fragment_info_from_capnp(
+            reader, uri, fragment_info, memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -493,7 +494,8 @@ Status fragment_info_deserialize(
         auto reader = msg_reader.getRoot<capnp::FragmentInfo>();
 
         // Deserialize
-        RETURN_NOT_OK(fragment_info_from_capnp(reader, uri, fragment_info));
+        RETURN_NOT_OK(fragment_info_from_capnp(
+            reader, uri, fragment_info, memory_tracker));
         break;
       }
       default: {
@@ -524,7 +526,11 @@ Status fragment_info_serialize(
 }
 
 Status fragment_info_deserialize(
-    FragmentInfo*, SerializationType, const URI&, const Buffer&) {
+    FragmentInfo*,
+    SerializationType,
+    const URI&,
+    const Buffer&,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

@@ -64,6 +64,8 @@ struct ReadCellSlabIterFx {
   const char* ARRAY_NAME = "read_cell_slab_iter";
   tiledb_array_t* array_ = nullptr;
 
+  shared_ptr<MemoryTracker> tracker_;
+
   ReadCellSlabIterFx();
   ~ReadCellSlabIterFx();
 
@@ -83,7 +85,8 @@ struct ReadCellSlabIterFx {
 };
 
 ReadCellSlabIterFx::ReadCellSlabIterFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : fs_vec_(vfs_test_get_fs_vec())
+    , tracker_(tiledb::test::create_test_memory_tracker()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 
@@ -163,7 +166,8 @@ void ReadCellSlabIterFx::create_result_space_tiles(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      tiledb::test::get_test_memory_tracker());
 }
 
 void set_result_tile_dim(
@@ -257,10 +261,10 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -331,10 +335,10 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -409,10 +413,10 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
+        tiledb::test::create_test_memory_tracker(),
         true);
     fragments.emplace_back(std::move(fragment));
   }
@@ -492,10 +496,10 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
+        tiledb::test::create_test_memory_tracker(),
         true);
     fragments.emplace_back(std::move(fragment));
   }
@@ -511,9 +515,12 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_2_0(1, 0, *fragments[0]);
-  ResultTile result_tile_3_0(2, 0, *fragments[0]);
-  ResultTile result_tile_3_1(2, 1, *fragments[1]);
+  ResultTile result_tile_2_0(
+      1, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_0(
+      2, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_1(
+      2, 1, *fragments[1], tiledb::test::get_test_memory_tracker());
 
   set_result_tile_dim(
       array_schema, result_tile_2_0, "d", 0, {{1000, 3, 1000, 5}});
@@ -712,10 +719,10 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -898,10 +905,10 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -1097,10 +1104,10 @@ TEST_CASE_METHOD(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array_->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -1343,10 +1350,10 @@ TEST_CASE_METHOD(
     shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
         HERE(),
         nullptr,
-        create_test_memory_tracker(),
         array_->array_->array_schema_latest_ptr(),
         URI(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
+        tiledb::test::create_test_memory_tracker(),
         true);
     fragments.emplace_back(std::move(fragment));
   }
@@ -1362,8 +1369,10 @@ TEST_CASE_METHOD(
 
   // Create result coordinates
   std::vector<ResultCoords> result_coords;
-  ResultTile result_tile_3_0(2, 0, *fragments[0]);
-  ResultTile result_tile_3_1(2, 1, *fragments[1]);
+  ResultTile result_tile_3_0(
+      2, 0, *fragments[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile_3_1(
+      2, 1, *fragments[1], tiledb::test::get_test_memory_tracker());
 
   set_result_tile_dim(
       array_schema, result_tile_3_0, "d1", 0, {{1000, 3, 1000, 1000}});

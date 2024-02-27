@@ -26,8 +26,8 @@
 include(unit_test)
 
 commence(unit_test metadata)
-    this_target_object_libraries(metadata)
-    # The dependency on the `tile` object library is suspect, but here for now.
+    this_target_object_libraries(metadata mem_helpers)	
+    # The dependency on the `tile` object library is suspect, but here for now.	
     this_target_object_libraries(tile)
     this_target_sources(main.cc unit_metadata.cc)
 conclude(unit_test)

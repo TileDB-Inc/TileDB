@@ -38,6 +38,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
@@ -61,7 +62,8 @@ TEST_CASE(
   REQUIRE(query_condition.empty());
   REQUIRE(query_condition.field_names().empty());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
   REQUIRE(
@@ -200,7 +202,8 @@ TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
                   QueryConditionOp::LT)
               .ok());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   shared_ptr<Attribute> attr =
       make_shared<Attribute>(HERE(), "blob_attr", Datatype::BLOB);
   REQUIRE(array_schema->add_attribute(attr).ok());
@@ -1123,10 +1126,10 @@ void test_apply_cells<char*>(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   REQUIRE(
       query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
@@ -1160,10 +1163,10 @@ void test_apply_cells<char*>(
       frag_md[0] = make_shared<FragmentMetadata>(
           HERE(),
           nullptr,
-          tiledb::test::create_test_memory_tracker(),
           array_schema,
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
+          tiledb::test::create_test_memory_tracker(),
           true);
       REQUIRE(query_condition_eq_null
                   .apply(*array_schema, frag_md, result_cell_slabs_eq_null, 1)
@@ -1309,10 +1312,10 @@ void test_apply_cells(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   REQUIRE(
       query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
@@ -1568,7 +1571,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1591,14 +1595,15 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileSizes tile_sizes(
       var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
@@ -1629,7 +1634,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -1647,10 +1653,10 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -1661,7 +1667,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1731,7 +1738,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -1759,10 +1767,10 @@ TEST_CASE(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -1775,7 +1783,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *frag_md[0]);
+  ResultTile result_tile(
+      0, 0, *frag_md[0], tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2280,7 +2289,8 @@ void test_apply_dense<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2306,10 +2316,10 @@ void test_apply_dense<char*>(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -2322,7 +2332,8 @@ void test_apply_dense<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2344,7 +2355,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -2365,10 +2377,10 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -2379,7 +2391,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2450,7 +2463,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -2476,10 +2490,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -2492,7 +2506,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2979,7 +2994,8 @@ void test_apply_sparse<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -3005,10 +3021,10 @@ void test_apply_sparse<char*>(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -3021,7 +3037,8 @@ void test_apply_sparse<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3043,7 +3060,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   const T fill_value = 3;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_cell_val_num(1);
   attr.set_fill_value(&fill_value, sizeof(T));
@@ -3064,10 +3082,10 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -3078,7 +3096,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3215,10 +3234,10 @@ void validate_qc_apply(
   frag_md[0] = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
@@ -3815,7 +3834,8 @@ TEST_CASE(
   const Datatype type = Datatype::UINT64;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
@@ -3834,10 +3854,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -3848,7 +3868,8 @@ TEST_CASE(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4100,7 +4121,8 @@ TEST_CASE(
   const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4120,10 +4142,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -4135,7 +4157,8 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4454,7 +4477,8 @@ TEST_CASE(
   const Datatype type = Datatype::STRING_UTF8;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(false);
   attr.set_cell_val_num(constants::var_num);
@@ -4474,10 +4498,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // For pasting into a Python shell:
@@ -4547,7 +4571,8 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4776,7 +4801,8 @@ TEST_CASE(
   const Datatype type = Datatype::FLOAT32;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(true);
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
@@ -4796,10 +4822,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -4810,7 +4836,8 @@ TEST_CASE(
       std::nullopt,
       cells * constants::cell_validity_size,
       0);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4872,7 +4899,8 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(HERE());
+  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   Attribute attr(field_name, type);
   attr.set_nullable(nullable);
   attr.set_cell_val_num(var_size ? constants::var_num : 2);
@@ -4895,10 +4923,10 @@ TEST_CASE(
 
   FragmentMetadata frag_md(
       nullptr,
-      tiledb::test::create_test_memory_tracker(),
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
 
   // Initialize the result tile.
@@ -4911,7 +4939,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,

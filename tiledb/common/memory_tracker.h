@@ -90,7 +90,6 @@
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
-#include <chrono>
 #include <condition_variable>
 #include <thread>
 
@@ -103,24 +102,36 @@ namespace sm {
 
 //** The type of memory to track. */
 enum class MemoryType {
-  RTREE,
+  ENUMERATION,
+  ENUMERATION_PATHS,
   FOOTER,
+  GENERIC_TILE_IO,
+  RTREE,
+  TILE_DATA,
   TILE_OFFSETS,
-  TILE_MIN_VALS,
   TILE_MAX_VALS,
-  TILE_SUMS,
+  TILE_MIN_VALS,
   TILE_NULL_COUNTS,
-  ENUMERATION
+  ATTRIBUTES,
+  DIMENSION_LABELS,
+  DIMENSIONS,
+  TILE_SUMS,
+  TILE_WRITER_DATA
 };
 
 /** The type of MemoryTracker. */
 enum class MemoryTrackerType {
   ANONYMOUS,
+  ARRAY_CREATE,
+  ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
+  FRAGMENT_INFO_LOAD,
   QUERY_READ,
   QUERY_WRITE,
-  CONSOLIDATOR
+  CONSOLIDATOR,
+  REST_CLIENT,
+  EPHEMERAL
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

@@ -119,6 +119,19 @@ class ContextResources {
    */
   shared_ptr<MemoryTracker> create_memory_tracker() const;
 
+  /**
+   * Return the ephemeral memory tracker.
+   *
+   * Use this tracker when you have a case where you need a memory tracker
+   * temporarily, without access to a more appropriate tracker. For instance,
+   * when using GenericTileIO when deserializing various objects we can use
+   * this for the GenericTileIO. Make sure to not confuse this with the
+   * memory tracker that might exists on what's being deserialized.
+   *
+   * @return The ephemeral MemoryTracker.
+   */
+  shared_ptr<MemoryTracker> ephemeral_memory_tracker() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -126,6 +139,9 @@ class ContextResources {
 
   /** The MemoryTrackerManager for this context. */
   mutable shared_ptr<MemoryTrackerManager> memory_tracker_manager_;
+
+  /** The ephemeral MemoryTracker. */
+  mutable shared_ptr<MemoryTracker> ephemeral_memory_tracker_;
 
   /** The MemoryTrackerReporter for this context. */
   mutable shared_ptr<MemoryTrackerReporter> memory_tracker_reporter_;

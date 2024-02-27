@@ -91,16 +91,17 @@ class FragmentMetadata {
    * @param timestamp_range The timestamp range of the fragment.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param memory_tracker Memory tracker for the fragment metadata.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param has_timestamps Does the fragment contains timestamps.
    * @param has_delete_meta Does the fragment contains delete metadata.
    */
   FragmentMetadata(
       ContextResources* resources,
-      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
+      shared_ptr<MemoryTracker> memory_tracker,
       bool dense = true,
       bool has_timestamps = false,
       bool has_delete_mata = false);
@@ -2037,7 +2038,7 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and returns a tile.
    */
-  Tile read_generic_tile_from_file(
+  shared_ptr<Tile> read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
