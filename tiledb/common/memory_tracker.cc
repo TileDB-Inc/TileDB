@@ -68,7 +68,7 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileMinVals";
     case MemoryType::TILE_NULL_COUNTS:
       return "TileNullCounts";
-     case MemoryType::ATTRIBUTES:
+    case MemoryType::ATTRIBUTES:
       return "Attributes";
     case MemoryType::DIMENSION_LABELS:
       return "DimensionLabels";
