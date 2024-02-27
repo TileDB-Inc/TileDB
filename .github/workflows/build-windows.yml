@@ -61,8 +61,22 @@ jobs:
       TILEDB_ARROW_TESTS: ${{ matrix.TILEDB_ARROW_TESTS }}
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
+      # On windows-2019 we are using the Visual Studio generator, which is multi-config and places the build artifacts in a subdirectory
+      CONFIG_PATH_FIXUP: ${{ matrix.os == 'windows-2019' && 'Release' || '' }}
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
     steps:
+      # By default Visual Studio chooses the earliest installed toolset version
+      # for the main build and vcpkg chooses the latest. Force it to use the
+      # latest (14.39 currently).
+      - name: Setup MSVC toolset (VS 2022)
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: matrix.os == 'windows-2022'
+        with:
+          arch: x64
+          toolset: 14.39
+      - name: Install Ninja (VS 2022)
+        uses: seanmiddleditch/gha-setup-ninja@v4
+        if: matrix.os == 'windows-2022'
       - name: 'tiledb env prep'
         run: |
           $env:BUILD_BUILDDIRECTORY = $env:GITHUB_WORKSPACE.replace("TileDB\TileDB","tdbbd") # 't'ile'db' 'b'uild 'd'ir
@@ -142,7 +156,7 @@ jobs:
           # allow double-checking path
           cmd /c "echo $PATH"
 
-          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS
+          $bootstrapOptions = $env:TILEDB_BASE_BOOTSTRAP_OPTIONS + " -CMakeGenerator ${{ matrix.os == 'windows-2022' && 'Ninja' || '`"Visual Studio 16 2019`"' }}"
           if ($env:TILEDB_S3 -eq "ON") {
             $bootstrapOptions = "-EnableS3 " + $bootstrapOptions
           }
@@ -244,9 +258,7 @@ jobs:
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_regression --config $CMakeBuildType -- /verbosity:minimal
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target all_link_complete --config $CMakeBuildType -- /verbosity:minimal
+          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit tiledb_regression all_link_complete --config $CMakeBuildType
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -277,7 +289,7 @@ jobs:
 
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$CMakeBuildType\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\$env:CONFIG_PATH_FIXUP\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
@@ -285,7 +297,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\$CMakeBuildType\test_assert.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\$env:CONFIG_PATH_FIXUP\test_assert.exe -d=yes"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
@@ -307,7 +319,7 @@ jobs:
 
           $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$CMakeBuildType") -Filter *.exe |
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\$env:CONFIG_PATH_FIXUP\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -340,7 +352,7 @@ jobs:
 
           $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api")
           $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$CMakeBuildType") -Filter *.exe |
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\$env:CONFIG_PATH_FIXUP\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -383,12 +395,12 @@ jobs:
           cd build
 
           # Build zip artifact
-          cmake -A X64 -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
+          cmake ${{ matrix.os != 'windows-2019' && '-G Ninja' || '' }} -DCMAKE_BUILD_TYPE="$CMakeBuildType" -DCMAKE_PREFIX_PATH="$env:BUILD_BUILDDIRECTORY\dist;$env:BUILD_BUILDDIRECTORY\vcpkg_installed\x64-windows" ..
 
           cmake --build . --config $CMakeBuildType -v
 
-          #.\$CMakeBuildType\ExampleExe.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe.exe"
+          #.\$env:CONFIG_PATH_FIXUP\ExampleExe.exe
+          $cmd = ".\$env:CONFIG_PATH_FIXUP\ExampleExe.exe"
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
