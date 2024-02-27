@@ -380,7 +380,10 @@ Status UnorderedWriter::prepare_tiles(
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (written_buffers_.count(name) == 0) {
-      (*tiles).emplace(name, WriterTileTupleVector());
+      (*tiles).emplace(
+          std::piecewise_construct,
+          std::forward_as_tuple(name),
+          std::forward_as_tuple());
     }
   }
 
@@ -389,8 +392,8 @@ Status UnorderedWriter::prepare_tiles(
       storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        const auto& name = tiles_it->first;
-        RETURN_CANCEL_OR_ERROR(prepare_tiles(name, &((*tiles)[name])));
+        RETURN_CANCEL_OR_ERROR(
+            prepare_tiles(tiles_it->first, &(tiles_it->second)));
         return Status::Ok();
       });
 
@@ -427,14 +430,14 @@ Status UnorderedWriter::prepare_tiles_fixed(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
+    tiles->emplace_back(
         array_schema_,
         cell_num_per_tile,
         false,
         nullable,
         cell_size,
         type,
-        query_memory_tracker_));
+        query_memory_tracker_);
   }
 
   // Write all cells one by one
@@ -504,14 +507,14 @@ Status UnorderedWriter::prepare_tiles_var(
   // Initialize tiles
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
+    tiles->emplace_back(
         array_schema_,
         cell_num_per_tile,
         true,
         nullable,
         cell_size,
         type,
-        query_memory_tracker_));
+        query_memory_tracker_);
   }
 
   // Write all cells one by one

@@ -178,24 +178,26 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
 void GenericTileIO::store_data(
     ContextResources& resources,
     const URI& uri,
-    WriterTile& tile,
+    shared_ptr<WriterTile> tile,
     const EncryptionKey& encryption_key) {
   GenericTileIO tile_io(resources, uri);
   uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, encryption_key, &nbytes);
+  tile_io.write_generic(tile, encryption_key, &nbytes);
   throw_if_not_ok(resources.vfs().close_file(uri));
 }
 
 void GenericTileIO::write_generic(
-    WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes) {
+    shared_ptr<WriterTile> tile,
+    const EncryptionKey& encryption_key,
+    uint64_t* nbytes) {
   // Create a header
   GenericTileHeader header;
-  init_generic_tile_header(tile, &header, encryption_key);
+  init_generic_tile_header(tile.get(), &header, encryption_key);
 
   // Filter tile
   assert(!tile->filtered());
   throw_if_not_ok(header.filters.run_forward(
-      &resources_.stats(), tile, nullptr, &resources_.compute_tp()));
+      &resources_.stats(), tile.get(), nullptr, &resources_.compute_tp()));
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 

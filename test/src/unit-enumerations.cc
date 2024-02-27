@@ -103,7 +103,7 @@ struct EnumerationFx {
   void check_storage_deserialization(const std::vector<T>& values);
 
   storage_size_t calculate_serialized_size(shared_ptr<const Enumeration> enmr);
-  WriterTile serialize_to_tile(shared_ptr<const Enumeration> enmr);
+  shared_ptr<WriterTile> serialize_to_tile(shared_ptr<const Enumeration> enmr);
 
   template <typename T>
   std::vector<T> as_vector(shared_ptr<const Enumeration> enmr);
@@ -987,11 +987,11 @@ TEST_CASE_METHOD(
   auto enmr = create_enumeration(values);
   auto tile = serialize_to_tile(enmr);
 
-  REQUIRE(tile.size() > 4);
-  auto data = tile.data();
+  REQUIRE(tile->size() > 4);
+  auto data = tile->data();
   memset(data, 1, 4);
 
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   REQUIRE_THROWS(Enumeration::deserialize(deserializer, memory_tracker_));
 }
 
@@ -2699,7 +2699,7 @@ template <typename T>
 void EnumerationFx::check_storage_serialization(const std::vector<T>& values) {
   auto enmr = create_enumeration(values);
   auto tile = serialize_to_tile(enmr);
-  REQUIRE(tile.size() == calculate_serialized_size(enmr));
+  REQUIRE(tile->size() == calculate_serialized_size(enmr));
 }
 
 template <typename T>
@@ -2708,7 +2708,7 @@ void EnumerationFx::check_storage_deserialization(
   auto enmr = create_enumeration(values);
   auto tile = serialize_to_tile(enmr);
 
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   auto deserialized = Enumeration::deserialize(deserializer, memory_tracker_);
 
   REQUIRE(deserialized->name() == enmr->name());
@@ -2778,14 +2778,13 @@ storage_size_t EnumerationFx::calculate_serialized_size(
   return num_bytes;
 }
 
-WriterTile EnumerationFx::serialize_to_tile(
+shared_ptr<WriterTile> EnumerationFx::serialize_to_tile(
     shared_ptr<const Enumeration> enmr) {
   SizeComputationSerializer size_serializer;
   enmr->serialize(size_serializer);
 
-  WriterTile tile{
-      WriterTile::from_generic(size_serializer.size(), memory_tracker_)};
-  Serializer serializer(tile.data(), tile.size());
+  auto tile{WriterTile::from_generic(size_serializer.size(), memory_tracker_)};
+  Serializer serializer(tile->data(), tile->size());
   enmr->serialize(serializer);
 
   return tile;

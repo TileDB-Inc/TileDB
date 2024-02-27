@@ -710,7 +710,7 @@ Status WriterBase::compute_tiles_metadata(
       auto tiles_it = tiles.begin();
       std::advance(tiles_it, i);
       const auto& attr = tiles_it->first;
-      auto& attr_tiles = tiles[attr];
+      auto& attr_tiles = tiles.at(attr);
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
@@ -951,14 +951,14 @@ Status WriterBase::init_tiles(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
+    tiles->emplace_back(
         array_schema_,
         cell_num_per_tile,
         var_size,
         nullable,
         cell_size,
         type,
-        query_memory_tracker_));
+        query_memory_tracker_);
   }
 
   return Status::Ok();
