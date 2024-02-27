@@ -56,20 +56,9 @@ class MetadataException : public StatusException {
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
-
 Metadata::Metadata(shared_ptr<MemoryTracker> memory_tracker)
-    : Metadata(
-          tdb::pmr::map<std::string, MetadataValue>(
-              memory_tracker->get_resource(MemoryType::METADATA)),
-          memory_tracker) {
-}
-
-Metadata::Metadata(
-    const tdb::pmr::map<std::string, MetadataValue>& metadata_map,
-    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , metadata_map_(
-          metadata_map, memory_tracker_->get_resource(MemoryType::METADATA))
+    , metadata_map_(memory_tracker_->get_resource(MemoryType::METADATA))
     , metadata_index_(memory_tracker_->get_resource(MemoryType::METADATA))
     , timestamp_range_([]() -> std::pair<uint64_t, uint64_t> {
       auto t = utils::time::timestamp_now_ms();

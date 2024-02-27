@@ -72,8 +72,6 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileSums";
     case MemoryType::TILE_WRITER_DATA:
       return "TileWriterData";
-    case MemoryType::ENUMERATION:
-      return "Enumeration";
     case MemoryType::METADATA:
       return "Metadata";
     default:

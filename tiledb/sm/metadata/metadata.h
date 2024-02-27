@@ -95,11 +95,6 @@ class Metadata {
   /** Constructor. */
   Metadata(shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Constructor. */
-  Metadata(
-      const tdb::pmr::map<std::string, MetadataValue>& metadata_map,
-      shared_ptr<MemoryTracker> memory_tracker);
-
   DISABLE_COPY(Metadata);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Metadata);
 
