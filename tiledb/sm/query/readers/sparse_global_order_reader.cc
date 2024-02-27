@@ -332,7 +332,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
       t,
       array_schema_.allows_dups(),
       deletes_consolidation_no_purge_,
-      frag_md);
+      frag_md,
+      query_memory_tracker_);
 
   return false;
 }

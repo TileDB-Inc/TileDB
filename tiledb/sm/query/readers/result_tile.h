@@ -266,8 +266,10 @@ class ResultTile {
         const ArraySchema& array_schema,
         const std::string& name,
         const TileSizes tile_sizes,
-        const TileData tile_data)
-        : fixed_tile_(
+        const TileData tile_data,
+        shared_ptr<MemoryTracker> memory_tracker)
+        : memory_tracker_(memory_tracker)
+        , fixed_tile_(
               format_version,
               tile_sizes.has_var_tile() ? constants::cell_var_offset_type :
                                           array_schema.type(name),
@@ -276,7 +278,8 @@ class ResultTile {
               (name == constants::coords) ? array_schema.dim_num() : 0,
               tile_sizes.tile_size(),
               tile_data.fixed_filtered_data(),
-              tile_sizes.tile_persisted_size()) {
+              tile_sizes.tile_persisted_size(),
+              memory_tracker_) {
       if (tile_sizes.has_var_tile()) {
         auto type = array_schema.type(name);
         var_tile_.emplace(
@@ -286,7 +289,8 @@ class ResultTile {
             0,
             tile_sizes.tile_var_size(),
             tile_data.var_filtered_data(),
-            tile_sizes.tile_var_persisted_size());
+            tile_sizes.tile_var_persisted_size(),
+            memory_tracker_);
       }
 
       if (tile_sizes.has_validity_tile()) {
@@ -297,7 +301,8 @@ class ResultTile {
             0,
             tile_sizes.tile_validity_size(),
             tile_data.validity_filtered_data(),
-            tile_sizes.tile_validity_persisted_size());
+            tile_sizes.tile_validity_persisted_size(),
+            memory_tracker_);
       }
     }
 
@@ -340,6 +345,9 @@ class ResultTile {
     /*        PRIVATE ATTRIBUTES         */
     /* ********************************* */
 
+    /** The memory tracker. */
+    shared_ptr<MemoryTracker> memory_tracker_;
+
     /** Stores the fixed data tile. */
     Tile fixed_tile_;
 
@@ -354,15 +362,25 @@ class ResultTile {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  ResultTile() = default;
+  /** No Default constructor. */
+  ResultTile() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param memory_tracker The memory tracker to use.
+   */
+  ResultTile(shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor. The number of dimensions `dim_num` is used to allocate
    * the separate coordinate tiles.
    */
   ResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md);
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ResultTile);
   DISABLE_MOVE_AND_MOVE_ASSIGN(ResultTile);
@@ -659,6 +677,9 @@ class ResultTile {
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The array domain. */
   const Domain* domain_;
 
@@ -798,11 +819,23 @@ class ResultTileWithBitmap : public ResultTile {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
-  ResultTileWithBitmap() = default;
+  ResultTileWithBitmap() = delete;
+
+  /**
+   * Constructor
+   *
+   * @param memory_tracker The memory tracker to use.
+   */
+  ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTile(memory_tracker) {
+  }
 
   ResultTileWithBitmap(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTile(frag_idx, tile_idx, frag_md)
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTile(frag_idx, tile_idx, frag_md, memory_tracker)
       , result_num_(cell_num_) {
   }
 
@@ -933,13 +966,19 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  /** No default constructor. */
+  GlobalOrderResultTile() = delete;
+
   GlobalOrderResultTile(
       unsigned frag_idx,
       uint64_t tile_idx,
       bool dups,
       bool include_delete_meta,
-      const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md)
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTileWithBitmap<BitmapType>(
+            frag_idx, tile_idx, frag_md, memory_tracker)
       , post_dedup_bitmap_(
             !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
                                            nullopt)
@@ -1131,9 +1170,16 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+  /** No default memory tracker. */
+  UnorderedWithDupsResultTile() = delete;
+
   UnorderedWithDupsResultTile(
-      unsigned frag_idx, uint64_t tile_idx, const FragmentMetadata& frag_md)
-      : ResultTileWithBitmap<BitmapType>(frag_idx, tile_idx, frag_md) {
+      unsigned frag_idx,
+      uint64_t tile_idx,
+      const FragmentMetadata& frag_md,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : ResultTileWithBitmap<BitmapType>(
+            frag_idx, tile_idx, frag_md, memory_tracker) {
   }
 
   DISABLE_MOVE_AND_MOVE_ASSIGN(UnorderedWithDupsResultTile);

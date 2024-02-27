@@ -124,7 +124,9 @@ Status FragmentMetaConsolidator::consolidate(
         meta[i]->write_footer(size_computation_serializer);
         tiles[i].reset(tdb_new(
             WriterTile,
-            WriterTile::from_generic(size_computation_serializer.size())));
+            WriterTile::from_generic(
+                size_computation_serializer.size(),
+                consolidator_memory_tracker_)));
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
         meta[i]->write_footer(serializer);
 
@@ -160,7 +162,8 @@ Status FragmentMetaConsolidator::consolidate(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer, offset);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(
+      size_computation_serializer.size(), consolidator_memory_tracker_)};
 
   Serializer serializer(tile.data(), tile.size());
   serialize_data(serializer, offset);

@@ -33,6 +33,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -71,15 +72,18 @@ shared_ptr<Tile> GenericTileIO::load(
     ContextResources& resources,
     const URI& uri,
     uint64_t offset,
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) {
   GenericTileIO tile_io(resources, uri);
 
   // Get encryption key from config
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     EncryptionKey cfg_enc_key(resources.config());
-    return tile_io.read_generic(offset, cfg_enc_key, resources.config());
+    return tile_io.read_generic(
+        offset, cfg_enc_key, resources.config(), memory_tracker);
   } else {
-    return tile_io.read_generic(offset, encryption_key, resources.config());
+    return tile_io.read_generic(
+        offset, encryption_key, resources.config(), memory_tracker);
   }
 
   stdx::unreachable();
@@ -88,7 +92,8 @@ shared_ptr<Tile> GenericTileIO::load(
 shared_ptr<Tile> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
-    const Config& config) {
+    const Config& config,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto&& header = read_generic_tile_header(resources_, uri_, file_offset);
 
   if (encryption_key.encryption_type() !=
@@ -114,7 +119,8 @@ shared_ptr<Tile> GenericTileIO::read_generic(
       0,
       header.tile_size,
       filtered_data.data(),
-      header.persisted_size);
+      header.persisted_size,
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 
   // Read the tile.
   throw_if_not_ok(resources_.vfs().read(
