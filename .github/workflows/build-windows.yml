@@ -404,8 +404,8 @@ jobs:
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
-          #.\$CMakeBuildType\ExampleExe_static.exe
-          $cmd = ".\$CMakeBuildType\ExampleExe_static.exe"
+          #.\$env:CONFIG_PATH_FIXUP\ExampleExe_static.exe
+          $cmd = ".\$env:CONFIG_PATH_FIXUP\ExampleExe_static.exe"
           Write-Host "cmd: '$cmd'"
           Invoke-Expression $cmd
 
