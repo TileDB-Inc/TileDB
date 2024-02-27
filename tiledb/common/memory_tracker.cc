@@ -52,6 +52,8 @@ std::string memory_type_to_str(MemoryType type) {
   switch (type) {
     case MemoryType::ENUMERATION:
       return "Enumeration";
+    case MemoryType::ENUMERATION_PATHS:
+      return "EnumerationPaths";
     case MemoryType::FOOTER:
       return "Footer";
     case MemoryType::GENERIC_TILE_IO:
@@ -70,6 +72,12 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileNullCounts";
     case MemoryType::TILE_SUMS:
       return "TileSums";
+    case MemoryType::ATTRIBUTES:
+      return "Attributes";
+    case MemoryType::DIMENSION_LABELS:
+      return "DimensionLabels";
+    case MemoryType::DIMENSIONS:
+      return "Dimensions";
     case MemoryType::TILE_WRITER_DATA:
       return "TileWriterData";
     default:
