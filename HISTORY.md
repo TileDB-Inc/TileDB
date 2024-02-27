@@ -1,8 +1,14 @@
 # TileDB v2.19.2 Release Notes
 
+## Defects removed
+
+* Fix bug with new minio behavior. [#4725](https://github.com/TileDB-Inc/TileDB/pull/4725)
+* Support reading V1 group details with explicit version in the name. [#4744](https://github.com/TileDB-Inc/TileDB/pull/4744)
+
 ## Build System Changes
 
 * Fix regression where release artifacts had 8-digit commit hashes. [#4599](https://github.com/TileDB-Inc/TileDB/pull/4599)
+* Fix linker errors when building with MSVC. [#4759](https://github.com/TileDB-Inc/TileDB/pull/4759)
 
 # TileDB v2.19.1 Release Notes
 
