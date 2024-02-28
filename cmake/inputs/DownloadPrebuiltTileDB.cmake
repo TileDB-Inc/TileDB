@@ -24,9 +24,15 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
+include(FetchContent)
+
 function(fetch_tiledb_release_list VERSION EXPECTED_HASH)
         # Local constants
         set(UPSTREAM_URL "https://github.com/TileDB-Inc/TileDB/releases/download")
+
+        if(NOT ${VERSION})
+                set(VERSION latest)
+        endif()
 
         if(${EXPECTED_HASH})
                 file(DOWNLOAD
@@ -56,16 +62,11 @@ function(fetch_tiledb_release_list VERSION EXPECTED_HASH)
                 string(REPLACE "," ";" LINE ${LINE})
                 list(LENGTH LINE LENGTH)
 
-                list(GET LINE 0 OS)
-                list(GET LINE 1 ARCH)
-                list(GET LINE 2 URL)
-                list(GET LINE 3 SHA)
+                list(GET LINE 0 PLATFORM)
+                list(GET LINE 1 URL)
+                list(GET LINE 2 SHA)
 
-                if(${LENGTH} GREATER 4)
-                        list(GET LINE 4 NOAVX2)
-                endif()
-
-                set(RELEASE_VAR TILEDB_${OS}_${ARCH})
+                set(RELEASE_VAR TILEDB_${PLATFORM})
                 set(URL_${RELEASE_VAR} ${URL} PARENT_SCOPE)
                 set(HASH_${RELEASE_VAR} ${SHA} PARENT_SCOPE)
         endforeach()
@@ -92,10 +93,6 @@ function(detect_artifact_name OUT_VAR)
         endif()
 endfunction()
 
-function(get_tiledb_source_url_and_hash OUT_URL OUT_HASH)
-        # TODO
-endfunction()
-
 function(fetch_prebuilt_tiledb)
         # Arguments
         set(options RELLIST_HASH)
@@ -109,29 +106,19 @@ function(fetch_prebuilt_tiledb)
                 ${ARGN}
                 )
 
-        if(NOT ${FETCH_PREBUILT_TILEDB_VERSION})
-                set(FETCH_PREBUILT_TILEDB_VERSION "{{LATEST_TILEDB_VERSION}}")
-        endif()
         fetch_tiledb_release_list(${FETCH_PREBUILT_TILEDB_VERSION} RELLIST_HASH)
 
         if(NOT ${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME})
                 detect_artifact_name(FETCH_PREBUILT_TILEDB_ARTIFACT_NAME)
         endif()
 
-        ExternalProject_Add(ep_tiledb
-                PREFIX "externals"
+        FetchContent_Declare(
+                tiledb
                 URL ${URL_${ARTIFACT_NAME}}
                 URL_HASH SHA256=${HASH_${ARTIFACT_NAME}}
-                CONFIGURE_COMMAND ""
-                BUILD_COMMAND ""
-                UPDATE_COMMAND ""
-                PATCH_COMMAND ""
-                TEST_COMMAND ""
-                INSTALL_COMMAND
-                ${CMAKE_COMMAND} -E copy_directory ${EP_BASE}/src/ep_tiledb ${EP_INSTALL_PREFIX}
-                LOG_DOWNLOAD TRUE
-                LOG_CONFIGURE FALSE
-                LOG_BUILD FALSE
-                LOG_INSTALL FALSE
-                )
+        )
+
+        FetchContent_MakeAvailable(
+                tiledb
+        )
 endfunction()

@@ -42,7 +42,7 @@ jobs:
           RELLIST="output/releases.csv"
           MODULE="output/DownloadPrebuiltTileDB.cmake"
           cp cmake/inputs/DownloadPrebuiltTileDB.cmake $MODULE
-          echo "os,arch,url,sha,noavx2" > $RELLIST
+          echo "platform,url,sha256" > $RELLIST
           
           for FILE in $(ls release)
           do
@@ -50,12 +50,13 @@ jobs:
                   then
                           OS=${BASH_REMATCH[1]^^}
                           ARCH=${BASH_REMATCH[2]^^}
-                          NOAVX2=${BASH_REMATCH[3]//-/}
+                          NOAVX2=${BASH_REMATCH[3]^^}
+                          PLATFORM=${OS}-${ARCH}${NOAVX2}
 
                           URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
                           HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           
-                          echo "${OS},${ARCH},${URL},${HASH},${NOAVX2^^}" >> $RELLIST
+                          echo "${PLATFORM},${URL},${HASH}" >> $RELLIST
                   fi
           done
           
@@ -63,7 +64,7 @@ jobs:
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$(basename $SOURCE_FILE_NAME)
           HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
           
-          echo "source,source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE},source" >> $RELLIST
+          echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
           
           HASH=$(sha256sum $RELLIST | cut -d " " -f 1)
           echo $HASH > $RELLIST.sha256
