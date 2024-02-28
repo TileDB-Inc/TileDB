@@ -60,7 +60,7 @@ jobs:
                   fi
           done
           
-          SOURCE_FILE_NAME=$(ls release/tiledb-source-*.zip)
+          SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
           URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$(basename $SOURCE_FILE_NAME)
           HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
           
