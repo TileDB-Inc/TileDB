@@ -4,6 +4,12 @@ on:
   - workflow_call
   - workflow_dispatch
 
+  push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
+
 jobs:
   rest-ci:
     runs-on: ubuntu-latest
