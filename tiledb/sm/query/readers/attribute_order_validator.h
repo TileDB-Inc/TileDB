@@ -81,8 +81,12 @@ class AttributeOrderValidator {
    * @param attribute_name Name of the attribute to validate.
    * @param num_frags Number of fragments.
    */
-  AttributeOrderValidator(const std::string& attribute_name, uint64_t num_frags)
-      : attribute_name_(attribute_name)
+  AttributeOrderValidator(
+      const std::string& attribute_name,
+      uint64_t num_frags,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : memory_tracker_(memory_tracker)
+      , attribute_name_(attribute_name)
       , result_tiles_to_load_(num_frags)
       , per_fragment_validation_data_(num_frags) {
   }
@@ -526,6 +530,9 @@ class AttributeOrderValidator {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker to use. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** Name of the attribute to validate. */
   std::string attribute_name_;
 
@@ -562,7 +569,10 @@ class AttributeOrderValidator {
           std::piecewise_construct,
           std::forward_as_tuple(t_to_compare),
           std::forward_as_tuple(
-              f_to_compare, t_to_compare, *fragment_metadata.get()));
+              f_to_compare,
+              t_to_compare,
+              *fragment_metadata.get(),
+              memory_tracker_));
     }
 
     if (is_lower_bound) {
@@ -579,8 +589,12 @@ class AttributeOrderValidator {
    * @return Tile to compare against.
    */
   inline ResultTile* min_tile_to_compare_against(unsigned f) {
-    return &result_tiles_to_load_[f][per_fragment_validation_data_[f]
-                                         .min_tile_to_compare_to_.value()];
+    auto idx = per_fragment_validation_data_[f].min_tile_to_compare_to_.value();
+    auto iter = result_tiles_to_load_[f].find(idx);
+    if (iter == result_tiles_to_load_[f].end()) {
+      throw std::runtime_error("Invalid minimum tile index.");
+    }
+    return &(iter->second);
   }
 
   /**
@@ -590,8 +604,12 @@ class AttributeOrderValidator {
    * @return Tile to compare against.
    */
   inline ResultTile* max_tile_to_compare_against(unsigned f) {
-    return &result_tiles_to_load_[f][per_fragment_validation_data_[f]
-                                         .max_tile_to_compare_to_.value()];
+    auto idx = per_fragment_validation_data_[f].max_tile_to_compare_to_.value();
+    auto iter = result_tiles_to_load_[f].find(idx);
+    if (iter == result_tiles_to_load_[f].end()) {
+      throw std::runtime_error("Invalid maximum tile index.");
+    }
+    return &(iter->second);
   }
 };
 

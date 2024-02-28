@@ -383,9 +383,8 @@ Status StorageManager::array_evolve_schema(
         "' not exists"));
   }
 
-  auto memory_tracker = resources_.create_memory_tracker();
-  memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key, resources_.ephemeral_memory_tracker());
 
   // Load required enumerations before evolution.
   auto enmr_names = schema_evolution->enumeration_names_to_extend();
@@ -458,9 +457,8 @@ Status StorageManagerCanonical::array_upgrade_version(
         static_cast<uint32_t>(encryption_key_from_cfg.size())));
   }
 
-  auto memory_tracker = resources_.create_memory_tracker();
-  memory_tracker->set_type(MemoryTrackerType::ARRAY_LOAD);
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key_cfg, resources().ephemeral_memory_tracker());
 
   if (array_schema->version() < constants::format_version) {
     array_schema->generate_uri();
@@ -1012,24 +1010,25 @@ StorageManagerCanonical::load_delete_and_update_conditions(
     auto& uri = locations[i].uri();
 
     // Read the condition from storage.
-    auto&& tile = GenericTileIO::load(
+    auto tile = GenericTileIO::load(
         resources_,
         uri,
         locations[i].offset(),
-        *(opened_array.encryption_key()));
+        *(opened_array.encryption_key()),
+        resources_.ephemeral_memory_tracker());
 
     if (tiledb::sm::utils::parse::ends_with(
             locations[i].condition_marker(),
             tiledb::sm::constants::delete_file_suffix)) {
       conditions[i] =
           tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
     } else if (tiledb::sm::utils::parse::ends_with(
                    locations[i].condition_marker(),
                    tiledb::sm::constants::update_file_suffix)) {
       auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
           deserialize_update_condition_and_values(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {
@@ -1268,7 +1267,9 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(members, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
 
   Serializer serializer(tile.data(), tile.size());
   group->serialize(members, serializer);
@@ -1283,8 +1284,7 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(
-      store_data_to_generic_tile(tile, group_detail_uri, encryption_key));
+  GenericTileIO::store_data(resources_, group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
 }
@@ -1298,7 +1298,9 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
   Serializer serializer(tile.data(), tile.size());
   array_schema->serialize(serializer);
 
@@ -1320,7 +1322,7 @@ Status StorageManagerCanonical::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
+  GenericTileIO::store_data(resources_, schema_uri, tile, encryption_key);
 
   // Create the `__enumerations` directory under `__schema` if it doesn't
   // exist. This might happen if someone tries to add an enumeration to an
@@ -1346,14 +1348,14 @@ Status StorageManagerCanonical::store_array_schema(
     SizeComputationSerializer enumeration_size_serializer;
     enmr->serialize(enumeration_size_serializer);
 
-    WriterTile tile{
-        WriterTile::from_generic(enumeration_size_serializer.size())};
+    WriterTile tile{WriterTile::from_generic(
+        enumeration_size_serializer.size(),
+        resources_.ephemeral_memory_tracker())};
     Serializer serializer(tile.data(), tile.size());
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    RETURN_NOT_OK(
-        store_data_to_generic_tile(tile, abs_enmr_uri, encryption_key));
+    GenericTileIO::store_data(resources_, abs_enmr_uri, tile, encryption_key);
   }
 
   return Status::Ok();
@@ -1376,7 +1378,9 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  WriterTile tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
   Serializer serializer(tile.data(), tile.size());
   metadata->serialize(serializer);
 
@@ -1385,17 +1389,9 @@ Status StorageManagerCanonical::store_metadata(
   // Create a metadata file name
   URI metadata_uri = metadata->get_uri(uri);
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
+  GenericTileIO::store_data(resources_, metadata_uri, tile, encryption_key);
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_data_to_generic_tile(
-    WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(resources_, uri);
-  uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, encryption_key, &nbytes);
-  return vfs()->close_file(uri);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {

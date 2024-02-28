@@ -33,6 +33,7 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/unreachable.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -67,28 +68,32 @@ GenericTileIO::GenericTileIO(ContextResources& resources, const URI& uri)
 /*               API              */
 /* ****************************** */
 
-Tile GenericTileIO::load(
+shared_ptr<Tile> GenericTileIO::load(
     ContextResources& resources,
     const URI& uri,
     uint64_t offset,
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey& encryption_key,
+    shared_ptr<MemoryTracker> memory_tracker) {
   GenericTileIO tile_io(resources, uri);
 
   // Get encryption key from config
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     EncryptionKey cfg_enc_key(resources.config());
-    return tile_io.read_generic(offset, cfg_enc_key, resources.config());
+    return tile_io.read_generic(
+        offset, cfg_enc_key, resources.config(), memory_tracker);
   } else {
-    return tile_io.read_generic(offset, encryption_key, resources.config());
+    return tile_io.read_generic(
+        offset, encryption_key, resources.config(), memory_tracker);
   }
 
   stdx::unreachable();
 }
 
-Tile GenericTileIO::read_generic(
+shared_ptr<Tile> GenericTileIO::read_generic(
     uint64_t file_offset,
     const EncryptionKey& encryption_key,
-    const Config& config) {
+    const Config& config,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto&& header = read_generic_tile_header(resources_, uri_, file_offset);
 
   if (encryption_key.encryption_type() !=
@@ -106,26 +111,28 @@ Tile GenericTileIO::read_generic(
       GenericTileHeader::BASE_SIZE + header.filter_pipeline_size;
 
   std::vector<char> filtered_data(header.persisted_size);
-  Tile tile(
+  shared_ptr<Tile> tile = make_shared<Tile>(
+      HERE(),
       header.version_number,
       (Datatype)header.datatype,
       header.cell_size,
       0,
       header.tile_size,
       filtered_data.data(),
-      header.persisted_size);
+      header.persisted_size,
+      memory_tracker->get_resource(MemoryType::GENERIC_TILE_IO));
 
   // Read the tile.
   throw_if_not_ok(resources_.vfs().read(
       uri_,
       file_offset + tile_data_offset,
-      tile.filtered_data(),
+      tile->filtered_data(),
       header.persisted_size));
 
   // Unfilter
-  assert(tile.filtered());
-  header.filters.run_reverse_generic_tile(&resources_.stats(), tile, config);
-  assert(!tile.filtered());
+  assert(tile->filtered());
+  header.filters.run_reverse_generic_tile(&resources_.stats(), *tile, config);
+  assert(!tile->filtered());
 
   return tile;
 }
@@ -166,6 +173,17 @@ GenericTileIO::GenericTileHeader GenericTileIO::read_generic_tile_header(
   header.filters = std::move(filterpipeline);
 
   return header;
+}
+
+void GenericTileIO::store_data(
+    ContextResources& resources,
+    const URI& uri,
+    WriterTile& tile,
+    const EncryptionKey& encryption_key) {
+  GenericTileIO tile_io(resources, uri);
+  uint64_t nbytes = 0;
+  tile_io.write_generic(&tile, encryption_key, &nbytes);
+  throw_if_not_ok(resources.vfs().close_file(uri));
 }
 
 void GenericTileIO::write_generic(

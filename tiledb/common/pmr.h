@@ -65,6 +65,61 @@ using polymorphic_allocator = std::pmr::polymorphic_allocator<Tp>;
 memory_resource* get_default_resource();
 
 /* ********************************* */
+/*     PMR UNIQUE_PTR DECLARATION    */
+/* ********************************* */
+
+template <class Tp>
+class unique_ptr_deleter {
+ public:
+  unique_ptr_deleter() = delete;
+
+  unique_ptr_deleter(memory_resource* resource, size_t size, size_t alignment)
+      : resource_(resource)
+      , size_(size)
+      , alignment_(alignment) {
+  }
+
+  void operator()(Tp* ptr) {
+    if (ptr != nullptr) {
+      resource_->deallocate(ptr, size_, alignment_);
+    }
+  }
+
+  void set_size(size_t size) {
+    size_ = size;
+  }
+
+  memory_resource* resource_;
+  size_t size_;
+  size_t alignment_;
+};
+
+template <class Tp>
+using unique_ptr = std::unique_ptr<Tp, unique_ptr_deleter<Tp>>;
+
+template <class Tp>
+unique_ptr<Tp> make_unique(
+    memory_resource* resource, size_t size, size_t alignment) {
+  static_assert(std::is_arithmetic_v<Tp> || std::is_same_v<Tp, std::byte>);
+
+  auto alloc_size = size * sizeof(Tp);
+  Tp* data = static_cast<Tp*>(resource->allocate(alloc_size, alignment));
+
+  if (data == nullptr) {
+    throw std::bad_alloc();
+  }
+
+  auto deleter = unique_ptr_deleter<Tp>(resource, alloc_size, alignment);
+
+  return std::unique_ptr<Tp, unique_ptr_deleter<Tp>>(data, deleter);
+}
+
+template <class Tp>
+unique_ptr<Tp> make_unique(memory_resource* resource, size_t size) {
+  return make_unique<Tp>(resource, size, alignof(Tp));
+}
+
+/* ********************************* */
 /*       PMR VECTOR DECLARATION      */
 /* ********************************* */
 

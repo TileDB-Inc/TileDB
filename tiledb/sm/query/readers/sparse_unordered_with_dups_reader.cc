@@ -403,7 +403,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   memory_used_for_coords_total_ += tiles_size;
 
   // Add the result tile.
-  result_tiles.emplace_back(f, t, frag_md);
+  result_tiles.emplace_back(f, t, frag_md, query_memory_tracker_);
 
   // Are all tiles loaded for this fragment.
   if (t == last_t) {

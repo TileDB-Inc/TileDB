@@ -1603,7 +1603,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
       true);
 
   // Initialize the result tile.
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileSizes tile_sizes(
       var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
@@ -1668,7 +1669,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1782,7 +1784,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, *frag_md[0]);
+  ResultTile result_tile(
+      0, 0, *frag_md[0], tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2329,7 +2332,8 @@ void test_apply_dense<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2386,7 +2390,8 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2499,7 +2504,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3028,7 +3034,8 @@ void test_apply_sparse<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3085,7 +3092,8 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3855,7 +3863,8 @@ TEST_CASE(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4144,7 +4153,8 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4558,7 +4568,8 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4821,7 +4832,8 @@ TEST_CASE(
       std::nullopt,
       cells * constants::cell_validity_size,
       0);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4924,7 +4936,8 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(0, 0, frag_md);
+  ResultTile result_tile(
+      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,

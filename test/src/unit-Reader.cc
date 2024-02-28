@@ -276,49 +276,39 @@ TEST_CASE_METHOD(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      tiledb::test::get_test_memory_tracker());
   CHECK(result_space_tiles.size() == 6);
 
-  // Result tiles for fragment #1
-  ResultTile result_tile_1_0_1(1, 0, *fragments[0]);
-  ResultTile result_tile_1_2_1(1, 2, *fragments[0]);
-
-  // Result tiles for fragment #2
-  ResultTile result_tile_1_0_2(2, 0, *fragments[1]);
-
-  // Result tiles for fragment #3
-  ResultTile result_tile_2_0_3(3, 0, *fragments[2]);
-  ResultTile result_tile_3_0_3(3, 2, *fragments[2]);
-
   // Initialize result_space_tiles
-  ResultSpaceTile<int32_t> rst_1_0;
+  ResultSpaceTile<int32_t> rst_1_0(tiledb::test::get_test_memory_tracker());
   rst_1_0.set_start_coords({3, 1});
   rst_1_0.append_frag_domain(2, ds2);
   rst_1_0.append_frag_domain(1, ds1);
-  rst_1_0.set_result_tile(1, result_tile_1_0_1);
-  rst_1_0.set_result_tile(2, result_tile_1_0_2);
-  ResultSpaceTile<int32_t> rst_1_2;
+  rst_1_0.set_result_tile(1, 0, *fragments[0]);
+  rst_1_0.set_result_tile(2, 0, *fragments[1]);
+  ResultSpaceTile<int32_t> rst_1_2(tiledb::test::get_test_memory_tracker());
   rst_1_2.set_start_coords({3, 11});
   rst_1_2.append_frag_domain(1, ds1);
-  rst_1_2.set_result_tile(1, result_tile_1_2_1);
-  ResultSpaceTile<int32_t> rst_2_0;
+  rst_1_2.set_result_tile(1, 2, *fragments[0]);
+  ResultSpaceTile<int32_t> rst_2_0(tiledb::test::get_test_memory_tracker());
   rst_2_0.set_start_coords({5, 1});
   rst_2_0.append_frag_domain(3, ds3);
-  rst_2_0.set_result_tile(3, result_tile_2_0_3);
-  ResultSpaceTile<int32_t> rst_2_2;
+  rst_2_0.set_result_tile(3, 0, *fragments[2]);
+  ResultSpaceTile<int32_t> rst_2_2(tiledb::test::get_test_memory_tracker());
   rst_2_2.set_start_coords({5, 11});
-  ResultSpaceTile<int32_t> rst_3_0;
+  ResultSpaceTile<int32_t> rst_3_0(tiledb::test::get_test_memory_tracker());
   rst_3_0.set_start_coords({7, 1});
   rst_3_0.append_frag_domain(3, ds3);
-  rst_3_0.set_result_tile(3, result_tile_3_0_3);
-  ResultSpaceTile<int32_t> rst_3_2;
+  rst_3_0.set_result_tile(3, 2, *fragments[2]);
+  ResultSpaceTile<int32_t> rst_3_2(tiledb::test::get_test_memory_tracker());
   rst_3_2.set_start_coords({7, 11});
 
   // Check correctness
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[0][0])] == rst_1_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[1][0])] == rst_1_2);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[2][0])] == rst_2_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[3][0])] == rst_2_2);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[4][0])] == rst_3_0);
-  CHECK(result_space_tiles[(const int32_t*)&(tile_coords[5][0])] == rst_3_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[0][0])) == rst_1_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[1][0])) == rst_1_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[2][0])) == rst_2_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[3][0])) == rst_2_2);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[4][0])) == rst_3_0);
+  CHECK(result_space_tiles.at((const int32_t*)&(tile_coords[5][0])) == rst_3_2);
 }

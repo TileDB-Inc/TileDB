@@ -777,7 +777,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "10500";
   ratio_coords_ = "0.30";
   update_config();
 
@@ -1348,7 +1348,7 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "10000";
+  total_budget_ = "10500";
   ratio_coords_ = "0.30";
   update_config();
 

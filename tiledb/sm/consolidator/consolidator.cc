@@ -32,6 +32,7 @@
 
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/consolidator/array_meta_consolidator.h"
 #include "tiledb/sm/consolidator/commits_consolidator.h"
@@ -105,8 +106,11 @@ ConsolidationMode Consolidator::mode_from_config(
 
 Consolidator::Consolidator(StorageManager* storage_manager)
     : storage_manager_(storage_manager)
+    , consolidator_memory_tracker_(
+          storage_manager_->resources().create_memory_tracker())
     , stats_(storage_manager_->stats()->create_child("Consolidator"))
     , logger_(storage_manager_->logger()->clone("Consolidator", ++logger_id_)) {
+  consolidator_memory_tracker_->set_type(MemoryTrackerType::CONSOLIDATOR);
 }
 
 Consolidator::~Consolidator() = default;
