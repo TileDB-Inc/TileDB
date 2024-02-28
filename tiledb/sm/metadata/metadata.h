@@ -72,6 +72,24 @@ class Metadata {
 
   /** Represents a metadata value. */
   struct MetadataValue {
+    // using allocator_type = tdb::pmr::map<std::string, MetadataValue>;
+    using allocator_type = tdb::pmr::vector<uint8_t>;
+
+    MetadataValue(const allocator_type& alloc)
+        : value_(alloc){};
+
+    MetadataValue(
+        char del,
+        char type,
+        uint32_t num,
+        void* data,
+        const allocator_type& alloc)
+        : del_(del)
+        , type_(type)
+        , num_(num)
+        , value_(data, alloc) {
+    }
+
     /** 1 if it is a deletion and 0 if it is an insertion. */
     char del_ = 0;
     /** The value datatype. */
@@ -79,7 +97,7 @@ class Metadata {
     /** The number of values. */
     uint32_t num_ = 0;
     /** The value in binary format. */
-    std::vector<uint8_t> value_;
+    tdb::pmr::vector<uint8_t> value_;
   };
 
   /** Iterator type for iterating over metadata values. */
