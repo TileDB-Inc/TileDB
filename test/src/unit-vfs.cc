@@ -58,10 +58,6 @@ void require_tiledb_ok(Status st) {
   REQUIRE(st.ok());
 }
 
-void require_tiledb_err(Status st) {
-  REQUIRE(!st.ok());
-}
-
 Config set_config_params(
     bool disable_multipart = false, uint64_t parallel_ops = 1) {
   Config config;
@@ -125,6 +121,15 @@ Config set_config_params(
   return config;
 }
 
+std::string local_path() {
+  std::string local_prefix = "";
+  if constexpr (!tiledb::sm::filesystem::windows_enabled) {
+    local_prefix = "file://";
+  }
+
+  return local_prefix + unit_vfs_dir_.path();
+}
+
 TEST_CASE("VFS: Test long local paths", "[vfs]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
@@ -132,11 +137,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
 
   SECTION("- Deep hierarchy") {
     // Create a nested path with a long total length
-    std::string local_prefix = "";
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    std::string tmpdir = local_prefix + unit_vfs_dir_.path();
+    std::string tmpdir = local_path();
     bool success = true;
     while (tmpdir.size() < 512) {
       tmpdir += "subdir/";
@@ -146,8 +147,8 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
       }
     }
 
-    // On some Windows platforms, the path length of a directory must be <= 248
-    // chars. On others (that have opted in to a configuration that allows
+    // On some Windows platforms, the path length of a directory must be <=
+    // 248 chars. On others (that have opted in to a configuration that allows
     // long paths) the limit is ~32,767. Here we check for either case.
     if (success) {
       // Check we can create files within the deep hierarchy
@@ -171,11 +172,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
     for (unsigned i = 0; i < 256; i++) {
       name += "x";
     }
-    std::string local_prefix = "";
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    std::string tmpdir = local_prefix + unit_vfs_dir_.path();
+    std::string tmpdir = local_path();
     URI testfile(tmpdir + name);
 
     // Creating the URI and checking its existence is fine on posix
@@ -195,49 +192,21 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
   }
 }
 
-TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
+using AllBackends =
+    std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, HDFSTest>;
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
   VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
-  // Sections to test each enabled filesystem
-  URI path;
-  std::string local_prefix = "";
-  SECTION("Filesystem: Local") {
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    path = URI(local_prefix + unit_vfs_dir_.path());
-  }
-
-  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
-    SECTION("Filesystem: GCS") {
-      path = URI("gcs://vfs-" + random_label() + "/");
-    }
-
-    SECTION("Filesystem: GCS, gs extension") {
-      path = URI("gs://vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    SECTION("Filesystem: S3") {
-      path = URI("s3://vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
-    SECTION("Filesystem: HDFS") {
-      path = URI("hdfs:///vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    SECTION("Filesystem: Azure") {
-      path = URI("azure://vfs-" + random_label() + "/");
-    }
-  }
+  URI path = fs.temp_dir_.add_trailing_slash();
 
   // Set up
   bool exists = false;
@@ -436,71 +405,35 @@ TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
   }
 }
 
-TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]") {
+TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
   bool disable_multipart = GENERATE(true, false);
   uint64_t max_parallel_ops = 1;
   uint64_t chunk_size = 1024 * 1024;
   int multiplier = 5;
 
-  // Sections to test each enabled filesystem
-  URI path;
-  std::string local_prefix = "";
-  SECTION("Filesystem: Local") {
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    path = URI(local_prefix + unit_vfs_dir_.path());
-  }
+  URI path = fs.temp_dir_.add_trailing_slash();
 
-  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
+  if constexpr (
+      std::is_same<TestType, GCSTest>::value ||
+      std::is_same<TestType, GSTest>::value) {
     chunk_size = 4 * 1024 * 1024;
     multiplier = 1;
 
-    SECTION("Filesystem: GCS") {
-      path = URI("gcs://vfs-" + random_label() + "/");
-      if (!disable_multipart) {
-        SECTION("serial multipart") {
-          max_parallel_ops = 1;
-        }
-        SECTION("concurrent multipart") {
-          max_parallel_ops = 4;
-        }
-      }
-    }
-
-    SECTION("Filesystem: GCS, gs extension") {
-      path = URI("gs://vfs-" + random_label() + "/");
-      if (!disable_multipart) {
-        SECTION("serial multipart") {
-          max_parallel_ops = 1;
-        }
-        SECTION("concurrent multipart") {
-          max_parallel_ops = 4;
-        }
-      }
+    if (!disable_multipart) {
+      max_parallel_ops = GENERATE(1, 4);
     }
   }
 
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    SECTION("Filesystem: S3") {
-      path = URI("s3://vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
-    SECTION("Filesystem: HDFS") {
-      path = URI("hdfs:///vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    SECTION("Filesystem: Azure") {
-      path = URI("azure://vfs-" + random_label() + "/");
-      max_parallel_ops = 2;
-      chunk_size = 4 * 1024 * 1024;
-      if (disable_multipart) {
-        multiplier = 1;
-      }
+  if constexpr (std::is_same<TestType, AzureTest>::value) {
+    max_parallel_ops = 2;
+    chunk_size = 4 * 1024 * 1024;
+    if (disable_multipart) {
+      multiplier = 1;
     }
   }
 
@@ -607,11 +540,7 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool io_tp(4);
   VFS vfs_ls{&g_helper_stats, &compute_tp, &io_tp, Config{}};
 
-  std::string local_prefix = "";
-  if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-    local_prefix = "file://";
-  }
-  std::string path = local_prefix + unit_vfs_dir_.path();
+  std::string path = local_path();
   std::string dir = path + "ls_dir";
   std::string file = dir + "/file";
   std::string subdir = dir + "/subdir";
