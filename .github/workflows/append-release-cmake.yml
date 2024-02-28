@@ -53,12 +53,7 @@ jobs:
                           NOAVX2=${BASH_REMATCH[3]^^}
                           PLATFORM=${OS}-${ARCH}${NOAVX2}
           
-                          echo "${{ steps.release_data.outputs.assets_url }}/$FILE"
-                          echo "${{ steps.release_data.outputs.upload_url }}/$FILE"
-                          echo "${{ steps.release_data.outputs.url }}/$FILE"
-                          echo "${{ steps.release_data.outputs.html_url }}/$FILE"
-
-                          URL="${{ steps.release_data.outputs.assets_url }}/$FILE"
+                          URL="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$FILE"
                           HASH=$(cat release/$FILE.sha256 | cut -d \t -f 1)
           
                           echo "${PLATFORM},${URL},${HASH}" >> $RELLIST
@@ -66,7 +61,7 @@ jobs:
           done
           
           SOURCE_FILE_NAME=$(ls release/tiledb-source-*.tar.gz)
-          URL_TILEDB_SOURCE=${{ steps.release_data.outputs.assets_url }}/$(basename $SOURCE_FILE_NAME)
+          URL_TILEDB_SOURCE="${{ github.server_url }}/${{ github.repository }}/releases/download/${{ inputs.ref }}/$(basename $SOURCE_FILE_NAME)"
           HASH_TILEDB_SOURCE=$(cat $SOURCE_FILE_NAME.sha256 | cut -d \t -f 1)
           
           echo "source,${URL_TILEDB_SOURCE},${HASH_TILEDB_SOURCE}" >> $RELLIST
