@@ -381,11 +381,6 @@ class Group {
    */
   const shared_ptr<GroupDetails> group_details() const;
 
-  /** Returns the memory tracker. */
-  inline shared_ptr<MemoryTracker> memory_tracker() {
-    return memory_tracker_;
-  }
-
  protected:
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
