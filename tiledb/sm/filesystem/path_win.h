@@ -61,7 +61,7 @@ std::string uri_from_path(const std::string& path);
  * @param path The URI to convert.
  * @status A Windows path.
  */
-std::string path_from_uri(const std::string& uri);
+std::string path_from_uri(std::string_view uri);
 
 /**
  * Converts any '/' to '\\' (single-backslash) and returns the

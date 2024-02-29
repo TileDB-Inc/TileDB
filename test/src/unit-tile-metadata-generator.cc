@@ -348,7 +348,7 @@ TEST_CASE(
   bool empty_tile = test == "empty tile";
 
   uint64_t max_string_size = 100;
-  uint64_t num_strings = 2000;
+  int num_strings = 2000;
 
   // Generate the array schema.
   uint64_t num_cells = empty_tile ? 0 : 20;
@@ -362,7 +362,7 @@ TEST_CASE(
   // Generate random, sorted strings for the string ascii type.
   std::vector<std::string> strings;
   strings.reserve(num_strings);
-  for (uint64_t i = 0; i < num_strings; i++) {
+  for (int i = 0; i < num_strings; i++) {
     strings.emplace_back(tiledb::test::random_string(rand() % max_string_size));
   }
   std::sort(strings.begin(), strings.end());

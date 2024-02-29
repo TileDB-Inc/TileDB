@@ -118,12 +118,13 @@ VFS::VFS(
 /*                API                */
 /* ********************************* */
 
-std::string VFS::abs_path(const std::string& path) {
+std::string VFS::abs_path(std::string_view path) {
   // workaround for older clang (llvm 3.5) compilers (issue #828)
-  std::string path_copy = path;
+  std::string path_copy(path);
 #ifdef _WIN32
   {
-    std::string norm_sep_path = path_win::slashes_to_backslashes(path);
+    std::string norm_sep_path =
+        path_win::slashes_to_backslashes(std::string(path));
     if (path_win::is_win_path(norm_sep_path))
       return path_win::uri_from_path(Win::abs_path(norm_sep_path));
     else if (URI::is_file(path))
