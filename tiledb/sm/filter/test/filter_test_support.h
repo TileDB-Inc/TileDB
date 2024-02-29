@@ -43,6 +43,9 @@ using namespace tiledb::sm;
 
 namespace tiledb::sm {
 
+// A dummy `Stats` instance.
+static stats::Stats dummy_stats("test");
+
 /**
  * Original variable length test from the pipeline tests.
  *
@@ -127,6 +130,28 @@ void check_run_pipeline_roundtrip(
     FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     shared_ptr<MemoryTracker> memory_tracker);
+
+/** Legacy test helper. Do no use in new tests. */
+shared_ptr<WriterTile> make_increasing_tile(
+    const uint64_t nelts, shared_ptr<MemoryTracker> tracker);
+
+/** Legacy test helper. Do no use in new tests. */
+shared_ptr<WriterTile> make_offsets_tile(
+    std::vector<uint64_t>& offsets, shared_ptr<MemoryTracker> tracker);
+
+/** Legacy test helper. Do no use in new tests. */
+Tile create_tile_for_unfiltering(
+    uint64_t nelts,
+    shared_ptr<WriterTile> tile,
+    shared_ptr<MemoryTracker> tracker);
+
+/** Legacy test helper. Do no use in new tests. */
+void run_reverse(
+    const tiledb::sm::Config& config,
+    ThreadPool& tp,
+    Tile& unfiltered_tile,
+    FilterPipeline& pipeline,
+    bool success = true);
 
 }  // namespace tiledb::sm
 #endif

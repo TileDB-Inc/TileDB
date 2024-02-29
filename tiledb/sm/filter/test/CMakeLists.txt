@@ -48,6 +48,7 @@ commence(unit_test run_filter_pipeline)
         filtered_tile_checker.cc
         pseudo_checksum_filter.cc
         unit_run_filter_pipeline.cc
+        unit_checksum_pipeline.cc
     )
 conclude(unit_test)
 

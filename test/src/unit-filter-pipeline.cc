@@ -148,60 +148,6 @@ void run_reverse(
                      .ok());
 }
 
-TEST_CASE(
-    "Filter: Test skip checksum validation",
-    "[filter][skip-checksum-validation]") {
-  tiledb::sm::Config config;
-  REQUIRE(config.set("sm.skip_checksum_validation", "true").ok());
-
-  auto tracker = tiledb::test::create_test_memory_tracker();
-
-  const uint64_t nelts = 100;
-  auto tile = make_increasing_tile(nelts, tracker);
-
-  // MD5
-  FilterPipeline md5_pipeline;
-  ThreadPool tp(4);
-  ChecksumMD5Filter md5_filter(Datatype::UINT64);
-  md5_pipeline.add_filter(md5_filter);
-  CHECK(
-      md5_pipeline.run_forward(&test::g_helper_stats, tile.get(), nullptr, &tp)
-          .ok());
-  CHECK(tile->size() == 0);
-  CHECK(tile->filtered_buffer().size() != 0);
-
-  auto unfiltered_tile = create_tile_for_unfiltering(nelts, tile, tracker);
-  run_reverse(config, tp, unfiltered_tile, md5_pipeline);
-
-  for (uint64_t n = 0; n < nelts; n++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == n);
-  }
-
-  // SHA256
-  auto tile2 = make_increasing_tile(nelts, tracker);
-
-  FilterPipeline sha_256_pipeline;
-  ChecksumMD5Filter sha_256_filter(Datatype::UINT64);
-  sha_256_pipeline.add_filter(sha_256_filter);
-  CHECK(sha_256_pipeline
-            .run_forward(&test::g_helper_stats, tile2.get(), nullptr, &tp)
-            .ok());
-  CHECK(tile2->size() == 0);
-  CHECK(tile2->filtered_buffer().size() != 0);
-
-  auto unfiltered_tile2 = create_tile_for_unfiltering(nelts, tile2, tracker);
-  run_reverse(config, tp, unfiltered_tile2, sha_256_pipeline);
-  for (uint64_t n = 0; n < nelts; n++) {
-    uint64_t elt = 0;
-    CHECK_NOTHROW(
-        unfiltered_tile2.read(&elt, n * sizeof(uint64_t), sizeof(uint64_t)));
-    CHECK(elt == n);
-  }
-}
-
 TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   tiledb::sm::Config config;
 

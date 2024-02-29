@@ -38,9 +38,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-// A dummy `Stats` instance.
-static tiledb::sm::stats::Stats dummy_stats("test");
-
 SimpleVariableTestData::SimpleVariableTestData()
     : target_ncells_per_chunk_{10}
     , elements_per_chunk_{14, 6, 11, 7, 10, 10, 20, 10, 12}
@@ -153,6 +150,86 @@ void check_run_pipeline_roundtrip(
 
   // Check the original data is reverted.
   test_data->check_tile_data(unfiltered_tile);
+}
+
+shared_ptr<WriterTile> make_increasing_tile(
+    const uint64_t nelts, shared_ptr<MemoryTracker> tracker) {
+  const uint64_t tile_size = nelts * sizeof(uint64_t);
+  const uint64_t cell_size = sizeof(uint64_t);
+
+  auto tile = make_shared<WriterTile>(
+      HERE(),
+      constants::format_version,
+      Datatype::UINT64,
+      cell_size,
+      tile_size,
+      tracker);
+  for (uint64_t i = 0; i < nelts; i++) {
+    CHECK_NOTHROW(tile->write(&i, i * sizeof(uint64_t), sizeof(uint64_t)));
+  }
+
+  return tile;
+}
+
+shared_ptr<WriterTile> make_offsets_tile(
+    std::vector<uint64_t>& offsets, shared_ptr<MemoryTracker> tracker) {
+  const uint64_t offsets_tile_size =
+      offsets.size() * constants::cell_var_offset_size;
+
+  auto offsets_tile = make_shared<WriterTile>(
+      HERE(),
+      constants::format_version,
+      Datatype::UINT64,
+      constants::cell_var_offset_size,
+      offsets_tile_size,
+      tracker);
+
+  // Set up test data
+  for (uint64_t i = 0; i < offsets.size(); i++) {
+    CHECK_NOTHROW(offsets_tile->write(
+        &offsets[i],
+        i * constants::cell_var_offset_size,
+        constants::cell_var_offset_size));
+  }
+
+  return offsets_tile;
+}
+
+Tile create_tile_for_unfiltering(
+    uint64_t nelts,
+    shared_ptr<WriterTile> tile,
+    shared_ptr<MemoryTracker> tracker) {
+  return {
+      tile->format_version(),
+      tile->type(),
+      tile->cell_size(),
+      0,
+      tile->cell_size() * nelts,
+      tile->filtered_buffer().data(),
+      tile->filtered_buffer().size(),
+      tracker};
+}
+
+void run_reverse(
+    const tiledb::sm::Config& config,
+    ThreadPool& tp,
+    Tile& unfiltered_tile,
+    FilterPipeline& pipeline,
+    bool success) {
+  ChunkData chunk_data;
+  unfiltered_tile.load_chunk_data(chunk_data);
+  CHECK(
+      success == pipeline
+                     .run_reverse(
+                         &dummy_stats,
+                         &unfiltered_tile,
+                         nullptr,
+                         chunk_data,
+                         0,
+                         chunk_data.filtered_chunks_.size(),
+                         tp.concurrency_level(),
+                         config)
+                     .ok());
 }
 
 }  // namespace tiledb::sm
