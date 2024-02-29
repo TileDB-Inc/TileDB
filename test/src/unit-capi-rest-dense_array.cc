@@ -553,12 +553,21 @@ void DenseArrayRESTFx::write_dense_subarray_2D(
   int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK_SAFE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, query_type);
-  CHECK_SAFE(rc == TILEDB_OK);
+  {
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex);
+    check_tiledb_ok(ctx_, rc);
+  }
 
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, query_type, &query);
-  REQUIRE_SAFE(rc == TILEDB_OK);
+  {
+    std::lock_guard<std::mutex> lock(catch2_macro_mutex);
+    // For the error message
+    check_tiledb_ok(ctx_, rc);
+    // For the test termination
+    REQUIRE(rc == TILEDB_OK);
+  }
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   REQUIRE_SAFE(rc == TILEDB_OK);
