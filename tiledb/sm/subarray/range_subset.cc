@@ -172,19 +172,19 @@ tuple<Status, optional<std::string>> RangeSetAndSuperset::add_range(
   }
 }
 
-void RangeSetAndSuperset::check_oob() {
-  for (auto& range : ranges_) {
-    impl_->check_range_is_valid(range);
-    throw_if_not_ok(impl_->check_range_is_subset(range));
-  }
-}
-
 Status RangeSetAndSuperset::add_range_unrestricted(const Range& range) {
   if (is_implicitly_initialized_) {
     ranges_.clear();
     is_implicitly_initialized_ = false;
   }
   return impl_->add_range(ranges_, range);
+}
+
+void RangeSetAndSuperset::check_oob() {
+  for (auto& range : ranges_) {
+    impl_->check_range_is_valid(range);
+    throw_if_not_ok(impl_->check_range_is_subset(range));
+  }
 }
 
 }  // namespace tiledb::sm

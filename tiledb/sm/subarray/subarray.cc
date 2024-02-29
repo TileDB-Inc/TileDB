@@ -425,6 +425,17 @@ Status Subarray::add_range(
       dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
 }
 
+Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
+  // Must reset the result size and tile overlap
+  est_result_size_computed_ = false;
+  tile_overlap_.clear();
+
+  // Add the range
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
+  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  return Status::Ok();
+}
+
 Status Subarray::add_point_ranges(
     unsigned dim_idx, const void* start, uint64_t count, bool check_for_label) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num()) {
@@ -2110,17 +2121,6 @@ void Subarray::add_default_ranges() {
   }
   is_default_.resize(dim_num, true);
   add_default_label_ranges(dim_num);
-}
-
-Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
-  // Must reset the result size and tile overlap
-  est_result_size_computed_ = false;
-  tile_overlap_.clear();
-
-  // Add the range
-  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
-  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
-  return Status::Ok();
 }
 
 void Subarray::add_default_label_ranges(dimension_size_type dim_num) {

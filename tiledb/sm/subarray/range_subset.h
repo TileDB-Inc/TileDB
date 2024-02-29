@@ -419,9 +419,6 @@ class TypedRangeSetAndFullsetImpl<std::string, CoalesceAdds>
  */
 class RangeSetAndSuperset {
  public:
-  /** Friend Subarray for calling `add_range_unrestricted` */
-  friend class Subarray;
-
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -486,6 +483,16 @@ class RangeSetAndSuperset {
    **/
   tuple<Status, optional<std::string>> add_range(
       Range& range, const bool read_range_oob_error = true);
+
+  /**
+   * Adds a range to the range manager without performing any checkes.
+   *
+   * If the ranges are currently implicitly initialized, then they will be
+   * cleared before the new range is added.
+   *
+   * @param range The range to add.
+   */
+  Status add_range_unrestricted(const Range& range);
 
   /**
    * Removes all ranges.
@@ -568,20 +575,6 @@ class RangeSetAndSuperset {
 
   /** Stored ranges. */
   std::vector<Range> ranges_{};
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
-
-  /**
-   * Adds a range to the range manager without performing any checkes.
-   *
-   * If the ranges are currently implicitly initialized, then they will be
-   * cleared before the new range is added.
-   *
-   * @param range The range to add.
-   */
-  Status add_range_unrestricted(const Range& range);
 };
 
 }  // namespace tiledb::sm

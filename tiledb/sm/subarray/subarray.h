@@ -151,9 +151,6 @@ class ITileRange {
  */
 class Subarray {
  public:
-  /** Friend with Query to call `add_range_unsafe` */
-  friend class Query;
-
   /* ********************************* */
   /*         PUBLIC DATA TYPES         */
   /* ********************************* */
@@ -477,6 +474,12 @@ class Subarray {
    */
   Status add_range(
       unsigned dim_idx, const void* start, const void* end, const void* stride);
+
+  /**
+   * Adds a range along the dimension with the given index, without
+   * performing any error checks.
+   */
+  Status add_range_unsafe(uint32_t dim_idx, const Range& range);
 
   /**
    * @brief Set point ranges from an array
@@ -1550,12 +1553,6 @@ class Subarray {
    * replaced.
    */
   void add_default_ranges();
-
-  /**
-   * Adds a range along the dimension with the given index, without
-   * performing any error checks.
-   */
-  Status add_range_unsafe(uint32_t dim_idx, const Range& range);
 
   /** Computes the estimated result size for all attributes/dimensions. */
   Status compute_est_result_size(const Config* config, ThreadPool* compute_tp);
