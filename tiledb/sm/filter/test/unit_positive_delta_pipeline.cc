@@ -1,5 +1,3 @@
-
-
 /**
  * @file unit_positive_delta_pipeline.cc
  *
