@@ -50,6 +50,7 @@ commence(unit_test run_filter_pipeline)
         unit_run_filter_pipeline.cc
         unit_checksum_pipeline.cc
         unit_bit_width_reduction_pipeline.cc
+        unit_positive_delta_pipeline.cc
     )
 conclude(unit_test)
 
