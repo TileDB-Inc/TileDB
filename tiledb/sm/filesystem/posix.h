@@ -35,16 +35,20 @@
 
 #ifndef _WIN32
 
+#include <dirent.h>
 #include <ftw.h>
 #include <sys/types.h>
+#include <unistd.h>
 
 #include <functional>
 #include <string>
 #include <vector>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
 
@@ -260,6 +264,24 @@ class Posix : public FilesystemBase {
   ls_with_sizes(const URI& uri) const override;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   *
+   * Note: the return type LsObjects does not match the other "ls" methods so as to
+   * match the S3 equivalent API.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  tuple<Status, optional<LsObjects>> ls_filtered(const URI& parent, F f, D d = accept_all_dirs,
+      bool recursive = false) const;
+
+  /**
    * Lists files one level deep under a given path.
    *
    * @param path  The parent path to list sub-paths.
@@ -338,6 +360,104 @@ class Posix : public FilesystemBase {
  private:
   uint32_t file_permissions_, directory_permissions_;
 };
+
+
+template <FilePredicate F, DirectoryPredicate D>
+tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
+    F file_filter, D directory_filter, bool recursive) const
+{
+  static constexpr const char *PATH_DELIM = "/";
+
+  /*
+   * The input URI was useful to the top-level VFS to identify this is a
+   * regular filesystem path, but we don't need the "file://" qualifier
+   * anymore and can reason with unqualified strings for the rest of the function.
+   */
+  const auto parentstr = parent.to_path();
+
+  /**
+   * RAII guard to ensure we close all directories, no matter what else happens
+   */
+  struct DirGuard {
+    std::string abspath;
+    DIR        *dptr;
+
+    DirGuard(std::string_view abspath, DIR *d) : abspath(abspath), dptr(d)
+    {}
+    DirGuard(const DirGuard &) = delete;
+
+    DirGuard(DirGuard &&movefrom) : abspath(movefrom.abspath), dptr(movefrom.dptr) {
+      movefrom.dptr = nullptr;
+    }
+
+    ~DirGuard() {
+      if (dptr) {
+        /*
+         * The only error specified is EBADF.
+         * Since we error check opendir() we should only get that if there's a memory stomp,
+         * and then we have worse problems than not checking this return value.
+         */
+        closedir(dptr);
+      }
+    }
+  };
+
+
+  LsObjects qualifyingPaths;
+
+  DIR *rootpath = opendir(parentstr.c_str());
+  if (rootpath == nullptr) {
+    auto st = LOG_STATUS(Status_IOError(
+          std::string("Cannot open directory [" + parentstr + "]: ") + strerror(errno)));
+    return {st, nullopt};
+  }
+
+  std::vector<DirGuard> dirstack;
+  dirstack.push_back(DirGuard(parentstr, rootpath));
+
+  while (!dirstack.empty()) {
+    struct dirent *entry = readdir(dirstack.back().dptr);
+    if (entry == nullptr)
+    {
+      dirstack.pop_back();
+    }
+    else if (entry->d_type == DT_DIR)
+    {
+      if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
+        continue;
+      }
+
+      const std::string abspath(dirstack.back().abspath + PATH_DELIM + entry->d_name);
+      if (!directory_filter(abspath)) {
+        continue;
+      }
+
+      DIR *subdir = opendir(abspath.c_str());
+      if (!subdir) {
+        auto st = LOG_STATUS(Status_IOError(
+              std::string("Cannot open directory [") + abspath.c_str() + "]: " + strerror(errno)));
+        return {st, nullopt};
+      } else if (recursive) {
+        dirstack.push_back(DirGuard(abspath, subdir));
+      } else {
+        qualifyingPaths.push_back(std::make_pair(abspath, 0));
+      }
+    }
+    else  // a leaf of the filesystem (or symbolic link - split out if we want to descend)
+    {
+      std::string abspath(dirstack.back().abspath + PATH_DELIM + entry->d_name);
+      uint64_t size;
+      file_size(URI(abspath), &size);  // additional system call and URI construction, would be nice to avoid if not needed
+
+      if (file_filter(abspath, size)) {
+        qualifyingPaths.push_back(std::make_pair(abspath, size));
+      }
+    }
+  }
+
+  return {Status::Ok(), qualifyingPaths};
+}
+
 
 }  // namespace sm
 }  // namespace tiledb

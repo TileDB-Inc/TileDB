@@ -514,7 +514,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * the FilePredicate on each entry collected and the DirectoryPredicate on
    * common prefixes for pruning.
    *
-   * Currently only S3 is supported for ls_recursive.
+   * Currently this API is only supported for Posix and S3.
    *
    * @param parent The parent prefix to list sub-paths.
    * @param f The FilePredicate to invoke on each object for filtering.
@@ -530,11 +530,49 @@ class VFS : private VFSBase, protected S3_within_VFS {
       [[maybe_unused]] D d = accept_all_dirs) const {
     LsObjects results;
     try {
-      if (parent.is_s3()) {
+      if (parent.is_file()) {
+#ifdef _WIN32
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        Status st;
+        optional<LsObjects> entries;
+        std::tie(st, entries) = posix_.ls_filtered(parent, f, d, true);
+        /* this API does return a status, probably should */
+        if (entries) {
+          results = *entries;
+        }
+#endif
+      } else if (parent.is_s3()) {
 #ifdef HAVE_S3
         results = s3().ls_filtered(parent, f, d, true);
 #else
         throw filesystem::VFSException("TileDB was built without S3 support");
+#endif
+      } else if (parent.is_gcs()) {
+#ifdef HAVE_GCS
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        throw filesystem::VFSException("TileDB was built without GCS support");
+#endif
+      } else if (parent.is_azure()) {
+#ifdef HAVE_AZURE
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        throw filesystem::VFSException("TileDB was built without Azure support");
+#endif
+      } else if (parent.is_hdfs()) {
+#ifdef HAVE_HDFS
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        throw filesystem::VFSException("TileDB was built without HDFS support");
 #endif
       } else {
         throw filesystem::VFSException(

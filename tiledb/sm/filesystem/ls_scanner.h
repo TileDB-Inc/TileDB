@@ -73,6 +73,9 @@ class LsStopTraversal : public LsScanException {
 };
 
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
+[[maybe_unused]] static bool accept_all_files(const std::string_view&, uint64_t) {
+  return true;
+}
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
 /** Static DirectoryFilter used as default argument. */
