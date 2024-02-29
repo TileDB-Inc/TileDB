@@ -35,16 +35,7 @@
 
 #ifdef HAVE_GCS
 
-#if defined(_MSC_VER)
-#pragma warning(push)
-// One abseil file has a warning that fails on Windows when compiling with
-// warnings as errors.
-#pragma warning(disable : 4127)  // conditional expression is constant
-#endif
-#include <google/cloud/storage/client.h>
-#if defined(_MSC_VER)
-#pragma warning(pop)
-#endif
+#include <google/cloud/version.h>
 
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
@@ -57,6 +48,12 @@
 #include "uri.h"
 
 using namespace tiledb::common;
+
+namespace google::cloud::storage {
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+class Client;
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+}  // namespace google::cloud::storage
 
 namespace tiledb {
 
@@ -430,7 +427,7 @@ class GCS {
   std::string project_id_;
 
   // The GCS REST client.
-  mutable google::cloud::StatusOr<google::cloud::storage::Client> client_;
+  mutable tdb_unique_ptr<google::cloud::storage::Client> client_;
 
   /** Maps a object URI to an write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
