@@ -28,10 +28,11 @@
  * @section DESCRIPTION
  *
  * This set of unit tests checks running the filter pipeline with the checksum
- * filter.
+ * filters.
  *
  */
 
+#include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "../checksum_md5_filter.h"
 #include "filter_test_support.h"
