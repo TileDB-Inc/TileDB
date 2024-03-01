@@ -268,8 +268,6 @@ Status subarray_from_capnp(
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();

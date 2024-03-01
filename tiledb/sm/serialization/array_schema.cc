@@ -400,8 +400,7 @@ void attribute_to_capnp(
 shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(attribute_reader.getType());
 
   // Set nullable
   const bool nullable = attribute_reader.getNullable();
@@ -614,8 +613,7 @@ shared_ptr<Dimension> dimension_from_capnp(
   Status st;
 
   // Deserialize datatype
-  Datatype dim_type;
-  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  Datatype dim_type = datatype_enum(dimension_reader.getType().cStr());
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::dimension_from_capnp] " +
@@ -783,8 +781,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
     const capnp::DimensionLabel::Reader& dim_label_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(dim_label_reader.getType());
 
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {
