@@ -82,7 +82,7 @@ class TileDomain {
       unsigned id,
       const NDRange& domain,
       const NDRange& domain_slice,
-      const tdb::pmr::vector<ByteVecValue>& tile_extents,
+      const std::vector<ByteVecValue>& tile_extents,
       Layout layout)
       : id_(id)
       , dim_num_((unsigned)domain.size())
@@ -305,7 +305,7 @@ class TileDomain {
   void compute_tile_domain(
       const NDRange& domain,
       const NDRange& domain_slice,
-      const tdb::pmr::vector<ByteVecValue>& tile_extents) {
+      const std::vector<ByteVecValue>& tile_extents) {
     tile_domain_.resize(2 * dim_num_);
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto ds = (const T*)domain_slice[d].data();

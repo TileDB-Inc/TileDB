@@ -267,7 +267,7 @@ class WebpFilter : public Filter {
    * @param extents Extents retrieved from array Domain object.
    */
   template <typename T>
-  void set_extents(const tdb::pmr::vector<ByteVecValue>& extents);
+  void set_extents(const std::vector<ByteVecValue>& extents);
 
   /**
    * Get tile extents currently in use by this WebpFilter
