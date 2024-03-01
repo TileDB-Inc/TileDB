@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,21 +34,18 @@
 #define TILEDB_FILTERED_DATA_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * A filtered data block containing filtered data for multiple tiles. The block
  * will contain a number of contiguous on-disk tiles and the data is identified
  * by the fragment index and offset/size of the data in the on-disk file.
- *
- * This uses a vector for storage which will be replaced by datablocks when
- * ready.
  */
 class FilteredDataBlock {
  public:
@@ -63,12 +60,25 @@ class FilteredDataBlock {
    * coming from.
    * @param offset File offset of the on-disk data for this datablock.
    * @param size Size of the on-disk data for this data block.
+   * @param resource The memory resource.
    */
-  FilteredDataBlock(unsigned frag_idx, uint64_t offset, uint64_t size)
-      : frag_idx_(frag_idx)
+  FilteredDataBlock(
+      unsigned frag_idx,
+      uint64_t offset,
+      uint64_t size,
+      tdb::pmr::memory_resource* resource)
+      : resource_(resource)
+      , frag_idx_(frag_idx)
       , offset_(offset)
-      , filtered_data_(size) {
+      , size_(size)
+      , filtered_data_(tdb::pmr::make_unique<std::byte>(resource_, size)) {
+    if (!filtered_data_) {
+      throw std::bad_alloc();
+    }
   }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(FilteredDataBlock);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FilteredDataBlock);
 
   /* ********************************* */
   /*                API                */
@@ -85,21 +95,20 @@ class FilteredDataBlock {
   }
 
   /**
-   * @return Pointer to the data at a particular offset in the filtered data
-   * file.
+   * @return Pointer to the data at the given offset in the filtered data file.
    */
   inline void* data_at(storage_size_t offset) {
-    return filtered_data_.data() + offset - offset_;
+    return filtered_data_.get() + offset - offset_;
   }
 
   /** @return Pointer to the data inside of the filtered data block. */
   inline void* data() {
-    return filtered_data_.data();
+    return filtered_data_.get();
   }
 
   /** @return Size of the data block. */
   inline storage_size_t size() const {
-    return filtered_data_.size();
+    return size_;
   }
 
   /**
@@ -109,13 +118,15 @@ class FilteredDataBlock {
   inline bool contains(
       unsigned frag_idx, storage_size_t offset, storage_size_t size) const {
     return frag_idx == frag_idx_ && offset >= offset_ &&
-           offset + size <= offset_ + filtered_data_.size();
+           offset + size <= offset_ + size_;
   }
 
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+  /** The memory resource to use. */
+  tdb::pmr::memory_resource* resource_;
 
   /** Fragment index for the data this data block contains. */
   unsigned frag_idx_;
@@ -123,8 +134,11 @@ class FilteredDataBlock {
   /** File offset of the on-disk data for this datablock. */
   storage_size_t offset_;
 
+  /** The size of the data. */
+  storage_size_t size_;
+
   /** Data for the data block. */
-  std::vector<char> filtered_data_;
+  tdb::pmr::unique_ptr<std::byte> filtered_data_;
 };
 
 /**
@@ -159,6 +173,7 @@ class FilteredData {
    * @param validity_only Is the field read for validity only?
    * @param storage_manager Storage manager.
    * @param read_tasks Read tasks to queue new tasks on for new data blocks.
+   * @param memory_tracker Memory tracker.
    */
   FilteredData(
       const ReaderBase& reader,
@@ -172,8 +187,10 @@ class FilteredData {
       const bool nullable,
       const bool validity_only,
       StorageManager* storage_manager,
-      std::vector<ThreadPool::Task>& read_tasks)
-      : name_(name)
+      std::vector<ThreadPool::Task>& read_tasks,
+      shared_ptr<MemoryTracker> memory_tracker)
+      : memory_tracker_(memory_tracker)
+      , name_(name)
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
       , nullable_(nullable)
@@ -184,6 +201,8 @@ class FilteredData {
     }
 
     uint64_t tiles_allocated = 0;
+    auto* block_resource =
+        memory_tracker_->get_resource(MemoryType::FILTERED_DATA_BLOCK);
 
     // Store data on the datablock in progress for fixed, var and nullable data.
     std::optional<unsigned> current_frag_idx{nullopt};
@@ -251,19 +270,28 @@ class FilteredData {
     // Finish by pushing the last in progress blocks.
     if (current_fixed_size != 0) {
       fixed_data_blocks_.emplace_back(
-          *current_frag_idx, current_fixed_offset, current_fixed_size);
+          *current_frag_idx,
+          current_fixed_offset,
+          current_fixed_size,
+          block_resource);
       queue_last_block_for_read(TileType::FIXED);
     }
 
     if (current_var_size != 0) {
       var_data_blocks_.emplace_back(
-          *current_frag_idx, current_var_offset, current_var_size);
+          *current_frag_idx,
+          current_var_offset,
+          current_var_size,
+          block_resource);
       queue_last_block_for_read(TileType::VAR);
     }
 
     if (current_nullable_size != 0) {
       nullable_data_blocks_.emplace_back(
-          *current_frag_idx, current_nullable_offset, current_nullable_size);
+          *current_frag_idx,
+          current_nullable_offset,
+          current_nullable_size,
+          block_resource);
       queue_last_block_for_read(TileType::NULLABLE);
     }
 
@@ -273,6 +301,9 @@ class FilteredData {
     current_var_data_block_ = var_data_blocks_.begin();
     current_nullable_data_block_ = nullable_data_blocks_.begin();
   }
+
+  DISABLE_COPY_AND_COPY_ASSIGN(FilteredData);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FilteredData);
 
   /** Destructor. */
   ~FilteredData() = default;
@@ -364,7 +395,7 @@ class FilteredData {
   }
 
   /** @return Data blocks corresponding to the tile type. */
-  inline std::vector<FilteredDataBlock>& data_blocks(const TileType type) {
+  inline std::list<FilteredDataBlock>& data_blocks(const TileType type) {
     switch (type) {
       case TileType::FIXED:
         return fixed_data_blocks_;
@@ -378,7 +409,7 @@ class FilteredData {
   }
 
   /** @return Current data block corresponding to the tile type. */
-  inline std::vector<FilteredDataBlock>::iterator& current_data_block(
+  inline std::list<FilteredDataBlock>::iterator& current_data_block(
       const TileType type) {
     switch (type) {
       case TileType::FIXED:
@@ -516,7 +547,10 @@ class FilteredData {
     } else {
       // Push the old batch and start a new one.
       data_blocks(type).emplace_back(
-          *current_block_frag_idx, current_block_offset, current_block_size);
+          *current_block_frag_idx,
+          current_block_offset,
+          current_block_size,
+          memory_tracker_->get_resource(MemoryType::FILTERED_DATA_BLOCK));
       queue_last_block_for_read(type);
       current_block_offset = offset;
       current_block_size = size;
@@ -554,23 +588,26 @@ class FilteredData {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** Memory tracker for the filtered data. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** Fixed data blocks. */
-  std::vector<FilteredDataBlock> fixed_data_blocks_;
+  std::list<FilteredDataBlock> fixed_data_blocks_;
 
   /** Current fixed data block used when creating fixed tiles. */
-  std::vector<FilteredDataBlock>::iterator current_fixed_data_block_;
+  std::list<FilteredDataBlock>::iterator current_fixed_data_block_;
 
   /** Var data blocks. */
-  std::vector<FilteredDataBlock> var_data_blocks_;
+  std::list<FilteredDataBlock> var_data_blocks_;
 
   /** Current var data block used when creating var tiles. */
-  std::vector<FilteredDataBlock>::iterator current_var_data_block_;
+  std::list<FilteredDataBlock>::iterator current_var_data_block_;
 
   /** Nullable data blocks. */
-  std::vector<FilteredDataBlock> nullable_data_blocks_;
+  std::list<FilteredDataBlock> nullable_data_blocks_;
 
   /** Current nullable data block used when creating nullable tiles. */
-  std::vector<FilteredDataBlock>::iterator current_nullable_data_block_;
+  std::list<FilteredDataBlock>::iterator current_nullable_data_block_;
 
   /** Name of the attribute. */
   const std::string& name_;
@@ -591,7 +628,6 @@ class FilteredData {
   std::vector<ThreadPool::Task>& read_tasks_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_FILTERED_DATA_H

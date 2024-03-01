@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -54,8 +54,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class DenseReaderStatusException : public StatusException {
  public:
@@ -433,7 +432,7 @@ Status DenseReader::dense_read() {
           result_space_tiles,
           tile_subarrays);
 
-      std::vector<FilteredData> filtered_data;
+      std::list<FilteredData> filtered_data;
 
       // Read and unfilter tiles.
       bool validity_only = null_count_aggregate_only(name);
@@ -911,7 +910,7 @@ Status DenseReader::apply_query_condition(
         tile_subarrays);
 
     // Read and unfilter query condition attributes.
-    std::vector<FilteredData> filtered_data = read_attribute_tiles(
+    std::list<FilteredData> filtered_data = read_attribute_tiles(
         NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {
@@ -2256,5 +2255,4 @@ void DenseReader::fill_dense_coords_col_slab(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
