@@ -131,7 +131,8 @@ enum class MemoryTrackerType {
   QUERY_WRITE,
   CONSOLIDATOR,
   REST_CLIENT,
-  EPHEMERAL
+  EPHEMERAL,
+  SCHEMA_EVOLUTION
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {
