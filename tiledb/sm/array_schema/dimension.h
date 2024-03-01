@@ -92,6 +92,7 @@ class Dimension {
    *
    * @param name The name of the dimension.
    * @param type The type of the dimension.
+   * @param memory_tracker The memory tracker to use.
    */
   Dimension(
       const std::string& name,
@@ -107,6 +108,7 @@ class Dimension {
    * @param domain The range of the dimension range.
    * @param filter_pipeline The filters of the dimension.
    * @param tile_extent The tile extent of the dimension.
+   * @param memory_tracker The memory tracker to use.
    */
   Dimension(
       const std::string& name,
@@ -596,18 +598,17 @@ class Dimension {
       tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
-  tdb::pmr::vector<bool> covered_vec(
+  std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
       const tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute covered on a set of relevant ranges. */
   template <class T>
-  static tdb::pmr::vector<bool> covered_vec(
+  static std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const tdb::pmr::vector<uint64_t>& relevant_ranges,
-      shared_ptr<MemoryTracker> memory_tracker);
+      const tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -679,11 +680,7 @@ class Dimension {
    */
   template <class T>
   static ByteVecValue map_from_uint64(
-      const Dimension* dim,
-      uint64_t value,
-      int bits,
-      uint64_t max_bucket_val,
-      shared_ptr<MemoryTracker> memory_tracker);
+      const Dimension* dim, uint64_t value, int bits, uint64_t max_bucket_val);
 
   /** Returns `true` if `value` is smaller than the start of `range`. */
   bool smaller_than(const ByteVecValue& value, const Range& range) const;
@@ -880,7 +877,7 @@ class Dimension {
    * Stores the appropriate templated covered_vec() function based on the
    * dimension datatype.
    */
-  std::function<tdb::pmr::vector<bool>(
+  std::function<std::vector<bool>(
       const NDRange&, const Range&, const tdb::pmr::vector<uint64_t>&)>
       covered_vec_func_;
 
@@ -1082,12 +1079,5 @@ class Dimension {
 };
 
 }  // namespace tiledb::sm
-
-namespace tiledb::common {
-template <>
-struct blank<tiledb::sm::Dimension> : public tiledb::sm::Dimension {
-  blank();
-};
-}  // namespace tiledb::common
 
 #endif  // TILEDB_DIMENSION_H
