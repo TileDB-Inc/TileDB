@@ -30,30 +30,30 @@ function(fetch_tiledb_release_list VERSION EXPECTED_HASH)
         # Local constants
         set(UPSTREAM_URL "https://github.com/TileDB-Inc/TileDB/releases/download")
 
-        if(NOT ${VERSION})
+        if(NOT VERSION)
                 set(VERSION latest)
         endif()
 
         if(${EXPECTED_HASH})
                 file(DOWNLOAD
-                        ${UPSTREAM_URL}/${VERSION}/rellist.csv
-                        rellist.csv
+                        ${UPSTREAM_URL}/${VERSION}/releases.csv
+                        releases.csv
                         SHOW_PROGRESS
                         EXPECTED_HASH ${EXPECTED_HASH}
-                        )
+                )
         else()
                 message(WARNING "Downloading release list without SHA checksum!")
                 file(DOWNLOAD
-                        ${UPSTREAM_URL}/${VERSION}/rellist.csv
-                        rellist.csv
+                        ${UPSTREAM_URL}/${VERSION}/releases.csv
+                        releases.csv
                         SHOW_PROGRESS
-                        )
+                )
         endif()
 
         file(STRINGS
-                ${CMAKE_CURRENT_BINARY_DIR}/rellist.csv
+                ${CMAKE_CURRENT_BINARY_DIR}/releases.csv
                 RELLIST
-                )
+        )
 
         # Remove csv table headers
         list(POP_FRONT RELLIST)
@@ -74,7 +74,7 @@ endfunction()
 
 function(detect_artifact_name OUT_VAR)
         if (WIN32) # Windows
-                SET(${OUT_VAR} TILEDB_WINDOWS_X86_64 PARENT_SCOPE)
+                SET(${OUT_VAR} TILEDB_WINDOWS-X86_64 PARENT_SCOPE)
         elseif(APPLE) # OSX
                 if (DEFINED CMAKE_OSX_ARCHITECTURES)
                         set(ACTUAL_TARGET ${CMAKE_OSX_ARCHITECTURES})
@@ -84,12 +84,12 @@ function(detect_artifact_name OUT_VAR)
 
 
                 if (ACTUAL_TARGET MATCHES "(x86_64)|(AMD64|amd64)|(^i.86$)")
-                        SET(${OUT_VAR} TILEDB_MACOS_X86_64 PARENT_SCOPE)
+                        SET(${OUT_VAR} TILEDB_MACOS-X86_64 PARENT_SCOPE)
                 elseif (ACTUAL_TARGET STREQUAL arm64 OR ACTUAL_TARGET MATCHES "^aarch64" OR CMAKE_SYSTEM_PROCESSOR MATCHES "^arm")
-                        SET(${OUT_VAR} TILEDB_MACOS_ARM64 PARENT_SCOPE)
+                        SET(${OUT_VAR} TILEDB_MACOS-ARM64 PARENT_SCOPE)
                 endif()
         else() # Linux
-                SET(${OUT_VAR} TILEDB_LINUX_X86_64 PARENT_SCOPE)
+                SET(${OUT_VAR} TILEDB_LINUX-X86_64 PARENT_SCOPE)
         endif()
 endfunction()
 
@@ -104,21 +104,25 @@ function(fetch_prebuilt_tiledb)
                 "${oneValueArgs}"
                 "${multiValueArgs}"
                 ${ARGN}
-                )
+        )
 
-        fetch_tiledb_release_list(${FETCH_PREBUILT_TILEDB_VERSION} RELLIST_HASH)
+        fetch_tiledb_release_list(${FETCH_PREBUILT_TILEDB_VERSION} ${FETCH_PREBUILT_TILEDB_RELLIST_HASH})
 
-        if(NOT ${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME})
+        if(NOT FETCH_PREBUILT_TILEDB_ARTIFACT_NAME)
                 detect_artifact_name(FETCH_PREBUILT_TILEDB_ARTIFACT_NAME)
         endif()
 
+        string(STRIP ${HASH_${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME}} HASH_${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME})
         FetchContent_Declare(
-                tiledb
-                URL ${URL_${ARTIFACT_NAME}}
-                URL_HASH SHA256=${HASH_${ARTIFACT_NAME}}
+                tiledb-prebuilt
+                URL ${URL_${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME}}
+                URL_HASH SHA256=${HASH_${FETCH_PREBUILT_TILEDB_ARTIFACT_NAME}}
+                DOWNLOAD_EXTRACT_TIMESTAMP FALSE
         )
 
         FetchContent_MakeAvailable(
-                tiledb
+                tiledb-prebuilt
         )
+
+        set(TileDB_DIR "${tiledb-prebuilt_SOURCE_DIR}/lib/cmake/TileDB" PARENT_SCOPE)
 endfunction()
