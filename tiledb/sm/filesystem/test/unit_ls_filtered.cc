@@ -115,19 +115,6 @@ class VFSTest {
   tiledb::sm::LsObjects expected_results_;
 };
 
-
-static constexpr const char *PATH_DELIM = "/";
-
-template <typename T>
-T pathjoin(T t) {
-  return t;
-}
-
-template <typename T, typename... Args>
-T pathjoin(T t, Args... args) {
-  return t + PATH_DELIM + pathjoin<Args...>(args...);
-}
-
 /**
  * Represents a path used in the test.
  * Encapsulates absolute and relative paths, and can be extended for URI
@@ -135,21 +122,21 @@ T pathjoin(T t, Args... args) {
  */
 struct TestPath {
   VFSTest    &vfs_test;
-  std::string abspath;
-  std::string relpath;
+  std::filesystem::path relpath;
+  std::filesystem::path abspath;
   uint64_t    size;
 
   TestPath(VFSTest &vfs_test, std::string_view relpath, uint64_t size = 0) :
     vfs_test(vfs_test),
-    abspath(pathjoin(vfs_test.temp_dir_.to_path(), std::string(relpath))),
     relpath(relpath),
+    abspath(std::filesystem::path(vfs_test.temp_dir_.to_path()).append(relpath)),
     size(size)
   {}
 
   TestPath(const TestPath &copy) :
     vfs_test(copy.vfs_test),
-    abspath(copy.abspath),
     relpath(copy.relpath),
+    abspath(copy.abspath),
     size(copy.size)
   {}
 
@@ -181,8 +168,8 @@ struct TestPath {
    * @return a string containing the way this is expected
    * to appear in the ls_recursive output
    */
-  std::string_view lsresult() const {
-    return abspath; /* TODO: this shoudl be URI */
+  std::string lsresult() const {
+    return abspath.native(); /* TODO: this shoudl be URI */
   }
 
   bool matches(const std::pair<std::string, uint64_t>& lsout) const {

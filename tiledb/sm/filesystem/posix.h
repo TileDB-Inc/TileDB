@@ -40,6 +40,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <vector>
@@ -366,8 +367,6 @@ template <FilePredicate F, DirectoryPredicate D>
 tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
     F file_filter, D directory_filter, bool recursive) const
 {
-  static constexpr const char *PATH_DELIM = "/";
-
   /*
    * The input URI was useful to the top-level VFS to identify this is a
    * regular filesystem path, but we don't need the "file://" qualifier
@@ -375,84 +374,32 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
    */
   const auto parentstr = parent.to_path();
 
-  /**
-   * RAII guard to ensure we close all directories, no matter what else happens
-   */
-  struct DirGuard {
-    std::string abspath;
-    DIR        *dptr;
-
-    DirGuard(std::string_view abspath, DIR *d) : abspath(abspath), dptr(d)
-    {}
-    DirGuard(const DirGuard &) = delete;
-
-    DirGuard(DirGuard &&movefrom) : abspath(movefrom.abspath), dptr(movefrom.dptr) {
-      movefrom.dptr = nullptr;
-    }
-
-    ~DirGuard() {
-      if (dptr) {
-        /*
-         * The only error specified is EBADF.
-         * Since we error check opendir() we should only get that if there's a memory stomp,
-         * and then we have worse problems than not checking this return value.
-         */
-        closedir(dptr);
-      }
-    }
-  };
-
-
   LsObjects qualifyingPaths;
 
-  DIR *rootpath = opendir(parentstr.c_str());
-  if (rootpath == nullptr) {
-    auto st = LOG_STATUS(Status_IOError(
-          std::string("Cannot open directory [" + parentstr + "]: ") + strerror(errno)));
-    return {st, nullopt};
-  }
-
-  std::vector<DirGuard> dirstack;
-  dirstack.push_back(DirGuard(parentstr, rootpath));
-
-  while (!dirstack.empty()) {
-    struct dirent *entry = readdir(dirstack.back().dptr);
-    if (entry == nullptr)
-    {
-      dirstack.pop_back();
-    }
-    else if (entry->d_type == DT_DIR)
-    {
-      if (!strcmp(entry->d_name, ".") || !strcmp(entry->d_name, "..")) {
-        continue;
-      }
-
-      const std::string abspath(dirstack.back().abspath + PATH_DELIM + entry->d_name);
-      if (!directory_filter(abspath)) {
-        continue;
-      }
-
-      DIR *subdir = opendir(abspath.c_str());
-      if (!subdir) {
-        auto st = LOG_STATUS(Status_IOError(
-              std::string("Cannot open directory [") + abspath.c_str() + "]: " + strerror(errno)));
-        return {st, nullopt};
-      } else if (recursive) {
-        dirstack.push_back(DirGuard(abspath, subdir));
+  auto iter = std::filesystem::recursive_directory_iterator(parentstr);
+  for (const std::filesystem::directory_entry &entry : iter)
+  {
+      if (entry.is_directory()) {
+          if (directory_filter(entry.path().native())) {
+              if (!recursive) {
+                  iter.disable_recursion_pending();
+                  qualifyingPaths.push_back(std::make_pair(entry.path(), 0));
+              }
+          } else {
+              /* do not descend into directories which don't qualify */
+              iter.disable_recursion_pending();
+          }
       } else {
-        qualifyingPaths.push_back(std::make_pair(abspath, 0));
+          /*
+           * A leaf of the filesystem
+           * (or symbolic link - split to a separate case if we want to descend into them)
+           */
+          const auto pathstr = entry.path().native();
+          if (file_filter(pathstr, entry.file_size())) {
+              /* TODO: URI in result set instead */
+              qualifyingPaths.push_back(std::make_pair(pathstr, entry.file_size()));
+          }
       }
-    }
-    else  // a leaf of the filesystem (or symbolic link - split out if we want to descend)
-    {
-      std::string abspath(dirstack.back().abspath + PATH_DELIM + entry->d_name);
-      uint64_t size;
-      file_size(URI(abspath), &size);  // additional system call and URI construction, would be nice to avoid if not needed
-
-      if (file_filter(abspath, size)) {
-        qualifyingPaths.push_back(std::make_pair(abspath, size));
-      }
-    }
   }
 
   return {Status::Ok(), qualifyingPaths};
