@@ -231,44 +231,44 @@ TEST_CASE(
   }
 
   SECTION("Empty subdirectory") {
-    TestPath(vfs_test, "d1").mkdir();
+    auto d1 = TestPath(vfs_test, "d1");
+    d1.mkdir();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_,
         tiledb::sm::accept_all_files, tiledb::sm::accept_all_dirs));
 
-    /*
-     * TODO with reviewer feedback: should this be empty or list `d1`?
-     */
-    REQUIRE(ls.empty());
+    CHECK(ls.size() == 1);
+    if (ls.size() >= 1) { CHECK(d1.matches(ls[0])); }
   }
 
   SECTION("Empty subdirectory and files") {
     testpaths[0].touch();
     testpaths[1].touch();
-    TestPath(vfs_test, "d1").mkdir();
+    auto d1 = TestPath(vfs_test, "d1");
+    d1.mkdir();
     testpaths[2].touch();
     testpaths[3].touch();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_,
         tiledb::sm::accept_all_files, tiledb::sm::accept_all_dirs));
-    REQUIRE(ls.size() == 4);
-    CHECK(testpaths[0].matches(ls[0]));
-    CHECK(testpaths[1].matches(ls[1]));
-    CHECK(testpaths[2].matches(ls[2]));
-    CHECK(testpaths[3].matches(ls[3]));
+    CHECK(ls.size() == 5);
+    if (ls.size() >= 1) { CHECK(testpaths[0].matches(ls[0])); }
+    if (ls.size() >= 2) { CHECK(testpaths[1].matches(ls[1])); }
+    if (ls.size() >= 3) { CHECK(d1.matches(ls[2])); }
+    if (ls.size() >= 4) { CHECK(testpaths[2].matches(ls[3])); }
+    if (ls.size() >= 5) { CHECK(testpaths[3].matches(ls[4])); }
   }
 
   SECTION("Empty sub-subdirectory") {
     TestPath(vfs_test, "d1").mkdir();
-    TestPath(vfs_test, "d1/d1sub1").mkdir();
+    auto d1sub1 = TestPath(vfs_test, "d1/d1sub1");
+    d1sub1.mkdir();
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_,
         tiledb::sm::accept_all_files, tiledb::sm::accept_all_dirs));
 
-    /*
-     * TODO with reviewer feedback: should this be empty or list `d1`?
-     */
-    REQUIRE(ls.empty());
+    CHECK(ls.size() == 1);
+    if (ls.size() >= 1) { CHECK(d1sub1.matches(ls[0])); }
   }
 
   SECTION("Deeply-nested files") {

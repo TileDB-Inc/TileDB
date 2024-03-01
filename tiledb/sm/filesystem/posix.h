@@ -382,9 +382,12 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
       const auto abspath = entry.path().native();
       if (entry.is_directory()) {
           if (directory_filter(abspath)) {
+              if (std::filesystem::is_empty(entry.path()) || !recursive) {
+                  /* non-empty directories are leaves, so always include them in result set */
+                  qualifyingPaths.push_back(std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
+              }
               if (!recursive) {
                   iter.disable_recursion_pending();
-                  qualifyingPaths.push_back(std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
               }
           } else {
               /* do not descend into directories which don't qualify */
