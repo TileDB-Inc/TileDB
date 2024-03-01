@@ -433,7 +433,7 @@ Status DenseReader::dense_read() {
           result_space_tiles,
           tile_subarrays);
 
-      std::vector<FilteredData> filtered_data;
+      std::list<FilteredData> filtered_data;
 
       // Read and unfilter tiles.
       bool validity_only = null_count_aggregate_only(name);
@@ -911,7 +911,7 @@ Status DenseReader::apply_query_condition(
         tile_subarrays);
 
     // Read and unfilter query condition attributes.
-    std::vector<FilteredData> filtered_data = read_attribute_tiles(
+    std::list<FilteredData> filtered_data = read_attribute_tiles(
         NameToLoad::from_string_vec(qc_names), result_tiles);
 
     if (compute_task.valid()) {

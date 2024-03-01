@@ -586,25 +586,25 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   return Status::Ok();
 }
 
-std::vector<FilteredData> ReaderBase::read_attribute_tiles(
+std::list<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
+std::list<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_tiles(
+std::list<FilteredData> ReaderBase::read_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  std::vector<FilteredData> filtered_data;
+  std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
@@ -613,7 +613,6 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
   uint64_t num_tiles_read{0};
   std::vector<ThreadPool::Task> read_tasks;
-  filtered_data.reserve(names.size());
 
   // Run all attributes independently.
   for (auto n : names) {

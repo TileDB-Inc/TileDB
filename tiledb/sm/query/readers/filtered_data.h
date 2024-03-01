@@ -70,6 +70,9 @@ class FilteredDataBlock {
       , filtered_data_(size) {
   }
 
+  DISABLE_COPY_AND_COPY_ASSIGN(FilteredDataBlock);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FilteredDataBlock);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -277,6 +280,9 @@ class FilteredData {
   /** Destructor. */
   ~FilteredData() = default;
 
+  DISABLE_COPY_AND_COPY_ASSIGN(FilteredData);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FilteredData);
+
   /* ********************************* */
   /*                API                */
   /* ********************************* */
@@ -364,7 +370,7 @@ class FilteredData {
   }
 
   /** @return Data blocks corresponding to the tile type. */
-  inline std::vector<FilteredDataBlock>& data_blocks(const TileType type) {
+  inline std::list<FilteredDataBlock>& data_blocks(const TileType type) {
     switch (type) {
       case TileType::FIXED:
         return fixed_data_blocks_;
@@ -378,7 +384,7 @@ class FilteredData {
   }
 
   /** @return Current data block corresponding to the tile type. */
-  inline std::vector<FilteredDataBlock>::iterator& current_data_block(
+  inline std::list<FilteredDataBlock>::iterator& current_data_block(
       const TileType type) {
     switch (type) {
       case TileType::FIXED:
@@ -555,22 +561,22 @@ class FilteredData {
   /* ********************************* */
 
   /** Fixed data blocks. */
-  std::vector<FilteredDataBlock> fixed_data_blocks_;
+  std::list<FilteredDataBlock> fixed_data_blocks_;
 
   /** Current fixed data block used when creating fixed tiles. */
-  std::vector<FilteredDataBlock>::iterator current_fixed_data_block_;
+  std::list<FilteredDataBlock>::iterator current_fixed_data_block_;
 
   /** Var data blocks. */
-  std::vector<FilteredDataBlock> var_data_blocks_;
+  std::list<FilteredDataBlock> var_data_blocks_;
 
   /** Current var data block used when creating var tiles. */
-  std::vector<FilteredDataBlock>::iterator current_var_data_block_;
+  std::list<FilteredDataBlock>::iterator current_var_data_block_;
 
   /** Nullable data blocks. */
-  std::vector<FilteredDataBlock> nullable_data_blocks_;
+  std::list<FilteredDataBlock> nullable_data_blocks_;
 
   /** Current nullable data block used when creating nullable tiles. */
-  std::vector<FilteredDataBlock>::iterator current_nullable_data_block_;
+  std::list<FilteredDataBlock>::iterator current_nullable_data_block_;
 
   /** Name of the attribute. */
   const std::string& name_;

@@ -561,7 +561,7 @@ class ReaderBase : public StrategyBase {
    *     `ResultTile` instances in this vector.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_attribute_tiles(
+  std::list<FilteredData> read_attribute_tiles(
       const std::vector<NameToLoad>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -577,7 +577,7 @@ class ReaderBase : public StrategyBase {
    *     `ResultTile` instances in this vector.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_coordinate_tiles(
+  std::list<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -594,7 +594,7 @@ class ReaderBase : public StrategyBase {
    * @param validity_only Is the field read for validity only.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_tiles(
+  std::list<FilteredData> read_tiles(
       const std::vector<NameToLoad>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
