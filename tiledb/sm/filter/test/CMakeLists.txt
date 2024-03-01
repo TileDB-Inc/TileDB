@@ -52,6 +52,7 @@ commence(unit_test run_filter_pipeline)
         unit_bit_width_reduction_pipeline.cc
         unit_positive_delta_pipeline.cc
         unit_bitshuffle_pipeline.cc
+        unit_byteshuffle_pipeline.cc
     )
 conclude(unit_test)
 
