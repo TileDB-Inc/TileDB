@@ -297,18 +297,18 @@ TEST_CASE(
 
     const auto ls = sort_by_name(vfs_test.vfs_.ls_recursive(vfs_test.temp_dir_,
         tiledb::sm::accept_all_files, tiledb::sm::accept_all_dirs));
-    REQUIRE(ls.size() == testpaths.size());
+    CHECK(ls.size() == testpaths.size());
     REQUIRE(testpaths.size() >= 9); /* avoid invalid access below */
 
-    CHECK(testpaths[0].matches(ls[0]));
-    CHECK(testpaths[1].matches(ls[1]));
-    CHECK(testpaths[5].matches(ls[2]));
-    CHECK(testpaths[7].matches(ls[3]));
-    CHECK(testpaths[8].matches(ls[4]));
-    CHECK(testpaths[6].matches(ls[5]));
-    CHECK(testpaths[4].matches(ls[6]));
-    CHECK(testpaths[2].matches(ls[7]));
-    CHECK(testpaths[3].matches(ls[8]));
+    if (ls.size() >= 1) { CHECK(testpaths[0].matches(ls[0])); }
+    if (ls.size() >= 2) { CHECK(testpaths[1].matches(ls[1])); }
+    if (ls.size() >= 3) { CHECK(testpaths[5].matches(ls[2])); }
+    if (ls.size() >= 4) { CHECK(testpaths[7].matches(ls[3])); }
+    if (ls.size() >= 5) { CHECK(testpaths[8].matches(ls[4])); }
+    if (ls.size() >= 6) { CHECK(testpaths[6].matches(ls[5])); }
+    if (ls.size() >= 7) { CHECK(testpaths[4].matches(ls[6])); }
+    if (ls.size() >= 8) { CHECK(testpaths[2].matches(ls[7])); }
+    if (ls.size() >= 9) { CHECK(testpaths[3].matches(ls[8])); }
   }
 
   /* all tests must close all the files that they opened, in normal use of the API */
