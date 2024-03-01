@@ -169,7 +169,7 @@ struct TestPath {
    * to appear in the ls_recursive output
    */
   std::string lsresult() const {
-    return abspath.native(); /* TODO: this shoudl be URI */
+    return tiledb::sm::URI(abspath.native()).to_string();
   }
 
   bool matches(const std::pair<std::string, uint64_t>& lsout) const {

@@ -379,11 +379,12 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
   auto iter = std::filesystem::recursive_directory_iterator(parentstr);
   for (const std::filesystem::directory_entry &entry : iter)
   {
+      const auto abspath = entry.path().native();
       if (entry.is_directory()) {
-          if (directory_filter(entry.path().native())) {
+          if (directory_filter(abspath)) {
               if (!recursive) {
                   iter.disable_recursion_pending();
-                  qualifyingPaths.push_back(std::make_pair(entry.path(), 0));
+                  qualifyingPaths.push_back(std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
               }
           } else {
               /* do not descend into directories which don't qualify */
@@ -394,10 +395,8 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(const URI& parent,
            * A leaf of the filesystem
            * (or symbolic link - split to a separate case if we want to descend into them)
            */
-          const auto pathstr = entry.path().native();
-          if (file_filter(pathstr, entry.file_size())) {
-              /* TODO: URI in result set instead */
-              qualifyingPaths.push_back(std::make_pair(pathstr, entry.file_size()));
+          if (file_filter(abspath, entry.file_size())) {
+              qualifyingPaths.push_back(std::make_pair(tiledb::sm::URI(abspath).to_string(), entry.file_size()));
           }
       }
   }
