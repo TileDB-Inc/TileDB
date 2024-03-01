@@ -70,14 +70,14 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileMinVals";
     case MemoryType::TILE_NULL_COUNTS:
       return "TileNullCounts";
-    case MemoryType::TILE_SUMS:
-      return "TileSums";
     case MemoryType::ATTRIBUTES:
       return "Attributes";
     case MemoryType::DIMENSION_LABELS:
       return "DimensionLabels";
     case MemoryType::DIMENSIONS:
       return "Dimensions";
+    case MemoryType::TILE_SUMS:
+      return "TileSums";
     case MemoryType::TILE_WRITER_DATA:
       return "TileWriterData";
     default:
