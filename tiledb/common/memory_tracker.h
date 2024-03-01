@@ -123,7 +123,6 @@ enum class MemoryType {
 enum class MemoryTrackerType {
   ANONYMOUS,
   ARRAY_CREATE,
-  ARRAY_EVOLVE,
   ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
@@ -133,7 +132,8 @@ enum class MemoryTrackerType {
   QUERY_WRITE,
   CONSOLIDATOR,
   REST_CLIENT,
-  EPHEMERAL
+  EPHEMERAL,
+  SCHEMA_EVOLUTION
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

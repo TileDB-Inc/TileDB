@@ -90,16 +90,28 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
   switch (type) {
     case MemoryTrackerType::ANONYMOUS:
       return "Anonymous";
+    case MemoryTrackerType::ARRAY_CREATE:
+      return "ArrayCreate";
+    case MemoryTrackerType::ARRAY_LOAD:
+      return "ArrayLoad";
     case MemoryTrackerType::ARRAY_READ:
       return "ArrayRead";
     case MemoryTrackerType::ARRAY_WRITE:
       return "ArrayWrite";
+    case MemoryTrackerType::FRAGMENT_INFO_LOAD:
+      return "FragmentInfoLoad";
     case MemoryTrackerType::QUERY_READ:
       return "QueryRead";
     case MemoryTrackerType::QUERY_WRITE:
       return "QueryWrite";
     case MemoryTrackerType::CONSOLIDATOR:
       return "Consolidator";
+    case MemoryTrackerType::REST_CLIENT:
+      return "RestClient";
+    case MemoryTrackerType::EPHEMERAL:
+      return "Ephemeral";
+    case MemoryTrackerType::SCHEMA_EVOLUTION:
+      return "SchemaEvolution";
     default:
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory tracker type: " + val);

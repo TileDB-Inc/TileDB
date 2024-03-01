@@ -4,7 +4,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2017-2022 TileDB, Inc.
+# Copyright (c) 2017-2024 TileDB, Inc.
 # Copyright (c) 2016 MIT and Intel Corporation
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -119,7 +119,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/test-cppapi-aggregates.cc
   src/test-cppapi-consolidation-plan.cc
   src/unit-average-cell-size.cc
-  src/unit-azure.cc
   src/unit-backwards_compat.cc
   src/unit-bufferlist.cc
   src/unit-capi-any.cc
@@ -180,9 +179,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-filter-buffer.cc
   src/unit-filter-pipeline.cc
   src/unit-global-order.cc
-  src/unit-gcs.cc
-  src/unit-gs.cc
-  src/unit-hdfs-filesystem.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
@@ -192,7 +188,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-resource-pool.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
-  src/unit-s3-no-multipart.cc
   src/unit-s3.cc
   src/unit-sparse-global-order-reader.cc
   src/unit-sparse-unordered-with-dups-reader.cc

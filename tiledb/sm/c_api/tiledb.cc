@@ -829,8 +829,10 @@ int32_t tiledb_array_schema_evolution_alloc(
   }
 
   // Create a new SchemaEvolution object
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   (*array_schema_evolution)->array_schema_evolution_ =
-      new (std::nothrow) tiledb::sm::ArraySchemaEvolution();
+      new (std::nothrow) tiledb::sm::ArraySchemaEvolution(memory_tracker);
   if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
@@ -3666,7 +3668,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
   }
 
   auto memory_tracker = ctx->context().resources().create_memory_tracker();
-  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_EVOLVE);
+  memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(

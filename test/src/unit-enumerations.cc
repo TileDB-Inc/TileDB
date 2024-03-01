@@ -1619,7 +1619,7 @@ TEST_CASE_METHOD(
   array->load_all_enumerations();
 
   auto orig_schema = array->array_schema_latest_ptr();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   ase->add_attribute(attr3);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
@@ -1631,7 +1631,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][simple]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1652,7 +1652,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][drop-add]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1673,7 +1673,7 @@ TEST_CASE_METHOD(
   create_array();
   auto orig_schema = get_array_schema_latest();
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1692,7 +1692,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-to-add]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values);
@@ -1718,7 +1718,7 @@ TEST_CASE_METHOD(
   REQUIRE(old_enmr != nullptr);
   auto new_enmr = extend_enumeration(old_enmr, values_to_add);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->extend_enumeration(new_enmr);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
 }
@@ -1727,7 +1727,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration",
     "[enumeration][array-schema-evolution][enmr-to-drop]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
 }
 
@@ -1737,7 +1737,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-to-drop]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase1 = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase1 = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1745,7 +1745,7 @@ TEST_CASE_METHOD(
 
   auto new_schema = ase1->evolve_schema(orig_schema);
 
-  auto ase2 = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase2 = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase2->drop_enumeration("enmr");
 
   CHECK_NOTHROW(ase2->evolve_schema(new_schema));
@@ -1755,7 +1755,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration Repeated",
     "[enumeration][array-schema-evolution][enmr-to-drop-repeated]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
 }
@@ -1764,7 +1764,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration After Add",
     "[enumeration][array-schema-evolution][enmr-add-drop]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1779,7 +1779,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - nullptr",
     "[enumeration][array-schema-evolution][enmr-nullptr]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   REQUIRE_THROWS(ase->add_enumeration(nullptr));
 }
 
@@ -1788,7 +1788,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - Already Added",
     "[enumeration][array-schema-evolution][enmr-already-added]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1802,7 +1802,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - Missing Name",
     "[enumeration][array-schema-evolution][missing-name]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   REQUIRE(ase->enumeration_to_add("foo") == nullptr);
 }
 
@@ -1812,7 +1812,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-still-in-use]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->drop_enumeration("test_enmr");
 
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1827,7 +1827,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name("test_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
@@ -1848,7 +1848,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::INT8);
   attr3->set_enumeration_name("big_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_enumeration(enmr);
   ase->add_attribute(attr3);
 
@@ -1870,7 +1870,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT8);
   attr3->set_enumeration_name("big_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_enumeration(enmr);
   ase->add_attribute(attr3);
 
@@ -1882,7 +1882,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Extend Enumeration nullptr",
     "[enumeration][array-schema-evolution][extend][error]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Cannot extend enumeration; Input enumeration is null");
   REQUIRE_THROWS_WITH(ase->extend_enumeration(nullptr), matcher);
@@ -1892,7 +1892,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Extend Enumeration Already Extended",
     "[enumeration][array-schema-evolution][extend][error]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -1971,7 +1971,7 @@ TEST_CASE_METHOD(
   auto old_enmr = schema->get_enumeration("test_enmr");
   auto new_enmr = extend_enumeration(old_enmr, values_to_add);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->extend_enumeration(new_enmr);
   auto st = ctx_.storage_manager()->array_evolve_schema(
       array->array_uri(), ase.get(), array->get_encryption_key());
@@ -2234,7 +2234,7 @@ TEST_CASE_METHOD(
   auto attr = make_shared<Attribute>(HERE(), "ohai", Datatype::INT64);
   attr->set_enumeration_name("enmr2");
 
-  ArraySchemaEvolution ase1;
+  ArraySchemaEvolution ase1(memory_tracker_);
   ase1.add_attribute(attr);
   ase1.add_enumeration(enmr1);
   ase1.add_enumeration(enmr2);
@@ -2268,7 +2268,7 @@ TEST_CASE_METHOD(
   std::vector<double> values2 = {1.0, 2.0, 3.0, 4.0, 5.0};
   auto enmr2 = create_enumeration(values2, true, Datatype::FLOAT64, "enmr2");
 
-  ArraySchemaEvolution ase1;
+  ArraySchemaEvolution ase1(memory_tracker_);
   ase1.extend_enumeration(enmr1);
   ase1.extend_enumeration(enmr2);
 

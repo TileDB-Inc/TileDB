@@ -914,11 +914,19 @@ class GCSTest : public VFSTestBase {
   }
 };
 
+/** Stub test object for tiledb::sm::GS functionality. */
+class GSTest : public VFSTestBase {
+ public:
+  explicit GSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "gs://") {
+  }
+};
+
 /** Stub test object for tiledb::sm::HDFS functionality. */
 class HDFSTest : public VFSTestBase {
  public:
   explicit HDFSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "hdfs://") {
+      : VFSTestBase(test_tree, "hdfs:///") {
   }
 };
 

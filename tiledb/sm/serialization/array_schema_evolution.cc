@@ -214,7 +214,8 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_add,
       enmrs_to_extend,
       enmrs_to_drop,
-      ts_range));
+      ts_range,
+      memory_tracker));
 }
 
 Status array_schema_evolution_serialize(

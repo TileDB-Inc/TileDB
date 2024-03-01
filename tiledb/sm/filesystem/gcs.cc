@@ -452,7 +452,8 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     }
 
     auto& results = object_metadata.value();
-    const std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
+    const std::string gcs_prefix =
+        uri_dir.backend_name() == "gcs" ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {
