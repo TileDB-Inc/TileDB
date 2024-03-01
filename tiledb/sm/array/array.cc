@@ -593,7 +593,8 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           array_dir_timestamp_start_,
           array_dir_timestamp_end_,
           this,
-          names_to_load);
+          names_to_load,
+          memory_tracker_);
     } else {
       // Create a vector of paths to be loaded.
       std::vector<std::string> paths_to_load;

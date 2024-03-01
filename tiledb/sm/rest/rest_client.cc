@@ -646,10 +646,15 @@ RestClient::post_enumerations_from_rest(
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     Array* array,
-    const std::vector<std::string>& enumeration_names) {
+    const std::vector<std::string>& enumeration_names,
+    shared_ptr<MemoryTracker> memory_tracker) {
   if (array == nullptr) {
     throw Status_RestError(
         "Error getting enumerations from REST; array is null.");
+  }
+
+  if (!memory_tracker) {
+    memory_tracker = memory_tracker_;
   }
 
   // This should never be called with an empty list of enumeration names, but
@@ -696,7 +701,7 @@ RestClient::post_enumerations_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
   return serialization::deserialize_load_enumerations_response(
-      serialization_type_, returned_data);
+      serialization_type_, returned_data, memory_tracker);
 }
 
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
@@ -1616,7 +1621,12 @@ Status RestClient::post_array_metadata_to_rest(
 
 std::vector<shared_ptr<const Enumeration>>
 RestClient::post_enumerations_from_rest(
-    const URI&, uint64_t, uint64_t, Array*, const std::vector<std::string>&) {
+    const URI&,
+    uint64_t,
+    uint64_t,
+    Array*,
+    const std::vector<std::string>&,
+    shared_ptr<MemoryTracker>) {
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 

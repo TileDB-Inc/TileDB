@@ -34,10 +34,12 @@
 #include "../string/string_api_internal.h"
 #include "enumeration_api_experimental.h"
 #include "enumeration_api_internal.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_enumeration_alloc(
+    tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
     uint32_t cell_val_num,
@@ -65,6 +67,9 @@ capi_return_t tiledb_enumeration_alloc(
   }
 
   try {
+    auto memory_tracker = ctx->context().resources().create_memory_tracker();
+    memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ENUMERATION_CREATE);
+
     *enumeration = tiledb_enumeration_handle_t::make_handle(
         std::string(name),
         datatype,
@@ -73,7 +78,8 @@ capi_return_t tiledb_enumeration_alloc(
         data,
         data_size,
         offsets,
-        offsets_size);
+        offsets_size,
+        memory_tracker);
   } catch (...) {
     *enumeration = nullptr;
     throw;
@@ -179,6 +185,9 @@ capi_return_t tiledb_enumeration_dump(
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;
 
+template <auto f>
+constexpr auto api_entry = tiledb::api::api_entry_with_context<f>;
+
 CAPI_INTERFACE(
     enumeration_alloc,
     tiledb_ctx_t* ctx,
@@ -191,7 +200,7 @@ CAPI_INTERFACE(
     const void* offsets,
     uint64_t offsets_size,
     tiledb_enumeration_t** enumeration) {
-  return api_entry_context<tiledb::api::tiledb_enumeration_alloc>(
+  return api_entry<tiledb::api::tiledb_enumeration_alloc>(
       ctx,
       name,
       type,

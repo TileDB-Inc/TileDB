@@ -254,7 +254,8 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array,
-      const std::vector<std::string>& enumeration_names);
+      const std::vector<std::string>& enumeration_names,
+      shared_ptr<MemoryTracker> memory_tracker = nullptr);
 
   /**
    * Post a data query to rest server
