@@ -159,7 +159,15 @@ QueryCondition create_qc(
 TEST_CASE_METHOD(
     EnumerationFx, "Create Empty Enumeration", "[enumeration][empty]") {
   Enumeration::create(
-      default_enmr_name, Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+      default_enmr_name,
+      Datatype::INT32,
+      1,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0,
+      memory_tracker_);
 }
 
 TEST_CASE_METHOD(
@@ -174,7 +182,8 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 }
 
 TEST_CASE_METHOD(
@@ -254,7 +263,9 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       &offsets,
-      sizeof(uint64_t));
+      sizeof(uint64_t),
+      memory_tracker_);
+
   std::vector<std::string> values = {""};
   check_enumeration(
       enmr,
@@ -323,7 +334,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0);
+      0,
+      memory_tracker_);
   check_enumeration(enmr, default_enmr_name, values, Datatype::INT32, 2, false);
 }
 
@@ -342,7 +354,8 @@ TEST_CASE_METHOD(
           nullptr,
           10,
           nullptr,
-          0),
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -355,7 +368,15 @@ TEST_CASE_METHOD(
       "Invalid data size; must be non-zero for fixed size data.");
   REQUIRE_THROWS_WITH(
       Enumeration::create(
-          default_enmr_name, Datatype::INT32, 1, false, &val, 0, nullptr, 0),
+          default_enmr_name,
+          Datatype::INT32,
+          1,
+          false,
+          &val,
+          0,
+          nullptr,
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -375,7 +396,8 @@ TEST_CASE_METHOD(
           val,
           strlen(val),
           nullptr,
-          8),
+          8,
+          memory_tracker_),
       matcher);
 }
 
@@ -396,7 +418,8 @@ TEST_CASE_METHOD(
           val,
           strlen(val),
           &offset,
-          0),
+          0,
+          memory_tracker_),
       matcher);
 }
 
@@ -417,7 +440,8 @@ TEST_CASE_METHOD(
           nullptr,
           5,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -438,7 +462,8 @@ TEST_CASE_METHOD(
           nullptr,
           5,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -460,7 +485,8 @@ TEST_CASE_METHOD(
           data,
           2,
           &offsets,
-          sizeof(uint64_t)),
+          sizeof(uint64_t),
+          memory_tracker_),
       matcher);
 }
 
@@ -477,7 +503,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -493,7 +520,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -510,7 +538,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -526,7 +555,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -542,7 +572,8 @@ TEST_CASE_METHOD(
       nullptr,
       values.size() * sizeof(int),
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -558,7 +589,8 @@ TEST_CASE_METHOD(
       values.data(),
       0,
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -575,7 +607,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       nullptr,
-      offsets.size() * sizeof(uint64_t)));
+      offsets.size() * sizeof(uint64_t),
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -592,7 +625,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -609,7 +643,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       offsets.data(),
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -625,7 +660,8 @@ TEST_CASE_METHOD(
       values.data(),
       values.size() * sizeof(int),
       nullptr,
-      100));
+      100,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -644,7 +680,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      3));
+      3,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -662,7 +699,8 @@ TEST_CASE_METHOD(
       data,
       strlen(data),
       offsets.data(),
-      offsets.size() * sizeof(uint64_t)));
+      offsets.size() * sizeof(uint64_t),
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -680,7 +718,8 @@ TEST_CASE_METHOD(
       values.data(),
       3,
       nullptr,
-      0));
+      0,
+      memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -750,7 +789,8 @@ TEST_CASE_METHOD(
       init_values.data(),
       init_values.size() * sizeof(int),
       nullptr,
-      0);
+      0,
+      memory_tracker_);
   auto enmr2 = extend_enumeration(enmr1, extend_values);
   check_enumeration(
       enmr2, default_enmr_name, final_values, Datatype::INT32, 2, false);
@@ -947,7 +987,7 @@ TEST_CASE_METHOD(
   memset(data, 1, 4);
 
   Deserializer deserializer(tile.data(), tile.size());
-  REQUIRE_THROWS(Enumeration::deserialize(deserializer));
+  REQUIRE_THROWS(Enumeration::deserialize(deserializer, memory_tracker_));
 }
 
 TEST_CASE_METHOD(
@@ -1397,7 +1437,8 @@ TEST_CASE_METHOD(
       data.data(),
       data.size(),
       offsets.data(),
-      offsets.size() * constants::cell_var_offset_size);
+      offsets.size() * constants::cell_var_offset_size,
+      memory_tracker_);
 
   schema->add_enumeration(enmr);
 
@@ -1426,7 +1467,8 @@ TEST_CASE_METHOD(
         data.data(),
         data.size(),
         offsets.data(),
-        offsets.size() * constants::cell_var_offset_size);
+        offsets.size() * constants::cell_var_offset_size,
+        memory_tracker_);
     schema->add_enumeration(enmr);
   }
 
@@ -1556,7 +1598,8 @@ TEST_CASE_METHOD(
       enmr2->data().data(),
       enmr2->data().size(),
       enmr2->offsets().data(),
-      enmr2->offsets().size());
+      enmr2->offsets().size(),
+      memory_tracker_);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Enumeration path name for 'test_enmr' already exists in this schema.");
@@ -1576,7 +1619,7 @@ TEST_CASE_METHOD(
   array->load_all_enumerations();
 
   auto orig_schema = array->array_schema_latest_ptr();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   ase->add_attribute(attr3);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
@@ -1588,7 +1631,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][simple]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1609,7 +1652,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][drop-add]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1630,7 +1673,7 @@ TEST_CASE_METHOD(
   create_array();
   auto orig_schema = get_array_schema_latest();
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values);
@@ -1649,7 +1692,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-to-add]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values);
@@ -1675,7 +1718,7 @@ TEST_CASE_METHOD(
   REQUIRE(old_enmr != nullptr);
   auto new_enmr = extend_enumeration(old_enmr, values_to_add);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->extend_enumeration(new_enmr);
   CHECK_NOTHROW(ase->evolve_schema(orig_schema));
 }
@@ -1684,7 +1727,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration",
     "[enumeration][array-schema-evolution][enmr-to-drop]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
 }
 
@@ -1694,7 +1737,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-to-drop]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase1 = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase1 = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1702,7 +1745,7 @@ TEST_CASE_METHOD(
 
   auto new_schema = ase1->evolve_schema(orig_schema);
 
-  auto ase2 = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase2 = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase2->drop_enumeration("enmr");
 
   CHECK_NOTHROW(ase2->evolve_schema(new_schema));
@@ -1712,7 +1755,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration Repeated",
     "[enumeration][array-schema-evolution][enmr-to-drop-repeated]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
   CHECK_NOTHROW(ase->drop_enumeration("test_enmr"));
 }
@@ -1721,7 +1764,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Drop Enumeration After Add",
     "[enumeration][array-schema-evolution][enmr-add-drop]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1736,7 +1779,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - nullptr",
     "[enumeration][array-schema-evolution][enmr-nullptr]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   REQUIRE_THROWS(ase->add_enumeration(nullptr));
 }
 
@@ -1745,7 +1788,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - Already Added",
     "[enumeration][array-schema-evolution][enmr-already-added]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<uint64_t> values{0, 1, 2, 3, 4, 1000};
   auto enmr1 = create_enumeration(values, false, Datatype::UINT64, "enmr");
@@ -1759,7 +1802,7 @@ TEST_CASE_METHOD(
     "ArraySchemaEvolution - Enumeration to Add - Missing Name",
     "[enumeration][array-schema-evolution][missing-name]") {
   create_array();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   REQUIRE(ase->enumeration_to_add("foo") == nullptr);
 }
 
@@ -1769,7 +1812,7 @@ TEST_CASE_METHOD(
     "[enumeration][array-schema-evolution][enmr-still-in-use]") {
   create_array();
   auto orig_schema = get_array_schema_latest();
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->drop_enumeration("test_enmr");
 
   REQUIRE_THROWS(ase->evolve_schema(orig_schema));
@@ -1784,7 +1827,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT32);
   attr3->set_enumeration_name("test_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_attribute(attr3);
 
   auto orig_schema = get_array_schema_latest();
@@ -1805,7 +1848,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::INT8);
   attr3->set_enumeration_name("big_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_enumeration(enmr);
   ase->add_attribute(attr3);
 
@@ -1827,7 +1870,7 @@ TEST_CASE_METHOD(
   auto attr3 = make_shared<Attribute>(HERE(), "attr3", Datatype::UINT8);
   attr3->set_enumeration_name("big_enmr");
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->add_enumeration(enmr);
   ase->add_attribute(attr3);
 
@@ -1839,7 +1882,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Extend Enumeration nullptr",
     "[enumeration][array-schema-evolution][extend][error]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Cannot extend enumeration; Input enumeration is null");
   REQUIRE_THROWS_WITH(ase->extend_enumeration(nullptr), matcher);
@@ -1849,7 +1892,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "ArraySchemaEvolution - Extend Enumeration Already Extended",
     "[enumeration][array-schema-evolution][extend][error]") {
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   std::vector<int> values = {1, 2, 3, 4, 5};
   auto enmr = create_enumeration(values);
   auto matcher = Catch::Matchers::ContainsSubstring(
@@ -1928,7 +1971,7 @@ TEST_CASE_METHOD(
   auto old_enmr = schema->get_enumeration("test_enmr");
   auto new_enmr = extend_enumeration(old_enmr, values_to_add);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->extend_enumeration(new_enmr);
   auto st = ctx_.storage_manager()->array_evolve_schema(
       array->array_uri(), ase.get(), array->get_encryption_key());
@@ -2145,7 +2188,15 @@ TEST_CASE_METHOD(
   auto schema1 = create_schema();
 
   auto enmr1 = Enumeration::create(
-      "empty_fixed", Datatype::INT32, 1, false, nullptr, 0, nullptr, 0);
+      "empty_fixed",
+      Datatype::INT32,
+      1,
+      false,
+      nullptr,
+      0,
+      nullptr,
+      0,
+      memory_tracker_);
   auto enmr2 = Enumeration::create(
       "empty_var",
       Datatype::STRING_ASCII,
@@ -2154,7 +2205,8 @@ TEST_CASE_METHOD(
       nullptr,
       0,
       nullptr,
-      0);
+      0,
+      memory_tracker_);
 
   schema1->add_enumeration(enmr1);
   schema1->add_enumeration(enmr2);
@@ -2182,7 +2234,7 @@ TEST_CASE_METHOD(
   auto attr = make_shared<Attribute>(HERE(), "ohai", Datatype::INT64);
   attr->set_enumeration_name("enmr2");
 
-  ArraySchemaEvolution ase1;
+  ArraySchemaEvolution ase1(memory_tracker_);
   ase1.add_attribute(attr);
   ase1.add_enumeration(enmr1);
   ase1.add_enumeration(enmr2);
@@ -2216,7 +2268,7 @@ TEST_CASE_METHOD(
   std::vector<double> values2 = {1.0, 2.0, 3.0, 4.0, 5.0};
   auto enmr2 = create_enumeration(values2, true, Datatype::FLOAT64, "enmr2");
 
-  ArraySchemaEvolution ase1;
+  ArraySchemaEvolution ase1(memory_tracker_);
   ase1.extend_enumeration(enmr1);
   ase1.extend_enumeration(enmr2);
 
@@ -2416,6 +2468,7 @@ EnumerationFx::EnumerationFx()
     , ctx_(cfg_) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
+  memory_tracker_ = tiledb::test::create_test_memory_tracker();
 }
 
 EnumerationFx::~EnumerationFx() {
@@ -2449,7 +2502,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         raw_values.data(),
         raw_values.size() * sizeof(uint8_t),
         nullptr,
-        0);
+        0,
+        memory_tracker_);
   } else if constexpr (std::is_pod_v<T>) {
     return Enumeration::create(
         name,
@@ -2459,7 +2513,8 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         values.data(),
         values.size() * sizeof(T),
         nullptr,
-        0);
+        0,
+        memory_tracker_);
   } else {
     uint64_t total_size = 0;
     for (auto v : values) {
@@ -2485,14 +2540,23 @@ shared_ptr<const Enumeration> EnumerationFx::create_enumeration(
         data.data(),
         total_size,
         offsets.data(),
-        offsets.size() * sizeof(uint64_t));
+        offsets.size() * sizeof(uint64_t),
+        memory_tracker_);
   }
 }
 
 shared_ptr<const Enumeration> EnumerationFx::create_empty_enumeration(
     Datatype type, uint32_t cell_val_num, bool ordered, std::string name) {
   return Enumeration::create(
-      name, type, cell_val_num, ordered, nullptr, 0, nullptr, 0);
+      name,
+      type,
+      cell_val_num,
+      ordered,
+      nullptr,
+      0,
+      nullptr,
+      0,
+      memory_tracker_);
 }
 
 template <typename T>
@@ -2566,7 +2630,7 @@ void EnumerationFx::check_storage_deserialization(
   auto tile = serialize_to_tile(enmr);
 
   Deserializer deserializer(tile.data(), tile.size());
-  auto deserialized = Enumeration::deserialize(deserializer);
+  auto deserialized = Enumeration::deserialize(deserializer, memory_tracker_);
 
   REQUIRE(deserialized->name() == enmr->name());
   REQUIRE(deserialized->path_name().empty() == false);
@@ -2762,8 +2826,8 @@ shared_ptr<ArraySchemaEvolution> EnumerationFx::ser_des_array_schema_evolution(
       ase, stype, &buf, client_side));
 
   ArraySchemaEvolution* ret;
-  throw_if_not_ok(
-      serialization::array_schema_evolution_deserialize(&ret, stype, buf));
+  throw_if_not_ok(serialization::array_schema_evolution_deserialize(
+      &ret, stype, buf, memory_tracker_));
 
   return shared_ptr<ArraySchemaEvolution>(ret);
 }

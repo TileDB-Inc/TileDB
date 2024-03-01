@@ -127,12 +127,14 @@ enum class MemoryTrackerType {
   ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
+  ENUMERATION_CREATE,
   FRAGMENT_INFO_LOAD,
   QUERY_READ,
   QUERY_WRITE,
   CONSOLIDATOR,
   REST_CLIENT,
-  EPHEMERAL
+  EPHEMERAL,
+  SCHEMA_EVOLUTION
 };
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {

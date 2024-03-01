@@ -71,7 +71,8 @@ void enumeration_to_capnp(
 }
 
 shared_ptr<const Enumeration> enumeration_from_capnp(
-    const capnp::Enumeration::Reader& reader) {
+    const capnp::Enumeration::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto name = reader.getName();
   auto path_name = reader.getPathName();
   Datatype datatype = Datatype::ANY;
@@ -104,7 +105,8 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
       data,
       data_size,
       offsets,
-      offsets_size);
+      offsets_size,
+      memory_tracker);
 }
 
 void load_enumerations_request_to_capnp(
@@ -150,12 +152,13 @@ void load_enumerations_response_to_capnp(
 
 std::vector<shared_ptr<const Enumeration>>
 load_enumerations_response_from_capnp(
-    const capnp::LoadEnumerationsResponse::Reader& reader) {
+    const capnp::LoadEnumerationsResponse::Reader& reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   std::vector<shared_ptr<const Enumeration>> ret;
   if (reader.hasEnumerations()) {
     auto enmr_readers = reader.getEnumerations();
     for (auto enmr_reader : enmr_readers) {
-      ret.push_back(enumeration_from_capnp(enmr_reader));
+      ret.push_back(enumeration_from_capnp(enmr_reader, memory_tracker));
     }
   }
   return ret;
@@ -306,7 +309,9 @@ void serialize_load_enumerations_response(
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
-    SerializationType serialize_type, const Buffer& response) {
+    SerializationType serialize_type,
+    const Buffer& response,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -317,7 +322,7 @@ deserialize_load_enumerations_response(
         json.decode(
             kj::StringPtr(static_cast<const char*>(response.data())), builder);
         capnp::LoadEnumerationsResponse::Reader reader = builder.asReader();
-        return load_enumerations_response_from_capnp(reader);
+        return load_enumerations_response_from_capnp(reader, memory_tracker);
       }
       case SerializationType::CAPNP: {
         const auto mBytes = reinterpret_cast<const kj::byte*>(response.data());
@@ -326,7 +331,7 @@ deserialize_load_enumerations_response(
             response.size() / sizeof(::capnp::word)));
         capnp::LoadEnumerationsResponse::Reader reader =
             array_reader.getRoot<capnp::LoadEnumerationsResponse>();
-        return load_enumerations_response_from_capnp(reader);
+        return load_enumerations_response_from_capnp(reader, memory_tracker);
       }
       default: {
         throw Status_SerializationError(
@@ -371,7 +376,8 @@ void serialize_load_enumerations_response(
 }
 
 std::vector<shared_ptr<const Enumeration>>
-deserialize_load_enumerations_response(SerializationType, const Buffer&) {
+deserialize_load_enumerations_response(
+    SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
   throw Status_SerializationError(
       "Cannot serialize; serialization not enabled.");
 }

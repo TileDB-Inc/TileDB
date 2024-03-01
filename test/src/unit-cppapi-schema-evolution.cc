@@ -797,8 +797,8 @@ TEST_CASE(
 TEST_CASE(
     "SchemaEvolution Error Handling Tests",
     "[cppapi][schema][evolution][errors]") {
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
-  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(
+      HERE(), tiledb::test::create_test_memory_tracker());
   REQUIRE_THROWS(ase->evolve_schema(nullptr));
   REQUIRE_THROWS(ase->add_attribute(nullptr));
 
@@ -818,7 +818,7 @@ TEST_CASE(
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<tiledb::sm::Domain>(HERE(), memory_tracker);
+  auto dom = make_shared<tiledb::sm::Domain>(HERE(), tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 
