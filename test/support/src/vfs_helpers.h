@@ -921,6 +921,9 @@ struct VFSTestSetup {
   ~VFSTestSetup() {
     vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
     CHECK(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
+
+    tiledb_ctx_free(&ctx_c);
+    tiledb_vfs_free(&vfs_c);
   };
 
   std::vector<std::unique_ptr<SupportedFs>> fs_vec;
