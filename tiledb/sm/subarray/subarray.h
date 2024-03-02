@@ -205,6 +205,60 @@ class Subarray {
     uint64_t size_validity_;
   };
 
+  /**
+   * Wrapper for optional<tuple<std::string, RangeSetAndSuperset>> for
+   * cleaner data access.
+   */
+  struct LabelRangeSubset {
+   public:
+    /**
+     * Default constructor is not C.41.
+     **/
+    LabelRangeSubset() = delete;
+
+    /**
+     * Constructor
+     *
+     * @param ref Dimension label the ranges will be set on.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
+
+    /**
+     * Constructor
+     *
+     * @param name The name of the dimension label the ranges will be set on.
+     * @param type The type of the label the ranges will be set on.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(
+        const std::string& name, Datatype type, bool coalesce_ranges = true);
+
+    /**
+     * Constructor
+     *
+     * @param name The name of the dimension label the ranges will be set on.
+     * @param type The type of the label the ranges will be set on.
+     * @param ranges The range subset for the dimension label.
+     * @param coalesce_ranges Set if ranges should be combined when adjacent.
+     */
+    LabelRangeSubset(
+        const std::string& name,
+        Datatype type,
+        std::vector<Range> ranges,
+        bool coalesce_ranges = true);
+
+    inline const std::vector<Range>& get_ranges() const {
+      return ranges_.ranges();
+    }
+
+    /** Name of the dimension label. */
+    std::string name_;
+
+    /** The ranges set on the dimension label. */
+    RangeSetAndSuperset ranges_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -1349,46 +1403,6 @@ class Subarray {
 
     /** The number of ranges. */
     uint64_t range_len_;
-  };
-
-  /**
-   * Wrapper for optional<tuple<std::string, RangeSetAndSuperset>> for
-   * cleaner data access.
-   */
-  struct LabelRangeSubset {
-   public:
-    /**
-     * Default constructor is not C.41.
-     **/
-    LabelRangeSubset() = delete;
-
-    /**
-     * Constructor
-     *
-     * @param ref Dimension label the ranges will be set on.
-     * @param coalesce_ranges Set if ranges should be combined when adjacent.
-     */
-    LabelRangeSubset(const DimensionLabel& ref, bool coalesce_ranges = true);
-
-    /**
-     * Constructor
-     *
-     * @param name The name of the dimension label the ranges will be set on.
-     * @param type The type of the label the ranges will be set on.
-     * @param coalesce_ranges Set if ranges should be combined when adjacent.
-     */
-    LabelRangeSubset(
-        const std::string& name, Datatype type, bool coalesce_ranges = true);
-
-    inline const std::vector<Range>& get_ranges() const {
-      return ranges_.ranges();
-    }
-
-    /** Name of the dimension label. */
-    std::string name_;
-
-    /** The ranges set on the dimension label. */
-    RangeSetAndSuperset ranges_;
   };
 
   /**

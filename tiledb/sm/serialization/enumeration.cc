@@ -75,8 +75,7 @@ shared_ptr<const Enumeration> enumeration_from_capnp(
     shared_ptr<MemoryTracker> memory_tracker) {
   auto name = reader.getName();
   auto path_name = reader.getPathName();
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(reader.getType());
 
   const void* data = nullptr;
   uint64_t data_size = 0;
