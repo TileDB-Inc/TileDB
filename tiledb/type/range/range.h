@@ -38,6 +38,7 @@
 #include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <sstream>
@@ -461,8 +462,8 @@ template <
 void crop_range(const Range& bounds, Range& range) {
   auto bounds_data = (const T*)bounds.data();
   auto range_data = (T*)range.data();
-  range_data[0] = std::max(bounds_data[0], range_data[0]);
-  range_data[1] = std::min(bounds_data[1], range_data[1]);
+  range_data[0] = std::clamp(range_data[0], bounds_data[0], bounds_data[1]);
+  range_data[1] = std::clamp(range_data[1], bounds_data[0], bounds_data[1]);
 };
 
 /**

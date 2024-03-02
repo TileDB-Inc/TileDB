@@ -71,7 +71,6 @@ Dimension::Dimension(const std::string& name, Datatype type)
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
-  set_crop_range_func();
   set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
@@ -107,7 +106,6 @@ Dimension::Dimension(
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
-  set_crop_range_func();
   set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
@@ -353,21 +351,6 @@ Range Dimension::compute_mbr_var(
     const WriterTile& tile_off, const WriterTile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
   return compute_mbr_var_func_(tile_off, tile_val);
-}
-
-template <class T>
-void Dimension::crop_range(const Dimension* dim, Range* range) {
-  assert(dim != nullptr);
-  assert(!range->empty());
-  auto dim_dom = (const T*)dim->domain().data();
-  auto r = (const T*)range->data();
-  T res[2] = {std::max(r[0], dim_dom[0]), std::min(r[1], dim_dom[1])};
-  range->set_range(res, sizeof(res));
-}
-
-void Dimension::crop_range(Range* range) const {
-  assert(crop_range_func_ != nullptr);
-  crop_range_func_(this, range);
 }
 
 template <class T>
@@ -1589,15 +1572,6 @@ std::string Dimension::tile_extent_str() const {
     return std::string("");  // for return type deduction purposes
   };
   return apply_with_type(g, type_);
-}
-
-void Dimension::set_crop_range_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      crop_range_func_ = crop_range<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
 }
 
 void Dimension::set_domain_range_func() {
