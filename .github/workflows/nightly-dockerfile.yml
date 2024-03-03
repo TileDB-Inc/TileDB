@@ -1,9 +1,6 @@
 name: Nightly-Dockerfile
 
 on:
-  schedule:
-    # runs every day at 2:50 UTC
-    - cron: "50 02 * * *"
   workflow_call:
   workflow_dispatch:
 
