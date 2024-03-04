@@ -107,11 +107,12 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
 
   // Check results
   std::sort(children_recursive.begin(), children_recursive.end());
-  REQUIRE(children_recursive.size() == 4);
+  REQUIRE(children_recursive.size() == 5);
   CHECK(children_recursive[0] == file);
   CHECK(children_recursive[1] == file2);
   CHECK(children_recursive[2] == subdir_file);
   CHECK(children_recursive[3] == subdir_file2);
+  CHECK(children_recursive[4] == subdir_empty);
 
 #endif
 
