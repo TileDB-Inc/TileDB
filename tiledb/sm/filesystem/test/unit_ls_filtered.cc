@@ -139,6 +139,10 @@ struct TestPath {
       , size(copy.size) {
   }
 
+  /**
+   * Create a file at the test path.
+   * @param mkdirs if true, then also create each parent directory in the path
+   */
   void touch(bool mkdirs = false) {
     if (mkdirs) {
       std::vector<tiledb::sm::URI> parents;
