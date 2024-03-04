@@ -432,13 +432,13 @@ Status DenseReader::dense_read() {
           result_space_tiles,
           tile_subarrays);
 
-      std::list<FilteredData> filtered_data;
-
       // Read and unfilter tiles.
       bool validity_only = null_count_aggregate_only(name);
       std::vector<ReaderBase::NameToLoad> to_load;
       to_load.emplace_back(name, validity_only);
-      filtered_data = std::move(read_attribute_tiles(to_load, result_tiles));
+      shared_ptr<std::list<FilteredData>> filtered_data =
+          make_shared<std::list<FilteredData>>(
+              read_attribute_tiles(to_load, result_tiles));
 
       if (compute_task.valid()) {
         RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
@@ -449,7 +449,7 @@ Status DenseReader::dense_read() {
 
       compute_task = storage_manager_->compute_tp()->execute(
           [&,
-           filtered_data = std::move(filtered_data),
+           filtered_data = filtered_data,
            name,
            validity_only,
            t_start,
@@ -910,139 +910,139 @@ Status DenseReader::apply_query_condition(
         tile_subarrays);
 
     // Read and unfilter query condition attributes.
-    std::list<FilteredData> filtered_data = read_attribute_tiles(
-        NameToLoad::from_string_vec(qc_names), result_tiles);
+    shared_ptr<std::list<FilteredData>> filtered_data =
+        make_shared<std::list<FilteredData>>(read_attribute_tiles(
+            NameToLoad::from_string_vec(qc_names), result_tiles));
 
     if (compute_task.valid()) {
       RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
     }
 
-    compute_task = storage_manager_->compute_tp()->execute(
-        [&,
-         filtered_data = std::move(filtered_data),
-         qc_names,
-         t_start,
-         t_end,
-         num_range_threads,
-         result_tiles]() {
-          // For easy reference.
-          const auto& tile_coords = subarray.tile_coords();
-          const auto dim_num = array_schema_.dim_num();
-          auto stride = array_schema_.domain().stride<DimType>(layout_);
-          const auto cell_order = array_schema_.cell_order();
-          const auto global_order = layout_ == Layout::GLOBAL_ORDER;
+    compute_task = storage_manager_->compute_tp()->execute([&,
+                                                            filtered_data =
+                                                                filtered_data,
+                                                            qc_names,
+                                                            t_start,
+                                                            t_end,
+                                                            num_range_threads,
+                                                            result_tiles]() {
+      // For easy reference.
+      const auto& tile_coords = subarray.tile_coords();
+      const auto dim_num = array_schema_.dim_num();
+      auto stride = array_schema_.domain().stride<DimType>(layout_);
+      const auto cell_order = array_schema_.cell_order();
+      const auto global_order = layout_ == Layout::GLOBAL_ORDER;
 
-          // Unfilter tiles.
-          for (auto& name : qc_names) {
-            RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
-          }
+      // Unfilter tiles.
+      for (auto& name : qc_names) {
+        RETURN_NOT_OK(unfilter_tiles(name, false, result_tiles));
+      }
 
-          if (stride == UINT64_MAX) {
-            stride = 1;
-          }
+      if (stride == UINT64_MAX) {
+        stride = 1;
+      }
 
-          // Process all tiles in parallel.
-          auto status = parallel_for_2d(
-              storage_manager_->compute_tp(),
-              t_start,
-              t_end,
-              0,
-              num_range_threads,
-              [&](uint64_t t, uint64_t range_thread_idx) {
-                // Find out result space tile and tile subarray.
-                const DimType* tc = (DimType*)&tile_coords[t][0];
-                auto& result_space_tile = result_space_tiles.at(tc);
+      // Process all tiles in parallel.
+      auto status = parallel_for_2d(
+          storage_manager_->compute_tp(),
+          t_start,
+          t_end,
+          0,
+          num_range_threads,
+          [&](uint64_t t, uint64_t range_thread_idx) {
+            // Find out result space tile and tile subarray.
+            const DimType* tc = (DimType*)&tile_coords[t][0];
+            auto& result_space_tile = result_space_tiles.at(tc);
 
-                // Iterate over all coordinates, retrieved in cell slab.
-                const auto& frag_domains = result_space_tile.frag_domains();
-                TileCellSlabIter<DimType> iter(
-                    range_thread_idx,
-                    num_range_threads,
-                    subarray,
-                    tile_subarrays[t],
-                    tile_extents,
-                    result_space_tile.start_coords(),
-                    range_info,
-                    cell_order);
+            // Iterate over all coordinates, retrieved in cell slab.
+            const auto& frag_domains = result_space_tile.frag_domains();
+            TileCellSlabIter<DimType> iter(
+                range_thread_idx,
+                num_range_threads,
+                subarray,
+                tile_subarrays[t],
+                tile_extents,
+                result_space_tile.start_coords(),
+                range_info,
+                cell_order);
 
-                // Compute cell offset and destination pointer.
-                uint64_t cell_offset =
-                    global_order ? tile_offsets[t] + iter.global_offset() : 0;
-                auto dest_ptr = qc_result.data() + cell_offset;
+            // Compute cell offset and destination pointer.
+            uint64_t cell_offset =
+                global_order ? tile_offsets[t] + iter.global_offset() : 0;
+            auto dest_ptr = qc_result.data() + cell_offset;
 
-                while (!iter.end()) {
-                  // Compute destination pointer for row/col major orders.
-                  if (!global_order) {
-                    cell_offset = iter.dest_offset_row_col();
-                    dest_ptr = qc_result.data() + cell_offset;
-                  }
+            while (!iter.end()) {
+              // Compute destination pointer for row/col major orders.
+              if (!global_order) {
+                cell_offset = iter.dest_offset_row_col();
+                dest_ptr = qc_result.data() + cell_offset;
+              }
 
-                  for (int32_t i =
-                           static_cast<int32_t>(frag_domains.size()) - 1;
-                       i >= 0;
-                       --i) {
-                    // If the cell slab overlaps this fragment domain range,
-                    // apply clause.
-                    auto&& [overlaps, start, end] = cell_slab_overlaps_range(
-                        dim_num,
-                        frag_domains[i].domain(),
-                        iter.cell_slab_coords(),
-                        iter.cell_slab_length());
-                    if (overlaps) {
-                      // Re-initialize the bitmap to 1 in case of overlapping
-                      // domains.
-                      if (i != static_cast<int32_t>(frag_domains.size()) - 1) {
-                        for (uint64_t c = start; c <= end; c++) {
-                          dest_ptr[c] = 1;
-                        }
-                      }
-
-                      RETURN_NOT_OK(condition_->apply_dense(
-                          *(fragment_metadata_[frag_domains[i].fid()]
-                                ->array_schema()
-                                .get()),
-                          result_space_tile.result_tile(frag_domains[i].fid()),
-                          start,
-                          end - start + 1,
-                          iter.pos_in_tile(),
-                          stride,
-                          iter.cell_slab_coords().data(),
-                          dest_ptr));
-
-                      // If any cell doesn't match the query condition, signal
-                      // it in the space tile.
-                      for (uint64_t c = start; c <= end; c++) {
-                        if (dest_ptr[c] == 0) {
-                          result_space_tile.set_qc_filtered_results();
-                          break;
-                        }
-                      }
+              for (int32_t i = static_cast<int32_t>(frag_domains.size()) - 1;
+                   i >= 0;
+                   --i) {
+                // If the cell slab overlaps this fragment domain range,
+                // apply clause.
+                auto&& [overlaps, start, end] = cell_slab_overlaps_range(
+                    dim_num,
+                    frag_domains[i].domain(),
+                    iter.cell_slab_coords(),
+                    iter.cell_slab_length());
+                if (overlaps) {
+                  // Re-initialize the bitmap to 1 in case of overlapping
+                  // domains.
+                  if (i != static_cast<int32_t>(frag_domains.size()) - 1) {
+                    for (uint64_t c = start; c <= end; c++) {
+                      dest_ptr[c] = 1;
                     }
                   }
 
-                  // Adjust the destination pointers for global order.
-                  if (global_order) {
-                    dest_ptr += iter.cell_slab_length();
+                  RETURN_NOT_OK(condition_->apply_dense(
+                      *(fragment_metadata_[frag_domains[i].fid()]
+                            ->array_schema()
+                            .get()),
+                      result_space_tile.result_tile(frag_domains[i].fid()),
+                      start,
+                      end - start + 1,
+                      iter.pos_in_tile(),
+                      stride,
+                      iter.cell_slab_coords().data(),
+                      dest_ptr));
+
+                  // If any cell doesn't match the query condition, signal
+                  // it in the space tile.
+                  for (uint64_t c = start; c <= end; c++) {
+                    if (dest_ptr[c] == 0) {
+                      result_space_tile.set_qc_filtered_results();
+                      break;
+                    }
                   }
-
-                  ++iter;
                 }
+              }
 
-                return Status::Ok();
-              });
-          RETURN_NOT_OK(status);
+              // Adjust the destination pointers for global order.
+              if (global_order) {
+                dest_ptr += iter.cell_slab_length();
+              }
 
-          // For `qc_coords_mode` just fill in the coordinates and skip
-          // attribute
-          // processing.
-          if (qc_coords_mode_) {
-            for (auto& name : qc_names) {
-              clear_tiles(name, result_tiles);
+              ++iter;
             }
-          }
 
-          return Status::Ok();
-        });
+            return Status::Ok();
+          });
+      RETURN_NOT_OK(status);
+
+      // For `qc_coords_mode` just fill in the coordinates and skip
+      // attribute
+      // processing.
+      if (qc_coords_mode_) {
+        for (auto& name : qc_names) {
+          clear_tiles(name, result_tiles);
+        }
+      }
+
+      return Status::Ok();
+    });
   }
 
   return Status::Ok();
