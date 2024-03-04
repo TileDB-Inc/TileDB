@@ -262,6 +262,22 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CPPQueryConditionFx,
+    "IN - String With Non-Enumeration Value",
+    "[query-condition][set][non-enum-value][string]") {
+  auto type = GENERATE(
+      TestArrayType::DENSE, TestArrayType::SPARSE, TestArrayType::LEGACY);
+  auto serialize = SERIALIZE_TESTS();
+  create_array(type, serialize);
+
+  std::vector<std::string> values = {"wilma", "astro"};
+  auto qc =
+      QueryConditionExperimental::create(ctx_, "attr2", values, TILEDB_NOT_IN);
+
+  check_read(qc, [](const QCSetsCell& c) { return !(c.a2 == "wilma"); });
+}
+
+TEST_CASE_METHOD(
+    CPPQueryConditionFx,
     "NOT_IN - Enumeration",
     "[query-condition][set][basic][enumeration]") {
   auto type = GENERATE(
@@ -828,7 +844,7 @@ void CPPQueryConditionFx::rm_array() {
 }
 
 void CPPQueryConditionFx::generate_data() {
-  num_elements_ = 10;  // * 1024;
+  num_elements_ = 1024;
 
   dim_values_.clear();
   attr1_values_.clear();
