@@ -63,6 +63,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   std::string file2 = dir + "/file2";
   std::string subdir = dir + "/subdir";
   std::string subdir2 = dir + "/subdir2";
+  std::string subdir_empty = dir + "/subdir_empty";
   std::string subdir_file = subdir + "/file";
   std::string subdir_file2 = subdir2 + "/file2";
 
@@ -71,6 +72,7 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   vfs.create_dir(dir);
   vfs.create_dir(subdir);
   vfs.create_dir(subdir2);
+  vfs.create_dir(subdir_empty);
   vfs.touch(file);
   vfs.touch(file2);
   vfs.touch(subdir_file);
@@ -85,15 +87,33 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   file2 = tiledb::sm::path_win::uri_from_path(file2);
   subdir = tiledb::sm::path_win::uri_from_path(subdir);
   subdir2 = tiledb::sm::path_win::uri_from_path(subdir2);
+  subdir_empty = tiledb::sm::path_win::uri_from_path(subdir_empty);
 #endif
 
   // Check results
   std::sort(children.begin(), children.end());
-  REQUIRE(children.size() == 4);
+  REQUIRE(children.size() == 5);
   CHECK(children[0] == file);
   CHECK(children[1] == file2);
   CHECK(children[2] == subdir);
   CHECK(children[3] == subdir2);
+  CHECK(children[4] == subdir_empty);
+
+#ifndef _WIN32
+  // List recursive (not supported for Windows yet)
+  // (this is tested more exhaustively in
+  // `tiledb/sm/filesystem/test/unit_ls_filtered.cc`)
+  std::vector<std::string> children_recursive = vfs.ls_recursive(dir);
+
+  // Check results
+  std::sort(children_recursive.begin(), children_recursive.end());
+  REQUIRE(children_recursive.size() == 4);
+  CHECK(children_recursive[0] == file);
+  CHECK(children_recursive[1] == file2);
+  CHECK(children_recursive[2] == subdir_file);
+  CHECK(children_recursive[3] == subdir_file2);
+
+#endif
 
   // Clean up
   vfs.remove_dir(path);

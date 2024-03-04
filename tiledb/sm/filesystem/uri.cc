@@ -341,6 +341,10 @@ std::string URI::to_string() const {
   return uri_;
 }
 
+URI::operator std::string_view() const noexcept {
+  return std::string_view(uri_);
+}
+
 bool URI::operator==(const URI& uri) const {
   return uri_ == uri.uri_;
 }

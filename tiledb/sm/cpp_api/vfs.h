@@ -570,8 +570,8 @@ class VFS {
 
   /**
    * Callback function to be used when invoking the C TileDB function
-   * `ls_recursive` for getting the children of a URI. It simply adds `path` to
-   * `vec` (which is casted from `data`).
+   * `ls_recursive` for getting the children of a URI.
+   * It adds the path as a URI to `vec` (which is casted from `data`).
    *
    * @param path The path of a visited TileDB object
    * @param data This will be casted to the vector that will store `path`.

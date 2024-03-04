@@ -384,8 +384,9 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(
   auto iter = std::filesystem::recursive_directory_iterator(parentstr);
   for (const std::filesystem::directory_entry& entry : iter) {
     const auto abspath = entry.path().native();
+    const auto absuri = URI(abspath);
     if (entry.is_directory()) {
-      if (directory_filter(abspath)) {
+      if (directory_filter(absuri)) {
         if (std::filesystem::is_empty(entry.path()) || !recursive) {
           /* non-empty directories are leaves, so always include them in result
            * set */
@@ -405,9 +406,9 @@ tuple<Status, optional<LsObjects>> Posix::ls_filtered(
        * (or symbolic link - split to a separate case if we want to descend into
        * them)
        */
-      if (file_filter(abspath, entry.file_size())) {
-        qualifyingPaths.push_back(std::make_pair(
-            tiledb::sm::URI(abspath).to_string(), entry.file_size()));
+      if (file_filter(absuri, entry.file_size())) {
+        qualifyingPaths.push_back(
+            std::make_pair(absuri.to_string(), entry.file_size()));
       }
     }
   }

@@ -317,6 +317,8 @@ class URI {
   /** For comparing URIs alphanumerically. */
   bool operator>(const URI& uri) const;
 
+  operator std::string_view() const noexcept;
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
