@@ -814,7 +814,10 @@ TEST_CASE(
       tiledb::sm::ArrayType::SPARSE,
       tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<tiledb::sm::Dimension>(
-      HERE(), "dim1", tiledb::sm::Datatype::INT32);
+      HERE(),
+      "dim1",
+      tiledb::sm::Datatype::INT32,
+      tiledb::test::get_test_memory_tracker());
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 

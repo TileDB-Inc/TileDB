@@ -34,6 +34,7 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/serialization/array_schema.h"
 
@@ -44,7 +45,11 @@ TEST_CASE(
     "Check serialization correctly marks nonempty domain as "
     "var/fixed size",
     "[nonemptydomain][serialization]") {
-  auto dim = make_shared<Dimension>(HERE(), "index", Datatype::UINT32);
+  auto dim = make_shared<Dimension>(
+      HERE(),
+      "index",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker());
   uint32_t domain1[2]{1, 64};
   auto st = dim->set_domain(&domain1[0]);
   REQUIRE(st.ok());

@@ -68,7 +68,8 @@ struct CResultTileFx {
   ~CResultTileFx();
 };
 
-CResultTileFx::CResultTileFx() {
+CResultTileFx::CResultTileFx()
+    : memory_tracker_(tiledb::test::get_test_memory_tracker()) {
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -277,7 +278,8 @@ TEST_CASE_METHOD(
     exp_result_count = {0, 1, 1, 1, 1, 1, 1, 0};
   }
 
-  std::vector<uint64_t> range_indexes(ranges.size());
+  tdb::pmr::vector<uint64_t> range_indexes(
+      ranges.size(), memory_tracker_->get_resource(MemoryType::DIMENSIONS));
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
   std::vector<uint8_t> result_count(num_cells, 1);
@@ -417,7 +419,8 @@ TEST_CASE_METHOD(
     exp_result_count = {0, 1, 2, 1, 0, 1, 3, 2};
   }
 
-  std::vector<uint64_t> range_indexes(ranges.size());
+  tdb::pmr::vector<uint64_t> range_indexes(
+      ranges.size(), memory_tracker_->get_resource(MemoryType::DIMENSIONS));
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
   std::vector<uint64_t> result_count(num_cells, 1);

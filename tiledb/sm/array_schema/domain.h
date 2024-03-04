@@ -58,6 +58,7 @@ class ConstBuffer;
 class Dimension;
 class DomainTypedDataView;
 class FilterPipeline;
+class MemoryTracker;
 enum class Datatype : uint8_t;
 enum class Layout : uint8_t;
 
@@ -186,6 +187,7 @@ class Domain {
    * @param cell_order Cell order.
    * @param tile_order Tile order.
    * @param coords_filters Coords filters to replace empty coords pipelines.
+   * @param memory_tracker The memory tracker to use.
    * @return Status and Domain
    */
   static shared_ptr<Domain> deserialize(
@@ -193,7 +195,8 @@ class Domain {
       uint32_t version,
       Layout cell_order,
       Layout tile_order,
-      FilterPipeline& coords_filters);
+      FilterPipeline& coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the cell order. */
   Layout cell_order() const;

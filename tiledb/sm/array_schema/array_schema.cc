@@ -1372,7 +1372,12 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
   auto domain{Domain::deserialize(
-      deserializer, version, cell_order, tile_order, coords_filters)};
+      deserializer,
+      version,
+      cell_order,
+      tile_order,
+      coords_filters,
+      memory_tracker)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API

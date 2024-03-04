@@ -56,7 +56,10 @@ shared_ptr<ArraySchema> make_schema(
   Domain domain;
   for (uint64_t d = 0; d < dim_types.size(); d++) {
     auto dim{make_shared<Dimension>(
-        HERE(), "d" + std::to_string(d + 1), dim_types[d])};
+        HERE(),
+        "d" + std::to_string(d + 1),
+        dim_types[d],
+        tiledb::test::get_test_memory_tracker())};
 
     switch (dim_types[d]) {
       case Datatype::INT8: {
