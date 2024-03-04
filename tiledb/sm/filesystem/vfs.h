@@ -564,7 +564,8 @@ class VFS : private VFSBase, protected S3_within_VFS {
             "Recursive ls over " + parent.backend_name() +
             " storage backend is not supported.");
 #else
-        throw filesystem::VFSException("TileDB was built without Azure support");
+        throw filesystem::VFSException(
+            "TileDB was built without Azure support");
 #endif
       } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
@@ -586,6 +587,10 @@ class VFS : private VFSBase, protected S3_within_VFS {
       throw;
     }
     return results;
+  }
+
+  LsObjects ls_recursive(const URI& parent) const {
+    return ls_recursive(parent, accept_all_files, accept_all_dirs);
   }
 
   /**
