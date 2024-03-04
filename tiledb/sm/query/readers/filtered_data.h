@@ -190,6 +190,12 @@ class FilteredData {
       std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
       : memory_tracker_(memory_tracker)
+      , fixed_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
+      , var_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
+      , nullable_data_blocks_(
+            memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
       , name_(name)
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
@@ -395,7 +401,7 @@ class FilteredData {
   }
 
   /** @return Data blocks corresponding to the tile type. */
-  inline std::list<FilteredDataBlock>& data_blocks(const TileType type) {
+  inline tdb::pmr::list<FilteredDataBlock>& data_blocks(const TileType type) {
     switch (type) {
       case TileType::FIXED:
         return fixed_data_blocks_;
@@ -409,7 +415,7 @@ class FilteredData {
   }
 
   /** @return Current data block corresponding to the tile type. */
-  inline std::list<FilteredDataBlock>::iterator& current_data_block(
+  inline tdb::pmr::list<FilteredDataBlock>::iterator& current_data_block(
       const TileType type) {
     switch (type) {
       case TileType::FIXED:
@@ -592,22 +598,22 @@ class FilteredData {
   shared_ptr<MemoryTracker> memory_tracker_;
 
   /** Fixed data blocks. */
-  std::list<FilteredDataBlock> fixed_data_blocks_;
+  tdb::pmr::list<FilteredDataBlock> fixed_data_blocks_;
 
   /** Current fixed data block used when creating fixed tiles. */
-  std::list<FilteredDataBlock>::iterator current_fixed_data_block_;
+  tdb::pmr::list<FilteredDataBlock>::iterator current_fixed_data_block_;
 
   /** Var data blocks. */
-  std::list<FilteredDataBlock> var_data_blocks_;
+  tdb::pmr::list<FilteredDataBlock> var_data_blocks_;
 
   /** Current var data block used when creating var tiles. */
-  std::list<FilteredDataBlock>::iterator current_var_data_block_;
+  tdb::pmr::list<FilteredDataBlock>::iterator current_var_data_block_;
 
   /** Nullable data blocks. */
-  std::list<FilteredDataBlock> nullable_data_blocks_;
+  tdb::pmr::list<FilteredDataBlock> nullable_data_blocks_;
 
   /** Current nullable data block used when creating nullable tiles. */
-  std::list<FilteredDataBlock>::iterator current_nullable_data_block_;
+  tdb::pmr::list<FilteredDataBlock>::iterator current_nullable_data_block_;
 
   /** Name of the attribute. */
   const std::string& name_;
