@@ -482,6 +482,14 @@ class VFS {
     return ret;
   }
 
+  std::vector<std::string> ls_recursive(const std::string& uri) const {
+    std::vector<std::string> ret;
+    auto& ctx = ctx_.get();
+    ctx.handle_error(tiledb_vfs_ls_recursive(
+        ctx.ptr().get(), vfs_.get(), uri.c_str(), ls_recursive_getter, &ret));
+    return ret;
+  }
+
   /** Retrieves the size of a file with the input URI. */
   uint64_t file_size(const std::string& uri) const {
     uint64_t ret;
@@ -555,6 +563,22 @@ class VFS {
    * @return If `1` then the walk should continue to the next object.
    */
   static int ls_getter(const char* path, void* data) {
+    auto vec = static_cast<std::vector<std::string>*>(data);
+    vec->emplace_back(path);
+    return 1;
+  }
+
+  /**
+   * Callback function to be used when invoking the C TileDB function
+   * `ls_recursive` for getting the children of a URI. It simply adds `path` to
+   * `vec` (which is casted from `data`).
+   *
+   * @param path The path of a visited TileDB object
+   * @param data This will be casted to the vector that will store `path`.
+   * @return If `1` then the walk should continue to the next object.
+   */
+  static int ls_recursive_getter(
+      const char* path, size_t, uint64_t, void* data) {
     auto vec = static_cast<std::vector<std::string>*>(data);
     vec->emplace_back(path);
     return 1;

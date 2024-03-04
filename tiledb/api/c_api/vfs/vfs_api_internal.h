@@ -143,16 +143,23 @@ struct tiledb_vfs_handle_t
     return vfs_.ls(parent, uris);
   }
 
-  Status touch(const tiledb::sm::URI& uri) const {
-    return vfs_.touch(uri);
+  Status ls_recursive(
+      const tiledb::sm::URI& parent, tiledb::sm::LsObjects* uris) const {
+    *uris = vfs_.ls_recursive(parent);
+    return Status::Ok();
   }
 
-  void ls_recursive(
+  Status ls_recursive(
       const tiledb::sm::URI& parent,
       tiledb_ls_callback_t cb,
       void* data) const {
     tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
     vfs_.ls_recursive(parent, wrapper);
+    return Status::Ok();
+  }
+
+  Status touch(const tiledb::sm::URI& uri) const {
+    return vfs_.touch(uri);
   }
 };
 
