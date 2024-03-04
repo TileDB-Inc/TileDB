@@ -199,8 +199,12 @@ void ASTNodeVal::rewrite_enumeration_conditions(
   if (op_ != QueryConditionOp::IN && op_ != QueryConditionOp::NOT_IN) {
     auto idx = enumeration->index_of(get_value_ptr(), get_value_size());
     if (idx == constants::enumeration_missing_value) {
-      throw std::invalid_argument(
-          "Enumeration value not found for field '" + attr->name() + "'");
+      if (op_ == QueryConditionOp::NE) {
+        op_ = QueryConditionOp::ALWAYS_TRUE;
+      } else {
+        op_ = QueryConditionOp::ALWAYS_FALSE;
+      }
+      idx = 0;
     }
 
     data_ = ByteVecValue(val_size);
