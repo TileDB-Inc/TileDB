@@ -229,6 +229,7 @@ if (TILEDB_CPP_API)
     src/unit-cppapi-nullable.cc
     src/unit-cppapi-partial-attribute-write.cc
     src/unit-cppapi-query.cc
+    src/unit-cppapi-query-condition-enumerations.cc
     src/unit-cppapi-query-condition-sets.cc
     src/cpp-integration-query-condition.cc
     src/unit-cppapi-schema.cc

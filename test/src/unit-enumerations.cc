@@ -152,6 +152,11 @@ template <typename T>
 QueryCondition create_qc(
     const char* field_name, T condition_value, const QueryConditionOp& op);
 
+QueryCondition create_qc(
+    const char* field_name,
+    std::vector<std::string> values,
+    const QueryConditionOp& op);
+
 /* ********************************* */
 /*        Testing Enumeration        */
 /* ********************************* */
@@ -1948,6 +1953,81 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "QueryCondition - Non-Enumeration Values Are Always False",
+    "[enumeration][query-condition][rewrite-enumeration-value]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  auto schema = array->array_schema_latest_ptr();
+
+  // This is normally invoked by the query class when not being tested. It's
+  // required here so that the enumeration's data is loaded.
+  array->get_enumeration("test_enmr");
+
+  // Create two copies of the same query condition for assertions
+  auto qc1 = create_qc("attr1", "cthulu", QueryConditionOp::EQ);
+  auto qc2 = qc1;
+
+  qc2.rewrite_enumeration_conditions(*(schema.get()));
+
+  // Assert that the rewritten tree matches in the right places while also
+  // different to verify the assertion of having been rewritten.
+  auto& tree1 = qc1.ast();
+  auto& tree2 = qc2.ast();
+
+  REQUIRE(tree1->is_expr() == false);
+  REQUIRE(tree1->get_field_name() == "attr1");
+
+  REQUIRE(tree2->is_expr() == tree1->is_expr());
+  REQUIRE(tree2->get_field_name() == tree1->get_field_name());
+
+  auto data1 = tree1->get_data();
+  auto data2 = tree2->get_data();
+  REQUIRE(data2.size() != data1.size());
+
+  // "cthulu" is converted a 4 byte int with value 0
+  REQUIRE(data2.size() == 4);
+  REQUIRE(data2.rvalue_as<int>() == 0);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
+    "QueryCondition - Non-Enumeration Set Members Are Ignored",
+    "[enumeration][query-condition][rewrite-enumeration-value]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  auto schema = array->array_schema_latest_ptr();
+
+  // This is normally invoked by the query class when not being tested. It's
+  // required here so that the enumeration's data is loaded.
+  array->get_enumeration("test_enmr");
+
+  // Create two copies of the same query condition for assertions
+  std::vector<std::string> vals = {"ant", "bat", "cthulhu"};
+  auto qc1 = create_qc("attr1", vals, QueryConditionOp::IN);
+  auto qc2 = qc1;
+
+  qc2.rewrite_enumeration_conditions(*(schema.get()));
+
+  // Assert that the rewritten tree matches in the right places while also
+  // different to verify the assertion of having been rewritten.
+  auto& tree1 = qc1.ast();
+  auto& tree2 = qc2.ast();
+
+  REQUIRE(tree1->is_expr() == false);
+  REQUIRE(tree1->get_field_name() == "attr1");
+
+  REQUIRE(tree2->is_expr() == tree1->is_expr());
+  REQUIRE(tree2->get_field_name() == tree1->get_field_name());
+
+  auto data1 = tree1->get_data();
+  auto data2 = tree2->get_data();
+  REQUIRE(data2.size() != data1.size());
+  REQUIRE(data2.size() == 8);
+  REQUIRE(tree2->get_offsets().size() == 16);
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "QueryCondition - Rewrite Enumeration Value After Extension",
     "[enumeration][query-condition][extend][rewrite-enumeration-value]") {
   create_array();
@@ -1960,11 +2040,10 @@ TEST_CASE_METHOD(
   auto qc1 = create_qc("attr1", std::string("gerbil"), QueryConditionOp::EQ);
   auto qc2 = qc1;
 
-  // Check that we fail the rewrite before extension.
-  auto matcher = Catch::Matchers::ContainsSubstring(
-      "Enumeration value not found for field 'attr1'");
-  REQUIRE_THROWS_WITH(
-      qc1.rewrite_enumeration_conditions(*(schema.get())), matcher);
+  // Check that the value was converted to 0.
+  REQUIRE_NOTHROW(qc1.rewrite_enumeration_conditions(*(schema.get())));
+  REQUIRE(qc1.ast()->get_op() == QueryConditionOp::ALWAYS_FALSE);
+  REQUIRE(qc1.ast()->get_data().rvalue_as<int>() == 0);
 
   // Extend enumeration via schema evolution.
   std::vector<std::string> values_to_add = {"firefly", "gerbil", "hamster"};
@@ -2934,4 +3013,33 @@ QueryCondition create_qc(
   }
 
   return ret;
+}
+
+QueryCondition create_qc(
+    const char* field_name,
+    std::vector<std::string> values,
+    const QueryConditionOp& op) {
+  std::vector<uint8_t> data;
+  std::vector<uint64_t> offsets;
+
+  uint64_t data_size = 0;
+  for (auto& val : values) {
+    data_size += val.size();
+  }
+
+  data.resize(data_size);
+  uint64_t curr_offset = 0;
+  for (auto& val : values) {
+    offsets.push_back(curr_offset);
+    memcpy(data.data() + curr_offset, val.data(), val.size());
+    curr_offset += val.size();
+  }
+
+  return QueryCondition(
+      field_name,
+      data.data(),
+      data.size(),
+      offsets.data(),
+      offsets.size() * sizeof(uint64_t),
+      op);
 }
