@@ -95,10 +95,22 @@ typedef enum {
 
 /** Query condition operator. */
 typedef enum {
-/** Helper macro for defining query condition operator enums. */
-#define TILEDB_QUERY_CONDITION_OP_ENUM(id) TILEDB_##id
-#include "tiledb_enum.h"
-#undef TILEDB_QUERY_CONDITION_OP_ENUM
+  /** Less-than operator */
+  TILEDB_LT = 0,
+  /** Less-than-or-equal operator */
+  TILEDB_LE = 1,
+  /** Greater-than operator */
+  TILEDB_GT = 2,
+  /** Greater-than-or-equal operator */
+  TILEDB_GE = 3,
+  /** Equal operator */
+  TILEDB_EQ = 4,
+  /** Not-equal operator */
+  TILEDB_NE = 5,
+  /** IN set membership operator. */
+  TILEDB_IN = 6,
+  /** NOT IN set membership operator. */
+  TILEDB_NOT_IN = 7,
 } tiledb_query_condition_op_t;
 
 /** Query condition combination operator. */

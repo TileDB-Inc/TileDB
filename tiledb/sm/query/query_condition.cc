@@ -126,6 +126,12 @@ Status QueryCondition::init(
     return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
+  if (op == QueryConditionOp::ALWAYS_TRUE ||
+      op == QueryConditionOp::ALWAYS_FALSE) {
+    auto op_str = query_condition_op_str(op);
+    throw std::runtime_error("Invalid use of internal operation: " + op_str);
+  }
+
   // AST Construction.
   tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
       ASTNodeVal, field_name, condition_value, condition_value_size, op));
@@ -484,6 +490,22 @@ struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::NE> {
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_TRUE> {
+  static inline bool cmp(const void* lhs, uint64_t, const void*, uint64_t) {
+    return lhs != nullptr;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_FALSE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return false;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
@@ -748,6 +770,30 @@ void QueryCondition::apply_ast_node(
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node<T, QueryConditionOp::ALWAYS_FALSE, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
           node,
@@ -1440,6 +1486,34 @@ void QueryCondition::apply_ast_node_dense(
     const void* cell_slab_coords,
     span<uint8_t> result_buffer) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node_dense<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node_dense<T, QueryConditionOp::ALWAYS_FALSE, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
           node,
@@ -2207,6 +2281,22 @@ struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::NE> {
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::ALWAYS_TRUE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return true;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::ALWAYS_FALSE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return false;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
@@ -2385,6 +2475,22 @@ void QueryCondition::apply_ast_node_sparse(
     CombinationOp combination_op,
     std::vector<BitmapType>& result_bitmap) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::ALWAYS_TRUE,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::ALWAYS_FALSE,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node_sparse<
           T,

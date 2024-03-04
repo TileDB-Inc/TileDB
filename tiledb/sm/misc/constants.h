@@ -333,6 +333,12 @@ extern const std::string query_status_initialized_str;
 /** TILEDB_UNINITIALIZED Query String **/
 extern const std::string query_status_uninitialized_str;
 
+/** TILEDB_ALWAYS_TRUE Query Condition Op String **/
+extern const std::string query_condition_op_always_true_str;
+
+/** TILEDB_ALWAYS_FALSE Query Condition Op String **/
+extern const std::string query_condition_op_always_false_str;
+
 /** TILEDB_LT Query Condition Op String **/
 extern const std::string query_condition_op_lt_str;
 
