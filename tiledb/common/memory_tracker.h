@@ -119,6 +119,14 @@ enum class MemoryType {
   TILE_WRITER_DATA
 };
 
+/**
+ * Return a string representation of type
+ *
+ * @param type The MemoryType to convert.
+ * @return A string representation.
+ */
+std::string memory_type_to_str(MemoryType type);
+
 /** The type of MemoryTracker. */
 enum class MemoryTrackerType {
   ANONYMOUS,
@@ -136,6 +144,14 @@ enum class MemoryTrackerType {
   EPHEMERAL,
   SCHEMA_EVOLUTION
 };
+
+/**
+ * Return a string representation of type
+ *
+ * @param type The MemoryTrackerType to convert.
+ * @return A string representation.
+ */
+std::string memory_tracker_type_to_str(MemoryTrackerType type);
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {
  public:
