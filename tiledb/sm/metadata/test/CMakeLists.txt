@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,5 +29,6 @@ commence(unit_test metadata)
     this_target_object_libraries(metadata mem_helpers)	
     # The dependency on the `tile` object library is suspect, but here for now.	
     this_target_object_libraries(tile)
+    this_target_link_libraries(tiledb_test_support_lib)
     this_target_sources(main.cc unit_metadata.cc)
 conclude(unit_test)

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -4030,9 +4030,13 @@ int32_t tiledb_serialize_array_metadata(
   auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
-  tiledb::sm::Metadata* metadata;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->metadata(&metadata))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+  sm::Metadata* metadata = nullptr;
+  try {
+    metadata = &array->array_->metadata();
+  } catch (StatusException& e) {
+    auto st = Status_Error(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
