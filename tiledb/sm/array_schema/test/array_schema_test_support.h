@@ -239,6 +239,8 @@ class TestAttribute {
  * Array Schema wrapper
  */
 class TestArraySchema {
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   ArraySchema schema_;
 
   /**
@@ -263,9 +265,14 @@ class TestArraySchema {
   static shared_ptr<Domain> make_domain(
       std::initializer_list<TestDimension> dimensions,
       Layout cell_order,
-      Layout tile_order) {
+      Layout tile_order,
+      shared_ptr<MemoryTracker> memory_tracker) {
     return make_shared<Domain>(
-        HERE(), cell_order, make_dimension_vector(dimensions), tile_order);
+        HERE(),
+        cell_order,
+        make_dimension_vector(dimensions),
+        tile_order,
+        memory_tracker);
   }
 
   /**
@@ -307,7 +314,11 @@ class TestArraySchema {
             "",  // name
             array_type,
             false,  // allow duplicates
-            make_domain(dimensions, cell_order, tile_order),
+            make_domain(
+                dimensions,
+                cell_order,
+                tile_order,
+                tiledb::test::create_test_memory_tracker()),
             cell_order,
             tile_order,
             10000,  // capacity

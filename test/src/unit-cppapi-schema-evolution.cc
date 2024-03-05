@@ -821,7 +821,8 @@ TEST_CASE(
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<tiledb::sm::Domain>(HERE());
+  auto dom = make_shared<tiledb::sm::Domain>(
+      HERE(), tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 

@@ -111,7 +111,8 @@ struct TestNullInitializer {
 };
 
 TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
-  Domain d{};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain d{memory_tracker};
   //  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
   auto dim{make_shared<tiledb::sm::Dimension>(
       HERE(),
@@ -136,7 +137,8 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
     }
   };
 
-  Domain d{};
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  Domain d{memory_tracker};
   auto dim{make_shared<tiledb::sm::Dimension>(
       HERE(),
       "",

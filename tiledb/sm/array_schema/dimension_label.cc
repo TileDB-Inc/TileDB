@@ -28,6 +28,7 @@
 
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -176,7 +177,11 @@ DimensionLabel::DimensionLabel(
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));
   throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
-      HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
+      HERE(),
+      Layout::ROW_MAJOR,
+      index_dims,
+      Layout::ROW_MAJOR,
+      memory_tracker)));
 
   // Create and set dimension label attribute.
   auto label_attr = make_shared<Attribute>(

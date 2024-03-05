@@ -79,6 +79,9 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct ArrayFx {
+  // The memory tracker
+  shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -116,7 +119,8 @@ static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
 ArrayFx::ArrayFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
@@ -2586,13 +2590,12 @@ TEST_CASE_METHOD(
       1,
       &buff);
   REQUIRE(rc == TILEDB_OK);
-  auto memory_tracker = ctx_->resources().create_memory_tracker();
   auto st = tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
       ctx_->storage_manager(),
-      memory_tracker);
+      memory_tracker_);
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

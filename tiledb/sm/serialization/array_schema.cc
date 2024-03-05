@@ -750,7 +750,8 @@ shared_ptr<Domain> domain_from_capnp(
     dims.emplace_back(dimension_from_capnp(dimension, memory_tracker));
   }
 
-  return make_shared<Domain>(HERE(), cell_order, dims, tile_order);
+  return make_shared<Domain>(
+      HERE(), cell_order, dims, tile_order, memory_tracker);
 }
 
 void dimension_label_to_capnp(

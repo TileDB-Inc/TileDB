@@ -76,6 +76,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "DimensionLabels";
     case MemoryType::DIMENSIONS:
       return "Dimensions";
+    case MemoryType::DOMAINS:
+      return "Domains";
     case MemoryType::TILE_SUMS:
       return "TileSums";
     case MemoryType::TILE_WRITER_DATA:

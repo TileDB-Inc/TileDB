@@ -141,11 +141,11 @@ struct EnumerationFx {
 
   void rm_array();
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   URI uri_;
   Config cfg_;
   Context ctx_;
   EncryptionKey enc_key_;
-  shared_ptr<MemoryTracker> memory_tracker_;
 };
 
 template <typename T>
@@ -2554,9 +2554,9 @@ struct TypeParams {
 };
 
 EnumerationFx::EnumerationFx()
-    : uri_("enumeration_test_array")
-    , ctx_(cfg_)
-    , memory_tracker_(tiledb::test::create_test_memory_tracker()) {
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , uri_("enumeration_test_array")
+    , ctx_(cfg_) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
   memory_tracker_ = tiledb::test::create_test_memory_tracker();
@@ -2850,7 +2850,7 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 

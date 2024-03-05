@@ -59,6 +59,7 @@ namespace serialization {
  * @param fragment_info_reader cap'n proto class.
  * @param uri array uri that the fragment belongs to
  * @param fragment_info fragment info object to deserialize into.
+ * @param memory_tracker The memory tracker to use.
  * @return Status
  */
 Status fragment_info_from_capnp(
@@ -125,6 +126,7 @@ Status fragment_info_serialize(
  * @param serialize_type format the data is serialized in: Cap'n Proto of JSON.
  * @param uri array uri that the fragment belongs to
  * @param serialized_buffer buffer to read serialized bytes from.
+ * @param memory_tracker The memory tracker to use.
  * @return Status
  */
 Status fragment_info_deserialize(

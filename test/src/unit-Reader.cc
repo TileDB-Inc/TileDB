@@ -248,7 +248,7 @@ TEST_CASE_METHOD(
   auto d2{make_shared<Dimension>(HERE(), "d2", Datatype::INT32, tracker_)};
   CHECK(d2->set_domain(&domain_vec[2]).ok());
   CHECK(d2->set_tile_extent(&tile_extents_vec[1]).ok());
-  auto dom{make_shared<Domain>(HERE())};
+  auto dom{make_shared<Domain>(HERE(), tracker_)};
   CHECK(dom->add_dimension(d1).ok());
   CHECK(dom->add_dimension(d2).ok());
 

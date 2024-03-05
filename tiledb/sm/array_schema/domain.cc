@@ -37,6 +37,7 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
@@ -58,7 +59,13 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain() {
+Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , dimensions_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -68,11 +75,20 @@ Domain::Domain() {
 Domain::Domain(
     Layout cell_order,
     const std::vector<shared_ptr<Dimension>> dimensions,
-    Layout tile_order)
-    : cell_order_(cell_order)
-    , dimensions_(dimensions)
+    Layout tile_order,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , cell_order_(cell_order)
+    , dimensions_(
+          dimensions.begin(),
+          dimensions.end(),
+          memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
-    , tile_order_(tile_order) {
+    , tile_order_(tile_order)
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
    * class invariant. Initialize the dimensions mirror.
@@ -91,32 +107,6 @@ Domain::Domain(
 
   // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
-}
-
-Domain::Domain(Domain&& rhs)
-    : cell_num_per_tile_(rhs.cell_num_per_tile_)
-    , cell_order_(rhs.cell_order_)
-    , dimensions_(move(rhs.dimensions_))
-    , dimension_ptrs_(move(rhs.dimension_ptrs_))
-    , dim_num_(rhs.dim_num_)
-    , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
-}
-
-Domain& Domain::operator=(Domain&& rhs) {
-  cell_num_per_tile_ = rhs.cell_num_per_tile_;
-  cell_order_ = rhs.cell_order_;
-  dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
-  dimensions_ = move(rhs.dimensions_);
-  dimension_ptrs_ = move(rhs.dimension_ptrs_);
-  tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
-
-  return *this;
 }
 
 /* ********************************* */
@@ -352,7 +342,7 @@ shared_ptr<Domain> Domain::deserialize(
   }
 
   return tiledb::common::make_shared<Domain>(
-      HERE(), cell_order, dimensions, tile_order);
+      HERE(), cell_order, dimensions, tile_order, memory_tracker);
 }
 
 const Range& Domain::domain(unsigned i) const {
@@ -610,8 +600,9 @@ const ByteVecValue& Domain::tile_extent(unsigned i) const {
 
 std::vector<ByteVecValue> Domain::tile_extents() const {
   std::vector<ByteVecValue> ret(dim_num_);
-  for (unsigned d = 0; d < dim_num_; ++d)
+  for (unsigned d = 0; d < dim_num_; ++d) {
     ret[d] = tile_extent(d);
+  }
 
   return ret;
 }

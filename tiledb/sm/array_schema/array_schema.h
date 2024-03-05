@@ -476,6 +476,7 @@ class ArraySchema {
    *
    * @param deserializer The deserializer to deserialize from.
    * @param uri The uri of the Array.
+   * @param memory_tracker The memory tracker to use.
    * @return A new ArraySchema.
    */
   static shared_ptr<ArraySchema> deserialize(

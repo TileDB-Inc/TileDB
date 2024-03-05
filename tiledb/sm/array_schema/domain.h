@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/macros.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/types/dynamic_typed_datum.h"
 #include "tiledb/common/types/untyped_datum.h"
@@ -75,20 +76,18 @@ class Domain {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Empty constructor. */
-  Domain();
+  /** Deleted default constructor */
+  Domain() = delete;
+
+  /** Constructor. */
+  Domain(shared_ptr<MemoryTracker> memory_tracker);
 
   /** Constructor.*/
   Domain(
       Layout cell_order,
       const std::vector<shared_ptr<Dimension>> dimensions,
-      Layout tile_order);
-
-  /** Copy constructor. */
-  Domain(const Domain&) = default;
-
-  /** Move constructor. */
-  Domain(Domain&& rhs);
+      Layout tile_order,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Destructor. */
   ~Domain() = default;
@@ -97,11 +96,8 @@ class Domain {
   /*             OPERATORS             */
   /* ********************************* */
 
-  /** Copy-assignment operator. */
-  DISABLE_COPY_ASSIGN(Domain);
-
-  /** Move-assignment operator. */
-  Domain& operator=(Domain&& rhs);
+  DISABLE_COPY_AND_COPY_ASSIGN(Domain);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Domain);
 
   /* ********************************* */
   /*                 API               */
@@ -508,6 +504,9 @@ class Domain {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker for this Domain. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The number of cells per tile. Meaningful only for the **dense** case. */
   uint64_t cell_num_per_tile_;
 
@@ -523,7 +522,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<shared_ptr<Dimension>> dimensions_;
+  tdb::pmr::vector<shared_ptr<Dimension>> dimensions_;
 
   /**
    * Non-allocating mirror of the dimensions vector.
@@ -535,7 +534,7 @@ class Domain {
    *
    * @invariant All pointers in the vector are non-null.
    */
-  std::vector<const Dimension*> dimension_ptrs_;
+  tdb::pmr::vector<const Dimension*> dimension_ptrs_;
 
   /** The number of dimensions. */
   unsigned dim_num_;
@@ -551,7 +550,7 @@ class Domain {
    * - buff: The buffer that stores all coorinates;
    * - a, b: The positions of the two coordinates in the buffer to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const UntypedDatumView a, const UntypedDatumView b)>
       cell_order_cmp_func_;
 
@@ -561,7 +560,7 @@ class Domain {
    *
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(const void* coord_a, const void* coord_b)>
+  tdb::pmr::vector<int (*)(const void* coord_a, const void* coord_b)>
       cell_order_cmp_func_2_;
 
   /**
@@ -571,7 +570,7 @@ class Domain {
    * - dim: The dimension to compare on.
    * - coord_a, coord_b: The two coordinates to compare.
    */
-  std::vector<int (*)(
+  tdb::pmr::vector<int (*)(
       const Dimension* dim, const void* coord_a, const void* coord_b)>
       tile_order_cmp_func_;
 

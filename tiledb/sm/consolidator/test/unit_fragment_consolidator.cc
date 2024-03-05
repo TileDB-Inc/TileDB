@@ -53,7 +53,8 @@ shared_ptr<ArraySchema> make_schema(
       tiledb::test::create_test_memory_tracker());
 
   // Create the domain/dimensions.
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   for (uint64_t d = 0; d < dim_types.size(); d++) {
     auto dim{make_shared<Dimension>(
         HERE(),
@@ -135,9 +136,9 @@ shared_ptr<ArraySchema> make_schema(
       }
     }
 
-    REQUIRE(domain.add_dimension(dim).ok());
+    REQUIRE(domain->add_dimension(dim).ok());
   }
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   // Create the attributes.
   for (uint64_t a = 0; a < attr_types.size(); a++) {

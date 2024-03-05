@@ -62,6 +62,7 @@ struct RequestHandlerFx {
 
   shared_ptr<Array> get_array(QueryType type);
 
+  shared_ptr<MemoryTracker> memory_tracker_;
   URI uri_;
   Config cfg_;
   Context ctx_;
@@ -96,16 +97,13 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
   }
 
   virtual shared_ptr<ArraySchema> create_schema() override {
-    auto schema = make_shared<ArraySchema>(
-        HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
+    auto schema =
+        make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
     auto dim = make_shared<Dimension>(
-        HERE(),
-        "dim1",
-        Datatype::INT32,
-        tiledb::test::get_test_memory_tracker());
+        HERE(), "dim1", Datatype::INT32, memory_tracker_);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
-    auto dom = make_shared<Domain>(HERE());
+    auto dom = make_shared<Domain>(HERE(), memory_tracker_);
     throw_if_not_ok(dom->add_dimension(dim));
     throw_if_not_ok(schema->set_domain(dom));
     return schema;
@@ -340,7 +338,8 @@ TEST_CASE_METHOD(
 /* ********************************* */
 
 RequestHandlerFx::RequestHandlerFx(const std::string uri)
-    : uri_(uri)
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , uri_(uri)
     , ctx_(cfg_) {
   delete_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
@@ -402,14 +401,14 @@ HandleLoadArraySchemaRequestFx::create_string_enumeration(
 
 shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
-  auto schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::SPARSE, tiledb::test::create_test_memory_tracker());
-  auto dim = make_shared<Dimension>(
-      HERE(), "dim1", Datatype::INT32, tiledb::test::get_test_memory_tracker());
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
+  auto dim =
+      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 
@@ -445,15 +444,13 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::call_handler(
       resp_buf);
   REQUIRE(rval == TILEDB_OK);
 
-  auto memory_tracker =
-      ctx.ptr()->context().resources().create_memory_tracker();
   return serialization::deserialize_load_array_schema_response(
-      stype, resp_buf->buffer(), memory_tracker);
+      stype, resp_buf->buffer(), memory_tracker_);
 }
 
 shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
-  auto schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker_);
   schema->set_capacity(10000);
   throw_if_not_ok(schema->set_cell_order(Layout::ROW_MAJOR));
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
@@ -466,7 +463,7 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
       HERE(), "dim2", Datatype::INT32, tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
 
-  auto dom = make_shared<Domain>(HERE());
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
   throw_if_not_ok(dom->add_dimension(dim1));
   throw_if_not_ok(dom->add_dimension(dim2));
   throw_if_not_ok(schema->set_domain(dom));
