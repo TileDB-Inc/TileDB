@@ -53,6 +53,7 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     tiledb_query_t* query, const char* field_name)
     : query_(query->query_)
     , field_name_(field_name) {
+  bool is_aggregate{false};
   if (field_name_ == tiledb::sm::constants::coords) {
     field_origin_ = std::make_shared<FieldFromDimension>();
     type_ = query_->array_schema().domain().dimension_ptr(0)->type();
@@ -72,6 +73,7 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
     cell_val_num_ =
         query_->array_schema().dimension_ptr(field_name_)->cell_val_num();
   } else if (query_->is_aggregate(field_name_)) {
+    is_aggregate = true;
     field_origin_ = std::make_shared<FieldFromAggregate>();
     auto aggregate = query_->get_aggregate(field_name_).value();
     type_ = aggregate->output_datatype();
@@ -80,8 +82,16 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
   } else {
     throw tiledb::api::CAPIStatusException("There is no field " + field_name_);
   }
-
-  channel_ = tiledb_query_channel_handle_t::make_handle(query);
+  /*
+   * We have no `class QueryField` that would already know its own aggregate,
+   * so we mirror the channel selection process that `class Query` has
+   * responsibility for.
+   */
+  if (is_aggregate) {
+    channel_ = query_->actual_aggegate_channel();
+  } else {
+    channel_ = query_->actual_default_channel();
+  }
 }
 
 namespace tiledb::api {

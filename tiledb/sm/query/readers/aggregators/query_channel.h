@@ -39,6 +39,10 @@
 
 namespace tiledb::sm {
 
+/**
+ * Original class is only used for capnp (de)serialization. `class Query` uses
+ * its own container to hold aggregates.
+ */
 class QueryChannel {
  public:
   using ChannelAggregates =
@@ -83,6 +87,57 @@ class QueryChannel {
   /* ********************************* */
   bool default_;
   ChannelAggregates aggregates_;
+};
+
+/* forward declaration */
+class Query;
+
+/**
+ * Replacement for the current QueryChannel, which does not work for more than
+ * the initial case with a default channel and only simple aggregates.
+ *
+ * Responsibility for choosing channel identifiers is the responsibility of
+ * `class Query`; this class merely carries the resulting identifier.
+ */
+class QueryChannelActual {
+  std::reference_wrapper<Query> query_;
+  size_t id_;
+
+ public:
+  /**
+   * Default constructor is deleted. A channel makes no sense without a query.
+   */
+  QueryChannelActual() = delete;
+  /*
+   * Ordinary constructor.
+   */
+  QueryChannelActual(Query& q, size_t id)
+      : query_(q)
+      , id_(id) {
+  }
+  /**
+   * Copy constructor is the default.
+   */
+  QueryChannelActual(const QueryChannelActual&) = default;
+  /**
+   * Move constructor is the default.
+   */
+  QueryChannelActual(QueryChannelActual&&) = default;
+  /**
+   * Copy assignment is the default.
+   */
+  QueryChannelActual& operator=(const QueryChannelActual&) = default;
+  /**
+   * Move assignment is the default.
+   */
+  QueryChannelActual& operator=(QueryChannelActual&&) = default;
+
+  /**
+   * Accessor for query member
+   */
+  inline Query& query() {
+    return query_;
+  }
 };
 
 }  // namespace tiledb::sm
