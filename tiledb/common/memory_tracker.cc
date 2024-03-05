@@ -86,6 +86,9 @@ std::string memory_type_to_str(MemoryType type) {
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory type: " + val);
   }
+
+  auto val = std::to_string(static_cast<uint32_t>(type));
+  throw std::logic_error("Invalid memory type: " + val);
 }
 
 std::string memory_tracker_type_to_str(MemoryTrackerType type) {
@@ -100,6 +103,8 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       return "ArrayRead";
     case MemoryTrackerType::ARRAY_WRITE:
       return "ArrayWrite";
+    case MemoryTrackerType::ENUMERATION_CREATE:
+      return "EnumerationCreate";
     case MemoryTrackerType::FRAGMENT_INFO_LOAD:
       return "FragmentInfoLoad";
     case MemoryTrackerType::QUERY_READ:
@@ -120,6 +125,9 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       auto val = std::to_string(static_cast<uint32_t>(type));
       throw std::logic_error("Invalid memory tracker type: " + val);
   }
+
+  auto val = std::to_string(static_cast<uint32_t>(type));
+  throw std::logic_error("Invalid memory tracker type: " + val);
 }
 
 uint64_t MemoryTrackerResource::get_count() {
