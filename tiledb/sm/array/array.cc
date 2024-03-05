@@ -202,7 +202,7 @@ Status Array::open_without_fragments(
 }
 
 void Array::load_fragments(
-    const std::vector<TimestampedURI>& fragments_to_load) {
+    tiledb::stdx::vec_view<TimestampedURI> fragments_to_load) {
   auto timer_se = resources_.stats().start_timer("sm_array_load_fragments");
 
   // Load the fragment metadata
@@ -532,7 +532,7 @@ void Array::delete_fragments(
   }
 }
 
-void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
+void Array::delete_fragments_list(tiledb::stdx::vec_view<URI> fragment_uris) {
   // Check that data deletion is allowed
   ensure_array_is_valid_for_delete(array_uri_);
 
@@ -554,11 +554,11 @@ void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
 
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
-  return get_enumerations({enumeration_name})[0];
+  return get_enumerations(std::vector<std::string>{enumeration_name})[0];
 }
 
 std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
-    const std::vector<std::string>& enumeration_names) {
+    tiledb::stdx::vec_view<std::string> enumeration_names) {
   if (!is_open_) {
     throw ArrayException("Unable to load enumerations; Array is not open.");
   }

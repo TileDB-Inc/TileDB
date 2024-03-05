@@ -41,6 +41,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
+#include "tiledb/common/vec_view.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
@@ -302,17 +303,17 @@ class FragmentMetadata {
   }
 
   /** Returns the sizes of each attribute file. */
-  inline const std::vector<uint64_t>& file_sizes() const {
+  inline tiledb::stdx::vec_view<uint64_t> file_sizes() const {
     return file_sizes_;
   }
 
   /** Returns the sizes of each variable attribute file. */
-  inline const std::vector<uint64_t>& file_var_sizes() const {
+  inline tiledb::stdx::vec_view<uint64_t> file_var_sizes() const {
     return file_var_sizes_;
   }
 
   /** Returns the sizes of each validity attribute file. */
-  inline const std::vector<uint64_t>& file_validity_sizes() const {
+  inline tiledb::stdx::vec_view<uint64_t> file_validity_sizes() const {
     return file_validity_sizes_;
   }
 
@@ -386,22 +387,22 @@ class FragmentMetadata {
   }
 
   /** Returns the fragment mins. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
+  inline tiledb::stdx::vec_view<std::vector<uint8_t>> fragment_mins() const {
     return fragment_mins_;
   }
 
   /** Returns the fragment maxs. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
+  inline tiledb::stdx::vec_view<std::vector<uint8_t>> fragment_maxs() const {
     return fragment_maxs_;
   }
 
   /** Returns the fragment sums. */
-  inline const std::vector<uint64_t>& fragment_sums() const {
+  inline tiledb::stdx::vec_view<uint64_t> fragment_sums() const {
     return fragment_sums_;
   }
 
   /** Returns the fragment null counts. */
-  inline const std::vector<uint64_t>& fragment_null_counts() const {
+  inline tiledb::stdx::vec_view<uint64_t> fragment_null_counts() const {
     return fragment_null_counts_;
   }
 
@@ -502,7 +503,7 @@ class FragmentMetadata {
       const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
           array_schemas_all,
       const EncryptionKey& encryption_key,
-      const std::vector<TimestampedURI>& fragments_to_load,
+      tiledb::stdx::vec_view<TimestampedURI> fragments_to_load,
       const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
           offsets);
 

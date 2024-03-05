@@ -39,6 +39,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
+#include "tiledb/common/vec_view.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -391,7 +392,7 @@ class Array {
    *
    * @param fragments_to_load The list of fragments to load.
    */
-  void load_fragments(const std::vector<TimestampedURI>& fragments_to_load);
+  void load_fragments(tiledb::stdx::vec_view<TimestampedURI> fragments_to_load);
 
   /**
    * Opens the array for reading.
@@ -447,7 +448,7 @@ class Array {
    *
    * @pre The Array must be open for exclusive writes
    */
-  void delete_fragments_list(const std::vector<URI>& fragment_uris);
+  void delete_fragments_list(tiledb::stdx::vec_view<URI> fragment_uris);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -492,7 +493,7 @@ class Array {
    * @return std::vector<shared_ptr<const Enumeration>> The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> get_enumerations(
-      const std::vector<std::string>& enumeration_names);
+      tiledb::stdx::vec_view<std::string> enumeration_names);
 
   /** Load all enumerations for the array. */
   void load_all_enumerations();

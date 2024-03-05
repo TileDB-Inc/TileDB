@@ -35,6 +35,7 @@
 
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/common/vec_view.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/filesystem/vfs.h"
@@ -112,27 +113,27 @@ class ArrayDirectory {
     /* ********************************* */
 
     /** Returns the fragment URIs to vacuum. */
-    const std::vector<URI>& fragment_uris_to_vacuum() const {
+    tiledb::stdx::vec_view<URI> fragment_uris_to_vacuum() const {
       return fragment_uris_to_vacuum_;
     };
 
     /** Returns the commit URIs to vacuum for fragment vacuuming. */
-    const std::vector<URI>& commit_uris_to_vacuum() const {
+    tiledb::stdx::vec_view<URI> commit_uris_to_vacuum() const {
       return commit_uris_to_vacuum_;
     }
 
     /** Returns the commit URIs to ignore for fragment vacuuming. */
-    const std::vector<URI>& commit_uris_to_ignore() const {
+    tiledb::stdx::vec_view<URI> commit_uris_to_ignore() const {
       return commit_uris_to_ignore_;
     };
 
     /** Returns the vacuum file URIs to vacuum for fragments. */
-    const std::vector<URI>& fragment_vac_uris_to_vacuum() const {
+    tiledb::stdx::vec_view<URI> fragment_vac_uris_to_vacuum() const {
       return fragment_vac_uris_to_vacuum_;
     };
 
     /** Returns the filtered fragment URIs. */
-    const std::vector<TimestampedURI>& fragment_uris() const {
+    tiledb::stdx::vec_view<TimestampedURI> fragment_uris() const {
       return fragment_uris_;
     };
 
@@ -143,7 +144,7 @@ class ArrayDirectory {
      * this API will return non-timestamped URIs.
      */
     std::vector<URI> fragment_uris(
-        const std::vector<URI>& fragments_list) const {
+        tiledb::stdx::vec_view<URI> fragments_list) const {
       std::vector<URI> uris;
       FragmentSet fragment_set = fragment_uris_to_set();
       for (auto fragment : fragments_list) {
@@ -395,7 +396,7 @@ class ArrayDirectory {
    * @return The loaded enumerations.
    */
   std::vector<shared_ptr<const Enumeration>> load_enumerations_from_paths(
-      const std::vector<std::string>& enumeration_paths,
+      tiledb::stdx::vec_view<std::string> enumeration_paths,
       const EncryptionKey& encryption_key,
       shared_ptr<MemoryTracker> memory_tracker) const;
 
@@ -403,40 +404,40 @@ class ArrayDirectory {
   const URI& uri() const;
 
   /** Returns the URIs of the array schema files. */
-  const std::vector<URI>& array_schema_uris() const;
+  tiledb::stdx::vec_view<URI> array_schema_uris() const;
 
   /** Returns the latest array schema URI. */
   const URI& latest_array_schema_uri() const;
 
   /** Returns the unfiltered fragment uris. */
-  const std::vector<URI>& unfiltered_fragment_uris() const;
+  tiledb::stdx::vec_view<URI> unfiltered_fragment_uris() const;
 
   /** Returns the URIs of the array metadata files to vacuum. */
-  const std::vector<URI>& array_meta_uris_to_vacuum() const;
+  tiledb::stdx::vec_view<URI> array_meta_uris_to_vacuum() const;
 
   /** Returns the URIs of the array metadata vacuum files to vacuum. */
-  const std::vector<URI>& array_meta_vac_uris_to_vacuum() const;
+  tiledb::stdx::vec_view<URI> array_meta_vac_uris_to_vacuum() const;
 
   /** Returns the URIs of the commit files to consolidate. */
-  const std::vector<URI>& commit_uris_to_consolidate() const;
+  tiledb::stdx::vec_view<URI> commit_uris_to_consolidate() const;
 
   /** Returns the URIs of the commit files to vacuum. */
-  const std::vector<URI>& commit_uris_to_vacuum() const;
+  tiledb::stdx::vec_view<URI> commit_uris_to_vacuum() const;
 
   /** Returns the consolidated commit URI set. */
   const std::unordered_set<std::string>& consolidated_commit_uris_set() const;
 
   /** Returns the URIs of the consolidated commit files to vacuum. */
-  const std::vector<URI>& consolidated_commits_uris_to_vacuum() const;
+  tiledb::stdx::vec_view<URI> consolidated_commits_uris_to_vacuum() const;
 
   /** Returns the filtered array metadata URIs. */
-  const std::vector<TimestampedURI>& array_meta_uris() const;
+  tiledb::stdx::vec_view<TimestampedURI> array_meta_uris() const;
 
   /** Returns the URIs of the consolidated fragment metadata files. */
-  const std::vector<URI>& fragment_meta_uris() const;
+  tiledb::stdx::vec_view<URI> fragment_meta_uris() const;
 
   /** Returns the location of delete tiles. */
-  const std::vector<DeleteAndUpdateTileLocation>&
+  tiledb::stdx::vec_view<DeleteAndUpdateTileLocation>
   delete_and_update_tiles_location() const;
 
   /** Returns the fragment absolute path given an array URI and a version */
@@ -471,10 +472,11 @@ class ArrayDirectory {
   const uint64_t& timestamp_end() const;
 
   /** Writes a commit ignore file. */
-  void write_commit_ignore_file(const std::vector<URI>& commit_uris_to_ignore);
+  void write_commit_ignore_file(
+      tiledb::stdx::vec_view<URI> commit_uris_to_ignore);
 
   /** Deletes the array fragments at the given fragment URIs. */
-  void delete_fragments_list(const std::vector<URI>& fragment_uris);
+  void delete_fragments_list(tiledb::stdx::vec_view<URI> fragment_uris);
 
   /* ACCESSORS */
 
@@ -666,7 +668,7 @@ class ArrayDirectory {
    * @return Status, vector of fragment URIs.
    */
   tuple<Status, optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
-      const std::vector<URI>& root_dir_uris);
+      tiledb::stdx::vec_view<URI> root_dir_uris);
 
   /**
    * List the commits directory uris for v12 or higher.
@@ -681,8 +683,8 @@ class ArrayDirectory {
    * @return Status, vector of fragment URIs.
    */
   tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris_v12_or_higher(
-      const std::vector<URI>& commits_dir_uris,
-      const std::vector<URI>& consolidated_uris);
+      tiledb::stdx::vec_view<URI> commits_dir_uris,
+      tiledb::stdx::vec_view<URI> consolidated_uris);
 
   /**
    * Loads the fragment metadata directory uris for v12 or higher.
@@ -695,9 +697,9 @@ class ArrayDirectory {
    * Loads the commits URIs to consolidate.
    */
   void load_commits_uris_to_consolidate(
-      const std::vector<URI>& array_dir_uris,
-      const std::vector<URI>& commits_dir_uris,
-      const std::vector<URI>& consolidated_uris,
+      tiledb::stdx::vec_view<URI> array_dir_uris,
+      tiledb::stdx::vec_view<URI> commits_dir_uris,
+      tiledb::stdx::vec_view<URI> consolidated_uris,
       const std::unordered_set<std::string>& consolidated_uris_set);
 
   /**
@@ -710,7 +712,7 @@ class ArrayDirectory {
       Status,
       optional<std::vector<URI>>,
       optional<std::unordered_set<std::string>>>
-  load_consolidated_commit_uris(const std::vector<URI>& commits_dir_uris);
+  load_consolidated_commit_uris(tiledb::stdx::vec_view<URI> commits_dir_uris);
 
   /** Loads the array metadata URIs. */
   void load_array_meta_uris();
@@ -723,13 +725,13 @@ class ArrayDirectory {
    * versions 1 to 11.
    */
   tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
-      const std::vector<URI>& array_dir_uris) const;
+      tiledb::stdx::vec_view<URI> array_dir_uris) const;
 
   /**
    * Computes the fragment meta URIs from the input array directory.
    */
   std::vector<URI> compute_fragment_meta_uris(
-      const std::vector<URI>& array_dir_uris);
+      tiledb::stdx::vec_view<URI> array_dir_uris);
 
   /**
    * Computes the fragment URIs and vacuum URIs to vacuum.
@@ -741,7 +743,7 @@ class ArrayDirectory {
    */
   tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
   compute_uris_to_vacuum(
-      const bool full_overlap_only, const std::vector<URI>& uris) const;
+      const bool full_overlap_only, tiledb::stdx::vec_view<URI> uris) const;
 
   /**
    * Computes the filtered URIs based on the input, which fall
@@ -754,8 +756,8 @@ class ArrayDirectory {
    */
   tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
       const bool full_overlap_only,
-      const std::vector<URI>& uris,
-      const std::vector<URI>& to_ignore) const;
+      tiledb::stdx::vec_view<URI> uris,
+      tiledb::stdx::vec_view<URI> to_ignore) const;
 
   /**
    * Computes and sets the final vector of array schema URIs, and the
@@ -764,7 +766,7 @@ class ArrayDirectory {
    * @return Status.
    */
   Status compute_array_schema_uris(
-      const std::vector<URI>& array_schema_dir_uris);
+      tiledb::stdx::vec_view<URI> array_schema_dir_uris);
 
   /**
    * Select the URI to use for the latest array schema.

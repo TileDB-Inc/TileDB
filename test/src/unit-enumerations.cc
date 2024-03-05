@@ -1162,8 +1162,8 @@ TEST_CASE_METHOD(
 
   auto enmr_path = schema->get_enumeration_path_name(enmr_name.value());
 
-  auto loaded =
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, memory_tracker_);
+  auto loaded = ad->load_enumerations_from_paths(
+      std::vector{enmr_path}, enc_key_, memory_tracker_);
   REQUIRE(loaded.size() == 1);
 
   auto enmr = loaded[0];
@@ -1194,7 +1194,7 @@ TEST_CASE_METHOD(
       "The system cannot find the file specified.");
   REQUIRE_THROWS_WITH(
       ad->load_enumerations_from_paths(
-          {"unknown_enmr"}, enc_key_, memory_tracker_),
+          std::vector<std::string>{"unknown_enmr"}, enc_key_, memory_tracker_),
       posix_matcher || windows_matcher);
 }
 
@@ -1217,13 +1217,14 @@ TEST_CASE_METHOD(
   auto matcher = Catch::Matchers::ContainsSubstring(
       "Error loading enumeration; Insufficient memory budget;");
   REQUIRE_THROWS_WITH(
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, memory_tracker_),
+      ad->load_enumerations_from_paths(
+          std::vector{enmr_path}, enc_key_, memory_tracker_),
       matcher);
 
   // Check that the fix is to increase the memory budget.
   memory_tracker_->set_budget(std::numeric_limits<uint64_t>::max());
-  REQUIRE_NOTHROW(
-      ad->load_enumerations_from_paths({enmr_path}, enc_key_, memory_tracker_));
+  REQUIRE_NOTHROW(ad->load_enumerations_from_paths(
+      std::vector<std::string>{enmr_path}, enc_key_, memory_tracker_));
 }
 
 /* ********************************* */

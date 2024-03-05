@@ -770,7 +770,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
     const std::unordered_map<std::string, shared_ptr<ArraySchema>>&
         array_schemas_all,
     const EncryptionKey& encryption_key,
-    const std::vector<TimestampedURI>& fragments_to_load,
+    tiledb::stdx::vec_view<TimestampedURI> fragments_to_load,
     const std::unordered_map<std::string, std::pair<Tile*, uint64_t>>&
         offsets) {
   auto timer_se = resources.stats().start_timer("sm_load_fragment_metadata");

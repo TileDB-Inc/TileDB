@@ -129,7 +129,7 @@ Status DeletesAndUpdates::dowork() {
 
   // Check that the delete or update isn't in the middle of a fragment
   // consolidated without timestamps.
-  auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
+  auto frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
     FragmentID fragment_id{uri};
     if (fragment_id.array_format_version() <

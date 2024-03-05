@@ -39,6 +39,7 @@
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
+#include "tiledb/common/vec_view.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
@@ -172,7 +173,7 @@ class RestClient {
    * #TODO Implement API endpoint on TileDBCloud.
    */
   void post_delete_fragments_list_to_rest(
-      const URI& uri, Array* array, const std::vector<URI>& fragment_uris);
+      const URI& uri, Array* array, tiledb::stdx::vec_view<URI> fragment_uris);
 
   /**
    * Deregisters an array at the given URI from the REST server.
@@ -254,7 +255,7 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array,
-      const std::vector<std::string>& enumeration_names,
+      tiledb::stdx::vec_view<std::string> enumeration_names,
       shared_ptr<MemoryTracker> memory_tracker = nullptr);
 
   /**

@@ -531,21 +531,21 @@ Status fragment_metadata_to_capnp(
   frag_meta_builder->setSparseTileNum(frag_meta.sparse_tile_num());
   frag_meta_builder->setTileIndexBase(frag_meta.tile_index_base());
 
-  auto& file_sizes = frag_meta.file_sizes();
+  auto file_sizes = frag_meta.file_sizes();
   if (!file_sizes.empty()) {
     auto builder = frag_meta_builder->initFileSizes(file_sizes.size());
     for (uint64_t i = 0; i < file_sizes.size(); ++i) {
       builder.set(i, file_sizes[i]);
     }
   }
-  auto& file_var_sizes = frag_meta.file_var_sizes();
+  auto file_var_sizes = frag_meta.file_var_sizes();
   if (!file_var_sizes.empty()) {
     auto builder = frag_meta_builder->initFileVarSizes(file_var_sizes.size());
     for (uint64_t i = 0; i < file_var_sizes.size(); ++i) {
       builder.set(i, file_var_sizes[i]);
     }
   }
-  auto& file_validity_sizes = frag_meta.file_validity_sizes();
+  auto file_validity_sizes = frag_meta.file_validity_sizes();
   if (!file_validity_sizes.empty()) {
     auto builder =
         frag_meta_builder->initFileValiditySizes(file_validity_sizes.size());
@@ -617,7 +617,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_mins = frag_meta.fragment_mins();
+  auto fragment_mins = frag_meta.fragment_mins();
   if (!fragment_mins.empty()) {
     auto builder = frag_meta_builder->initFragmentMins(fragment_mins.size());
     for (uint64_t i = 0; i < fragment_mins.size(); ++i) {
@@ -627,7 +627,7 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_maxs = frag_meta.fragment_maxs();
+  auto fragment_maxs = frag_meta.fragment_maxs();
   if (!fragment_maxs.empty()) {
     auto builder = frag_meta_builder->initFragmentMaxs(fragment_maxs.size());
     for (uint64_t i = 0; i < fragment_maxs.size(); ++i) {
@@ -637,14 +637,14 @@ Status fragment_metadata_to_capnp(
       }
     }
   }
-  auto& fragment_sums = frag_meta.fragment_sums();
+  auto fragment_sums = frag_meta.fragment_sums();
   if (!fragment_sums.empty()) {
     auto builder = frag_meta_builder->initFragmentSums(fragment_sums.size());
     for (uint64_t i = 0; i < fragment_sums.size(); ++i) {
       builder.set(i, fragment_sums[i]);
     }
   }
-  auto& fragment_null_counts = frag_meta.fragment_null_counts();
+  auto fragment_null_counts = frag_meta.fragment_null_counts();
   if (!fragment_null_counts.empty()) {
     auto builder =
         frag_meta_builder->initFragmentNullCounts(fragment_null_counts.size());

@@ -158,7 +158,7 @@ ArrayDirectory::load_all_array_schemas(
         "Cannot load all array schemas; Invalid array URI");
   }
 
-  const std::vector<URI>& schema_uris = array_schema_uris();
+  tiledb::stdx::vec_view<URI> schema_uris = array_schema_uris();
   if (schema_uris.empty()) {
     throw ArrayDirectoryException(
         "Cannot get the array schema vector; No array schemas found.");
@@ -194,7 +194,7 @@ ArrayDirectory::load_all_array_schemas(
 
 std::vector<shared_ptr<const Enumeration>>
 ArrayDirectory::load_enumerations_from_paths(
-    const std::vector<std::string>& enumeration_paths,
+    tiledb::stdx::vec_view<std::string> enumeration_paths,
     const EncryptionKey& encryption_key,
     shared_ptr<MemoryTracker> memory_tracker) const {
   // This should never be called with an empty list of enumeration paths, but
@@ -218,7 +218,7 @@ const URI& ArrayDirectory::uri() const {
   return uri_;
 }
 
-const std::vector<URI>& ArrayDirectory::array_schema_uris() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::array_schema_uris() const {
   return array_schema_uris_;
 }
 
@@ -226,23 +226,24 @@ const URI& ArrayDirectory::latest_array_schema_uri() const {
   return latest_array_schema_uri_;
 }
 
-const std::vector<URI>& ArrayDirectory::unfiltered_fragment_uris() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::unfiltered_fragment_uris() const {
   return unfiltered_fragment_uris_;
 }
 
-const std::vector<URI>& ArrayDirectory::array_meta_uris_to_vacuum() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::array_meta_uris_to_vacuum() const {
   return array_meta_uris_to_vacuum_;
 }
 
-const std::vector<URI>& ArrayDirectory::array_meta_vac_uris_to_vacuum() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::array_meta_vac_uris_to_vacuum()
+    const {
   return array_meta_vac_uris_to_vacuum_;
 }
 
-const std::vector<URI>& ArrayDirectory::commit_uris_to_consolidate() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::commit_uris_to_consolidate() const {
   return commit_uris_to_consolidate_;
 }
 
-const std::vector<URI>& ArrayDirectory::commit_uris_to_vacuum() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::commit_uris_to_vacuum() const {
   return commit_uris_to_vacuum_;
 }
 
@@ -251,12 +252,12 @@ ArrayDirectory::consolidated_commit_uris_set() const {
   return consolidated_commit_uris_set_;
 }
 
-const std::vector<URI>& ArrayDirectory::consolidated_commits_uris_to_vacuum()
-    const {
+tiledb::stdx::vec_view<URI>
+ArrayDirectory::consolidated_commits_uris_to_vacuum() const {
   return consolidated_commits_uris_to_vacuum_;
 }
 
-const std::vector<TimestampedURI>& ArrayDirectory::array_meta_uris() const {
+tiledb::stdx::vec_view<TimestampedURI> ArrayDirectory::array_meta_uris() const {
   return array_meta_uris_;
 }
 
@@ -269,7 +270,7 @@ const uint64_t& ArrayDirectory::timestamp_end() const {
 }
 
 void ArrayDirectory::write_commit_ignore_file(
-    const std::vector<URI>& commit_uris_to_ignore) {
+    tiledb::stdx::vec_view<URI> commit_uris_to_ignore) {
   auto name = storage_format::generate_consolidated_fragment_name(
       commit_uris_to_ignore.front(),
       commit_uris_to_ignore.back(),
@@ -292,7 +293,7 @@ void ArrayDirectory::write_commit_ignore_file(
 }
 
 void ArrayDirectory::delete_fragments_list(
-    const std::vector<URI>& fragment_uris) {
+    tiledb::stdx::vec_view<URI> fragment_uris) {
   // Get fragment URIs from the array that match the input fragment_uris
   auto filtered_uris = filtered_fragment_uris(true);
   auto uris = filtered_uris.fragment_uris(fragment_uris);
@@ -502,11 +503,11 @@ ArrayDirectory::filtered_fragment_uris(const bool full_overlap_only) const {
       std::move(fragment_filtered_uris.value()));
 }
 
-const std::vector<URI>& ArrayDirectory::fragment_meta_uris() const {
+tiledb::stdx::vec_view<URI> ArrayDirectory::fragment_meta_uris() const {
   return fragment_meta_uris_;
 }
 
-const std::vector<ArrayDirectory::DeleteAndUpdateTileLocation>&
+tiledb::stdx::vec_view<ArrayDirectory::DeleteAndUpdateTileLocation>
 ArrayDirectory::delete_and_update_tiles_location() const {
   return delete_and_update_tiles_location_;
 }
@@ -627,7 +628,7 @@ std::vector<URI> ArrayDirectory::list_root_dir_uris() {
 
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::load_root_dir_uris_v1_v11(
-    const std::vector<URI>& root_dir_uris) {
+    tiledb::stdx::vec_view<URI> root_dir_uris) {
   // Compute the fragment URIs
   auto&& [st1, fragment_uris] = compute_fragment_uris_v1_v11(root_dir_uris);
   RETURN_NOT_OK_TUPLE(st1, nullopt);
@@ -645,8 +646,8 @@ std::vector<URI> ArrayDirectory::list_commits_dir_uris() {
 
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::load_commits_dir_uris_v12_or_higher(
-    const std::vector<URI>& commits_dir_uris,
-    const std::vector<URI>& consolidated_uris) {
+    tiledb::stdx::vec_view<URI> commits_dir_uris,
+    tiledb::stdx::vec_view<URI> consolidated_uris) {
   std::vector<URI> fragment_uris;
   // Find the commited fragments from consolidated commits URIs
   for (size_t i = 0; i < consolidated_uris.size(); ++i) {
@@ -712,7 +713,7 @@ tuple<
     optional<std::vector<URI>>,
     optional<std::unordered_set<std::string>>>
 ArrayDirectory::load_consolidated_commit_uris(
-    const std::vector<URI>& commits_dir_uris) {
+    tiledb::stdx::vec_view<URI> commits_dir_uris) {
   auto timer_se = stats_->start_timer("load_consolidated_commit_uris");
   // Load the commit URIs to ignore. This is done in serial for now as it can be
   // optimized by vacuuming.
@@ -871,9 +872,9 @@ void ArrayDirectory::load_array_schema_uris() {
 }
 
 void ArrayDirectory::load_commits_uris_to_consolidate(
-    const std::vector<URI>& array_dir_uris,
-    const std::vector<URI>& commits_dir_uris,
-    const std::vector<URI>& consolidated_uris,
+    tiledb::stdx::vec_view<URI> array_dir_uris,
+    tiledb::stdx::vec_view<URI> commits_dir_uris,
+    tiledb::stdx::vec_view<URI> consolidated_uris,
     const std::unordered_set<std::string>& consolidated_uris_set) {
   // Make a set of existing commit URIs.
   std::unordered_set<std::string> uris_set;
@@ -918,7 +919,7 @@ void ArrayDirectory::load_commits_uris_to_consolidate(
 
 tuple<Status, optional<std::vector<URI>>>
 ArrayDirectory::compute_fragment_uris_v1_v11(
-    const std::vector<URI>& array_dir_uris) const {
+    tiledb::stdx::vec_view<URI> array_dir_uris) const {
   std::vector<URI> fragment_uris;
 
   // That fragments are "committed" for versions >= 5
@@ -958,7 +959,7 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
 }
 
 std::vector<URI> ArrayDirectory::compute_fragment_meta_uris(
-    const std::vector<URI>& array_dir_uris) {
+    tiledb::stdx::vec_view<URI> array_dir_uris) {
   std::vector<URI> ret;
 
   // Get the consolidated fragment metadata URIs
@@ -1013,7 +1014,7 @@ bool ArrayDirectory::timestamps_overlap(
 
 tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
 ArrayDirectory::compute_uris_to_vacuum(
-    const bool full_overlap_only, const std::vector<URI>& uris) const {
+    const bool full_overlap_only, tiledb::stdx::vec_view<URI> uris) const {
   // Get vacuum URIs
   std::vector<uint8_t> vac_file_bitmap(uris.size());
   std::vector<uint8_t> overlapping_vac_file_bitmap(uris.size());
@@ -1124,8 +1125,8 @@ ArrayDirectory::compute_uris_to_vacuum(
 tuple<Status, optional<std::vector<TimestampedURI>>>
 ArrayDirectory::compute_filtered_uris(
     const bool full_overlap_only,
-    const std::vector<URI>& uris,
-    const std::vector<URI>& to_ignore) const {
+    tiledb::stdx::vec_view<URI> uris,
+    tiledb::stdx::vec_view<URI> to_ignore) const {
   std::vector<TimestampedURI> filtered_uris;
 
   // Do nothing if there are not enough URIs
@@ -1185,7 +1186,7 @@ ArrayDirectory::compute_filtered_uris(
 }
 
 Status ArrayDirectory::compute_array_schema_uris(
-    const std::vector<URI>& array_schema_dir_uris) {
+    tiledb::stdx::vec_view<URI> array_schema_dir_uris) {
   if (mode_ == ArrayDirectoryMode::SCHEMA_ONLY) {
     // If not in schema only mode, this is done using the listing from the root
     // dir.

@@ -999,7 +999,7 @@ tuple<
     optional<std::vector<std::vector<UpdateValue>>>>
 StorageManagerCanonical::load_delete_and_update_conditions(
     const OpenedArray& opened_array) {
-  auto& locations =
+  auto locations =
       opened_array.array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
   auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());

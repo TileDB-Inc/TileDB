@@ -442,7 +442,7 @@ void RestClient::post_delete_fragments_to_rest(
 }
 
 void RestClient::post_delete_fragments_list_to_rest(
-    const URI& uri, Array* array, const std::vector<URI>& fragment_uris) {
+    const URI& uri, Array* array, tiledb::stdx::vec_view<URI> fragment_uris) {
   Buffer buff;
   serialization::serialize_delete_fragments_list_request(
       array->config(), fragment_uris, serialization_type_, &buff);
@@ -646,7 +646,7 @@ RestClient::post_enumerations_from_rest(
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     Array* array,
-    const std::vector<std::string>& enumeration_names,
+    tiledb::stdx::vec_view<std::string> enumeration_names,
     shared_ptr<MemoryTracker> memory_tracker) {
   if (array == nullptr) {
     throw Status_RestError(
@@ -1583,7 +1583,7 @@ void RestClient::post_delete_fragments_to_rest(
 }
 
 void RestClient::post_delete_fragments_list_to_rest(
-    const URI&, Array*, const std::vector<URI>&) {
+    const URI&, Array*, tiledb::stdx::vec_view<URI>) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
@@ -1625,7 +1625,7 @@ RestClient::post_enumerations_from_rest(
     uint64_t,
     uint64_t,
     Array*,
-    const std::vector<std::string>&,
+    tiledb::stdx::vec_view<std::string>,
     shared_ptr<MemoryTracker>) {
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
