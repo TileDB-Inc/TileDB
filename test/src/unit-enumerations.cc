@@ -1454,6 +1454,18 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     EnumerationFx,
+    "ArraySchema - No Segfault on Check",
+    "[enumeration][array-scehma][size-check]") {
+  create_array();
+  auto array = get_array(QueryType::READ);
+  auto schema = array->array_schema_latest_ptr();
+  // Schema has unloaded enumerations at this point. Make sure that check
+  // doesn't segfault.
+  REQUIRE_NOTHROW(schema->check(cfg_));
+}
+
+TEST_CASE_METHOD(
+    EnumerationFx,
     "ArraySchema - Many Large Enumerations",
     "[enumeration][array-scehma][size-check]") {
   auto schema = create_schema();

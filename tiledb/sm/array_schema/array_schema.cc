@@ -586,6 +586,12 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
 
   uint64_t total_size = 0;
   for (const auto& pair : enumeration_map_) {
+    if (!pair.second) {
+      // We don't have an Array instance at this point so the best we can do
+      // is just avoid segfaulting when we attempt to check with unloaded
+      // enumerations.
+      continue;
+    }
     uint64_t size = pair.second->data().size() + pair.second->offsets().size();
     if (size > max_size.value()) {
       throw ArraySchemaException(
