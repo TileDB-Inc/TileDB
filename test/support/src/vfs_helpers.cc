@@ -497,6 +497,23 @@ LocalFsTest::LocalFsTest(const std::vector<size_t>& test_tree)
   temp_dir_ =
       tiledb::test::test_dir(prefix_ + tiledb::sm::Posix::current_dir() + "/");
 #endif
+  vfs_.create_dir(temp_dir_).ok();
+  // TODO: We could refactor to remove duplication with S3Test()
+  for (size_t i = 1; i <= test_tree_.size(); i++) {
+    sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
+    vfs_.create_dir(path).ok();
+    expected_results().emplace_back(path.to_string(), 0);
+    for (size_t j = 1; j <= test_tree_[i - 1]; j++) {
+      auto object_uri = path.join_path("test_file_" + std::to_string(j));
+      vfs_.touch(object_uri).ok();
+      std::string data(j * 10, 'a');
+      vfs_.open_file(object_uri, sm::VFSMode::VFS_WRITE).ok();
+      vfs_.write(object_uri, data.data(), data.size()).ok();
+      vfs_.close_file(object_uri).ok();
+      expected_results().emplace_back(object_uri.to_string(), data.size());
+    }
+  }
+  std::sort(expected_results().begin(), expected_results().end());
 }
 
 }  // namespace tiledb::test

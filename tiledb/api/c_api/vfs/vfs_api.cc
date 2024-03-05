@@ -326,16 +326,16 @@ capi_return_t tiledb_vfs_ls_recursive(
   }
   ensure_output_pointer_is_valid(data);
 
-  tiledb::sm::LsObjects lsresults;
-  throw_if_not_ok(vfs->ls_recursive(tiledb::sm::URI(path), &lsresults));
+  //  tiledb::sm::LsObjects lsresults;
+  throw_if_not_ok(vfs->ls_recursive(tiledb::sm::URI(path), callback, data));
 
-  for (const auto& lsresult : lsresults) {
-    callback(
-        lsresult.first.c_str(),
-        tiledb::sm::URI(lsresult.first).to_path().size(),
-        lsresult.second,
-        data);
-  }
+  //  for (const auto& lsresult : lsresults) {
+  //    callback(
+  //        lsresult.first.c_str(),
+  //        tiledb::sm::URI(lsresult.first).to_path().size(),
+  //        lsresult.second,
+  //        data);
+  //  }
   return TILEDB_OK;
 }
 

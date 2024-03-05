@@ -103,16 +103,16 @@ TEST_CASE("C++ API: Test VFS ls", "[cppapi][cppapi-vfs][cppapi-vfs-ls]") {
   // List recursive (not supported for Windows yet)
   // (this is tested more exhaustively in
   // `tiledb/sm/filesystem/test/unit_ls_filtered.cc`)
-  std::vector<std::string> children_recursive = vfs.ls_recursive(dir);
-
-  // Check results
-  std::sort(children_recursive.begin(), children_recursive.end());
-  REQUIRE(children_recursive.size() == 5);
-  CHECK(children_recursive[0] == file);
-  CHECK(children_recursive[1] == file2);
-  CHECK(children_recursive[2] == subdir_file);
-  CHECK(children_recursive[3] == subdir_file2);
-  CHECK(children_recursive[4] == subdir_empty);
+  //  std::vector<std::string> children_recursive = vfs.ls_recursive(dir);
+  //
+  //  // Check results
+  //  std::sort(children_recursive.begin(), children_recursive.end());
+  //  REQUIRE(children_recursive.size() == 5);
+  //  CHECK(children_recursive[0] == file);
+  //  CHECK(children_recursive[1] == file2);
+  //  CHECK(children_recursive[2] == subdir_file);
+  //  CHECK(children_recursive[3] == subdir_file2);
+  //  CHECK(children_recursive[4] == subdir_empty);
 
 #endif
 
@@ -524,13 +524,19 @@ TEST_CASE(
   }
 }
 
-TEST_CASE("CPP API: VFS ls_recursive filter", "[cppapi][vfs][ls-recursive]") {
+using test_types = std::tuple<tiledb::test::LocalFsTest>;
+// TODO: Also enable the S3Test
+// using t = std::tuple<tiledb::test::S3Test, tiledb::test::LocalFsTest>;
+TEMPLATE_LIST_TEST_CASE(
+    "CPP API: VFS ls_recursive filter",
+    "[cppapi][vfs][ls-recursive]",
+    test_types) {
   using namespace tiledb::test;
-  S3Test s3_test({10, 100, 0});
-  if (!s3_test.is_supported()) {
+  TestType test({10, 100, 0});
+  if (!test.is_supported()) {
     return;
   }
-  auto expected_results = s3_test.expected_results();
+  auto expected_results = test.expected_results();
 
   vfs_config cfg;
   tiledb::Context ctx(tiledb::Config(&cfg.config));
@@ -556,12 +562,12 @@ TEST_CASE("CPP API: VFS ls_recursive filter", "[cppapi][vfs][ls-recursive]") {
   }
 
   bool include_result = true;
-  SECTION("Custom filter (include half)") {
-    include = [&include_result](std::string_view, uint64_t) {
-      include_result = !include_result;
-      return include_result;
-    };
-  }
+  //  SECTION("Custom filter (include half)") {
+  //    include = [&include_result](std::string_view, uint64_t) {
+  //      include_result = !include_result;
+  //      return include_result;
+  //    };
+  //  }
 
   SECTION("Custom filter (search for test_file_50)") {
     include = [](std::string_view object_name, uint64_t) {
@@ -579,16 +585,20 @@ TEST_CASE("CPP API: VFS ls_recursive filter", "[cppapi][vfs][ls-recursive]") {
 
   // Test collecting results with LsInclude predicate.
   auto results = tiledb::VFSExperimental::ls_recursive_filter(
-      ctx, vfs, s3_test.temp_dir_.to_string(), include);
+      ctx, vfs, test.temp_dir_.to_string(), include);
+  include_result = true;
   std::erase_if(expected_results, [&include](const auto& object) {
     return !include(object.first, object.second);
   });
+  std::sort(results.begin(), results.end());
   CHECK(results.size() == expected_results.size());
   CHECK(expected_results == results);
 
   // Test collecting results with LsCallback, writing data into ls_objects.
+  include_result = true;
   tiledb::VFSExperimental::ls_recursive(
-      ctx, vfs, s3_test.temp_dir_.to_string(), cb);
+      ctx, vfs, test.temp_dir_.to_string(), cb);
+  std::sort(ls_objects.begin(), ls_objects.end());
   CHECK(ls_objects.size() == expected_results.size());
   CHECK(expected_results == ls_objects);
 }

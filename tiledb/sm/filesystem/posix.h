@@ -282,8 +282,52 @@ class Posix : public FilesystemBase {
   tuple<Status, optional<LsObjects>> ls_filtered(
       const URI& parent,
       F f,
-      D d = accept_all_dirs,
-      bool recursive = false) const;
+      [[maybe_unused]] D d = accept_all_dirs,
+      bool recursive = false) const {
+    /*
+     * The input URI was useful to the top-level VFS to identify this is a
+     * regular filesystem path, but we don't need the "file://" qualifier
+     * anymore and can reason with unqualified strings for the rest of the
+     * function.
+     */
+    const auto parentstr = parent.to_path();
+
+    LsObjects qualifyingPaths;
+
+    auto iter = std::filesystem::recursive_directory_iterator(parentstr);
+    for (const std::filesystem::directory_entry& entry : iter) {
+      const auto abspath = entry.path().native();
+      const auto absuri = URI(abspath);
+      if (entry.is_directory()) {
+        if (f(absuri, 0)) {
+          if (std::filesystem::is_empty(entry.path()) || !recursive) {
+            /* non-empty directories are leaves, so always include them in
+             * result set */
+            qualifyingPaths.push_back(
+                std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
+          }
+          if (!recursive) {
+            iter.disable_recursion_pending();
+          }
+        } else {
+          /* do not descend into directories which don't qualify */
+          iter.disable_recursion_pending();
+        }
+      } else {
+        /*
+         * A leaf of the filesystem
+         * (or symbolic link - split to a separate case if we want to descend
+         * into them)
+         */
+        if (f(absuri, entry.file_size())) {
+          qualifyingPaths.push_back(
+              std::make_pair(absuri.to_string(), entry.file_size()));
+        }
+      }
+    }
+
+    return {Status::Ok(), qualifyingPaths};
+  }
 
   /**
    * Lists files one level deep under a given path.
@@ -364,57 +408,6 @@ class Posix : public FilesystemBase {
  private:
   uint32_t file_permissions_, directory_permissions_;
 };
-
-template <FilePredicate F, DirectoryPredicate D>
-tuple<Status, optional<LsObjects>> Posix::ls_filtered(
-    const URI& parent,
-    F file_filter,
-    D directory_filter,
-    bool recursive) const {
-  /*
-   * The input URI was useful to the top-level VFS to identify this is a
-   * regular filesystem path, but we don't need the "file://" qualifier
-   * anymore and can reason with unqualified strings for the rest of the
-   * function.
-   */
-  const auto parentstr = parent.to_path();
-
-  LsObjects qualifyingPaths;
-
-  auto iter = std::filesystem::recursive_directory_iterator(parentstr);
-  for (const std::filesystem::directory_entry& entry : iter) {
-    const auto abspath = entry.path().native();
-    const auto absuri = URI(abspath);
-    if (entry.is_directory()) {
-      if (directory_filter(absuri)) {
-        if (std::filesystem::is_empty(entry.path()) || !recursive) {
-          /* non-empty directories are leaves, so always include them in result
-           * set */
-          qualifyingPaths.push_back(
-              std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
-        }
-        if (!recursive) {
-          iter.disable_recursion_pending();
-        }
-      } else {
-        /* do not descend into directories which don't qualify */
-        iter.disable_recursion_pending();
-      }
-    } else {
-      /*
-       * A leaf of the filesystem
-       * (or symbolic link - split to a separate case if we want to descend into
-       * them)
-       */
-      if (file_filter(absuri, entry.file_size())) {
-        qualifyingPaths.push_back(
-            std::make_pair(absuri.to_string(), entry.file_size()));
-      }
-    }
-  }
-
-  return {Status::Ok(), qualifyingPaths};
-}
 
 }  // namespace sm
 }  // namespace tiledb
