@@ -118,7 +118,8 @@ Domain create_domain(
         cell_val_num,
         range,
         FilterPipeline(),
-        tile_extent);
+        tile_extent,
+        tiledb::test::get_test_memory_tracker());
     dimensions.emplace_back(std::move(dim));
   }
 

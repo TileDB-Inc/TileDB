@@ -63,7 +63,6 @@ struct QueryPlanFx {
   shared_ptr<MemoryTracker> memory_tracker_;
 
   TemporaryLocalDirectory temp_dir_;
-
   Config cfg_;
   shared_ptr<Logger> logger_;
   ContextResources resources_;
@@ -74,8 +73,8 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   // Create Domain
   uint64_t dim_dom[2]{0, 1};
   uint64_t tile_extent = 1;
-  shared_ptr<Dimension> dim =
-      make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+  shared_ptr<Dimension> dim = make_shared<Dimension>(
+      HERE(), std::string("dim"), Datatype::UINT64, memory_tracker_);
   throw_if_not_ok(dim->set_domain(&dim_dom));
   throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 

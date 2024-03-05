@@ -32,6 +32,7 @@
 
 #include "dimension.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/filter_type.h"
@@ -46,10 +47,6 @@
 using namespace tiledb::common;
 using namespace tiledb::type;
 
-tiledb::common::blank<tiledb::sm::Dimension>::blank()
-    : tiledb::sm::Dimension{"", tiledb::sm::Datatype::INT32} {
-}
-
 namespace tiledb::sm {
 
 class DimensionException : public StatusException {
@@ -63,15 +60,18 @@ class DimensionException : public StatusException {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Dimension::Dimension(const std::string& name, Datatype type)
-    : name_(name)
+Dimension::Dimension(
+    const std::string& name,
+    Datatype type,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
     , type_(type) {
   ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
-  set_crop_range_func();
   set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
@@ -96,8 +96,10 @@ Dimension::Dimension(
     uint32_t cell_val_num,
     const Range& domain,
     const FilterPipeline& filter_pipeline,
-    const ByteVecValue& tile_extent)
-    : cell_val_num_(cell_val_num)
+    const ByteVecValue& tile_extent,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , cell_val_num_(cell_val_num)
     , domain_(domain)
     , filters_(filter_pipeline)
     , name_(name)
@@ -107,7 +109,6 @@ Dimension::Dimension(
   set_ceil_to_tile_func();
   set_coincides_with_tiles_func();
   set_compute_mbr_func();
-  set_crop_range_func();
   set_domain_range_func();
   set_expand_range_func();
   set_expand_range_v_func();
@@ -154,7 +155,8 @@ shared_ptr<Dimension> Dimension::deserialize(
     Deserializer& deserializer,
     uint32_t version,
     Datatype type,
-    FilterPipeline& coords_filters) {
+    FilterPipeline& coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load dimension name
   auto dimension_name_size = deserializer.read<uint32_t>();
@@ -212,7 +214,8 @@ shared_ptr<Dimension> Dimension::deserialize(
       cell_val_num,
       domain,
       filter_pipeline,
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 const Range& Dimension::domain() const {
@@ -353,21 +356,6 @@ Range Dimension::compute_mbr_var(
     const WriterTile& tile_off, const WriterTile& tile_val) const {
   assert(compute_mbr_var_func_ != nullptr);
   return compute_mbr_var_func_(tile_off, tile_val);
-}
-
-template <class T>
-void Dimension::crop_range(const Dimension* dim, Range* range) {
-  assert(dim != nullptr);
-  assert(!range->empty());
-  auto dim_dom = (const T*)dim->domain().data();
-  auto r = (const T*)range->data();
-  T res[2] = {std::max(r[0], dim_dom[0]), std::min(r[1], dim_dom[1])};
-  range->set_range(res, sizeof(res));
-}
-
-void Dimension::crop_range(Range* range) const {
-  assert(crop_range_func_ != nullptr);
-  crop_range_func_(this, range);
 }
 
 template <class T>
@@ -714,7 +702,7 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
 void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) const {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) const {
   assert(relevant_ranges_func_ != nullptr);
   return relevant_ranges_func_(ranges, mbr, relevant_ranges);
 }
@@ -723,7 +711,7 @@ template <>
 void Dimension::relevant_ranges<char>(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto& mbr_start = mbr.start_str();
   const auto& mbr_end = mbr.end_str();
 
@@ -772,7 +760,7 @@ template <class T>
 void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
-    std::vector<uint64_t>& relevant_ranges) {
+    tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto mbr_data = (const T*)mbr.start_fixed();
   const auto mbr_start = mbr_data[0];
   const auto mbr_end = mbr_data[1];
@@ -816,7 +804,7 @@ void Dimension::relevant_ranges(
 std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) const {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges) const {
   assert(covered_vec_func_ != nullptr);
   return covered_vec_func_(ranges, mbr, relevant_ranges);
 }
@@ -825,12 +813,11 @@ template <>
 std::vector<bool> Dimension::covered_vec<char>(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges) {
   const auto& range_start = mbr.start_str();
   const auto& range_end = mbr.end_str();
 
-  std::vector<bool> covered;
-  covered.resize(relevant_ranges.size());
+  std::vector<bool> covered(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
     auto r2_start = ranges[r].start_str();
@@ -846,11 +833,10 @@ template <class T>
 std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
-    const std::vector<uint64_t>& relevant_ranges) {
+    const tdb::pmr::vector<uint64_t>& relevant_ranges) {
   auto d1 = (const T*)mbr.start_fixed();
 
-  std::vector<bool> covered;
-  covered.resize(relevant_ranges.size());
+  std::vector<bool> covered(relevant_ranges.size());
   for (uint64_t i = 0; i < relevant_ranges.size(); i++) {
     auto r = relevant_ranges[i];
     auto d2 = (const T*)ranges[r].start_fixed();
@@ -1589,15 +1575,6 @@ std::string Dimension::tile_extent_str() const {
     return std::string("");  // for return type deduction purposes
   };
   return apply_with_type(g, type_);
-}
-
-void Dimension::set_crop_range_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      crop_range_func_ = crop_range<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
 }
 
 void Dimension::set_domain_range_func() {

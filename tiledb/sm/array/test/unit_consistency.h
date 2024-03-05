@@ -64,12 +64,11 @@ using array_entry = std::tuple<Array&, const QueryType>;
 using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
-  /** The memory tracker to use for the fixture */
   shared_ptr<MemoryTracker> memory_tracker_;
 
  public:
   WhiteboxConsistencyController()
-      : memory_tracker_(tiledb::test::create_test_memory_tracker()) {
+      : memory_tracker_(tiledb::test::get_test_memory_tracker()) {
   }
 
   ~WhiteboxConsistencyController() = default;
@@ -104,8 +103,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
     // Create Domain
     uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
-    shared_ptr<Dimension> dim =
-        make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+    shared_ptr<Dimension> dim = make_shared<Dimension>(
+        HERE(), std::string("dim"), Datatype::UINT64, memory_tracker_);
     throw_if_not_ok(dim->set_domain(&dim_dom));
     throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 

@@ -181,6 +181,8 @@ class TestFilterPipeline {};
  * Dimension wrapper
  */
 class TestDimension {
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   shared_ptr<Dimension> d_;
 
  public:
@@ -189,15 +191,16 @@ class TestDimension {
    * or empty defaults for everything else about it.
    */
   TestDimension(const std::string& name, Datatype type)
-      : d_{make_shared<Dimension>(
+      : memory_tracker_(tiledb::test::create_test_memory_tracker())
+      , d_{make_shared<Dimension>(
             HERE(),
             name,
             type,
             1,                    // cell_val_num
             default_range(type),  // domain
             FilterPipeline{},
-            default_tile_extent(type)  // fill value
-            )} {};
+            default_tile_extent(type),  // fill value
+            memory_tracker_)} {};
 
   /**
    * Accessor copies the underlying object.

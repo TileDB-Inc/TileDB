@@ -33,7 +33,8 @@
 #include <test/support/tdb_catch.h>
 #include "../domain_typed_data_view.h"
 #include "../dynamic_array.h"
-#include "test/support/src/mem_helpers.h"
+#include "src/mem_helpers.h"
+
 /*
  * Instantiating the class `Domain` requires a full definition of `Dimension` so
  * that its destructor is visible. The need to include this header indicates
@@ -114,7 +115,10 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, null initializer") {
   Domain d{memory_tracker};
   //  tiledb::sm::Dimension dim{"", tiledb::sm::Datatype::INT32};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(), "", tiledb::sm::Datatype::INT32)};
+      HERE(),
+      "",
+      tiledb::sm::Datatype::INT32,
+      tiledb::test::get_test_memory_tracker())};
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());
@@ -136,7 +140,10 @@ TEST_CASE("DomainTypedDataView::DomainTypedDataView, simple initializer") {
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
   Domain d{memory_tracker};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(), "", tiledb::sm::Datatype::INT32)};
+      HERE(),
+      "",
+      tiledb::sm::Datatype::INT32,
+      tiledb::test::get_test_memory_tracker())};
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());
   CHECK(d.add_dimension(dim).ok());

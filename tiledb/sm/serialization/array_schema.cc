@@ -37,6 +37,7 @@
 
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -400,8 +401,7 @@ void attribute_to_capnp(
 shared_ptr<Attribute> attribute_from_capnp(
     const capnp::Attribute::Reader& attribute_reader) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(attribute_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(attribute_reader.getType());
 
   // Set nullable
   const bool nullable = attribute_reader.getNullable();
@@ -610,12 +610,12 @@ Range range_from_capnp(
 
 /** Deserialize a dimension from a cap'n proto object. */
 shared_ptr<Dimension> dimension_from_capnp(
-    const capnp::Dimension::Reader& dimension_reader) {
+    const capnp::Dimension::Reader& dimension_reader,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
 
   // Deserialize datatype
-  Datatype dim_type;
-  st = datatype_enum(dimension_reader.getType().cStr(), &dim_type);
+  Datatype dim_type = datatype_enum(dimension_reader.getType().cStr());
   if (!st.ok()) {
     throw std::runtime_error(
         "[Deserialization::dimension_from_capnp] " +
@@ -678,7 +678,8 @@ shared_ptr<Dimension> dimension_from_capnp(
       cell_val_num,
       domain,
       *(filters.get()),
-      tile_extent);
+      tile_extent,
+      memory_tracker);
 }
 
 Status domain_to_capnp(
@@ -746,7 +747,7 @@ shared_ptr<Domain> domain_from_capnp(
   std::vector<shared_ptr<Dimension>> dims;
   auto dimensions = domain_reader.getDimensions();
   for (auto dimension : dimensions) {
-    dims.emplace_back(dimension_from_capnp(dimension));
+    dims.emplace_back(dimension_from_capnp(dimension, memory_tracker));
   }
 
   return make_shared<Domain>(
@@ -785,8 +786,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
     const capnp::DimensionLabel::Reader& dim_label_reader,
     shared_ptr<MemoryTracker> memory_tracker) {
   // Get datatype
-  Datatype datatype = Datatype::ANY;
-  throw_if_not_ok(datatype_enum(dim_label_reader.getType(), &datatype));
+  Datatype datatype = datatype_enum(dim_label_reader.getType());
 
   shared_ptr<ArraySchema> schema{nullptr};
   if (dim_label_reader.hasSchema()) {

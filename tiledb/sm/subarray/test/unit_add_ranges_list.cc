@@ -55,9 +55,17 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // add_ranges_list.
   auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::shared_ptr<tiledb::sm::Dimension> sp_dim1 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d1", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d1",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   std::shared_ptr<tiledb::sm::Dimension> sp_dim2 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d2", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d2",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   uint64_t tile_extents[] = {2, 2};
   std::vector<std::shared_ptr<tiledb::sm::Dimension>> dims{sp_dim1, sp_dim2};
   std::shared_ptr<tiledb::sm::Domain> sp_dom = make_shared<tiledb::sm::Domain>(

@@ -99,7 +99,8 @@ struct HandleConsolidationPlanRequestFx : RequestHandlerFx {
   virtual shared_ptr<ArraySchema> create_schema() override {
     auto schema =
         make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
-    auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+    auto dim = make_shared<Dimension>(
+        HERE(), "dim1", Datatype::INT32, memory_tracker_);
     int range[2] = {0, 1000};
     throw_if_not_ok(dim->set_domain(range));
     auto dom = make_shared<Domain>(HERE(), memory_tracker_);
@@ -402,7 +403,8 @@ shared_ptr<ArraySchema> HandleLoadArraySchemaRequestFx::create_schema() {
   // Create a schema to serialize
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
-  auto dim = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto dim =
+      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
@@ -454,9 +456,11 @@ shared_ptr<ArraySchema> HandleQueryPlanRequestFx::create_schema() {
   throw_if_not_ok(schema->set_tile_order(Layout::ROW_MAJOR));
   uint32_t dim_domain[] = {1, 10, 1, 10};
 
-  auto dim1 = make_shared<Dimension>(HERE(), "dim1", Datatype::INT32);
+  auto dim1 = make_shared<Dimension>(
+      HERE(), "dim1", Datatype::INT32, tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dim1->set_domain(&dim_domain[0]));
-  auto dim2 = make_shared<Dimension>(HERE(), "dim2", Datatype::INT32);
+  auto dim2 = make_shared<Dimension>(
+      HERE(), "dim2", Datatype::INT32, tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dim2->set_domain(&dim_domain[2]));
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);

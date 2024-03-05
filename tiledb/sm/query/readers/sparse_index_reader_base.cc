@@ -618,7 +618,8 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
 
           // Compute the list of range index to process.
-          std::vector<uint64_t> relevant_ranges;
+          tdb::pmr::vector<uint64_t> relevant_ranges(
+              query_memory_tracker_->get_resource(MemoryType::DIMENSIONS));
           relevant_ranges.reserve(ranges_for_dim.size());
           domain.dimension_ptr(dim_idx)->relevant_ranges(
               ranges_for_dim, mbr[dim_idx], relevant_ranges);
@@ -627,9 +628,8 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           // there is no need to compute bitmaps.
           const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
           if (non_overlapping) {
-            std::vector<bool> covered_bitmap =
-                domain.dimension_ptr(dim_idx)->covered_vec(
-                    ranges_for_dim, mbr[dim_idx], relevant_ranges);
+            auto covered_bitmap = domain.dimension_ptr(dim_idx)->covered_vec(
+                ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
             // See if any range is covered.
             uint64_t count = std::accumulate(

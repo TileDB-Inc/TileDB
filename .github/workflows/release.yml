@@ -7,7 +7,6 @@ on:
       - 'release-*'
     tags:
       - '*'
-  workflow_dispatch:
 
 jobs:
   Package-Source-Release:
@@ -174,6 +173,13 @@ jobs:
                 data: fs.readFileSync(file)
               });
             }
+
+  Generate-Release-List:
+    needs:
+      - Publish-Release
+    uses: ./.github/workflows/append-release-cmake.yml
+    with:
+      ref: ${{ github.ref_name }}
 
   Create-Issue-On-Fail:
     permissions:

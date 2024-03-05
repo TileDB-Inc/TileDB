@@ -42,6 +42,7 @@
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -302,8 +303,19 @@ int Domain::cell_order_cmp(
 }
 
 void Domain::crop_ndrange(NDRange* ndrange) const {
-  for (unsigned d = 0; d < dim_num_; ++d)
-    dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    auto type = dimension_ptrs_[d]->type();
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+        tiledb::type::crop_range<decltype(T)>(
+            dimension_ptrs_[d]->domain(), (*ndrange)[d]);
+      } else {
+        throw std::invalid_argument(
+            "Unsupported dimension datatype " + datatype_str(type));
+      }
+    };
+    apply_with_type(g, type);
+  }
 }
 
 shared_ptr<Domain> Domain::deserialize(
@@ -324,8 +336,8 @@ shared_ptr<Domain> Domain::deserialize(
   std::vector<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto dim{
-        Dimension::deserialize(deserializer, version, type, coords_filters)};
+    auto dim{Dimension::deserialize(
+        deserializer, version, type, coords_filters, memory_tracker)};
     dimensions.emplace_back(std::move(dim));
   }
 

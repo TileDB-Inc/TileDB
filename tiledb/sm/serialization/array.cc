@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,9 +55,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 class ArraySerializationException : public StatusException {
  public:
@@ -102,8 +100,7 @@ Status metadata_from_capnp(
     auto entry_reader = entries_reader[i];
     auto key = std::string{std::string_view{
         entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
+    Datatype type = datatype_enum(entry_reader.getType());
     uint32_t value_num = entry_reader.getValueNum();
 
     auto value_ptr = entry_reader.getValue();
@@ -206,10 +203,8 @@ Status array_to_capnp(
       // If this is the Cloud server, it should load and serialize metadata
       // If this is the client, it should have previously received the array
       // metadata from the Cloud server, so it should just serialize it
-      Metadata* metadata = nullptr;
-      // Get metadata. If not loaded, load it first.
-      RETURN_NOT_OK(array->metadata(&metadata));
-      RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
+      auto& metadata = array->metadata();
+      RETURN_NOT_OK(metadata_to_capnp(&metadata, &array_metadata_builder));
     }
   } else {
     if (array->non_empty_domain_computed()) {
@@ -741,6 +736,4 @@ Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

@@ -1585,7 +1585,11 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -1644,7 +1648,11 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -1754,8 +1762,11 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2304,8 +2315,11 @@ void test_apply_dense<char*>(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2364,8 +2378,11 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2476,8 +2493,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3006,8 +3026,11 @@ void test_apply_sparse<char*>(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3066,8 +3089,11 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3837,8 +3863,11 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4127,7 +4156,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4484,7 +4517,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4806,8 +4843,11 @@ TEST_CASE(
   REQUIRE(array_schema->add_attribute(tdb::make_shared<Attribute>(HERE(), attr))
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{
-      make_shared<tiledb::sm::Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<tiledb::sm::Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4909,7 +4949,11 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32)};
+  auto dim{make_shared<Dimension>(
+      HERE(),
+      "dim1",
+      Datatype::UINT32,
+      tiledb::test::get_test_memory_tracker())};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
