@@ -180,17 +180,17 @@ TEST_CASE_METHOD(
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 1.
-  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.bitmap().assign({0, 1, 1, 1, 1});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 4);
 
   // Test max_slab_length with bitmap 2.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length() == 3);
 
   // Test max_slab_length with bitmap 3.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length() == 0);
@@ -214,19 +214,19 @@ TEST_CASE_METHOD(
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 1.
-  tile.bitmap() = {0, 1, 1, 1, 1};
+  tile.bitmap().assign({0, 1, 1, 1, 1});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 4);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 2.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 10), cmp) == 3);
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 2);
 
   // Test max_slab_length with bitmap and comparator 3.
-  tile.bitmap() = {0, 1, 1, 1, 0};
+  tile.bitmap().assign({0, 1, 1, 1, 0});
   tile.count_cells();
   rc1.pos_ = 0;
   REQUIRE(rc1.max_slab_length(GlobalOrderResultCoords(&tile, 3), cmp) == 0);
@@ -269,7 +269,7 @@ TEST_CASE_METHOD(
   Cmp cmp;
 
   GlobalOrderResultCoords rc1(&tile, 0);
-  tile.bitmap() = {0, 1, 1, 0, 1};
+  tile.bitmap().assign({0, 1, 1, 0, 1});
   tile.count_cells();
   REQUIRE(rc1.advance_to_next_cell() == true);
   REQUIRE(rc1.pos_ == 1);
@@ -281,7 +281,7 @@ TEST_CASE_METHOD(
 
   // Recreate to test that we don't move pos_ on the first call.
   GlobalOrderResultCoords rc2(&tile, 0);
-  tile.bitmap() = {1, 1, 1, 0, 0};
+  tile.bitmap().assign({1, 1, 1, 0, 0});
   tile.count_cells();
   REQUIRE(rc2.advance_to_next_cell() == true);
   REQUIRE(rc2.pos_ == 0);

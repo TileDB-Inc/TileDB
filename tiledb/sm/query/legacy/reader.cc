@@ -453,7 +453,9 @@ Status Reader::compute_range_result_coords(
         result_coords.emplace_back(tile, pos);
     }
   } else {  // Sparse
-    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    auto resource =
+        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+    tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
@@ -1785,7 +1787,9 @@ Status Reader::get_all_result_coords(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
       partial_overlap) {
-    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    auto resource =
+        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+    tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
         *(frag_meta->array_schema().get()), *tile, result_bitmap));
 
