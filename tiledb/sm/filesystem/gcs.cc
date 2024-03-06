@@ -132,15 +132,13 @@ Status GCS::init_client() const {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  // Client is a google::cloud::storage::StatusOr which compares (in)valid as
-  // bool
   if (client_) {
     return Status::Ok();
   }
 
-  google::cloud::storage::ChannelOptions channel_options;
+  google::cloud::Options ca_options;
   if (!ssl_cfg_.ca_file().empty()) {
-    channel_options.set_ssl_root_path(ssl_cfg_.ca_file());
+    ca_options.set<google::cloud::CARootsFilePathOption>(ssl_cfg_.ca_file());
   }
 
   if (!ssl_cfg_.ca_path().empty()) {
@@ -150,43 +148,32 @@ Status GCS::init_client() const {
   }
 
   // Note that the order here is *extremely important*
-  // We must call ::GoogleDefaultCredentials *with* a channel_options
+  // We must call MakeGoogleDefaultCredentials *with* a ca_options
   // argument, or else the Curl handle pool will be default-initialized
   // with no root dir (CURLOPT_CAINFO), defaulting to build host path.
-  // Later initializations of ClientOptions/Client with the channel_options
+  // Later initializations of ClientOptions/Client with the ca_options
   // do not appear to sufficiently reset the internal option, leading to
   // CA verification failures when using lib from systemA on systemB.
-  // Ideally we could use CreateDefaultClientOptions(channel_options)
-  // signature, but that function is header-only/unimplemented
-  // (as of GCS 1.15).
 
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
+    shared_ptr<google::cloud::Credentials> creds = nullptr;
     if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
-      creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
+      creds = google::cloud::MakeInsecureCredentials();
     } else {
-      auto status_or_creds =
-          google::cloud::storage::oauth2::GoogleDefaultCredentials(
-              channel_options);
-      if (!status_or_creds) {
-        return LOG_STATUS(Status_GCSError(
-            "Failed to initialize GCS credentials: " +
-            status_or_creds.status().message()));
-      }
-      creds = *status_or_creds;
+      creds = google::cloud::MakeGoogleDefaultCredentials(ca_options);
     }
-    google::cloud::storage::ClientOptions client_options(
-        creds, channel_options);
+    auto client_options = ca_options;
+    client_options.set<google::cloud::UnifiedCredentialsOption>(creds);
     if (!endpoint_.empty()) {
-      client_options.set_endpoint(endpoint_);
+      client_options.set<google::cloud::storage::RestEndpointOption>(endpoint_);
     }
-    client_ = tdb_unique_ptr<google::cloud::storage::Client>(tdb_new(
-        google::cloud::storage::Client,
-        client_options,
-        google::cloud::storage::LimitedTimeRetryPolicy(
-            std::chrono::milliseconds(request_timeout_ms_))));
+    client_options.set<google::cloud::storage::RetryPolicyOption>(
+        make_shared<google::cloud::storage::LimitedTimeRetryPolicy>(
+            HERE(), std::chrono::milliseconds(request_timeout_ms_)));
+    client_ = tdb_unique_ptr<google::cloud::storage::Client>(
+        tdb_new(google::cloud::storage::Client, client_options));
   } catch (const std::exception& e) {
     return LOG_STATUS(
         Status_GCSError("Failed to initialize GCS: " + std::string(e.what())));
