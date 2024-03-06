@@ -114,6 +114,7 @@ class QueryChannelActual {
   QueryChannelActual(Query& q, size_t id)
       : query_(q)
       , id_(id) {
+    (void)id_;
   }
   /**
    * Copy constructor is the default.
