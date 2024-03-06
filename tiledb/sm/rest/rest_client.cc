@@ -704,7 +704,8 @@ RestClient::post_enumerations_from_rest(
       serialization_type_, returned_data);
 }
 
-QueryPlan RestClient::post_query_plan_from_rest(const URI& uri, Query& query) {
+void RestClient::post_query_plan_from_rest(
+    const URI& uri, Query& query, QueryPlan& query_plan) {
   // Get array
   const Array* array = query.array();
   if (array == nullptr) {
@@ -749,7 +750,7 @@ QueryPlan RestClient::post_query_plan_from_rest(const URI& uri, Query& query) {
 
   // Ensure data has a null delimiter for cap'n proto if using JSON
   throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
-  return serialization::deserialize_query_plan_response(
+  query_plan = serialization::deserialize_query_plan_response(
       query, serialization_type_, returned_data);
 }
 
@@ -1674,7 +1675,7 @@ RestClient::post_enumerations_from_rest(
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 
-QueryPlan RestClient::post_query_plan_from_rest(const URI&, Query&) {
+void RestClient::post_query_plan_from_rest(const URI&, Query&, QueryPlan&) {
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 

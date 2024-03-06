@@ -40,7 +40,6 @@
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/group/group.h"
-#include "tiledb/sm/query_plan/query_plan.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"
 
@@ -55,6 +54,7 @@ class Config;
 class FragmentInfo;
 class Query;
 class MemoryTracker;
+class QueryPlan;
 
 enum class SerializationType : uint8_t;
 
@@ -271,9 +271,10 @@ class RestClient {
    *
    * @param uri Array URI.
    * @param query Query to fetch query plan for.
-   * @return The requested query plan
+   * @param query_plan The requested query plan.
    */
-  QueryPlan post_query_plan_from_rest(const URI& uri, Query& query);
+  void post_query_plan_from_rest(
+      const URI& uri, Query& query, QueryPlan& query_plan);
 
   /**
    * Post a data query to rest server
