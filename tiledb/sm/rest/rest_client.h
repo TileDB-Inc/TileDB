@@ -75,6 +75,15 @@ class RestClient {
   Status set_header(const std::string& name, const std::string& value);
 
   /**
+   * Check if use_refactored_array_open_and_query_submit is set in
+   * input config so that rest_client chooses the right URI
+   *
+   * @param config Config to check
+   *
+   * */
+  static bool use_refactored_query(const Config& config);
+
+  /**
    * Check if an array exists by making a REST call. To start with this fetches
    * the schema but ignores the body returned if non-error
    *
@@ -424,12 +433,6 @@ class RestClient {
    * (regardless of how many times the query is resubmitted).
    */
   bool resubmit_incomplete_;
-
-  /**
-   * If true, the new, experimental REST routes and APIs for opening an array
-   * and submitting a query will be used
-   */
-  bool use_refactored_array_and_query_;
 
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
