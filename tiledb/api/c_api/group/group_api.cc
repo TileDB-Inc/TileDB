@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -540,14 +540,9 @@ capi_return_t tiledb_serialize_group_metadata(
   auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
-  tiledb::sm::Metadata* metadata;
-  auto st = group->group().metadata(&metadata);
-  if (!st.ok()) {
-    tiledb_buffer_handle_t::break_handle(buf);
-    throw StatusException(st);
-  }
+  auto metadata = group->group().metadata();
 
-  st = tiledb::sm::serialization::metadata_serialize(
+  auto st = tiledb::sm::serialization::metadata_serialize(
       metadata,
       static_cast<tiledb::sm::SerializationType>(serialize_type),
       &(buf->buffer()));

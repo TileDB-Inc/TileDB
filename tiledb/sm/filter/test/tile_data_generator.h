@@ -35,6 +35,7 @@
 
 #include <test/support/tdb_catch.h>
 #include <algorithm>
+#include <numeric>
 #include <optional>
 #include "tiledb/sm/tile/tile.h"
 
@@ -59,12 +60,14 @@ class TileDataGenerator {
   /**
    * Returns an empty writer tile with enough room for the input data.
    */
-  WriterTile create_empty_writer_tile() const {
+  WriterTile create_empty_writer_tile(
+      shared_ptr<MemoryTracker> memory_tracker) const {
     return WriterTile(
         constants::format_version,
         datatype(),
         cell_size(),
-        original_tile_size());
+        original_tile_size(),
+        memory_tracker);
   }
 
   /**
@@ -76,14 +79,16 @@ class TileDataGenerator {
    * test data and the writer offsets tile with the (optional) input offsets
    * data.
    */
-  virtual std::tuple<WriterTile, std::optional<WriterTile>>
-  create_writer_tiles() const = 0;
+  virtual std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles(
+      shared_ptr<MemoryTracker> memory_tracker) const = 0;
 
   /**
    * Returns a tile with the data from the filtered buffer and enough room
    * for the original tile data.
    **/
-  Tile create_filtered_buffer_tile(FilteredBuffer& filtered_buffer) const {
+  Tile create_filtered_buffer_tile(
+      FilteredBuffer& filtered_buffer,
+      shared_ptr<MemoryTracker> memory_tracker) const {
     return Tile(
         constants::format_version,
         datatype(),
@@ -91,7 +96,8 @@ class TileDataGenerator {
         0,
         original_tile_size(),
         filtered_buffer.data(),
-        filtered_buffer.size());
+        filtered_buffer.size(),
+        memory_tracker);
   }
 
   /** Returns the size of the original unfiltered data. */
@@ -148,10 +154,10 @@ class IncrementTileDataGenerator : public TileDataGenerator {
     }
   }
 
-  std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles()
-      const override {
+  std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles(
+      shared_ptr<MemoryTracker> memory_tracker) const override {
     // Writer tile.
-    auto tile = create_empty_writer_tile();
+    auto tile = create_empty_writer_tile(memory_tracker);
     T value{};
     for (uint64_t index = 0; index < num_elements_; ++index) {
       CHECK_NOTHROW(tile.write(&value, index * sizeof(T), sizeof(T)));
@@ -178,7 +184,8 @@ class IncrementTileDataGenerator : public TileDataGenerator {
         constants::format_version,
         Datatype::UINT64,
         constants::cell_var_offset_size,
-        offsets.size() * constants::cell_var_offset_size);
+        offsets.size() * constants::cell_var_offset_size,
+        memory_tracker);
     for (uint64_t index = 0; index < offsets.size(); ++index) {
       CHECK_NOTHROW(offsets_tile.write(
           &offsets[index],

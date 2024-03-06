@@ -177,7 +177,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Alloc FragmentMetadata object
-  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up
   global_write_state_->frag_meta_->set_context_resources(
       &storage_manager_->resources());
@@ -207,7 +207,8 @@ Status GlobalOrderWriter::init_global_write_state() {
           var_size,
           nullable,
           cell_size,
-          type));
+          type,
+          query_memory_tracker_));
     } catch (const std::logic_error& le) {
       return Status_WriterError(le.what());
     }
@@ -969,7 +970,13 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+          array_schema_,
+          cell_num_per_tile,
+          false,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_));
     }
 
     // Handle last tile (it must be either full or empty)
@@ -1176,7 +1183,13 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
       tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+          array_schema_,
+          cell_num_per_tile,
+          true,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_));
     }
 
     // Handle last tile (it must be either full or empty)

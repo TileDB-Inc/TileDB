@@ -48,31 +48,37 @@ WriterTileTuple::WriterTileTuple(
     const bool var_size,
     const bool nullable,
     const uint64_t cell_size,
-    const Datatype type)
-    : fixed_tile_(
+    const Datatype type,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , fixed_tile_(
           var_size ? WriterTile(
                          array_schema.write_version(),
                          constants::cell_var_offset_type,
                          constants::cell_var_offset_size,
-                         cell_num_per_tile * constants::cell_var_offset_size) :
+                         cell_num_per_tile * constants::cell_var_offset_size,
+                         memory_tracker_) :
                      WriterTile(
                          array_schema.write_version(),
                          type,
                          cell_size,
-                         cell_num_per_tile * cell_size))
+                         cell_num_per_tile * cell_size,
+                         memory_tracker_))
     , var_tile_(
           var_size ? std::optional<WriterTile>(WriterTile(
                          array_schema.write_version(),
                          type,
                          datatype_size(type),
-                         cell_num_per_tile * constants::cell_var_offset_size)) :
+                         cell_num_per_tile * constants::cell_var_offset_size,
+                         memory_tracker_)) :
                      std::nullopt)
     , validity_tile_(
           nullable ? std::optional<WriterTile>(WriterTile(
                          array_schema.write_version(),
                          constants::cell_validity_type,
                          constants::cell_validity_size,
-                         cell_num_per_tile * constants::cell_validity_size)) :
+                         cell_num_per_tile * constants::cell_validity_size,
+                         memory_tracker_)) :
                      std::nullopt)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
@@ -83,7 +89,8 @@ WriterTileTuple::WriterTileTuple(
 }
 
 WriterTileTuple::WriterTileTuple(WriterTileTuple&& tile)
-    : fixed_tile_(std::move(tile.fixed_tile_))
+    : memory_tracker_(std::move(tile.memory_tracker_))
+    , fixed_tile_(std::move(tile.fixed_tile_))
     , var_tile_(std::move(tile.var_tile_))
     , validity_tile_(std::move(tile.validity_tile_))
     , cell_size_(std::move(tile.cell_size_))
@@ -136,6 +143,7 @@ void WriterTileTuple::set_metadata(
 }
 
 void WriterTileTuple::swap(WriterTileTuple& tile) {
+  std::swap(memory_tracker_, tile.memory_tracker_);
   std::swap(fixed_tile_, tile.fixed_tile_);
   std::swap(var_tile_, tile.var_tile_);
   std::swap(validity_tile_, tile.validity_tile_);

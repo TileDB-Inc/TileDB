@@ -162,9 +162,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Target upper memory limit for tiles. */
   uint64_t tile_upper_memory_limit_;
 
-  /** Memory tracker object for the array. */
-  MemoryTracker* array_memory_tracker_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */

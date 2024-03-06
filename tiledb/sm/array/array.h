@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,6 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array/consistency.h"
@@ -50,12 +49,12 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
+class MemoryTracker;
 enum class QueryType : uint8_t;
 
 /**
@@ -81,6 +80,7 @@ class OpenedArray {
    * Construct a new Opened Array object.
    *
    * @param resources The context resources to use.
+   * @param memory_tracker The array's MemoryTracker.
    * @param array_uri The URI of the array.
    * @param encryption_type Encryption type.
    * @param key_bytes Encryption key data.
@@ -91,6 +91,7 @@ class OpenedArray {
    */
   OpenedArray(
       ContextResources& resources,
+      shared_ptr<MemoryTracker> memory_tracker,
       const URI& array_uri,
       EncryptionType encryption_type,
       const void* key_bytes,
@@ -100,7 +101,7 @@ class OpenedArray {
       bool is_remote)
       : array_dir_(ArrayDirectory(resources, array_uri))
       , array_schema_latest_(nullptr)
-      , metadata_()
+      , metadata_(memory_tracker)
       , metadata_loaded_(false)
       , non_empty_domain_computed_(false)
       , encryption_key_(make_shared<EncryptionKey>(HERE()))
@@ -730,7 +731,7 @@ class Array {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the array metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata& metadata();
 
   /**
    * Retrieves the array metadata object.
@@ -764,6 +765,7 @@ class Array {
    * has not been computed or loaded it will be loaded first
    */
   const NDRange non_empty_domain();
+
   /**
    * Retrieves the array metadata object that is already loaded. If it's not yet
    * loaded it will be empty.
@@ -783,7 +785,9 @@ class Array {
   }
 
   /** Returns the memory tracker. */
-  MemoryTracker* memory_tracker();
+  inline shared_ptr<MemoryTracker> memory_tracker() {
+    return memory_tracker_;
+  }
 
   /**
    * Checks the config to see if non empty domain should be serialized on array
@@ -820,9 +824,7 @@ class Array {
   void set_serialized_array_open();
 
   /** Set the query type to open the array for. */
-  inline void set_query_type(QueryType query_type) {
-    query_type_ = query_type;
-  }
+  void set_query_type(QueryType query_type);
 
   /**
    * Checks the array is open, in MODIFY_EXCLUSIVE mode, before deleting data.
@@ -925,7 +927,7 @@ class Array {
   bool remote_;
 
   /** Memory tracker for the array. */
-  MemoryTracker memory_tracker_;
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** A reference to the object which controls the present Array instance. */
   ConsistencyController& consistency_controller_;
@@ -1049,7 +1051,6 @@ class Array {
   void set_array_closed();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_H

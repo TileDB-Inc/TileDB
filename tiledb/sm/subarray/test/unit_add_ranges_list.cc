@@ -37,11 +37,13 @@
 #endif
 #include <tiledb/sm/array/array.h>
 #include <tiledb/sm/array_schema/dimension.h>
+#include <tiledb/sm/enums/array_type.h>
 #include <tiledb/sm/enums/encryption_type.h>
 #include <tiledb/sm/storage_manager/context.h>
 #include <tiledb/sm/subarray/subarray.h>
 
 #include <test/support/src/helpers.h>
+#include <test/support/src/mem_helpers.h>
 
 using namespace tiledb;
 using namespace tiledb::common;
@@ -51,14 +53,23 @@ using namespace tiledb::type;
 TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // Setup an Array needed to construct the Subarray for testing
   // add_ranges_list.
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   std::shared_ptr<tiledb::sm::Dimension> sp_dim1 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d1", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d1",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   std::shared_ptr<tiledb::sm::Dimension> sp_dim2 =
-      make_shared<tiledb::sm::Dimension>(HERE(), "d2", Datatype::INT64);
+      make_shared<tiledb::sm::Dimension>(
+          HERE(),
+          "d2",
+          Datatype::INT64,
+          tiledb::test::get_test_memory_tracker());
   uint64_t tile_extents[] = {2, 2};
   std::vector<std::shared_ptr<tiledb::sm::Dimension>> dims{sp_dim1, sp_dim2};
   std::shared_ptr<tiledb::sm::Domain> sp_dom = make_shared<tiledb::sm::Domain>(
-      HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
+      HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker);
   uint64_t local_DIM_DOMAIN[4] = {1, 12, 1, 12};
   CHECK(sp_dim1->set_domain(&local_DIM_DOMAIN[0]).ok());
   CHECK(sp_dim2->set_domain(&local_DIM_DOMAIN[2]).ok());
@@ -66,9 +77,13 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   CHECK(sp_dim2->set_tile_extent(&tile_extents[1]).ok());
   std::shared_ptr<tiledb::sm::Attribute> sp_attrib =
       make_shared<tiledb::sm::Attribute>(HERE(), "a1", Datatype::INT32);
-  tiledb::sm::Domain dom{Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR};
+  tiledb::sm::Domain dom{
+      Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker};
   std::shared_ptr<tiledb::sm::ArraySchema> sp_as =
-      make_shared<tiledb::sm::ArraySchema>(HERE());
+      make_shared<tiledb::sm::ArraySchema>(
+          HERE(),
+          tiledb::sm::ArrayType::DENSE,
+          tiledb::test::create_test_memory_tracker());
   CHECK(sp_as->set_domain(sp_dom).ok());
   CHECK(sp_as->add_attribute(sp_attrib).ok());
   tiledb::sm::Config cfg;

@@ -37,12 +37,15 @@
 #include <cmath>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 
 #include "tiledb/common/blank.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/macros.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/constants.h"
@@ -89,8 +92,12 @@ class Dimension {
    *
    * @param name The name of the dimension.
    * @param type The type of the dimension.
+   * @param memory_tracker The memory tracker to use.
    */
-  Dimension(const std::string& name, Datatype type);
+  Dimension(
+      const std::string& name,
+      Datatype type,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Constructor.
@@ -101,6 +108,7 @@ class Dimension {
    * @param domain The range of the dimension range.
    * @param filter_pipeline The filters of the dimension.
    * @param tile_extent The tile extent of the dimension.
+   * @param memory_tracker The memory tracker to use.
    */
   Dimension(
       const std::string& name,
@@ -108,33 +116,14 @@ class Dimension {
       uint32_t cell_val_num,
       const Range& domain,
       const FilterPipeline& filter_pipeline,
-      const ByteVecValue& tile_extent);
+      const ByteVecValue& tile_extent,
+      shared_ptr<MemoryTracker> memory_tracker);
 
-  /**
-   * Copy constructor is deleted.
-   *
-   * `Dimension` objects are stored as `shared_ptr` within C API handles and
-   * within `Domain`. Instead of copying a `Dimension` one can copy a pointer.
-   */
-  Dimension(const Dimension&) = delete;
-
-  /**
-   * Copy assignment is deleted.
-   */
-  Dimension& operator=(const Dimension&) = delete;
+  DISABLE_COPY_AND_COPY_ASSIGN(Dimension);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(Dimension);
 
   /** Destructor. */
   ~Dimension() = default;
-
-  /**
-   * Move constructor is default
-   */
-  Dimension(Dimension&&) = default;
-
-  /**
-   * Move assignment is default
-   */
-  Dimension& operator=(Dimension&&) = default;
 
   /* ********************************* */
   /*                API                */
@@ -158,13 +147,15 @@ class Dimension {
    * @param version The array schema version.
    * @param type The type of the dimension.
    * @param coords_filters Coords filters to replace empty coords pipelines.
+   * @param memory_tracker The memory tracker to use.
    * @return Dimension
    */
   static shared_ptr<Dimension> deserialize(
       Deserializer& deserializer,
       uint32_t version,
       Datatype type,
-      FilterPipeline& coords_filters);
+      FilterPipeline& coords_filters,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /** Returns the domain. */
   const Range& domain() const;
@@ -488,19 +479,6 @@ class Dimension {
       const WriterTile& tile_off, const WriterTile& tile_val);
 
   /**
-   * Crops the input 1D range such that it does not exceed the
-   * dimension domain.
-   */
-  void crop_range(Range* range) const;
-
-  /**
-   * Crops the input 1D range such that it does not exceed the
-   * dimension domain.
-   */
-  template <class T>
-  static void crop_range(const Dimension* dim, Range* range);
-
-  /**
    * Returns the domain range (high - low + 1) of the input
    * 1D range. It returns 0 in case the dimension datatype
    * is not integer or if there is an overflow.
@@ -597,27 +575,27 @@ class Dimension {
   void relevant_ranges(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint64_t>& relevant_ranges) const;
+      tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute relevant ranges for a set of ranges. */
   template <class T>
   static void relevant_ranges(
       const NDRange& ranges,
       const Range& mbr,
-      std::vector<uint64_t>& relevant_ranges);
+      tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Compute covered on a set of relevant ranges. */
   std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges) const;
+      const tdb::pmr::vector<uint64_t>& relevant_ranges) const;
 
   /** Compute covered on a set of relevant ranges. */
   template <class T>
   static std::vector<bool> covered_vec(
       const NDRange& ranges,
       const Range& mbr,
-      const std::vector<uint64_t>& relevant_ranges);
+      const tdb::pmr::vector<uint64_t>& relevant_ranges);
 
   /** Splits `r` at point `v`, producing 1D ranges `r1` and `r2`. */
   void split_range(
@@ -765,6 +743,9 @@ class Dimension {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** The memory tracker for the dimension. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The number of values per coordinate. */
   unsigned cell_val_num_;
 
@@ -818,13 +799,7 @@ class Dimension {
       compute_mbr_var_func_;
 
   /**
-   * Stores the appropriate templated crop_range() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Dimension* dim, Range*)> crop_range_func_;
-
-  /**
-   * Stores the appropriate templated crop_range() function based on the
+   * Stores the appropriate templated domain_range() function based on the
    * dimension datatype.
    */
   std::function<uint64_t(const Range&)> domain_range_func_;
@@ -876,7 +851,7 @@ class Dimension {
    * Stores the appropriate templated relevant_ranges() function based
    * on the dimension datatype.
    */
-  std::function<void(const NDRange&, const Range&, std::vector<uint64_t>&)>
+  std::function<void(const NDRange&, const Range&, tdb::pmr::vector<uint64_t>&)>
       relevant_ranges_func_;
 
   /**
@@ -884,7 +859,7 @@ class Dimension {
    * dimension datatype.
    */
   std::function<std::vector<bool>(
-      const NDRange&, const Range&, const std::vector<uint64_t>&)>
+      const NDRange&, const Range&, const tdb::pmr::vector<uint64_t>&)>
       covered_vec_func_;
 
   /**
@@ -1032,9 +1007,6 @@ class Dimension {
   /** Sets the templated compute_mbr() function. */
   void set_compute_mbr_func();
 
-  /** Sets the templated crop_range() function. */
-  void set_crop_range_func();
-
   /** Sets the templated domain_range() function. */
   void set_domain_range_func();
 
@@ -1085,12 +1057,5 @@ class Dimension {
 };
 
 }  // namespace tiledb::sm
-
-namespace tiledb::common {
-template <>
-struct blank<tiledb::sm::Dimension> : public tiledb::sm::Dimension {
-  blank();
-};
-}  // namespace tiledb::common
 
 #endif  // TILEDB_DIMENSION_H

@@ -1,5 +1,5 @@
 #
-# tiledb/sm/filter/CMakeLists.txt
+# tiledb/sm/filter/test/CMakeLists.txt
 #
 # The MIT License
 #
@@ -37,7 +37,7 @@ commence(unit_test filter_pipeline)
 conclude(unit_test)
 
 commence(unit_test run_filter_pipeline)
-    this_target_object_libraries(filter_pipeline)
+    this_target_object_libraries(filter_pipeline mem_helpers)
     this_target_sources(
         main.cc
         add_1_in_place_filter.cc

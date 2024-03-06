@@ -35,6 +35,17 @@
 #include <sstream>
 #include <unordered_set>
 
+#if defined(_MSC_VER)
+#pragma warning(push)
+// One abseil file has a warning that fails on Windows when compiling with
+// warnings as errors.
+#pragma warning(disable : 4127)  // conditional expression is constant
+#endif
+#include <google/cloud/storage/client.h>
+#if defined(_MSC_VER)
+#pragma warning(pop)
+#endif
+
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/logger.h"
@@ -171,15 +182,11 @@ Status GCS::init_client() const {
     if (!endpoint_.empty()) {
       client_options.set_endpoint(endpoint_);
     }
-    auto client = google::cloud::storage::Client(
+    client_ = tdb_unique_ptr<google::cloud::storage::Client>(tdb_new(
+        google::cloud::storage::Client,
         client_options,
         google::cloud::storage::LimitedTimeRetryPolicy(
-            std::chrono::milliseconds(request_timeout_ms_)));
-    client_ = google::cloud::StatusOr<google::cloud::storage::Client>(client);
-    if (!client_) {
-      return LOG_STATUS(Status_GCSError(
-          "Failed to initialize GCS Client; " + client_.status().message()));
-    }
+            std::chrono::milliseconds(request_timeout_ms_))));
   } catch (const std::exception& e) {
     return LOG_STATUS(
         Status_GCSError("Failed to initialize GCS: " + std::string(e.what())));
@@ -452,7 +459,8 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     }
 
     auto& results = object_metadata.value();
-    const std::string gcs_prefix = uri_dir.is_gcs() ? "gcs://" : "gs://";
+    const std::string gcs_prefix =
+        uri_dir.backend_name() == "gcs" ? "gcs://" : "gs://";
 
     if (absl::holds_alternative<google::cloud::storage::ObjectMetadata>(
             results)) {

@@ -137,12 +137,14 @@ using CopyState =
  * @param serialized_buffer Buffer containing serialized query
  * @param serialize_type Serialization type of serialized query
  * @param array Array object to deserialize into
+ * @param memory_tracker Memory tracker to use for allocations.
  */
 Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager);
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a query

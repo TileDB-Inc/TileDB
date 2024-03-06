@@ -309,6 +309,11 @@ void WriterBase::refresh_config() {
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
+shared_ptr<FragmentMetadata> WriterBase::create_fragment_metadata() {
+  return make_shared<FragmentMetadata>(
+      HERE(), &storage_manager_->resources(), array_memory_tracker_);
+}
+
 Status WriterBase::add_written_fragment_info(const URI& uri) {
   written_fragment_info_.emplace_back(uri, fragment_timestamp_range_);
   return Status::Ok();
@@ -787,10 +792,10 @@ Status WriterBase::create_fragment(
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       &storage_manager_->resources(),
-      nullptr,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
+      array_memory_tracker_,
       dense,
       has_timestamps,
       has_delete_metadata);
@@ -947,7 +952,13 @@ Status WriterBase::init_tiles(
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
     tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_));
   }
 
   return Status::Ok();

@@ -27,13 +27,6 @@
 #
 
 ############################################################
-# CMake policies
-############################################################
-
-# C++ library, allow the VISIBLITY_PRESET for each c++ target to work
-cmake_policy(SET CMP0063 NEW)
-
-############################################################
 # Find packages needed for object libraries
 ############################################################
 
@@ -184,7 +177,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/consolidator/group_meta_consolidator.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/encryption_key_validation.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_openssl.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/crypto/crypto_win32.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/curl/curl_init.cc
@@ -244,6 +236,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
@@ -844,6 +837,15 @@ endif()
 # the value of the BUILD_SHARED_LIBS variable.
 add_library(tiledb $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>)
 
+# Export the target as either tiledb_shared or tiledb_static for compatibility.
+# The exported config will create the unified tiledb target that links to either
+# of them.
+if(BUILD_SHARED_LIBS)
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_shared)
+else()
+  set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_static)
+endif()
+
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
 
 string(REGEX MATCH "TILEDB_VERSION_MAJOR ([0-9]*)" _ ${ver})
@@ -1055,20 +1057,4 @@ configure_file(
 install(FILES ${CMAKE_CURRENT_BINARY_DIR}/tiledb.pc
         DESTINATION ${CMAKE_INSTALL_LIBDIR}/pkgconfig)
 
-# Packaging configuration
-configure_file ("${PROJECT_SOURCE_DIR}/cmake/inputs/CustomCPackOptions.cmake.in"
-        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake"
-        @ONLY)
-set (CPACK_PROJECT_CONFIG_FILE
-        "${PROJECT_BINARY_DIR}/CustomCPackOptions.cmake")
-
-# Not all options can be set in CustomCPackOptions.cmake
-if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
-  set(CPACK_SOURCE_GENERATOR "ZIP")
-  set(CPACK_GENERATOR "ZIP")
-else()
-  set(CPACK_SOURCE_GENERATOR "TGZ")
-  set(CPACK_GENERATOR "TGZ")
-endif()
-
-include(CPack)
+include(${CMAKE_SOURCE_DIR}/cmake/package.cmake)

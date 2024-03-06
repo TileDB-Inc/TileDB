@@ -67,6 +67,7 @@ The following are the most common configuration options:
 |macOS/Linux flag|Windows flag|CMake variable|Description|
 |----------------|------------|--------------|-----------|
 |`--prefix=PREFIX`|`-Prefix=PREFIX`|`CMAKE_INSTALL_PREFIX=<PREFIX>`|Install files in tree rooted at `PREFIX` (defaults to `TileDB/dist`)|
+|`--vcpkg-base-triplet=TRIPLET`|`-VcpkgBaseTriplet=TRIPLET`|`TILEDB_VCPKG_BASE_TRIPLET=TRIPLET`|Vcpkg base triplet, needed for features like ASAN and RelWithDebInfo|
 |`--linkage=shared/static`|`-Linkage=shared/static`|`BUILD_SHARED_LIBS=ON/OFF`|Linkage of the compiled TileDB library (defaults to `shared`) |
 |`--remove-deprecations`|`-RemoveDeprecations`|`TILEDB_REMOVE_DEPRECATIONS=ON`|Build TileDB without deprecated APIs|
 |`--enable-debug`|`-EnableDebug`|`CMAKE_BUILD_TYPE=Debug`|Enables debug build|
@@ -84,6 +85,13 @@ The following are the most common configuration options:
 |`--disable-cpp-api`|`-DisableCppApi`|`TILEDB_CPP_API=OFF`|Disables building the TileDB C++ API|
 |`--disable-stats`|`-DisableStats`|`TILEDB_STATS=OFF`|Disables internal TileDB statistics|
 |`--disable-tests`|`-DisableTests`|`TILEDB_TESTS=OFF`|Disables building the TileDB test suite|
+
+The supported vcpkg base triplet values are:
+
+* `arm64-osx`
+* `x64-linux`
+* `x64-osx`
+* `x64-windows`
 
 > [!TIP]
 > You can see all TileDB-specific CMake variables in [BuildOptions.cmake](../../cmake/Options/BuildOptions.cmake).
@@ -126,4 +134,29 @@ Vcpkg will not be automatically downloaded if:
 * The `TILEDB_DISABLE_AUTO_VCPKG` environment variable has been defined.
 * The build tree has been configured by directly calling CMake and the `CMAKE_TOOLCHAIN_FILE` variable has been set by the user.
 
-In these cases no dependencies CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html#command:find_package) command. The user is responsible for providing them.
+In these cases CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html) command. The user is responsible for providing the dependencies.
+
+### Building with sanitizers
+
+TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as the [vcpkg base triplet](#configuration-options) corresponding to your platform:
+
+> [!NOTE]
+> Currently only the `address` sanitizer is supported.
+
+```bash
+cd TileDB && mkdir build-asan && cd build-asan
+../bootstrap --enable-sanitizer=address --vcpkg-base-triplet=x64-linux
+make && make check
+```
+
+> [!IMPORTANT]
+> To avoid errors, building with sanitizers must be done in a separate build directory.
+
+### Building with optimizations and debug symbols
+
+TileDB supports configuring in `RelWithDebInfo` mode, which compiles code with optimizations while also emitting debug symbols. However on non-Windows platforms the dependencies built by vcpkg do not build by default with symbols. To enable that you have to do either of the following:
+
+* [Specify a vcpkg base triplet](#configuration-options).
+* Configure by directly calling CMake and setting a vcpkg triplet with the `VCPKG_DEFAULT_TRIPLET` variable. In this case you are responsible to ensure the appropriate options are passed to the triplet file.
+
+Configuring in `RelWithDebInfo` mode and enabling ASAN at the same time is not supported.

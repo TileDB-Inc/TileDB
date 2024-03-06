@@ -53,13 +53,15 @@ namespace sm {
 
 template <class T>
 DenseTiler<T>::DenseTiler(
+    shared_ptr<MemoryTracker> memory_tracker,
     const std::unordered_map<std::string, QueryBuffer>* buffers,
     const Subarray* subarray,
     Stats* const parent_stats,
     const std::string& offsets_format_mode,
     uint64_t offsets_bitsize,
     bool offsets_extra_element)
-    : stats_(parent_stats->create_child("DenseTiler"))
+    : memory_tracker_(memory_tracker)
+    , stats_(parent_stats->create_child("DenseTiler"))
     , array_schema_(subarray->array()->array_schema_latest())
     , buffers_(buffers)
     , subarray_(subarray)
@@ -223,7 +225,8 @@ Status DenseTiler<T>::get_tile(
         constants::format_version,
         constants::cell_var_offset_type,
         constants::cell_var_offset_size,
-        tile_off_size);
+        tile_off_size,
+        memory_tracker_);
 
     // Fill entire tile with MAX_UINT64
     std::vector<offsets_t> to_write(

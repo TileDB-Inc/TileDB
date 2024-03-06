@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,6 +49,8 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class ContextResources;
+
 class GroupDetailsException : public StatusException {
  public:
   explicit GroupDetailsException(const std::string& message)
@@ -58,7 +60,23 @@ class GroupDetailsException : public StatusException {
 
 class Group {
  public:
-  Group(const URI& group_uri, StorageManager* storage_manager);
+  /**
+   * Constructs a Group object given a uri and a ContextResources reference.
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Group class on StorageManager. For
+   * now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * Group(ContextResources&, const URI&).
+   *
+   * @param resources A ContextResources reference
+   * @param group_uri The location of the group
+   * @param storage_manager A StorageManager pointer
+   *    (this will go away in the near future)
+   */
+  Group(
+      ContextResources& resources,
+      const URI& group_uri,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~Group() = default;
@@ -177,7 +195,7 @@ class Group {
   std::optional<Datatype> metadata_type(const char* key);
 
   /** Retrieves the group metadata object. */
-  Status metadata(Metadata** metadata);
+  Metadata* metadata();
 
   /**
    * Retrieves the group metadata object.
@@ -190,7 +208,6 @@ class Group {
    * REST. A lock should already by taken before load_metadata is called.
    */
   Metadata* unsafe_metadata();
-  const Metadata* metadata() const;
 
   /**
    * Set metadata loaded
@@ -368,6 +385,9 @@ class Group {
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+  /** Memory tracker for the group. */
+  shared_ptr<MemoryTracker> memory_tracker_;
+
   /** The group URI. */
   URI group_uri_;
 
@@ -425,6 +445,9 @@ class Group {
   /** Mutex for thread safety. */
   mutable std::mutex mtx_;
 
+  /** The ContextResources class. */
+  ContextResources& resources_;
+
   /* ********************************* */
   /*         PROTECTED METHODS         */
   /* ********************************* */
@@ -433,6 +456,38 @@ class Group {
    * Load group metadata, handles remote groups vs non-remote groups
    */
   void load_metadata();
+
+  /**
+   * Load group metadata from disk
+   */
+  void load_metadata_from_storage(
+      const shared_ptr<GroupDirectory>& group_dir,
+      const EncryptionKey& encryption_key);
+
+  /** Opens an group for reads. */
+  void group_open_for_reads();
+
+  /**
+   * Load group details from disk
+   */
+  void load_group_details();
+
+  /**
+   * Load a group detail from URI
+   *
+   * @param uri location to load
+   */
+  void load_group_from_uri(const URI& uri);
+
+  /**
+   * Load a group detail from URIs
+   *
+   * @param uris locations to load
+   */
+  void load_group_from_all_uris(const std::vector<TimestampedURI>& uris);
+
+  /** Opens an group for writes. */
+  void group_open_for_writes();
 };
 }  // namespace tiledb::sm
 

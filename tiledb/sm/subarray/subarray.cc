@@ -2131,6 +2131,29 @@ void Subarray::add_default_label_ranges(dimension_size_type dim_num) {
   label_range_subset_.resize(dim_num, nullopt);
 }
 
+void Subarray::reset_default_ranges() {
+  if (array_->non_empty_domain_computed()) {
+    auto dim_num = array_->array_schema_latest().dim_num();
+    auto& domain{array_->array_schema_latest().domain()};
+
+    // Process all dimensions one by one.
+    for (unsigned d = 0; d < dim_num; d++) {
+      // Only enter the check if there are only one range set on the dimension.
+      if (!is_default_[d] && range_subset_[d].num_ranges() == 1) {
+        // If the range set is the same as the non empty domain.
+        auto& ned = array_->non_empty_domain()[d];
+        if (ned == range_subset_[d][0]) {
+          // Reset the default flag and reset the range subset to be default.
+          is_default_[d] = true;
+          auto dim{domain.dimension_ptr(d)};
+          range_subset_[d] = RangeSetAndSuperset(
+              dim->type(), dim->domain(), true, coalesce_ranges_);
+        }
+      }
+    }
+  }
+}
+
 void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 
@@ -2187,7 +2210,7 @@ Status Subarray::compute_est_result_size(
   const auto& array_schema = array_->array_schema_latest();
   auto attribute_num = array_schema.attribute_num();
   auto dim_num = array_schema.dim_num();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   auto num = attribute_num + dim_num + 1;
   auto range_num = this->range_num();
 
@@ -2640,7 +2663,7 @@ Status Subarray::precompute_tile_overlap(
 
 Status Subarray::precompute_all_ranges_tile_overlap(
     ThreadPool* const compute_tp,
-    std::vector<FragIdx>& frag_tile_idx,
+    const std::vector<FragIdx>& frag_tile_idx,
     ITileRange* tile_ranges) {
   auto timer_se = stats_->start_timer("read_compute_simple_tile_overlap");
 
@@ -3080,8 +3103,12 @@ RelevantFragments& Subarray::relevant_fragments() {
   return relevant_fragments_;
 }
 
-stats::Stats* Subarray::stats() const {
-  return stats_;
+const stats::Stats& Subarray::stats() const {
+  return *stats_;
+}
+
+void Subarray::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(

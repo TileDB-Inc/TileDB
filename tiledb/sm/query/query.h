@@ -655,6 +655,14 @@ class Query {
   /** Returns the internal stats object. */
   stats::Stats* stats() const;
 
+  /**
+   * Populate the owned stats instance with data.
+   * To be removed when the class will get a C41 constructor.
+   *
+   * @param data Data to populate the stats with.
+   */
+  void set_stats(const stats::StatsData& data);
+
   /** Returns the scratch space used for REST requests. */
   shared_ptr<Buffer> rest_scratch() const;
 
@@ -779,6 +787,9 @@ class Query {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The query memory tracker. */
+  shared_ptr<MemoryTracker> query_memory_tracker_;
 
   /** A smart pointer to the array the query is associated with.
    * Ensures that the Array object exists as long as the Query object exists. */

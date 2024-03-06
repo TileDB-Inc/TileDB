@@ -35,8 +35,10 @@ commence(object_library array)
     this_target_object_libraries(
         array_schema
         baseline
+        context_resources
         fragment
         generic_tile_io
+        uuid
         vfs
     )
     if(TILEDB_STATS)

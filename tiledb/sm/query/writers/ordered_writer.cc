@@ -176,12 +176,13 @@ Status OrderedWriter::ordered_write() {
   auto timer_se = stats_->start_timer("ordered_write");
 
   // Create new fragment
-  auto frag_meta = make_shared<FragmentMetadata>(HERE());
+  auto frag_meta = this->create_fragment_metadata();
   RETURN_CANCEL_OR_ERROR(create_fragment(true, frag_meta));
   frag_uri_ = frag_meta->fragment_uri();
 
   // Create a dense tiler
   DenseTiler<T> dense_tiler(
+      query_memory_tracker_,
       &buffers_,
       &subarray_,
       stats_,
@@ -318,7 +319,13 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
       tile_batches[b].emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, var, nullable, cell_size, type));
+          array_schema_,
+          cell_num_per_tile,
+          var,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_));
     }
 
     {

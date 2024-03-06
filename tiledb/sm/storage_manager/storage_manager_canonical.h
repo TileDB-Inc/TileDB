@@ -167,53 +167,6 @@ class StorageManagerCanonical {
   Status group_close_for_writes(tiledb::sm::Group* group);
 
   /**
-   * Loads the group metadata from persistent storage based on
-   * the input URI manager.
-   */
-  void load_group_metadata(
-      const tdb_shared_ptr<GroupDirectory>& group_dir,
-      const EncryptionKey& encryption_key,
-      Metadata* metadata);
-
-  /**
-   * Load a group detail from URI
-   *
-   * @param group_uri group uri
-   * @param uri location to load
-   * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_uri(
-      const URI& group_uri,
-      const URI& uri,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Load a group detail from URIs
-   *
-   * @param group_uri group uri
-   * @param uri location to load
-   * @param encryption_key encryption key
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_from_all_uris(
-      const URI& group_uri,
-      const std::vector<TimestampedURI>& uris,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Load group details based on group directory
-   *
-   * @param group_directory
-   * @param encryption_key encryption key
-   *
-   * @return tuple Status and pointer to group deserialized
-   */
-  tuple<Status, optional<shared_ptr<GroupDetails>>> load_group_details(
-      const shared_ptr<GroupDirectory>& group_directory,
-      const EncryptionKey& encryption_key);
-
-  /**
    * Store the group details
    *
    * @param group_detail_folder_uri group details folder
@@ -227,25 +180,6 @@ class StorageManagerCanonical {
       const URI& group_detail_uri,
       tdb_shared_ptr<GroupDetails> group,
       const EncryptionKey& encryption_key);
-
-  /**
-   * Opens an group for reads.
-   *
-   * @param group The group to be opened.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
-   */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_reads(Group* group);
-
-  /** Opens an group for writes.
-   *
-   * @param group The group to open.
-   * @return tuple of Status, latest GroupSchema and map of all group schemas
-   *        Status Ok on success, else error
-   */
-  std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-  group_open_for_writes(Group* group);
 
   /**
    * Cleans up the array data.
@@ -656,17 +590,6 @@ class StorageManagerCanonical {
    */
   Status store_metadata(
       const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
-
-  /**
-   * Stores data into persistent storage.
-   *
-   * @param tile Tile to store.
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_data_to_generic_tile(
-      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
 
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
