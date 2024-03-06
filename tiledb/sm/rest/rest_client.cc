@@ -727,12 +727,20 @@ void RestClient::post_query_plan_from_rest(
   const std::string cache_key = array_ns + ":" + array_uri;
   throw_if_not_ok(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
-  std::string url =
-      redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
-      curlc.url_escape(array_uri) +
-      "/query/plan?type=" + query_type_str(query.type()) +
-      "&start_timestamp=" + std::to_string(array->timestamp_start()) +
-      "&end_timestamp=" + std::to_string(array->timestamp_end());
+  std::string url;
+  if (use_refactored_query(query.config())) {
+    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/plan?type=" + query_type_str(query.type());
+  } else {
+    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/plan?type=" + query_type_str(query.type());
+  }
+
+  // Remote array reads always supply the timestamp.
+  url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+  url += "&end_timestamp=" + std::to_string(array->timestamp_end());
 
   // Get the data
   Buffer returned_data;
