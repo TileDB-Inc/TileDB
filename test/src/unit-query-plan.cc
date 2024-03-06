@@ -51,7 +51,6 @@ struct QueryPlanFx {
 
   void create_dense_array(const std::string& array_name);
   void create_sparse_array(const std::string& array_name);
-  void rm_array();
 
   // Vector of supported filsystems
   tiledb_ctx_handle_t* ctx_c_{nullptr};
@@ -267,8 +266,9 @@ QueryPlanFx::QueryPlanFx()
 }
 
 QueryPlanFx::~QueryPlanFx() {
-  rm_array();
+  test::vfs_test_remove_temp_dir(ctx_c_, vfs_c_, temp_dir_);
   test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok();
+  tiledb_vfs_free(&vfs_c_);
 }
 
 void QueryPlanFx::create_dense_array(const std::string& array_name) {
@@ -278,9 +278,6 @@ void QueryPlanFx::create_dense_array(const std::string& array_name) {
 
   abs_uri_ = temp_dir_ + "/" + array_name;
   uri_ += abs_uri_;
-
-  // Ensure that no array exists at uri_
-  rm_array();
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
@@ -357,9 +354,6 @@ void QueryPlanFx::create_sparse_array(const std::string& array_name) {
   abs_uri_ = temp_dir_ + "/" + array_name;
   uri_ += abs_uri_;
 
-  // Ensure that no array exists at uri_
-  rm_array();
-
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};
   uint64_t dim_domain[] = {1, 10, 1, 10};
@@ -424,11 +418,4 @@ void QueryPlanFx::create_sparse_array(const std::string& array_name) {
   tiledb_dimension_free(&d2);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-}
-
-void QueryPlanFx::rm_array() {
-  auto obj = Object::object(ctx_, uri_);
-  if (obj.type() == Object::Type::Array) {
-    Array::delete_array(ctx_, uri_);
-  }
 }
