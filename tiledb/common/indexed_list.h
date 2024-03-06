@@ -75,12 +75,12 @@ class IndexedList {
   }
 
   /** Returns an iterator to the beginning of the items. */
-  std::list<T>::iterator begin() {
+  typename std::list<T>::iterator begin() {
     return list_.begin();
   }
 
   /** Returns an iterator to the end of the items. */
-  std::list<T>::iterator end() {
+  typename std::list<T>::iterator end() {
     return list_.end();
   }
 
