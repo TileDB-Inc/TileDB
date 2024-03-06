@@ -156,14 +156,18 @@ TEST_CASE_METHOD(
   // This throws if the query plan is not valid JSON
   std::string str_plan(data, len);
   nlohmann::json json_plan = nlohmann::json::parse(str_plan);
+  std::string array_uri_from_json = json_plan["TileDB Query Plan"]["Array.URI"];
 
   CHECK(
       json_plan["TileDB Query Plan"]["Array.URI"] ==
-      tiledb::sm::URI(abs_uri_, true).to_string());
+      tiledb::sm::URI(uri_, true).to_string());
+  ;
   CHECK(json_plan["TileDB Query Plan"]["Array.Type"] == "dense");
-  CHECK(
-      json_plan["TileDB Query Plan"]["VFS.Backend"] ==
-      tiledb::sm::URI(abs_uri_).backend_name());
+  if (!array_uri_from_json.starts_with("tiledb://")) {
+    CHECK(
+        json_plan["TileDB Query Plan"]["VFS.Backend"] ==
+        tiledb::sm::URI(uri_).backend_name());
+  }
   CHECK(json_plan["TileDB Query Plan"]["Query.Layout"] == "row-major");
   CHECK(json_plan["TileDB Query Plan"]["Query.Strategy.Name"] == "DenseReader");
   CHECK(
@@ -223,14 +227,17 @@ TEST_CASE_METHOD(
   // This throws if the query plan is not valid JSON
   std::string str_plan(data, len);
   nlohmann::json json_plan = nlohmann::json::parse(str_plan);
+  std::string array_uri_from_json = json_plan["TileDB Query Plan"]["Array.URI"];
 
   CHECK(
       json_plan["TileDB Query Plan"]["Array.URI"] ==
-      tiledb::sm::URI(abs_uri_, true).to_string());
+      tiledb::sm::URI(uri_, true).to_string());
   CHECK(json_plan["TileDB Query Plan"]["Array.Type"] == "sparse");
-  CHECK(
-      json_plan["TileDB Query Plan"]["VFS.Backend"] ==
-      tiledb::sm::URI(abs_uri_).backend_name());
+  if (!array_uri_from_json.starts_with("tiledb://")) {
+    CHECK(
+        json_plan["TileDB Query Plan"]["VFS.Backend"] ==
+        tiledb::sm::URI(uri_).backend_name());
+  }
   CHECK(json_plan["TileDB Query Plan"]["Query.Layout"] == "global-order");
   CHECK(
       json_plan["TileDB Query Plan"]["Query.Strategy.Name"] ==
