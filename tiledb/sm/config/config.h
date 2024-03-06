@@ -706,6 +706,16 @@ class Config {
   /** Compares configs for equality. */
   bool operator==(const Config& rhs) const;
 
+  /**
+   * Validates a parameter value for a config option, modifying it if necessary.
+   *
+   * @param param The config parameter name.
+   * @param value The config parameter value.
+   * @return The validated parameter value.
+   */
+  static std::string validate_param_value(
+      const std::string& param, const std::string& value);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -716,6 +726,9 @@ class Config {
 
   /** Stores the parameters set by the user. */
   std::set<std::string> set_params_;
+
+  /** Temporary storage for lookup of a config value set by the environment. */
+  mutable std::string env_param_value_;
 
   /* ********************************* */
   /*          PRIVATE CONSTANTS        */
@@ -735,8 +748,11 @@ class Config {
    * If `param` is one of the system configuration parameters, it checks
    * whether its `value` can be parsed in the correct datatype. If
    * `param` is not a system configuration parameter, the function is a noop.
+   *
+   * @param param The config parameter name.
+   * @param value The config parameter value.
    */
-  Status sanity_check(const std::string& param, const std::string& value) const;
+  void sanity_check(const std::string& param, const std::string& value) const;
 
   /**
    * Convert a parameter in the form of "a.b.c" to expected env string of
