@@ -1379,6 +1379,9 @@ class Subarray {
    */
   void reset_default_ranges();
 
+  /** Loads the R-Trees of all relevant fragments in parallel. */
+  Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
+
  private:
   /* ********************************* */
   /*        PRIVATE DATA TYPES         */
@@ -1609,9 +1612,6 @@ class Subarray {
    * given subarray.
    */
   void swap(Subarray& subarray);
-
-  /** Loads the R-Trees of all relevant fragments in parallel. */
-  Status load_relevant_fragment_rtrees(ThreadPool* compute_tp) const;
 
   /**
    * Computes the tile overlap for each range and relevant fragment.
