@@ -151,7 +151,7 @@ Status DeletesAndUpdates::dowork() {
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
-  WriterTile serialized_condition =
+  auto serialized_condition =
       update_values_.empty() ?
           tiledb::sm::deletes_and_updates::serialization::serialize_condition(
               condition_->negated_condition(), query_memory_tracker_) :

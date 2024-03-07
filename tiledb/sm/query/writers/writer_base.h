@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/fragment/written_fragment_info.h"
 #include "tiledb/sm/query/iquery_strategy.h"
@@ -57,7 +58,7 @@ class DomainBuffersView;
 class FragmentMetadata;
 class TileMetadataGenerator;
 
-using WriterTileTupleVector = std::vector<WriterTileTuple>;
+using WriterTileTupleVector = IndexedList<WriterTileTuple>;
 
 /** Processes write queries. */
 class WriterBase : public StrategyBase, public IQueryStrategy {
@@ -489,7 +490,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   template <class T>
   Status prepare_filter_and_write_tiles(
       const std::string& name,
-      std::vector<WriterTileTupleVector>& tile_batches,
+      IndexedList<WriterTileTupleVector>& tile_batches,
       tdb_shared_ptr<FragmentMetadata> frag_meta,
       DenseTiler<T>* dense_tiler,
       uint64_t thread_num);

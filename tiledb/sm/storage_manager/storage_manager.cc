@@ -1267,14 +1267,14 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(members, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   group->serialize(members, serializer);
 
-  stats()->add_counter("write_group_size", tile.size());
+  stats()->add_counter("write_group_size", tile->size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1298,13 +1298,13 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   array_schema->serialize(serializer);
 
-  stats()->add_counter("write_array_schema_size", tile.size());
+  stats()->add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
   bool exists;
@@ -1348,10 +1348,10 @@ Status StorageManagerCanonical::store_array_schema(
     SizeComputationSerializer enumeration_size_serializer;
     enmr->serialize(enumeration_size_serializer);
 
-    WriterTile tile{WriterTile::from_generic(
+    auto tile{WriterTile::from_generic(
         enumeration_size_serializer.size(),
         resources_.ephemeral_memory_tracker())};
-    Serializer serializer(tile.data(), tile.size());
+    Serializer serializer(tile->data(), tile->size());
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
@@ -1378,10 +1378,10 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   metadata->serialize(serializer);
 
   stats()->add_counter("write_meta_size", size_computation_serializer.size());

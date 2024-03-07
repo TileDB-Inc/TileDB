@@ -59,13 +59,8 @@ class WriterTileTuple {
       const Datatype type,
       shared_ptr<MemoryTracker> memory_tracker);
 
-  /** Move constructor. */
-  WriterTileTuple(WriterTileTuple&& tile);
-
-  /** Move-assign operator. */
-  WriterTileTuple& operator=(WriterTileTuple&& tile);
-
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTileTuple);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTileTuple);
 
   /* ********************************* */
   /*                API                */
@@ -215,9 +210,6 @@ class WriterTileTuple {
   inline uint64_t cell_num() const {
     return cell_num_;
   }
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(WriterTileTuple& tile);
 
  private:
   /* ********************************* */
