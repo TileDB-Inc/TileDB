@@ -608,7 +608,7 @@ void ResultTile::compute_results_sparse<char>(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) {
   auto coords_num = result_tile->cell_num();
   auto dim_num = result_tile->domain()->dim_num();
@@ -765,7 +765,7 @@ void ResultTile::compute_results_sparse(
     const ResultTile* result_tile,
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout&) {
   // For easy reference.
   auto coords_num = result_tile->cell_num();
@@ -809,7 +809,7 @@ void ResultTile::compute_results_count_sparse_string_range(
     const offsets_t* buff_off,
     const uint64_t start,
     const uint64_t end,
-    std::vector<BitmapType>& result_count) {
+    tdb::pmr::vector<BitmapType>& result_count) {
   const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
 
   // Process all cells.
@@ -875,7 +875,7 @@ void ResultTile::compute_results_count_sparse_string(
     unsigned dim_idx,
     const NDRange& ranges,
     const tdb::pmr::vector<uint64_t>& range_indexes,
-    std::vector<BitmapType>& result_count,
+    tdb::pmr::vector<BitmapType>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) {
@@ -1051,7 +1051,7 @@ void ResultTile::compute_results_count_sparse(
     unsigned dim_idx,
     const NDRange& ranges,
     const tdb::pmr::vector<uint64_t>& range_indexes,
-    std::vector<BitmapType>& result_count,
+    tdb::pmr::vector<BitmapType>& result_count,
     const Layout&,
     const uint64_t min_cell,
     const uint64_t max_cell) {
@@ -1158,7 +1158,7 @@ Status ResultTile::compute_results_dense(
 Status ResultTile::compute_results_sparse(
     unsigned dim_idx,
     const Range& range,
-    std::vector<uint8_t>* result_bitmap,
+    tdb::pmr::vector<uint8_t>* result_bitmap,
     const Layout& cell_order) const {
   assert(compute_results_sparse_func_[dim_idx] != nullptr);
   compute_results_sparse_func_[dim_idx](
@@ -1171,7 +1171,7 @@ Status ResultTile::compute_results_count_sparse<uint8_t>(
     unsigned dim_idx,
     const NDRange& ranges,
     const tdb::pmr::vector<uint64_t>& range_indexes,
-    std::vector<uint8_t>& result_count,
+    tdb::pmr::vector<uint8_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
@@ -1193,7 +1193,7 @@ Status ResultTile::compute_results_count_sparse<uint64_t>(
     unsigned dim_idx,
     const NDRange& ranges,
     const tdb::pmr::vector<uint64_t>& range_indexes,
-    std::vector<uint64_t>& result_count,
+    tdb::pmr::vector<uint64_t>& result_count,
     const Layout& cell_order,
     const uint64_t min_cell,
     const uint64_t max_cell) const {
