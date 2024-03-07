@@ -124,4 +124,40 @@ ObjectType object_type(ContextResources& resources, const URI& uri) {
   return ObjectType::INVALID;
 }
 
+void object_remove(ContextResources& resources, const char* path) {
+  auto uri = URI(path);
+  if (uri.is_invalid())
+    throw ObjectException(
+        std::string("Cannot remove object '") + path + "'; Invalid URI");
+
+  ObjectType obj_type = object_type(resources, uri);
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        std::string("Cannot remove object '") + path +
+        "'; Invalid TileDB object");
+
+  throw_if_not_ok(resources.vfs().remove_dir(uri));
+}
+
+void object_move(
+    ContextResources& resources, const char* old_path, const char* new_path) {
+  auto old_uri = URI(old_path);
+  if (old_uri.is_invalid())
+    throw ObjectException(
+        std::string("Cannot move object '") + old_path + "'; Invalid URI");
+
+  auto new_uri = URI(new_path);
+  if (new_uri.is_invalid())
+    throw ObjectException(
+        std::string("Cannot move object to '") + new_path + "'; Invalid URI");
+
+  ObjectType obj_type = object_type(resources, old_uri);
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        std::string("Cannot move object '") + old_path +
+        "'; Invalid TileDB object");
+
+  throw_if_not_ok(resources.vfs().move_dir(old_uri, new_uri));
+}
+
 }  // namespace tiledb::sm
