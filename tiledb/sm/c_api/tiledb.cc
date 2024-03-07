@@ -72,6 +72,8 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_iter.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -3153,22 +3155,19 @@ int32_t tiledb_array_upgrade_version(
 
 int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
-  auto uri = tiledb::sm::URI(path);
-  tiledb::sm::ObjectType object_type;
-  throw_if_not_ok(ctx->storage_manager()->object_type(uri, &object_type));
-
-  *type = static_cast<tiledb_object_t>(object_type);
+  *type = static_cast<tiledb_object_t>(
+      tiledb::sm::object_type(ctx->resources(), tiledb::sm::URI(path)));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  throw_if_not_ok(ctx->storage_manager()->object_remove(path));
+  tiledb::sm::object_remove(ctx->resources(), path);
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  throw_if_not_ok(ctx->storage_manager()->object_move(old_path, new_path));
+  tiledb::sm::object_move(ctx->resources(), old_path, new_path);
   return TILEDB_OK;
 }
 
@@ -3188,31 +3187,19 @@ int32_t tiledb_object_walk(
   }
 
   // Create an object iterator
-  tiledb::sm::StorageManager::ObjectIter* obj_iter;
-  throw_if_not_ok(ctx->storage_manager()->object_iter_begin(
-      &obj_iter, path, static_cast<tiledb::sm::WalkOrder>(order)));
+  tiledb::sm::ObjectIter obj_iter{
+      ctx->resources(), path, static_cast<tiledb::sm::WalkOrder>(order)};
 
   // For as long as there is another object and the callback indicates to
   // continue, walk over the TileDB objects in the path
-  const char* obj_name;
-  tiledb::sm::ObjectType obj_type;
-  bool has_next;
   int32_t rc = 0;
   do {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->storage_manager()->object_iter_next(
-                obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager()->object_iter_free(obj_iter);
-      return TILEDB_ERR;
-    }
-    if (!has_next)
+    auto next = obj_iter.next();
+    if (!next.has_value())
       break;
-    rc = callback(obj_name, tiledb_object_t(obj_type), data);
+    rc = callback(
+        std::get<0>(*next).c_str(), tiledb_object_t(std::get<1>(*next)), data);
   } while (rc == 1);
-
-  // Clean up
-  ctx->storage_manager()->object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;
@@ -3235,30 +3222,18 @@ int32_t tiledb_object_ls(
   }
 
   // Create an object iterator
-  tiledb::sm::StorageManager::ObjectIter* obj_iter;
-  throw_if_not_ok(ctx->storage_manager()->object_iter_begin(&obj_iter, path));
+  tiledb::sm::ObjectIter obj_iter{ctx->resources(), path};
 
   // For as long as there is another object and the callback indicates to
   // continue, walk over the TileDB objects in the path
-  const char* obj_name;
-  tiledb::sm::ObjectType obj_type;
-  bool has_next;
   int32_t rc = 0;
   do {
-    if (SAVE_ERROR_CATCH(
-            ctx,
-            ctx->storage_manager()->object_iter_next(
-                obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager()->object_iter_free(obj_iter);
-      return TILEDB_ERR;
-    }
-    if (!has_next)
+    auto next = obj_iter.next();
+    if (!next.has_value())
       break;
-    rc = callback(obj_name, tiledb_object_t(obj_type), data);
+    rc = callback(
+        std::get<0>(*next).c_str(), tiledb_object_t(std::get<1>(*next)), data);
   } while (rc == 1);
-
-  // Clean up
-  ctx->storage_manager()->object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;

@@ -42,6 +42,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/rest/rest_client.h"
 
@@ -90,9 +91,8 @@ void GroupDetails::mark_member_for_addition(
     absolute_group_member_uri =
         group_uri_.join_path(group_member_uri.to_string());
   }
-  ObjectType type = ObjectType::INVALID;
-  throw_if_not_ok(
-      storage_manager->object_type(absolute_group_member_uri, &type));
+  ObjectType type =
+      object_type(storage_manager->resources(), absolute_group_member_uri);
   if (type == ObjectType::INVALID) {
     throw GroupDetailsException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +

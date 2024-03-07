@@ -64,6 +64,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/update_value.h"
@@ -856,44 +857,6 @@ void StorageManagerCanonical::decrement_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManagerCanonical::object_remove(const char* path) const {
-  auto uri = URI(path);
-  if (uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot remove object '") + path + "'; Invalid URI"));
-
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot remove object '") + path +
-        "'; Invalid TileDB object"));
-
-  return vfs()->remove_dir(uri);
-}
-
-Status StorageManagerCanonical::object_move(
-    const char* old_path, const char* new_path) const {
-  auto old_uri = URI(old_path);
-  if (old_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object '") + old_path + "'; Invalid URI"));
-
-  auto new_uri = URI(new_path);
-  if (new_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object to '") + new_path + "'; Invalid URI"));
-
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(old_uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object '") + old_path +
-        "'; Invalid TileDB object"));
-
-  return vfs()->move_dir(old_uri, new_uri);
-}
-
 const std::unordered_map<std::string, std::string>&
 StorageManagerCanonical::tags() const {
   return tags_;
@@ -1041,196 +1004,6 @@ StorageManagerCanonical::load_delete_and_update_conditions(
   RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
 
   return {Status::Ok(), conditions, update_values};
-}
-
-Status StorageManagerCanonical::object_type(
-    const URI& uri, ObjectType* type) const {
-  URI dir_uri = uri;
-  if (uri.is_s3() || uri.is_azure() || uri.is_gcs()) {
-    // Always add a trailing '/' in the S3/Azure/GCS case so that listing the
-    // URI as a directory will work as expected. Listing a non-directory object
-    // is not an error for S3/Azure/GCS.
-    auto uri_str = uri.to_string();
-    dir_uri =
-        URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
-  } else if (!uri.is_tiledb()) {
-    // For non public cloud backends, listing a non-directory is an error.
-    bool is_dir = false;
-    RETURN_NOT_OK(vfs()->is_dir(uri, &is_dir));
-    if (!is_dir) {
-      *type = ObjectType::INVALID;
-      return Status::Ok();
-    }
-  }
-  bool exists = is_array(uri);
-  if (exists) {
-    *type = ObjectType::ARRAY;
-    return Status::Ok();
-  }
-
-  RETURN_NOT_OK(is_group(uri, &exists));
-  if (exists) {
-    *type = ObjectType::GROUP;
-    return Status::Ok();
-  }
-
-  *type = ObjectType::INVALID;
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::object_iter_begin(
-    ObjectIter** obj_iter, const char* path, WalkOrder order) {
-  // Sanity check
-  URI path_uri(path);
-  if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
-  }
-
-  // Get all contents of path
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
-
-  // Create a new object iterator
-  *obj_iter = tdb_new(ObjectIter);
-  (*obj_iter)->order_ = order;
-  (*obj_iter)->recursive_ = true;
-
-  // Include the uris that are TileDB objects in the iterator state
-  ObjectType obj_type;
-  for (auto& uri : uris) {
-    RETURN_NOT_OK_ELSE(object_type(uri, &obj_type), tdb_delete(*obj_iter));
-    if (obj_type != ObjectType::INVALID) {
-      (*obj_iter)->objs_.push_back(uri);
-      if (order == WalkOrder::POSTORDER)
-        (*obj_iter)->expanded_.push_back(false);
-    }
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::object_iter_begin(
-    ObjectIter** obj_iter, const char* path) {
-  // Sanity check
-  URI path_uri(path);
-  if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
-  }
-
-  // Get all contents of path
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
-
-  // Create a new object iterator
-  *obj_iter = tdb_new(ObjectIter);
-  (*obj_iter)->order_ = WalkOrder::PREORDER;
-  (*obj_iter)->recursive_ = false;
-
-  // Include the uris that are TileDB objects in the iterator state
-  ObjectType obj_type;
-  for (auto& uri : uris) {
-    RETURN_NOT_OK(object_type(uri, &obj_type));
-    if (obj_type != ObjectType::INVALID)
-      (*obj_iter)->objs_.push_back(uri);
-  }
-
-  return Status::Ok();
-}
-
-void StorageManagerCanonical::object_iter_free(ObjectIter* obj_iter) {
-  tdb_delete(obj_iter);
-}
-
-Status StorageManagerCanonical::object_iter_next(
-    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
-  // Handle case there is no next
-  if (obj_iter->objs_.empty()) {
-    *has_next = false;
-    return Status::Ok();
-  }
-
-  // Retrieve next object
-  switch (obj_iter->order_) {
-    case WalkOrder::PREORDER:
-      RETURN_NOT_OK(object_iter_next_preorder(obj_iter, path, type, has_next));
-      break;
-    case WalkOrder::POSTORDER:
-      RETURN_NOT_OK(object_iter_next_postorder(obj_iter, path, type, has_next));
-      break;
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::object_iter_next_postorder(
-    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
-  // Get all contents of the next URI recursively till the bottom,
-  // if the front of the list has not been expanded
-  if (obj_iter->expanded_.front() == false) {
-    uint64_t obj_num;
-    do {
-      obj_num = obj_iter->objs_.size();
-      std::vector<URI> uris;
-      RETURN_NOT_OK(vfs()->ls(obj_iter->objs_.front(), &uris));
-      obj_iter->expanded_.front() = true;
-
-      // Push the new TileDB objects in the front of the iterator's list
-      ObjectType obj_type;
-      for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-        RETURN_NOT_OK(object_type(*it, &obj_type));
-        if (obj_type != ObjectType::INVALID) {
-          obj_iter->objs_.push_front(*it);
-          obj_iter->expanded_.push_front(false);
-        }
-      }
-    } while (obj_num != obj_iter->objs_.size());
-  }
-
-  // Prepare the values to be returned
-  URI front_uri = obj_iter->objs_.front();
-  obj_iter->next_ = front_uri.to_string();
-  RETURN_NOT_OK(object_type(front_uri, type));
-  *path = obj_iter->next_.c_str();
-  *has_next = true;
-
-  // Pop the front (next URI) of the iterator's object list
-  obj_iter->objs_.pop_front();
-  obj_iter->expanded_.pop_front();
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::object_iter_next_preorder(
-    ObjectIter* obj_iter, const char** path, ObjectType* type, bool* has_next) {
-  // Prepare the values to be returned
-  URI front_uri = obj_iter->objs_.front();
-  obj_iter->next_ = front_uri.to_string();
-  RETURN_NOT_OK(object_type(front_uri, type));
-  *path = obj_iter->next_.c_str();
-  *has_next = true;
-
-  // Pop the front (next URI) of the iterator's object list
-  obj_iter->objs_.pop_front();
-
-  // Return if no recursion is needed
-  if (!obj_iter->recursive_)
-    return Status::Ok();
-
-  // Get all contents of the next URI
-  std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(front_uri, &uris));
-
-  // Push the new TileDB objects in the front of the iterator's list
-  ObjectType obj_type;
-  for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-    RETURN_NOT_OK(object_type(*it, &obj_type));
-    if (obj_type != ObjectType::INVALID)
-      obj_iter->objs_.push_front(*it);
-  }
-
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::query_submit(Query* query) {
@@ -1428,8 +1201,7 @@ Status StorageManagerCanonical::group_metadata_consolidate(
         "Cannot consolidate group metadata; Invalid URI"));
   }
   // Check if group exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+  ObjectType obj_type = object_type(resources(), group_uri);
 
   if (obj_type != ObjectType::GROUP) {
     return logger_->status(Status_StorageManagerError(
@@ -1454,8 +1226,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
   }
 
   // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(group_uri, &obj_type));
+  ObjectType obj_type = object_type(resources(), group_uri);
 
   if (obj_type != ObjectType::GROUP) {
     throw Status_StorageManagerError(

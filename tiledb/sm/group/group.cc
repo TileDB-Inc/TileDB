@@ -44,6 +44,7 @@
 #include "tiledb/sm/group/group_member_v1.h"
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -676,8 +677,7 @@ std::string Group::dump(
     if (it->type() == ObjectType::GROUP && recursive) {
       // Before listing the group's members, check if the group exists in
       // storage. If it does not, leave a message in the string.
-      ObjectType member_type = ObjectType::INVALID;
-      throw_if_not_ok(storage_manager_->object_type(member_uri, &member_type));
+      ObjectType member_type = object_type(resources_, member_uri);
       if (member_type == ObjectType::GROUP) {
         do_recurse = true;
       } else {
