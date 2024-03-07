@@ -64,18 +64,17 @@ ObjectIter::ObjectIter(
   throw_if_not_ok(resources_.vfs().ls(path_uri, &uris));
 
   // Include the uris that are TileDB objects in the iterator state
-  ObjectType obj_type;
   for (auto& uri : uris) {
     ObjectType obj_type = object_type(resources_, uri);
     if (obj_type != ObjectType::INVALID) {
       objs_.push_back(uri);
-      if (order_ == WalkOrder::POSTORDER)
+      if (recursive_ && order_ == WalkOrder::POSTORDER)
         expanded_.push_back(false);
     }
   }
 }
 
-std::tuple<std::string, ObjectType> ObjectIter::next_preorder() {
+std::tuple<std::string, ObjectType> ObjectIter::next_postorder() {
   // Get all contents of the next URI recursively till the bottom,
   // if the front of the list has not been expanded
   if (expanded_.front() == false) {
@@ -107,7 +106,7 @@ std::tuple<std::string, ObjectType> ObjectIter::next_preorder() {
   return {front_uri.to_string(), object_type(resources_, front_uri)};
 }
 
-std::tuple<std::string, ObjectType> ObjectIter::next_postorder() {
+std::tuple<std::string, ObjectType> ObjectIter::next_preorder() {
   // Prepare the values to be returned
   URI front_uri = objs_.front();
 
