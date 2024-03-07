@@ -106,8 +106,7 @@ Query::Query(
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
     , query_remote_buffer_storage_(std::nullopt)
-    , default_channel_actual_{
-          make_shared<QueryChannelActual>(HERE(), *this, 0)} {
+    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {

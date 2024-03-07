@@ -162,7 +162,7 @@ capi_return_t tiledb_query_get_default_channel(
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
   *channel = tiledb_query_channel_handle_t::make_handle(
-      query->query_->actual_default_channel());
+      query->query_->default_channel());
 
   return TILEDB_OK;
 }

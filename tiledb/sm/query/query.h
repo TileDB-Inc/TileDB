@@ -753,14 +753,13 @@ class Query {
    * Create the aggregate channel object. This is split out because it's not
    * at construction time, but on demand, and in two different situations.
    */
-  void create_actual_aggregate_channel() {
+  void create_aggregate_channel() {
     /*
      * Because we have an extremely simple way of choosing channel identifiers,
      * we can get away with hard-coding `1` here as the identifier for the
      * aggregate channel.
      */
-    aggregate_channel_actual_ =
-        make_shared<QueryChannelActual>(HERE(), *this, 1);
+    aggregate_channel_ = make_shared<QueryChannel>(HERE(), *this, 1);
   }
 
  public:
@@ -776,10 +775,10 @@ class Query {
       /*
        * Assert: this is the first aggregate added.
        *
-       * We create the actual aggregate channel on demand, and this is when
-       * we need to do it.
+       * We create the aggregate channel on demand, and this is when we need to
+       * do it.
        */
-      create_actual_aggregate_channel();
+      create_aggregate_channel();
     }
     default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
@@ -791,20 +790,21 @@ class Query {
   /**
    * Get a list of all channels and their aggregates
    */
-  std::vector<QueryChannel> get_channels() {
+  std::vector<LegacyQueryAggregatesOverDefault> get_channels() {
     // Currently only the default channel is supported
-    return {QueryChannel(true, default_channel_aggregates_)};
+    return {
+        LegacyQueryAggregatesOverDefault(true, default_channel_aggregates_)};
   }
 
   /**
    * Add a channel to the query. Used only by capnp serialization to initialize
    * the aggregates list.
    */
-  void add_channel(const QueryChannel& channel) {
+  void add_channel(const LegacyQueryAggregatesOverDefault& channel) {
     if (channel.is_default()) {
       default_channel_aggregates_ = channel.aggregates();
       if (!default_channel_aggregates_.empty()) {
-        create_actual_aggregate_channel();
+        create_aggregate_channel();
       }
       return;
     }
@@ -821,8 +821,7 @@ class Query {
   }
 
   /**
-   * Returns the number of actual channels. "Actual channels" is the replacement
-   * for the current channel class.
+   * Returns the number of channels.
    *
    * Responsibility for choosing channel identifiers is the responsibility of
    * this class. At the present time the policy is very simple, since all
@@ -831,22 +830,22 @@ class Query {
    *       without any grouping.
    *   - Channel 1: (optional) Simple aggregates, if any exist.
    */
-  inline size_t number_of_actual_channels() {
+  inline size_t number_of_channels() {
     return has_aggregates() ? 1 : 0;
   };
 
   /**
    * The default channel is initialized at construction and always exists.
    */
-  inline std::shared_ptr<QueryChannelActual> actual_default_channel() {
-    return default_channel_actual_;
+  inline std::shared_ptr<QueryChannel> default_channel() {
+    return default_channel_;
   }
 
-  inline std::shared_ptr<QueryChannelActual> actual_aggegate_channel() {
+  inline std::shared_ptr<QueryChannel> aggegate_channel() {
     if (!has_aggregates()) {
       throw QueryStatusException("Aggregate channel does not exist");
     }
-    return aggregate_channel_actual_;
+    return aggregate_channel_;
   }
 
  private:
@@ -1045,12 +1044,13 @@ class Query {
   /**
    * The default channel is allocated in the constructor for simplicity.
    */
-  std::shared_ptr<QueryChannelActual> default_channel_actual_;
+  std::shared_ptr<QueryChannel> default_channel_;
+
   /**
    * The aggegregate channel is optional, so we initialize it as empty with it
    * default constructor.
    */
-  std::shared_ptr<QueryChannelActual> aggregate_channel_actual_{};
+  std::shared_ptr<QueryChannel> aggregate_channel_{};
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

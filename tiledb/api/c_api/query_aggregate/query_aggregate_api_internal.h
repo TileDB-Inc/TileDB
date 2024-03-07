@@ -85,7 +85,7 @@ struct tiledb_query_channel_handle_t
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
  private:
-  std::shared_ptr<class tiledb::sm::QueryChannelActual> channel_;
+  std::shared_ptr<class tiledb::sm::QueryChannel> channel_;
 
  public:
   /**
@@ -98,7 +98,7 @@ struct tiledb_query_channel_handle_t
    * @param query The query object that owns the channel
    */
   tiledb_query_channel_handle_t(
-      std::shared_ptr<class tiledb::sm::QueryChannelActual> channel)
+      std::shared_ptr<class tiledb::sm::QueryChannel> channel)
       : channel_(channel) {
   }
 

@@ -43,7 +43,7 @@ namespace tiledb::sm {
  * Original class is only used for capnp (de)serialization. `class Query` uses
  * its own container to hold aggregates.
  */
-class QueryChannel {
+class LegacyQueryAggregatesOverDefault {
  public:
   using ChannelAggregates =
       std::unordered_map<std::string, shared_ptr<IAggregator>>;
@@ -58,7 +58,8 @@ class QueryChannel {
    * @param is_default If true, this is the default query channel
    * @param aggregates A map of aggregators by output field name
    */
-  QueryChannel(bool is_default, const ChannelAggregates& aggregates)
+  LegacyQueryAggregatesOverDefault(
+      bool is_default, const ChannelAggregates& aggregates)
       : default_(is_default)
       , aggregates_{aggregates} {
   }
@@ -99,7 +100,7 @@ class Query;
  * Responsibility for choosing channel identifiers is the responsibility of
  * `class Query`; this class merely carries the resulting identifier.
  */
-class QueryChannelActual {
+class QueryChannel {
   std::reference_wrapper<Query> query_;
   size_t id_;
 
@@ -107,11 +108,11 @@ class QueryChannelActual {
   /**
    * Default constructor is deleted. A channel makes no sense without a query.
    */
-  QueryChannelActual() = delete;
+  QueryChannel() = delete;
   /*
    * Ordinary constructor.
    */
-  QueryChannelActual(Query& q, size_t id)
+  QueryChannel(Query& q, size_t id)
       : query_(q)
       , id_(id) {
     (void)id_;
@@ -119,19 +120,19 @@ class QueryChannelActual {
   /**
    * Copy constructor is the default.
    */
-  QueryChannelActual(const QueryChannelActual&) = default;
+  QueryChannel(const QueryChannel&) = default;
   /**
    * Move constructor is the default.
    */
-  QueryChannelActual(QueryChannelActual&&) = default;
+  QueryChannel(QueryChannel&&) = default;
   /**
    * Copy assignment is the default.
    */
-  QueryChannelActual& operator=(const QueryChannelActual&) = default;
+  QueryChannel& operator=(const QueryChannel&) = default;
   /**
    * Move assignment is the default.
    */
-  QueryChannelActual& operator=(QueryChannelActual&&) = default;
+  QueryChannel& operator=(QueryChannel&&) = default;
 
   /**
    * Accessor for query member

@@ -88,9 +88,9 @@ tiledb_query_field_handle_t::tiledb_query_field_handle_t(
    * responsibility for.
    */
   if (is_aggregate) {
-    channel_ = query_->actual_aggegate_channel();
+    channel_ = query_->aggegate_channel();
   } else {
-    channel_ = query_->actual_default_channel();
+    channel_ = query_->default_channel();
   }
 }
 

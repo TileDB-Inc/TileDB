@@ -73,7 +73,7 @@ struct tiledb_query_field_handle_t
   std::shared_ptr<FieldOrigin> field_origin_;
   tiledb::sm::Datatype type_;
   uint32_t cell_val_num_;
-  std::shared_ptr<tiledb::sm::QueryChannelActual> channel_;
+  std::shared_ptr<tiledb::sm::QueryChannel> channel_;
 
  public:
   /**
