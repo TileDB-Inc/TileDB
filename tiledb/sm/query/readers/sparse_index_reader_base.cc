@@ -388,6 +388,14 @@ Status SparseIndexReaderBase::load_initial_data() {
         memory_budget_.ratio_tile_ranges() * memory_budget_.total_budget())
       return logger_->status(
           Status_ReaderError("Exceeded memory budget for result tile ranges"));
+  } else {
+    for (const auto& [name, _] : aggregates_) {
+      if (array_schema_.is_dim(name)) {
+        throw_if_not_ok(subarray_.load_relevant_fragment_rtrees(
+            storage_manager_->compute_tp()));
+        break;
+      }
+    }
   }
 
   // Compute tile offsets to load and var size to load for attributes.
