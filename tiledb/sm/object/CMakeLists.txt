@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2023 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -29,7 +29,25 @@ include(object_library)
 #
 # `object` object library
 #
-commence(object_library object)
-    this_target_sources(object.cc)
-    this_target_object_libraries(baseline constants uri_format vfs)
-conclude(object_library)
+# This object library does not support independent linkage at present. It has
+# a dependency on `RestClient`, which at present is incapable of being
+# linked standalone. As a result, this library is not defined with
+# `commence(object_library)`, since that mandates a link-completeness test.
+#
+add_library(object OBJECT object.cc)
+target_link_libraries(object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(object PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
+target_link_libraries(object PUBLIC vfs $<TARGET_OBJECTS:vfs>)
+
+#
+# Test-compile of object library ensures link-completeness
+#
+add_executable(compile_object EXCLUDE_FROM_ALL)
+
+# TODO: fix linkage of compile_object
+#add_dependencies(all_link_complete compile_object)
+
+target_link_libraries(compile_object PRIVATE object)
+target_sources(compile_object PRIVATE
+    test/compile_object_main.cc $<TARGET_OBJECTS:object>
+)
