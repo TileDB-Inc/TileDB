@@ -32,25 +32,38 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
-#include "test/support/src/vfs_helpers.h"
+#include "test/support/src/temporary_local_directory.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 
 using namespace tiledb::test;
 
-struct QueryFieldFx : TemporaryDirectoryFixture {
+class QueryFieldFx {
+  tiledb::sm::TemporaryLocalDirectory tmpslash{};
+  std::string test_array_name{tmpslash.path() + "queryfield_array"};
+  void write_sparse_array(const std::string& path);
+  void create_sparse_array(const std::string& path);
+
+ protected:
+  /** TileDB context */
+  tiledb_ctx_t* ctx;
+
+ public:
   QueryFieldFx() {
+    if (tiledb_ctx_alloc(nullptr, &ctx) != TILEDB_OK) {
+      throw std::runtime_error("Failed to allocate context");
+    }
     create_sparse_array(array_name());
     write_sparse_array(array_name());
   }
-
-  std::string array_name() {
-    return temp_dir_ + "queryfield_array";
+  ~QueryFieldFx() {
+    (void)tiledb_ctx_free(&ctx);
   }
 
-  void write_sparse_array(const std::string& path);
-  void create_sparse_array(const std::string& path);
+  std::string array_name() {
+    return test_array_name;
+  }
 };
 
 void QueryFieldFx::write_sparse_array(const std::string& array_name) {
@@ -179,15 +192,13 @@ void QueryFieldFx::create_sparse_array(const std::string& array_name) {
 
 TEST_CASE_METHOD(
     QueryFieldFx,
-    "C API: argument validation",
+    "C API: argument validation, tiledb_query_get_field",
     "[capi][query_field][get][args]") {
   tiledb_array_t* array = nullptr;
-  ;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
   tiledb_query_t* query = nullptr;
-  ;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
 
   tiledb_query_field_t* field = nullptr;
@@ -213,22 +224,20 @@ TEST_CASE_METHOD(
   }
 
   // Clean up
-  tiledb_query_free(&query);
+  (void)tiledb_query_free(&query);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
-  tiledb_array_free(&array);
+  (void)tiledb_array_free(&array);
 }
 
 TEST_CASE_METHOD(
     QueryFieldFx,
-    "C API: argument validation",
+    "C API: argument validation, query field properties",
     "[capi][query_field][access][args]") {
   tiledb_array_t* array = nullptr;
-  ;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
   tiledb_query_t* query = nullptr;
-  ;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
 
   tiledb_query_field_t* field = nullptr;
@@ -268,13 +277,12 @@ TEST_CASE_METHOD(
 
   // Clean up
   CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
-  tiledb_query_free(&query);
+  (void)tiledb_query_free(&query);
   CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
-  tiledb_array_free(&array);
+  (void)tiledb_array_free(&array);
 }
 
-TEST_CASE_METHOD(
-    QueryFieldFx, "C API: argument validation", "[capi][query_field]") {
+TEST_CASE_METHOD(QueryFieldFx, "C API: get_field", "[capi][query_field]") {
   tiledb_array_t* array = nullptr;
   REQUIRE(tiledb_array_alloc(ctx, array_name().c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -292,75 +300,94 @@ TEST_CASE_METHOD(
   uint32_t cell_val_num = 0;
   tiledb_query_channel_t* channel = nullptr;
 
-  // Errors out when the field doesn't exist
-  CHECK(
-      tiledb_query_get_field(ctx, query, "non_existent", &field) == TILEDB_ERR);
+  SECTION("Non-existent field") {
+    // Errors out when the field doesn't exist
+    CHECK(
+        tiledb_query_get_field(ctx, query, "non_existent", &field) ==
+        TILEDB_ERR);
+  };
 
-  // Check field api works on dimension field
-  REQUIRE(tiledb_query_get_field(ctx, query, "d1", &field) == TILEDB_OK);
+  SECTION("Dimension field") {
+    // Check field api works on dimension field
+    REQUIRE(tiledb_query_get_field(ctx, query, "d1", &field) == TILEDB_OK);
+    REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+    CHECK(type == TILEDB_UINT64);
+    REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+    CHECK(origin == TILEDB_DIMENSION_FIELD);
+    REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+    CHECK(cell_val_num == 1);
+    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  }
 
-  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
-  CHECK(origin == TILEDB_DIMENSION_FIELD);
-  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
-  CHECK(cell_val_num == 1);
+  SECTION("Timestamp field") {
+    // Check field api works on timestamp field
+    REQUIRE(
+        tiledb_query_get_field(ctx, query, "__timestamps", &field) ==
+        TILEDB_OK);
+    REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+    CHECK(type == TILEDB_UINT64);
+    REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+    CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
+    REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+    CHECK(cell_val_num == 1);
+    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  }
 
-  // Check field api works on aggregate field
-  REQUIRE(tiledb_field_channel(ctx, field, &channel) == TILEDB_OK);
-  REQUIRE(
-      tiledb_channel_apply_aggregate(
-          ctx, channel, "Count", tiledb_aggregate_count) == TILEDB_OK);
-  uint64_t count = 0;
-  uint64_t size = 8;
-  REQUIRE(
-      tiledb_query_set_data_buffer(ctx, query, "Count", &count, &size) ==
-      TILEDB_OK);
-  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
-  CHECK(count == 9);
-  CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  SECTION("\"coords\" field") {
+    // Check field api works on coords field
+    REQUIRE(
+        tiledb_query_get_field(ctx, query, "__coords", &field) == TILEDB_OK);
+    REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+    CHECK(type == TILEDB_UINT64);
+    REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+    CHECK(origin == TILEDB_DIMENSION_FIELD);
+    REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+    CHECK(cell_val_num == 1);
+    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  }
 
-  // Check field api works on timestamp field
-  REQUIRE(
-      tiledb_query_get_field(ctx, query, "__timestamps", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
-  CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
-  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
-  CHECK(cell_val_num == 1);
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  SECTION("Attribute field") {
+    // Check field api works on attribute field
+    REQUIRE(tiledb_query_get_field(ctx, query, "c", &field) == TILEDB_OK);
+    REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+    CHECK(type == TILEDB_STRING_ASCII);
+    REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+    CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
+    REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+    CHECK(cell_val_num == TILEDB_VAR_NUM);
+    CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  }
 
-  // Check field api works on coords field
-  REQUIRE(tiledb_query_get_field(ctx, query, "__coords", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
-  CHECK(origin == TILEDB_DIMENSION_FIELD);
-  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
-  CHECK(cell_val_num == 1);
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
-
-  // Check field api works on attribute field
-  REQUIRE(tiledb_query_get_field(ctx, query, "c", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
-  CHECK(type == TILEDB_STRING_ASCII);
-  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
-  CHECK(origin == TILEDB_ATTRIBUTE_FIELD);
-  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
-  CHECK(cell_val_num == TILEDB_VAR_NUM);
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
-
-  // Check field api works on aggregate field
-  REQUIRE(tiledb_query_get_field(ctx, query, "Count", &field) == TILEDB_OK);
-  REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
-  CHECK(type == TILEDB_UINT64);
-  REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
-  CHECK(origin == TILEDB_AGGREGATE_FIELD);
-  REQUIRE(tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
-  CHECK(cell_val_num == 1);
-  CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+  SECTION("Aggregate field") {
+    // Check field api works on aggregate field
+    REQUIRE(
+        tiledb_query_get_default_channel(ctx, query, &channel) == TILEDB_OK);
+    REQUIRE(
+        tiledb_channel_apply_aggregate(
+            ctx, channel, "Count", tiledb_aggregate_count) == TILEDB_OK);
+    SECTION("validate") {
+      // Check field api works on aggregate field
+      REQUIRE(tiledb_query_get_field(ctx, query, "Count", &field) == TILEDB_OK);
+      REQUIRE(tiledb_field_datatype(ctx, field, &type) == TILEDB_OK);
+      CHECK(type == TILEDB_UINT64);
+      REQUIRE(tiledb_field_origin(ctx, field, &origin) == TILEDB_OK);
+      CHECK(origin == TILEDB_AGGREGATE_FIELD);
+      REQUIRE(
+          tiledb_field_cell_val_num(ctx, field, &cell_val_num) == TILEDB_OK);
+      CHECK(cell_val_num == 1);
+      CHECK(tiledb_query_field_free(ctx, &field) == TILEDB_OK);
+    }
+    SECTION("run query") {
+      uint64_t count = 0;
+      uint64_t size = 8;
+      REQUIRE(
+          tiledb_query_set_data_buffer(ctx, query, "Count", &count, &size) ==
+          TILEDB_OK);
+      REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
+      CHECK(count == 9);
+    }
+    CHECK(tiledb_query_channel_free(ctx, &channel) == TILEDB_OK);
+  }
 
   // Clean up
   tiledb_query_free(&query);

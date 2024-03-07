@@ -57,8 +57,8 @@ inline void ensure_query_is_valid(tiledb_query_t* query) {
  *
  * @param query A sm::Query pointer
  */
-inline void ensure_query_is_not_initialized(const tiledb::sm::Query* query) {
-  if (query->status() != sm::QueryStatus::UNINITIALIZED) {
+inline void ensure_query_is_not_initialized(const tiledb::sm::Query& query) {
+  if (query.status() != sm::QueryStatus::UNINITIALIZED) {
     throw CAPIStatusException(
         "argument `query` is at a too late state of its lifetime");
   }
@@ -72,7 +72,8 @@ inline void ensure_query_is_not_initialized(const tiledb::sm::Query* query) {
  */
 inline void ensure_query_is_not_initialized(tiledb_query_t* query) {
   ensure_query_is_valid(query);
-  ensure_query_is_not_initialized(query->query_);
+  // Indirection safe because previous statement will throw otherwise
+  ensure_query_is_not_initialized(*query->query_);
 }
 
 }  // namespace tiledb::api
