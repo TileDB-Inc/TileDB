@@ -36,6 +36,7 @@
 #include <iostream>
 #include <vector>
 
+#include <test/support/src/vfs_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
@@ -91,6 +92,7 @@ inline int index_from_row_col(int r, int c) {
  * @param set_dups Whether the array allows coordinate duplicates.
  * @param a_data_read Data buffer to store cell values on attribute a.
  * @param b_data_read Data buffer to store cell values on attribute b.
+ * @param array_uri URI of array to create.
  */
 void create_array(
     Context& ctx,
@@ -98,7 +100,8 @@ void create_array(
     bool set_dups,
     bool add_utf8_attr,
     std::vector<int>& a_data_read,
-    std::vector<float>& b_data_read) {
+    std::vector<float>& b_data_read,
+    const std::string& array_uri = array_name) {
   Domain domain(ctx);
   domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, num_rows}}, 4))
       .add_dimension(Dimension::create<int>(ctx, "cols", {{1, num_rows}}, 4));
@@ -123,7 +126,7 @@ void create_array(
     attr_c.set_nullable(true);
     schema.add_attribute(attr_c);
   }
-  Array::create(array_name, schema);
+  Array::create(array_uri, schema);
 
   // Write some initial data and close the array.
   std::vector<int> row_dims;
@@ -179,7 +182,7 @@ void create_array(
   }
 
   if (array_type == TILEDB_SPARSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
+    Array array_w(ctx, array_uri, TILEDB_WRITE);
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_UNORDERED)
         .set_data_buffer("rows", row_dims)
@@ -197,7 +200,7 @@ void create_array(
     query_w.finalize();
     array_w.close();
   } else if (array_type == TILEDB_DENSE) {
-    Array array_w(ctx, array_name, TILEDB_WRITE);
+    Array array_w(ctx, array_uri, TILEDB_WRITE);
     Query query_w(ctx, array_w);
     query_w.set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_data)
@@ -215,7 +218,7 @@ void create_array(
   }
 
   // Open and read the entire array to save data for future comparisons.
-  Array array1(ctx, array_name, TILEDB_READ);
+  Array array1(ctx, array_uri, TILEDB_READ);
   Query query1(ctx, array1);
   query1.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_data_read)
@@ -316,15 +319,12 @@ struct TestParams {
 
 TEST_CASE(
     "Testing read query with empty QC, with no range.",
-    "[query][query-condition][empty]") {
+    "[query][query-condition][empty][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Create an empty query condition
   QueryCondition qc(ctx);
@@ -351,7 +351,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   Config config;
@@ -359,8 +360,10 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get());
+  auto ctx2 = vfs_test_setup2.ctx();
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
@@ -378,15 +381,12 @@ TEST_CASE(
 
 TEST_CASE(
     "Testing read query with basic QC, with no range.",
-    "[query][query-condition]") {
+    "[query][query-condition][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
   QueryCondition qc(ctx);
@@ -415,7 +415,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -424,8 +425,9 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get());
+  auto ctx2 = vfs_test_setup2.ctx();
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
@@ -500,23 +502,16 @@ TEST_CASE(
 
   query.finalize();
   array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
     "Testing read query with basic negated QC, with no range.",
-    "[query][query-condition][negation]") {
+    "[query][query-condition][negation][rest]") {
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  test::VFSTestSetup vfs_test_setup;
+  Context ctx{vfs_test_setup.ctx()};
+  auto array_uri{vfs_test_setup.array_uri(array_name)};
 
   // Define query condition (b < 4.0).
   QueryCondition qc(ctx);
@@ -547,7 +542,8 @@ TEST_CASE(
       params.set_dups_,
       params.add_utf8_attr_,
       a_data_read,
-      b_data_read);
+      b_data_read,
+      array_uri);
 
   // Create the query, which reads over the entire array with query condition
   // (b < 4.0).
@@ -557,7 +553,7 @@ TEST_CASE(
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
   Context ctx2 = Context(config);
-  Array array(ctx2, array_name, TILEDB_READ);
+  Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 
   // Set a subarray for dense.
@@ -632,10 +628,6 @@ TEST_CASE(
 
   query.finalize();
   array.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
