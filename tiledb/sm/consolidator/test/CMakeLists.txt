@@ -30,4 +30,9 @@ commence(unit_test consolidator)
 
   # Not actually testing a unit yet, but some things that ought to be units
   this_target_link_libraries(tiledb_test_support_lib)
+
+  if (TILEDB_HDFS)
+    target_include_directories(unit_consolidator PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+    set_source_files_properties(unit_fragment_consolidator.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+  endif()
 conclude(unit_test)

@@ -45,6 +45,11 @@ target_sources(unit_capi_array PUBLIC
     unit_capi_array.cc
 )
 
+if (TILEDB_HDFS)
+  target_include_directories(unit_capi_array PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+  set_source_files_properties(unit_capi_array.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+endif()
+
 add_test(
     NAME "unit_capi_array"
     COMMAND $<TARGET_FILE:unit_capi_array>

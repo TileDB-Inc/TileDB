@@ -30,4 +30,8 @@ commence(unit_test delete_update_condition)
     # The dependencies can't yet be factored into separate object libraries
     this_target_link_libraries(ast_test_support_lib)
     this_target_link_libraries(tiledb_test_support_lib)
+    if (TILEDB_HDFS)
+      target_include_directories(unit_delete_update_condition PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+      set_source_files_properties(unit_delete_condition.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+    endif()
 conclude(unit_test)

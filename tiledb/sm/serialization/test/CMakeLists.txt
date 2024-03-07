@@ -32,6 +32,11 @@ commence(unit_test capnp_utils)
 
   # Enable serialization
   target_compile_definitions(unit_capnp_utils PRIVATE -DTILEDB_SERIALIZATION)
+
+  if (TILEDB_HDFS)
+    target_include_directories(unit_capnp_utils PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+    set_source_files_properties(unit_capnp_utils.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+  endif()
 conclude(unit_test)
 
 commence(unit_test capnp_array_schema)
@@ -41,6 +46,11 @@ commence(unit_test capnp_array_schema)
   # Enable serialization
   target_compile_definitions(unit_capnp_array_schema PRIVATE -DTILEDB_SERIALIZATION)
   this_target_link_libraries(tiledb_test_support_lib)
+
+  if (TILEDB_HDFS)
+    target_include_directories(unit_capnp_array_schema PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+    set_source_files_properties(unit_capnp_array_schema.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+  endif()
 conclude(unit_test)
 
 commence(unit_test capnp_nonempty_domain)
@@ -49,4 +59,9 @@ commence(unit_test capnp_nonempty_domain)
 
   # Enable serialization
   target_compile_definitions(unit_capnp_nonempty_domain PRIVATE -DTILEDB_SERIALIZATION)
+
+  if (TILEDB_HDFS)
+    target_include_directories(unit_capnp_nonempty_domain PRIVATE "${TILEDB_EXTERNAL_INCLUDE}")
+    set_source_files_properties(unit_capnp_nonempty_domain.cc PROPERTIES INCLUDE_DIRECTORIES "${TILEDB_EXTERNAL_INCLUDE}")
+  endif()
 conclude(unit_test)
