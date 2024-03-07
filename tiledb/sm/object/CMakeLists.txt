@@ -34,7 +34,7 @@ include(object_library)
 # linked standalone. As a result, this library is not defined with
 # `commence(object_library)`, since that mandates a link-completeness test.
 #
-add_library(object OBJECT object.cc)
+add_library(object OBJECT object.cc object_iter.cc)
 target_link_libraries(object PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 target_link_libraries(object PUBLIC uri_format $<TARGET_OBJECTS:uri_format>)
 target_link_libraries(object PUBLIC vfs $<TARGET_OBJECTS:vfs>)
