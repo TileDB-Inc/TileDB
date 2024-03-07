@@ -41,6 +41,16 @@ namespace tiledb::sm {
 
 class ContextResources;
 
+/** Removes a TileDB object (group, array). */
+void object_remove(ContextResources& resources, const char* path);
+
+/**
+ * Renames a TileDB object (group, array). If
+ * `new_path` exists, `new_path` will be overwritten.
+ */
+void object_move(
+    ContextResources& resources, const char* old_path, const char* new_path);
+
 /**
  * Checks if the input URI represents an array.
  *
