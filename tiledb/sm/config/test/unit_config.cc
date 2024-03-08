@@ -35,9 +35,6 @@
 #include "../../misc/parse_argument.h"
 #include "../config.h"
 
-#include <filesystem>
-#include <fstream>
-
 using tiledb::sm::Config;
 using tiledb::sm::utils::parse::convert;
 
@@ -112,27 +109,5 @@ TEST_CASE("Config::get<std::string> - found and matched", "[config]") {
   std::string key{"the_key"};
   std::string expected_value = GENERATE("test", "true", "0", "1.5");
   CHECK(c.set(key, expected_value).ok());
-  TestConfig<std::string>::check_expected(expected_value, c, key);
-}
-
-TEST_CASE("Config::set - rest.server_address trailing slash", "[config]") {
-  Config c{};
-  std::string key{"rest.server_address"};
-  std::string expected_value = "http://localhost:8080";
-  std::string set_value =
-      GENERATE("http://localhost:8080/", "http://localhost:8080//");
-  SECTION("Parameter set by file load") {
-    std::ofstream file("tiledb_config.txt");
-    file << key << " " << set_value << std::endl;
-    file.close();
-    c.load_from_file("tiledb_config.txt").ok();
-    std::filesystem::remove("tiledb_config.txt");
-  }
-  SECTION("Parameter set by environment") {
-    setenv("TILEDB_REST_SERVER_ADDRESS", set_value.c_str(), 1);
-  }
-  SECTION("Parameter set in user Config") {
-    CHECK(c.set(key, set_value).ok());
-  }
   TestConfig<std::string>::check_expected(expected_value, c, key);
 }

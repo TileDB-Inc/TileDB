@@ -573,7 +573,7 @@ Status Config::load_from_file(const std::string& filename) {
     }
 
     // Set param-value pair
-    RETURN_NOT_OK(set(param, value));
+    param_values_[param] = value;
 
     linenum += 1;
   }
@@ -602,8 +602,8 @@ Status Config::save_to_file(const std::string& filename) {
 }
 
 Status Config::set(const std::string& param, const std::string& value) {
-  sanity_check(param, value);
-  param_values_[param] = validate_param_value(param, value);
+  RETURN_NOT_OK(sanity_check(param, value));
+  param_values_[param] = value;
   set_params_.insert(param);
 
   return Status::Ok();
@@ -699,23 +699,11 @@ bool Config::operator==(const Config& rhs) const {
   return true;
 }
 
-std::string Config::validate_param_value(
-    const std::string& param, const std::string& value) {
-  if (param == "rest.server_address") {
-    if (value.ends_with('/')) {
-      size_t pos = value.find_last_not_of('/');
-      return value.substr(0, pos + 1);
-    }
-  }
-
-  return value;
-}
-
 /* ****************************** */
 /*          PRIVATE METHODS       */
 /* ****************************** */
 
-void Config::sanity_check(
+Status Config::sanity_check(
     const std::string& param, const std::string& value) const {
   bool v = false;
   uint64_t vuint64 = 0;
@@ -726,113 +714,113 @@ void Config::sanity_check(
 
   if (param == "rest.server_serialization_format") {
     SerializationType serialization_type;
-    throw_if_not_ok(serialization_type_enum(value, &serialization_type));
+    RETURN_NOT_OK(serialization_type_enum(value, &serialization_type));
   } else if (param == "config.logging_level") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "config.logging_format") {
-    if (value != "DEFAULT" && value != "JSON") {
-      throw_config_exception("Invalid logging format parameter value");
-    }
+    if (value != "DEFAULT" && value != "JSON")
+      return LOG_STATUS(
+          Status_ConfigError("Invalid logging format parameter value"));
   } else if (param == "sm.allow_separate_attribute_writes") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.allow_updates_experimental") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.dedup_coords") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_dups") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_coord_oob") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.check_global_order") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.merge_overlapping_ranges_experimental") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.memory_budget") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.memory_budget_var") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.enable_signal_handlers") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.compute_concurrency_level") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.io_concurrency_level") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.amplification") {
-    throw_if_not_ok(utils::parse::convert(value, &vf));
+    RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.total_buffer_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.max_fragment_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.purge_deleted_cells") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.consolidation.steps") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_min_frags") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_max_frags") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.consolidation.step_size_ratio") {
-    throw_if_not_ok(utils::parse::convert(value, &vf));
+    RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.var_offsets.bitsize") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "sm.var_offsets.extra_element") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "sm.var_offsets.mode") {
-    if (value != "bytes" && value != "elements") {
-      throw_config_exception("Invalid offsets format parameter value");
-    }
+    if (value != "bytes" && value != "elements")
+      return LOG_STATUS(
+          Status_ConfigError("Invalid offsets format parameter value"));
   } else if (param == "sm.fragment_info.preload_mbrs") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "ssl.verify") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.min_parallel_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.max_batch_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_gap") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.min_batch_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.read_ahead_cache_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.file.posix_file_permissions") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.file.posix_directory_permissions") {
-    throw_if_not_ok(utils::parse::convert(value, &v32));
+    RETURN_NOT_OK(utils::parse::convert(value, &v32));
   } else if (param == "vfs.s3.scheme") {
-    if (value != "http" && value != "https") {
-      throw_config_exception("Invalid S3 scheme parameter value");
-    }
+    if (value != "http" && value != "https")
+      return LOG_STATUS(
+          Status_ConfigError("Invalid S3 scheme parameter value"));
   } else if (param == "vfs.s3.use_virtual_addressing") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.skit_init") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.use_multipart_upload") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.max_parallel_ops") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.multipart_part_size") {
-    throw_if_not_ok(utils::parse::convert(value, &vuint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "vfs.s3.connect_timeout_ms") {
-    throw_if_not_ok(utils::parse::convert(value, &vint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.connect_max_tries") {
-    throw_if_not_ok(utils::parse::convert(value, &vint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.connect_scale_factor") {
-    throw_if_not_ok(utils::parse::convert(value, &vint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.request_timeout_ms") {
-    throw_if_not_ok(utils::parse::convert(value, &vint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.requester_pays") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.proxy_port") {
-    throw_if_not_ok(utils::parse::convert(value, &vint64));
+    RETURN_NOT_OK(utils::parse::convert(value, &vint64));
   } else if (param == "vfs.s3.verify_ssl") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (param == "vfs.s3.no_sign_request") {
-    throw_if_not_ok(utils::parse::convert(value, &v));
+    RETURN_NOT_OK(utils::parse::convert(value, &v));
   } else if (
       (chkno = 1, param == "vfs.s3.bucket_canned_acl") ||
       (chkno = 2, param == "vfs.s3.object_canned_acl")) {
@@ -844,10 +832,13 @@ void Config::sanity_check(
           (chkno == 2 &&
            ((value == "aws_exec_read") || (value == "bucket_owner_read") ||
             (value == "bucket_owner_full_control"))))) {
-      throw_config_exception(
-          "value " + param + " invalid canned acl for " + param);
+      std::stringstream msg;
+      msg << "value " << param << " invalid canned acl for " << param;
+      return Status_Error(msg.str());
     }
   }
+
+  return Status::Ok();
 }
 
 std::string Config::convert_to_env_param(const std::string& param) const {
@@ -879,14 +870,8 @@ const char* Config::get_from_env(const std::string& param, bool* found) const {
 
   // getenv returns nullptr if variable is not found
   *found = value != nullptr;
-  if (*found) {
-    // We don't own the data returned by getenv, modifying it would modify the
-    // user's environment.
-    env_param_value_ = validate_param_value(param, value);
-    return env_param_value_.c_str();
-  }
 
-  return nullptr;
+  return value;
 }
 
 const char* Config::get_from_config(
