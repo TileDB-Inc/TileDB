@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,10 @@
 #include "tiledb/sm/query/deletes_and_updates/deletes_and_updates.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
@@ -129,12 +131,10 @@ Status DeletesAndUpdates::dowork() {
   // consolidated without timestamps.
   auto& frag_uris = array_->array_directory().unfiltered_fragment_uris();
   for (auto& uri : frag_uris) {
-    auto name = uri.remove_trailing_slash().last_path_part();
-    auto format_version = utils::parse::get_fragment_version(name);
-    if (format_version < constants::consolidation_with_timestamps_min_version) {
-      std::pair<uint64_t, uint64_t> fragment_timestamp_range;
-      RETURN_NOT_OK(
-          utils::parse::get_timestamp_range(uri, &fragment_timestamp_range));
+    FragmentID fragment_id{uri};
+    if (fragment_id.array_format_version() <
+        constants::consolidation_with_timestamps_min_version) {
+      auto fragment_timestamp_range{fragment_id.timestamp_range()};
       if (timestamp >= fragment_timestamp_range.first &&
           timestamp <= fragment_timestamp_range.second) {
         throw DeleteAndUpdateStatusException(
@@ -151,19 +151,24 @@ Status DeletesAndUpdates::dowork() {
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
-  WriterTile serialized_condition =
+  auto serialized_condition =
       update_values_.empty() ?
           tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-              condition_->negated_condition()) :
+              condition_->negated_condition(), query_memory_tracker_) :
           tiledb::sm::deletes_and_updates::serialization::
               serialize_update_condition_and_values(
-                  condition_->negated_condition(), update_values_);
+                  condition_->negated_condition(),
+                  update_values_,
+                  query_memory_tracker_);
   new_fragment_str += update_values_.empty() ? constants::delete_file_suffix :
                                                constants::update_file_suffix;
 
   auto uri = commit_uri.join_path(new_fragment_str);
-  RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
-      serialized_condition, uri, *array_->encryption_key()));
+  GenericTileIO::store_data(
+      storage_manager_->resources(),
+      uri,
+      serialized_condition,
+      *array_->encryption_key());
 
   return Status::Ok();
 }

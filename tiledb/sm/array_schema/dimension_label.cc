@@ -28,6 +28,7 @@
 
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -128,7 +129,8 @@ DimensionLabel::DimensionLabel(
     const URI& uri,
     const Dimension* dim,
     DataOrder label_order,
-    Datatype label_type)
+    Datatype label_type,
+    shared_ptr<MemoryTracker> memory_tracker)
     : dim_id_(dim_id)
     , dim_label_name_(dim_label_name)
     , uri_(uri)
@@ -139,8 +141,9 @@ DimensionLabel::DimensionLabel(
           label_type == Datatype::STRING_ASCII ? constants::var_num : 1)
     , schema_(make_shared<ArraySchema>(
           HERE(),
-          label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
-                                                     ArrayType::DENSE))
+          (label_order == DataOrder::UNORDERED_DATA ? ArrayType::SPARSE :
+                                                      ArrayType::DENSE),
+          memory_tracker))
     , is_external_(false)
     , relative_uri_(true) {
   auto index_type{dim->type()};
@@ -169,12 +172,16 @@ DimensionLabel::DimensionLabel(
 
   // Create and set dimension label domain.
   std::vector<shared_ptr<Dimension>> index_dims{
-      make_shared<Dimension>(HERE(), "index", index_type)};
+      make_shared<Dimension>(HERE(), "index", index_type, memory_tracker)};
   throw_if_not_ok(index_dims.back()->set_domain(dim->domain().data()));
   throw_if_not_ok(
       index_dims.back()->set_tile_extent(dim->tile_extent().data()));
   throw_if_not_ok(schema_->set_domain(make_shared<Domain>(
-      HERE(), Layout::ROW_MAJOR, index_dims, Layout::ROW_MAJOR)));
+      HERE(),
+      Layout::ROW_MAJOR,
+      index_dims,
+      Layout::ROW_MAJOR,
+      memory_tracker)));
 
   // Create and set dimension label attribute.
   auto label_attr = make_shared<Attribute>(

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,10 +38,6 @@ int main() {
   (void)generate_consolidated_fragment_name(
       tiledb::sm::URI{}, tiledb::sm::URI{}, 1);
 
-  std::pair<uint64_t, uint64_t> x;
-  (void)get_timestamp_range(tiledb::sm::URI{}, &x);
-  (void)get_fragment_version("");
   (void)is_element_of(tiledb::sm::URI{}, tiledb::sm::URI{});
-
   return 0;
 }

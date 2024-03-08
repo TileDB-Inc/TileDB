@@ -199,7 +199,7 @@ class FragmentConsolidator : public Consolidator {
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Consolidates only the fragments of the input array using a list of
@@ -229,7 +229,7 @@ class FragmentConsolidator : public Consolidator {
    *
    * @param array_name URI of array to vacuum.
    */
-  void vacuum(const char* array_name);
+  void vacuum(const char* array_name) override;
 
  private:
   /* ********************************* */

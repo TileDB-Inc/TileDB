@@ -35,6 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -71,7 +72,15 @@ class ArraySchemaEvolutionException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchemaEvolution::ArraySchemaEvolution() {
+ArraySchemaEvolution::ArraySchemaEvolution(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -81,13 +90,29 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     std::unordered_map<std::string, shared_ptr<const Enumeration>>
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
-    std::pair<uint64_t, uint64_t> timestamp_range)
-    : attributes_to_add_map_(attrs_to_add)
+    std::pair<uint64_t, uint64_t> timestamp_range,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , attributes_to_add_map_(
+          memory_tracker->get_resource(MemoryType::ATTRIBUTES))
     , attributes_to_drop_(attrs_to_drop)
-    , enumerations_to_add_map_(enmrs_to_add)
-    , enumerations_to_extend_map_(enmrs_to_extend)
+    , enumerations_to_add_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumerations_to_extend_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_drop_(enmrs_to_drop)
     , timestamp_range_(timestamp_range) {
+  for (auto& elem : attrs_to_add) {
+    attributes_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_add) {
+    enumerations_to_add_map_.insert(elem);
+  }
+
+  for (auto& elem : enmrs_to_extend) {
+    enumerations_to_extend_map_.insert(elem);
+  }
 }
 
 ArraySchemaEvolution::~ArraySchemaEvolution() {
@@ -106,7 +131,7 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
         "Cannot evolve schema; Input array schema is null");
   }
 
-  auto schema = make_shared<ArraySchema>(HERE(), *(orig_schema.get()));
+  auto schema = orig_schema->clone();
 
   // Add enumerations. Must be done before attributes so that any attributes
   // referencing enumerations won't fail to be added.

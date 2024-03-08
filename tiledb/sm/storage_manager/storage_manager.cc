@@ -41,6 +41,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -132,19 +133,12 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::group_close_for_reads(Group* group) {
-  assert(open_groups_.find(group) != open_groups_.end());
-
-  // Remove entry from open groups
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.erase(group);
-
+Status StorageManagerCanonical::group_close_for_reads(Group*) {
+  // Closing a group does nothing at present
   return Status::Ok();
 }
 
 Status StorageManagerCanonical::group_close_for_writes(Group* group) {
-  assert(open_groups_.find(group) != open_groups_.end());
-
   // Flush the group metadata
   RETURN_NOT_OK(store_metadata(
       group->group_uri(), *group->encryption_key(), group->unsafe_metadata()));
@@ -159,187 +153,7 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
         group->group_details(),
         *group->encryption_key()));
   }
-
-  // Remove entry from open groups
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.erase(group);
-
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_consolidate(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    const Config& config) {
-  // Check array URI
-  URI array_uri(array_name);
-  if (array_uri.is_invalid()) {
-    return logger_->status(
-        Status_StorageManagerError("Cannot consolidate array; Invalid URI"));
-  }
-
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate array; Array does not exist"));
-  }
-
-  if (array_uri.is_tiledb()) {
-    return rest_client()->post_consolidation_to_rest(array_uri, config);
-  }
-
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config.get("sm.encryption_key", &found);
-    assert(found);
-  }
-
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    encryption_type = et.value();
-
-    if (!EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      encryption_key = nullptr;
-      key_length = 0;
-    }
-  }
-
-  // Consolidate
-  auto mode = Consolidator::mode_from_config(config);
-  auto consolidator = Consolidator::create(mode, config, this);
-  return consolidator->consolidate(
-      array_name, encryption_type, encryption_key, key_length);
-}
-
-Status StorageManagerCanonical::fragments_consolidate(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    const std::vector<std::string> fragment_uris,
-    const Config& config) {
-  // Check array URI
-  URI array_uri(array_name);
-  if (array_uri.is_invalid()) {
-    return logger_->status(
-        Status_StorageManagerError("Cannot consolidate array; Invalid URI"));
-  }
-
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate array; Array does not exist"));
-  }
-
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config.get("sm.encryption_key", &found);
-    assert(found);
-  }
-
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    encryption_type = et.value();
-
-    if (!EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      encryption_key = nullptr;
-      key_length = 0;
-    }
-  }
-
-  // Consolidate
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::FRAGMENT, config, this);
-  auto fragment_consolidator =
-      dynamic_cast<FragmentConsolidator*>(consolidator.get());
-  return fragment_consolidator->consolidate_fragments(
-      array_name, encryption_type, encryption_key, key_length, fragment_uris);
-}
-
-void StorageManagerCanonical::write_consolidated_commits_file(
-    format_version_t write_version,
-    ArrayDirectory array_dir,
-    const std::vector<URI>& commit_uris) {
-  // Compute the file name.
-  auto name = storage_format::generate_consolidated_fragment_name(
-      commit_uris.front(), commit_uris.back(), write_version);
-
-  // Compute size of consolidated file. Save the sizes of the files to re-use
-  // below.
-  storage_size_t total_size = 0;
-  const auto base_uri_size = array_dir.uri().to_string().size();
-  std::vector<storage_size_t> file_sizes(commit_uris.size());
-  for (uint64_t i = 0; i < commit_uris.size(); i++) {
-    const auto& uri = commit_uris[i];
-    total_size += uri.to_string().size() - base_uri_size + 1;
-
-    // If the file is a delete, add the file size to the count and the size of
-    // the size variable.
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::delete_file_suffix)) {
-      throw_if_not_ok(vfs()->file_size(uri, &file_sizes[i]));
-      total_size += file_sizes[i];
-      total_size += sizeof(storage_size_t);
-    }
-  }
-
-  // Write consolidated file, URIs are relative to the array URI.
-  std::vector<uint8_t> data(total_size);
-  storage_size_t file_index = 0;
-  for (uint64_t i = 0; i < commit_uris.size(); i++) {
-    // Add the uri.
-    const auto& uri = commit_uris[i];
-    std::string relative_uri = uri.to_string().substr(base_uri_size) + "\n";
-    memcpy(&data[file_index], relative_uri.data(), relative_uri.size());
-    file_index += relative_uri.size();
-
-    // For deletes, read the delete condition to the output file.
-    if (stdx::string::ends_with(
-            uri.to_string(), constants::delete_file_suffix)) {
-      memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
-      file_index += sizeof(storage_size_t);
-      throw_if_not_ok(vfs()->read(uri, 0, &data[file_index], file_sizes[i]));
-      file_index += file_sizes[i];
-    }
-  }
-
-  // Write the file to storage.
-  URI consolidated_commits_uri =
-      array_dir.get_commits_dir(write_version)
-          .join_path(name + constants::con_commits_file_suffix);
-  throw_if_not_ok(
-      vfs()->write(consolidated_commits_uri, data.data(), data.size()));
-  throw_if_not_ok(vfs()->close_file(consolidated_commits_uri));
 }
 
 void StorageManagerCanonical::delete_array(const char* array_name) {
@@ -440,78 +254,6 @@ void StorageManagerCanonical::delete_group(const char* group_name) {
     dirs.emplace_back(URI(parent_dir + group_dir_name));
   }
   vfs()->remove_dirs(compute_tp(), dirs);
-}
-
-void StorageManagerCanonical::array_vacuum(
-    const char* array_name, const Config& config) {
-  URI array_uri(array_name);
-  if (array_uri.is_tiledb()) {
-    throw_if_not_ok(rest_client()->post_vacuum_to_rest(array_uri, config));
-    return;
-  }
-
-  auto mode = Consolidator::mode_from_config(config, true);
-  auto consolidator = Consolidator::create(mode, config, this);
-  consolidator->vacuum(array_name);
-}
-
-Status StorageManagerCanonical::array_metadata_consolidate(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
-    const Config& config) {
-  // Check array URI
-  URI array_uri(array_name);
-  if (array_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate array metadata; Invalid URI"));
-  }
-  // Check if array exists
-  ObjectType obj_type;
-  RETURN_NOT_OK(object_type(array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate array metadata; Array does not exist"));
-  }
-
-  if (array_uri.is_tiledb()) {
-    return rest_client()->post_consolidation_to_rest(array_uri, config);
-  }
-
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config.get("sm.encryption_key", &found);
-    assert(found);
-  }
-
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st);
-    encryption_type = et.value();
-
-    if (!EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      encryption_key = nullptr;
-      key_length = 0;
-    }
-  }
-
-  // Consolidate
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::ARRAY_META, config, this);
-  return consolidator->consolidate(
-      array_name, encryption_type, encryption_key, key_length);
 }
 
 Status StorageManagerCanonical::array_create(
@@ -641,7 +383,8 @@ Status StorageManager::array_evolve_schema(
         "' not exists"));
   }
 
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key, resources_.ephemeral_memory_tracker());
 
   // Load required enumerations before evolution.
   auto enmr_names = schema_evolution->enumeration_names_to_extend();
@@ -655,9 +398,8 @@ Status StorageManager::array_evolve_schema(
       enmr_paths.emplace_back(path);
     }
 
-    MemoryTracker tracker;
     auto loaded_enmrs = array_dir.load_enumerations_from_paths(
-        enmr_paths, encryption_key, tracker);
+        enmr_paths, encryption_key, resources_.create_memory_tracker());
 
     for (auto enmr : loaded_enmrs) {
       array_schema->store_enumeration(enmr);
@@ -715,7 +457,8 @@ Status StorageManagerCanonical::array_upgrade_version(
         static_cast<uint32_t>(encryption_key_from_cfg.size())));
   }
 
-  auto&& array_schema = array_dir.load_array_schema_latest(encryption_key_cfg);
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key_cfg, resources().ephemeral_memory_tracker());
 
   if (array_schema->version() < constants::format_version) {
     array_schema->generate_uri();
@@ -1174,7 +917,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   std::lock_guard<std::mutex> lock{object_create_mtx_};
 
   if (uri.is_tiledb()) {
-    Group group(uri, this);
+    Group group(resources_, uri, this);
     RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
   }
@@ -1267,24 +1010,25 @@ StorageManagerCanonical::load_delete_and_update_conditions(
     auto& uri = locations[i].uri();
 
     // Read the condition from storage.
-    auto&& tile = GenericTileIO::load(
+    auto tile = GenericTileIO::load(
         resources_,
         uri,
         locations[i].offset(),
-        *(opened_array.encryption_key()));
+        *(opened_array.encryption_key()),
+        resources_.ephemeral_memory_tracker());
 
     if (tiledb::sm::utils::parse::ends_with(
             locations[i].condition_marker(),
             tiledb::sm::constants::delete_file_suffix)) {
       conditions[i] =
           tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
     } else if (tiledb::sm::utils::parse::ends_with(
                    locations[i].condition_marker(),
                    tiledb::sm::constants::update_file_suffix)) {
       auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
           deserialize_update_condition_and_values(
-              i, locations[i].condition_marker(), tile.data(), tile.size());
+              i, locations[i].condition_marker(), tile->data(), tile->size());
       conditions[i] = std::move(cond);
       update_values[i] = std::move(uvs);
     } else {
@@ -1523,12 +1267,14 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(members, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   group->serialize(members, serializer);
 
-  stats()->add_counter("write_group_size", tile.size());
+  stats()->add_counter("write_group_size", tile->size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1538,8 +1284,7 @@ Status StorageManagerCanonical::store_group_detail(
   if (!group_detail_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
 
-  RETURN_NOT_OK(
-      store_data_to_generic_tile(tile, group_detail_uri, encryption_key));
+  GenericTileIO::store_data(resources_, group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
 }
@@ -1553,11 +1298,13 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
-  Serializer serializer(tile.data(), tile.size());
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
+  Serializer serializer(tile->data(), tile->size());
   array_schema->serialize(serializer);
 
-  stats()->add_counter("write_array_schema_size", tile.size());
+  stats()->add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
   bool exists;
@@ -1575,7 +1322,7 @@ Status StorageManagerCanonical::store_array_schema(
   if (!schema_dir_exists)
     RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, schema_uri, encryption_key));
+  GenericTileIO::store_data(resources_, schema_uri, tile, encryption_key);
 
   // Create the `__enumerations` directory under `__schema` if it doesn't
   // exist. This might happen if someone tries to add an enumeration to an
@@ -1601,14 +1348,14 @@ Status StorageManagerCanonical::store_array_schema(
     SizeComputationSerializer enumeration_size_serializer;
     enmr->serialize(enumeration_size_serializer);
 
-    WriterTile tile{
-        WriterTile::from_generic(enumeration_size_serializer.size())};
-    Serializer serializer(tile.data(), tile.size());
+    auto tile{WriterTile::from_generic(
+        enumeration_size_serializer.size(),
+        resources_.ephemeral_memory_tracker())};
+    Serializer serializer(tile->data(), tile->size());
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    RETURN_NOT_OK(
-        store_data_to_generic_tile(tile, abs_enmr_uri, encryption_key));
+    GenericTileIO::store_data(resources_, abs_enmr_uri, tile, encryption_key);
   }
 
   return Status::Ok();
@@ -1631,26 +1378,20 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
-  Serializer serializer(tile.data(), tile.size());
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources_.ephemeral_memory_tracker())};
+  Serializer serializer(tile->data(), tile->size());
   metadata->serialize(serializer);
 
-  stats()->add_counter("write_meta_size", serializer.size());
+  stats()->add_counter("write_meta_size", size_computation_serializer.size());
 
   // Create a metadata file name
   URI metadata_uri = metadata->get_uri(uri);
 
-  RETURN_NOT_OK(store_data_to_generic_tile(tile, metadata_uri, encryption_key));
+  GenericTileIO::store_data(resources_, metadata_uri, tile, encryption_key);
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_data_to_generic_tile(
-    WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key) {
-  GenericTileIO tile_io(resources_, uri);
-  uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, encryption_key, &nbytes);
-  return vfs()->close_file(uri);
 }
 
 void StorageManagerCanonical::wait_for_zero_in_progress() {
@@ -1661,154 +1402,6 @@ void StorageManagerCanonical::wait_for_zero_in_progress() {
 
 shared_ptr<Logger> StorageManagerCanonical::logger() const {
   return logger_;
-}
-
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_from_uri(
-    const URI& group_uri, const URI& uri, const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_group_from_uri");
-
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-
-  stats()->add_counter("read_group_size", tile.size());
-
-  // Deserialize
-  Deserializer deserializer(tile.data(), tile.size());
-  auto opt_group = GroupDetails::deserialize(deserializer, group_uri);
-  return {Status::Ok(), opt_group};
-}
-
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_from_all_uris(
-    const URI& group_uri,
-    const std::vector<TimestampedURI>& uris,
-    const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_group_from_uri");
-
-  std::vector<shared_ptr<Deserializer>> deserializers;
-  for (auto& uri : uris) {
-    auto&& tile = GenericTileIO::load(resources_, uri.uri_, 0, encryption_key);
-
-    stats()->add_counter("read_group_size", tile.size());
-
-    // Deserialize
-    shared_ptr<Deserializer> deserializer =
-        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
-    deserializers.emplace_back(deserializer);
-  }
-
-  auto opt_group = GroupDetails::deserialize(deserializers, group_uri);
-  return {Status::Ok(), opt_group};
-}
-
-tuple<Status, optional<shared_ptr<GroupDetails>>>
-StorageManagerCanonical::load_group_details(
-    const shared_ptr<GroupDirectory>& group_directory,
-    const EncryptionKey& encryption_key) {
-  auto timer_se = stats()->start_timer("sm_load_group_details");
-  const URI& latest_group_uri = group_directory->latest_group_details_uri();
-  if (latest_group_uri.is_invalid()) {
-    // Returning ok because not having the latest group details means the group
-    // has just been created and no members have been added yet.
-    return {Status::Ok(), std::nullopt};
-  }
-
-  // V1 groups did not have the version appended so only have 4 "_"
-  // (__<timestamp>_<timestamp>_<uuid>)
-  auto part = latest_group_uri.last_path_part();
-  if (std::count(part.begin(), part.end(), '_') == 4) {
-    return load_group_from_uri(
-        group_directory->uri(), latest_group_uri, encryption_key);
-  }
-
-  // V2 and newer should loop over all uris all the time to handle deletes at
-  // read-time
-  return load_group_from_all_uris(
-      group_directory->uri(),
-      group_directory->group_detail_uris(),
-      encryption_key);
-}
-
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-StorageManagerCanonical::group_open_for_reads(Group* group) {
-  auto timer_se = stats()->start_timer("group_open_for_reads");
-
-  // Load group data
-  auto&& [st, group_deserialized] =
-      load_group_details(group->group_directory(), *group->encryption_key());
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
-
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.insert(group);
-
-  if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()};
-  }
-
-  // Return ok because having no members is acceptable if the group has never
-  // been written to.
-  return {Status::Ok(), std::nullopt};
-}
-
-std::tuple<Status, std::optional<tdb_shared_ptr<GroupDetails>>>
-StorageManagerCanonical::group_open_for_writes(Group* group) {
-  auto timer_se = stats()->start_timer("group_open_for_writes");
-
-  // Load group data
-  auto&& [st, group_deserialized] =
-      load_group_details(group->group_directory(), *group->encryption_key());
-  RETURN_NOT_OK_TUPLE(st, std::nullopt);
-
-  // Mark the array as now open
-  std::lock_guard<std::mutex> lock{open_groups_mtx_};
-  open_groups_.insert(group);
-
-  if (group_deserialized.has_value()) {
-    return {Status::Ok(), group_deserialized.value()};
-  }
-
-  // Return ok because having no members is acceptable if the group has never
-  // been written to.
-  return {Status::Ok(), std::nullopt};
-}
-
-void StorageManagerCanonical::load_group_metadata(
-    const shared_ptr<GroupDirectory>& group_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
-  auto timer_se = stats()->start_timer("sm_load_group_metadata");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
-
-  // Determine which group metadata to load
-  const auto& group_metadata_to_load = group_dir->group_meta_uris();
-
-  auto metadata_num = group_metadata_to_load.size();
-  // TBD: Might use DynamicArray when it is more capable.
-  std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(parallel_for(compute_tp(), 0, metadata_num, [&](size_t m) {
-    const auto& uri = group_metadata_to_load[m].uri_;
-
-    auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-    metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
-
-    return Status::Ok();
-  }));
-
-  // Compute array metadata size for the statistics
-  uint64_t meta_size = 0;
-  for (const auto& t : metadata_tiles) {
-    meta_size += t->size();
-  }
-  stats()->add_counter("read_array_meta_size", meta_size);
-
-  // Copy the deserialized metadata into the original Metadata object
-  *metadata = Metadata::deserialize(metadata_tiles);
-  metadata->set_loaded_metadata_uris(group_metadata_to_load);
 }
 
 /* ****************************** */

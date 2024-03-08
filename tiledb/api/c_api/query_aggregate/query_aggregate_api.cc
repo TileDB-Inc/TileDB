@@ -161,11 +161,8 @@ capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t*, tiledb_query_t* query, tiledb_query_channel_t** channel) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
-
-  // We don't have an internal representation of a channel,
-  // the default channel is currently just a hashmap, so only pass the query
-  // to the channel constructor to be carried until next the api call.
-  *channel = tiledb_query_channel_handle_t::make_handle(query);
+  *channel = tiledb_query_channel_handle_t::make_handle(
+      query->query_->default_channel());
 
   return TILEDB_OK;
 }
@@ -209,7 +206,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     const char* output_field_name,
     const tiledb_channel_operation_t* operation) {
   ensure_query_channel_is_valid(channel);
-  ensure_query_is_not_initialized(channel->query_);
+  ensure_query_is_not_initialized(channel->query());
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);

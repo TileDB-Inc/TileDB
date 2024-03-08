@@ -59,10 +59,10 @@ class QueryCondition {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
+  /** Default constructor. Should be used only in the C API. */
   QueryCondition();
 
-  /** Constructor for a set membership QueryCondition */
+  /** Constructor for a set membership QueryCondition. */
   QueryCondition(
       const std::string& field_name,
       const void* data,
@@ -240,18 +240,12 @@ class QueryCondition {
   Status apply_sparse(
       const ArraySchema& array_schema,
       ResultTile& result_tile,
-      std::vector<BitmapType>& result_bitmap);
+      tdb::pmr::vector<BitmapType>& result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.
    */
   QueryCondition negated_condition();
-
-  /**
-   * Sets the AST. This is internal state to only be used in
-   * the serialization path.
-   */
-  void set_ast(tdb_unique_ptr<ASTNode>&& ast);
 
   /**
    * Returns the AST object. This is internal state to only be used in testing
@@ -567,7 +561,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -590,7 +584,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile.
@@ -609,7 +603,7 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -628,7 +622,7 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
@@ -648,7 +642,7 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 };
 
 }  // namespace sm

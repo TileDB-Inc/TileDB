@@ -95,8 +95,8 @@ Status CommitsConsolidator::consolidate(
 
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
-  storage_manager_->write_consolidated_commits_file(
-      write_version, array_dir, to_consolidate);
+  Consolidator::write_consolidated_commits_file(
+      write_version, array_dir, to_consolidate, storage_manager_);
 
   return Status::Ok();
 }

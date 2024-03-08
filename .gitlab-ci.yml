@@ -1,0 +1,21 @@
+stages: 
+  - test
+ 
+trigger_pipeline:
+  stage: test
+  rules: 
+    - if: $CI_COMMIT_BRANCH =~ /^dev|^release-.*/ || $CI_COMMIT_TAG != "" # only/except rules are no longer actively developed. Please use `rules` instead.
+    - if: $CI_PIPELINE_SOURCE == "external_pull_request_event"
+      changes: 
+        - "!.github/workflows/quarto-render.yml"
+        - "!_quarto.yml"
+        - "!quarto-materials/*"
+        - "!**/.md"
+        - "!tiledb/doxygen/source/*"
+        - "!tiledb/sm/c_api/tiledb_version.h"
+
+  variables:
+    TILEDB_REF: ${CI_COMMIT_REF_NAME}
+  trigger:
+    project: tiledb-inc/tiledb-internal
+    strategy: depend    

@@ -54,8 +54,7 @@ class FragmentInfo {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor. */
-  FragmentInfo();
+  FragmentInfo() = delete;
 
   /** Constructor. */
   FragmentInfo(const URI& array_uri, ContextResources& resources);
@@ -63,17 +62,8 @@ class FragmentInfo {
   /** Destructor. */
   ~FragmentInfo();
 
-  /** Copy constructor. */
-  FragmentInfo(const FragmentInfo& fragment_info);
-
-  /** Move constructor. */
-  FragmentInfo(FragmentInfo&& fragment_info);
-
-  /** Copy-assign operator. */
-  FragmentInfo& operator=(const FragmentInfo& fragment_info);
-
-  /** Move-assign operator. */
-  FragmentInfo& operator=(FragmentInfo&& fragment_info);
+  DISABLE_COPY_AND_COPY_ASSIGN(FragmentInfo);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentInfo);
 
   /* ********************************* */
   /*                API                */
@@ -323,7 +313,7 @@ class FragmentInfo {
   load_array_schemas_and_fragment_metadata(
       ContextResources& resources,
       const ArrayDirectory& array_dir,
-      MemoryTracker* memory_tracker,
+      shared_ptr<MemoryTracker> memory_tracker,
       const EncryptionKey& enc_key);
 
   /** Returns the vector with the info about individual fragments. */
@@ -357,6 +347,11 @@ class FragmentInfo {
   /** Returns the config. */
   inline const Config& config() const {
     return config_;
+  }
+
+  /** Returns the context resources. */
+  inline ContextResources* resources() const {
+    return resources_;
   }
 
   // Accessors
@@ -484,15 +479,6 @@ class FragmentInfo {
   Status replace(
       const SingleFragmentInfo& new_single_fragment_info,
       const std::vector<TimestampedURI>& to_replace);
-
-  /** Returns a copy of this object. */
-  FragmentInfo clone() const;
-
-  /**
-   * Swaps the contents (all field values) of this object with the
-   * given object.
-   */
-  void swap(FragmentInfo& fragment_info);
 };
 
 }  // namespace sm

@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2021-2023 TileDB, Inc.
+# Copyright (c) 2021-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,8 @@ commence(object_library attribute)
         constants
         filter_pipeline
         range
-        stringx)
+        stringx
+        uuid)
 conclude(object_library)
 
 #
@@ -62,7 +63,7 @@ conclude(object_library)
 #
 commence(object_library enumeration)
     this_target_sources(enumeration.cc)
-    this_target_object_libraries(buffer constants seedable_global_PRNG)
+    this_target_object_libraries(buffer constants uuid)
 conclude(object_library)
 
 #
@@ -71,7 +72,7 @@ conclude(object_library)
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration time uri_format vfs)
+        attribute domain enumeration fragment time uri_format vfs)
 conclude(object_library)
 
 # This is linked outside the object_library scope because ContextResources

@@ -137,12 +137,14 @@ using CopyState =
  * @param serialized_buffer Buffer containing serialized query
  * @param serialize_type Serialization type of serialized query
  * @param array Array object to deserialize into
+ * @param memory_tracker Memory tracker to use for allocations.
  */
 Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager);
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker);
 
 /**
  * Serialize a query
@@ -239,9 +241,8 @@ Status unordered_write_state_from_capnp(
     UnorderedWriter* runordered_writer,
     SerializationContext context);
 
-Status condition_from_capnp(
-    const capnp::Condition::Reader& condition_reader,
-    QueryCondition* const condition);
+QueryCondition condition_from_capnp(
+    const capnp::Condition::Reader& condition_reader);
 
 Status condition_to_capnp(
     const QueryCondition& condition,
@@ -276,7 +277,7 @@ Status query_from_capnp(
     CopyState* const copy_state,
     Query* const query,
     ThreadPool* compute_tp,
-    const bool query_plan = false);
+    const bool allocate_buffers);
 
 #endif
 

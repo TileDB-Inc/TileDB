@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -41,7 +42,6 @@
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb::common;
 
@@ -101,10 +101,8 @@ Status FragmentMetaConsolidator::consolidate(
   uri = URI(frag_md_uri.to_string() + name + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
-  auto meta_name = uri.remove_trailing_slash().last_path_part();
-  auto pos = meta_name.find_last_of('.');
-  meta_name = (pos == std::string::npos) ? meta_name : meta_name.substr(0, pos);
-  auto meta_version = utils::parse::get_fragment_version(meta_name);
+  FragmentID fragment_id{uri};
+  auto meta_version = fragment_id.array_format_version();
 
   // Calculate offset of first fragment footer
   uint64_t offset = sizeof(uint32_t);  // Fragment num
@@ -119,14 +117,13 @@ Status FragmentMetaConsolidator::consolidate(
   }
 
   // Serialize all fragment metadata footers in parallel
-  std::vector<tiledb_unique_ptr<WriterTile>> tiles(meta.size());
+  std::vector<shared_ptr<WriterTile>> tiles(meta.size());
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
         meta[i]->write_footer(size_computation_serializer);
-        tiles[i].reset(tdb_new(
-            WriterTile,
-            WriterTile::from_generic(size_computation_serializer.size())));
+        tiles[i] = WriterTile::from_generic(
+            size_computation_serializer.size(), consolidator_memory_tracker_);
         Serializer serializer(tiles[i]->data(), tiles[i]->size());
         meta[i]->write_footer(serializer);
 
@@ -162,9 +159,10 @@ Status FragmentMetaConsolidator::consolidate(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer, offset);
 
-  WriterTile tile{WriterTile::from_generic(size_computation_serializer.size())};
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(), consolidator_memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   serialize_data(serializer, offset);
 
   // Close array
@@ -175,7 +173,7 @@ Status FragmentMetaConsolidator::consolidate(
 
   GenericTileIO tile_io(storage_manager_->resources(), uri);
   [[maybe_unused]] uint64_t nbytes = 0;
-  tile_io.write_generic(&tile, enc_key, &nbytes);
+  tile_io.write_generic(tile, enc_key, &nbytes);
   RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
 
   return Status::Ok();
@@ -197,8 +195,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   // Get the latest timestamp
   uint64_t t_latest = 0;
   for (const auto& uri : fragment_meta_uris) {
-    std::pair<uint64_t, uint64_t> timestamp_range;
-    throw_if_not_ok(utils::parse::get_timestamp_range(uri, &timestamp_range));
+    FragmentID fragment_id{uri};
+    auto timestamp_range{fragment_id.timestamp_range()};
     if (timestamp_range.second > t_latest) {
       t_latest = timestamp_range.second;
     }
@@ -211,8 +209,8 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   throw_if_not_ok(
       parallel_for(compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
         auto& uri = fragment_meta_uris[i];
-        std::pair<uint64_t, uint64_t> timestamp_range;
-        RETURN_NOT_OK(utils::parse::get_timestamp_range(uri, &timestamp_range));
+        FragmentID fragment_id{uri};
+        auto timestamp_range{fragment_id.timestamp_range()};
         if (timestamp_range.second != t_latest)
           RETURN_NOT_OK(vfs->remove_file(uri));
         return Status::Ok();

@@ -72,6 +72,22 @@ commence(object_library time)
 conclude(object_library)
 
 #
+# `uuid` object library
+#
+commence(object_library uuid)
+    this_target_sources(uuid.cc)
+    this_target_object_libraries(baseline)
+    if(WIN32)
+        this_target_link_libraries(rpcrt4)
+    else()
+        find_package(OpenSSL_EP REQUIRED)
+        this_target_link_libraries(OpenSSL::Crypto)
+    endif()
+conclude(object_library)
+
+add_test_subdirectory()
+
+#
 # `mgc_dict.*` tests are declared in this directory for the moment.
 #
 # See also `/tiledb/CMakeLists.txt` for related targets `gen_mgc_unarch` and

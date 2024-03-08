@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,6 +61,7 @@ struct CppAggregatesFx {
   bool allow_dups_;
   bool set_ranges_;
   bool set_qc_;
+  bool use_dim_;
   tiledb_layout_t layout_;
   std::vector<bool> set_qc_values_;
   std::vector<tiledb_layout_t> layout_values_;
@@ -161,6 +162,7 @@ void CppAggregatesFx<T>::generate_test_params() {
     allow_dups_ = false;
     set_qc_values_ = {true, false};
     layout_values_ = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR, TILEDB_GLOBAL_ORDER};
+    use_dim_ = false;
   }
 
   SECTION("sparse") {
@@ -169,6 +171,8 @@ void CppAggregatesFx<T>::generate_test_params() {
     allow_dups_ = GENERATE(true, false);
     set_qc_values_ = {false};
     layout_values_ = {TILEDB_UNORDERED};
+    use_dim_ =
+        GENERATE(false, true) && !nullable_ && std::is_same<T, uint64_t>::value;
   }
 }
 
@@ -516,7 +520,7 @@ std::vector<uint8_t> CppAggregatesFx<T>::make_data_buff(
     }
   } else {
     for (auto& v : values) {
-      data.emplace_back(v);
+      data.emplace_back(static_cast<T>(v));
     }
   }
 
@@ -1431,6 +1435,7 @@ TEST_CASE_METHOD(
 
   for (bool set_ranges : {true, false}) {
     set_ranges_ = set_ranges;
+    use_dim_ = use_dim_ && !set_ranges;
     for (bool request_data : {true, false}) {
       request_data_ = request_data;
       for (bool set_qc : set_qc_values_) {
@@ -1472,7 +1477,10 @@ TEST_CASE_METHOD(
 
           // Check the results.
           uint64_t expected_count;
-          if (dense_) {
+
+          if (use_dim_) {
+            expected_count = 999;
+          } else if (dense_) {
             expected_count = set_ranges ? 24 : 36;
           } else {
             if (set_ranges) {
@@ -1526,6 +1534,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   for (bool set_ranges : {true, false}) {
     CppAggregatesFx<T>::set_ranges_ = set_ranges;
+    CppAggregatesFx<T>::use_dim_ = CppAggregatesFx<T>::use_dim_ && !set_ranges;
     for (bool request_data : {true, false}) {
       CppAggregatesFx<T>::request_data_ = request_data;
       for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
@@ -1539,7 +1548,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
               QueryExperimental::get_default_channel(query);
           ChannelOperation operation =
               QueryExperimental::create_unary_aggregate<SumOperator>(
-                  query, "a1");
+                  query, CppAggregatesFx<T>::use_dim_ ? "d1" : "a1");
           default_channel.apply_aggregate("Sum", operation);
 
           CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
@@ -1575,7 +1584,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
           // Check the results.
           typename tiledb::sm::sum_type_data<T>::sum_type expected_sum;
-          if (CppAggregatesFx<T>::dense_) {
+          if (CppAggregatesFx<T>::use_dim_) {
+            expected_sum = 499500;
+          } else if (CppAggregatesFx<T>::dense_) {
             if (CppAggregatesFx<T>::nullable_) {
               if (set_ranges) {
                 expected_sum = set_qc ? 197 : 201;
@@ -1650,6 +1661,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   for (bool set_ranges : {true, false}) {
     CppAggregatesFx<T>::set_ranges_ = set_ranges;
+    CppAggregatesFx<T>::use_dim_ = CppAggregatesFx<T>::use_dim_ && !set_ranges;
     for (bool request_data : {true, false}) {
       CppAggregatesFx<T>::request_data_ = request_data;
       for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
@@ -1662,7 +1674,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
               QueryExperimental::get_default_channel(query);
           ChannelOperation operation =
               QueryExperimental::create_unary_aggregate<MeanOperator>(
-                  query, "a1");
+                  query, CppAggregatesFx<T>::use_dim_ ? "d1" : "a1");
           default_channel.apply_aggregate("Mean", operation);
 
           CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
@@ -1698,7 +1710,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
           // Check the results.
           double expected_mean;
-          if (CppAggregatesFx<T>::dense_) {
+          if (CppAggregatesFx<T>::use_dim_) {
+            expected_mean = 500;
+          } else if (CppAggregatesFx<T>::dense_) {
             if (CppAggregatesFx<T>::nullable_) {
               if (set_ranges) {
                 expected_mean = set_qc ? (197.0 / 11.0) : (201.0 / 12.0);
@@ -1789,6 +1803,7 @@ TEMPLATE_LIST_TEST_CASE(
 
   for (bool set_ranges : {true, false}) {
     fx.set_ranges_ = set_ranges;
+    fx.use_dim_ = fx.use_dim_ && !set_ranges;
     for (bool request_data : {true, false}) {
       fx.request_data_ = request_data;
       for (bool set_qc : fx.set_qc_values_) {
@@ -1801,7 +1816,8 @@ TEMPLATE_LIST_TEST_CASE(
           QueryChannel default_channel =
               QueryExperimental::get_default_channel(query);
           ChannelOperation operation =
-              QueryExperimental::create_unary_aggregate<AGG>(query, "a1");
+              QueryExperimental::create_unary_aggregate<AGG>(
+                  query, fx.use_dim_ ? "d1" : "a1");
           default_channel.apply_aggregate("MinMax", operation);
 
           fx.set_ranges_and_condition_if_needed(array, query, false);
@@ -1848,7 +1864,9 @@ TEMPLATE_LIST_TEST_CASE(
 
           // Check the results.
           std::vector<uint8_t> expected_min_max;
-          if (fx.dense_) {
+          if (fx.use_dim_) {
+            expected_min_max = fx.make_data_buff({min ? 1 : 999});
+          } else if (fx.dense_) {
             if (fx.nullable_) {
               if (set_ranges) {
                 expected_min_max =
@@ -2607,7 +2625,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CppAggregatesFx<int32_t>,
     "CPP: Aggregates - Basic",
-    "[aggregates][cpp_api][args]") {
+    "[cppapi][aggregates][args]") {
   dense_ = false;
   nullable_ = false;
   allow_dups_ = false;
@@ -2638,4 +2656,49 @@ TEST_CASE_METHOD(
   CHECK_THROWS(
       QueryExperimental::create_unary_aggregate<SumOperator>(query, "a1"));
   CHECK_THROWS(default_channel.apply_aggregate("Something", operation));
+}
+
+typedef tuple<std::byte> BlobTypeUnderTest;
+TEMPLATE_LIST_TEST_CASE(
+    "C++ API: Aggregates basic sum, std::byte",
+    "[cppapi][aggregates][basic][sum][byte]",
+    BlobTypeUnderTest) {
+  const std::string array_name = "test_byte_aggregates";
+  auto datatype = GENERATE(
+      tiledb_datatype_t::TILEDB_BLOB,
+      tiledb_datatype_t::TILEDB_GEOM_WKB,
+      tiledb_datatype_t::TILEDB_GEOM_WKT);
+
+  Context ctx;
+  VFS vfs(ctx);
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create domain.
+  Domain domain(ctx);
+  auto d = Dimension::create<uint64_t>(ctx, "d", {{1, 999}}, 2);
+  domain.add_dimension(d);
+
+  // Create array schema.
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.add_attribute(Attribute::create(ctx, "a", datatype));
+
+  // Create array and query.
+  Array::create(array_name, schema);
+  Array array(ctx, array_name, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
+
+  // Add a sum aggregator to the query.
+  QueryChannel default_channel = QueryExperimental::get_default_channel(query);
+  REQUIRE_THROWS_WITH(
+      QueryExperimental::create_unary_aggregate<SumOperator>(query, "a"),
+      Catch::Matchers::ContainsSubstring("not a valid Datatype"));
+
+  // Clean up.
+  array.close();
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
 }

@@ -87,7 +87,7 @@ void query_channels_from_capnp(
       auto channel_reader = channels_reader[i];
 
       if (channel_reader.hasAggregates()) {
-        QueryChannel::ChannelAggregates aggregates;
+        LegacyQueryAggregatesOverDefault::ChannelAggregates aggregates;
 
         auto aggregates_reader = channel_reader.getAggregates();
         for (const auto& aggregate : aggregates_reader) {
@@ -119,8 +119,8 @@ void query_channels_from_capnp(
           }
         }
         if (!aggregates.empty()) {
-          query->add_channel(
-              QueryChannel{channel_reader.getDefault(), aggregates});
+          query->add_channel(LegacyQueryAggregatesOverDefault{
+              channel_reader.getDefault(), aggregates});
         }
       }
     }

@@ -30,9 +30,12 @@
  * This file tests the QueryPlan class
  */
 
+#include <test/support/src/mem_helpers.h>
+#include <test/support/src/temporary_local_directory.h>
 #include <test/support/tdb_catch.h>
 #include "../query_plan.h"
 #include "external/include/nlohmann/json.hpp"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -55,6 +58,11 @@ struct QueryPlanFx {
 
   void destroy_array(const std::shared_ptr<Array>& array);
 
+  URI array_uri(const std::string& uri);
+
+  shared_ptr<MemoryTracker> memory_tracker_;
+
+  TemporaryLocalDirectory temp_dir_;
   Config cfg_;
   shared_ptr<Logger> logger_;
   ContextResources resources_;
@@ -65,18 +73,18 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
   // Create Domain
   uint64_t dim_dom[2]{0, 1};
   uint64_t tile_extent = 1;
-  shared_ptr<Dimension> dim =
-      make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+  shared_ptr<Dimension> dim = make_shared<Dimension>(
+      HERE(), std::string("dim"), Datatype::UINT64, memory_tracker_);
   throw_if_not_ok(dim->set_domain(&dim_dom));
   throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
   std::vector<shared_ptr<Dimension>> dims = {dim};
-  shared_ptr<Domain> domain =
-      make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
+  shared_ptr<Domain> domain = make_shared<Domain>(
+      HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker_);
 
   // Create the ArraySchema
-  shared_ptr<ArraySchema> schema =
-      make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+  shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
+      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   throw_if_not_ok(schema->set_domain(domain));
   throw_if_not_ok(schema->add_attribute(
       make_shared<Attribute>(
@@ -97,17 +105,21 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
 
 void QueryPlanFx::destroy_array(const std::shared_ptr<Array>& array) {
   REQUIRE(array->close().ok());
-  REQUIRE(sm_->vfs()->remove_dir(array->array_uri()).ok());
+}
+
+URI QueryPlanFx::array_uri(const std::string& array_name) {
+  return URI(temp_dir_.path() + array_name);
 }
 
 QueryPlanFx::QueryPlanFx()
-    : logger_(make_shared<Logger>(HERE(), "foo"))
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , logger_(make_shared<Logger>(HERE(), "foo"))
     , resources_(cfg_, logger_, 1, 1, "")
     , sm_(make_shared<StorageManager>(resources_, logger_, cfg_)) {
 }
 
 TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
-  const URI uri = URI("query_plan_array");
+  const URI uri = array_uri("query_plan_array");
 
   auto array = create_array(uri);
 

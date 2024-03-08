@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,12 +36,12 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
+#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <iostream>
 #include <numeric>
@@ -136,28 +136,40 @@ void FragmentConsolidationWorkspace::resize_buffers(
     total_budget = config.buffer_size_ * buffer_num;
   }
 
-  // Make sure the buffers and sizes vectors are large enough.
-  if (buffer_num > buffers_.size()) {
-    buffers_.resize(buffer_num);
-    sizes_.resize(buffer_num);
-  }
-
-  // Create buffers.
+  // Calculate the size of individual buffers by assigning a weight based
+  // percentage of the total buffer size.
   auto total_weights = std::accumulate(
       buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
 
-  // Allocate space for each buffer.
   uint64_t adjusted_budget = total_budget / total_weights * total_weights;
 
-  if (std::max<uint64_t>(1, adjusted_budget) > backing_buffer_.size()) {
-    backing_buffer_.resize(std::max<uint64_t>(1, adjusted_budget));
+  if (buffer_num > buffers_.size()) {
+    sizes_.resize(buffer_num);
   }
 
-  // Finally allocate spans for the buffers.
   size_t offset = 0;
   for (unsigned i = 0; i < buffer_num; ++i) {
     sizes_[i] = std::max<uint64_t>(
         1, adjusted_budget * buffer_weights[i] / total_weights);
+    offset += sizes_[i];
+  }
+
+  // Total size is the final offset value
+  size_t final_budget = offset;
+
+  // Ensure that our backing buffer is large enough to reference the final
+  // budget number of bytes.
+  if (final_budget > backing_buffer_.size()) {
+    backing_buffer_.resize(final_budget);
+  }
+
+  // Finally, update our spans referencing the backing buffer.
+  if (buffer_num > buffers_.size()) {
+    buffers_.resize(buffer_num);
+  }
+
+  offset = 0;
+  for (unsigned i = 0; i < buffer_num; ++i) {
     buffers_[i] = span(&(backing_buffer_[offset]), sizes_[i]);
     offset += sizes_[i];
   }
@@ -172,7 +184,7 @@ FragmentConsolidator::FragmentConsolidator(
     : Consolidator(storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
-    throw std::logic_error(st.message());
+    throw FragmentConsolidatorException(st.message());
   }
 }
 
@@ -506,9 +518,8 @@ Status FragmentConsolidator::consolidate_internal(
   if (!config_.purge_deleted_cells_ &&
       array_schema.write_version() >= constants::deletes_min_version) {
     // Get the first fragment first timestamp.
-    std::pair<uint64_t, uint64_t> timestamps;
-    RETURN_NOT_OK(
-        utils::parse::get_timestamp_range(to_consolidate[0].uri_, &timestamps));
+    FragmentID fragment_id{to_consolidate[0].uri_};
+    auto timestamps{fragment_id.timestamp_range()};
 
     for (auto& delete_and_update_tile_location :
          array_for_reads->array_directory()
@@ -830,7 +841,7 @@ void FragmentConsolidator::set_query_buffers(
   const auto& array_schema = query->array_schema();
   auto dim_num = array_schema.dim_num();
   auto dense = array_schema.dense();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   unsigned bid = 0;
 
   // Here the first buffer should always be the fixed buffer (either offsets

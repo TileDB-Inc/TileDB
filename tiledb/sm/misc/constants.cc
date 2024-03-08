@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,10 +51,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
 
-namespace tiledb {
-namespace sm {
-
-namespace constants {
+namespace tiledb::sm::constants {
 
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
@@ -186,6 +183,12 @@ const char empty_char = std::numeric_limits<char>::min();
 
 /** The special value for an empty blob. */
 constexpr std::byte empty_blob{0};
+
+/** The special value for an empty geom_wkb. */
+constexpr std::byte empty_geom_wkb{0};
+
+/** The special value for an empty geom_wkt. */
+constexpr std::byte empty_geom_wkt{0};
 
 /** The special value for an empty bool. */
 const uint8_t empty_bool = 0;
@@ -333,6 +336,12 @@ const std::string query_status_initialized_str = "INITIALIZED";
 
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
+
+/** TILEDB_ALWAYS_TRUE Query Condition Op String **/
+const std::string query_condition_op_always_true_str = "ALWAYS_TRUE";
+
+/** TILEDB_ALWAYS_FALSE Query Condition Op String **/
+const std::string query_condition_op_always_false_str = "ALWAYS_FALSE";
 
 /** TILEDB_LT Query Condition Op String **/
 const std::string query_condition_op_lt_str = "LT";
@@ -490,6 +499,12 @@ const std::string char_str = "CHAR";
 
 /** The string representation for type blob. */
 const std::string blob_str = "BLOB";
+
+/** The string representation for type geom_wkb. */
+const std::string geom_wkb_str = "GEOM_WKB";
+
+/** The string representation for type geom_wkt. */
+const std::string geom_wkt_str = "GEOM_WKT";
 
 /** The string representation for type bool. */
 const std::string bool_str = "BOOL";
@@ -797,6 +812,10 @@ const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::BLOB:
       return &constants::empty_blob;
+    case Datatype::GEOM_WKB:
+      return &constants::empty_geom_wkb;
+    case Datatype::GEOM_WKT:
+      return &constants::empty_geom_wkt;
     case Datatype::BOOL:
       return &constants::empty_bool;
     case Datatype::INT8:
@@ -864,7 +883,5 @@ const void* fill_value(Datatype type) {
 }
 
 const std::string config_delimiter = ",";
-}  // namespace constants
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::constants

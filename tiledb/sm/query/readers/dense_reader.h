@@ -162,9 +162,6 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Target upper memory limit for tiles. */
   uint64_t tile_upper_memory_limit_;
 
-  /** Memory tracker object for the array. */
-  MemoryTracker* array_memory_tracker_;
-
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -400,7 +397,7 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const Subarray& tile_subarray,
       const uint64_t global_cell_offset,
       const std::vector<RangeInfo<DimType>>& range_info,
-      std::vector<uint8_t>& aggregate_bitmap,
+      const std::vector<uint8_t>& qc_result,
       const uint64_t range_thread_idx,
       const uint64_t num_range_threads);
 

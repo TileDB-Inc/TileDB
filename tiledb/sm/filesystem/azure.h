@@ -39,6 +39,7 @@
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
 
@@ -62,6 +63,48 @@ class directory_entry;
 }
 
 namespace sm {
+
+/**
+ * The Azure-specific configuration parameters.
+ */
+struct AzureParameters {
+  AzureParameters() = delete;
+
+  AzureParameters(const Config& config);
+
+  /**  The maximum number of parallel requests. */
+  uint64_t max_parallel_ops_;
+
+  /**  The target block size in a block list upload */
+  uint64_t block_list_block_size_;
+
+  /**  The maximum size of each value-element in 'write_cache_map_'. */
+  uint64_t write_cache_max_size_;
+
+  /** The maximum number of retries. */
+  int max_retries_;
+
+  /** The minimum time to wait between retries. */
+  std::chrono::milliseconds retry_delay_;
+
+  /** The maximum time to wait between retries. */
+  std::chrono::milliseconds max_retry_delay_;
+
+  /** Whether or not to use block list upload. */
+  bool use_block_list_upload_;
+
+  /** The Blob Storage account name. */
+  std::string account_name_;
+
+  /** The Blob Storage account key. */
+  std::string account_key_;
+
+  /** The Blob Storage endpoint to connect to. */
+  std::string blob_endpoint_;
+
+  /** SSL configuration. */
+  SSLConfig ssl_cfg_;
+};
 
 class Azure {
  public:
@@ -310,13 +353,14 @@ class Azure {
   Status write(const URI& uri, const void* buffer, uint64_t length);
 
   /**
-   * Returns a reference to the Azure blob service client.
+   * Initializes the Azure blob service client and returns a reference to it.
    *
-   * Used for testing. Calling code should include the Azure SDK headers to make
+   * Calling code should include the Azure SDK headers to make
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    return *client_;
+    assert(azure_params_);
+    return client_singleton_.get(*azure_params_);
   }
 
  private:
@@ -364,6 +408,32 @@ class Azure {
     Status st_;
   };
 
+  /**
+   * Encapsulates access to an Azure BlobServiceClient.
+   *
+   * This class ensures that:
+   * * Callers access the client in an initialized state.
+   * * The client gets initialized only once even for concurrent accesses.
+   */
+  class AzureClientSingleton {
+   public:
+    /**
+     * Gets a reference to the Azure BlobServiceClient, and initializes it if it
+     * is not initialized.
+     *
+     * @param params The parameters to initialize the client with.
+     */
+    const ::Azure::Storage::Blobs::BlobServiceClient& get(
+        const AzureParameters& params);
+
+   private:
+    /** The Azure blob service client. */
+    tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+
+    /** Protects from creating the client many times. */
+    std::mutex client_init_mtx_;
+  };
+
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -371,8 +441,8 @@ class Azure {
   /** The VFS thread pool. */
   ThreadPool* thread_pool_;
 
-  /** The Azure blob service client. */
-  tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient> client_;
+  /** A holder for the Azure blob service client. */
+  mutable AzureClientSingleton client_singleton_;
 
   /** Maps a blob URI to a write cache buffer. */
   std::unordered_map<std::string, Buffer> write_cache_map_;
@@ -380,20 +450,11 @@ class Azure {
   /** Protects 'write_cache_map_'. */
   std::mutex write_cache_map_lock_;
 
-  /**  The maximum size of each value-element in 'write_cache_map_'. */
-  uint64_t write_cache_max_size_;
-
-  /**  The maximum number of parallel requests. */
-  uint64_t max_parallel_ops_;
-
-  /**  The target block size in a block list upload */
-  uint64_t block_list_block_size_;
-
-  /** The minimum time to wait between retries. */
-  std::chrono::milliseconds retry_delay_;
-
-  /** Whether or not to use block list upload. */
-  bool use_block_list_upload_;
+  /**
+   * Contains options to configure connection to Azure.
+   * After the class becomes C.41 compliant, remove the std::optional.
+   */
+  std::optional<AzureParameters> azure_params_;
 
   /** Maps a blob URI to its block list upload state. */
   std::unordered_map<std::string, BlockListUploadState>
@@ -467,7 +528,6 @@ class Azure {
    * @param length The length of `buffer`.
    * @param block_id A base64-encoded string that is unique to this block
    * within the blob.
-   * @param result The returned future to fetch the async upload result from.
    * @return Status
    */
   Status upload_block(

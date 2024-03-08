@@ -30,12 +30,16 @@
 #include "../dimension/dimension_api_internal.h"
 #include "domain_api_external.h"
 #include "domain_api_internal.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
-int32_t tiledb_domain_alloc(tiledb_domain_handle_t** domain) {
+int32_t tiledb_domain_alloc(
+    tiledb_ctx_t* ctx, tiledb_domain_handle_t** domain) {
   ensure_output_pointer_is_valid(domain);
-  *domain = tiledb_domain_handle_t::make_handle();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
+  *domain = tiledb_domain_handle_t::make_handle(memory_tracker);
   return TILEDB_OK;
 }
 
@@ -147,7 +151,8 @@ int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
 using tiledb::api::api_entry_context;
 
 CAPI_INTERFACE(domain_alloc, tiledb_ctx_t* ctx, tiledb_domain_t** domain) {
-  return api_entry_context<tiledb::api::tiledb_domain_alloc>(ctx, domain);
+  return tiledb::api::api_entry_with_context<tiledb::api::tiledb_domain_alloc>(
+      ctx, domain);
 }
 
 CAPI_INTERFACE_VOID(domain_free, tiledb_domain_t** domain) {

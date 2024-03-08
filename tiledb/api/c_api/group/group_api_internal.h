@@ -52,7 +52,7 @@ struct tiledb_group_handle_t
 
   explicit tiledb_group_handle_t(
       const tiledb::sm::URI& uri, tiledb::sm::StorageManager* sm)
-      : group_(uri, sm) {
+      : group_(sm->resources(), uri, sm) {
   }
 
   [[nodiscard]] inline tiledb::sm::Group& group() {

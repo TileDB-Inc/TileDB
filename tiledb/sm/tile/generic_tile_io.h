@@ -120,13 +120,14 @@ class GenericTileIO {
    * @param uri The object URI.
    * @param offset The offset into the file to read from.
    * @param encryption_key The encryption key to use.
-   * @return Status, Tile with the data.
+   * @return Tile with the data.
    */
-  static Tile load(
+  static shared_ptr<Tile> load(
       ContextResources& resources,
       const URI& uri,
       uint64_t offset,
-      const EncryptionKey& encryption_key);
+      const EncryptionKey& encryption_key,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Reads a generic tile from the file. A generic tile is a tile residing
@@ -141,12 +142,13 @@ class GenericTileIO {
    * @param file_offset The offset in the file to read from.
    * @param encryption_key The encryption key to use.
    * @param config The storage manager's config.
-   * @return Status, Tile
+   * @return Tile
    */
-  Tile read_generic(
+  shared_ptr<Tile> read_generic(
       uint64_t file_offset,
       const EncryptionKey& encryption_key,
-      const Config& config);
+      const Config& config,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Reads the generic tile header from the file.
@@ -154,12 +156,24 @@ class GenericTileIO {
    * @param resources The ContextResources instance to use for reading.
    * @param uri The URI of the generic tile.
    * @param file_offset The offset where the header read will begin.
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @return Status, Header
+   * @return Header
    */
   static GenericTileHeader read_generic_tile_header(
       ContextResources& resources, const URI& uri, uint64_t file_offset);
+
+  /**
+   * Writes a generic tile to a file.
+   *
+   * @param resources The ContextResources instance to use for writing.
+   * @param uri The URI of the generic tile.
+   * @param tile The tile to write.
+   * @param encryption_key The encryption key to use.
+   */
+  static void store_data(
+      ContextResources& resources,
+      const URI& uri,
+      shared_ptr<WriterTile> tile,
+      const EncryptionKey& encryption_key);
 
   /**
    * Writes a tile generically to the file. This means that a header will be
@@ -170,10 +184,11 @@ class GenericTileIO {
    * @param tile The tile to be written.
    * @param encryption_key The encryption key to use.
    * @param nbytes The total number of bytes written to the file.
-   * @return Status
    */
   void write_generic(
-      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<WriterTile> tile,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Serialize a generic tile header.
