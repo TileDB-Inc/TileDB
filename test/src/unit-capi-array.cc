@@ -879,7 +879,7 @@ TEST_CASE_METHOD(
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_path = temp_dir + "array-open-at-reads";
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += array_path;
 
   SECTION("- without encryption") {
@@ -1441,7 +1441,7 @@ TEST_CASE_METHOD(
     "[capi][array][open-at][writes][rest-fails][sc-42722]") {
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "array-open-at-writes";
 
   SECTION("- without encryption") {
@@ -1645,7 +1645,7 @@ TEST_CASE_METHOD(
     "[capi][array][array-write-coords-oob][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
 
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "array-write-coords-oob";
   create_temp_dir(temp_dir);
 
@@ -1794,7 +1794,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ArrayFx, "C API: Test empty array", "[capi][array][array-empty][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "array_empty";
 
   create_temp_dir(temp_dir);
@@ -1847,7 +1847,7 @@ TEST_CASE_METHOD(
     ArrayFx, "C API: Test deletion of array", "[capi][array][delete][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   std::string array_path = temp_dir + "array_delete";
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += array_path;
 
   create_temp_dir(temp_dir);
@@ -1911,7 +1911,7 @@ TEST_CASE_METHOD(
     "sparse arrays",
     "[capi][query][error][sparse][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "query_error_sparse";
 
   create_temp_dir(temp_dir);
@@ -1968,7 +1968,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense writes",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "query_error_dense";
 
   create_temp_dir(temp_dir);
@@ -2043,7 +2043,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense unordered writes",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "query_error_dense";
 
   create_temp_dir(temp_dir);
@@ -2081,7 +2081,7 @@ TEST_CASE_METHOD(
     "C API: Test query errors, dense reads in global order",
     "[capi][query][error][dense][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  std::string array_name = fs_vec_[0] ? "tiledb://unit/" : "";
+  std::string array_name = fs_vec_[0]->is_rest() ? "tiledb://unit/" : "";
   array_name += temp_dir + "query_error_dense";
 
   create_temp_dir(temp_dir);
