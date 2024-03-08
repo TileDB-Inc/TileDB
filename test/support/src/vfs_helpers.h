@@ -890,14 +890,17 @@ struct TemporaryDirectoryFixture {
  *
  */
 struct VFSTestSetup {
-  VFSTestSetup(tiledb_config_t* config = nullptr)
+  VFSTestSetup(tiledb_config_t* config = nullptr, bool remove_tmpdir = true)
       : fs_vec(vfs_test_get_fs_vec())
       , ctx_c{nullptr}
       , vfs_c{nullptr}
       , cfg_c{config} {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
     temp_dir = fs_vec[0]->temp_dir();
-    vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
+    if (remove_tmpdir) {
+      vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
+    }
+    tiledb_vfs_create_dir(ctx_c, vfs_c, temp_dir.c_str());
   };
 
   bool is_rest() {
