@@ -56,6 +56,10 @@ std::string memory_type_to_str(MemoryType type) {
       return "EnumerationPaths";
     case MemoryType::FOOTER:
       return "Footer";
+    case MemoryType::FILTERED_DATA:
+      return "FilteredData";
+    case MemoryType::FILTERED_DATA_BLOCK:
+      return "FilteredDataBlock";
     case MemoryType::GENERIC_TILE_IO:
       return "GenericTileIO";
     case MemoryType::RTREE:
