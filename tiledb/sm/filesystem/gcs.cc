@@ -102,6 +102,9 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
+  impersonate_service_account_ =
+      config.get("vfs.gcs.impersonate_service_account", &found);
+  assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
   assert(found);
@@ -125,6 +128,56 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
 
   state_ = State::INITIALIZED;
   return Status::Ok();
+}
+
+/**
+ * Builds a chain of service account impersonation credentials.
+ *
+ * @param credentials The set of credentials to start the chain.
+ * @param service_accounts A comma-separated list of service accounts, where
+ * each account will be used to impersonate the next.
+ * @options Options to set to the credentials.
+ * @return The new set of credentials.
+ */
+static shared_ptr<google::cloud::Credentials> apply_impersonation(
+    shared_ptr<google::cloud::Credentials> credentials,
+    std::string service_accounts,
+    google::cloud::Options options) {
+  if (service_accounts.empty()) {
+    return credentials;
+  }
+  auto last_comma_pos = service_accounts.rfind(',');
+  // If service_accounts is a comma-separated list, we have to extract the first
+  // items to a vector and pass them via DelegatesOption, and pass only the last
+  // account to MakeImpersonateServiceAccountCredentials.
+  if (last_comma_pos != std::string_view::npos) {
+    // Create a view over all service accounts except the last one.
+    auto delegates_str =
+        std::string_view(service_accounts).substr(0, last_comma_pos);
+    std::vector<std::string> delegates;
+    while (true) {
+      auto comma_pos = delegates_str.find(',');
+      // Get the characters before the comma. We don't have to check for npos
+      // yet; substr will trim the size if it is too big.
+      delegates.push_back(std::string(delegates_str.substr(0, comma_pos)));
+      if (comma_pos != std::string_view::npos) {
+        // If there is another comma, discard it and the characters before it.
+        delegates_str = delegates_str.substr(comma_pos + 1);
+      } else {
+        // Otherwise exit the loop; we have processed all intermediate service
+        // accounts.
+        break;
+      }
+    }
+    options.set<google::cloud::DelegatesOption>(std::move(delegates));
+    // Trim service_accounts to its last member.
+    service_accounts = service_accounts.substr(last_comma_pos + 1);
+  }
+  // service_accounts should not have any comma here.
+  assert(service_accounts.find(',') == std::string_view::npos);
+  // Create the credential.
+  return google::cloud::MakeImpersonateServiceAccountCredentials(
+      std::move(credentials), std::move(service_accounts), std::move(options));
 }
 
 Status GCS::init_client() const {
@@ -164,6 +217,8 @@ Status GCS::init_client() const {
     } else {
       creds = google::cloud::MakeGoogleDefaultCredentials(ca_options);
     }
+    creds =
+        apply_impersonation(creds, impersonate_service_account_, ca_options);
     auto client_options = ca_options;
     client_options.set<google::cloud::UnifiedCredentialsOption>(creds);
     if (!endpoint_.empty()) {

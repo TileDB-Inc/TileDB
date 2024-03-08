@@ -426,6 +426,9 @@ class GCS {
   // The GCS project id.
   std::string project_id_;
 
+  // A comma-separated list with the GCS service accounts to impersonate.
+  std::string impersonate_service_account_;
+
   // The GCS REST client.
   mutable tdb_unique_ptr<google::cloud::storage::Client> client_;
 
