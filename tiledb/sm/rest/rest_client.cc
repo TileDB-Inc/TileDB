@@ -114,8 +114,13 @@ Status RestClient::init(
 
   const char* c_str;
   RETURN_NOT_OK(config_->get("rest.server_address", &c_str));
-  if (c_str != nullptr)
+  if (c_str != nullptr) {
     rest_server_ = std::string(c_str);
+    if (rest_server_.ends_with('/')) {
+      size_t pos = rest_server_.find_last_not_of('/');
+      rest_server_.resize(pos + 1);
+    }
+  }
   if (rest_server_.empty())
     return LOG_STATUS(Status_RestError(
         "Error initializing rest client; server address is empty."));
