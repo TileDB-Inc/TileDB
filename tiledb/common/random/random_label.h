@@ -71,8 +71,8 @@ class RandomLabelGenerator {
   /* ********************************* */
   /** Generate a random label. */
   std::string generate() {
-    std::lock_guard<std::mutex> lock(mtx_);
     PRNG& prng = PRNG::get();
+    std::lock_guard<std::mutex> lock(mtx_);
     auto now = tiledb::sm::utils::time::timestamp_now_ms();
 
     // If no label has been generated this millisecond, generate a new one.
@@ -106,7 +106,6 @@ class RandomLabelGenerator {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
-  static RandomLabelGenerator singleton_;
 
   /** Mutex which protects against simultaneous random label generation. */
   std::mutex mtx_;
