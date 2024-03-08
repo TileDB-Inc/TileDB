@@ -385,6 +385,10 @@ class RestClient {
    */
   Status post_vacuum_to_rest(const URI& uri, const Config& config);
 
+  inline std::string rest_server() const {
+    return rest_server_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
