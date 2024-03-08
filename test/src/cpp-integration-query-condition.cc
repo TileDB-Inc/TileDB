@@ -361,7 +361,7 @@ TEST_CASE(
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
 
-  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get());
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
   auto ctx2 = vfs_test_setup2.ctx();
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
@@ -425,7 +425,7 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get());
+  auto vfs_test_setup2 = tiledb::test::VFSTestSetup(config.ptr().get(), false);
   auto ctx2 = vfs_test_setup2.ctx();
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
