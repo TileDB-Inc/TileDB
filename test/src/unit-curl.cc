@@ -31,15 +31,12 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "test/support/src/helpers.h"
-#include "tiledb/sm/rest/curl.h"
-#include "tiledb/sm/rest/rest_client.h"
 
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
+// clang-format off
+#include "test/support/src/helpers.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/curl.h" // Must be included last to avoid Windows.h
+// clang-format on
 
 #include <filesystem>
 #include <fstream>
@@ -106,7 +103,7 @@ TEST_CASE(
     cfg.set("rest.server_address", rest_server).ok();
   }
   SECTION("rest.server_address set in environment") {
-    setenv("TILEDB_REST_SERVER_ADDRESS", rest_server.c_str(), 1);
+    setenv_local("TILEDB_REST_SERVER_ADDRESS", rest_server.c_str());
   }
   SECTION("rest.server_address set by loaded config file") {
     std::string cfg_file = "tiledb_config.txt";

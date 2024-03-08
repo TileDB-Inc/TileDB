@@ -57,6 +57,14 @@
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/query.h"
 
+int setenv_local(const char* __name, const char* __value) {
+#ifdef _WIN32
+  return _putenv_s(__name, __value);
+#else
+  return ::setenv(__name, __value, 1);
+#endif
+}
+
 std::mutex catch2_macro_mutex;
 
 namespace tiledb::test {
