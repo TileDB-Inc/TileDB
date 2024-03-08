@@ -447,17 +447,17 @@ Status DenseReader::dense_read() {
         }
       }
 
-      compute_task = storage_manager_->compute_tp()->execute(
-          [&,
-           filtered_data = filtered_data,
-           name,
-           validity_only,
-           t_start,
-           t_end,
-           subarray_start_cell,
-           subarray_end_cell,
-           num_range_threads,
-           result_tiles]() {
+      compute_task =
+          storage_manager_->compute_tp()->execute([&,
+                                                   filtered_data,
+                                                   name,
+                                                   validity_only,
+                                                   t_start,
+                                                   t_end,
+                                                   subarray_start_cell,
+                                                   subarray_end_cell,
+                                                   num_range_threads,
+                                                   result_tiles]() {
             // Unfilter tiles.
             RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
 
@@ -919,8 +919,7 @@ Status DenseReader::apply_query_condition(
     }
 
     compute_task = storage_manager_->compute_tp()->execute([&,
-                                                            filtered_data =
-                                                                filtered_data,
+                                                            filtered_data,
                                                             qc_names,
                                                             t_start,
                                                             t_end,
