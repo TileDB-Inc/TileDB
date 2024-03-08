@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,33 +31,26 @@
  */
 
 #include "tiledb/common/random/random_label.h"
-#include "tiledb/common/random/prng.h"
-
-#include <iomanip>
-#include <sstream>
 
 namespace tiledb::common {
 
-/**
- * Legacy code provides randomness using UUIDs, which are always 128 bits,
- * represented as a 32-digit hexadecimal value.
- *
- * To ensure backward compatibility, this function formats the PRNG-generated
- * values to be precisely a 32-digit hexadecimal value. Each value is padded
- * with 0s such that it makes up one 16-digit half of the full 32-digit number.
- */
+/* ********************************* */
+/*     CONSTRUCTORS & DESTRUCTORS    */
+/* ********************************* */
+RandomLabelGenerator::RandomLabelGenerator()
+    : prev_time_(tiledb::sm::utils::time::timestamp_now_ms()) {
+}
+
+/* ********************************* */
+/*                API                */
+/* ********************************* */
+std::string RandomLabelGenerator::generate_random_label() {
+  static RandomLabelGenerator generator;
+  return generator.generate();
+}
+
 std::string random_label() {
-  PRNG& prng = PRNG::get();
-  std::stringstream ss;
-
-  // Generate and format a 128-bit, 32-digit hexadecimal random number
-  auto rand1 = prng();
-  ss << std::hex << std::setw(16) << std::setfill('0') << rand1;
-  auto rand2 = prng();
-  ss << std::hex << std::setw(16) << std::setfill('0') << rand2;
-
-  // Return label string
-  return ss.str();
+  return RandomLabelGenerator::generate_random_label();
 }
 
 }  // namespace tiledb::common

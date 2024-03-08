@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,9 +33,90 @@
 #ifndef TILEDB_HELPERS_H
 #define TILEDB_HELPERS_H
 
+#include <iomanip>
+#include <mutex>
+#include <sstream>
 #include <string>
 
+#include "tiledb/common/exception/exception.h"
+#include "tiledb/common/random/prng.h"
+#include "tiledb/sm/misc/tdb_time.h"
+
 namespace tiledb::common {
+
+class RandomLabelException : public StatusException {
+ public:
+  explicit RandomLabelException(const std::string& message)
+      : StatusException("RandomLabel", message) {
+  }
+};
+
+class RandomLabelGenerator {
+ public:
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+  DISABLE_COPY_AND_COPY_ASSIGN(RandomLabelGenerator);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(RandomLabelGenerator);
+
+  /** Default destructor. */
+  ~RandomLabelGenerator() = default;
+
+ protected:
+  /** Protected constructor, abstracted by public-facing accessor. */
+  RandomLabelGenerator();
+
+  /* ********************************* */
+  /*                API                */
+  /* ********************************* */
+  /** Generate a random label. */
+  std::string generate() {
+    std::lock_guard<std::mutex> lock(mtx_);
+    PRNG& prng = PRNG::get();
+    auto now = tiledb::sm::utils::time::timestamp_now_ms();
+
+    // If no label has been generated this millisecond, generate a new one.
+    if (now != prev_time_) {
+      prev_time_ = now;
+      counter_ = static_cast<uint32_t>(prng());
+      // Clear the top bit of the counter such that a full 2 billion values
+      // could be generated within a single millisecond.
+      counter_ &= 0x7FFFFFFF;
+    } else {
+      counter_ += 1;
+      if (counter_ == 0) {
+        throw RandomLabelException("Maximum generation frequency exceeded.");
+      }
+    }
+
+    // Generate and format a 128-bit, 32-digit hexadecimal random number
+    std::stringstream ss;
+    ss << std::hex << std::setw(8) << std::setfill('0') << counter_;
+    ss << std::hex << std::setw(8) << std::setfill('0')
+       << static_cast<uint32_t>(prng());
+    ss << std::hex << std::setw(16) << std::setfill('0') << prng();
+    return ss.str();
+  }
+
+ public:
+  /** Generate a random label. */
+  static std::string generate_random_label();
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+  static RandomLabelGenerator singleton_;
+
+  /** Mutex which protects against simultaneous random label generation. */
+  std::mutex mtx_;
+
+  /** The time (in milliseconds) of the last label creation. */
+  uint64_t prev_time_;
+
+  /** The submillsecond counter portion of the random label. */
+  uint32_t counter_;
+};
 
 /**
  * Returns a PRNG-generated label as a 32-digit hexadecimal random number.
