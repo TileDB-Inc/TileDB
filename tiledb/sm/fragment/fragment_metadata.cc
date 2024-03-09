@@ -3885,15 +3885,15 @@ void FragmentMetadata::store_rtree(
   resources_->stats().add_counter("write_rtree_size", *nbytes);
 }
 
-WriterTile FragmentMetadata::write_rtree() {
+shared_ptr<WriterTile> FragmentMetadata::write_rtree() {
   rtree_.build_tree();
   SizeComputationSerializer size_computation_serializer;
   rtree_.serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   rtree_.serialize(serializer);
 
   return tile;
@@ -3984,22 +3984,22 @@ void FragmentMetadata::read_file_footer(
 
 void FragmentMetadata::write_generic_tile_to_file(
     const EncryptionKey& encryption_key,
-    WriterTile& tile,
+    shared_ptr<WriterTile> tile,
     uint64_t* nbytes) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
   GenericTileIO tile_io(*resources_, fragment_metadata_uri);
-  tile_io.write_generic(&tile, encryption_key, nbytes);
+  tile_io.write_generic(tile, encryption_key, nbytes);
 }
 
-void FragmentMetadata::write_footer_to_file(WriterTile& tile) const {
+void FragmentMetadata::write_footer_to_file(shared_ptr<WriterTile> tile) const {
   URI fragment_metadata_uri = fragment_uri_.join_path(
       std::string(constants::fragment_metadata_filename));
 
-  uint64_t size = tile.size();
-  throw_if_not_ok(
-      resources_->vfs().write(fragment_metadata_uri, tile.data(), tile.size()));
+  uint64_t size = tile->size();
+  throw_if_not_ok(resources_->vfs().write(
+      fragment_metadata_uri, tile->data(), tile->size()));
 
   // Write the size in the end if there is at least one var-sized dimension
   if (!array_schema_->domain().all_dims_fixed() || version_ >= 10) {
@@ -4013,10 +4013,10 @@ void FragmentMetadata::store_tile_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_offsets(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_offsets(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4041,10 +4041,10 @@ void FragmentMetadata::store_tile_var_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_offsets(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_var_offsets(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4070,10 +4070,10 @@ void FragmentMetadata::store_tile_var_sizes(
   SizeComputationSerializer size_computation_serializer;
   write_tile_var_sizes(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_var_sizes(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4098,10 +4098,10 @@ void FragmentMetadata::store_tile_validity_offsets(
   SizeComputationSerializer size_computation_serializer;
   write_tile_validity_offsets(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_validity_offsets(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4127,10 +4127,10 @@ void FragmentMetadata::store_tile_mins(
   SizeComputationSerializer size_computation_serializer;
   write_tile_mins(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_mins(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4162,10 +4162,10 @@ void FragmentMetadata::store_tile_maxs(
   SizeComputationSerializer size_computation_serializer;
   write_tile_maxs(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_maxs(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4197,10 +4197,10 @@ void FragmentMetadata::store_tile_sums(
   SizeComputationSerializer size_computation_serializer;
   write_tile_sums(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_sums(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4223,10 +4223,10 @@ void FragmentMetadata::store_tile_null_counts(
   SizeComputationSerializer size_computation_serializer;
   write_tile_null_counts(idx, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_tile_null_counts(idx, serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4276,10 +4276,10 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
   SizeComputationSerializer size_computation_serializer;
   serialize_data(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   serialize_data(serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4303,10 +4303,10 @@ void FragmentMetadata::store_processed_conditions(
   SizeComputationSerializer size_computation_serializer;
   serialize_processed_conditions(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   serialize_processed_conditions(serializer);
   write_generic_tile_to_file(encryption_key, tile, nbytes);
 
@@ -4633,14 +4633,14 @@ void FragmentMetadata::write_has_delete_meta(Serializer& serializer) const {
 void FragmentMetadata::store_footer(const EncryptionKey&) {
   SizeComputationSerializer size_computation_serializer;
   write_footer(size_computation_serializer);
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   write_footer(serializer);
   write_footer_to_file(tile);
 
-  resources_->stats().add_counter("write_frag_meta_footer_size", tile.size());
+  resources_->stats().add_counter("write_frag_meta_footer_size", tile->size());
 }
 
 void FragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {

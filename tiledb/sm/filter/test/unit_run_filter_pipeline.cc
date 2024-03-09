@@ -166,8 +166,8 @@ class SimpleVariableTestData {
 void check_run_pipeline_full(
     Config& config,
     ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
+    shared_ptr<WriterTile>& tile,
+    std::optional<shared_ptr<WriterTile>>& offsets_tile,
     FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     const FilteredTileChecker& filtered_buffer_checker,
@@ -176,16 +176,16 @@ void check_run_pipeline_full(
   CHECK(pipeline
             .run_forward(
                 &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
+                tile.get(),
+                offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
                 &tp)
             .ok());
 
   // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
+  CHECK(tile->size() == 0);
 
   // Check the filtered buffer has the expected data.
-  auto filtered_buffer = tile.filtered_buffer();
+  auto filtered_buffer = tile->filtered_buffer();
   filtered_buffer_checker.check(filtered_buffer);
 
   // Run the data in reverse.
@@ -219,8 +219,8 @@ void check_run_pipeline_full(
 void check_run_pipeline_roundtrip(
     Config& config,
     ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
+    shared_ptr<WriterTile> tile,
+    std::optional<shared_ptr<WriterTile>>& offsets_tile,
     FilterPipeline& pipeline,
     const TileDataGenerator* test_data,
     shared_ptr<MemoryTracker> memory_tracker) {
@@ -228,17 +228,17 @@ void check_run_pipeline_roundtrip(
   CHECK(pipeline
             .run_forward(
                 &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
+                tile.get(),
+                offsets_tile.has_value() ? offsets_tile.value().get() : nullptr,
                 &tp)
             .ok());
 
   // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
+  CHECK(tile->size() == 0);
 
   // Run the data in reverse.
   auto unfiltered_tile = test_data->create_filtered_buffer_tile(
-      tile.filtered_buffer(), memory_tracker);
+      tile->filtered_buffer(), memory_tracker);
   ChunkData chunk_data;
   unfiltered_tile.load_chunk_data(chunk_data);
   CHECK(pipeline

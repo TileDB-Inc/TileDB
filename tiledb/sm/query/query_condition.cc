@@ -2385,7 +2385,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -2473,7 +2473,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   switch (node->get_op()) {
     case QueryConditionOp::ALWAYS_TRUE:
       apply_ast_node_sparse<
@@ -2569,7 +2569,7 @@ void QueryCondition::apply_ast_node_sparse(
     const bool var_size,
     const bool nullable,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   if (nullable) {
     apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
         node, result_tile, var_size, combination_op, result_bitmap);
@@ -2585,7 +2585,7 @@ void QueryCondition::apply_ast_node_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   std::string node_field_name = node->get_field_name();
   if (!array_schema.is_field(node_field_name)) {
     std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
@@ -2744,7 +2744,7 @@ void QueryCondition::apply_tree_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   if (!node->is_expr()) {
     apply_ast_node_sparse<BitmapType>(
         node, array_schema, result_tile, combination_op, result_bitmap);
@@ -2783,7 +2783,9 @@ void QueryCondition::apply_tree_sparse(
           // Handle the cl'(q, a) case.
           // This cases on whether the combination op = OR.
         } else if constexpr (std::is_same_v<CombinationOp, QCMax<BitmapType>>) {
-          std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
+          auto resource = result_bitmap.get_allocator().resource();
+          tdb::pmr::vector<BitmapType> combination_op_bitmap(
+              result_bitmap_size, 1, resource);
 
           for (const auto& child : node->get_children()) {
             apply_tree_sparse<BitmapType>(
@@ -2805,7 +2807,9 @@ void QueryCondition::apply_tree_sparse(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
+        auto resource = result_bitmap.get_allocator().resource();
+        tdb::pmr::vector<BitmapType> combination_op_bitmap(
+            result_bitmap_size, 0, resource);
 
         for (const auto& child : node->get_children()) {
           apply_tree_sparse<BitmapType>(
@@ -2836,7 +2840,7 @@ template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
-    std::vector<BitmapType>& result_bitmap) {
+    tdb::pmr::vector<BitmapType>& result_bitmap) {
   apply_tree_sparse<BitmapType>(
       tree_,
       array_schema,
@@ -2865,7 +2869,7 @@ uint64_t QueryCondition::condition_index() const {
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
+    const ArraySchema& array_schema, ResultTile&, tdb::pmr::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
+    const ArraySchema& array_schema, ResultTile&, tdb::pmr::vector<uint64_t>&);
 }  // namespace tiledb::sm

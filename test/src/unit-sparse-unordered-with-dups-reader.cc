@@ -1534,7 +1534,7 @@ TEST_CASE_METHOD(
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }
@@ -1752,7 +1752,7 @@ TEST_CASE_METHOD(
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }

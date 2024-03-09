@@ -50,7 +50,7 @@ void serialize_deserialize_check(QueryCondition& query_condition) {
   auto tracker = tiledb::test::create_test_memory_tracker();
   auto serialized = serialize_condition(query_condition, tracker);
   auto deserialized =
-      deserialize_condition(0, "", serialized.data(), serialized.size());
+      deserialize_condition(0, "", serialized->data(), serialized->size());
 
   CHECK(tiledb::test::ast_equal(query_condition.ast(), deserialized.ast()));
 }

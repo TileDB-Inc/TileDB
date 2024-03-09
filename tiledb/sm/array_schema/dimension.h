@@ -68,6 +68,8 @@ class FilterPipeline;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
+class DimensionDispatch;
+
 /** Manipulates a TileDB dimension.
  *
  * Note: as laid out in the Storage Format,
@@ -738,6 +740,58 @@ class Dimension {
     return cell_val_num_ == constants::var_num;
   }
 
+  class DimensionDispatch {
+   public:
+    DimensionDispatch(const Dimension& base)
+        : base(base) {
+    }
+
+    virtual ~DimensionDispatch() {
+    }
+
+    virtual void ceil_to_tile(
+        const Range& r, uint64_t tile_num, ByteVecValue* v) const = 0;
+    virtual bool check_range(const Range& range, std::string* error) const = 0;
+    virtual bool coincides_with_tiles(const Range& r) const = 0;
+    virtual Range compute_mbr(const WriterTile&) const = 0;
+    virtual Range compute_mbr_var(
+        const WriterTile&, const WriterTile&) const = 0;
+    virtual uint64_t domain_range(const Range& range) const = 0;
+    virtual void expand_range(const Range& r1, Range* r2) const = 0;
+    virtual void expand_range_v(const void* v, Range* r) const = 0;
+    virtual void expand_to_tile(Range* range) const = 0;
+    virtual bool oob(const void* coord, std::string* err_msg) const = 0;
+    virtual bool covered(const Range& r1, const Range& r2) const = 0;
+    virtual bool overlap(const Range& r1, const Range& r2) const = 0;
+    virtual double overlap_ratio(const Range& r1, const Range& r2) const = 0;
+    virtual void relevant_ranges(
+        const NDRange& ranges,
+        const Range& mbr,
+        tdb::pmr::vector<uint64_t>& relevant_ranges) const = 0;
+    virtual std::vector<bool> covered_vec(
+        const NDRange& ranges,
+        const Range& mbr,
+        const tdb::pmr::vector<uint64_t>& relevant_ranges) const = 0;
+    virtual void split_range(
+        const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const = 0;
+    virtual void splitting_value(
+        const Range& r, ByteVecValue* v, bool* unsplittable) const = 0;
+    virtual uint64_t tile_num(const Range& range) const = 0;
+    virtual uint64_t map_to_uint64(
+        const void* coord,
+        uint64_t coord_size,
+        int bits,
+        uint64_t max_bucket_val) const = 0;
+    virtual ByteVecValue map_from_uint64(
+        uint64_t value, int bits, uint64_t max_bucket_val) const = 0;
+    virtual bool smaller_than(
+        const ByteVecValue& value, const Range& range) const = 0;
+
+   protected:
+    const Dimension& base;
+  };
+  friend class DimensionDispatch;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -745,6 +799,11 @@ class Dimension {
 
   /** The memory tracker for the dimension. */
   shared_ptr<MemoryTracker> memory_tracker_;
+
+  /**
+   * Handles dynamic dispatch for functions which depend on Dimension type
+   */
+  tdb_unique_ptr<DimensionDispatch> dispatch_;
 
   /** The number of values per coordinate. */
   unsigned cell_val_num_;
@@ -763,146 +822,6 @@ class Dimension {
 
   /** The dimension type. */
   Datatype type_;
-
-  /**
-   * Stores the appropriate templated ceil_to_tile() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Dimension*, const Range&, uint64_t, ByteVecValue*)>
-      ceil_to_tile_func_;
-
-  /**
-   * Stores the appropriate templated check_range() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const Dimension*, const Range&, std::string*)>
-      check_range_func_;
-
-  /**
-   * Stores the appropriate templated coincides_with_tiles() function based on
-   * the dimension datatype.
-   */
-  std::function<bool(const Dimension*, const Range&)>
-      coincides_with_tiles_func_;
-
-  /**
-   * Stores the appropriate templated compute_mbr() function based on the
-   * dimension datatype.
-   */
-  std::function<Range(const WriterTile&)> compute_mbr_func_;
-
-  /**
-   * Stores the appropriate templated compute_mbr_var() function based on the
-   * dimension datatype.
-   */
-  std::function<Range(const WriterTile&, const WriterTile&)>
-      compute_mbr_var_func_;
-
-  /**
-   * Stores the appropriate templated domain_range() function based on the
-   * dimension datatype.
-   */
-  std::function<uint64_t(const Range&)> domain_range_func_;
-
-  /**
-   * Stores the appropriate templated expand_range() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const void*, Range*)> expand_range_v_func_;
-
-  /**
-   * Stores the appropriate templated expand_range() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Range&, Range*)> expand_range_func_;
-
-  /**
-   * Stores the appropriate templated expand_to_tile() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Dimension* dim, Range*)> expand_to_tile_func_;
-
-  /**
-   * Stores the appropriate templated oob() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const Dimension* dim, const void*, std::string*)>
-      oob_func_;
-
-  /**
-   * Stores the appropriate templated covered() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const Range&, const Range&)> covered_func_;
-
-  /**
-   * Stores the appropriate templated overlap() function based on the
-   * dimension datatype.
-   */
-  std::function<bool(const Range&, const Range&)> overlap_func_;
-
-  /**
-   * Stores the appropriate templated overlap_ratio() function based on the
-   * dimension datatype.
-   */
-  std::function<double(const Range&, const Range&)> overlap_ratio_func_;
-
-  /**
-   * Stores the appropriate templated relevant_ranges() function based
-   * on the dimension datatype.
-   */
-  std::function<void(const NDRange&, const Range&, tdb::pmr::vector<uint64_t>&)>
-      relevant_ranges_func_;
-
-  /**
-   * Stores the appropriate templated covered_vec() function based on the
-   * dimension datatype.
-   */
-  std::function<std::vector<bool>(
-      const NDRange&, const Range&, const tdb::pmr::vector<uint64_t>&)>
-      covered_vec_func_;
-
-  /**
-   * Stores the appropriate templated split_range() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Range&, const ByteVecValue&, Range*, Range*)>
-      split_range_func_;
-
-  /**
-   * Stores the appropriate templated splitting_value() function based on the
-   * dimension datatype.
-   */
-  std::function<void(const Range&, ByteVecValue*, bool* unsplittable)>
-      splitting_value_func_;
-
-  /**
-   * Stores the appropriate templated tile_num() function based on the
-   * dimension datatype.
-   */
-  std::function<uint64_t(const Dimension* dim, const Range&)> tile_num_func_;
-
-  /**
-   * Stores the appropriate templated map_to_uint64_2() function based on
-   * the dimension datatype.
-   */
-  std::function<uint64_t(
-      const Dimension*, const void*, uint64_t, int, uint64_t)>
-      map_to_uint64_2_func_;
-
-  /**
-   * Stores the appropriate templated map_from_uint64() function based on
-   * the dimension datatype.
-   */
-  std::function<ByteVecValue(const Dimension*, uint64_t, int, uint64_t)>
-      map_from_uint64_func_;
-
-  /**
-   * Stores the appropriate templated smaller_than() function based on
-   * the dimension datatype.
-   */
-  std::function<bool(const Dimension*, const ByteVecValue&, const Range&)>
-      smaller_than_func_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
@@ -995,65 +914,11 @@ class Dimension {
   /** Returns the tile extent in string format. */
   std::string tile_extent_str() const;
 
-  /** Sets the templated ceil_to_tile() function. */
-  void set_ceil_to_tile_func();
-
-  /** Sets the templated check_range() function. */
-  void set_check_range_func();
-
-  /** Sets the templated coincides_with_tiles() function. */
-  void set_coincides_with_tiles_func();
-
-  /** Sets the templated compute_mbr() function. */
-  void set_compute_mbr_func();
-
-  /** Sets the templated domain_range() function. */
-  void set_domain_range_func();
-
-  /** Sets the templated expand_range() function. */
-  void set_expand_range_func();
-
-  /** Sets the templated expand_range_v() function. */
-  void set_expand_range_v_func();
-
-  /** Sets the templated expand_to_tile() function. */
-  void set_expand_to_tile_func();
-
-  /** Sets the templated oob() function. */
-  void set_oob_func();
-
-  /** Sets the templated covered() function. */
-  void set_covered_func();
-
-  /** Sets the templated overlap() function. */
-  void set_overlap_func();
-
-  /** Sets the templated overlap_ratio() function. */
-  void set_overlap_ratio_func();
-
-  /** Sets the templated relevant_ranges() function. */
-  void set_relevant_ranges_func();
-
-  /** Sets the templated covered_vec() function. */
-  void set_covered_vec_func();
-
-  /** Sets the templated split_range() function. */
-  void set_split_range_func();
-
-  /** Sets the templated splitting_value() function. */
-  void set_splitting_value_func();
-
-  /** Sets the templated tile_num() function. */
-  void set_tile_num_func();
-
-  /** Sets the templated map_to_uint64_2() function. */
-  void set_map_to_uint64_2_func();
-
-  /** Sets the templated map_from_uint64() function. */
-  void set_map_from_uint64_func();
-
-  /** Sets the templated smaller_than() function. */
-  void set_smaller_than_func();
+  /**
+   * Sets the dimension dynamic dispatch implementation.
+   * Called in the constructor.
+   */
+  void set_dimension_dispatch();
 };
 
 }  // namespace tiledb::sm

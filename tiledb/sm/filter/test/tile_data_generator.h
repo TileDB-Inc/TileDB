@@ -60,9 +60,9 @@ class TileDataGenerator {
   /**
    * Returns an empty writer tile with enough room for the input data.
    */
-  WriterTile create_empty_writer_tile(
+  shared_ptr<WriterTile> create_empty_writer_tile(
       shared_ptr<MemoryTracker> memory_tracker) const {
-    return WriterTile(
+    return make_shared<WriterTile>(
         constants::format_version,
         datatype(),
         cell_size(),
@@ -79,8 +79,9 @@ class TileDataGenerator {
    * test data and the writer offsets tile with the (optional) input offsets
    * data.
    */
-  virtual std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles(
-      shared_ptr<MemoryTracker> memory_tracker) const = 0;
+  virtual std::
+      tuple<shared_ptr<WriterTile>, std::optional<shared_ptr<WriterTile>>>
+      create_writer_tiles(shared_ptr<MemoryTracker> memory_tracker) const = 0;
 
   /**
    * Returns a tile with the data from the filtered buffer and enough room
@@ -154,13 +155,13 @@ class IncrementTileDataGenerator : public TileDataGenerator {
     }
   }
 
-  std::tuple<WriterTile, std::optional<WriterTile>> create_writer_tiles(
-      shared_ptr<MemoryTracker> memory_tracker) const override {
+  tuple<shared_ptr<WriterTile>, std::optional<shared_ptr<WriterTile>>>
+  create_writer_tiles(shared_ptr<MemoryTracker> memory_tracker) const override {
     // Writer tile.
     auto tile = create_empty_writer_tile(memory_tracker);
     T value{};
     for (uint64_t index = 0; index < num_elements_; ++index) {
-      CHECK_NOTHROW(tile.write(&value, index * sizeof(T), sizeof(T)));
+      CHECK_NOTHROW(tile->write(&value, index * sizeof(T), sizeof(T)));
       ++value;
     }
 
@@ -180,20 +181,20 @@ class IncrementTileDataGenerator : public TileDataGenerator {
     offsets.pop_back();
 
     // Write the offsets tile.
-    WriterTile offsets_tile(
+    auto offsets_tile = make_shared<WriterTile>(
         constants::format_version,
         Datatype::UINT64,
         constants::cell_var_offset_size,
         offsets.size() * constants::cell_var_offset_size,
         memory_tracker);
     for (uint64_t index = 0; index < offsets.size(); ++index) {
-      CHECK_NOTHROW(offsets_tile.write(
+      CHECK_NOTHROW(offsets_tile->write(
           &offsets[index],
           index * constants::cell_var_offset_size,
           constants::cell_var_offset_size));
     }
 
-    return {std::move(tile), std::move(offsets_tile)};
+    return {tile, offsets_tile};
   }
 
   Datatype datatype() const override {

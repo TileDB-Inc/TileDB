@@ -453,7 +453,9 @@ Status Reader::compute_range_result_coords(
         result_coords.emplace_back(tile, pos);
     }
   } else {  // Sparse
-    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    auto resource =
+        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+    tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
 
     // Compute result and overwritten bitmap per dimension
     for (unsigned d = 0; d < dim_num; ++d) {
@@ -492,7 +494,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     const std::vector<bool>& single_fragment,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::list<ResultTile>& result_tiles,
+    IndexedList<ResultTile>& result_tiles,
     std::vector<std::vector<ResultCoords>>& range_result_coords) {
   auto timer_se = stats_->start_timer("compute_range_result_coords");
 
@@ -547,7 +549,7 @@ Status Reader::compute_range_result_coords(
     uint64_t range_idx,
     uint32_t fragment_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::list<ResultTile>& result_tiles,
+    IndexedList<ResultTile>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Skip dense fragments
   if (fragment_metadata_[fragment_idx]->dense())
@@ -606,7 +608,7 @@ Status Reader::compute_range_result_coords(
     Subarray& subarray,
     uint64_t range_idx,
     const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-    std::list<ResultTile>& result_tiles,
+    IndexedList<ResultTile>& result_tiles,
     std::vector<ResultCoords>& range_result_coords) {
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
@@ -681,7 +683,7 @@ Status Reader::compute_subarray_coords(
 }
 
 Status Reader::compute_sparse_result_tiles(
-    std::list<ResultTile>& result_tiles,
+    IndexedList<ResultTile>& result_tiles,
     std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
     std::vector<bool>* single_fragment) {
   auto timer_se = stats_->start_timer("compute_sparse_result_tiles");
@@ -1585,7 +1587,7 @@ Status Reader::compute_result_cell_slabs_global(
 }
 
 Status Reader::compute_result_coords(
-    std::list<ResultTile>& result_tiles,
+    IndexedList<ResultTile>& result_tiles,
     std::vector<ResultCoords>& result_coords) {
   auto timer_se = stats_->start_timer("compute_result_coords");
 
@@ -1724,7 +1726,7 @@ Status Reader::dense_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::list<ResultTile> sparse_result_tiles;
+  IndexedList<ResultTile> sparse_result_tiles;
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
@@ -1785,7 +1787,9 @@ Status Reader::get_all_result_coords(
       array_->timestamp_start(), array_->timestamp_end_opened_at());
   if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
       partial_overlap) {
-    std::vector<uint8_t> result_bitmap(coords_num, 1);
+    auto resource =
+        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+    tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
         *(frag_meta->array_schema().get()), *tile, result_bitmap));
 
@@ -1980,7 +1984,7 @@ Status Reader::sparse_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  std::list<ResultTile> sparse_result_tiles;
+  IndexedList<ResultTile> sparse_result_tiles;
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;
@@ -2062,7 +2066,7 @@ bool Reader::sparse_tile_overwritten(
   return false;
 }
 
-void Reader::erase_coord_tiles(std::list<ResultTile>& result_tiles) const {
+void Reader::erase_coord_tiles(IndexedList<ResultTile>& result_tiles) const {
   for (auto& tile : result_tiles) {
     auto dim_num = array_schema_.dim_num();
     for (unsigned d = 0; d < dim_num; ++d)

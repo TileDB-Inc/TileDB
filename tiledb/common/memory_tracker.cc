@@ -56,12 +56,20 @@ std::string memory_type_to_str(MemoryType type) {
       return "EnumerationPaths";
     case MemoryType::FOOTER:
       return "Footer";
+    case MemoryType::FILTERED_DATA:
+      return "FilteredData";
+    case MemoryType::FILTERED_DATA_BLOCK:
+      return "FilteredDataBlock";
     case MemoryType::GENERIC_TILE_IO:
       return "GenericTileIO";
     case MemoryType::RTREE:
       return "RTree";
+    case MemoryType::TILE_BITMAP:
+      return "TileBitmap";
     case MemoryType::TILE_DATA:
       return "TileData";
+    case MemoryType::TILE_HILBERT_VALUES:
+      return "TileHilbertValues";
     case MemoryType::TILE_OFFSETS:
       return "TileOffsets";
     case MemoryType::TILE_MAX_VALS:
@@ -70,6 +78,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileMinVals";
     case MemoryType::TILE_NULL_COUNTS:
       return "TileNullCounts";
+    case MemoryType::TILE_QUERY_CONDITIONS:
+      return "TileQueryConditions";
     case MemoryType::ATTRIBUTES:
       return "Attributes";
     case MemoryType::DIMENSION_LABELS:
@@ -84,9 +94,6 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileWriterData";
     case MemoryType::METADATA:
       return "Metadata";
-    default:
-      auto val = std::to_string(static_cast<uint32_t>(type));
-      throw std::logic_error("Invalid memory type: " + val);
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));
@@ -123,9 +130,6 @@ std::string memory_tracker_type_to_str(MemoryTrackerType type) {
       return "SchemaEvolution";
     case MemoryTrackerType::GROUP:
       return "Group";
-    default:
-      auto val = std::to_string(static_cast<uint32_t>(type));
-      throw std::logic_error("Invalid memory tracker type: " + val);
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));

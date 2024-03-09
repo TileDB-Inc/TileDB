@@ -48,7 +48,7 @@ enum class NodeType : uint8_t { EXPRESSION = 0, VALUE };
  * @param query_condition Query condition to serialize.
  * @return Serialized query condition tile.
  */
-WriterTile serialize_condition(
+shared_ptr<WriterTile> serialize_condition(
     const QueryCondition& query_condition,
     shared_ptr<MemoryTracker> memory_tracker);
 
@@ -75,7 +75,7 @@ QueryCondition deserialize_condition(
  * @param update_values Update values to serialize.
  * @return Serialized condition and update values tile.
  */
-WriterTile serialize_update_condition_and_values(
+shared_ptr<WriterTile> serialize_update_condition_and_values(
     const QueryCondition& query_condition,
     const std::vector<UpdateValue>& update_values,
     shared_ptr<MemoryTracker> memory_tracker);

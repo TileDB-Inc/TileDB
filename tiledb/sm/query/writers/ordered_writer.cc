@@ -198,9 +198,12 @@ Status OrderedWriter::ordered_write() {
   auto attr_num = buffers_.size();
   auto compute_tp = storage_manager_->compute_tp();
   auto thread_num = compute_tp->concurrency_level();
-  std::unordered_map<std::string, std::vector<WriterTileTupleVector>> tiles;
+  std::unordered_map<std::string, IndexedList<WriterTileTupleVector>> tiles;
   for (const auto& buff : buffers_) {
-    tiles.emplace(buff.first, std::vector<WriterTileTupleVector>());
+    tiles.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(buff.first),
+        std::forward_as_tuple());
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -284,7 +287,7 @@ Status OrderedWriter::ordered_write() {
 template <class T>
 Status OrderedWriter::prepare_filter_and_write_tiles(
     const std::string& name,
-    std::vector<WriterTileTupleVector>& tile_batches,
+    IndexedList<WriterTileTupleVector>& tile_batches,
     shared_ptr<FragmentMetadata> frag_meta,
     DenseTiler<T>* dense_tiler,
     uint64_t thread_num) {
@@ -318,14 +321,14 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     assert(batch_size > 0);
     tile_batches[b].reserve(batch_size);
     for (uint64_t i = 0; i < batch_size; i++) {
-      tile_batches[b].emplace_back(WriterTileTuple(
+      tile_batches[b].emplace_back(
           array_schema_,
           cell_num_per_tile,
           var,
           nullable,
           cell_size,
           type,
-          query_memory_tracker_));
+          query_memory_tracker_);
     }
 
     {

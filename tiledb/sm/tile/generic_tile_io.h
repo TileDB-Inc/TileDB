@@ -172,7 +172,7 @@ class GenericTileIO {
   static void store_data(
       ContextResources& resources,
       const URI& uri,
-      WriterTile& tile,
+      shared_ptr<WriterTile> tile,
       const EncryptionKey& encryption_key);
 
   /**
@@ -186,7 +186,9 @@ class GenericTileIO {
    * @param nbytes The total number of bytes written to the file.
    */
   void write_generic(
-      WriterTile* tile, const EncryptionKey& encryption_key, uint64_t* nbytes);
+      shared_ptr<WriterTile> tile,
+      const EncryptionKey& encryption_key,
+      uint64_t* nbytes);
 
   /**
    * Serialize a generic tile header.

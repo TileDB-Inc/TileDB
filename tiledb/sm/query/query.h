@@ -62,6 +62,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+/** Class for query status exceptions. */
+class QueryStatusException : public StatusException {
+ public:
+  explicit QueryStatusException(const std::string& msg)
+      : StatusException("Query", msg) {
+  }
+};
+
 class Array;
 class ArrayDimensionLabelQueries;
 
@@ -740,6 +748,21 @@ class Query {
   /** Returns true if the output field is an aggregate. */
   bool is_aggregate(std::string output_field_name) const;
 
+ private:
+  /**
+   * Create the aggregate channel object. This is split out because it's not
+   * at construction time, but on demand, and in two different situations.
+   */
+  void create_aggregate_channel() {
+    /*
+     * Because we have an extremely simple way of choosing channel identifiers,
+     * we can get away with hard-coding `1` here as the identifier for the
+     * aggregate channel.
+     */
+    aggregate_channel_ = make_shared<QueryChannel>(HERE(), *this, 1);
+  }
+
+ public:
   /**
    * Adds an aggregator to the default channel.
    *
@@ -748,6 +771,15 @@ class Query {
    */
   void add_aggregator_to_default_channel(
       std::string output_field_name, shared_ptr<IAggregator> aggregator) {
+    if (default_channel_aggregates_.empty()) {
+      /*
+       * Assert: this is the first aggregate added.
+       *
+       * We create the aggregate channel on demand, and this is when we need to
+       * do it.
+       */
+      create_aggregate_channel();
+    }
     default_channel_aggregates_.emplace(output_field_name, aggregator);
   }
 
@@ -758,20 +790,25 @@ class Query {
   /**
    * Get a list of all channels and their aggregates
    */
-  std::vector<QueryChannel> get_channels() {
+  std::vector<LegacyQueryAggregatesOverDefault> get_channels() {
     // Currently only the default channel is supported
-    return {QueryChannel(true, default_channel_aggregates_)};
+    return {
+        LegacyQueryAggregatesOverDefault(true, default_channel_aggregates_)};
   }
 
   /**
-   * Add a channel to the query
+   * Add a channel to the query. Used only by capnp serialization to initialize
+   * the aggregates list.
    */
-  void add_channel(const QueryChannel& channel) {
+  void add_channel(const LegacyQueryAggregatesOverDefault& channel) {
     if (channel.is_default()) {
       default_channel_aggregates_ = channel.aggregates();
+      if (!default_channel_aggregates_.empty()) {
+        create_aggregate_channel();
+      }
       return;
     }
-    throw std::logic_error(
+    throw QueryStatusException(
         "We currently only support a default channel for queries");
   }
 
@@ -780,7 +817,35 @@ class Query {
    */
   bool has_aggregates() {
     // We only need to check the default channel for now
-    return default_channel_aggregates_.empty();
+    return !default_channel_aggregates_.empty();
+  }
+
+  /**
+   * Returns the number of channels.
+   *
+   * Responsibility for choosing channel identifiers is the responsibility of
+   * this class. At the present time the policy is very simple, since all
+   * queries only draw from a single array.
+   *   - Channel 0: All rows from the query. Always non-segmented, that is,
+   *       without any grouping.
+   *   - Channel 1: (optional) Simple aggregates, if any exist.
+   */
+  inline size_t number_of_channels() {
+    return has_aggregates() ? 1 : 0;
+  };
+
+  /**
+   * The default channel is initialized at construction and always exists.
+   */
+  inline std::shared_ptr<QueryChannel> default_channel() {
+    return default_channel_;
+  }
+
+  inline std::shared_ptr<QueryChannel> aggegate_channel() {
+    if (!has_aggregates()) {
+      throw QueryStatusException("Aggregate channel does not exist");
+    }
+    return aggregate_channel_;
   }
 
  private:
@@ -967,6 +1032,25 @@ class Query {
   /** Aggregates for the default channel, by output field name. */
   std::unordered_map<std::string, shared_ptr<IAggregator>>
       default_channel_aggregates_;
+
+  /*
+   * Handles to channels use shared pointers, so the channels are allocated here
+   * for ease of implementation.
+   *
+   * At present there's only one possible non-default channel, so we keep track
+   * of it in its own variable. A fully C.41 class might simply store these in
+   * a constant vector.
+   */
+  /**
+   * The default channel is allocated in the constructor for simplicity.
+   */
+  std::shared_ptr<QueryChannel> default_channel_;
+
+  /**
+   * The aggegregate channel is optional, so we initialize it as empty with it
+   * default constructor.
+   */
+  std::shared_ptr<QueryChannel> aggregate_channel_{};
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

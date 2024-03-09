@@ -67,14 +67,6 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
-/** Class for query status exceptions. */
-class QueryStatusException : public StatusException {
- public:
-  explicit QueryStatusException(const std::string& msg)
-      : StatusException("Query", msg) {
-  }
-};
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -113,7 +105,8 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , query_remote_buffer_storage_(std::nullopt) {
+    , query_remote_buffer_storage_(std::nullopt)
+    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {
