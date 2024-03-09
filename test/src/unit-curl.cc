@@ -31,13 +31,15 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/sm/rest/curl.h"
 
-#ifdef _WIN32
-#include "tiledb/sm/filesystem/win.h"
-#else
-#include "tiledb/sm/filesystem/posix.h"
-#endif
+// clang-format off
+#include "test/support/src/helpers.h"
+#include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/rest/curl.h" // Must be included last to avoid Windows.h
+// clang-format on
+
+#include <filesystem>
+#include <fstream>
 
 using namespace tiledb::sm;
 
@@ -90,4 +92,39 @@ TEST_CASE("CURL: Test curl's header parsing callback", "[curl]") {
   CHECK(
       userdata.redirect_uri_map->find(ns_array)->second ==
       "tiledb://my_username");
+}
+
+TEST_CASE(
+    "RestClient: Remove trailing slash from rest_server_", "[rest-client]") {
+  std::string rest_server =
+      GENERATE("http://localhost:8080/", "http://localhost:8080//");
+  tiledb::sm::Config cfg;
+  SECTION("rest.server_address set in Config") {
+    cfg.set("rest.server_address", rest_server).ok();
+  }
+  SECTION("rest.server_address set in environment") {
+    setenv_local("TILEDB_REST_SERVER_ADDRESS", rest_server.c_str());
+  }
+  SECTION("rest.server_address set by loaded config file") {
+    std::string cfg_file = "tiledb_config.txt";
+    std::ofstream file(cfg_file);
+    file << "rest.server_address " << rest_server << std::endl;
+    file.close();
+    cfg.load_from_file(cfg_file).ok();
+    std::filesystem::remove(cfg_file);
+  }
+
+  ThreadPool tp{1};
+  ContextResources resources(
+      cfg, tiledb::test::g_helper_logger(), 1, 1, "test");
+  tiledb::sm::RestClient rest_client;
+  REQUIRE(rest_client
+              .init(
+                  &tiledb::test::g_helper_stats,
+                  &cfg,
+                  &tp,
+                  tiledb::test::g_helper_logger(),
+                  resources)
+              .ok());
+  CHECK(rest_client.rest_server() == "http://localhost:8080");
 }
