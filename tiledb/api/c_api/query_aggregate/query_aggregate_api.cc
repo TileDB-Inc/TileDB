@@ -187,10 +187,26 @@ capi_return_t tiledb_create_unary_aggregate(
       tiledb_query_field_handle_t::make_handle(query, input_field_name);
   tiledb_query_field_handle_t::break_handle(field);
 
+  const auto is_dense_dim{schema.dense() && schema.is_dim(field_name)};
+  const auto cell_order{schema.cell_order()};
+  unsigned dim_idx = 0;
+  if (is_dense_dim) {
+    while (schema.dimension_ptr(dim_idx)->name() != field_name) {
+      dim_idx++;
+    }
+  }
+
+  const bool is_slab_dim =
+      is_dense_dim && (cell_order == sm::Layout::ROW_MAJOR) ?
+          (dim_idx == schema.dim_num() - 1) :
+          (dim_idx == 0);
+
   auto fi = tiledb::sm::FieldInfo(
       field_name,
       schema.var_size(field_name),
       schema.is_nullable(field_name),
+      is_dense_dim,
+      is_slab_dim,
       schema.cell_val_num(field_name),
       schema.type(field_name));
 
