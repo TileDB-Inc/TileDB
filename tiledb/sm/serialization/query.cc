@@ -1551,9 +1551,9 @@ Status query_to_capnp(
   // that has aggregates on it, this behavior is currently not supported.
   if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
       query.has_aggregates()) {
-    throw Status_SerializationError(
+    throw StatusException(Status_SerializationError(
         "Aggregates are not currently supported in incomplete remote "
-        "queries");
+        "queries"));
   }
   query_channels_to_capnp(query, query_builder);
 
