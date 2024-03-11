@@ -531,7 +531,6 @@ class VFS : private VFSBase, protected S3_within_VFS {
     LsObjects results;
     try {
       if (parent.is_file()) {
-        Status st;
 #ifdef _WIN32
         results = win_.ls_filtered(parent, f, d, true);
 #else
@@ -580,10 +579,6 @@ class VFS : private VFSBase, protected S3_within_VFS {
       throw;
     }
     return results;
-  }
-
-  LsObjects ls_recursive(const URI& parent) const {
-    return ls_recursive(parent, accept_all_files, accept_all_dirs);
   }
 
   /**
