@@ -55,12 +55,6 @@ struct DenseNegFx {
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   // Functions
   DenseNegFx();
   ~DenseNegFx();
@@ -235,8 +229,7 @@ void DenseNegFx::write_dense_vector(const std::string& path) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -270,8 +263,7 @@ void DenseNegFx::write_dense_array_global(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -304,8 +296,7 @@ void DenseNegFx::write_dense_array_row(const std::string& path) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -338,8 +329,7 @@ void DenseNegFx::write_dense_array_col(const std::string& path) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -372,8 +362,7 @@ void DenseNegFx::read_dense_vector(const std::string& path) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {0, 1, 2, 3};
@@ -410,8 +399,7 @@ void DenseNegFx::read_dense_array_global(const std::string& path) {
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 20, 3, 40, 50, 6, 70, 8, 9, 100, 11, 120, 130, 140, 150, 160};
@@ -448,8 +436,8 @@ void DenseNegFx::read_dense_array_row(const std::string& path) {
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 20, 50, 6, 3, 40, 70, 8, 9, 100, 130, 140, 11, 120, 150, 160};
@@ -486,8 +474,8 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
   rc = tiledb_query_set_subarray(ctx_, query, subarray);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
+  REQUIRE(rc == TILEDB_OK);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {1, 3, 9, 11, 20, 40, 100, 120, 50, 70, 130, 150, 6, 8, 140, 160};
@@ -506,47 +494,33 @@ void DenseNegFx::read_dense_array_col(const std::string& path) {
 TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 1d dense vector with negative domain",
-    "[capi][dense-neg][dense-neg-vector]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
+    "[capi][dense-neg][dense-neg-vector][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  std::string path =
+      fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
-  SupportedFsLocal local_fs;
-  std::string vector_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "dense_neg_vector";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  std::string vector_name = path + "dense_neg_vector";
+  create_temp_dir(temp_dir);
 
   create_dense_vector(vector_name);
   write_dense_vector(vector_name);
   read_dense_vector(vector_name);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(
     DenseNegFx,
     "C API: Test 2d dense array with negative domain",
-    "[capi][dense-neg][dense-neg-array]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
+    "[capi][dense-neg][dense-neg-array][rest]") {
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  std::string path =
+      fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
-  SupportedFsLocal local_fs;
-  std::string vector_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "dense_neg_array";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  std::string vector_name = path + "dense_neg_array";
+  create_temp_dir(temp_dir);
 
   create_dense_array(vector_name);
   write_dense_array_global(vector_name);
@@ -556,5 +530,5 @@ TEST_CASE_METHOD(
   read_dense_array_row(vector_name);
   read_dense_array_col(vector_name);
 
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+  remove_temp_dir(temp_dir);
 }
