@@ -380,10 +380,10 @@ Status UnorderedWriter::prepare_tiles(
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (written_buffers_.count(name) == 0) {
-      (*tiles).emplace(
+      tiles->emplace(
           std::piecewise_construct,
           std::forward_as_tuple(name),
-          std::forward_as_tuple());
+          std::forward_as_tuple(query_memory_tracker_));
     }
   }
 

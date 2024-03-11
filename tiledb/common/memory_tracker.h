@@ -99,7 +99,7 @@
 
 namespace tiledb::sm {
 
-//** The type of memory to track. */
+/** The type of memory to track. */
 enum class MemoryType {
   ENUMERATION,
   ENUMERATION_PATHS,

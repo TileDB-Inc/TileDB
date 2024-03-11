@@ -201,7 +201,7 @@ Status GlobalOrderWriter::init_global_write_state() {
     auto last_tiles_it = global_write_state_->last_tiles_.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(name),
-        std::forward_as_tuple());
+        std::forward_as_tuple(query_memory_tracker_));
     last_tiles_it.first->second.emplace_back(
         array_schema_,
         cell_num_per_tile,
@@ -864,10 +864,10 @@ Status GlobalOrderWriter::prepare_full_tiles(
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {
-    (*tiles).emplace(
+    tiles->emplace(
         std::piecewise_construct,
         std::forward_as_tuple(it.first),
-        std::forward_as_tuple());
+        std::forward_as_tuple(query_memory_tracker_));
   }
 
   auto num = buffers_.size();
@@ -877,7 +877,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
         RETURN_CANCEL_OR_ERROR(
-            prepare_full_tiles(name, coord_dups, &(*tiles)[name]));
+            prepare_full_tiles(name, coord_dups, &tiles->at(name)));
         return Status::Ok();
       });
 
@@ -919,7 +919,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   }
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
       global_write_state_->cells_written_[name] % cell_num_per_tile;
@@ -1100,7 +1100,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   auto& last_var_offset = global_write_state_->last_var_offsets_[name];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
@@ -1390,7 +1390,7 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   for (auto& name : buf_names) {
     var_size.emplace_back(array_schema_.var_size(name));
     nullable.emplace_back(array_schema_.is_nullable(name));
-    writer_tile_vectors.emplace_back(&tiles[name]);
+    writer_tile_vectors.emplace_back(&tiles.at(name));
   }
 
   // Make sure we don't write more than the desired fragment size.

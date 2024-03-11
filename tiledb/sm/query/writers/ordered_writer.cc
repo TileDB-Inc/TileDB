@@ -203,7 +203,7 @@ Status OrderedWriter::ordered_write() {
     tiles.emplace(
         std::piecewise_construct,
         std::forward_as_tuple(buff.first),
-        std::forward_as_tuple());
+        std::forward_as_tuple(query_memory_tracker_));
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
@@ -211,14 +211,14 @@ Status OrderedWriter::ordered_write() {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       return prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
     }));
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       RETURN_NOT_OK(prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num));
     }
@@ -233,7 +233,7 @@ Status OrderedWriter::ordered_write() {
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
-        auto& attr_tile_batches = tiles[attr];
+        auto& attr_tile_batches = tiles.at(attr);
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
         for (auto& batch : attr_tile_batches) {
           uint64_t idx = 0;
@@ -249,7 +249,7 @@ Status OrderedWriter::ordered_write() {
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
-      auto& attr_tile_batches = tiles[attr];
+      auto& attr_tile_batches = tiles.at(attr);
       const auto var_size = array_schema_.var_size(attr);
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
@@ -257,7 +257,7 @@ Status OrderedWriter::ordered_write() {
         RETURN_NOT_OK(parallel_for(
             compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
               const auto& attr = buff.first;
-              auto& batch = tiles[attr][b];
+              auto& batch = tiles.at(attr)[b];
               auto idx = b * thread_num;
               for (auto& tile : batch) {
                 frag_meta->set_tile_min_var(attr, idx, tile.min());
