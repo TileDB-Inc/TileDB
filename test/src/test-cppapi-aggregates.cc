@@ -62,8 +62,11 @@ struct CppAggregatesFx {
   bool set_ranges_;
   bool set_qc_;
   bool use_dim_;
+  std::string dim_name_;
   tiledb_layout_t layout_;
   std::vector<bool> set_qc_values_;
+  std::vector<bool> use_dim_values_;
+  std::vector<std::string> dim_name_values_;
   std::vector<tiledb_layout_t> layout_values_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
@@ -75,6 +78,7 @@ struct CppAggregatesFx {
 
   // Functions.
   void generate_test_params();
+  void run_all_combinations(std::function<void()> fn);
   void create_dense_array(bool var = false, bool encrypt = false);
   void create_sparse_array(bool var = false, bool encrypt = false);
   void write_sparse(
@@ -122,6 +126,7 @@ struct CppAggregatesFx {
       std::vector<uint64_t>& dim2,
       std::vector<uint8_t>& a1,
       std::vector<uint8_t>& a1_validity,
+      std::function<void(uint64_t value)> aggregate_fn,
       const bool validate_count = true);
   void validate_data_var(
       Query& query,
@@ -162,7 +167,12 @@ void CppAggregatesFx<T>::generate_test_params() {
     allow_dups_ = false;
     set_qc_values_ = {true, false};
     layout_values_ = {TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR, TILEDB_GLOBAL_ORDER};
-    use_dim_ = false;
+    use_dim_values_ = {true, false};
+    dim_name_values_ = {"d2"};
+    if (nullable_ || !std::is_same<T, uint64_t>::value) {
+      use_dim_values_ = {false};
+      dim_name_values_ = {"d1"};
+    }
   }
 
   SECTION("sparse") {
@@ -171,8 +181,34 @@ void CppAggregatesFx<T>::generate_test_params() {
     allow_dups_ = GENERATE(true, false);
     set_qc_values_ = {false};
     layout_values_ = {TILEDB_UNORDERED};
-    use_dim_ =
-        GENERATE(false, true) && !nullable_ && std::is_same<T, uint64_t>::value;
+    use_dim_values_ = {true, false};
+    if (nullable_ || !std::is_same<T, uint64_t>::value) {
+      use_dim_values_ = {false};
+    }
+    dim_name_values_ = {"d1"};
+  }
+}
+
+template <class T>
+void CppAggregatesFx<T>::run_all_combinations(std::function<void()> fn) {
+  for (bool use_dim : use_dim_values_) {
+    use_dim_ = use_dim;
+    for (std::string dim_name : dim_name_values_) {
+      dim_name_ = dim_name;
+      for (bool set_ranges : {true, false}) {
+        set_ranges_ = set_ranges;
+        for (bool request_data : {true, false}) {
+          request_data_ = request_data;
+          for (bool set_qc : set_qc_values_) {
+            set_qc_ = set_qc;
+            for (tiledb_layout_t layout : layout_values_) {
+              layout_ = layout;
+              fn();
+            }
+          }
+        }
+      }
+    }
   }
 }
 
@@ -775,6 +811,7 @@ void CppAggregatesFx<T>::validate_data(
     std::vector<uint64_t>& dim2,
     std::vector<uint8_t>& a1,
     std::vector<uint8_t>& a1_validity,
+    std::function<void(uint64_t value)> aggregate_fn,
     const bool validate_count) {
   uint64_t expected_count = 0;
   std::vector<uint64_t> expected_dim1;
@@ -903,25 +940,50 @@ void CppAggregatesFx<T>::validate_data(
                               CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
                               1;
 
-  dim1.resize(expected_dim1.size());
-  dim2.resize(expected_dim2.size());
-  a1.resize(expected_a1.size());
-  CHECK(dim1 == expected_dim1);
-  CHECK(dim2 == expected_dim2);
-  CHECK(a1 == expected_a1);
+  if (request_data_) {
+    dim1.resize(expected_dim1.size());
+    dim2.resize(expected_dim2.size());
+    a1.resize(expected_a1.size());
+    CHECK(dim1 == expected_dim1);
+    CHECK(dim2 == expected_dim2);
+    CHECK(a1 == expected_a1);
 
-  if (nullable_) {
-    a1_validity.resize(expected_a1_validity.size());
-    CHECK(a1_validity == expected_a1_validity);
+    if (nullable_) {
+      a1_validity.resize(expected_a1_validity.size());
+      CHECK(a1_validity == expected_a1_validity);
+    }
+
+    if (validate_count) {
+      auto result_el = query.result_buffer_elements_nullable();
+      CHECK(std::get<1>(result_el["d1"]) == expected_count);
+      CHECK(std::get<1>(result_el["d2"]) == expected_count);
+      CHECK(std::get<1>(result_el["a1"]) == expected_count * cell_val_num);
+      if (nullable_) {
+        CHECK(std::get<2>(result_el["a1"]) == expected_count);
+      }
+    }
   }
 
-  if (validate_count) {
-    auto result_el = query.result_buffer_elements_nullable();
-    CHECK(std::get<1>(result_el["d1"]) == expected_count);
-    CHECK(std::get<1>(result_el["d2"]) == expected_count);
-    CHECK(std::get<1>(result_el["a1"]) == expected_count * cell_val_num);
-    if (nullable_) {
-      CHECK(std::get<2>(result_el["a1"]) == expected_count);
+  // Call the aggregate function for all expected values.
+  if (use_dim_ && dim_name_ == "d1") {
+    for (uint64_t i = 0; i < expected_a1_int.size(); i++) {
+      if (!set_qc_ || (expected_a1_int[i] != 4 && expected_a1_int[i] != 35)) {
+        aggregate_fn(expected_dim1[i]);
+      }
+    }
+  } else if (use_dim_ && dim_name_ == "d2") {
+    for (uint64_t i = 0; i < expected_a1_int.size(); i++) {
+      if (!set_qc_ || (expected_a1_int[i] != 4 && expected_a1_int[i] != 35)) {
+        aggregate_fn(expected_dim2[i]);
+      }
+    }
+  } else {
+    for (uint64_t i = 0; i < expected_a1_int.size(); i++) {
+      if (!set_qc_ || (expected_a1_int[i] != 4 && expected_a1_int[i] != 35)) {
+        if (!nullable_ || expected_a1_validity[i] == 1) {
+          aggregate_fn(expected_a1_int[i]);
+        }
+      }
     }
   }
 }
@@ -1176,11 +1238,11 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
     } else if (set_ranges_) {
       // If we request range, we split all tiles, we'll have to read all instead
       // of using fragment metadata.
-      expected_num_tiles_read = is_count ? 0 : 5;
+      expected_num_tiles_read = is_count || use_dim_ ? 0 : 5;
     } else {
       // One space tile has two result tiles, we'll have to read them instead of
       // using fragment metadata.
-      expected_num_tiles_read = is_count ? 0 : 2;
+      expected_num_tiles_read = is_count || use_dim_ ? 0 : 2;
     }
   } else {
     if (request_data_) {
@@ -1199,9 +1261,9 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
         // we read 2 dims * 4 tiles. For the attribute, we can process 2 tiles
         // with duplicates and 1 without using the fragment metadata.
         if (allow_dups_) {
-          expected_num_tiles_read = is_count ? 8 : 10;
+          expected_num_tiles_read = use_dim_ || is_count ? 8 : 10;
         } else {
-          expected_num_tiles_read = is_count ? 8 : 11;
+          expected_num_tiles_read = use_dim_ || is_count ? 8 : 11;
         }
       } else {
         if (allow_dups_) {
@@ -1212,7 +1274,7 @@ void CppAggregatesFx<T>::validate_tiles_read(Query& query, bool is_count) {
           // Arrays without duplicates need to run deduplication, so we read the
           // dimension tiles (2 dims * 5 tiles). Only one tile for the attribute
           // can be processed with fragment metadata only.
-          expected_num_tiles_read = is_count ? 10 : 14;
+          expected_num_tiles_read = use_dim_ || is_count ? 10 : 14;
         }
       }
     }
@@ -1495,7 +1557,8 @@ TEST_CASE_METHOD(
           CHECK(count[0] == expected_count);
 
           if (request_data) {
-            validate_data(query, dim1, dim2, a1, a1_validity);
+            validate_data(
+                query, dim1, dim2, a1, a1_validity, [&](uint64_t) -> void {});
           }
 
           validate_tiles_read(query, true);
@@ -1532,104 +1595,63 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   Array array{
       CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
 
-  for (bool set_ranges : {true, false}) {
-    CppAggregatesFx<T>::set_ranges_ = set_ranges;
-    CppAggregatesFx<T>::use_dim_ = CppAggregatesFx<T>::use_dim_ && !set_ranges;
-    for (bool request_data : {true, false}) {
-      CppAggregatesFx<T>::request_data_ = request_data;
-      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
-        CppAggregatesFx<T>::set_qc_ = set_qc;
-        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
-          CppAggregatesFx<T>::layout_ = layout;
-          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+  CppAggregatesFx<T>::run_all_combinations([&]() -> void {
+    Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-          // Add a sum aggregator to the query.
-          QueryChannel default_channel =
-              QueryExperimental::get_default_channel(query);
-          ChannelOperation operation =
-              QueryExperimental::create_unary_aggregate<SumOperator>(
-                  query, CppAggregatesFx<T>::use_dim_ ? "d1" : "a1");
-          default_channel.apply_aggregate("Sum", operation);
+    // Add a sum aggregator to the query.
+    QueryChannel default_channel =
+        QueryExperimental::get_default_channel(query);
+    ChannelOperation operation =
+        QueryExperimental::create_unary_aggregate<SumOperator>(
+            query,
+            CppAggregatesFx<T>::use_dim_ ? CppAggregatesFx<T>::dim_name_ :
+                                           "a1");
+    default_channel.apply_aggregate("Sum", operation);
 
-          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
-              array, query, false);
+    CppAggregatesFx<T>::set_ranges_and_condition_if_needed(array, query, false);
 
-          // Set the data buffer for the aggregator.
-          uint64_t cell_size = sizeof(T);
-          std::vector<typename tiledb::sm::sum_type_data<T>::sum_type> sum(1);
-          std::vector<uint8_t> sum_validity(1);
-          std::vector<uint64_t> dim1(100);
-          std::vector<uint64_t> dim2(100);
-          std::vector<uint8_t> a1(100 * cell_size);
-          std::vector<uint8_t> a1_validity(100);
-          query.set_layout(layout);
-          query.set_data_buffer("Sum", sum);
-          if (CppAggregatesFx<T>::nullable_) {
-            query.set_validity_buffer("Sum", sum_validity);
-          }
+    // Set the data buffer for the aggregator.
+    uint64_t cell_size = sizeof(T);
+    std::vector<typename tiledb::sm::sum_type_data<T>::sum_type> sum(1);
+    std::vector<uint8_t> sum_validity(1);
+    std::vector<uint64_t> dim1(100);
+    std::vector<uint64_t> dim2(100);
+    std::vector<uint8_t> a1(100 * cell_size);
+    std::vector<uint8_t> a1_validity(100);
+    query.set_layout(CppAggregatesFx<T>::layout_);
+    query.set_data_buffer("Sum", sum);
+    if (CppAggregatesFx<T>::nullable_) {
+      query.set_validity_buffer("Sum", sum_validity);
+    }
 
-          if (request_data) {
-            query.set_data_buffer("d1", dim1);
-            query.set_data_buffer("d2", dim2);
-            query.set_data_buffer(
-                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+    if (CppAggregatesFx<T>::request_data_) {
+      query.set_data_buffer("d1", dim1);
+      query.set_data_buffer("d2", dim2);
+      query.set_data_buffer(
+          "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
 
-            if (CppAggregatesFx<T>::nullable_) {
-              query.set_validity_buffer("a1", a1_validity);
-            }
-          }
-
-          // Submit the query.
-          query.submit();
-
-          // Check the results.
-          typename tiledb::sm::sum_type_data<T>::sum_type expected_sum;
-          if (CppAggregatesFx<T>::use_dim_) {
-            expected_sum = 499500;
-          } else if (CppAggregatesFx<T>::dense_) {
-            if (CppAggregatesFx<T>::nullable_) {
-              if (set_ranges) {
-                expected_sum = set_qc ? 197 : 201;
-              } else {
-                expected_sum = set_qc ? 315 : 319;
-              }
-            } else {
-              if (set_ranges) {
-                expected_sum = set_qc ? 398 : 402;
-              } else {
-                expected_sum = set_qc ? 591 : 630;
-              }
-            }
-          } else {
-            if (CppAggregatesFx<T>::nullable_) {
-              if (set_ranges) {
-                expected_sum = 42;
-              } else {
-                expected_sum = 56;
-              }
-            } else {
-              if (set_ranges) {
-                expected_sum = CppAggregatesFx<T>::allow_dups_ ? 88 : 81;
-              } else {
-                expected_sum = CppAggregatesFx<T>::allow_dups_ ? 120 : 113;
-              }
-            }
-          }
-
-          auto result_el = query.result_buffer_elements_nullable();
-          CHECK(std::get<1>(result_el["Sum"]) == 1);
-          CHECK(sum[0] == expected_sum);
-
-          if (request_data) {
-            CppAggregatesFx<T>::validate_data(
-                query, dim1, dim2, a1, a1_validity);
-          }
-
-          CppAggregatesFx<T>::validate_tiles_read(query);
-        }
+      if (CppAggregatesFx<T>::nullable_) {
+        query.set_validity_buffer("a1", a1_validity);
       }
     }
-  }
+
+    // Submit the query.
+    query.submit();
+
+    // Check the results.
+    uint64_t expected = 0;
+    CppAggregatesFx<T>::validate_data(
+        query, dim1, dim2, a1, a1_validity, [&](uint64_t v) -> void {
+          expected += v;
+        });
+    typename tiledb::sm::sum_type_data<T>::sum_type expected_sum = expected;
+
+    auto result_el = query.result_buffer_elements_nullable();
+    CHECK(std::get<1>(result_el["Sum"]) == 1);
+    CHECK(sum[0] == expected_sum);
+
+    CppAggregatesFx<T>::validate_tiles_read(query);
+  });
 
   // Close array.
   array.close();
@@ -1659,106 +1681,66 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   Array array{
       CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
 
-  for (bool set_ranges : {true, false}) {
-    CppAggregatesFx<T>::set_ranges_ = set_ranges;
-    CppAggregatesFx<T>::use_dim_ = CppAggregatesFx<T>::use_dim_ && !set_ranges;
-    for (bool request_data : {true, false}) {
-      CppAggregatesFx<T>::request_data_ = request_data;
-      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
-        CppAggregatesFx<T>::set_qc_ = set_qc;
-        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
-          CppAggregatesFx<T>::layout_ = layout;
-          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+  CppAggregatesFx<T>::run_all_combinations([&]() -> void {
+    Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-          QueryChannel default_channel =
-              QueryExperimental::get_default_channel(query);
-          ChannelOperation operation =
-              QueryExperimental::create_unary_aggregate<MeanOperator>(
-                  query, CppAggregatesFx<T>::use_dim_ ? "d1" : "a1");
-          default_channel.apply_aggregate("Mean", operation);
+    QueryChannel default_channel =
+        QueryExperimental::get_default_channel(query);
+    ChannelOperation operation =
+        QueryExperimental::create_unary_aggregate<MeanOperator>(
+            query,
+            CppAggregatesFx<T>::use_dim_ ? CppAggregatesFx<T>::dim_name_ :
+                                           "a1");
+    default_channel.apply_aggregate("Mean", operation);
 
-          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
-              array, query, false);
+    CppAggregatesFx<T>::set_ranges_and_condition_if_needed(array, query, false);
 
-          // Set the data buffer for the aggregator.
-          uint64_t cell_size = sizeof(T);
-          std::vector<double> mean(1);
-          std::vector<uint8_t> mean_validity(1);
-          std::vector<uint64_t> dim1(100);
-          std::vector<uint64_t> dim2(100);
-          std::vector<uint8_t> a1(100 * cell_size);
-          std::vector<uint8_t> a1_validity(100);
-          query.set_layout(layout);
-          query.set_data_buffer("Mean", mean);
-          if (CppAggregatesFx<T>::nullable_) {
-            query.set_validity_buffer("Mean", mean_validity);
-          }
+    // Set the data buffer for the aggregator.
+    uint64_t cell_size = sizeof(T);
+    std::vector<double> mean(1);
+    std::vector<uint8_t> mean_validity(1);
+    std::vector<uint64_t> dim1(100);
+    std::vector<uint64_t> dim2(100);
+    std::vector<uint8_t> a1(100 * cell_size);
+    std::vector<uint8_t> a1_validity(100);
+    query.set_layout(CppAggregatesFx<T>::layout_);
+    query.set_data_buffer("Mean", mean);
+    if (CppAggregatesFx<T>::nullable_) {
+      query.set_validity_buffer("Mean", mean_validity);
+    }
 
-          if (request_data) {
-            query.set_data_buffer("d1", dim1);
-            query.set_data_buffer("d2", dim2);
-            query.set_data_buffer(
-                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+    if (CppAggregatesFx<T>::request_data_) {
+      query.set_data_buffer("d1", dim1);
+      query.set_data_buffer("d2", dim2);
+      query.set_data_buffer(
+          "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
 
-            if (CppAggregatesFx<T>::nullable_) {
-              query.set_validity_buffer("a1", a1_validity);
-            }
-          }
-
-          // Submit the query.
-          query.submit();
-
-          // Check the results.
-          double expected_mean;
-          if (CppAggregatesFx<T>::use_dim_) {
-            expected_mean = 500;
-          } else if (CppAggregatesFx<T>::dense_) {
-            if (CppAggregatesFx<T>::nullable_) {
-              if (set_ranges) {
-                expected_mean = set_qc ? (197.0 / 11.0) : (201.0 / 12.0);
-              } else {
-                expected_mean = set_qc ? (315.0 / 18.0) : (319.0 / 19.0);
-              }
-            } else {
-              if (set_ranges) {
-                expected_mean = set_qc ? (398.0 / 23.0) : (402.0 / 24.0);
-              } else {
-                expected_mean = set_qc ? (591.0 / 34.0) : (630.0 / 36.0);
-              }
-            }
-          } else {
-            if (CppAggregatesFx<T>::nullable_) {
-              if (set_ranges) {
-                expected_mean = (42.0 / 4.0);
-              } else {
-                expected_mean = (56.0 / 8.0);
-              }
-            } else {
-              if (set_ranges) {
-                expected_mean = CppAggregatesFx<T>::allow_dups_ ? (88.0 / 8.0) :
-                                                                  (81.0 / 7.0);
-              } else {
-                expected_mean = CppAggregatesFx<T>::allow_dups_ ?
-                                    (120.0 / 16.0) :
-                                    (113.0 / 15.0);
-              }
-            }
-          }
-
-          auto result_el = query.result_buffer_elements_nullable();
-          CHECK(std::get<1>(result_el["Mean"]) == 1);
-          CHECK(mean[0] == expected_mean);
-
-          if (request_data) {
-            CppAggregatesFx<T>::validate_data(
-                query, dim1, dim2, a1, a1_validity);
-          }
-
-          CppAggregatesFx<T>::validate_tiles_read(query);
-        }
+      if (CppAggregatesFx<T>::nullable_) {
+        query.set_validity_buffer("a1", a1_validity);
       }
     }
-  }
+
+    // Submit the query.
+    query.submit();
+
+    // Check the results.
+    uint64_t expected_sum = 0;
+    uint64_t expected_count = 0;
+    CppAggregatesFx<T>::validate_data(
+        query, dim1, dim2, a1, a1_validity, [&](uint64_t v) -> void {
+          expected_sum += v;
+          expected_count++;
+        });
+
+    double expected_mean =
+        static_cast<double>(expected_sum) / static_cast<double>(expected_count);
+
+    auto result_el = query.result_buffer_elements_nullable();
+    CHECK(std::get<1>(result_el["Mean"]) == 1);
+    CHECK(mean[0] == expected_mean);
+
+    CppAggregatesFx<T>::validate_tiles_read(query);
+  });
 
   // Close array.
   array.close();
@@ -1801,118 +1783,81 @@ TEMPLATE_LIST_TEST_CASE(
 
   Array array{fx.ctx_, fx.ARRAY_NAME, TILEDB_READ};
 
-  for (bool set_ranges : {true, false}) {
-    fx.set_ranges_ = set_ranges;
-    fx.use_dim_ = fx.use_dim_ && !set_ranges;
-    for (bool request_data : {true, false}) {
-      fx.request_data_ = request_data;
-      for (bool set_qc : fx.set_qc_values_) {
-        fx.set_qc_ = set_qc;
-        for (tiledb_layout_t layout : fx.layout_values_) {
-          fx.layout_ = layout;
-          Query query(fx.ctx_, array, TILEDB_READ);
+  fx.run_all_combinations([&]() -> void {
+    Query query(fx.ctx_, array, TILEDB_READ);
 
-          // Add a min/max aggregator to the query.
-          QueryChannel default_channel =
-              QueryExperimental::get_default_channel(query);
-          ChannelOperation operation =
-              QueryExperimental::create_unary_aggregate<AGG>(
-                  query, fx.use_dim_ ? "d1" : "a1");
-          default_channel.apply_aggregate("MinMax", operation);
+    // Add a min/max aggregator to the query.
+    QueryChannel default_channel =
+        QueryExperimental::get_default_channel(query);
+    ChannelOperation operation = QueryExperimental::create_unary_aggregate<AGG>(
+        query, fx.use_dim_ ? fx.dim_name_ : "a1");
+    default_channel.apply_aggregate("MinMax", operation);
 
-          fx.set_ranges_and_condition_if_needed(array, query, false);
+    fx.set_ranges_and_condition_if_needed(array, query, false);
 
-          // Set the data buffer for the aggregator.
-          uint64_t cell_size = std::is_same<T, std::string>::value ?
-                                   fx.STRING_CELL_VAL_NUM :
-                                   sizeof(T);
-          std::vector<uint8_t> min_max(cell_size);
-          std::vector<uint8_t> min_max_validity(1);
-          std::vector<uint64_t> dim1(100);
-          std::vector<uint64_t> dim2(100);
-          std::vector<uint8_t> a1(100 * cell_size);
-          std::vector<uint8_t> a1_validity(100);
-          query.set_layout(layout);
-          if constexpr (std::is_same<T, std::string>::value) {
-            query.set_data_buffer(
-                "MinMax",
-                static_cast<char*>(static_cast<void*>(min_max.data())),
-                min_max.size());
-          } else {
-            query.set_data_buffer(
-                "MinMax",
-                static_cast<T*>(static_cast<void*>(min_max.data())),
-                min_max.size() / cell_size);
-          }
-          if (fx.nullable_) {
-            query.set_validity_buffer("MinMax", min_max_validity);
-          }
+    // Set the data buffer for the aggregator.
+    uint64_t cell_size = std::is_same<T, std::string>::value ?
+                             fx.STRING_CELL_VAL_NUM :
+                             sizeof(T);
+    std::vector<uint8_t> min_max(cell_size);
+    std::vector<uint8_t> min_max_validity(1);
+    std::vector<uint64_t> dim1(100);
+    std::vector<uint64_t> dim2(100);
+    std::vector<uint8_t> a1(100 * cell_size);
+    std::vector<uint8_t> a1_validity(100);
+    query.set_layout(fx.layout_);
+    if constexpr (std::is_same<T, std::string>::value) {
+      query.set_data_buffer(
+          "MinMax",
+          static_cast<char*>(static_cast<void*>(min_max.data())),
+          min_max.size());
+    } else {
+      query.set_data_buffer(
+          "MinMax",
+          static_cast<T*>(static_cast<void*>(min_max.data())),
+          min_max.size() / cell_size);
+    }
+    if (fx.nullable_) {
+      query.set_validity_buffer("MinMax", min_max_validity);
+    }
 
-          if (request_data) {
-            query.set_data_buffer("d1", dim1);
-            query.set_data_buffer("d2", dim2);
-            query.set_data_buffer(
-                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+    if (fx.request_data_) {
+      query.set_data_buffer("d1", dim1);
+      query.set_data_buffer("d2", dim2);
+      query.set_data_buffer(
+          "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
 
-            if (fx.nullable_) {
-              query.set_validity_buffer("a1", a1_validity);
-            }
-          }
-
-          // Submit the query.
-          query.submit();
-
-          // Check the results.
-          std::vector<uint8_t> expected_min_max;
-          if (fx.use_dim_) {
-            expected_min_max = fx.make_data_buff({min ? 1 : 999});
-          } else if (fx.dense_) {
-            if (fx.nullable_) {
-              if (set_ranges) {
-                expected_min_max =
-                    fx.make_data_buff({min ? (set_qc ? 6 : 4) : 28});
-              } else {
-                expected_min_max = fx.make_data_buff({min ? 0 : 34});
-              }
-            } else {
-              if (set_ranges) {
-                expected_min_max = fx.make_data_buff({min ? 3 : 29});
-              } else {
-                expected_min_max =
-                    fx.make_data_buff({min ? 0 : (set_qc ? 34 : 35)});
-              }
-            }
-          } else {
-            if (fx.nullable_) {
-              if (set_ranges) {
-                expected_min_max = fx.make_data_buff({min ? 6 : 14});
-              } else {
-                expected_min_max = fx.make_data_buff({min ? 0 : 14});
-              }
-            } else {
-              if (set_ranges) {
-                expected_min_max = fx.make_data_buff({min ? 6 : 15});
-              } else {
-                expected_min_max = fx.make_data_buff({min ? 0 : 15});
-              }
-            }
-          }
-
-          auto result_el = query.result_buffer_elements_nullable();
-          CHECK(
-              std::get<1>(result_el["MinMax"]) ==
-              (std::is_same<T, std::string>::value ? 2 : 1));
-          CHECK(min_max == expected_min_max);
-
-          if (request_data) {
-            fx.validate_data(query, dim1, dim2, a1, a1_validity);
-          }
-
-          fx.validate_tiles_read(query);
-        }
+      if (fx.nullable_) {
+        query.set_validity_buffer("a1", a1_validity);
       }
     }
-  }
+
+    // Submit the query.
+    query.submit();
+
+    // Check the results.
+    uint64_t expected = min ? std::numeric_limits<uint64_t>::max() :
+                              std::numeric_limits<uint64_t>::min();
+    fx.validate_data(
+        query, dim1, dim2, a1, a1_validity, [&](uint64_t v) -> void {
+          if (min) {
+            expected = std::min(expected, v);
+          } else {
+            expected = std::max(expected, v);
+          }
+        });
+
+    std::vector<uint8_t> expected_min_max =
+        fx.make_data_buff({static_cast<int>(expected)});
+
+    auto result_el = query.result_buffer_elements_nullable();
+    CHECK(
+        std::get<1>(result_el["MinMax"]) ==
+        (std::is_same<T, std::string>::value ? 2 : 1));
+    CHECK(min_max == expected_min_max);
+
+    fx.validate_tiles_read(query);
+  });
 
   // Close array.
   array.close();
@@ -2068,84 +2013,75 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   Array array{
       CppAggregatesFx<T>::ctx_, CppAggregatesFx<T>::ARRAY_NAME, TILEDB_READ};
 
-  for (bool set_ranges : {true, false}) {
-    CppAggregatesFx<T>::set_ranges_ = set_ranges;
-    for (bool request_data : {true, false}) {
-      CppAggregatesFx<T>::request_data_ = request_data;
-      for (bool set_qc : CppAggregatesFx<T>::set_qc_values_) {
-        CppAggregatesFx<T>::set_qc_ = set_qc;
-        for (tiledb_layout_t layout : CppAggregatesFx<T>::layout_values_) {
-          CppAggregatesFx<T>::layout_ = layout;
-          Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
+  CppAggregatesFx<T>::run_all_combinations([&]() -> void {
+    Query query(CppAggregatesFx<T>::ctx_, array, TILEDB_READ);
 
-          QueryChannel default_channel =
-              QueryExperimental::get_default_channel(query);
-          ChannelOperation operation =
-              QueryExperimental::create_unary_aggregate<NullCountOperator>(
-                  query, "a1");
-          default_channel.apply_aggregate("NullCount", operation);
+    QueryChannel default_channel =
+        QueryExperimental::get_default_channel(query);
+    ChannelOperation operation =
+        QueryExperimental::create_unary_aggregate<NullCountOperator>(
+            query, "a1");
+    default_channel.apply_aggregate("NullCount", operation);
 
-          CppAggregatesFx<T>::set_ranges_and_condition_if_needed(
-              array, query, false);
+    CppAggregatesFx<T>::set_ranges_and_condition_if_needed(array, query, false);
 
-          // Set the data buffer for the aggregator.
-          uint64_t cell_size = std::is_same<T, std::string>::value ?
-                                   CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
-                                   sizeof(T);
-          std::vector<uint64_t> null_count(1);
-          std::vector<uint64_t> dim1(100);
-          std::vector<uint64_t> dim2(100);
-          std::vector<uint8_t> a1(100 * cell_size);
-          std::vector<uint8_t> a1_validity(100);
-          query.set_layout(layout);
-          query.set_data_buffer("NullCount", null_count);
+    // Set the data buffer for the aggregator.
+    uint64_t cell_size = std::is_same<T, std::string>::value ?
+                             CppAggregatesFx<T>::STRING_CELL_VAL_NUM :
+                             sizeof(T);
+    std::vector<uint64_t> null_count(1);
+    std::vector<uint64_t> dim1(100);
+    std::vector<uint64_t> dim2(100);
+    std::vector<uint8_t> a1(100 * cell_size);
+    std::vector<uint8_t> a1_validity(100);
+    query.set_layout(CppAggregatesFx<T>::layout_);
+    query.set_data_buffer("NullCount", null_count);
 
-          if (request_data) {
-            query.set_data_buffer("d1", dim1);
-            query.set_data_buffer("d2", dim2);
-            query.set_data_buffer(
-                "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
-            query.set_validity_buffer("a1", a1_validity);
-          }
+    if (CppAggregatesFx<T>::request_data_) {
+      query.set_data_buffer("d1", dim1);
+      query.set_data_buffer("d2", dim2);
+      query.set_data_buffer(
+          "a1", static_cast<void*>(a1.data()), a1.size() / cell_size);
+      query.set_validity_buffer("a1", a1_validity);
+    }
 
-          // Submit the query.
-          query.submit();
+    // Submit the query.
+    query.submit();
 
-          // Check the results.
-          uint64_t expected_null_count;
-          if (CppAggregatesFx<T>::dense_) {
-            if (set_qc) {
-              expected_null_count = 0;
-            } else {
-              if (set_ranges) {
-                expected_null_count = 12;
-              } else {
-                expected_null_count = 17;
-              }
-            }
-          } else {
-            if (set_ranges) {
-              expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 4 : 3;
-            } else {
-              expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 8 : 7;
-            }
-          }
-
-          auto result_el = query.result_buffer_elements_nullable();
-          CHECK(std::get<1>(result_el["NullCount"]) == 1);
-          CHECK(null_count[0] == expected_null_count);
-
-          if (request_data) {
-            CppAggregatesFx<T>::validate_data(
-                query, dim1, dim2, a1, a1_validity);
-          }
-
-          CppAggregatesFx<T>::validate_tiles_read(query);
-          CppAggregatesFx<T>::validate_tiles_read_null_count(query);
+    // Check the results.
+    uint64_t expected_null_count;
+    if (CppAggregatesFx<T>::dense_) {
+      if (CppAggregatesFx<T>::set_qc_) {
+        expected_null_count = 0;
+      } else {
+        if (CppAggregatesFx<T>::set_ranges_) {
+          expected_null_count = 12;
+        } else {
+          expected_null_count = 17;
         }
       }
+    } else {
+      if (CppAggregatesFx<T>::set_ranges_) {
+        expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 4 : 3;
+      } else {
+        expected_null_count = CppAggregatesFx<T>::allow_dups_ ? 8 : 7;
+      }
     }
-  }
+
+    auto result_el = query.result_buffer_elements_nullable();
+    CHECK(std::get<1>(result_el["NullCount"]) == 1);
+    CHECK(null_count[0] == expected_null_count);
+
+    if (CppAggregatesFx<T>::request_data_) {
+      CppAggregatesFx<T>::validate_data(
+          query, dim1, dim2, a1, a1_validity, [&](uint64_t) -> void {
+            expected_null_count++;
+          });
+    }
+
+    CppAggregatesFx<T>::validate_tiles_read(query);
+    CppAggregatesFx<T>::validate_tiles_read_null_count(query);
+  });
 
   // Close array.
   array.close();
@@ -2613,7 +2549,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
         CHECK(sum[0] == expected_sum);
 
         CppAggregatesFx<T>::validate_data(
-            query, dim1, dim2, a1, a1_validity, false);
+            query,
+            dim1,
+            dim2,
+            a1,
+            a1_validity,
+            [&](uint64_t) -> void {},
+            false);
       }
     }
   }

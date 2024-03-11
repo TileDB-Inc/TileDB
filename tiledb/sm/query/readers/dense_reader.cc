@@ -418,27 +418,28 @@ Status DenseReader::dense_read() {
     // clear the memory. Also, a name in names might not be in the user buffers
     // so we might skip the copy but still clear the memory.
     for (auto& name : names) {
-      if (name == constants::coords || array_schema_.is_dim(name)) {
-        continue;
-      }
-
-      // Get the tiles to load for this attribute.
-      auto result_tiles = result_tiles_to_load(
-          name,
-          qc_loaded_attr_names_set_,
-          subarray,
-          t_start,
-          t_end,
-          result_space_tiles,
-          tile_subarrays);
-
-      // Read and unfilter tiles.
+      shared_ptr<std::list<FilteredData>> filtered_data;
+      std::vector<ResultTile*> result_tiles;
       bool validity_only = null_count_aggregate_only(name);
-      std::vector<ReaderBase::NameToLoad> to_load;
-      to_load.emplace_back(name, validity_only);
-      shared_ptr<std::list<FilteredData>> filtered_data =
-          make_shared<std::list<FilteredData>>(
-              read_attribute_tiles(to_load, result_tiles));
+      bool dense_dim = name == constants::coords || array_schema_.is_dim(name);
+
+      if (!dense_dim) {
+        // Get the tiles to load for this attribute.
+        result_tiles = result_tiles_to_load(
+            name,
+            qc_loaded_attr_names_set_,
+            subarray,
+            t_start,
+            t_end,
+            result_space_tiles,
+            tile_subarrays);
+
+        // Read and unfilter tiles.
+        std::vector<ReaderBase::NameToLoad> to_load;
+        to_load.emplace_back(name, validity_only);
+        filtered_data = make_shared<std::list<FilteredData>>(
+            read_attribute_tiles(to_load, result_tiles));
+      }
 
       if (compute_task.valid()) {
         RETURN_NOT_OK(storage_manager_->compute_tp()->wait(compute_task));
@@ -450,6 +451,7 @@ Status DenseReader::dense_read() {
       compute_task =
           storage_manager_->compute_tp()->execute([&,
                                                    filtered_data,
+                                                   dense_dim,
                                                    name,
                                                    validity_only,
                                                    t_start,
@@ -458,29 +460,31 @@ Status DenseReader::dense_read() {
                                                    subarray_end_cell,
                                                    num_range_threads,
                                                    result_tiles]() {
-            // Unfilter tiles.
-            RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
+            if (!dense_dim) {
+              // Unfilter tiles.
+              RETURN_NOT_OK(unfilter_tiles(name, validity_only, result_tiles));
 
-            // Only copy names that are present in the user buffers.
-            if (buffers_.count(name) != 0) {
-              // Copy attribute data to users buffers.
-              auto& var_buffer_size = var_buffer_sizes[name];
-              status = copy_attribute<DimType, OffType>(
-                  name,
-                  tile_extents,
-                  subarray,
-                  t_start,
-                  t_end,
-                  subarray_start_cell,
-                  subarray_end_cell,
-                  tile_subarrays,
-                  tile_offsets,
-                  var_buffer_size,
-                  range_info,
-                  result_space_tiles,
-                  qc_result,
-                  num_range_threads);
-              RETURN_CANCEL_OR_ERROR(status);
+              // Only copy names that are present in the user buffers.
+              if (buffers_.count(name) != 0) {
+                // Copy attribute data to users buffers.
+                auto& var_buffer_size = var_buffer_sizes[name];
+                status = copy_attribute<DimType, OffType>(
+                    name,
+                    tile_extents,
+                    subarray,
+                    t_start,
+                    t_end,
+                    subarray_start_cell,
+                    subarray_end_cell,
+                    tile_subarrays,
+                    tile_offsets,
+                    var_buffer_size,
+                    range_info,
+                    result_space_tiles,
+                    qc_result,
+                    num_range_threads);
+                RETURN_CANCEL_OR_ERROR(status);
+              }
             }
 
             if (aggregates_.count(name) != 0) {
@@ -499,7 +503,9 @@ Status DenseReader::dense_read() {
               RETURN_CANCEL_OR_ERROR(status);
             }
 
-            clear_tiles(name, result_tiles);
+            if (!dense_dim) {
+              clear_tiles(name, result_tiles);
+            }
 
             return Status::Ok();
           });
@@ -507,9 +513,12 @@ Status DenseReader::dense_read() {
 
     // Process count aggregates.
     if (aggregates_.count(constants::count_of_rows) != 0) {
-      auto buff{make_aggregate_buffer(
+      DimType unused = 0;
+      auto buff{make_aggregate_buffer<DimType>(
           false,
           false,
+          false,
+          unused,
           0,
           subarray_start_cell,
           subarray_end_cell,
@@ -1262,9 +1271,12 @@ Status DenseReader::copy_attribute(
   return Status::Ok();
 }
 
+template <class DimType>
 AggregateBuffer DenseReader::make_aggregate_buffer(
     const bool var_sized,
     const bool nullable,
+    const bool is_dim,
+    DimType& dim_val,
     const uint64_t cell_size,
     const uint64_t min_cell,
     const uint64_t max_cell,
@@ -1284,6 +1296,8 @@ AggregateBuffer DenseReader::make_aggregate_buffer(
             std::make_optional(
                 tile_tuple->validity_tile().data_as<uint8_t>() + min_cell) :
             nullopt;
+  } else if (is_dim) {
+    fixed_data = &dim_val;
   }
 
   return AggregateBuffer(
@@ -1861,13 +1875,27 @@ Status DenseReader::aggregate_tiles(
   const auto cell_order = array_schema_.cell_order();
   auto stride = array_schema_.domain().stride<DimType>(layout_);
   const auto& frag_domains = result_space_tile.frag_domains();
+  const auto is_dim = array_schema_.is_dim(name);
   const auto attribute = array_schema_.attribute(name);
   const auto var_size = array_schema_.var_size(name);
-  const auto nullable = attribute->nullable();
+  const auto nullable = !is_dim && attribute->nullable();
   const auto cell_size = var_size ? constants::cell_var_offset_size :
                                     array_schema_.cell_size(name);
   auto& aggregates = aggregates_[name];
   const bool validity_only = null_count_aggregate_only(name);
+
+  // Get the dimension index.
+  unsigned dim_idx = 0;
+  if (is_dim) {
+    dim_idx = array_schema_.domain().get_dimension_index(name);
+  }
+
+  const bool is_slab_dim = is_dim && (cell_order == sm::Layout::ROW_MAJOR) ?
+                               (dim_idx == dim_num - 1) :
+                               (dim_idx == 0);
+  const bool is_col_dim = is_dim && (cell_order == sm::Layout::ROW_MAJOR) ?
+                              (dim_idx == 0) :
+                              (dim_idx == dim_num - 1);
 
   // Cache tile tuples.
   std::vector<ResultTile::TileTuple*> tile_tuples(frag_domains.size());
@@ -1912,7 +1940,7 @@ Status DenseReader::aggregate_tiles(
       // If the cell slab overlaps this fragment domain range, copy data.
       bool overlaps = false;
       uint64_t start = 0, end = 0;
-      if (tile_tuples[fd] != nullptr) {
+      if (is_dim || tile_tuples[fd] != nullptr) {
         auto&& [o, s, e] = cell_slab_overlaps_range(
             dim_num,
             frag_domains[fd].domain(),
@@ -1925,11 +1953,18 @@ Status DenseReader::aggregate_tiles(
       if (overlaps) {
         // If the subarray and tile are in the same order, aggregate the
         // whole slab.
+        DimType dim_val = 0;
         if (stride == 1) {
+          if (is_dim) {
+            dim_val = iter.cell_slab_coords()[dim_idx] + is_slab_dim * start;
+          }
+
           // Compute aggregate.
-          AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+          AggregateBuffer aggregate_buffer{make_aggregate_buffer<DimType>(
               var_size & !validity_only,
               nullable,
+              is_dim,
+              dim_val,
               cell_size,
               iter.pos_in_tile() + start,
               iter.pos_in_tile() + end + 1,
@@ -1941,11 +1976,18 @@ Status DenseReader::aggregate_tiles(
         } else {
           // Go cell by cell.
           for (uint64_t i = 0; i < end - start + 1; ++i) {
+            if (is_dim) {
+              dim_val =
+                  iter.cell_slab_coords()[dim_idx] + is_col_dim * (i + start);
+            }
+
             // Compute aggregate.
             auto start_cell = iter.pos_in_tile() + (start + i) * stride;
-            AggregateBuffer aggregate_buffer{make_aggregate_buffer(
+            AggregateBuffer aggregate_buffer{make_aggregate_buffer<DimType>(
                 var_size & !validity_only,
                 nullable,
+                is_dim,
+                dim_val,
                 cell_size,
                 start_cell,
                 start_cell + 1,

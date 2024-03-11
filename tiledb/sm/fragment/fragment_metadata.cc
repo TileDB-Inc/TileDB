@@ -1971,8 +1971,7 @@ TileMetadata FragmentMetadata::get_tile_metadata(
   unsigned dim_idx = 0;
   const NDRange* mbr = nullptr;
   if (is_dim) {
-    throw_if_not_ok(
-        array_schema_->domain().get_dimension_index(name, &dim_idx));
+    dim_idx = array_schema_->domain().get_dimension_index(name);
     mbr = &rtree_.leaf(tile_idx);
   }
 

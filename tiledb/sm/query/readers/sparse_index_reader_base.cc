@@ -494,7 +494,13 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
   load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_);
 
   // Load tile metadata.
-  load_tile_metadata(relevant_fragments, attr_tile_offsets_to_load_);
+  auto md_names_to_load = attr_tile_offsets_to_load_;
+  for (const auto& [name, _] : aggregates_) {
+    if (array_schema_.is_dim(name)) {
+      md_names_to_load.emplace_back(name);
+    }
+  }
+  load_tile_metadata(relevant_fragments, md_names_to_load);
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(

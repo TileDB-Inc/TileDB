@@ -532,16 +532,14 @@ Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
   return Status::Ok();
 }
 
-Status Domain::get_dimension_index(
-    const std::string& name, unsigned* dim_idx) const {
+unsigned Domain::get_dimension_index(const std::string& name) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (dimension_ptrs_[d]->name() == name) {
-      *dim_idx = d;
-      return Status::Ok();
+      return d;
     }
   }
 
-  return Status_DomainError(
+  throw std::invalid_argument(
       "Cannot get dimension index; Invalid dimension name");
 }
 
