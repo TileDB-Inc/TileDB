@@ -1878,7 +1878,7 @@ Status DenseReader::aggregate_tiles(
   const auto is_dim = array_schema_.is_dim(name);
   const auto attribute = array_schema_.attribute(name);
   const auto var_size = array_schema_.var_size(name);
-  const auto nullable = attribute != nullptr && attribute->nullable();
+  const auto nullable = !is_dim && attribute->nullable();
   const auto cell_size = var_size ? constants::cell_var_offset_size :
                                     array_schema_.cell_size(name);
   auto& aggregates = aggregates_[name];
@@ -1887,9 +1887,7 @@ Status DenseReader::aggregate_tiles(
   // Get the dimension index.
   unsigned dim_idx = 0;
   if (is_dim) {
-    while (array_schema_.dimension_ptr(dim_idx)->name() != name) {
-      dim_idx++;
-    }
+    dim_idx = array_schema_.domain().get_dimension_index(name);
   }
 
   const bool is_slab_dim = is_dim && (cell_order == sm::Layout::ROW_MAJOR) ?

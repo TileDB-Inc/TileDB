@@ -1650,10 +1650,6 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     CHECK(std::get<1>(result_el["Sum"]) == 1);
     CHECK(sum[0] == expected_sum);
 
-    if (sum[0] != expected_sum) {
-      std::cout << "FFFFFFF";
-    }
-
     CppAggregatesFx<T>::validate_tiles_read(query);
   });
 

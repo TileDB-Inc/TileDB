@@ -527,10 +527,8 @@ Status Subarray::add_range_by_name(
     const void* start,
     const void* end,
     const void* stride) {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return add_range(dim_idx, start, end, stride);
 }
 
@@ -586,10 +584,8 @@ Status Subarray::add_range_var_by_name(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
 
@@ -697,9 +693,8 @@ Status Subarray::get_range_var(
 
 Status Subarray::get_range_num_from_name(
     const std::string& dim_name, uint64_t* range_num) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
 
   return get_range_num(dim_idx, range_num);
 }
@@ -720,9 +715,8 @@ Status Subarray::get_range_from_name(
     const void** start,
     const void** end,
     const void** stride) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
 
   return get_range(dim_idx, range_idx, start, end, stride);
 }
@@ -732,10 +726,8 @@ Status Subarray::get_range_var_size_from_name(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return get_range_var_size(dim_idx, range_idx, start_size, end_size);
 }
 
@@ -744,10 +736,8 @@ Status Subarray::get_range_var_from_name(
     uint64_t range_idx,
     void* start,
     void* end) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return get_range_var(dim_idx, range_idx, start, end);
 }
 const shared_ptr<OpenedArray> Subarray::array() const {

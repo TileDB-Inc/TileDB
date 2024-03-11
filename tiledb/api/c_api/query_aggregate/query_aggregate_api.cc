@@ -189,11 +189,14 @@ capi_return_t tiledb_create_unary_aggregate(
 
   const auto is_dense_dim{schema.dense() && schema.is_dim(field_name)};
   const auto cell_order{schema.cell_order()};
+
+  // Get the dimension index for the dense case. It is used below to know if the
+  // dimenson to be aggregated is the last dimension for ROW_MAJOR or first for
+  // COL_MAJOR. This is used at the aggregate level to know if we need to change
+  // the dimension value when we move cells.
   unsigned dim_idx = 0;
   if (is_dense_dim) {
-    while (schema.dimension_ptr(dim_idx)->name() != field_name) {
-      dim_idx++;
-    }
+    dim_idx = schema.domain().get_dimension_index(field_name);
   }
 
   const bool is_slab_dim =
