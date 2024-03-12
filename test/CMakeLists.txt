@@ -177,7 +177,6 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-enumerations.cc
   src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
-  src/unit-filter-pipeline.cc
   src/unit-global-order.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
@@ -204,6 +203,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/cpp-integration-filter-pipeline.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-subarray-labels.cc
