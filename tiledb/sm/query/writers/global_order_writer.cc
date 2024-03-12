@@ -112,6 +112,13 @@ GlobalOrderWriter::GlobalOrderWriter(
 GlobalOrderWriter::~GlobalOrderWriter() {
 }
 
+GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : last_tiles_(memory_tracker->get_resource(MemoryType::TILE_WRITER_DATA))
+    , last_var_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS))
+    , cells_written_(memory_tracker->get_resource(MemoryType::TILE_SUMS)) {
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -174,7 +181,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
     return logger_->status(
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
-  global_write_state_.reset(new GlobalWriteState);
+  global_write_state_.reset(new GlobalWriteState(query_memory_tracker_));
 
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = this->create_fragment_metadata();
@@ -749,7 +756,8 @@ Status GlobalOrderWriter::global_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
   }
 
-  std::unordered_map<std::string, WriterTileTupleVector> tiles;
+  tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
+      query_memory_tracker_->get_resource(MemoryType::TILE_WRITER_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
   // Find number of tiles and gather stats
@@ -859,7 +867,7 @@ void GlobalOrderWriter::nuke_global_write_state() {
 
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute and coordinate tiles
@@ -1378,7 +1386,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 uint64_t GlobalOrderWriter::num_tiles_to_write(
     uint64_t start,
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileTupleVector>& tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;

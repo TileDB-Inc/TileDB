@@ -249,7 +249,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * @return MBRs.
    */
   std::vector<NDRange> compute_mbrs(
-      const std::unordered_map<std::string, WriterTileTupleVector>& tiles)
+      const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
       const;
 
   /**
@@ -265,7 +265,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   void set_coords_metadata(
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
-      const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+      const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
       const std::vector<NDRange>& mbrs,
       shared_ptr<FragmentMetadata> meta) const;
 
@@ -279,7 +279,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   Status compute_tiles_metadata(
       uint64_t tile_num,
-      std::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const;
 
   /**
    * Returns the i-th coordinates in the coordinate buffers in string
@@ -305,7 +305,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    * of the pipeline.
    */
   Status filter_tiles(
-      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Runs the input tiles for the input attribute through the filter pipeline.
@@ -441,7 +441,7 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const uint64_t start_tile_idx,
       const uint64_t end_tile_idx,
       shared_ptr<FragmentMetadata> frag_meta,
-      std::unordered_map<std::string, WriterTileTupleVector>* tiles);
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles);
 
   /**
    * Writes the input tiles for the input attribute/dimension to storage.
