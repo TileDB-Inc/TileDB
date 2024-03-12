@@ -49,11 +49,17 @@
 
 using namespace tiledb::common;
 
-namespace google::cloud::storage {
+namespace google::cloud {
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+class Credentials;
+class Options;
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+namespace storage {
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
 class Client;
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
-}  // namespace google::cloud::storage
+}  // namespace storage
+}  // namespace google::cloud
 
 namespace tiledb {
 
@@ -308,6 +314,17 @@ class GCS {
    * @return Status
    */
   Status flush_object(const URI& uri);
+
+  /**
+   * Creates a GCS credentials object.
+   *
+   * This method is intended to be used by testing code only.
+   *
+   * @param options Options to configure the credentials.
+   * @return shared pointer to credentials
+   */
+  std::shared_ptr<google::cloud::Credentials> make_credentials(
+      const google::cloud::Options& options) const;
 
  private:
   /* ********************************* */

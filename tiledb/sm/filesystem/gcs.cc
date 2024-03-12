@@ -180,6 +180,17 @@ static shared_ptr<google::cloud::Credentials> apply_impersonation(
       std::move(credentials), std::move(service_accounts), std::move(options));
 }
 
+std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
+    const google::cloud::Options& options) const {
+  shared_ptr<google::cloud::Credentials> creds = nullptr;
+  if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    creds = google::cloud::MakeInsecureCredentials();
+  } else {
+    creds = google::cloud::MakeGoogleDefaultCredentials(options);
+  }
+  return apply_impersonation(creds, impersonate_service_account_, options);
+}
+
 Status GCS::init_client() const {
   assert(state_ == State::INITIALIZED);
 
@@ -201,7 +212,7 @@ Status GCS::init_client() const {
   }
 
   // Note that the order here is *extremely important*
-  // We must call MakeGoogleDefaultCredentials *with* a ca_options
+  // We must call make_credentials *with* a ca_options
   // argument, or else the Curl handle pool will be default-initialized
   // with no root dir (CURLOPT_CAINFO), defaulting to build host path.
   // Later initializations of ClientOptions/Client with the ca_options
@@ -211,16 +222,9 @@ Status GCS::init_client() const {
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    shared_ptr<google::cloud::Credentials> creds = nullptr;
-    if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
-      creds = google::cloud::MakeInsecureCredentials();
-    } else {
-      creds = google::cloud::MakeGoogleDefaultCredentials(ca_options);
-    }
-    creds =
-        apply_impersonation(creds, impersonate_service_account_, ca_options);
     auto client_options = ca_options;
-    client_options.set<google::cloud::UnifiedCredentialsOption>(creds);
+    client_options.set<google::cloud::UnifiedCredentialsOption>(
+        make_credentials(ca_options));
     if (!endpoint_.empty()) {
       client_options.set<google::cloud::storage::RestEndpointOption>(endpoint_);
     }
