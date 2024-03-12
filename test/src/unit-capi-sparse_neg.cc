@@ -52,14 +52,10 @@ struct SparseNegFx {
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
+  // Path to prepend to array name according to filesystem/mode
+  std::string prefix_;
 
   // Functions
   SparseNegFx();
@@ -80,9 +76,13 @@ SparseNegFx::SparseNegFx()
     : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  auto temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  prefix_ = fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 }
 
 SparseNegFx::~SparseNegFx() {
+  remove_temp_dir(fs_vec_[0]->temp_dir());
   // Close vfs test
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
@@ -238,8 +238,7 @@ void SparseNegFx::write_sparse_vector(const std::string& path) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -317,8 +316,7 @@ void SparseNegFx::read_sparse_vector(const std::string& path) {
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_, path, &query, server_buffers_, serialize_, refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   int a_c[] = {0, 1};
@@ -487,43 +485,22 @@ void SparseNegFx::read_sparse_array_col(const std::string& path) {
 TEST_CASE_METHOD(
     SparseNegFx,
     "C API: Test 1d sparse vector with negative domain",
-    "[capi][sparse-neg][sparse-neg-vector]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  SupportedFsLocal local_fs;
-  std::string vector_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_neg_vector";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
-
+    "[capi][sparse-neg][sparse-neg-vector][rest]") {
+  std::string vector_name = prefix_ + "sparse_neg_vector";
   create_sparse_vector(vector_name);
   write_sparse_vector(vector_name);
   read_sparse_vector(vector_name);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     SparseNegFx,
     "C API: Test 2d sparse array with negative domain",
-    "[capi][sparse-neg][sparse-neg-array]") {
+    "[capi][sparse-neg][sparse-neg-array][rest]") {
   SupportedFsLocal local_fs;
-  std::string vector_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_neg_array";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
-
+  std::string vector_name = prefix_ + +"sparse_neg_array";
   create_sparse_array(vector_name);
   write_sparse_array(vector_name);
   read_sparse_array_global(vector_name);
   read_sparse_array_row(vector_name);
   read_sparse_array_col(vector_name);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
