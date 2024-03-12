@@ -86,12 +86,8 @@ struct SparseArrayFx {
 
   // Vector of supported filsystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
-
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
+  // Path to prepend to array name according to filesystem/mode
+  std::string prefix_;
 
   // Functions
   SparseArrayFx();
@@ -118,7 +114,7 @@ struct SparseArrayFx {
   void check_sparse_array_global_with_all_duplicates_dedup(
       const std::string& array_name);
   void check_sparse_array_no_results(const std::string& array_name);
-  void check_non_empty_domain(const std::string& path);
+  void check_non_empty_domain(const std::string& array_name);
   void check_invalid_offsets(const std::string& array_name);
   void write_partial_sparse_array(const std::string& array_name);
   void write_sparse_array_missing_attributes(const std::string& array_name);
@@ -138,7 +134,6 @@ struct SparseArrayFx {
       tiledb_filter_type_t compressor,
       tiledb_layout_t tile_order,
       tiledb_layout_t cell_order);
-  void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
 
   /**
@@ -223,6 +218,9 @@ SparseArrayFx::SparseArrayFx()
 
   for (const auto& fs : fs_vec_)
     create_temp_dir(fs->temp_dir());
+
+  prefix_ = fs_vec_[0]->is_rest() ? "tiledb://unit/" + fs_vec_[0]->temp_dir() :
+                                    fs_vec_[0]->temp_dir();
 }
 
 SparseArrayFx::~SparseArrayFx() {
@@ -233,19 +231,6 @@ SparseArrayFx::~SparseArrayFx() {
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
   tiledb_ctx_free(&ctx_);
-}
-
-bool SparseArrayFx::is_array(const std::string& array_name) {
-  tiledb_object_t type = TILEDB_INVALID;
-  REQUIRE(tiledb_object_type(ctx_, array_name.c_str(), &type) == TILEDB_OK);
-  return type == TILEDB_ARRAY;
-}
-
-void SparseArrayFx::remove_array(const std::string& array_name) {
-  if (!is_array(array_name))
-    return;
-
-  CHECK(tiledb_object_remove(ctx_, array_name.c_str()) == TILEDB_OK);
 }
 
 void SparseArrayFx::create_temp_dir(const std::string& path) {
@@ -1529,10 +1514,8 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx_, query);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_finalize(ctx_, query);
-  CHECK(rc == TILEDB_OK);
 
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -2035,8 +2018,7 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
   tiledb_ctx_free(&ctx);
 }
 
-void SparseArrayFx::check_non_empty_domain(const std::string& path) {
-  std::string array_name = path + "sparse_non_empty";
+void SparseArrayFx::check_non_empty_domain(const std::string& array_name) {
   create_sparse_array(array_name);
 
   // Check empty domain
@@ -2193,7 +2175,7 @@ void SparseArrayFx::check_sparse_array_no_results(
   CHECK(rc == TILEDB_OK);
 
   // Prepare the buffers that will store the result
-  uint64_t buffer_size = 0;
+  uint64_t buffer_size = 1;
   auto buffer = new int[buffer_size / sizeof(int)];
   REQUIRE(buffer != nullptr);
 
@@ -2385,93 +2367,61 @@ void SparseArrayFx::write_sparse_array_missing_attributes(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, sorted reads",
-    "[capi][sparse][sorted-reads][longtest]") {
-  std::string array_name;
+    "[capi][sparse][sorted-reads][longtest][rest]") {
+  // TODO: refactor for each supported FS.
+  std::string array_name = prefix_ + ARRAY;
 
   SECTION("- no compression, row/row-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   }
 
   SECTION("- no compression, col/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_NONE, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- no compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_NONE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- gzip compression, row/row-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR);
   }
 
   SECTION("- gzip compression, col/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_GZIP, TILEDB_COL_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- gzip compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_GZIP, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- bzip compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_BZIP2, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- lz4 compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_LZ4, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- rle compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_RLE, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- zstd compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_ZSTD, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
 
   SECTION("- double-delta compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name,
         TILEDB_FILTER_DOUBLE_DELTA,
@@ -2480,9 +2430,6 @@ TEST_CASE_METHOD(
   }
 
   SECTION("- delta compression, row/col-major") {
-    // TODO: refactor for each supported FS.
-    std::string temp_dir = fs_vec_[0]->temp_dir();
-    array_name = temp_dir + ARRAY;
     check_sorted_reads(
         array_name, TILEDB_FILTER_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
@@ -2491,10 +2438,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, duplicates",
-    "[capi][sparse][dups]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "dups";
+    "[capi][sparse][dups][rest-fails][sc-42987]") {
+  std::string array_name = prefix_ + "dups";
   create_sparse_array(array_name);
 
   SECTION("- unordered, error check") {
@@ -2533,21 +2478,16 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, non-empty domain",
-    "[capi][sparse][non-empty]") {
-  SupportedFsLocal local_fs;
-  std::string temp_dir = local_fs.file_prefix() + local_fs.temp_dir();
-  create_temp_dir(temp_dir);
-  check_non_empty_domain(temp_dir);
-  remove_temp_dir(temp_dir);
+    "[capi][sparse][non-empty][rest]") {
+  std::string array_name = prefix_ + "sparse_non_empty";
+  check_non_empty_domain(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalid offsets on write",
-    "[capi][sparse][invalid-offsets]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "invalid_offs";
+    "[capi][sparse][invalid-offsets][rest]") {
+  std::string array_name = prefix_ + "invalid_offs";
   create_sparse_array(array_name);
   check_invalid_offsets(array_name);
 }
@@ -2555,10 +2495,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, no results",
-    "[capi][sparse][no-results]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "no_results";
+    "[capi][sparse][no-results][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "no_results";
   create_sparse_array(array_name);
   write_partial_sparse_array(array_name);
   check_sparse_array_no_results(array_name);
@@ -2567,10 +2505,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, missing attributes in writes",
-    "[capi][sparse][write-missing-attributes]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_write_missing_attributes";
+    "[capi][sparse][write-missing-attributes][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "sparse_write_missing_attributes";
   create_sparse_array(array_name);
   write_sparse_array_missing_attributes(array_name);
   check_sparse_array_no_results(array_name);
@@ -2579,10 +2515,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, error setting subarray on sparse write",
-    "[capi][sparse][set-subarray]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_set_subarray";
+    "[capi][sparse][set-subarray][rest]") {
+  std::string array_name = prefix_ + "sparse_set_subarray";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -2624,10 +2558,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, check if coords exist",
-    "[capi][sparse][coords-exist]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_coords_exist";
+    "[capi][sparse][coords-exist][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "sparse_coords_exist";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -2695,10 +2627,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order check on write",
-    "[capi][sparse][write-global-check]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_write_global_check";
+    "[capi][sparse][write-global-check][rest]") {
+  std::string array_name = prefix_ + "sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -2763,10 +2693,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, invalidate cached max buffer sizes",
-    "[capi][sparse][invalidate-max-sizes]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_invalidate_max_sizes";
+    "[capi][sparse][invalidate-max-sizes][rest]") {
+  std::string array_name = prefix_ + "sparse_invalidate_max_sizes";
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -2928,7 +2856,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, encrypted",
-    "[capi][sparse][encryption]") {
+    "[capi][sparse][encryption][non-rest]") {
   std::string array_name;
   encryption_type = TILEDB_AES_256_GCM;
   encryption_key = "0123456789abcdeF0123456789abcdeF";
@@ -2944,11 +2872,9 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size",
-    "[capi][sparse][calibrate-est-size]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_calibrate_est_size";
-  remove_array(array_name);
+    "[capi][sparse][calibrate-est-size][rest]") {
+  std::string array_name = prefix_ + "sparse_calibrate_est_size";
+
   create_sparse_array(array_name);
 
   // Write twice (2 fragments)
@@ -3018,18 +2944,14 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, unary",
-    "[capi][sparse][calibrate-est-size-unary]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_calibrate_est_size_unary";
-  remove_array(array_name);
+    "[capi][sparse][calibrate-est-size-unary][rest]") {
+  std::string array_name = prefix_ + "sparse_calibrate_est_size_unary";
+
   create_sparse_array(array_name);
 
   // Write twice (2 fragments)
@@ -3095,19 +3017,15 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, calibrate est size, huge range",
-    "[capi][sparse][calibrate-est-size-huge-range]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_calibrate_est_size_huge_range";
+    "[capi][sparse][calibrate-est-size-huge-range][rest]") {
+  std::string array_name = prefix_ + "sparse_calibrate_est_size_huge_range";
   const uint64_t dim_domain[4] = {1, UINT64_MAX - 1, 1, UINT64_MAX - 1};
-  remove_array(array_name);
+
   create_sparse_array(array_name, TILEDB_ROW_MAJOR, dim_domain);
 
   // Write twice (2 fragments)
@@ -3177,18 +3095,14 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete",
-    "[capi][sparse][MR][2D][complete]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_subarray_2d_complete";
-  remove_array(array_name);
+    "[capi][sparse][MR][2D][complete][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_subarray_2d_complete";
+
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -3269,18 +3183,14 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, multiplicities",
-    "[capi][sparse][multi-subarray-2d-multiplicities]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_subarray_2d_multiplicities";
-  remove_array(array_name);
+    "[capi][sparse][multi-subarray-2d-multiplicities][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_subarray_2d_multiplicities";
+
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -3365,18 +3275,14 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, incomplete",
-    "[capi][sparse][multi-subarray-2d-incomplete]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_subarray_2d_incomplete";
-  remove_array(array_name);
+    "[capi][sparse][multi-subarray-2d-incomplete][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_subarray_2d_incomplete";
+
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
@@ -3482,18 +3388,14 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-subarray, 2D, complete, col",
-    "[capi][sparse][multi-subarray-2d-complete-col]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_subarray_2d_complete_col";
-  remove_array(array_name);
+    "[capi][sparse][multi-subarray-2d-complete-col][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_subarray_2d_complete_col";
+
   create_sparse_array(array_name, TILEDB_COL_MAJOR);
   write_sparse_array(array_name);
 
@@ -3562,18 +3464,13 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
   tiledb_array_free(&array);
   tiledb_ctx_free(&ctx);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array 2, multi-range subarray, row-major",
-    "[capi][sparse][multi-range-row]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_multi_range_row";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-row][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -3733,18 +3630,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major",
-    "[capi][sparse][multi-range-col]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_multi_range_col";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-col][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_col";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -3904,18 +3796,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 1",
-    "[capi][sparse][multi-range-row-incomplete-1]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_row_incomplete_1";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-row-incomplete-1][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_1";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4095,18 +3982,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 1",
-    "[capi][sparse][multi-range-col-incomplete-1]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_col_incomplete_1";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-col-incomplete-1][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_1";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4286,18 +4168,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 2",
-    "[capi][sparse][multi-range-row-incomplete-2]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_row_incomplete_2";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-row-incomplete-2][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_2";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4517,18 +4394,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 2",
-    "[capi][sparse][multi-range-col-incomplete-2]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_col_incomplete_2";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-col-incomplete-2][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_2";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -4748,18 +4620,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 3",
-    "[capi][sparse][multi-range-row-incomplete-3]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_row_incomplete_3";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-row-incomplete-3][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_3";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5019,18 +4886,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 4",
-    "[capi][sparse][multi-range-row-incomplete-4]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_row_incomplete_4";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-row-incomplete-4][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_4";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5330,18 +5192,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 4",
-    "[capi][sparse][multi-range-col-incomplete-4]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_col_incomplete_4";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-col-incomplete-4][rest]") {
+  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_4";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5641,19 +5498,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, row-major, incomplete 5",
-    "[capi][sparse][multi-range-row-incomplete-5]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_row_incomplete_5";
-  remove_array(array_name);
-
+    "[capi][sparse][multi-range-row-incomplete-5][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "sparse_multi_range_row_incomplete_5";
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
   create_sparse_array(array_name, TILEDB_ROW_MAJOR, domain);
@@ -5771,18 +5622,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, multi-range subarray, col-major, incomplete 5",
-    "[capi][sparse][multi-range-col-incomplete-5]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_multi_range_col_incomplete_5";
-  remove_array(array_name);
+    "[capi][sparse][multi-range-col-incomplete-5][rest-fails][sc-43108]") {
+  std::string array_name = prefix_ + "sparse_multi_range_col_incomplete_5";
 
   // Create array
   uint64_t domain[] = {1, 10, 1, 10};
@@ -5901,27 +5747,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, global order with 0-sized buffers",
-    "[capi][sparse][global-check][zero-buffers]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_write_global_check";
+    "[capi][sparse][global-check][zero-buffers][rest]") {
+  std::string array_name = prefix_ + "sparse_write_global_check";
   create_sparse_array(array_name);
 
   // Create TileDB context
@@ -5966,14 +5798,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
+  rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -5989,9 +5814,7 @@ TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers",
     "[capi][sparse][split-coords]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_split_coords";
+  std::string array_name = prefix_ + "sparse_split_coords";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6178,27 +6001,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, global write",
-    "[capi][sparse][split-coords][global]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_split_coords_global";
+    "[capi][sparse][split-coords][global][rest]") {
+  std::string array_name = prefix_ + "sparse_split_coords_global";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6267,13 +6076,7 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -6335,13 +6138,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -6393,17 +6190,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers, errors",
-    "[capi][sparse][split-coords][errors]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_split_coords_errors";
+    "[capi][sparse][split-coords][errors][rest]") {
+  std::string array_name = prefix_ + "sparse_split_coords_errors";
   create_sparse_array(array_name);
 
   // Prepare cell buffers
@@ -6578,17 +6371,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers for reads",
-    "[capi][sparse][split-coords][read]") {
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_split_coords_read";
+    "[capi][sparse][split-coords][read][rest]") {
+  std::string array_name = prefix_ + "sparse_split_coords_read";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6775,18 +6564,14 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "C API: Test sparse array, split coordinate buffers for reads, subset of "
     "dimensions",
-    "[capi][sparse][split-coords][read][subset]") {
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_split_coords_read_subset";
+    "[capi][sparse][split-coords][read][subset][rest]") {
+  std::string array_name = prefix_ + "sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   // ---- WRITE ----
@@ -6966,28 +6751,13 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-
-  remove_array(array_name);
 }
 
 TEST_CASE_METHOD(
     SparseArrayFx,
     "Sparse array: 2D, multi write global order",
-    "[capi][sparse][2D][multi-write]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  // Create and write array
-  SupportedFsLocal local_fs;
-  std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
-                           "sparse_split_coords_read_subset";
+    "[capi][sparse][2D][multi-write][rest]") {
+  std::string array_name = prefix_ + "sparse_split_coords_read_subset";
   create_sparse_array(array_name);
 
   std::vector<uint64_t> d1 = {1, 1, 2, 2};
@@ -7055,14 +6825,7 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Create new buffers of smaller size to test being able to write multiple
@@ -7118,13 +6881,7 @@ TEST_CASE_METHOD(
   }
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -7196,7 +6953,7 @@ TEST_CASE_METHOD(
   SupportedFsLocal local_fs;
   std::string array_name = local_fs.file_prefix() + local_fs.temp_dir() +
                            "serialize_array_directory";
-  remove_array(array_name);
+
   create_sparse_array(array_name);
 
   // Write twice (2 fragments)

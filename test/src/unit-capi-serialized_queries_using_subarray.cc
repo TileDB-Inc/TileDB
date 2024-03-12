@@ -56,9 +56,6 @@
 using namespace tiledb;
 using ResultSetType = std::map<std::string, std::any>;
 
-using tiledb::test::ServerQueryBuffers;
-using tiledb::test::submit_query_wrapper;
-
 namespace {
 
 template <class T>
@@ -327,7 +324,7 @@ struct SerializationFx {
 TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense",
-    "[query][dense][serialization][rest][new]") {
+    "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
   check_subarray_stats(2, 2);
@@ -534,7 +531,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, sparse",
-    "[query][sparse][serialization][rest][new]") {
+    "[query][sparse][serialization][rest]") {
   create_array(TILEDB_SPARSE);
   write_sparse_array();
 
@@ -616,7 +613,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense ranges",
-    "[query][dense][serialization][rest][new]") {
+    "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
 
