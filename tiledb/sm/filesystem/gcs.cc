@@ -173,8 +173,12 @@ static shared_ptr<google::cloud::Credentials> apply_impersonation(
     // Trim service_accounts to its last member.
     service_accounts = service_accounts.substr(last_comma_pos + 1);
   }
-  // service_accounts should not have any comma here.
-  assert(service_accounts.find(',') == std::string_view::npos);
+  // If service_accounts had any comas, by now it should be left to just the
+  // last part.
+  if (service_accounts.find(',') != std::string::npos) {
+    throw std::logic_error(
+        "Internal error: service_accounts string was not decomposed.");
+  }
   // Create the credential.
   return google::cloud::MakeImpersonateServiceAccountCredentials(
       std::move(credentials), std::move(service_accounts), std::move(options));
