@@ -253,8 +253,12 @@ Status subarray_to_capnp(
     const Subarray* subarray,
     capnp::Subarray::Builder* builder);
 
-Status subarray_from_capnp(
-    const capnp::Subarray::Reader& reader, Subarray* subarray);
+Subarray subarray_from_capnp(
+    const capnp::Subarray::Reader& reader,
+    const Array* array,
+    Layout layout,
+    stats::Stats* parent_stats,
+    shared_ptr<Logger> logger);
 
 void ordered_dim_label_reader_to_capnp(
     const Query& query,

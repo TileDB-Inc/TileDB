@@ -429,15 +429,31 @@ class RangeSetAndSuperset {
   /** General constructor
    *
    * @param datatype The TileDB datatype of of the ranges.
+   * @param superset The superset of ranges to initialize the range set.
    * @param implicitly_initialize If ``true``, set the ranges to contain the
-   * full superset until a new range is explicitly added.
+   *    full superset until a new range is explicitly added.
    * @param coalesce_ranges If ``true``, when adding a new range, attempt to
-   * combine with the first left-adjacent range found.
+   *    combine with the first left-adjacent range found.
    **/
   RangeSetAndSuperset(
       Datatype datatype,
       const Range& superset,
       bool implicitly_initialize,
+      bool coalesce_ranges);
+
+  /**
+   * Constructor.
+   *
+   * @param datatype The TileDB datatype of of the ranges.
+   * @param superset The superset of ranges to initialize the range set.
+   * @param subset The subset of ranges to initialize the range set.
+   * @param coalesce_ranges If ``true``, when adding a new range, attempt to
+   *    combine with the first left-adjacent range found.
+   **/
+  RangeSetAndSuperset(
+      Datatype datatype,
+      const Range& superset,
+      std::vector<Range>&& subset,
       bool coalesce_ranges);
 
   /** Destructor. */
@@ -543,6 +559,10 @@ class RangeSetAndSuperset {
   void sort_and_merge_ranges(ThreadPool* const compute_tp, bool merge = false);
 
  private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
   /** Pointer to typed implementation details. */
   shared_ptr<detail::RangeSetAndSupersetImpl> impl_ = nullptr;
 

@@ -323,6 +323,39 @@ class Subarray {
       StorageManager* storage_manager = nullptr);
 
   /**
+   * Constructor.
+   *
+   * @param opened_array The opened array the subarray is associated with.
+   * @param layout The layout of the values of the subarray (of the results
+   *    if the subarray is used for reads, or of the values provided
+   *    by the user for writes).
+   * @param parent_stats The parent stats to inherit from.
+   * @param stats_data The stats data to use for the subarray.
+   * @param logger The parent logger to clone and use for logging.
+   * @param range_subset Vector of RangeSetAndSuperset for each dimension.
+   * @param is_default Vector of boolean indicating if the range is default.
+   * @param label_range_subset Vector of optional<LabelRangeSubset> for each
+   *    dimension.
+   * @param attr_range_subset Map of attribute name to a vector of Ranges, for
+   *    each attribute.
+   * @param relevant_fragments RelevantFragments object for the subarray.
+   * @param coalesce_ranges When enabled, ranges will attempt to coalesce
+   *    with existing ranges as they are added.
+   */
+  Subarray(
+      const shared_ptr<OpenedArray> opened_array,
+      Layout layout,
+      stats::Stats* parent_stats,
+      const stats::StatsData& stats_data,
+      shared_ptr<tiledb::common::Logger> logger,
+      std::vector<RangeSetAndSuperset> range_subset,
+      std::vector<bool> is_default,
+      std::vector<optional<LabelRangeSubset>> label_range_subset,
+      std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
+      RelevantFragments relevant_fragments,
+      bool coalesce_ranges = true);
+
+  /**
    * Copy constructor. This performs a deep copy (including memcpy of
    * underlying buffers).
    */
@@ -366,17 +399,6 @@ class Subarray {
    * @returns Status error
    */
   Status set_subarray(const void* subarray);
-
-  /**
-   * Sets the subarray using a pointer to raw range data that stores one range
-   * per dimension without performing validity checks.
-   *
-   * This is only valid for arrays with homogenous dimension data types. This
-   * function should only be used for deserializing dense write queries.
-   *
-   * @param subarray A pointer to the range data to use.
-   */
-  void set_subarray_unsafe(const void* subarray);
 
   /**
    * Adds dimension ranges computed from label ranges on the dimension label.
@@ -454,6 +476,12 @@ class Subarray {
       unsigned dim_idx, const void* start, const void* end, const void* stride);
 
   /**
+   * Adds a range along the dimension with the given index, without
+   * performing any error checks.
+   */
+  Status add_range_unsafe(uint32_t dim_idx, const Range& range);
+
+  /**
    * @brief Set point ranges from an array
    *
    * @param dim_idx Dimension index.
@@ -501,12 +529,6 @@ class Subarray {
       uint64_t start_size,
       const void* end,
       uint64_t end_size);
-
-  /**
-   * Adds a range along the dimension with the given index, without
-   * performing any error checks.
-   */
-  Status add_range_unsafe(uint32_t dim_idx, const Range& range);
 
   /**
    * Adds a range to the (read/write) query on the input dimension by name,
@@ -1169,22 +1191,6 @@ class Subarray {
   Status set_ranges_for_dim(uint32_t dim_idx, const std::vector<Range>& ranges);
 
   /**
-   * Directly sets the dimension label ranges for the given dimension index,
-   * making a deep copy.
-   *
-   * @param dim_idx Index of dimension to set
-   * @param name Name of the dimension label to set
-   * @param ranges `Range` vector that will be copied and set
-   * @return Status
-   *
-   * @note Intended for serialization only
-   */
-  void set_label_ranges_for_dim(
-      const uint32_t dim_idx,
-      const std::string& name,
-      const std::vector<Range>& ranges);
-
-  /**
    * Splits the subarray along the splitting dimension and value into
    * two new subarrays `r1` and `r2`.
    */
@@ -1331,14 +1337,6 @@ class Subarray {
 
   /** Returns `stats_`. */
   const stats::Stats& stats() const;
-
-  /**
-   * Populate the owned stats instance with data.
-   * To be removed when the class will get a C41 constructor.
-   *
-   * @param data Data to populate the stats with.
-   */
-  void set_stats(const stats::StatsData& data);
 
   /** Stores a vector of 1D ranges per dimension. */
   std::vector<std::vector<uint64_t>> original_range_idx_;

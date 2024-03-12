@@ -463,50 +463,119 @@ TEST_CASE(
   Array array_r(ctx, array_name, TILEDB_READ);
   Subarray subarray(ctx, array_r);
 
+  // If read_range_oob_error is false, the range will be cropped with a
+  // warning and the query will succeed.
+  auto read_range_oob_error = GENERATE(true, false);
   auto expected = TILEDB_ERR;
+  int fill_val = tiledb::sm::constants::empty_int32;
+  std::vector<int> expected_data(16, fill_val);
+  expected_data[0] = 1;
+  expected_data[1] = 2;
+  expected_data[4] = 3;
+  expected_data[5] = 4;
   SECTION("- Upper bound OOB") {
     int range[] = {0, 100};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    if (read_range_oob_error) {
+      CHECK_FALSE(
+          subarray.ptr()
+              .get()
+              ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+              .ok());
+    } else {
+      CHECK(subarray.ptr()
+                .get()
+                ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+                .ok());
+      // The subarray will warn and crop to full domain ranges.
+      expected = TILEDB_OK;
+    }
   }
 
   SECTION("- Lower bound OOB") {
     int range[] = {-1, 2};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    if (read_range_oob_error) {
+      CHECK_FALSE(
+          subarray.ptr()
+              .get()
+              ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+              .ok());
+    } else {
+      // Warn and crop dim0 to [0, 2] with [0, 3] implicitly set on dim1.
+      CHECK(subarray.ptr()
+                .get()
+                ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+                .ok());
+      expected_data.resize(12);
+      expected = TILEDB_OK;
+    }
   }
 
   SECTION("- Second range OOB") {
     int range[] = {1, 4};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
     int range2[] = {10, 20};
     auto r2 = Range(&range2[0], &range2[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2).ok());
+    if (read_range_oob_error) {
+      CHECK_FALSE(
+          subarray.ptr()
+              .get()
+              ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+              .ok());
+      CHECK_FALSE(
+          subarray.ptr()
+              .get()
+              ->subarray_->add_range(1, std::move(r2), read_range_oob_error)
+              .ok());
+    } else {
+      // Warn and crop dim0 to [1, 3] and dim1 to [3, 3]
+      CHECK(subarray.ptr()
+                .get()
+                ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+                .ok());
+      CHECK(subarray.ptr()
+                .get()
+                ->subarray_->add_range(1, std::move(r2), read_range_oob_error)
+                .ok());
+      expected_data = {fill_val, fill_val, fill_val};
+      expected = TILEDB_OK;
+    }
   }
 
   SECTION("- Valid ranges") {
     int range[] = {0, 1};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r).ok());
+    CHECK(subarray.ptr()
+              .get()
+              ->subarray_->add_range(0, std::move(r), read_range_oob_error)
+              .ok());
+    CHECK(subarray.ptr()
+              .get()
+              ->subarray_->add_range(1, std::move(r), read_range_oob_error)
+              .ok());
+    expected_data = data_w;
     expected = TILEDB_OK;
   }
 
-  Query query(ctx, array_r);
-  query.set_subarray(subarray);
-  query.set_config(cfg);
+  // If the Subarray threw an exception when adding OOB ranges it will be unset.
+  if (!read_range_oob_error || expected == TILEDB_OK) {
+    Query query(ctx, array_r);
+    query.set_subarray(subarray);
+    query.set_config(cfg);
 
-  std::vector<int> a(4);
-  query.set_data_buffer("a", a);
-  tiledb::test::ServerQueryBuffers buffers;
-  CHECK(
-      submit_query_wrapper(
-          ctx, array_name, &query, buffers, true, query_v2, false) == expected);
+    std::vector<int> a(expected_data.size());
+    query.set_data_buffer("a", a);
+    tiledb::test::ServerQueryBuffers buffers;
+    CHECK(
+        submit_query_wrapper(
+            ctx, array_name, &query, buffers, true, query_v2, false) ==
+        expected);
 
-  if (expected == TILEDB_OK) {
-    CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
-    CHECK(a == std::vector<int>{1, 2, 3, 4});
+    if (expected == TILEDB_OK) {
+      CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
+      CHECK(a == expected_data);
+    }
   }
 
   if (vfs.is_dir(array_name)) {

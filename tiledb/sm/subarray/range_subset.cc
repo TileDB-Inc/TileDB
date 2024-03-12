@@ -33,6 +33,7 @@
 #include "tiledb/sm/subarray/range_subset.h"
 
 #include <iostream>
+#include <utility>
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -129,6 +130,16 @@ RangeSetAndSuperset::RangeSetAndSuperset(
     , is_implicitly_initialized_(implicitly_initialize) {
   if (implicitly_initialize)
     ranges_.emplace_back(superset);
+}
+
+RangeSetAndSuperset::RangeSetAndSuperset(
+    Datatype datatype,
+    const Range& superset,
+    std::vector<Range>&& subset,
+    bool coalesce_ranges)
+    : impl_(range_subset_internals(datatype, superset, coalesce_ranges))
+    , is_implicitly_initialized_(false)
+    , ranges_(subset) {
 }
 
 void RangeSetAndSuperset::sort_and_merge_ranges(

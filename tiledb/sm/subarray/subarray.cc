@@ -150,6 +150,33 @@ Subarray::Subarray(
   add_default_ranges();
 }
 
+Subarray::Subarray(
+    const shared_ptr<OpenedArray> opened_array,
+    Layout layout,
+    stats::Stats* parent_stats,
+    const stats::StatsData& stats_data,
+    shared_ptr<Logger> logger,
+    std::vector<RangeSetAndSuperset> range_subset,
+    std::vector<bool> is_default,
+    std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset,
+    std::unordered_map<std::string, std::vector<Range>> attr_range_subset,
+    RelevantFragments relevant_fragments,
+    bool coalesce_ranges)
+    : stats_(parent_stats->create_child("Subarray", stats_data))
+    , logger_(std::move(logger))
+    , array_(opened_array)
+    , layout_(layout)
+    , cell_order_(array_->array_schema_latest().cell_order())
+    , range_subset_(std::move(range_subset))
+    , label_range_subset_(std::move(label_range_subset))
+    , attr_range_subset_(std::move(attr_range_subset))
+    , is_default_(std::move(is_default))
+    , est_result_size_computed_(false)
+    , relevant_fragments_(std::move(relevant_fragments))
+    , coalesce_ranges_(coalesce_ranges)
+    , ranges_sorted_(false) {
+}
+
 Subarray::Subarray(const Subarray& subarray)
     : Subarray() {
   // Make a deep-copy clone
@@ -331,17 +358,6 @@ Status Subarray::add_range(
   return Status::Ok();
 }
 
-Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
-  // Must reset the result size and tile overlap
-  est_result_size_computed_ = false;
-  tile_overlap_.clear();
-
-  // Add the range
-  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
-  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
-  return Status::Ok();
-}
-
 Status Subarray::set_subarray(const void* subarray) {
   if (!array_->array_schema_latest().domain().all_dims_same_type())
     return LOG_STATUS(
@@ -368,22 +384,6 @@ Status Subarray::set_subarray(const void* subarray) {
   }
 
   return Status::Ok();
-}
-
-void Subarray::set_subarray_unsafe(const void* subarray) {
-  add_default_ranges();
-  if (subarray != nullptr) {
-    auto dim_num = array_->array_schema_latest().dim_num();
-    auto s_ptr = (const unsigned char*)subarray;
-    uint64_t offset = 0;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto r_size =
-          2 * array_->array_schema_latest().dimension_ptr(d)->coord_size();
-      Range range(&s_ptr[offset], r_size);
-      throw_if_not_ok(this->add_range_unsafe(d, std::move(range)));
-      offset += r_size;
-    }
-  }
 }
 
 Status Subarray::add_range(
@@ -423,6 +423,17 @@ Status Subarray::add_range(
   // Add range
   return this->add_range(
       dim_idx, Range(&range[0], 2 * coord_size), err_on_range_oob_);
+}
+
+Status Subarray::add_range_unsafe(uint32_t dim_idx, const Range& range) {
+  // Must reset the result size and tile overlap
+  est_result_size_computed_ = false;
+  tile_overlap_.clear();
+
+  // Add the range
+  throw_if_not_ok(range_subset_[dim_idx].add_range_unrestricted(range));
+  is_default_[dim_idx] = range_subset_[dim_idx].is_implicitly_initialized();
+  return Status::Ok();
 }
 
 Status Subarray::add_point_ranges(
@@ -1771,20 +1782,6 @@ Status Subarray::set_ranges_for_dim(
   return Status::Ok();
 }
 
-void Subarray::set_label_ranges_for_dim(
-    const uint32_t dim_idx,
-    const std::string& name,
-    const std::vector<Range>& ranges) {
-  auto dim{array_->array_schema_latest().dimension_ptr(dim_idx)};
-  label_range_subset_[dim_idx] =
-      LabelRangeSubset(name, dim->type(), coalesce_ranges_);
-  for (const auto& range : ranges) {
-    throw_if_not_ok(
-        label_range_subset_[dim_idx].value().ranges_.add_range_unrestricted(
-            range));
-  }
-}
-
 Status Subarray::split(
     unsigned splitting_dim,
     const ByteVecValue& splitting_value,
@@ -3097,10 +3094,6 @@ const stats::Stats& Subarray::stats() const {
   return *stats_;
 }
 
-void Subarray::set_stats(const stats::StatsData& data) {
-  stats_->populate_with_data(data);
-}
-
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(
     const uint64_t dim_idx) {
   const auto& ranges = range_subset_[dim_idx].ranges();
@@ -3249,6 +3242,16 @@ Subarray::LabelRangeSubset::LabelRangeSubset(
     const std::string& name, Datatype type, bool coalesce_ranges)
     : name_{name}
     , ranges_{RangeSetAndSuperset(type, Range(), false, coalesce_ranges)} {
+}
+
+Subarray::LabelRangeSubset::LabelRangeSubset(
+    const std::string& name,
+    Datatype type,
+    std::vector<Range> ranges,
+    bool coalesce_ranges)
+    : name_{name}
+    , ranges_{RangeSetAndSuperset(
+          type, Range(), std::move(ranges), coalesce_ranges)} {
 }
 
 }  // namespace sm

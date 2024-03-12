@@ -32,6 +32,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
@@ -204,11 +205,15 @@ void tiledb_subarray_serialize(
               .ok());
   // Deserialize
   tiledb_subarray_t* deserialized_subarray;
+  auto layout = (*subarray)->subarray_->layout();
+  auto stats = ctx->storage_manager()->stats()->create_child("Subarray");
+  shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
+
   tiledb::test::require_tiledb_ok(
       ctx, tiledb_subarray_alloc(ctx, array, &deserialized_subarray));
-  REQUIRE(tiledb::sm::serialization::subarray_from_capnp(
-              builder, deserialized_subarray->subarray_)
-              .ok());
+  *deserialized_subarray->subarray_ =
+      tiledb::sm::serialization::subarray_from_capnp(
+          builder, array->array_.get(), layout, stats, dummy_logger);
   *subarray = deserialized_subarray;
 #endif
 }

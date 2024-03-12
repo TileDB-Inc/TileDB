@@ -261,84 +261,122 @@ Status subarray_to_capnp(
   return Status::Ok();
 }
 
-Status subarray_from_capnp(
-    const capnp::Subarray::Reader& reader, Subarray* subarray) {
-  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
+Subarray subarray_from_capnp(
+    const capnp::Subarray::Reader& reader,
+    const Array* array,
+    Layout layout,
+    stats::Stats* parent_stats,
+    shared_ptr<Logger> logger) {
+  bool coalesce_ranges = reader.getCoalesceRanges();
   auto ranges_reader = reader.getRanges();
+
   uint32_t dim_num = ranges_reader.size();
+  std::vector<RangeSetAndSuperset> range_subset;
+  range_subset.reserve(dim_num);
+  std::vector<bool> is_default(dim_num, false);
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
+    Datatype type = datatype_enum(range_reader.getType());
+    auto dim = array->array_schema_latest().dimension_ptr(i);
 
-    auto data = range_reader.getBuffer();
-    auto data_ptr = data.asBytes();
-    if (range_reader.hasBufferSizes()) {
-      auto ranges = range_buffers_from_capnp(range_reader);
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
-
-      // Set default indicator
-      subarray->set_is_default(i, range_reader.getHasDefaultRange());
+    is_default[i] = range_reader.getHasDefaultRange();
+    if (is_default[i]) {
+      // If the range is implicitly initialized, the RangeSetAndSuperset
+      // constructor will initialize the ranges to the domain.
+      range_subset.emplace_back(
+          type, dim->domain(), is_default[i], coalesce_ranges);
     } else {
-      // Handle 1.7 style ranges where there is a single range with no sizes
-      Range range(data_ptr.begin(), data.size());
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
-      subarray->set_is_default(i, range_reader.getHasDefaultRange());
+      std::vector<Range> ranges;
+      if (range_reader.hasBufferSizes()) {
+        ranges = range_buffers_from_capnp(range_reader);
+        // Add custom ranges, clearing any implicit ranges previously set.
+        range_subset.emplace_back(
+            type, dim->domain(), std::move(ranges), coalesce_ranges);
+      } else {
+        // Handle 1.7 style ranges where there is a single range with no sizes
+        auto data = range_reader.getBuffer();
+        auto data_ptr = data.asBytes();
+        ranges.emplace_back(data_ptr.begin(), data.size());
+        range_subset.emplace_back(
+            type, dim->domain(), std::move(ranges), coalesce_ranges);
+      }
     }
   }
 
+  std::vector<optional<Subarray::LabelRangeSubset>> label_range_subset;
+  label_range_subset.reserve(dim_num);
+  uint32_t last_dim = 0;
   if (reader.hasLabelRanges()) {
-    subarray->add_default_label_ranges(dim_num);
     auto label_ranges_reader = reader.getLabelRanges();
     uint32_t label_num = label_ranges_reader.size();
     for (uint32_t i = 0; i < label_num; i++) {
       auto label_range_reader = label_ranges_reader[i];
-      auto dim_id = label_range_reader.getDimensionId();
+      auto dim_index = label_range_reader.getDimensionId();
+      auto dim = array->array_schema_latest().dimension_ptr(dim_index);
+
+      // Fill in any missing dimensions with nullopt
+      for (; last_dim < dim_index; last_dim++) {
+        label_range_subset.emplace_back(std::nullopt);
+      }
       auto label_name = label_range_reader.getName();
 
       // Deserialize ranges for this dim label
       auto range_reader = label_range_reader.getRanges();
-      auto ranges = range_buffers_from_capnp(range_reader);
+      auto label_ranges = range_buffers_from_capnp(range_reader);
 
       // Set ranges for this dim label on the subarray
-      subarray->set_label_ranges_for_dim(dim_id, label_name, ranges);
+      label_range_subset.emplace_back(
+          std::in_place,
+          label_name,
+          dim->type(),
+          label_ranges,
+          coalesce_ranges);
+      is_default[dim_index] = false;
     }
   }
+  // Fill in label ranges with nullopt for any remaining dimensions
+  for (; last_dim < dim_num; last_dim++) {
+    label_range_subset.emplace_back(std::nullopt);
+  }
 
+  std::unordered_map<std::string, std::vector<Range>> attr_range_subset;
   if (reader.hasAttributeRanges()) {
-    std::unordered_map<std::string, std::vector<Range>> attr_ranges;
     auto attr_ranges_reader = reader.getAttributeRanges();
     if (attr_ranges_reader.hasEntries()) {
-      for (auto attr_ranges_entry : attr_ranges_reader.getEntries()) {
-        auto range_reader = attr_ranges_entry.getValue();
-        auto key = std::string_view{
-            attr_ranges_entry.getKey().cStr(),
-            attr_ranges_entry.getKey().size()};
-        attr_ranges[std::string{key}] = range_buffers_from_capnp(range_reader);
+      for (auto entry : attr_ranges_reader.getEntries()) {
+        auto range_reader = entry.getValue();
+        std::string key{entry.getKey().cStr(), entry.getKey().size()};
+        attr_range_subset[key] = range_buffers_from_capnp(range_reader);
       }
     }
-
-    for (const auto& attr_range : attr_ranges)
-      subarray->set_attribute_ranges(attr_range.first, attr_range.second);
   }
 
-  // If cap'n proto object has stats set it on c++ object
-  if (reader.hasStats()) {
-    auto stats_data = stats_from_capnp(reader.getStats());
-    subarray->set_stats(stats_data);
-  }
+  const auto& stats_data = stats_from_capnp(reader.getStats());
 
+  std::vector<unsigned> relevant_fragments;
   if (reader.hasRelevantFragments()) {
-    auto relevant_fragments = reader.getRelevantFragments();
-    size_t count = relevant_fragments.size();
-    std::vector<unsigned> rf;
-    rf.reserve(count);
+    auto reader_rf = reader.getRelevantFragments();
+    size_t count = reader_rf.size();
+    relevant_fragments.reserve(count);
     for (size_t i = 0; i < count; i++) {
-      rf.emplace_back(relevant_fragments[i]);
+      relevant_fragments.emplace_back(reader_rf[i]);
     }
-
-    subarray->relevant_fragments() = RelevantFragments(rf);
   }
 
-  return Status::Ok();
+  auto frag_meta_size = array->opened_array()->fragment_metadata().size();
+  return {
+      array->opened_array(),
+      layout,
+      parent_stats,
+      stats_data,
+      logger,
+      range_subset,
+      is_default,
+      label_range_subset,
+      attr_range_subset,
+      reader.hasRelevantFragments() ? relevant_fragments :
+                                      RelevantFragments(frag_meta_size),
+      coalesce_ranges};
 }
 
 Status subarray_partitioner_to_capnp(
@@ -450,8 +488,8 @@ Status subarray_partitioner_from_capnp(
   RETURN_NOT_OK(layout_enum(subarray_reader.getLayout(), &layout));
 
   // Subarray, which is used to initialize the partitioner.
-  Subarray subarray(array, layout, query_stats, dummy_logger, true);
-  RETURN_NOT_OK(subarray_from_capnp(reader.getSubarray(), &subarray));
+  Subarray subarray = subarray_from_capnp(
+      subarray_reader, array, layout, query_stats, dummy_logger);
   *partitioner = SubarrayPartitioner(
       &config,
       subarray,
@@ -508,10 +546,12 @@ Status subarray_partitioner_from_capnp(
     partition_info->end_ = partition_info_reader.getEnd();
     partition_info->split_multi_range_ =
         partition_info_reader.getSplitMultiRange();
-    partition_info->partition_ =
-        Subarray(array, layout, query_stats, dummy_logger, true);
-    RETURN_NOT_OK(subarray_from_capnp(
-        partition_info_reader.getSubarray(), &partition_info->partition_));
+    partition_info->partition_ = subarray_from_capnp(
+        partition_info_reader.getSubarray(),
+        array,
+        layout,
+        query_stats,
+        dummy_logger);
 
     if (compute_current_tile_overlap) {
       throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
@@ -531,20 +571,18 @@ Status subarray_partitioner_from_capnp(
   auto sr_reader = state_reader.getSingleRange();
   const unsigned num_sr = sr_reader.size();
   for (unsigned i = 0; i < num_sr; i++) {
-    auto subarray_reader_ = sr_reader[i];
-    state->single_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, true);
-    Subarray& subarray_ = state->single_range_.back();
-    RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
+    auto subarray_reader = sr_reader[i];
+    Subarray subarray = subarray_from_capnp(
+        subarray_reader, array, layout, query_stats, dummy_logger);
+    state->single_range_.push_back(subarray);
   }
   auto m_reader = state_reader.getMultiRange();
   const unsigned num_m = m_reader.size();
   for (unsigned i = 0; i < num_m; i++) {
-    auto subarray_reader_ = m_reader[i];
-    state->multi_range_.emplace_back(
-        array, layout, query_stats, dummy_logger, true);
-    Subarray& subarray_ = state->multi_range_.back();
-    RETURN_NOT_OK(subarray_from_capnp(subarray_reader_, &subarray_));
+    auto subarray_reader = m_reader[i];
+    Subarray subarray = subarray_from_capnp(
+        subarray_reader, array, layout, query_stats, dummy_logger);
+    state->multi_range_.push_back(subarray);
   }
 
   // Overall mem budget
@@ -1107,10 +1145,10 @@ Status reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
-  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  Subarray subarray = subarray_from_capnp(
+      subarray_reader, array, layout, query->stats(), dummy_logger);
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1145,10 +1183,10 @@ Status index_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
-  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  Subarray subarray = subarray_from_capnp(
+      subarray_reader, array, layout, query->stats(), dummy_logger);
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -1184,10 +1222,10 @@ Status dense_reader_from_capnp(
   RETURN_NOT_OK(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, true);
   auto subarray_reader = reader_reader.getSubarray();
-  RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-  RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+  Subarray subarray = subarray_from_capnp(
+      subarray_reader, array, layout, query->stats(), dummy_logger);
+  query->set_subarray(subarray);
 
   // Read state
   if (reader_reader.hasReadState())
@@ -2200,7 +2238,7 @@ Status query_from_capnp(
         RETURN_NOT_OK(
             utils::deserialize_subarray(subarray_reader, schema, &subarray));
         try {
-          query->set_subarray_unsafe(subarray);
+          query->set_subarray(subarray);
         } catch (...) {
           tdb_free(subarray);
           throw;
@@ -2210,10 +2248,10 @@ Status query_from_capnp(
 
       // Subarray
       if (writer_reader.hasSubarrayRanges()) {
-        Subarray subarray(array, layout, query->stats(), dummy_logger, true);
         auto subarray_reader = writer_reader.getSubarrayRanges();
-        RETURN_NOT_OK(subarray_from_capnp(subarray_reader, &subarray));
-        RETURN_NOT_OK(query->set_subarray_unsafe(subarray));
+        Subarray subarray = subarray_from_capnp(
+            subarray_reader, array, layout, query->stats(), dummy_logger);
+        query->set_subarray(subarray);
       }
     }
   } else {
@@ -3164,10 +3202,10 @@ void ordered_dim_label_reader_from_capnp(
   throw_if_not_ok(layout_enum(reader_reader.getLayout(), &layout));
 
   // Subarray
-  Subarray subarray(array, layout, query->stats(), dummy_logger, false);
   auto subarray_reader = reader_reader.getSubarray();
-  throw_if_not_ok(subarray_from_capnp(subarray_reader, &subarray));
-  throw_if_not_ok(query->set_subarray_unsafe(subarray));
+  Subarray subarray = subarray_from_capnp(
+      subarray_reader, array, layout, query->stats(), dummy_logger);
+  query->set_subarray(subarray);
 
   // OrderedDimLabelReader requires an initialized subarray for construction.
   query->set_dimension_label_ordered_read(

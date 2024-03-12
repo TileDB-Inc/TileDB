@@ -1521,11 +1521,6 @@ const Subarray* Query::subarray() const {
   return &subarray_;
 }
 
-Status Query::set_subarray_unsafe(const Subarray& subarray) {
-  subarray_ = subarray;
-  return Status::Ok();
-}
-
 void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
   // Perform checks related to the query type.
   switch (type_) {
@@ -1574,10 +1569,6 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   subarray_ = sub;
 
   return Status::Ok();
-}
-
-void Query::set_subarray_unsafe(const void* subarray) {
-  subarray_.set_subarray_unsafe(subarray);
 }
 
 Status Query::submit() {
