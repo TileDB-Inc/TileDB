@@ -2,15 +2,16 @@
 
 ## Deprecation announcements
 
-* Windows 2019 build support will be removed in version 2.28, to be released in Q3 2024.
+* Building with Visual Studio 2019 (MSVC toolchains v14.29 and earlier) will become unsuported in version 2.28, to be released in Q3 2024.
 * HDFS support will be removed in version 2.28, to be released in Q3 2024.
+* Support for manylinux2014 (based on CentOS 7) will be removed in version 2.31, to be released in Q4 2024. It wil be replaced by support for GLIBC 2.28 (manylinux_2_28; RHEL8; Rocky Linux 8).
 
 ## New features
 
 * Add datatypes GEOM_WKB and GEOM_WKT. [#4640](https://github.com/TileDB-Inc/TileDB/pull/4640)
-* Add CPack to CMakeLists.txt. [#4645](https://github.com/TileDB-Inc/TileDB/pull/4645)
-* Add std::pmr based memory allocation tracking. [#4683](https://github.com/TileDB-Inc/TileDB/pull/4683)
-* Support VFS `ls_recursive` API for posix filesystem. [#4778](https://github.com/TileDB-Inc/TileDB/pull/4778)
+
+## TileDB backend API support:
+
 * Query Plan REST support. [#4519](https://github.com/TileDB-Inc/TileDB/pull/4519)
 * Consolidation Plan REST support. [#4537](https://github.com/TileDB-Inc/TileDB/pull/4537)
 
@@ -33,8 +34,14 @@
 * Fix segfault in ArraySchema::check. [#4787](https://github.com/TileDB-Inc/TileDB/pull/4787)
 * Fix crash in aggregates on dimensions. [#4794](https://github.com/TileDB-Inc/TileDB/pull/4794)
 * Fix defects with query channels. [#4786](https://github.com/TileDB-Inc/TileDB/pull/4786)
-* Remove trailing slash from rest.server_address. [#4790](https://github.com/TileDB-Inc/TileDB/pull/4790)
+* Remove trailing slash from `rest.server_address` configuration option. [#4790](https://github.com/TileDB-Inc/TileDB/pull/4790)
 * Provide a clear exception message when performing remote incomplete queries with aggregates. [#4798](https://github.com/TileDB-Inc/TileDB/pull/4798)
+
+## API changes
+
+### C API
+
+* Support VFS `ls_recursive` API for posix filesystem. [#4778](https://github.com/TileDB-Inc/TileDB/pull/4778)
 
 ## Test only changes
 
@@ -51,6 +58,7 @@
 * Improve build performance when GCS is enabled. [#4777](https://github.com/TileDB-Inc/TileDB/pull/4777)
 * Fix compiling unit tests when HDFS is enabled. [#4795](https://github.com/TileDB-Inc/TileDB/pull/4795)
 * Update libmagic to version 5.45. [#4673](https://github.com/TileDB-Inc/TileDB/pull/4673)
+* Add CPack support to CMakeLists.txt. [#4645](https://github.com/TileDB-Inc/TileDB/pull/4645)
 
 # TileDB v2.20.0 Release Notes
 
