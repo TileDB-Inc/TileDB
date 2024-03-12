@@ -44,9 +44,17 @@ commence(unit_test run_filter_pipeline)
         add_1_including_metadata_filter.cc
         add_1_out_of_place_filter.cc
         add_n_in_place_filter.cc
+        filter_test_support.cc
         filtered_tile_checker.cc
         pseudo_checksum_filter.cc
+        unit_checksum_pipeline.cc
+        unit_bit_width_reduction_pipeline.cc
+        unit_bitshuffle_pipeline.cc
+        unit_byteshuffle_pipeline.cc
+        unit_encryption_pipeline.cc
+        unit_positive_delta_pipeline.cc
         unit_run_filter_pipeline.cc
+        unit_xor_pipeline.cc
     )
 conclude(unit_test)
 
