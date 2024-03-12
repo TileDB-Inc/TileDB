@@ -51,6 +51,14 @@ class RandomLabelException : public StatusException {
   }
 };
 
+/**
+ * Generates a pseudeo-random label, formatted as a 32-digit hexadecimal number.
+ * (Ex. f258d22d4db9139204eef2b4b5d860cc).
+ *
+ * @pre If multiple labels are generated within the same millisecond, they will
+ * be sorted using a counter on the most significant 4 bytes.
+ * @note Use of wrapper `random_label()` is encouraged in production code.
+ */
 class RandomLabelGenerator {
  public:
   /* ********************************* */
@@ -118,11 +126,13 @@ class RandomLabelGenerator {
 };
 
 /**
- * Returns a PRNG-generated label as a 32-digit hexadecimal random number.
+ * Wrapper function for `generate_random_label`, which returns a PRNG-generated
+ * label as a 32-digit hexadecimal random number.
  * (Ex. f258d22d4db9139204eef2b4b5d860cc).
  *
- * Note: the random number is actually the combination of two 16-digit numbers.
- * The values are 0-padded to ensure exactly a 128-bit, 32-digit length.
+ * @pre If multiple labels are generated within the same millisecond, they will
+ * be sorted using a counter on the most significant 4 bytes.
+ * @note Labels may be 0-padded to ensure exactly a 128-bit, 32-digit length.
  *
  * @return A random label.
  */
