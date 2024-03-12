@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -330,6 +330,69 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(
+    CMetadataFx,
+    "C API: Metadata, concurrent writes",
+    "[!mayfail][capi][metadata][concurrent_writes]") {
+  int32_t one = 1;
+  int32_t two = 2;
+  int fail_count = 0;
+  const void* v_r = nullptr;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+
+  // Run the test body 1000 times
+  for (int i = 0; i < 1000; i++) {
+    // Create and open array in write mode
+    create_default_array_1d();
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Write to disk twice
+    rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &one);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &two);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+
+    // Open the array in read mode
+    rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Read
+    rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+    CHECK(rc == TILEDB_OK);
+    CHECK(v_type == TILEDB_INT32);
+    CHECK(v_num == 1);
+    if ((*((const int32_t*)v_r)) != 2) {
+      fail_count++;
+    } else {
+      CHECK(*((const int32_t*)v_r) == 2);
+    }
+
+    // Cleanup
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    remove_dir(array_name_, ctx_, vfs_);
+  }
+
+  if (fail_count != 0) {
+    std::cerr << "Rate of failure: " << (float)fail_count / 10 << std::endl;
+  }
 }
 
 TEST_CASE_METHOD(
