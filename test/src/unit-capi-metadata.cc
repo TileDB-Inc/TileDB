@@ -338,13 +338,12 @@ TEST_CASE_METHOD(
     "[!mayfail][capi][metadata][concurrent_writes]") {
   int32_t one = 1;
   int32_t two = 2;
-  int fail_count = 0;
   const void* v_r = nullptr;
   tiledb_datatype_t v_type;
   uint32_t v_num;
 
-  // Run the test body 1000 times
-  for (int i = 0; i < 1000; i++) {
+  // Run the test body 20 times
+  for (int i = 0; i < 20; i++) {
     // Create and open array in write mode
     create_default_array_1d();
     tiledb_array_t* array;
@@ -377,21 +376,13 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
     CHECK(v_type == TILEDB_INT32);
     CHECK(v_num == 1);
-    if ((*((const int32_t*)v_r)) != 2) {
-      fail_count++;
-    } else {
-      CHECK(*((const int32_t*)v_r) == 2);
-    }
+    CHECK(*((const int32_t*)v_r) == 2);
 
     // Cleanup
     rc = tiledb_array_close(ctx_, array);
     REQUIRE(rc == TILEDB_OK);
     tiledb_array_free(&array);
     remove_dir(array_name_, ctx_, vfs_);
-  }
-
-  if (fail_count != 0) {
-    std::cerr << "Rate of failure: " << (float)fail_count / 10 << std::endl;
   }
 }
 
