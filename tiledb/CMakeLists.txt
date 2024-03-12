@@ -431,6 +431,8 @@ target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
+find_package(Magic_EP REQUIRED)
+
 set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
 set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
 set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
@@ -449,7 +451,7 @@ add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 add_custom_target(
   update-embedded-magic-data
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  COMMAND tdb_gzip_embedded_data ${libmagic_DICTIONARY} ${MGC_GZIPPED_BIN_OUTPUT_FILE}
   # need to work in 'local' directory with no prefix paths so no paths are included in archive
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
@@ -618,7 +620,6 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
-find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2
