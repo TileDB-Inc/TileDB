@@ -4,7 +4,7 @@
 
 * Building with Visual Studio 2019 (MSVC toolchains v14.29 and earlier) will become unsuported in version 2.28, to be released in Q3 2024.
 * HDFS support will be removed in version 2.28, to be released in Q3 2024.
-* Support for manylinux2014 (based on CentOS 7) will be removed in version 2.31, to be released in Q4 2024. It wil be replaced by support for GLIBC 2.28 (manylinux_2_28; RHEL8; Rocky Linux 8).
+* Support for GLIBC 2.17 (manylinux2014, based on CentOS 7) will be removed in TileDB version 2.31, to be released in Q4 2024. It will be replaced by support for GLIBC 2.28 (manylinux_2_28; RHEL8; Rocky Linux 8).
 
 ## New features
 
