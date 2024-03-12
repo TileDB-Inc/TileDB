@@ -342,8 +342,8 @@ TEST_CASE_METHOD(
   tiledb_datatype_t v_type;
   uint32_t v_num;
 
-  // Run the test body 20 times
-  for (int i = 0; i < 20; i++) {
+  // Run the test body 100 times
+  for (int i = 0; i < 100; i++) {
     // Create and open array in write mode
     create_default_array_1d();
     tiledb_array_t* array;
