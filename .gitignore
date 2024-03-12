@@ -1,3 +1,4 @@
+.nova*
 .vscode*
 *.sw?
 build/*

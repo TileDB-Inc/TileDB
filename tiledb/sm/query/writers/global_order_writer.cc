@@ -177,7 +177,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   global_write_state_.reset(new GlobalWriteState);
 
   // Alloc FragmentMetadata object
-  global_write_state_->frag_meta_ = make_shared<FragmentMetadata>(HERE());
+  global_write_state_->frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up
   global_write_state_->frag_meta_->set_context_resources(
       &storage_manager_->resources());
@@ -198,20 +198,18 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto capacity = array_schema_.capacity();
     const auto cell_num_per_tile =
         coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-    auto last_tile_vector = std::pair<std::string, WriterTileTupleVector>(
-        name, WriterTileTupleVector());
-    try {
-      last_tile_vector.second.emplace_back(WriterTileTuple(
-          array_schema_,
-          cell_num_per_tile,
-          var_size,
-          nullable,
-          cell_size,
-          type));
-    } catch (const std::logic_error& le) {
-      return Status_WriterError(le.what());
-    }
-    global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
+    auto last_tiles_it = global_write_state_->last_tiles_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple());
+    last_tiles_it.first->second.emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -866,7 +864,10 @@ Status GlobalOrderWriter::prepare_full_tiles(
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {
-    (*tiles)[it.first] = WriterTileTupleVector();
+    (*tiles).emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(it.first),
+        std::forward_as_tuple());
   }
 
   auto num = buffers_.size();
@@ -968,16 +969,26 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          false,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      tile_it->fixed_tile().swap(last_tile.fixed_tile());
+      tile_it->fixed_tile().write(
+          last_tile.fixed_tile().data(), 0, last_tile.fixed_tile().size());
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
@@ -1161,8 +1172,6 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
         ++cell_idx;
       } while (last_tile_cell_idx != cell_num_per_tile && cell_idx != cell_num);
     }
-
-    last_tile.var_tile().set_size(last_var_offset);
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -1175,19 +1184,33 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          true,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      last_var_offset = 0;
-      tile_it->offset_tile().swap(last_tile.offset_tile());
-      tile_it->var_tile().swap(last_tile.var_tile());
+      tile_it->offset_tile().write(
+          last_tile.offset_tile().data(), 0, last_tile.offset_tile().size());
+      tile_it->var_tile().write_var(
+          last_tile.var_tile().data(), 0, last_var_offset);
+      tile_it->var_tile().set_size(last_var_offset);
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
+
+      last_var_offset = 0;
+
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
       return Status_WriterError(

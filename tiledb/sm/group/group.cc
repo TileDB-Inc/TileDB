@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,8 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -64,10 +66,12 @@ Group::Group(
     ContextResources& resources,
     const URI& group_uri,
     StorageManager* storage_manager)
-    : group_uri_(group_uri)
+    : memory_tracker_(resources.create_memory_tracker())
+    , group_uri_(group_uri)
     , storage_manager_(storage_manager)
     , config_(storage_manager_->config())
     , remote_(group_uri.is_tiledb())
+    , metadata_(memory_tracker_)
     , metadata_loaded_(false)
     , is_open_(false)
     , query_type_(QueryType::READ)
@@ -75,6 +79,7 @@ Group::Group(
     , timestamp_end_(UINT64_MAX)
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , resources_(resources) {
+  memory_tracker_->set_type(MemoryTrackerType::GROUP);
 }
 
 Status Group::open(
@@ -470,22 +475,16 @@ std::optional<Datatype> Group::metadata_type(const char* key) {
   return metadata_.metadata_type(key);
 }
 
-Metadata* Group::unsafe_metadata() {
-  return &metadata_;
-}
-
-const Metadata* Group::metadata() const {
-  return &metadata_;
-}
-
-Status Group::metadata(Metadata** metadata) {
+Metadata* Group::metadata() {
   // Load group metadata, if not loaded yet
   if (!metadata_loaded_)
     load_metadata();
 
-  *metadata = &metadata_;
+  return &metadata_;
+}
 
-  return Status::Ok();
+Metadata* Group::unsafe_metadata() {
+  return &metadata_;
 }
 
 void Group::set_metadata_loaded(const bool metadata_loaded) {
@@ -712,22 +711,16 @@ void Group::load_metadata() {
         rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {
     assert(group_dir_->loaded());
-    load_metadata_from_storage(group_dir_, *encryption_key_, &metadata_);
+    load_metadata_from_storage(group_dir_, *encryption_key_);
   }
   metadata_loaded_ = true;
 }
 
 void Group::load_metadata_from_storage(
     const shared_ptr<GroupDirectory>& group_dir,
-    const EncryptionKey& encryption_key,
-    Metadata* metadata) {
+    const EncryptionKey& encryption_key) {
   [[maybe_unused]] auto timer_se =
       resources_.stats().start_timer("group_load_metadata_from_storage");
-
-  // Special case
-  if (metadata == nullptr) {
-    return;
-  }
 
   // Determine which group metadata to load
   const auto& group_metadata_to_load = group_dir->group_meta_uris();
@@ -739,8 +732,12 @@ void Group::load_metadata_from_storage(
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = group_metadata_to_load[m].uri_;
 
-        auto&& tile = GenericTileIO::load(resources_, uri, 0, encryption_key);
-        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+        metadata_tiles[m] = GenericTileIO::load(
+            resources_,
+            uri,
+            0,
+            encryption_key,
+            storage_manager_->resources().ephemeral_memory_tracker());
 
         return Status::Ok();
       }));
@@ -753,8 +750,8 @@ void Group::load_metadata_from_storage(
   resources_.stats().add_counter("group_read_group_meta_size", meta_size);
 
   // Copy the deserialized metadata into the original Metadata object
-  *metadata = Metadata::deserialize(metadata_tiles);
-  metadata->set_loaded_metadata_uris(group_metadata_to_load);
+  metadata_ = Metadata::deserialize(metadata_tiles);
+  metadata_.set_loaded_metadata_uris(group_metadata_to_load);
 }
 
 void Group::group_open_for_reads() {
@@ -775,8 +772,12 @@ void Group::load_group_details() {
 
   // V1 groups did not have the version appended so only have 4 "_"
   // (__<timestamp>_<timestamp>_<uuid>)
+  // Since 2.19, V1 groups also have the version appended so we have
+  // to check for that as well
   auto part = latest_group_uri.last_path_part();
-  if (std::count(part.begin(), part.end(), '_') == 4) {
+  auto underscoreCount = std::count(part.begin(), part.end(), '_');
+  if (underscoreCount == 4 ||
+      (underscoreCount == 5 && utils::parse::ends_with(part, "_1"))) {
     load_group_from_uri(latest_group_uri);
     return;
   }
@@ -790,12 +791,17 @@ void Group::load_group_from_uri(const URI& uri) {
   [[maybe_unused]] auto timer_se =
       resources_.stats().start_timer("load_group_from_uri");
 
-  auto&& tile = GenericTileIO::load(resources_, uri, 0, *encryption_key());
+  auto tile = GenericTileIO::load(
+      resources_,
+      uri,
+      0,
+      *encryption_key(),
+      storage_manager_->resources().ephemeral_memory_tracker());
 
-  resources_.stats().add_counter("read_group_size", tile.size());
+  resources_.stats().add_counter("read_group_size", tile->size());
 
   // Deserialize
-  Deserializer deserializer(tile.data(), tile.size());
+  Deserializer deserializer(tile->data(), tile->size());
   auto opt_group =
       GroupDetails::deserialize(deserializer, group_directory()->uri());
 
@@ -810,14 +816,18 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
 
   std::vector<shared_ptr<Deserializer>> deserializers;
   for (auto& uri : uris) {
-    auto&& tile =
-        GenericTileIO::load(resources_, uri.uri_, 0, *encryption_key());
+    auto tile = GenericTileIO::load(
+        resources_,
+        uri.uri_,
+        0,
+        *encryption_key(),
+        storage_manager_->resources().ephemeral_memory_tracker());
 
-    resources_.stats().add_counter("read_group_size", tile.size());
+    resources_.stats().add_counter("read_group_size", tile->size());
 
     // Deserialize
     shared_ptr<Deserializer> deserializer =
-        tdb::make_shared<TileDeserializer>(HERE(), std::move(tile));
+        tdb::make_shared<TileDeserializer>(HERE(), tile);
     deserializers.emplace_back(deserializer);
   }
 

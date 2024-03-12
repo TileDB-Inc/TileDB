@@ -81,12 +81,5 @@
                 "libwebp"
             ]
         }
-    },
-    "overrides": [
-        {
-            "$note": "Remove this when the custom port for libmagic gets removed",
-            "name": "dirent",
-            "version": "1.23.2#3"
-        }
-    ]
+    }
 }

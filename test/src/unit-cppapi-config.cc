@@ -33,16 +33,9 @@
 #include <thread>
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/helpers.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
-
-int setenv_local(const char* __name, const char* __value) {
-#ifdef _WIN32
-  return _putenv_s(__name, __value);
-#else
-  return ::setenv(__name, __value, 1);
-#endif
-}
 
 TEST_CASE("C++ API: Config", "[cppapi][config]") {
   tiledb::Config config;

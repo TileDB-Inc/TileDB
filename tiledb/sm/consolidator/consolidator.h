@@ -242,6 +242,9 @@ class Consolidator {
   /** The storage manager. */
   StorageManager* storage_manager_;
 
+  /** The consolidator memory tracker. */
+  shared_ptr<MemoryTracker> consolidator_memory_tracker_;
+
   /** The class stats. */
   stats::Stats* stats_;
 

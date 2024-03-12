@@ -35,16 +35,21 @@
 
 #ifndef _WIN32
 
+#include <dirent.h>
 #include <ftw.h>
 #include <sys/types.h>
+#include <unistd.h>
 
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <vector>
 
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
 
@@ -260,6 +265,29 @@ class Posix : public FilesystemBase {
   ls_with_sizes(const URI& uri) const override;
 
   /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   *
+   * Note: the return type LsObjects does not match the other "ls" methods so as
+   * to match the S3 equivalent API.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    return std_filesystem_ls_filtered<F, D>(parent, f, d, recursive);
+  }
+
+  /**
    * Lists files one level deep under a given path.
    *
    * @param path  The parent path to list sub-paths.
@@ -272,7 +300,7 @@ class Posix : public FilesystemBase {
    * Returns the absolute posix (string) path of the input in the
    * form "file://<absolute path>"
    */
-  static std::string abs_path(const std::string& path);
+  static std::string abs_path(std::string_view path);
 
   /**
    * Returns the directory where the program is executed.
@@ -289,7 +317,7 @@ class Posix : public FilesystemBase {
   static bool both_slashes(char a, char b);
 
   // Internal logic for 'abs_path()'.
-  static std::string abs_path_internal(const std::string& path);
+  static std::string abs_path_internal(std::string_view path);
 
   /**
    * It takes as input an **absolute** path, and returns it in its canonicalized

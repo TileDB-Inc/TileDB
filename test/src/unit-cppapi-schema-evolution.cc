@@ -31,6 +31,7 @@
  */
 
 #include <test/support/tdb_catch.h>
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
@@ -796,7 +797,8 @@ TEST_CASE(
 TEST_CASE(
     "SchemaEvolution Error Handling Tests",
     "[cppapi][schema][evolution][errors]") {
-  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(HERE());
+  auto ase = make_shared<tiledb::sm::ArraySchemaEvolution>(
+      HERE(), tiledb::test::create_test_memory_tracker());
   REQUIRE_THROWS(ase->evolve_schema(nullptr));
   REQUIRE_THROWS(ase->add_attribute(nullptr));
 
@@ -808,13 +810,19 @@ TEST_CASE(
   ase->set_timestamp_range(std::make_pair(1, 1));
 
   auto schema = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), tiledb::sm::ArrayType::SPARSE);
+      HERE(),
+      tiledb::sm::ArrayType::SPARSE,
+      tiledb::test::create_test_memory_tracker());
   auto dim = make_shared<tiledb::sm::Dimension>(
-      HERE(), "dim1", tiledb::sm::Datatype::INT32);
+      HERE(),
+      "dim1",
+      tiledb::sm::Datatype::INT32,
+      tiledb::test::get_test_memory_tracker());
   int range[2] = {0, 1000};
   throw_if_not_ok(dim->set_domain(range));
 
-  auto dom = make_shared<tiledb::sm::Domain>(HERE());
+  auto dom = make_shared<tiledb::sm::Domain>(
+      HERE(), tiledb::test::get_test_memory_tracker());
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(schema->set_domain(dom));
 

@@ -35,6 +35,7 @@
 
 #include <tiledb/common/logger_public.h>
 #include "test/support/src/coords_workaround.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/random/random_label.h"
@@ -50,6 +51,15 @@
 #include <sstream>
 #include <string>
 #include <thread>
+
+/**
+ * Helper function to set environment variables across platforms.
+ *
+ * @param __name Name of the environment variable.
+ * @param __value Value of the environment variable.
+ * @return 0 on success, -1 on error.
+ */
+int setenv_local(const char* __name, const char* __value);
 
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;

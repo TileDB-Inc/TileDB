@@ -34,10 +34,13 @@
 #include "../filter_list/filter_list_api_internal.h"
 #include "dimension_api_external.h"
 #include "dimension_api_internal.h"
+#include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 int32_t tiledb_dimension_alloc(
+    tiledb_ctx_t* ctx,
     const char* name,
     tiledb_datatype_t type,
     const void* dim_domain,
@@ -47,8 +50,10 @@ int32_t tiledb_dimension_alloc(
     throw CAPIStatusException("Dimension name must not be NULL");
   }
   ensure_output_pointer_is_valid(dim);
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
   *dim = tiledb_dimension_handle_t::make_handle(
-      name, static_cast<tiledb::sm::Datatype>(type));
+      name, static_cast<tiledb::sm::Datatype>(type), memory_tracker);
   try {
     (*dim)->set_domain(dim_domain);
     (*dim)->set_tile_extent(tile_extent);
@@ -149,7 +154,8 @@ CAPI_INTERFACE(
     const void* dim_domain,
     const void* tile_extent,
     tiledb_dimension_t** dim) {
-  return api_entry_context<tiledb::api::tiledb_dimension_alloc>(
+  return tiledb::api::api_entry_with_context<
+      tiledb::api::tiledb_dimension_alloc>(
       ctx, name, type, dim_domain, tile_extent, dim);
 }
 

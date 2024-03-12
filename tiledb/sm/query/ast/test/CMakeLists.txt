@@ -40,7 +40,7 @@ add_library(ast_test_support_lib STATIC EXCLUDE_FROM_ALL ${AST_TEST_SUPPORT_SOUR
 # We want tests to continue as normal even as the API is changing,
 # so don't warn for deprecations, since they'll be escalated to errors.
 if (NOT MSVC)
-    target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
+  target_compile_options(ast_test_support_lib PRIVATE -Wno-deprecated-declarations)
 endif()
 ################################################################
 #

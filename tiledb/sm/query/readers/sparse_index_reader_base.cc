@@ -74,7 +74,6 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     , tmp_read_state_(array_->fragment_metadata().size())
     , memory_budget_(config_, reader_string)
     , include_coords_(include_coords)
-    , array_memory_tracker_(params.memory_tracker())
     , memory_used_for_coords_total_(0)
     , deletes_consolidation_no_purge_(
           buffers_.count(constants::delete_timestamps) != 0)
@@ -389,6 +388,14 @@ Status SparseIndexReaderBase::load_initial_data() {
         memory_budget_.ratio_tile_ranges() * memory_budget_.total_budget())
       return logger_->status(
           Status_ReaderError("Exceeded memory budget for result tile ranges"));
+  } else {
+    for (const auto& [name, _] : aggregates_) {
+      if (array_schema_.is_dim(name)) {
+        throw_if_not_ok(subarray_.load_relevant_fragment_rtrees(
+            storage_manager_->compute_tp()));
+        break;
+      }
+    }
   }
 
   // Compute tile offsets to load and var size to load for attributes.
@@ -487,7 +494,13 @@ void SparseIndexReaderBase::load_tile_offsets_for_fragments(
   load_tile_offsets(relevant_fragments, attr_tile_offsets_to_load_);
 
   // Load tile metadata.
-  load_tile_metadata(relevant_fragments, attr_tile_offsets_to_load_);
+  auto md_names_to_load = attr_tile_offsets_to_load_;
+  for (const auto& [name, _] : aggregates_) {
+    if (array_schema_.is_dim(name)) {
+      md_names_to_load.emplace_back(name);
+    }
+  }
+  load_tile_metadata(relevant_fragments, md_names_to_load);
 }
 
 Status SparseIndexReaderBase::read_and_unfilter_coords(
@@ -619,7 +632,8 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           auto& ranges_for_dim = subarray_.ranges_for_dim(dim_idx);
 
           // Compute the list of range index to process.
-          std::vector<uint64_t> relevant_ranges;
+          tdb::pmr::vector<uint64_t> relevant_ranges(
+              query_memory_tracker_->get_resource(MemoryType::DIMENSIONS));
           relevant_ranges.reserve(ranges_for_dim.size());
           domain.dimension_ptr(dim_idx)->relevant_ranges(
               ranges_for_dim, mbr[dim_idx], relevant_ranges);
@@ -628,9 +642,8 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           // there is no need to compute bitmaps.
           const bool non_overlapping = std::is_same<BitmapType, uint8_t>::value;
           if (non_overlapping) {
-            std::vector<bool> covered_bitmap =
-                domain.dimension_ptr(dim_idx)->covered_vec(
-                    ranges_for_dim, mbr[dim_idx], relevant_ranges);
+            auto covered_bitmap = domain.dimension_ptr(dim_idx)->covered_vec(
+                ranges_for_dim, mbr[dim_idx], relevant_ranges);
 
             // See if any range is covered.
             uint64_t count = std::accumulate(

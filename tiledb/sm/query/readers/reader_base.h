@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,6 +35,7 @@
 
 #include "../strategy_base.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/tile_domain.h"
@@ -49,8 +50,7 @@
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray_partitioner.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class ArraySchema;
@@ -200,7 +200,8 @@ class ReaderBase : public StrategyBase {
       const std::vector<std::vector<uint8_t>>& tile_coords,
       const TileDomain<T>& array_tile_domain,
       const std::vector<TileDomain<T>>& frag_tile_domains,
-      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+      shared_ptr<MemoryTracker> memory_tracker);
 
   /**
    * Computes the minimum and maximum indexes of tile chunks to process based on
@@ -254,6 +255,9 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+
+  /** The query's memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The query condition. */
   std::optional<QueryCondition>& condition_;
@@ -560,7 +564,7 @@ class ReaderBase : public StrategyBase {
    *     `ResultTile` instances in this vector.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_attribute_tiles(
+  std::list<FilteredData> read_attribute_tiles(
       const std::vector<NameToLoad>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -576,7 +580,7 @@ class ReaderBase : public StrategyBase {
    *     `ResultTile` instances in this vector.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_coordinate_tiles(
+  std::list<FilteredData> read_coordinate_tiles(
       const std::vector<std::string>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -593,7 +597,7 @@ class ReaderBase : public StrategyBase {
    * @param validity_only Is the field read for validity only.
    * @return Filtered data blocks.
    */
-  std::vector<FilteredData> read_tiles(
+  std::list<FilteredData> read_tiles(
       const std::vector<NameToLoad>& names,
       const std::vector<ResultTile*>& result_tiles) const;
 
@@ -798,7 +802,6 @@ class ReaderBase : public StrategyBase {
       std::vector<uint64_t>& frag_first_array_tile_idx);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_READER_BASE_H

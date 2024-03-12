@@ -45,6 +45,7 @@
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -55,6 +56,14 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/query.h"
+
+int setenv_local(const char* __name, const char* __value) {
+#ifdef _WIN32
+  return _putenv_s(__name, __value);
+#else
+  return ::setenv(__name, __value, 1);
+#endif
+}
 
 std::mutex catch2_macro_mutex;
 
@@ -1592,7 +1601,8 @@ int array_open_wrapper(
       (*open_array)->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      client_ctx->storage_manager());
+      client_ctx->storage_manager(),
+      tiledb::test::create_test_memory_tracker());
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

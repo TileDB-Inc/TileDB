@@ -527,10 +527,8 @@ Status Subarray::add_range_by_name(
     const void* start,
     const void* end,
     const void* stride) {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return add_range(dim_idx, start, end, stride);
 }
 
@@ -586,10 +584,8 @@ Status Subarray::add_range_var_by_name(
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return add_range_var(dim_idx, start, start_size, end, end_size);
 }
 
@@ -697,9 +693,8 @@ Status Subarray::get_range_var(
 
 Status Subarray::get_range_num_from_name(
     const std::string& dim_name, uint64_t* range_num) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
 
   return get_range_num(dim_idx, range_num);
 }
@@ -720,9 +715,8 @@ Status Subarray::get_range_from_name(
     const void** start,
     const void** end,
     const void** stride) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
 
   return get_range(dim_idx, range_idx, start, end, stride);
 }
@@ -732,10 +726,8 @@ Status Subarray::get_range_var_size_from_name(
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return get_range_var_size(dim_idx, range_idx, start_size, end_size);
 }
 
@@ -744,10 +736,8 @@ Status Subarray::get_range_var_from_name(
     uint64_t range_idx,
     void* start,
     void* end) const {
-  unsigned dim_idx;
-  RETURN_NOT_OK(array_->array_schema_latest().domain().get_dimension_index(
-      dim_name, &dim_idx));
-
+  unsigned dim_idx =
+      array_->array_schema_latest().domain().get_dimension_index(dim_name);
   return get_range_var(dim_idx, range_idx, start, end);
 }
 const shared_ptr<OpenedArray> Subarray::array() const {
@@ -2131,6 +2121,29 @@ void Subarray::add_default_label_ranges(dimension_size_type dim_num) {
   label_range_subset_.resize(dim_num, nullopt);
 }
 
+void Subarray::reset_default_ranges() {
+  if (array_->non_empty_domain_computed()) {
+    auto dim_num = array_->array_schema_latest().dim_num();
+    auto& domain{array_->array_schema_latest().domain()};
+
+    // Process all dimensions one by one.
+    for (unsigned d = 0; d < dim_num; d++) {
+      // Only enter the check if there are only one range set on the dimension.
+      if (!is_default_[d] && range_subset_[d].num_ranges() == 1) {
+        // If the range set is the same as the non empty domain.
+        auto& ned = array_->non_empty_domain()[d];
+        if (ned == range_subset_[d][0]) {
+          // Reset the default flag and reset the range subset to be default.
+          is_default_[d] = true;
+          auto dim{domain.dimension_ptr(d)};
+          range_subset_[d] = RangeSetAndSuperset(
+              dim->type(), dim->domain(), true, coalesce_ranges_);
+        }
+      }
+    }
+  }
+}
+
 void Subarray::compute_range_offsets() {
   range_offsets_.clear();
 
@@ -2187,7 +2200,7 @@ Status Subarray::compute_est_result_size(
   const auto& array_schema = array_->array_schema_latest();
   auto attribute_num = array_schema.attribute_num();
   auto dim_num = array_schema.dim_num();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   auto num = attribute_num + dim_num + 1;
   auto range_num = this->range_num();
 
@@ -3080,8 +3093,12 @@ RelevantFragments& Subarray::relevant_fragments() {
   return relevant_fragments_;
 }
 
-stats::Stats* Subarray::stats() const {
-  return stats_;
+const stats::Stats& Subarray::stats() const {
+  return *stats_;
+}
+
+void Subarray::set_stats(const stats::StatsData& data) {
+  stats_->populate_with_data(data);
 }
 
 tuple<Status, optional<bool>> Subarray::non_overlapping_ranges_for_dim(

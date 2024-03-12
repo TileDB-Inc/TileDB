@@ -122,9 +122,6 @@ void SparseUnorderedWithDupsReader<BitmapType>::refresh_config() {
 
 template <class BitmapType>
 Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
-  // Subarray is not known to be explicitly set until buffers are deserialized
-  include_coords_ = subarray_.is_set();
-
   auto timer_se = stats_->start_timer("dowork");
   stats_->add_counter("loop_num", 1);
 
@@ -152,6 +149,10 @@ Status SparseUnorderedWithDupsReader<BitmapType>::dowork() {
     read_state_.set_done_adding_result_tiles(true);
     return Status::Ok();
   }
+
+  // Subarray is not known to be explicitly set until buffers are deserialized
+  subarray_.reset_default_ranges();
+  include_coords_ = subarray_.is_set();
 
   // Load initial data, if not loaded already. Coords are only included if the
   // subarray is set.
@@ -251,9 +252,9 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
   bool initial_load =
       tile_offsets_min_frag_idx_ == std::numeric_limits<unsigned>::max() &&
       tile_offsets_max_frag_idx_ == 0;
-  uint64_t available_memory = array_memory_tracker_->get_memory_available() -
-                              array_memory_tracker_->get_memory_usage(
-                                  MemoryTracker::MemoryType::TILE_OFFSETS);
+  uint64_t available_memory =
+      array_memory_tracker_->get_memory_available() -
+      array_memory_tracker_->get_memory_usage(MemoryType::TILE_OFFSETS);
   auto& relevant_fragments = subarray_.relevant_fragments();
 
   if (!partial_tile_offsets_loading_) {
@@ -402,7 +403,7 @@ bool SparseUnorderedWithDupsReader<BitmapType>::add_result_tile(
   memory_used_for_coords_total_ += tiles_size;
 
   // Add the result tile.
-  result_tiles.emplace_back(f, t, frag_md);
+  result_tiles.emplace_back(f, t, frag_md, query_memory_tracker_);
 
   // Are all tiles loaded for this fragment.
   if (t == last_t) {

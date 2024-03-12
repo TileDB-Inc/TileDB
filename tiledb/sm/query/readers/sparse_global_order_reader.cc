@@ -135,6 +135,8 @@ Status SparseGlobalOrderReader<BitmapType>::dowork() {
     return Status::Ok();
   }
 
+  subarray_.reset_default_ranges();
+
   // Load initial data, if not loaded already.
   throw_if_not_ok(load_initial_data());
   purge_deletes_consolidation_ = !deletes_consolidation_no_purge_ &&
@@ -246,9 +248,9 @@ void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
     // Make sure we have enough space for tile offsets data.
     uint64_t total_tile_offset_usage =
         tile_offsets_size(subarray_.relevant_fragments());
-    uint64_t available_memory = array_memory_tracker_->get_memory_available() -
-                                array_memory_tracker_->get_memory_usage(
-                                    MemoryTracker::MemoryType::TILE_OFFSETS);
+    uint64_t available_memory =
+        array_memory_tracker_->get_memory_available() -
+        array_memory_tracker_->get_memory_usage(MemoryType::TILE_OFFSETS);
     if (total_tile_offset_usage > available_memory) {
       throw SparseGlobalOrderReaderStatusException(
           "Cannot load tile offsets, computed size (" +
@@ -330,7 +332,8 @@ bool SparseGlobalOrderReader<BitmapType>::add_result_tile(
       t,
       array_schema_.allows_dups(),
       deletes_consolidation_no_purge_,
-      frag_md);
+      frag_md,
+      query_memory_tracker_);
 
   return false;
 }

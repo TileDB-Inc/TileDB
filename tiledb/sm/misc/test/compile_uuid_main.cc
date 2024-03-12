@@ -1,11 +1,11 @@
 /**
- * @file ls_scanner.cc
+ * @file compile_uuid_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,10 +24,11 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This defines the LsScanner class and related types used for VFS.
  */
 
-#include "ls_scanner.h"
+#include "../uuid.h"
+
+int main() {
+  (void)tiledb::sm::uuid::generate_uuid(nullptr, false);
+  return 0;
+}

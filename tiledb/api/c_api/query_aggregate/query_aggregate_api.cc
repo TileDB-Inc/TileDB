@@ -161,11 +161,8 @@ capi_return_t tiledb_query_get_default_channel(
     tiledb_ctx_t*, tiledb_query_t* query, tiledb_query_channel_t** channel) {
   ensure_query_is_valid(query);
   ensure_output_pointer_is_valid(channel);
-
-  // We don't have an internal representation of a channel,
-  // the default channel is currently just a hashmap, so only pass the query
-  // to the channel constructor to be carried until next the api call.
-  *channel = tiledb_query_channel_handle_t::make_handle(query);
+  *channel = tiledb_query_channel_handle_t::make_handle(
+      query->query_->default_channel());
 
   return TILEDB_OK;
 }
@@ -190,10 +187,29 @@ capi_return_t tiledb_create_unary_aggregate(
       tiledb_query_field_handle_t::make_handle(query, input_field_name);
   tiledb_query_field_handle_t::break_handle(field);
 
+  const auto is_dense_dim{schema.dense() && schema.is_dim(field_name)};
+  const auto cell_order{schema.cell_order()};
+
+  // Get the dimension index for the dense case. It is used below to know if the
+  // dimenson to be aggregated is the last dimension for ROW_MAJOR or first for
+  // COL_MAJOR. This is used at the aggregate level to know if we need to change
+  // the dimension value when we move cells.
+  unsigned dim_idx = 0;
+  if (is_dense_dim) {
+    dim_idx = schema.domain().get_dimension_index(field_name);
+  }
+
+  const bool is_slab_dim =
+      is_dense_dim && (cell_order == sm::Layout::ROW_MAJOR) ?
+          (dim_idx == schema.dim_num() - 1) :
+          (dim_idx == 0);
+
   auto fi = tiledb::sm::FieldInfo(
       field_name,
       schema.var_size(field_name),
       schema.is_nullable(field_name),
+      is_dense_dim,
+      is_slab_dim,
       schema.cell_val_num(field_name),
       schema.type(field_name));
 
@@ -209,7 +225,7 @@ capi_return_t tiledb_channel_apply_aggregate(
     const char* output_field_name,
     const tiledb_channel_operation_t* operation) {
   ensure_query_channel_is_valid(channel);
-  ensure_query_is_not_initialized(channel->query_);
+  ensure_query_is_not_initialized(channel->query());
   ensure_output_field_is_valid(output_field_name);
   ensure_operation_is_valid(operation);
   channel->add_aggregate(output_field_name, operation);

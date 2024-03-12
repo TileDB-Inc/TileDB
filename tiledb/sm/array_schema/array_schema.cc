@@ -35,6 +35,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -53,6 +54,7 @@
 #include "tiledb/sm/misc/hilbert.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 #include "tiledb/type/apply_with_type.h"
@@ -79,12 +81,10 @@ class ArraySchemaException : public StatusException {
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
 
-ArraySchema::ArraySchema()
-    : ArraySchema(ArrayType::DENSE) {
-}
-
-ArraySchema::ArraySchema(ArrayType array_type)
-    : uri_(URI())
+ArraySchema::ArraySchema(
+    ArrayType array_type, shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , uri_(URI())
     , array_uri_(URI())
     , version_(constants::format_version)
     , timestamp_range_(std::make_pair(
@@ -93,9 +93,19 @@ ArraySchema::ArraySchema(ArrayType array_type)
     , array_type_(array_type)
     , allows_dups_(false)
     , domain_(nullptr)
+    , dim_map_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , cell_order_(Layout::ROW_MAJOR)
     , tile_order_(Layout::ROW_MAJOR)
-    , capacity_(constants::capacity) {
+    , capacity_(constants::capacity)
+    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , dimension_labels_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -131,23 +141,44 @@ ArraySchema::ArraySchema(
     std::unordered_map<std::string, std::string> enumeration_path_map,
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
-    FilterPipeline coords_filters)
-    : uri_(uri)
+    FilterPipeline coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , uri_(uri)
     , version_(version)
     , timestamp_range_(timestamp_range)
     , name_(name)
     , array_type_(array_type)
     , allows_dups_(allows_dups)
     , domain_(domain)
+    , dim_map_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , cell_order_(cell_order)
     , tile_order_(tile_order)
     , capacity_(capacity)
-    , attributes_(attributes)
-    , dimension_labels_(dim_label_refs)
-    , enumeration_path_map_(enumeration_path_map)
+    , attributes_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , dimension_labels_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters) {
+  for (auto atr : attributes) {
+    attributes_.push_back(atr);
+  }
+
+  for (auto dim_label : dim_label_refs) {
+    dimension_labels_.push_back(dim_label);
+  }
+
+  for (auto& elem : enumeration_path_map) {
+    enumeration_path_map_.insert(elem);
+  }
+
   // Create dimension map
   for (dimension_size_type d = 0; d < domain_->dim_num(); ++d) {
     auto dim{domain_->dimension_ptr(d)};
@@ -192,30 +223,37 @@ ArraySchema::ArraySchema(
   check_attribute_dimension_label_names();
 }
 
-/*
- * Copy constructor manually initializes its map members, so we don't use the
- * default copy constructor. At some point this may no longer hold and we can
- * eliminate this code in favor of the default.
- */
 ArraySchema::ArraySchema(const ArraySchema& array_schema)
-    : uri_{array_schema.uri_}
+    : memory_tracker_{array_schema.memory_tracker_}
+    , uri_{array_schema.uri_}
     , array_uri_{array_schema.array_uri_}
     , version_{array_schema.version_}
     , timestamp_range_{array_schema.timestamp_range_}
     , name_{array_schema.name_}
     , array_type_{array_schema.array_type_}
     , allows_dups_{array_schema.allows_dups_}
-    , domain_{}   // copied below by `set_domain`
-    , dim_map_{}  // initialized in `set_domain`
+    , domain_{}  // copied below by `set_domain`
+    , dim_map_(memory_tracker_->get_resource(
+          MemoryType::DIMENSIONS))  // initialized in `set_domain`
     , cell_order_{array_schema.cell_order_}
     , tile_order_{array_schema.tile_order_}
     , capacity_{array_schema.capacity_}
-    , attributes_{array_schema.attributes_}
-    , attribute_map_{array_schema.attribute_map_}
-    , dimension_labels_{}     // copied in loop below
-    , dimension_label_map_{}  // initialized below
-    , enumeration_map_{array_schema.enumeration_map_}
-    , enumeration_path_map_{array_schema.enumeration_path_map_}
+    , attributes_(
+          array_schema.attributes_,
+          memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , attribute_map_(
+          array_schema.attribute_map_,
+          memory_tracker_->get_resource(MemoryType::ATTRIBUTES))
+    , dimension_labels_(memory_tracker_->get_resource(
+          MemoryType::DIMENSION_LABELS))  // copied in loop below
+    , dimension_label_map_(
+          memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
+    , enumeration_map_(
+          array_schema.enumeration_map_,
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , enumeration_path_map_(
+          array_schema.enumeration_path_map_,
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
@@ -273,7 +311,7 @@ shared_ptr<const Attribute> ArraySchema::shared_attribute(
   return attributes_[it->second.index];
 }
 
-const std::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
+const tdb::pmr::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
     const {
   return attributes_;
 }
@@ -548,6 +586,12 @@ void ArraySchema::check_enumerations(const Config& cfg) const {
 
   uint64_t total_size = 0;
   for (const auto& pair : enumeration_map_) {
+    if (!pair.second) {
+      // We don't have an Array instance at this point so the best we can do
+      // is just avoid segfaulting when we attempt to check with unloaded
+      // enumerations.
+      continue;
+    }
     uint64_t size = pair.second->data().size() + pair.second->offsets().size();
     if (size > max_size.value()) {
       throw ArraySchemaException(
@@ -1023,7 +1067,14 @@ void ArraySchema::add_dimension_label(
 
     // Create the dimension label reference.
     auto dim_label_ref = make_shared<DimensionLabel>(
-        HERE(), dim_id, name, uri, dim, label_order, label_type);
+        HERE(),
+        dim_id,
+        name,
+        uri,
+        dim,
+        label_order,
+        label_type,
+        memory_tracker_);
     dimension_labels_.emplace_back(dim_label_ref);
     dimension_label_map_[name] = dim_label_ref.get();
   } catch (...) {
@@ -1250,8 +1301,10 @@ void ArraySchema::drop_enumeration(const std::string& enmr_name) {
 }
 
 // #TODO Add security validation on incoming URI
-ArraySchema ArraySchema::deserialize(
-    Deserializer& deserializer, const URI& uri) {
+shared_ptr<ArraySchema> ArraySchema::deserialize(
+    Deserializer& deserializer,
+    const URI& uri,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load version
   // #TODO Add security validation
@@ -1325,7 +1378,12 @@ ArraySchema ArraySchema::deserialize(
   // Note: Security validation delegated to invoked API
   // #TODO Add security validation
   auto domain{Domain::deserialize(
-      deserializer, version, cell_order, tile_order, coords_filters)};
+      deserializer,
+      version,
+      cell_order,
+      tile_order,
+      coords_filters,
+      memory_tracker)};
 
   // Load attributes
   // Note: Security validation delegated to invoked API
@@ -1392,7 +1450,8 @@ ArraySchema ArraySchema::deserialize(
   // Set schema name
   std::string name = uri.last_path_part();
 
-  return ArraySchema(
+  return make_shared<ArraySchema>(
+      HERE(),
       uri,
       version,
       timestamp_range,
@@ -1405,13 +1464,18 @@ ArraySchema ArraySchema::deserialize(
       capacity,
       attributes,
       dimension_labels,
-      {},
+      std::vector<shared_ptr<const Enumeration>>(),
       enumeration_path_map,
       cell_var_filters,
       cell_validity_filters,
       FilterPipeline(
           coords_filters,
-          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64));
+          version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64),
+      memory_tracker);
+}
+
+shared_ptr<ArraySchema> ArraySchema::clone() const {
+  return make_shared<ArraySchema>(HERE(), *this);
 }
 
 Status ArraySchema::set_allows_dups(bool allows_dups) {

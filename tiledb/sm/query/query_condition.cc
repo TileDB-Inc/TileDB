@@ -126,6 +126,12 @@ Status QueryCondition::init(
     return Status_QueryConditionError("Cannot reinitialize query condition");
   }
 
+  if (op == QueryConditionOp::ALWAYS_TRUE ||
+      op == QueryConditionOp::ALWAYS_FALSE) {
+    auto op_str = query_condition_op_str(op);
+    throw std::runtime_error("Invalid use of internal operation: " + op_str);
+  }
+
   // AST Construction.
   tree_ = tdb_unique_ptr<ASTNode>(tdb_new(
       ASTNodeVal, field_name, condition_value, condition_value_size, op));
@@ -484,6 +490,22 @@ struct QueryCondition::BinaryCmpNullChecks<uint8_t*, QueryConditionOp::NE> {
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_TRUE> {
+  static inline bool cmp(const void* lhs, uint64_t, const void*, uint64_t) {
+    return lhs != nullptr;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
+struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::ALWAYS_FALSE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return false;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
 struct QueryCondition::BinaryCmpNullChecks<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return lhs != nullptr &&
@@ -748,6 +770,30 @@ void QueryCondition::apply_ast_node(
     CombinationOp combination_op,
     std::vector<uint8_t>& result_cell_bitmap) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node<T, QueryConditionOp::ALWAYS_FALSE, CombinationOp>(
+          node,
+          fragment_metadata,
+          stride,
+          var_size,
+          nullable,
+          fill_value,
+          result_cell_slabs,
+          combination_op,
+          result_cell_bitmap);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node<T, QueryConditionOp::LT, CombinationOp>(
           node,
@@ -1440,6 +1486,34 @@ void QueryCondition::apply_ast_node_dense(
     const void* cell_slab_coords,
     span<uint8_t> result_buffer) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node_dense<T, QueryConditionOp::ALWAYS_TRUE, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node_dense<T, QueryConditionOp::ALWAYS_FALSE, CombinationOp>(
+          node,
+          array_schema,
+          result_tile,
+          start,
+          src_cell,
+          stride,
+          var_size,
+          nullable,
+          combination_op,
+          cell_slab_coords,
+          result_buffer);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node_dense<T, QueryConditionOp::LT, CombinationOp>(
           node,
@@ -2207,6 +2281,22 @@ struct QueryCondition::BinaryCmp<uint8_t*, QueryConditionOp::NE> {
 
 /** Partial template specialization for `QueryConditionOp::LT`. */
 template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::ALWAYS_TRUE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return true;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
+struct QueryCondition::BinaryCmp<T, QueryConditionOp::ALWAYS_FALSE> {
+  static inline bool cmp(const void*, uint64_t, const void*, uint64_t) {
+    return false;
+  }
+};
+
+/** Partial template specialization for `QueryConditionOp::LT`. */
+template <typename T>
 struct QueryCondition::BinaryCmp<T, QueryConditionOp::LT> {
   static inline bool cmp(const void* lhs, uint64_t, const void* rhs, uint64_t) {
     return *static_cast<const T*>(lhs) < *static_cast<const T*>(rhs);
@@ -2295,7 +2385,7 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   const auto tile_tuple = result_tile.tile_tuple(node->get_field_name());
   const void* condition_value_content = node->get_value_ptr();
   const size_t condition_value_size = node->get_value_size();
@@ -2383,8 +2473,24 @@ void QueryCondition::apply_ast_node_sparse(
     ResultTile& result_tile,
     const bool var_size,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   switch (node->get_op()) {
+    case QueryConditionOp::ALWAYS_TRUE:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::ALWAYS_TRUE,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
+    case QueryConditionOp::ALWAYS_FALSE:
+      apply_ast_node_sparse<
+          T,
+          QueryConditionOp::ALWAYS_FALSE,
+          BitmapType,
+          CombinationOp,
+          nullable>(node, result_tile, var_size, combination_op, result_bitmap);
+      break;
     case QueryConditionOp::LT:
       apply_ast_node_sparse<
           T,
@@ -2463,7 +2569,7 @@ void QueryCondition::apply_ast_node_sparse(
     const bool var_size,
     const bool nullable,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   if (nullable) {
     apply_ast_node_sparse<T, BitmapType, CombinationOp, std::true_type>(
         node, result_tile, var_size, combination_op, result_bitmap);
@@ -2479,7 +2585,7 @@ void QueryCondition::apply_ast_node_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   std::string node_field_name = node->get_field_name();
   if (!array_schema.is_field(node_field_name)) {
     std::fill(result_bitmap.begin(), result_bitmap.end(), 0);
@@ -2638,7 +2744,7 @@ void QueryCondition::apply_tree_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
     CombinationOp combination_op,
-    std::vector<BitmapType>& result_bitmap) const {
+    tdb::pmr::vector<BitmapType>& result_bitmap) const {
   if (!node->is_expr()) {
     apply_ast_node_sparse<BitmapType>(
         node, array_schema, result_tile, combination_op, result_bitmap);
@@ -2677,7 +2783,9 @@ void QueryCondition::apply_tree_sparse(
           // Handle the cl'(q, a) case.
           // This cases on whether the combination op = OR.
         } else if constexpr (std::is_same_v<CombinationOp, QCMax<BitmapType>>) {
-          std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 1);
+          auto resource = result_bitmap.get_allocator().resource();
+          tdb::pmr::vector<BitmapType> combination_op_bitmap(
+              result_bitmap_size, 1, resource);
 
           for (const auto& child : node->get_children()) {
             apply_tree_sparse<BitmapType>(
@@ -2699,7 +2807,9 @@ void QueryCondition::apply_tree_sparse(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<BitmapType> combination_op_bitmap(result_bitmap_size, 0);
+        auto resource = result_bitmap.get_allocator().resource();
+        tdb::pmr::vector<BitmapType> combination_op_bitmap(
+            result_bitmap_size, 0, resource);
 
         for (const auto& child : node->get_children()) {
           apply_tree_sparse<BitmapType>(
@@ -2730,7 +2840,7 @@ template <typename BitmapType>
 Status QueryCondition::apply_sparse(
     const ArraySchema& array_schema,
     ResultTile& result_tile,
-    std::vector<BitmapType>& result_bitmap) {
+    tdb::pmr::vector<BitmapType>& result_bitmap) {
   apply_tree_sparse<BitmapType>(
       tree_,
       array_schema,
@@ -2759,7 +2869,7 @@ uint64_t QueryCondition::condition_index() const {
 
 // Explicit template instantiations.
 template Status QueryCondition::apply_sparse<uint8_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint8_t>&);
+    const ArraySchema& array_schema, ResultTile&, tdb::pmr::vector<uint8_t>&);
 template Status QueryCondition::apply_sparse<uint64_t>(
-    const ArraySchema& array_schema, ResultTile&, std::vector<uint64_t>&);
+    const ArraySchema& array_schema, ResultTile&, tdb::pmr::vector<uint64_t>&);
 }  // namespace tiledb::sm

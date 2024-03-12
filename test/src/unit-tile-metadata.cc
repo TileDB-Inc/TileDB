@@ -748,12 +748,12 @@ struct CPPVarTileMetadataFx {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
-    uint64_t num_strings = 2000;
+    int num_strings = 2000;
 
     if (f == 0) {
       // Generate random, sorted strings for the string ascii type.
       strings_.reserve(num_strings);
-      for (uint64_t i = 0; i < num_strings; i++) {
+      for (int i = 0; i < num_strings; i++) {
         strings_.emplace_back(
             tiledb::test::random_string(rand() % max_string_size));
       }

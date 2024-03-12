@@ -240,7 +240,7 @@ class QueryCondition {
   Status apply_sparse(
       const ArraySchema& array_schema,
       ResultTile& result_tile,
-      std::vector<BitmapType>& result_bitmap);
+      tdb::pmr::vector<BitmapType>& result_bitmap);
 
   /**
    * Reverse the query condition using De Morgan's law.
@@ -561,7 +561,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile,
@@ -584,7 +584,7 @@ class QueryCondition {
       ResultTile& result_tile,
       const bool var_size,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node on a sparse result tile.
@@ -603,7 +603,7 @@ class QueryCondition {
       const bool var_size,
       const bool nullable,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -622,7 +622,7 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to a set of cells.
@@ -642,7 +642,7 @@ class QueryCondition {
       const ArraySchema& array_schema,
       ResultTile& result_tile,
       CombinationOp combination_op,
-      std::vector<BitmapType>& result_bitmap) const;
+      tdb::pmr::vector<BitmapType>& result_bitmap) const;
 };
 
 }  // namespace sm

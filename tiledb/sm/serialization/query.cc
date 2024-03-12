@@ -88,7 +88,7 @@ namespace serialization {
 
 shared_ptr<Logger> dummy_logger = make_shared<Logger>(HERE(), "");
 
-Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
+void stats_to_capnp(const Stats& stats, capnp::Stats::Builder* stats_builder) {
   // Build counters
   const auto counters = stats.counters();
   if (counters != nullptr && !counters->empty()) {
@@ -114,31 +114,29 @@ Status stats_to_capnp(Stats& stats, capnp::Stats::Builder* stats_builder) {
       ++index;
     }
   }
-
-  return Status::Ok();
 }
 
-Status stats_from_capnp(
-    const capnp::Stats::Reader& stats_reader, Stats* stats) {
+StatsData stats_from_capnp(const capnp::Stats::Reader& stats_reader) {
+  std::unordered_map<std::string, uint64_t> counters;
+  std::unordered_map<std::string, double> timers;
+
   if (stats_reader.hasCounters()) {
-    auto counters = stats->counters();
     auto counters_reader = stats_reader.getCounters();
     for (const auto entry : counters_reader.getEntries()) {
       auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
-      (*counters)[std::string{key}] = entry.getValue();
+      counters[std::string(key)] = entry.getValue();
     }
   }
 
   if (stats_reader.hasTimers()) {
-    auto timers = stats->timers();
     auto timers_reader = stats_reader.getTimers();
     for (const auto entry : timers_reader.getEntries()) {
       auto key = std::string_view{entry.getKey().cStr(), entry.getKey().size()};
-      (*timers)[std::string{key}] = entry.getValue();
+      timers[std::string(key)] = entry.getValue();
     }
   }
 
-  return Status::Ok();
+  return stats::StatsData(counters, timers);
 }
 
 void range_buffers_to_capnp(
@@ -246,11 +244,9 @@ Status subarray_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = subarray->stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = subarray->stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (subarray->relevant_fragments().relevant_fragments_size() > 0) {
     auto relevant_fragments_builder = builder->initRelevantFragments(
@@ -272,8 +268,6 @@ Status subarray_from_capnp(
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
@@ -328,11 +322,8 @@ Status subarray_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader.hasStats()) {
-    stats::Stats* stats = subarray->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader.getStats());
+    subarray->set_stats(stats_data);
   }
 
   if (reader.hasRelevantFragments()) {
@@ -428,11 +419,9 @@ Status subarray_partitioner_to_capnp(
   builder->setMemoryBudgetValidity(mem_budget_validity);
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = partitioner.stats();
-  if (stats != nullptr) {
-    auto stats_builder = builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = partitioner.stats();
+  auto stats_builder = builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -566,11 +555,8 @@ Status subarray_partitioner_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader.hasStats()) {
-    auto stats = partitioner->stats();
-    // We should always have stats
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader.getStats());
+    partitioner->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -913,11 +899,9 @@ Status reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -947,11 +931,9 @@ Status index_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -982,11 +964,9 @@ Status dense_reader_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1146,11 +1126,8 @@ Status reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1187,11 +1164,8 @@ Status index_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1229,11 +1203,8 @@ Status dense_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1252,11 +1223,8 @@ Status delete_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (delete_reader.hasStats()) {
-    stats::Stats* stats = delete_strategy->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(delete_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(delete_reader.getStats());
+    delete_strategy->set_stats(stats_data);
   }
 
   return Status::Ok();
@@ -1273,11 +1241,9 @@ Status delete_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = delete_strategy.stats();
-  if (stats != nullptr) {
-    auto stats_builder = delete_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *delete_strategy.stats();
+  auto stats_builder = delete_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   return Status::Ok();
 }
@@ -1301,11 +1267,9 @@ Status writer_to_capnp(
   }
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = writer.stats();
-  if (stats != nullptr) {
-    auto stats_builder = writer_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *writer.stats();
+  auto stats_builder = writer_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 
   if (query.layout() == Layout::GLOBAL_ORDER) {
     auto& global_writer = dynamic_cast<GlobalOrderWriter&>(writer);
@@ -1341,11 +1305,8 @@ Status writer_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (writer_reader.hasStats()) {
-    stats::Stats* stats = writer->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(writer_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(writer_reader.getStats());
+    writer->set_stats(stats_data);
   }
 
   if (query.layout() == Layout::GLOBAL_ORDER &&
@@ -1557,10 +1518,10 @@ Status query_to_capnp(
   RETURN_NOT_OK(config_to_capnp(query.config(), &config_builder));
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = query.stats();
-  if (stats != nullptr) {
+  auto stats = query.stats();
+  if (stats) {
     auto stats_builder = query_builder->initStats();
-    RETURN_NOT_OK(stats_to_capnp(*stats, &stats_builder));
+    stats_to_capnp(*stats, &stats_builder);
   }
 
   auto& written_fragment_info = query.get_written_fragment_info();
@@ -1589,10 +1550,10 @@ Status query_to_capnp(
   // The server should throw if it's about to serialize an incomplete query
   // that has aggregates on it, this behavior is currently not supported.
   if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
-      !query.has_aggregates()) {
-    throw Status_SerializationError(
+      query.has_aggregates()) {
+    throw StatusException(Status_SerializationError(
         "Aggregates are not currently supported in incomplete remote "
-        "queries");
+        "queries"));
   }
   query_channels_to_capnp(query, query_builder);
 
@@ -2270,11 +2231,8 @@ Status query_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (query_reader.hasStats()) {
-    stats::Stats* stats = query->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      RETURN_NOT_OK(stats_from_capnp(query_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(query_reader.getStats());
+    query->set_stats(stats_data);
   }
 
   if (query_reader.hasWrittenFragmentInfo()) {
@@ -2324,7 +2282,8 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager) {
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -2339,7 +2298,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -2367,7 +2330,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       default:
@@ -3180,11 +3147,9 @@ void ordered_dim_label_reader_to_capnp(
       query.dimension_label_increasing_order());
 
   // If stats object exists set its cap'n proto object
-  stats::Stats* stats = reader.stats();
-  if (stats != nullptr) {
-    auto stats_builder = reader_builder->initStats();
-    throw_if_not_ok(stats_to_capnp(*stats, &stats_builder));
-  }
+  const auto& stats = *reader.stats();
+  auto stats_builder = reader_builder->initStats();
+  stats_to_capnp(stats, &stats_builder);
 }
 
 void ordered_dim_label_reader_from_capnp(
@@ -3212,11 +3177,8 @@ void ordered_dim_label_reader_from_capnp(
 
   // If cap'n proto object has stats set it on c++ object
   if (reader_reader.hasStats()) {
-    stats::Stats* stats = reader->stats();
-    // We should always have a stats here
-    if (stats != nullptr) {
-      throw_if_not_ok(stats_from_capnp(reader_reader.getStats(), stats));
-    }
+    auto stats_data = stats_from_capnp(reader_reader.getStats());
+    reader->set_stats(stats_data);
   }
 }
 
@@ -3234,7 +3196,11 @@ Status query_deserialize(
 }
 
 Status array_from_query_deserialize(
-    const Buffer&, SerializationType, Array&, StorageManager*) {
+    const Buffer&,
+    SerializationType,
+    Array&,
+    StorageManager*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

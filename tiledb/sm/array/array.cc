@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include "tiledb/common/common.h"
 
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -59,8 +60,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArrayException : public StatusException {
  public:
@@ -96,6 +96,7 @@ Array::Array(
     , resources_(storage_manager_->resources())
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
+    , memory_tracker_(storage_manager->resources().create_memory_tracker())
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }
@@ -137,6 +138,7 @@ Status Array::open_without_fragments(
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       encryption_type,
       encryption_key,
@@ -148,6 +150,7 @@ Status Array::open_without_fragments(
   /* Note: query_type_ MUST be set before calling set_array_open()
     because it will be examined by the ConsistencyController. */
   query_type_ = QueryType::READ;
+  memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
 
   /* Note: the open status MUST be exception safe. If anything interrupts the
    * opening process, it will throw and the array will be set as closed. */
@@ -245,6 +248,11 @@ Status Array::open(
   }
 
   query_type_ = query_type;
+  if (query_type_ == QueryType::READ) {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
+  } else {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_WRITE);
+  }
 
   set_timestamps(
       timestamp_start, timestamp_end, query_type_ == QueryType::READ);
@@ -309,6 +317,7 @@ Status Array::open(
     opened_array_ = make_shared<OpenedArray>(
         HERE(),
         resources_,
+        memory_tracker_,
         array_uri_,
         encryption_type,
         encryption_key,
@@ -585,7 +594,8 @@ std::vector<shared_ptr<const Enumeration>> Array::get_enumerations(
           array_dir_timestamp_start_,
           array_dir_timestamp_end_,
           this,
-          names_to_load);
+          names_to_load,
+          memory_tracker_);
     } else {
       // Create a vector of paths to be loaded.
       std::vector<std::string> paths_to_load;
@@ -823,6 +833,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       key->encryption_type(),
       key->key().data(),
@@ -1039,15 +1050,13 @@ Metadata* Array::unsafe_metadata() {
   return &opened_array_->metadata();
 }
 
-Status Array::metadata(Metadata** metadata) {
+Metadata& Array::metadata() {
   // Load array metadata for array opened for reads, if not loaded yet
   if (query_type_ == QueryType::READ && !metadata_loaded()) {
-    RETURN_NOT_OK(load_metadata());
+    throw_if_not_ok(load_metadata());
   }
 
-  *metadata = &opened_array_->metadata();
-
-  return Status::Ok();
+  return opened_array_->metadata();
 }
 
 const NDRange Array::non_empty_domain() {
@@ -1057,10 +1066,6 @@ const NDRange Array::non_empty_domain() {
   }
 
   return loaded_non_empty_domain();
-}
-
-MemoryTracker* Array::memory_tracker() {
-  return &memory_tracker_;
 }
 
 bool Array::serialize_non_empty_domain() const {
@@ -1261,7 +1266,8 @@ Array::open_for_reads_without_fragments() {
       "array_open_read_without_fragments_load_schemas");
 
   // Load array schemas
-  auto result = array_directory().load_array_schemas(*encryption_key());
+  auto result =
+      array_directory().load_array_schemas(*encryption_key(), memory_tracker_);
 
   auto version = std::get<0>(result)->version();
   ensure_supported_schema_version_for_read(version);
@@ -1286,7 +1292,7 @@ Array::open_for_writes() {
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
-      array_directory().load_array_schemas(*encryption_key());
+      array_directory().load_array_schemas(*encryption_key(), memory_tracker_);
 
   // If building experimentally, this library should not be able to
   // write to newer-versioned or older-versioned arrays
@@ -1350,7 +1356,7 @@ Status Array::compute_max_buffer_sizes(const void* subarray) {
     last_max_buffer_sizes_.clear();
 
     // Get all attributes and coordinates
-    auto attributes = array_schema_latest().attributes();
+    auto& attributes = array_schema_latest().attributes();
     last_max_buffer_sizes_.clear();
     for (const auto& attr : attributes)
       last_max_buffer_sizes_[attr->name()] =
@@ -1475,9 +1481,8 @@ void Array::do_load_metadata() {
       parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
         const auto& uri = array_metadata_to_load[m].uri_;
 
-        auto&& tile =
-            GenericTileIO::load(resources_, uri, 0, *encryption_key());
-        metadata_tiles[m] = tdb::make_shared<Tile>(HERE(), std::move(tile));
+        metadata_tiles[m] = GenericTileIO::load(
+            resources_, uri, 0, *encryption_key(), memory_tracker_);
 
         return Status::Ok();
       }));
@@ -1615,6 +1620,7 @@ void Array::set_serialized_array_open() {
   opened_array_ = make_shared<OpenedArray>(
       HERE(),
       resources_,
+      memory_tracker_,
       array_uri_,
       EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -1622,6 +1628,15 @@ void Array::set_serialized_array_open() {
       timestamp_start(),
       timestamp_end_opened_at(),
       array_uri_.is_tiledb());
+}
+
+void Array::set_query_type(QueryType query_type) {
+  query_type_ = query_type;
+  if (query_type_ == QueryType::READ) {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_READ);
+  } else {
+    memory_tracker_->set_type(MemoryTrackerType::ARRAY_WRITE);
+  }
 }
 
 void Array::set_array_closed() {
@@ -1677,5 +1692,4 @@ void ensure_supported_schema_version_for_read(format_version_t version) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

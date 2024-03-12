@@ -39,7 +39,11 @@
 
 namespace tiledb::sm {
 
-class QueryChannel {
+/**
+ * Original class is only used for capnp (de)serialization. `class Query` uses
+ * its own container to hold aggregates.
+ */
+class LegacyQueryAggregatesOverDefault {
  public:
   using ChannelAggregates =
       std::unordered_map<std::string, shared_ptr<IAggregator>>;
@@ -54,7 +58,8 @@ class QueryChannel {
    * @param is_default If true, this is the default query channel
    * @param aggregates A map of aggregators by output field name
    */
-  QueryChannel(bool is_default, const ChannelAggregates& aggregates)
+  LegacyQueryAggregatesOverDefault(
+      bool is_default, const ChannelAggregates& aggregates)
       : default_(is_default)
       , aggregates_{aggregates} {
   }
@@ -83,6 +88,58 @@ class QueryChannel {
   /* ********************************* */
   bool default_;
   ChannelAggregates aggregates_;
+};
+
+/* forward declaration */
+class Query;
+
+/**
+ * Replacement for the current QueryChannel, which does not work for more than
+ * the initial case with a default channel and only simple aggregates.
+ *
+ * Responsibility for choosing channel identifiers is the responsibility of
+ * `class Query`; this class merely carries the resulting identifier.
+ */
+class QueryChannel {
+  std::reference_wrapper<Query> query_;
+  size_t id_;
+
+ public:
+  /**
+   * Default constructor is deleted. A channel makes no sense without a query.
+   */
+  QueryChannel() = delete;
+  /*
+   * Ordinary constructor.
+   */
+  QueryChannel(Query& q, size_t id)
+      : query_(q)
+      , id_(id) {
+    (void)id_;
+  }
+  /**
+   * Copy constructor is the default.
+   */
+  QueryChannel(const QueryChannel&) = default;
+  /**
+   * Move constructor is the default.
+   */
+  QueryChannel(QueryChannel&&) = default;
+  /**
+   * Copy assignment is the default.
+   */
+  QueryChannel& operator=(const QueryChannel&) = default;
+  /**
+   * Move assignment is the default.
+   */
+  QueryChannel& operator=(QueryChannel&&) = default;
+
+  /**
+   * Accessor for query member
+   */
+  inline Query& query() {
+    return query_;
+  }
 };
 
 }  // namespace tiledb::sm

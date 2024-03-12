@@ -64,6 +64,9 @@ struct DenseTilerFx {
   tiledb_ctx_t* ctx_;
   tiledb_array_t* array_;
 
+  // Test MemoryTracker
+  shared_ptr<MemoryTracker> tracker_;
+
   // Constructors/Destructors
   DenseTilerFx();
   ~DenseTilerFx();
@@ -86,7 +89,8 @@ struct DenseTilerFx {
   bool check_tile(WriterTile& tile, const std::vector<T>& data);
 };
 
-DenseTilerFx::DenseTilerFx() {
+DenseTilerFx::DenseTilerFx()
+    : tracker_(tiledb::test::create_test_memory_tracker()) {
   REQUIRE(tiledb_ctx_alloc(NULL, &ctx_) == TILEDB_OK);
   array_ = NULL;
 }
@@ -211,7 +215,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 2);
@@ -232,7 +237,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -278,7 +284,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -314,7 +321,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2 = tiler2.copy_plan(0);
@@ -338,7 +346,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3 = tiler3.copy_plan(0);
@@ -387,7 +396,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -396,7 +406,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(!tiler1.get_tile(0, "foo", tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
@@ -410,7 +421,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -428,7 +440,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2(
@@ -437,7 +450,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2).ok());
   std::vector<int32_t> c_data2 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile2.fixed_tile(), c_data2));
@@ -454,7 +468,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3(
@@ -463,7 +478,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a", tile3).ok());
   std::vector<int32_t> c_data3 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile3.fixed_tile(), c_data3));
@@ -505,7 +521,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -514,7 +531,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(!tiler1.get_tile(0, "foo", tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
@@ -528,7 +546,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -571,7 +590,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -580,7 +600,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(!tiler1.get_tile(0, "foo", tile1_0).ok());
   CHECK(!tiler1.get_tile(10, "a", tile1_0).ok());
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
@@ -594,7 +615,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -641,7 +663,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 4);
@@ -663,7 +686,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -685,7 +709,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler3.tile_num() == 4);
@@ -707,7 +732,8 @@ TEST_CASE_METHOD(
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler4.tile_num() == 1);
@@ -757,7 +783,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler1.tile_num() == 4);
@@ -779,7 +806,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler2.tile_num() == 1);
@@ -801,7 +829,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler3.tile_num() == 4);
@@ -823,7 +852,8 @@ TEST_CASE_METHOD(
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test correctness of initialization
   CHECK(tiler4.tile_num() == 1);
@@ -873,7 +903,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -932,7 +963,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2_0 = tiler2.copy_plan(0);
@@ -958,7 +990,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3_0 = tiler3.copy_plan(0);
@@ -1021,7 +1054,8 @@ TEST_CASE_METHOD(
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan4_0 = tiler4.copy_plan(0);
@@ -1076,7 +1110,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -1139,7 +1174,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2_0, sub2_1}, sizeof(sub2_0), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan2_0 = tiler2.copy_plan(0);
@@ -1166,7 +1202,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3_0, sub3_1}, sizeof(sub3_0), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan3_0 = tiler3.copy_plan(0);
@@ -1225,7 +1262,8 @@ TEST_CASE_METHOD(
   add_ranges({sub4_0, sub4_1}, sizeof(sub4_0), &subarray4);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan4_0 = tiler4.copy_plan(0);
@@ -1279,7 +1317,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -1344,7 +1383,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test correctness of copy plan for tile 0
   auto copy_plan1_0 = tiler1.copy_plan(0);
@@ -1410,7 +1450,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -1419,7 +1460,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -1439,7 +1481,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -1461,7 +1504,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<int32_t> c_data1_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -1479,7 +1523,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<int32_t> c_data1_3(50);
   for (int i = 0; i <= 1; ++i)
@@ -1504,7 +1549,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -1513,7 +1559,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<int32_t> c_data2_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -1548,7 +1595,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3_0(
@@ -1557,7 +1605,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a", tile3_0).ok());
   std::vector<int32_t> c_data3_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -1577,7 +1626,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(1, "a", tile3_1).ok());
   std::vector<int32_t> c_data3_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -1599,7 +1649,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(2, "a", tile3_2).ok());
   std::vector<int32_t> c_data3_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -1617,7 +1668,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(3, "a", tile3_3).ok());
   std::vector<int32_t> c_data3_3(50);
   for (int i = 0; i <= 1; ++i)
@@ -1642,7 +1694,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 7, 13, 2, 8, 14, 3, 9, 15, 4, 10, 16, 5, 11, 17, 6, 12, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile4_0(
@@ -1651,7 +1704,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler4.get_tile(0, "a", tile4_0).ok());
   std::vector<int32_t> c_data4_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -1712,7 +1766,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -1721,7 +1776,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 37; ++i)
@@ -1745,7 +1801,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 34; ++i)
@@ -1768,7 +1825,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<int32_t> c_data1_2(50);
   for (int i = 0; i <= 2; ++i)
@@ -1790,7 +1848,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<int32_t> c_data1_3(50);
   c_data1_3[0] = 14;
@@ -1817,7 +1876,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -1826,7 +1886,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<int32_t> c_data2_0(50);
   for (int i = 0; i <= 11; ++i)
@@ -1879,7 +1940,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 6, 11, 2, 7, 12, 3, 8, 13, 4, 9, 14, 5, 10, 15};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3_0(
@@ -1888,7 +1950,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a", tile3_0).ok());
   std::vector<int32_t> c_data3_0(50);
   for (int i = 0; i <= 37; ++i)
@@ -1912,7 +1975,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(1, "a", tile3_1).ok());
   std::vector<int32_t> c_data3_1(50);
   for (int i = 0; i <= 34; ++i)
@@ -1935,7 +1999,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(2, "a", tile3_2).ok());
   std::vector<int32_t> c_data3_2(50);
   for (int i = 0; i <= 2; ++i)
@@ -1957,7 +2022,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(3, "a", tile3_3).ok());
   std::vector<int32_t> c_data3_3(50);
   c_data3_3[0] = 14;
@@ -1984,7 +2050,8 @@ TEST_CASE_METHOD(
   buff_a = {1, 7, 13, 2, 8, 14, 3, 9, 15, 4, 10, 16, 5, 11, 17, 6, 12, 18};
   buff_a_size = sizeof(buff_a);
   buffers["a"] = QueryBuffer(&buff_a[0], nullptr, &buff_a_size, nullptr);
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile4_0(
@@ -1993,7 +2060,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler4.get_tile(0, "a", tile4_0).ok());
   std::vector<int32_t> c_data4_0(50);
   for (int i = 0; i <= 11; ++i)
@@ -2075,7 +2143,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -2084,7 +2153,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 29; ++i)
@@ -2100,7 +2170,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 39; ++i)
@@ -2152,7 +2223,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -2161,7 +2233,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<int32_t> c_data1_0(50);
   for (int i = 0; i <= 34; ++i)
@@ -2177,7 +2250,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1(50);
   for (int i = 0; i <= 9; ++i)
@@ -2223,7 +2297,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -2232,7 +2307,8 @@ TEST_CASE_METHOD(
       false,
       false,
       2 * sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<int32_t> c_data1_0 = {
       fill_value, fill_value, fill_value, fill_value, 1, 11, 2, 22, 3, 33};
@@ -2245,7 +2321,8 @@ TEST_CASE_METHOD(
       false,
       false,
       2 * sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<int32_t> c_data1_1 = {
       4,
@@ -2272,7 +2349,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2(
@@ -2281,7 +2359,8 @@ TEST_CASE_METHOD(
       false,
       false,
       2 * sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2).ok());
   std::vector<int32_t> c_data2 = {
       fill_value, fill_value, 1, 11, 2, 22, 3, 33, 4, 44};
@@ -2299,7 +2378,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3(
@@ -2308,7 +2388,8 @@ TEST_CASE_METHOD(
       false,
       false,
       2 * sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a", tile3).ok());
   std::vector<int32_t> c_data3 = {
       fill_value, fill_value, 1, 11, 2, 22, 3, 33, 4, 44};
@@ -2354,7 +2435,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1}, sizeof(sub1), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0_a1(
@@ -2363,7 +2445,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a1", tile1_0_a1).ok());
   std::vector<int32_t> c_data1_0_a1 = {fill_value, fill_value, 1, 2, 3};
   CHECK(check_tile<int32_t>(tile1_0_a1.fixed_tile(), c_data1_0_a1));
@@ -2373,7 +2456,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(double),
-      Datatype::FLOAT64);
+      Datatype::FLOAT64,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a2", tile1_0_a2).ok());
   std::vector<double> c_data1_0_a2 = {
       double(fill_value), double(fill_value), 1.1, 2.2, 3.3};
@@ -2386,7 +2470,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a1", tile1_1_a1).ok());
   std::vector<int32_t> c_data1_1_a1 = {
       4, fill_value, fill_value, fill_value, fill_value};
@@ -2397,7 +2482,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(double),
-      Datatype::FLOAT64);
+      Datatype::FLOAT64,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a2", tile1_1_a2).ok());
   std::vector<double> c_data1_1_a2 = {
       4.4,
@@ -2419,7 +2505,8 @@ TEST_CASE_METHOD(
   add_ranges({sub2}, sizeof(sub2), &subarray2);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_a1(
@@ -2428,7 +2515,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a1", tile2_a1).ok());
   std::vector<int32_t> c_data2_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile2_a1.fixed_tile(), c_data2_a1));
@@ -2438,7 +2526,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(double),
-      Datatype::FLOAT64);
+      Datatype::FLOAT64,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a2", tile2_a2).ok());
   std::vector<double> c_data2_a2 = {double(fill_value), 1.1, 2.2, 3.3, 4.4};
   CHECK(check_tile<double>(tile2_a2.fixed_tile(), c_data2_a2));
@@ -2455,7 +2544,8 @@ TEST_CASE_METHOD(
   add_ranges({sub3}, sizeof(sub3), &subarray3);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3_a1(
@@ -2464,7 +2554,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a1", tile3_a1).ok());
   std::vector<int32_t> c_data3_a1 = {fill_value, 1, 2, 3, 4};
   CHECK(check_tile<int32_t>(tile3_a1.fixed_tile(), c_data3_a1));
@@ -2474,7 +2565,8 @@ TEST_CASE_METHOD(
       false,
       false,
       sizeof(double),
-      Datatype::FLOAT64);
+      Datatype::FLOAT64,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a2", tile3_a2).ok());
   std::vector<double> c_data3_a2 = {double(fill_value), 1.1, 2.2, 3.3, 4.4};
   CHECK(check_tile<double>(tile3_a2.fixed_tile(), c_data3_a2));
@@ -2528,7 +2620,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -2537,7 +2630,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint8_t> c_data1_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -2559,7 +2653,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint8_t> c_data1_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -2581,7 +2676,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint8_t> c_data1_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -2600,7 +2696,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint8_t> c_data1_3(50);
   c_data1_3[0] = 0;
@@ -2632,7 +2729,8 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -2641,7 +2739,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint8_t> c_data2_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -2695,7 +2794,8 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler3(&buffers, &subarray3, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler3(
+      tracker_, &buffers, &subarray3, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile3_0(
@@ -2704,7 +2804,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(0, "a", tile3_0).ok());
   std::vector<uint8_t> c_data3_0(50);
   for (int i = 0; i <= 36; ++i)
@@ -2726,7 +2827,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(1, "a", tile3_1).ok());
   std::vector<uint8_t> c_data3_1(50);
   for (int i = 0; i <= 29; ++i)
@@ -2748,7 +2850,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(2, "a", tile3_2).ok());
   std::vector<uint8_t> c_data3_2(50);
   for (int i = 0; i <= 6; ++i)
@@ -2767,7 +2870,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler3.get_tile(3, "a", tile3_3).ok());
   std::vector<uint8_t> c_data3_3(50);
   c_data3_3[0] = 1;
@@ -2799,7 +2903,8 @@ TEST_CASE_METHOD(
       &buff_a_size,
       nullptr,
       ValidityVector(&buff_a_n[0], &buff_a_n_size));
-  DenseTiler<int32_t> tiler4(&buffers, &subarray4, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler4(
+      tracker_, &buffers, &subarray4, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile4_0(
@@ -2808,7 +2913,8 @@ TEST_CASE_METHOD(
       false,
       true,
       sizeof(int32_t),
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler4.get_tile(0, "a", tile4_0).ok());
   std::vector<uint8_t> c_data4_0(50);
   for (int i = 0; i <= 21; ++i)
@@ -2887,7 +2993,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -2896,7 +3003,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -2936,7 +3044,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -2984,7 +3093,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3015,7 +3125,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3059,7 +3170,8 @@ TEST_CASE_METHOD(
   buff_a_val_size = buff_a_val.size();
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -3068,7 +3180,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3222,7 +3335,8 @@ TEST_CASE_METHOD(
   add_ranges({sub1_0, sub1_1}, sizeof(sub1_0), &subarray1);
 
   // Create DenseTiler
-  DenseTiler<int32_t> tiler1(&buffers, &subarray1, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler1(
+      tracker_, &buffers, &subarray1, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -3231,7 +3345,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3271,7 +3386,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -3319,7 +3435,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3350,7 +3467,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3414,7 +3532,8 @@ TEST_CASE_METHOD(
   buff_a_val_size = buff_a_val.size() * sizeof(int32_t);
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
-  DenseTiler<int32_t> tiler2(&buffers, &subarray2, &test::g_helper_stats);
+  DenseTiler<int32_t> tiler2(
+      tracker_, &buffers, &subarray2, &test::g_helper_stats);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -3423,7 +3542,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::STRING_ASCII);
+      Datatype::STRING_ASCII,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3579,7 +3699,7 @@ TEST_CASE_METHOD(
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "bytes", 64, true);
+      tracker_, &buffers, &subarray1, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -3588,7 +3708,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3628,7 +3749,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -3676,7 +3798,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -3707,7 +3830,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -3773,7 +3897,7 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "bytes", 64, true);
+      tracker_, &buffers, &subarray2, &test::g_helper_stats, "bytes", 64, true);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -3782,7 +3906,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -3923,7 +4048,13 @@ TEST_CASE_METHOD(
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "elements", 64, false);
+      tracker_,
+      &buffers,
+      &subarray1,
+      &test::g_helper_stats,
+      "elements",
+      64,
+      false);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -3932,7 +4063,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -3972,7 +4104,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -4020,7 +4153,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -4051,7 +4185,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -4099,7 +4234,13 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "elements", 64, false);
+      tracker_,
+      &buffers,
+      &subarray2,
+      &test::g_helper_stats,
+      "elements",
+      64,
+      false);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -4108,7 +4249,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)
@@ -4249,7 +4391,13 @@ TEST_CASE_METHOD(
 
   // Create DenseTiler
   DenseTiler<int32_t> tiler1(
-      &buffers, &subarray1, &test::g_helper_stats, "elements", 32, false);
+      tracker_,
+      &buffers,
+      &subarray1,
+      &test::g_helper_stats,
+      "elements",
+      32,
+      false);
 
   // Test get tile 0
   WriterTileTuple tile1_0(
@@ -4258,7 +4406,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(0, "a", tile1_0).ok());
   std::vector<uint64_t> c_data1_0_off(50);
   for (int i = 0; i <= 37; ++i)
@@ -4298,7 +4447,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(1, "a", tile1_1).ok());
   std::vector<uint64_t> c_data1_1_off(50);
   for (int i = 0; i <= 30; ++i)
@@ -4346,7 +4496,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(2, "a", tile1_2).ok());
   std::vector<uint64_t> c_data1_2_off(50);
   for (int i = 0; i <= 7; ++i)
@@ -4377,7 +4528,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler1.get_tile(3, "a", tile1_3).ok());
   std::vector<uint64_t> c_data1_3_off(50);
   c_data1_3_off[0] = 0;
@@ -4425,7 +4577,13 @@ TEST_CASE_METHOD(
   buffers["a"] = QueryBuffer(
       &buff_a_off[0], &buff_a_val[0], &buff_a_off_size, &buff_a_val_size);
   DenseTiler<int32_t> tiler2(
-      &buffers, &subarray2, &test::g_helper_stats, "elements", 32, false);
+      tracker_,
+      &buffers,
+      &subarray2,
+      &test::g_helper_stats,
+      "elements",
+      32,
+      false);
 
   // Test get tile 0
   WriterTileTuple tile2_0(
@@ -4434,7 +4592,8 @@ TEST_CASE_METHOD(
       true,
       false,
       1,
-      Datatype::INT32);
+      Datatype::INT32,
+      tracker_);
   CHECK(tiler2.get_tile(0, "a", tile2_0).ok());
   std::vector<uint64_t> c_data2_0_off(50);
   for (int i = 0; i <= 22; ++i)

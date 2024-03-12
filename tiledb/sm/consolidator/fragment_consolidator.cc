@@ -841,7 +841,7 @@ void FragmentConsolidator::set_query_buffers(
   const auto& array_schema = query->array_schema();
   auto dim_num = array_schema.dim_num();
   auto dense = array_schema.dense();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   unsigned bid = 0;
 
   // Here the first buffer should always be the fixed buffer (either offsets

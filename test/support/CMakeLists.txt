@@ -41,6 +41,8 @@ set(TILEDB_TEST_SUPPORT_SOURCES
   src/helpers.h
   src/helpers.cc
   src/helpers-dimension.h
+  src/mem_helpers.h
+  src/mem_helpers.cc
   src/serialization_wrappers.cc
   src/temporary_local_directory.cc
   src/vfs_helpers.cc
@@ -65,6 +67,7 @@ if (NOT MSVC)
 endif()
 
 target_link_libraries(tiledb_test_support_lib PRIVATE $<BUILD_INTERFACE:common>)
+target_link_libraries(tiledb_test_support_lib PRIVATE baseline)
 
 target_include_directories(
   tiledb_test_support_lib BEFORE PRIVATE
@@ -107,6 +110,11 @@ commence(object_library tdb_catch)
   this_target_sources(tdb_catch_prng.cc)
   this_target_link_libraries(Catch2::Catch2)
   this_target_object_libraries(seedable_global_PRNG)
+conclude(object_library)
+
+commence(object_library mem_helpers)
+  this_target_sources(src/mem_helpers.cc)
+  this_target_object_libraries(baseline)
 conclude(object_library)
 
 add_test_subdirectory()

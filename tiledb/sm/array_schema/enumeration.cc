@@ -33,7 +33,8 @@
 #include <iostream>
 #include <sstream>
 
-#include "tiledb/common/random/random_label.h"
+#include "tiledb/common/memory_tracker.h"
+#include "tiledb/sm/misc/uuid.h"
 
 #include "enumeration.h"
 
@@ -56,14 +57,17 @@ Enumeration::Enumeration(
     const void* data,
     uint64_t data_size,
     const void* offsets,
-    uint64_t offsets_size)
-    : name_(name)
+    uint64_t offsets_size,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , name_(name)
     , path_name_(path_name)
     , type_(type)
     , cell_val_num_(cell_val_num)
     , ordered_(ordered)
     , data_(data_size)
-    , offsets_(offsets_size) {
+    , offsets_(offsets_size)
+    , value_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
   ensure_datatype_is_valid(type);
 
   if (name.empty()) {
@@ -71,8 +75,10 @@ Enumeration::Enumeration(
   }
 
   if (path_name_.empty()) {
-    path_name_ = "__" + tiledb::common::random_label() + "_" +
-                 std::to_string(constants::enumerations_version);
+    std::string tmp_uuid;
+    throw_if_not_ok(uuid::generate_uuid(&tmp_uuid, false));
+    path_name_ =
+        "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
   }
 
   if (path_name.find("/") != std::string::npos) {
@@ -176,7 +182,7 @@ Enumeration::Enumeration(
 }
 
 shared_ptr<const Enumeration> Enumeration::deserialize(
-    Deserializer& deserializer) {
+    Deserializer& deserializer, shared_ptr<MemoryTracker> memory_tracker) {
   auto disk_version = deserializer.read<uint32_t>();
   if (disk_version > constants::enumerations_version) {
     throw EnumerationException(
@@ -222,7 +228,8 @@ shared_ptr<const Enumeration> Enumeration::deserialize(
       data,
       data_size,
       offsets,
-      offsets_size);
+      offsets_size,
+      memory_tracker);
 }
 
 shared_ptr<const Enumeration> Enumeration::extend(
@@ -302,7 +309,8 @@ shared_ptr<const Enumeration> Enumeration::extend(
       new_data.data(),
       new_data.size(),
       new_offsets_ptr,
-      new_offsets_size);
+      new_offsets_size,
+      memory_tracker_);
 }
 
 bool Enumeration::is_extension_of(shared_ptr<const Enumeration> other) const {

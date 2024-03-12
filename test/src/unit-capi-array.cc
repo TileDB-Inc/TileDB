@@ -79,6 +79,9 @@ using namespace tiledb::common;
 using namespace tiledb::sm;
 
 struct ArrayFx {
+  // The memory tracker
+  shared_ptr<tiledb::sm::MemoryTracker> memory_tracker_;
+
   // TileDB context
   tiledb_ctx_t* ctx_;
   tiledb_vfs_t* vfs_;
@@ -116,7 +119,8 @@ static const std::string test_ca_file =
     std::string(TILEDB_TEST_INPUTS_DIR) + "/test_certs/public.crt";
 
 ArrayFx::ArrayFx()
-    : fs_vec_(vfs_test_get_fs_vec()) {
+    : memory_tracker_(tiledb::test::create_test_memory_tracker())
+    , fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
 }
@@ -2289,8 +2293,8 @@ TEST_CASE_METHOD(
   // in array open v1 but with separate requests, so we simulate
   // this here by forcing metadata loading
   if (!array_v2) {
-    Metadata* metadata = nullptr;
-    CHECK(array->array_->metadata(&metadata).ok());
+    auto metadata = &array->array_->metadata();
+    CHECK(metadata != nullptr);
     array->array_->non_empty_domain();
   }
 
@@ -2340,7 +2344,7 @@ TEST_CASE_METHOD(
   Datatype type;
   const void* v_r;
   uint32_t v_num;
-  auto new_metadata = new_array->array_->unsafe_metadata();
+  auto new_metadata = &new_array->array_->metadata();
   new_metadata->get("aaa", &type, &v_num, &v_r);
   CHECK(static_cast<tiledb_datatype_t>(type) == TILEDB_INT32);
   CHECK(v_num == 1);
@@ -2590,7 +2594,8 @@ TEST_CASE_METHOD(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      ctx_->storage_manager());
+      ctx_->storage_manager(),
+      memory_tracker_);
   REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up

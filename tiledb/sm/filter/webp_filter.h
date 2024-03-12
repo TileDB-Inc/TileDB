@@ -40,6 +40,7 @@ constexpr bool webp_filter_exists = false;
 #endif  // TILEDB_WEBP
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/sm/enums/filter_option.h"
 #include "tiledb/sm/enums/filter_type.h"
 #include "tiledb/sm/filter/filter.h"

@@ -337,6 +337,12 @@ const std::string query_status_initialized_str = "INITIALIZED";
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
 
+/** TILEDB_ALWAYS_TRUE Query Condition Op String **/
+const std::string query_condition_op_always_true_str = "ALWAYS_TRUE";
+
+/** TILEDB_ALWAYS_FALSE Query Condition Op String **/
+const std::string query_condition_op_always_false_str = "ALWAYS_FALSE";
+
 /** TILEDB_LT Query Condition Op String **/
 const std::string query_condition_op_lt_str = "LT";
 

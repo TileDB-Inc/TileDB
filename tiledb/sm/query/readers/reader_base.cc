@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,8 +55,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 using dimension_size_type = uint32_t;
 
@@ -74,6 +73,7 @@ class ReaderBaseStatusException : public StatusException {
 ReaderBase::ReaderBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : StrategyBase(stats, logger, params)
+    , memory_tracker_(params.query_memory_tracker())
     , condition_(params.condition())
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
@@ -110,7 +110,8 @@ void ReaderBase::compute_result_space_tiles(
     const std::vector<std::vector<uint8_t>>& tile_coords,
     const TileDomain<T>& array_tile_domain,
     const std::vector<TileDomain<T>>& frag_tile_domains,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) {
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    shared_ptr<MemoryTracker> memory_tracker) {
   auto fragment_num = (unsigned)frag_tile_domains.size();
   auto dim_num = array_tile_domain.dim_num();
   std::vector<T> start_coords;
@@ -123,7 +124,8 @@ void ReaderBase::compute_result_space_tiles(
     start_coords = array_tile_domain.start_coords(coords);
 
     // Create result space tile and insert into the map
-    auto r = result_space_tiles.emplace(coords, ResultSpaceTile<T>());
+    auto r =
+        result_space_tiles.emplace(coords, ResultSpaceTile<T>(memory_tracker));
     auto& result_space_tile = r.first->second;
     result_space_tile.set_start_coords(start_coords);
 
@@ -152,9 +154,8 @@ void ReaderBase::compute_result_space_tiles(
       auto frag_idx = frag_tile_domains[f].id();
       result_space_tile.append_frag_domain(frag_idx, frag_domain);
       auto tile_idx = frag_tile_domains[f].tile_pos(coords);
-      ResultTile result_tile(
+      result_space_tile.set_result_tile(
           frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
-      result_space_tile.set_result_tile(frag_idx, result_tile);
     }
   }
 }
@@ -585,25 +586,25 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   return Status::Ok();
 }
 
-std::vector<FilteredData> ReaderBase::read_attribute_tiles(
+std::list<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
+std::list<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_tiles(
+std::list<FilteredData> ReaderBase::read_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  std::vector<FilteredData> filtered_data;
+  std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
@@ -612,7 +613,6 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
   uint64_t num_tiles_read{0};
   std::vector<ThreadPool::Task> read_tasks;
-  filtered_data.reserve(names.size());
 
   // Run all attributes independently.
   for (auto n : names) {
@@ -636,7 +636,8 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         nullable,
         val_only,
         storage_manager_,
-        read_tasks);
+        read_tasks,
+        memory_tracker_);
 
     // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
@@ -1103,7 +1104,8 @@ void ReaderBase::compute_result_space_tiles(
       tile_coords,
       array_tile_domain,
       frag_tile_domains,
-      result_space_tiles);
+      result_space_tiles,
+      query_memory_tracker_);
 }
 
 bool ReaderBase::has_coords() const {
@@ -1174,7 +1176,8 @@ void ReaderBase::validate_attribute_order(
   auto index_name = index_dim->name();
 
   // See if some values will already be processed by previous fragments.
-  AttributeOrderValidator validator(attribute_name, fragment_metadata_.size());
+  AttributeOrderValidator validator(
+      attribute_name, fragment_metadata_.size(), query_memory_tracker_);
   throw_if_not_ok(parallel_for(
       storage_manager_->compute_tp(),
       0,
@@ -1365,5 +1368,4 @@ template void ReaderBase::validate_attribute_order<uint64_t>(
     std::vector<const void*>&,
     std::vector<uint64_t>&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

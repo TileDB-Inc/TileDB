@@ -33,13 +33,75 @@
 #include "tiledb/common/random/prng.h"
 
 namespace tiledb::common {
+/**
+ * 64-bit mersenne twister engine for random number generation.
+ *
+ * This definition is duplicated to avoid having it defined as `public` in
+ * `class PRNG`.
+ */
+using prng_type = std::mt19937_64;
+
+/**
+ * Implementation of the random seed.
+ *
+ * This is a class template in order to use `if constexpr`.
+ *
+ * @tparam return_size_type The type of the seed to be returned
+ */
+template <class return_size_type>
+return_size_type random_seed() {
+  static constexpr size_t rng_size = sizeof(std::random_device::result_type);
+  static constexpr size_t ret_size = sizeof(return_size_type);
+  std::random_device rng{};
+  /*
+   * We will need 64 bits to adequately seed the PRNG (`ret_size`). We support
+   * cases where the result size of the RNG is 64 or 32 bits (`rng_size`).
+   */
+  if constexpr (ret_size == rng_size) {
+    return rng();
+  } else if constexpr (ret_size == 2 * rng_size) {
+    return (rng() << rng_size) + rng();
+  } else {
+    throw std::runtime_error("Unsupported combination of RNG sizes");
+  }
+}
+
+/**
+ * The PRNG used within the random constructor.
+ */
+prng_type prng_random() {
+  return prng_type{random_seed<uint64_t>()};  // RVO
+}
+
+/**
+ * The PRNG used within the default constructor.
+ */
+prng_type prng_default() {
+  /*
+   * Retrieve optional seed, which may or may not have been set explicitly.
+   */
+  auto seed{Seeder::get().seed()};
+  /*
+   * Use the seed if it has been set. Otherwise use a random seed.
+   */
+  if (seed.has_value()) {
+    return prng_type{seed.value()};  // RVO
+  } else {
+    return prng_random();  // RVO
+  }
+}
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
 PRNG::PRNG()
-    : prng_(prng_initial())
+    : prng_(prng_default())
+    , mtx_{} {
+}
+
+PRNG::PRNG(RandomSeedT)
+    : prng_(prng_random())
     , mtx_{} {
 }
 
@@ -60,17 +122,5 @@ uint64_t PRNG::operator()() {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
-
-std::mt19937_64 PRNG::prng_initial() {
-  // Retrieve optional, potentially default-constructed seed.
-  auto seed{Seeder::get().seed()};
-
-  // If the seed has been set, set it on the RNG engine.
-  if (seed.has_value()) {
-    return std::mt19937_64{seed.value()};  // RVO
-  } else {
-    return {};  // RVO
-  }
-}
 
 }  // namespace tiledb::common
