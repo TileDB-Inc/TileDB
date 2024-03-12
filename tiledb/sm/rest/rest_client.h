@@ -54,6 +54,7 @@ class Config;
 class FragmentInfo;
 class Query;
 class MemoryTracker;
+class QueryPlan;
 
 enum class SerializationType : uint8_t;
 
@@ -72,6 +73,15 @@ class RestClient {
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
+
+  /**
+   * Check if use_refactored_array_open_and_query_submit is set in
+   * input config so that rest_client chooses the right URI
+   *
+   * @param config Config to check
+   *
+   * */
+  static bool use_refactored_query(const Config& config);
 
   /**
    * Check if an array exists by making a REST call. To start with this fetches
@@ -258,6 +268,16 @@ class RestClient {
       shared_ptr<MemoryTracker> memory_tracker = nullptr);
 
   /**
+   * Get the requested query plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param query Query to fetch query plan for.
+   * @param query_plan The requested query plan.
+   */
+  void post_query_plan_from_rest(
+      const URI& uri, Query& query, QueryPlan& query_plan);
+
+  /**
    * Post a data query to rest server
    *
    * @param uri of array being queried
@@ -419,12 +439,6 @@ class RestClient {
    * (regardless of how many times the query is resubmitted).
    */
   bool resubmit_incomplete_;
-
-  /**
-   * If true, the new, experimental REST routes and APIs for opening an array
-   * and submitting a query will be used
-   */
-  bool use_refactored_array_and_query_;
 
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;

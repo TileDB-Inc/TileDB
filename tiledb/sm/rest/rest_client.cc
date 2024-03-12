@@ -43,6 +43,7 @@
 #include "tiledb/sm/serialization/fragments.h"
 #include "tiledb/sm/serialization/group.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/sm/serialization/query_plan.h"
 #include "tiledb/sm/serialization/tiledb-rest.capnp.h"
 #include "tiledb/sm/serialization/vacuum.h"
 #include "tiledb/sm/rest/curl.h" // must be included last to avoid Windows.h
@@ -129,17 +130,6 @@ Status RestClient::init(
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
-  bool found = false;
-  auto status = config_->get<bool>(
-      "rest.use_refactored_array_open_and_query_submit",
-      &use_refactored_array_and_query_,
-      &found);
-  if (!status.ok() || !found) {
-    throw std::runtime_error(
-        "Cannot get rest.use_refactored_array_open_and_query_submit "
-        "configuration option from config");
-  }
-
   return Status::Ok();
 }
 
@@ -147,6 +137,21 @@ Status RestClient::set_header(
     const std::string& name, const std::string& value) {
   extra_headers_[name] = value;
   return Status::Ok();
+}
+
+bool RestClient::use_refactored_query(const Config& config) {
+  bool found = false, use_refactored_query = false;
+  auto status = config.get<bool>(
+      "rest.use_refactored_array_open_and_query_submit",
+      &use_refactored_query,
+      &found);
+  if (!status.ok() || !found) {
+    throw std::runtime_error(
+        "Cannot get rest.use_refactored_array_open_and_query_submit "
+        "configuration option from config");
+  }
+
+  return use_refactored_query;
 }
 
 tuple<Status, std::optional<bool>> RestClient::check_array_exists_from_rest(
@@ -709,6 +714,64 @@ RestClient::post_enumerations_from_rest(
       serialization_type_, returned_data, memory_tracker);
 }
 
+void RestClient::post_query_plan_from_rest(
+    const URI& uri, Query& query, QueryPlan& query_plan) {
+  // Get array
+  const Array* array = query.array();
+  if (array == nullptr) {
+    throw Status_RestError("Error submitting query plan to REST; null array.");
+  }
+
+  Buffer buff;
+  serialization::serialize_query_plan_request(
+      query.config(), query, serialization_type_, buff);
+
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  std::string url;
+  if (use_refactored_query(query.config())) {
+    url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/plan?type=" + query_type_str(query.type());
+  } else {
+    url = redirect_uri(cache_key) + "/v2/arrays/" + array_ns + "/" +
+          curlc.url_escape(array_uri) +
+          "/query/plan?type=" + query_type_str(query.type());
+  }
+
+  // Remote array reads always supply the timestamp.
+  url += "&start_timestamp=" + std::to_string(array->timestamp_start());
+  url += "&end_timestamp=" + std::to_string(array->timestamp_end());
+
+  // Get the data
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+    throw Status_RestError(
+        "Error getting query plan from REST; server returned no data.");
+  }
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
+  query_plan = serialization::deserialize_query_plan_response(
+      query, serialization_type_, returned_data);
+}
+
 Status RestClient::submit_query_to_rest(const URI& uri, Query* query) {
   // Local state tracking for the current offsets into the user's query buffers.
   // This allows resubmission of incomplete queries while appending to the
@@ -770,7 +833,7 @@ Status RestClient::post_query_submit(
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
-  if (use_refactored_array_and_query_) {
+  if (use_refactored_query(query->config())) {
     url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
           curlc.url_escape(array_uri) +
           "/query/submit?type=" + query_type_str(query->type()) +
@@ -996,7 +1059,7 @@ Status RestClient::finalize_query_to_rest(const URI& uri, Query* query) {
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
-  if (use_refactored_array_and_query_) {
+  if (use_refactored_query(query->config())) {
     url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
           curlc.url_escape(array_uri) +
           "/query/finalize?type=" + query_type_str(query->type());
@@ -1051,7 +1114,7 @@ Status RestClient::submit_and_finalize_query_to_rest(
   RETURN_NOT_OK(
       curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
   std::string url;
-  if (use_refactored_array_and_query_) {
+  if (use_refactored_query(query->config())) {
     url = redirect_uri(cache_key) + "/v3/arrays/" + array_ns + "/" +
           curlc.url_escape(array_uri) +
           "/query/submit_and_finalize?type=" + query_type_str(query->type());
@@ -1632,6 +1695,10 @@ RestClient::post_enumerations_from_rest(
     Array*,
     const std::vector<std::string>&,
     shared_ptr<MemoryTracker>) {
+  throw Status_RestError("Cannot use rest client; serialization not enabled.");
+}
+
+void RestClient::post_query_plan_from_rest(const URI&, Query&, QueryPlan&) {
   throw Status_RestError("Cannot use rest client; serialization not enabled.");
 }
 

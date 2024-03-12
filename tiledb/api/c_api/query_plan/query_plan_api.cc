@@ -48,14 +48,7 @@ capi_return_t tiledb_query_get_plan(
     throw CAPIStatusException("argument `query` may not be nullptr");
   }
 
-  if ((*query->query_).array()->is_remote()) {
-    throw std::logic_error(
-        "Failed to create a query plan; Remote arrays"
-        "are not currently supported.");
-  }
-
   sm::QueryPlan plan(*query->query_);
-
   *rv = tiledb_string_handle_t::make_handle(plan.dump_json());
 
   return TILEDB_OK;

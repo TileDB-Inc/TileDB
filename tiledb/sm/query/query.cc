@@ -2147,5 +2147,9 @@ void Query::copy_aggregates_data_to_user_buffer() {
   }
 }
 
+RestClient* Query::rest_client() const {
+  return storage_manager_->rest_client();
+}
+
 }  // namespace sm
 }  // namespace tiledb
