@@ -1,3 +1,57 @@
+# TileDB v2.21.0 Release Notes
+
+## Deprecation announcements
+
+* Windows 2019 build support will be removed in version 2.28, to be released in Q3 2024.
+* HDFS support will be removed in version 2.28, to be released in Q3 2024.
+
+## New features
+
+* Add datatypes GEOM_WKB and GEOM_WKT. [#4640](https://github.com/TileDB-Inc/TileDB/pull/4640)
+* Add CPack to CMakeLists.txt. [#4645](https://github.com/TileDB-Inc/TileDB/pull/4645)
+* Add std::pmr based memory allocation tracking. [#4683](https://github.com/TileDB-Inc/TileDB/pull/4683)
+* Support VFS `ls_recursive` API for posix filesystem. [#4778](https://github.com/TileDB-Inc/TileDB/pull/4778)
+* Query Plan REST support. [#4519](https://github.com/TileDB-Inc/TileDB/pull/4519)
+* Consolidation Plan REST support. [#4537](https://github.com/TileDB-Inc/TileDB/pull/4537)
+
+## Improvements
+
+* Optimize sparse reads when full non empty domain is requested. [#4710](https://github.com/TileDB-Inc/TileDB/pull/4710)
+* Lazily initialize the Azure SDK client. [#4703](https://github.com/TileDB-Inc/TileDB/pull/4703)
+* Remove QueryCondition requirement for Enumeration values to be valid. [#4707](https://github.com/TileDB-Inc/TileDB/pull/4707)
+* Convert dimension function pointer members to subclass methods. [#4774](https://github.com/TileDB-Inc/TileDB/pull/4774)
+* Implement dense dimension aggregates. [#4801](https://github.com/TileDB-Inc/TileDB/pull/4801)
+
+## Defects removed
+
+* Fix documentation of `Subarray::set_config` to match `tiledb_subarray_set_config`. [#4672](https://github.com/TileDB-Inc/TileDB/pull/4672)
+* Fix stats bug in StorageManager. [#4708](https://github.com/TileDB-Inc/TileDB/pull/4708)
+* Add explicit casts to fix compile errors. [#4712](https://github.com/TileDB-Inc/TileDB/pull/4712)
+* Fix bug with new minio behavior. [#4725](https://github.com/TileDB-Inc/TileDB/pull/4725)
+* Support reading V1 group details with explicit version in the name. [#4744](https://github.com/TileDB-Inc/TileDB/pull/4744)
+* Update crop_range to clamp to domain range. [#4781](https://github.com/TileDB-Inc/TileDB/pull/4781)
+* Fix segfault in ArraySchema::check. [#4787](https://github.com/TileDB-Inc/TileDB/pull/4787)
+* Fix crash in aggregates on dimensions. [#4794](https://github.com/TileDB-Inc/TileDB/pull/4794)
+* Fix defects with query channels. [#4786](https://github.com/TileDB-Inc/TileDB/pull/4786)
+* Remove trailing slash from rest.server_address. [#4790](https://github.com/TileDB-Inc/TileDB/pull/4790)
+* Provide a clear exception message when performing remote incomplete queries with aggregates. [#4798](https://github.com/TileDB-Inc/TileDB/pull/4798)
+
+## Test only changes
+
+* Add unit_vfs to tests for windows/osx/linux. [#4748](https://github.com/TileDB-Inc/TileDB/pull/4748)
+
+## Build System Changes
+
+* Update vcpkg version baseline to https://github.com/microsoft/vcpkg/commit/72010900b7cee36cea77aebb97695095c9358eaf. [#4553](https://github.com/TileDB-Inc/TileDB/pull/4553)
+* Add vcpkg triplets for RelWithDebInfo. [#4669](https://github.com/TileDB-Inc/TileDB/pull/4669)
+* Reintroduce the `TILEDB_STATIC` option under a deprecation warning. [#4732](https://github.com/TileDB-Inc/TileDB/pull/4732)
+* Fix linker errors when building with MSVC. [#4759](https://github.com/TileDB-Inc/TileDB/pull/4759)
+* CPack in Release Workflow. [#4694](https://github.com/TileDB-Inc/TileDB/pull/4694)
+* Single release CMake file that contains all required links/hashes. [#4631](https://github.com/TileDB-Inc/TileDB/pull/4631)
+* Improve build performance when GCS is enabled. [#4777](https://github.com/TileDB-Inc/TileDB/pull/4777)
+* Fix compiling unit tests when HDFS is enabled. [#4795](https://github.com/TileDB-Inc/TileDB/pull/4795)
+* Update libmagic to version 5.45. [#4673](https://github.com/TileDB-Inc/TileDB/pull/4673)
+
 # TileDB v2.20.0 Release Notes
 
 ## Breaking behavior
