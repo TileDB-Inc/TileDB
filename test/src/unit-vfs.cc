@@ -759,7 +759,7 @@ TEST_CASE(
     delegates = {};
   }
 
-  SECTION("Nested") {
+  SECTION("Delegated") {
     impersonate_service_account = "account1,account2,account3";
     target_service_account = "account3";
     delegates = {"account1", "account2"};
