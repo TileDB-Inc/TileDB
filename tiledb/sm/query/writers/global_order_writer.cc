@@ -115,8 +115,8 @@ GlobalOrderWriter::~GlobalOrderWriter() {
 GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
     shared_ptr<MemoryTracker> memory_tracker)
     : last_tiles_(memory_tracker->get_resource(MemoryType::TILE_WRITER_DATA))
-    , last_var_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS))
-    , cells_written_(memory_tracker->get_resource(MemoryType::TILE_SUMS)) {
+    , last_var_offsets_(memory_tracker->get_resource(MemoryType::WRITER_DATA))
+    , cells_written_(memory_tracker->get_resource(MemoryType::WRITER_DATA)) {
 }
 
 /* ****************************** */

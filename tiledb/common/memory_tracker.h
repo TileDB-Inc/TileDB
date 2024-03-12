@@ -122,7 +122,8 @@ enum class MemoryType {
   METADATA,
   DOMAINS,
   TILE_SUMS,
-  TILE_WRITER_DATA
+  TILE_WRITER_DATA,
+  WRITER_DATA
 };
 
 /**

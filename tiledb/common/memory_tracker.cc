@@ -94,6 +94,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileWriterData";
     case MemoryType::METADATA:
       return "Metadata";
+    case MemoryType::WRITER_DATA:
+      return "WriterData";
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));

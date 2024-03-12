@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -1369,3 +1370,10 @@ template void ReaderBase::validate_attribute_order<uint64_t>(
     std::vector<uint64_t>&);
 
 }  // namespace tiledb::sm
+
+template <>
+IndexedList<tiledb::sm::ResultTile>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::TILE_DATA)) {
+}

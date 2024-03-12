@@ -89,8 +89,7 @@ UnorderedWriter::UnorderedWriter(
           remote_query,
           fragment_name)
     , frag_uri_(std::nullopt)
-    , cell_pos_(
-          query_memory_tracker_->get_resource(MemoryType::TILE_WRITER_DATA))
+    , cell_pos_(query_memory_tracker_->get_resource(MemoryType::WRITER_DATA))
     , written_buffers_(written_buffers)
     , is_coords_pass_(true) {
   // Check the layout is unordered.
