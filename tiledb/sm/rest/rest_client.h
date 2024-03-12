@@ -409,6 +409,17 @@ class RestClient {
     return rest_server_;
   }
 
+  /**
+   * Get consolidation plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param config Config of the array.
+   * @param fragment_size Maximum fragment size for constructing the plan.
+   * @return The requested consolidation plan
+   */
+  std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
+      const URI& uri, const Config& config, uint64_t fragment_size);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */

@@ -1598,6 +1598,48 @@ Status RestClient::post_vacuum_to_rest(const URI& uri, const Config& config) {
       stats_, url, serialization_type_, &serialized, &returned_data, cache_key);
 }
 
+std::vector<std::vector<std::string>>
+RestClient::post_consolidation_plan_from_rest(
+    const URI& uri, const Config& config, uint64_t fragment_size) {
+  Buffer buff;
+  serialization::serialize_consolidation_plan_request(
+      fragment_size, config, serialization_type_, buff);
+
+  // Wrap in a list
+  BufferList serialized;
+  throw_if_not_ok(serialized.add_buffer(std::move(buff)));
+
+  // Init curl and form the URL
+  Curl curlc(logger_);
+  std::string array_ns, array_uri;
+  throw_if_not_ok(uri.get_rest_components(&array_ns, &array_uri));
+  const std::string cache_key = array_ns + ":" + array_uri;
+  throw_if_not_ok(
+      curlc.init(config_, extra_headers_, &redirect_meta_, &redirect_mtx_));
+  const std::string url = redirect_uri(cache_key) + "/v1/arrays/" + array_ns +
+                          "/" + curlc.url_escape(array_uri) +
+                          "/consolidate/plan";
+
+  // Get the data
+  Buffer returned_data;
+  throw_if_not_ok(curlc.post_data(
+      stats_,
+      url,
+      serialization_type_,
+      &serialized,
+      &returned_data,
+      cache_key));
+  if (returned_data.data() == nullptr || returned_data.size() == 0) {
+    throw Status_RestError(
+        "Error getting query plan from REST; server returned no data.");
+  }
+
+  // Ensure data has a null delimiter for cap'n proto if using JSON
+  throw_if_not_ok(ensure_json_null_delimited_string(&returned_data));
+  return serialization::deserialize_consolidation_plan_response(
+      serialization_type_, returned_data);
+}
+
 #else
 
 RestClient::RestClient() {
@@ -1785,6 +1827,13 @@ Status RestClient::post_consolidation_to_rest(const URI&, const Config&) {
 }
 
 Status RestClient::post_vacuum_to_rest(const URI&, const Config&) {
+  throw StatusException(
+      Status_RestError("Cannot use rest client; serialization not enabled."));
+}
+
+std::vector<std::vector<std::string>>
+RestClient::post_consolidation_plan_from_rest(
+    const URI&, const Config&, uint64_t) {
   throw StatusException(
       Status_RestError("Cannot use rest client; serialization not enabled."));
 }
