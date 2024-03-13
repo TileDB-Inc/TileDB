@@ -1509,13 +1509,15 @@ class S3 : FilesystemBase {
    * @param outcome The returned outcome from the complete or abort request.
    * @param uri The URI of the S3 file to be written to.
    * @param buff The file buffer associated with 'uri'.
+   * @param abort Should be true only when this is an abort request.
    * @return Status
    */
   template <typename R, typename E>
   Status finish_flush_object(
       const Aws::Utils::Outcome<R, E>& outcome,
       const URI& uri,
-      Buffer* const buff);
+      Buffer* const buff,
+      bool is_abort);
 
   /**
    * Writes the input buffer to a file by issuing one PutObject
