@@ -57,7 +57,6 @@
 * Single release CMake file that contains all required links/hashes. [#4631](https://github.com/TileDB-Inc/TileDB/pull/4631)
 * Improve build performance when GCS is enabled. [#4777](https://github.com/TileDB-Inc/TileDB/pull/4777)
 * Fix compiling unit tests when HDFS is enabled. [#4795](https://github.com/TileDB-Inc/TileDB/pull/4795)
-* Update libmagic to version 5.45. [#4673](https://github.com/TileDB-Inc/TileDB/pull/4673)
 * Add CPack support to CMakeLists.txt. [#4645](https://github.com/TileDB-Inc/TileDB/pull/4645)
 
 # TileDB v2.20.0 Release Notes
