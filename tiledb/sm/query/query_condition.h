@@ -48,6 +48,7 @@ namespace tiledb {
 namespace sm {
 
 class FragmentMetadata;
+class MemoryTracker;
 struct ResultCellSlab;
 class ResultTile;
 
@@ -55,6 +56,30 @@ enum class QueryConditionCombinationOp : uint8_t;
 
 class QueryCondition {
  public:
+  class Params {
+   public:
+    Params() = delete;
+
+    Params(
+        shared_ptr<MemoryTracker> memory_tracker,
+        const ArraySchema& array_schema)
+        : memory_tracker_(memory_tracker)
+        , schema_(array_schema) {
+    }
+
+    shared_ptr<MemoryTracker> GetMemoryTracker() const {
+      return memory_tracker_;
+    }
+
+    const ArraySchema& GetSchema() const {
+      return schema_;
+    }
+
+   private:
+    shared_ptr<MemoryTracker> memory_tracker_;
+    const ArraySchema& schema_;
+  };
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -200,7 +225,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params params,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
@@ -219,7 +244,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply_dense(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params params,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -238,7 +263,7 @@ class QueryCondition {
    */
   template <typename BitmapType>
   Status apply_sparse(
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile& result_tile,
       tdb::pmr::vector<BitmapType>& result_bitmap);
 
@@ -354,7 +379,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node on primitive-typed result cell slabs.
@@ -379,7 +404,7 @@ class QueryCondition {
       const ByteVecValue& fill_value,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node to filter result cells from the input
@@ -401,7 +426,7 @@ class QueryCondition {
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies the query condition represented with the AST to
@@ -420,12 +445,12 @@ class QueryCondition {
   template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       uint64_t stride,
       const std::vector<ResultCellSlab>& result_cell_slabs,
       CombinationOp combination_op,
-      std::vector<uint8_t>& result_cell_bitmap) const;
+      tdb::pmr::vector<uint8_t>& result_cell_bitmap) const;
 
   /**
    * Applies a value node on a dense result tile,
@@ -628,7 +653,7 @@ class QueryCondition {
    * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param combination_op The combination op.
    * @param result_bitmap The bitmap to use for results.
@@ -639,7 +664,7 @@ class QueryCondition {
       typename CombinationOp = std::logical_and<BitmapType>>
   void apply_tree_sparse(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile& result_tile,
       CombinationOp combination_op,
       tdb::pmr::vector<BitmapType>& result_bitmap) const;

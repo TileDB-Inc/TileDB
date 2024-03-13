@@ -66,8 +66,9 @@ TEST_CASE(
       HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -210,8 +211,10 @@ TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
 
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
   REQUIRE_THROWS_WITH(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1),
+      query_condition.apply(params, frag_md, result_cell_slabs, 1),
       Catch::Matchers::ContainsSubstring(
           "Cannot perform query comparison; Unsupported datatype " +
           datatype_str(Datatype::BLOB)));
@@ -1131,8 +1134,9 @@ void test_apply_cells<char*>(
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1168,8 +1172,10 @@ void test_apply_cells<char*>(
           std::make_pair<uint64_t, uint64_t>(0, 0),
           tiledb::test::create_test_memory_tracker(),
           true);
+      QueryCondition::Params params(
+          tiledb::test::create_test_memory_tracker(), *array_schema);
       REQUIRE(query_condition_eq_null
-                  .apply(*array_schema, frag_md, result_cell_slabs_eq_null, 1)
+                  .apply(params, frag_md, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -1235,8 +1241,7 @@ void test_apply_cells<char*>(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
-          .ok());
+      query_condition.apply(params, frag_md, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1317,8 +1322,9 @@ void test_apply_cells(
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1377,8 +1383,7 @@ void test_apply_cells(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
-          .ok());
+      query_condition.apply(params, frag_md, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1892,8 +1897,9 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1991,17 +1997,13 @@ void test_apply_cells_dense<char*>(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2024,9 +2026,11 @@ void test_apply_cells_dense<char*>(
 
       // Apply the query condition.
       std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
+      QueryCondition::Params params(
+          tiledb::test::create_test_memory_tracker(), *array_schema);
       REQUIRE(query_condition_eq_null
                   .apply_dense(
-                      *array_schema,
+                      params,
                       result_tile,
                       0,
                       10,
@@ -2101,17 +2105,13 @@ void test_apply_cells_dense(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2618,17 +2618,13 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  &result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, &result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2727,9 +2723,11 @@ void test_apply_cells_sparse<char*>(
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
-              .ok());
+
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2756,7 +2754,7 @@ void test_apply_cells_sparse<char*>(
       tdb::pmr::vector<uint8_t> result_bitmap_eq_null(cells, 1, resource);
       REQUIRE(query_condition_eq_null
                   .apply_sparse<uint8_t>(
-                      *array_schema, *result_tile, result_bitmap_eq_null)
+                      params, *result_tile, result_bitmap_eq_null)
                   .ok());
 
       // Verify the result bitmap contain the expected cells.
@@ -2826,9 +2824,10 @@ void test_apply_cells_sparse(
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -3267,7 +3266,9 @@ void validate_qc_apply(
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
-  REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
+  REQUIRE(tp.qc_.apply(params, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
   uint64_t result_cell_slabs_size = result_cell_slabs.size();
   for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
@@ -3300,19 +3301,18 @@ void validate_qc_apply_sparse(
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> sparse_result_bitmap(cells, 1, resource);
-  REQUIRE(tp.qc_
-              .apply_sparse<uint8_t>(
-                  *array_schema, result_tile, sparse_result_bitmap)
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      tp.qc_.apply_sparse<uint8_t>(params, result_tile, sparse_result_bitmap)
+          .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
 
   tdb::pmr::vector<uint64_t> sparse_result_bitmap1(cells, 2, resource);
-  REQUIRE(tp.qc_
-              .apply_sparse<uint64_t>(
-                  *array_schema, result_tile, sparse_result_bitmap1)
-              .ok());
+  REQUIRE(
+      tp.qc_.apply_sparse<uint64_t>(params, result_tile, sparse_result_bitmap1)
+          .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
   }
@@ -3340,9 +3340,11 @@ void validate_qc_apply_dense(
     ResultTile& result_tile,
     bool negated = false) {
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
+  QueryCondition::Params params(
+      tiledb::test::create_test_memory_tracker(), *array_schema);
   REQUIRE(tp.qc_
               .apply_dense(
-                  *array_schema,
+                  params,
                   &result_tile,
                   0,
                   10,
@@ -5084,9 +5086,10 @@ TEST_CASE(
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, result_tile, result_bitmap)
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
