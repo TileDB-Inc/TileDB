@@ -64,8 +64,6 @@ std::string memory_type_to_str(MemoryType type) {
       return "GenericTileIO";
     case MemoryType::RTREE:
       return "RTree";
-    case MemoryType::TILE_BITMAP:
-      return "TileBitmap";
     case MemoryType::TILE_DATA:
       return "TileData";
     case MemoryType::TILE_HILBERT_VALUES:
@@ -96,6 +94,10 @@ std::string memory_type_to_str(MemoryType type) {
       return "Metadata";
     case MemoryType::WRITER_DATA:
       return "WriterData";
+    case MemoryType::RESULT_TILE_BITMAP:
+      return "ResultTileBitmap";
+    case MemoryType::RESULT_TILE:
+      return "ResultTile";
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));
