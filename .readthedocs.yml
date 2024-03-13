@@ -12,17 +12,6 @@ build:
   os: "ubuntu-22.04"
   tools:
     python: "3.8"
-  apt_packages:
-    - autoconf
-    - autoconf-archive
-    - automake
-    - curl
-    - git
-    - libtool
-    - make
-    - pkg-config
-    - unzip
-    - zip
 
 python:
   install:
