@@ -2720,11 +2720,11 @@ void test_apply_cells_sparse<char*>(
   }
 
   // Apply the query condition.
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), *array_schema);
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-
-  QueryCondition::Params params(memory_tracker, *array_schema);
   REQUIRE(
       query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
           .ok());
@@ -2749,8 +2749,9 @@ void test_apply_cells_sparse<char*>(
       REQUIRE(query_condition_eq_null.check(*array_schema).ok());
 
       // Apply the query condition.
-      auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
-          MemoryType::RESULT_TILE_BITMAP);
+      auto memory_tracker = tiledb::test::get_test_memory_tracker();
+      QueryCondition::Params params(memory_tracker, *array_schema);
+      auto resource = memory_tracker->get_resource(MemoryType::TILE_BITMAP);
       tdb::pmr::vector<uint8_t> result_bitmap_eq_null(cells, 1, resource);
       REQUIRE(query_condition_eq_null
                   .apply_sparse<uint8_t>(
@@ -2821,10 +2822,11 @@ void test_apply_cells_sparse(
   }
 
   // Apply the query condition.
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), *array_schema);
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-  QueryCondition::Params params(memory_tracker, *array_schema);
   REQUIRE(
       query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
           .ok());
@@ -3298,8 +3300,10 @@ void validate_qc_apply_sparse(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), *array_schema);
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
-      MemoryType::RESULT_TILE_BITMAP);
+      MemoryType::TILE_BITMAP);
   tdb::pmr::vector<uint8_t> sparse_result_bitmap(cells, 1, resource);
   QueryCondition::Params params(memory_tracker, *array_schema);
   REQUIRE(
@@ -5086,7 +5090,8 @@ TEST_CASE(
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
       MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
-  QueryCondition::Params params(memory_tracker, *array_schema);
+  QueryCondition::Params params(
+      tiledb::test::get_test_memory_tracker(), *array_schema);
   REQUIRE(
       query_condition.apply_sparse<uint8_t>(params, result_tile, result_bitmap)
           .ok());

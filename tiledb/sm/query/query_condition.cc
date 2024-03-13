@@ -1205,12 +1205,10 @@ void QueryCondition::apply_tree(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<uint8_t>>) {
+          auto resource = params.GetMemoryTracker()->get_resource(
+              MemoryType::QUERY_CONDITION);
           tdb::pmr::vector<uint8_t> combination_op_bitmap(
-              params.GetMemoryTracker()->get_resource(
-                  MemoryType::QUERY_CONDITION));
-          for (size_t i = 0; i < result_bitmap_size; ++i) {
-            combination_op_bitmap.push_back(1);
-          }
+              result_bitmap_size, 1, resource);
 
           for (const auto& child : node->get_children()) {
             apply_tree(
@@ -1234,12 +1232,10 @@ void QueryCondition::apply_tree(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
+        auto resource = params.GetMemoryTracker()->get_resource(
+            MemoryType::QUERY_CONDITION);
         tdb::pmr::vector<uint8_t> combination_op_bitmap(
-            params.GetMemoryTracker()->get_resource(
-                MemoryType::QUERY_CONDITION));
-        for (size_t i = 0; i < result_bitmap_size; ++i) {
-          combination_op_bitmap.push_back(0);
-        }
+            result_bitmap_size, 0, resource);
 
         for (const auto& child : node->get_children()) {
           apply_tree(
@@ -1282,11 +1278,9 @@ Status QueryCondition::apply(
     total_lengths += elem.length_;
   }
 
-  tdb::pmr::vector<uint8_t> result_cell_bitmap(
-      params.GetMemoryTracker()->get_resource(MemoryType::QUERY_CONDITION));
-  for (size_t i = 0; i < total_lengths; ++i) {
-    result_cell_bitmap.push_back(1);
-  }
+  auto resource =
+      params.GetMemoryTracker()->get_resource(MemoryType::QUERY_CONDITION);
+  tdb::pmr::vector<uint8_t> result_cell_bitmap(total_lengths, 1, resource);
 
   apply_tree(
       tree_,
