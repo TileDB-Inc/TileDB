@@ -334,8 +334,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CMetadataFx,
-    "C API: Metadata, concurrent writes",
-    "[!mayfail][capi][metadata][concurrent_writes]") {
+    "C API: Metadata, sub-millisecond writes",
+    "[!mayfail][capi][metadata][sub-millisecond]") {
   int32_t one = 1;
   int32_t two = 2;
   const void* v_r = nullptr;
