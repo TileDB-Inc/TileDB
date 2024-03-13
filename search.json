@@ -84,14 +84,14 @@
     "href": "doc/dev/BUILD.html",
     "title": "Building TileDB from source",
     "section": "",
-    "text": "CMake 3.21 or greater\nC++ compiler with C++20 support\n\nThe minimum compiler versions TileDB is being tested in CI are:\n\nMSVC from Visual Studio 2019 16.11\nGCC 10.3 on Linux and Windows via MinGW\nApple Clang 14\n\n\nGit (required by vcpkg)\ncurl (required by vcpkg on non-Windows)\nautoconf (required by building libmagic on non-Windows)"
+    "text": "CMake 3.21 or greater\nC++ compiler with C++20 support\n\nThe minimum compiler versions TileDB is being tested in CI are:\n\nMSVC from Visual Studio 2019 16.11\nGCC 10.3 on Linux and Windows via MinGW\nApple Clang 14\n\n\nGit (required by vcpkg)\ncurl (required by vcpkg on non-Windows)"
   },
   {
     "objectID": "doc/dev/BUILD.html#prerequisites",
     "href": "doc/dev/BUILD.html#prerequisites",
     "title": "Building TileDB from source",
     "section": "",
-    "text": "CMake 3.21 or greater\nC++ compiler with C++20 support\n\nThe minimum compiler versions TileDB is being tested in CI are:\n\nMSVC from Visual Studio 2019 16.11\nGCC 10.3 on Linux and Windows via MinGW\nApple Clang 14\n\n\nGit (required by vcpkg)\ncurl (required by vcpkg on non-Windows)\nautoconf (required by building libmagic on non-Windows)"
+    "text": "CMake 3.21 or greater\nC++ compiler with C++20 support\n\nThe minimum compiler versions TileDB is being tested in CI are:\n\nMSVC from Visual Studio 2019 16.11\nGCC 10.3 on Linux and Windows via MinGW\nApple Clang 14\n\n\nGit (required by vcpkg)\ncurl (required by vcpkg on non-Windows)"
   },
   {
     "objectID": "doc/dev/BUILD.html#downloading-the-source-code",
