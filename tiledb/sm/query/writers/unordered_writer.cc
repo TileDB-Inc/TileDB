@@ -677,7 +677,7 @@ Status UnorderedWriter::unordered_write() {
 
   // Prepare tiles
   tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
-      query_memory_tracker_->get_resource(MemoryType::TILE_WRITER_DATA));
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_tiles(&tiles));
 
   // No tiles

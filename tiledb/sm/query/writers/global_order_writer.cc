@@ -114,7 +114,7 @@ GlobalOrderWriter::~GlobalOrderWriter() {
 
 GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
     shared_ptr<MemoryTracker> memory_tracker)
-    : last_tiles_(memory_tracker->get_resource(MemoryType::TILE_WRITER_DATA))
+    : last_tiles_(memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
     , last_var_offsets_(memory_tracker->get_resource(MemoryType::WRITER_DATA))
     , cells_written_(memory_tracker->get_resource(MemoryType::WRITER_DATA)) {
 }
@@ -757,7 +757,7 @@ Status GlobalOrderWriter::global_write() {
   }
 
   tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
-      query_memory_tracker_->get_resource(MemoryType::TILE_WRITER_DATA));
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
   // Find number of tiles and gather stats

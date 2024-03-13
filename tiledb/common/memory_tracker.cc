@@ -90,8 +90,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "Domains";
     case MemoryType::TILE_SUMS:
       return "TileSums";
-    case MemoryType::TILE_WRITER_DATA:
-      return "TileWriterData";
+    case MemoryType::WRITER_TILE_DATA:
+      return "WriterTileData";
     case MemoryType::METADATA:
       return "Metadata";
     case MemoryType::WRITER_DATA:

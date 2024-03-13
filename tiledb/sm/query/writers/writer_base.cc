@@ -1208,12 +1208,12 @@ template <>
 IndexedList<tiledb::sm::WriterTileTuple>::IndexedList(
     shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , list_(memory_tracker->get_resource(sm::MemoryType::TILE_WRITER_DATA)) {
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
 }
 
 template <>
 IndexedList<tiledb::common::IndexedList<tiledb::sm::WriterTileTuple>>::
     IndexedList(shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
-    , list_(memory_tracker->get_resource(sm::MemoryType::TILE_WRITER_DATA)) {
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
 }
