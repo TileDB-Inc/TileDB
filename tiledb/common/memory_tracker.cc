@@ -198,7 +198,12 @@ MemoryTracker::get_counts() {
   std::unordered_map<MemoryType, uint64_t> by_type;
   std::vector<MemoryType> to_del;
   for (auto& [mem_type, resource] : resources_) {
-    by_type[mem_type] = resource->get_count();
+    auto count = resource->get_count();
+    // This happens if the resource did not allocate any memory.
+    // Rather than log noise we just ignore it.
+    if (count != 0) {
+      by_type[mem_type] = count;
+    }
   }
 
   return {total, by_type};
@@ -274,7 +279,14 @@ std::string MemoryTrackerManager::to_json() {
       trackers_.erase(trackers_.begin() + idx);
       continue;
     }
+    idx++;
 
+    auto [total, by_type] = ptr->get_counts();
+    if (total == 0) {
+      // This happens if the tracker did not allocate any memory.
+      // Rather than log noise we just ignore it.
+      continue;
+    }
     nlohmann::json val;
 
     // Set an distinguishing id
@@ -284,15 +296,12 @@ std::string MemoryTrackerManager::to_json() {
     val["tracker_type"] = memory_tracker_type_to_str(ptr->get_type());
 
     // Add memory stats
-    auto [total, by_type] = ptr->get_counts();
     val["total_memory"] = total;
     val["by_type"] = nlohmann::json::object();
     for (auto& [type, count] : by_type) {
       val["by_type"][memory_type_to_str(type)] = count;
     }
     rv.push_back(val);
-
-    idx++;
   }
 
   return rv.dump();
