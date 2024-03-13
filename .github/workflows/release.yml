@@ -17,9 +17,18 @@ jobs:
     steps:
       - name: Checkout TileDB
         uses: actions/checkout@v3
+      - name: Set variables
+        id: get-values
+        run: |
+          release_hash=$( echo ${{ github.sha }} | cut -c-7 - )
+          ref=${{ github.head_ref || github.ref_name }}
+          echo "release_version=${ref##*/}-$release_hash" >> $GITHUB_OUTPUT
+        shell: bash
       - name: CMake Configure
         run: cmake -S . -B build -DTILEDB_CMAKE_IDE=ON
       - name: CPack Package Source
+        env:
+          TILEDB_PACKAGE_VERSION=${{ steps.get-values.outputs.release_version }}
         run: cd build && cpack --config CPackSourceConfig.cmake
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v3
