@@ -28,7 +28,7 @@ jobs:
         run: cmake -S . -B build -DTILEDB_CMAKE_IDE=ON
       - name: CPack Package Source
         env:
-          TILEDB_PACKAGE_VERSION=${{ steps.get-values.outputs.release_version }}
+          TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
         run: cd build && cpack --config CPackSourceConfig.cmake
       - name: Upload Release Artifacts
         uses: actions/upload-artifact@v3
@@ -115,7 +115,7 @@ jobs:
         shell: bash
       - name: Build TileDB
         env:
-          TILEDB_PACKAGE_VERSION=${{ steps.get-values.outputs.release_version }}
+          TILEDB_PACKAGE_VERSION: ${{ steps.get-values.outputs.release_version }}
         run: cmake --build build --config Release --target package
       - name: Upload release artifacts
         uses: actions/upload-artifact@v3
