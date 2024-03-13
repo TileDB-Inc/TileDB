@@ -12,7 +12,6 @@ title: Building TileDB from source
         * Apple Clang 14
 * Git (required by vcpkg)
 * curl (required by vcpkg on non-Windows)
-* autoconf (required by building libmagic on non-Windows)
 
 ## Downloading the source code
 
