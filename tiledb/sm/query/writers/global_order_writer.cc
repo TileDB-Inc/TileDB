@@ -181,7 +181,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
     return logger_->status(
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
-  global_write_state_.reset(new GlobalWriteState(query_memory_tracker_));
+  global_write_state_.reset(tdb_new(GlobalWriteState, query_memory_tracker_));
 
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = this->create_fragment_metadata();
