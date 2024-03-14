@@ -633,11 +633,13 @@ Status S3::disconnect() {
             Aws::S3::Model::AbortMultipartUploadRequest abort_request =
                 make_multipart_abort_request(*state);
             auto outcome = client_->AbortMultipartUpload(abort_request);
-            const Status st = LOG_STATUS(Status_S3Error(
-                std::string("Failed to disconnect and flush S3 objects. ") +
-                outcome_error_message(outcome)));
-            if (!st.ok()) {
-              ret_st = st;
+            if (!outcome.IsSuccess()) {
+              ret_st = LOG_STATUS(Status_S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ") +
+                  outcome_error_message(outcome)));
+            } else {
+              ret_st = LOG_STATUS(Status_S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ")));
             }
           }
           return Status::Ok();
@@ -797,9 +799,14 @@ void S3::finalize_and_flush_object(const URI& uri) {
         make_multipart_abort_request(state);
 
     auto outcome = client_->AbortMultipartUpload(abort_request);
-    throw S3Exception{
-        std::string("Failed to flush S3 object ") + uri.c_str() +
-        outcome_error_message(outcome)};
+    if (!outcome.IsSuccess()) {
+      throw S3Exception{
+          std::string("Failed to flush S3 object ") + uri.c_str() +
+          outcome_error_message(outcome)};
+    } else {
+      throw S3Exception{
+          std::string("Failed to flush S3 object ") + uri.c_str()};
+    }
   }
 
   // Remove intermediate chunk files if any
@@ -1699,9 +1706,12 @@ Status S3::finish_flush_object(
   tdb_delete(buff);
 
   if (!outcome.IsSuccess() || is_abort) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Failed to flush S3 object ") + uri.c_str() +
-        outcome_error_message(outcome)));
+    std::string error_message =
+        std::string("Failed to flush S3 object ") + uri.c_str();
+    if (!is_abort) {
+      error_message += outcome_error_message(outcome);
+    }
+    return LOG_STATUS(Status_S3Error(error_message));
   }
 
   return Status::Ok();

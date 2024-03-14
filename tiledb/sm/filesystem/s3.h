@@ -1509,7 +1509,7 @@ class S3 : FilesystemBase {
    * @param outcome The returned outcome from the complete or abort request.
    * @param uri The URI of the S3 file to be written to.
    * @param buff The file buffer associated with 'uri'.
-   * @param abort Should be true only when this is an abort request.
+   * @param is_abort Should be true only when this is an abort request.
    * @return Status
    */
   template <typename R, typename E>
