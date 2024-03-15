@@ -77,12 +77,6 @@ struct ConsolidationFx {
   tiledb_encryption_type_t encryption_type_ = TILEDB_NO_ENCRYPTION;
   const char* encryption_key_ = nullptr;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  tiledb::test::ServerQueryBuffers server_buffers_;
-
   // Constructors/destructors
   ConsolidationFx();
   ~ConsolidationFx();
@@ -1680,13 +1674,7 @@ void ConsolidationFx::write_dense_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      DENSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1769,13 +1757,7 @@ void ConsolidationFx::write_dense_subarray(
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      DENSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1879,13 +1861,7 @@ void ConsolidationFx::write_sparse_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1974,13 +1950,7 @@ void ConsolidationFx::write_sparse_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2182,13 +2152,7 @@ void ConsolidationFx::write_sparse_heterogeneous_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_HETEROGENEOUS_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2278,13 +2242,7 @@ void ConsolidationFx::write_sparse_heterogeneous_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_HETEROGENEOUS_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2396,13 +2354,7 @@ void ConsolidationFx::write_sparse_string_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_STRING_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -2498,13 +2450,7 @@ void ConsolidationFx::write_sparse_string_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_STRING_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   // Close array
   rc = tiledb_array_close(ctx_, array);
@@ -3161,14 +3107,7 @@ void ConsolidationFx::read_dense_full_subarray() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      DENSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   tiledb_query_status_t status;
@@ -3291,13 +3230,7 @@ void ConsolidationFx::read_dense_subarray_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      DENSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
@@ -3546,13 +3479,7 @@ void ConsolidationFx::read_sparse_full_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -3659,13 +3586,7 @@ void ConsolidationFx::read_sparse_unordered_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -3889,13 +3810,7 @@ void ConsolidationFx::read_sparse_heterogeneous_full_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_HETEROGENEOUS_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -4002,13 +3917,7 @@ void ConsolidationFx::read_sparse_heterogeneous_unordered_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_HETEROGENEOUS_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -4122,13 +4031,7 @@ void ConsolidationFx::read_sparse_string_full_unordered() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_STRING_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -4247,13 +4150,7 @@ void ConsolidationFx::read_sparse_string_unordered_full() {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      SPARSE_STRING_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check buffers
@@ -4598,13 +4495,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense",
     "[capi][consolidation][dense]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_dense_array();
   create_dense_array();
 
@@ -4622,18 +4512,15 @@ TEST_CASE_METHOD(
     read_dense_subarray_full();
   }
 
-  // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) subarray, full") {
-      remove_dense_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_dense_array();
-      write_dense_subarray();
-      write_dense_full();
-      consolidate_dense();
-      read_dense_subarray_full();
-    }
+  SECTION("- write (encrypted) subarray, full") {
+    remove_dense_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_dense_array();
+    write_dense_subarray();
+    write_dense_full();
+    consolidate_dense();
+    read_dense_subarray_full();
   }
 
   remove_dense_array();
@@ -4643,13 +4530,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse",
     "[capi][consolidation][sparse]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
   create_sparse_array();
 
@@ -4668,17 +4548,15 @@ TEST_CASE_METHOD(
   }
 
   // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) unordered, full") {
-      remove_sparse_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_sparse_array();
-      write_sparse_unordered();
-      write_sparse_full();
-      consolidate_sparse();
-      read_sparse_unordered_full();
-    }
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_array();
+    write_sparse_unordered();
+    write_sparse_full();
+    consolidate_sparse();
+    read_sparse_unordered_full();
   }
 
   remove_sparse_array();
@@ -6265,13 +6143,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse heterogeneous",
     "[capi][consolidation][sparse][heter]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_heterogeneous_array();
   create_sparse_heterogeneous_array();
 
@@ -6289,18 +6160,15 @@ TEST_CASE_METHOD(
     read_sparse_heterogeneous_unordered_full();
   }
 
-  // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) unordered, full") {
-      remove_sparse_heterogeneous_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_sparse_heterogeneous_array();
-      write_sparse_heterogeneous_unordered();
-      write_sparse_heterogeneous_full();
-      consolidate_sparse_heterogeneous();
-      read_sparse_heterogeneous_unordered_full();
-    }
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_heterogeneous_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_heterogeneous_array();
+    write_sparse_heterogeneous_unordered();
+    write_sparse_heterogeneous_full();
+    consolidate_sparse_heterogeneous();
+    read_sparse_heterogeneous_unordered_full();
   }
 
   remove_sparse_heterogeneous_array();
@@ -6310,13 +6178,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse string",
     "[capi][consolidation][sparse][string]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_string_array();
   create_sparse_string_array();
 
@@ -6334,18 +6195,15 @@ TEST_CASE_METHOD(
     read_sparse_string_unordered_full();
   }
 
-  // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) unordered, full") {
-      remove_sparse_string_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_sparse_string_array();
-      write_sparse_string_unordered();
-      write_sparse_string_full();
-      consolidate_sparse_string();
-      read_sparse_string_unordered_full();
-    }
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_string_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_string_array();
+    write_sparse_string_unordered();
+    write_sparse_string_full();
+    consolidate_sparse_string();
+    read_sparse_string_unordered_full();
   }
 
   remove_sparse_string_array();
@@ -6355,13 +6213,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidating fragment metadata, sparse string",
     "[capi][consolidation][fragment-meta][sparse][string]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_string_array();
   create_sparse_string_array();
   write_sparse_string_full();
@@ -6427,13 +6278,6 @@ TEST_CASE_METHOD(
     "C API: Test consolidating fragment metadata, sparse string, pass only "
     "context",
     "[capi][consolidation][fragment-meta][sparse][string]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_string_array();
   create_sparse_string_array();
   write_sparse_string_full();
@@ -6507,13 +6351,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation and timestamps",
     "[capi][consolidation][timestamps]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_dense_array();
   create_dense_array();
 
@@ -6586,13 +6423,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test vacuuming and timestamps",
     "[capi][vacuuming][timestamps]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_dense_array();
   create_dense_array();
 
@@ -6657,13 +6487,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense, commits",
     "[capi][consolidation][dense][commits]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_dense_array();
   create_dense_array();
 
@@ -6746,51 +6569,48 @@ TEST_CASE_METHOD(
     check_commits_dir_dense(1, 0, 0);
   }
 
-  // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) subarray, full") {
-      remove_dense_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_dense_array();
+  SECTION("- write (encrypted) subarray, full") {
+    remove_dense_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_dense_array();
 
-      // Consolidation works.
-      write_dense_subarray();
-      write_dense_full();
-      consolidate_dense("commits");
-      read_dense_subarray_full();
+    // Consolidation works.
+    write_dense_subarray();
+    write_dense_full();
+    consolidate_dense("commits");
+    read_dense_subarray_full();
 
-      // Vacuum works.
-      vacuum_dense("commits");
-      read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+    // Vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
 
-      // Second consolidation works.
-      consolidate_dense("commits");
-      read_dense_subarray_full();
-      check_commits_dir_dense(2, 0, 0);
+    // Second consolidation works.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 0, 0);
 
-      // Second vacuum works.
-      vacuum_dense("commits");
-      read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
 
-      // After fragment consolidation and vacuuming, array is still valid.
-      consolidate_dense();
-      vacuum_dense();
-      read_dense_subarray_full();
-      check_commits_dir_dense(1, 1, 1);
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_dense();
+    vacuum_dense();
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 1, 1);
 
-      // Consolidation to get rid of ignore file.
-      consolidate_dense("commits");
-      read_dense_subarray_full();
-      check_commits_dir_dense(2, 1, 1);
+    // Consolidation to get rid of ignore file.
+    consolidate_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(2, 1, 1);
 
-      // Second vacuum works.
-      vacuum_dense("commits");
-      read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
-    }
+    // Second vacuum works.
+    vacuum_dense("commits");
+    read_dense_subarray_full();
+    check_commits_dir_dense(1, 0, 0);
   }
 
   remove_dense_array();
@@ -6800,13 +6620,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits",
     "[capi][consolidation][sparse][commits]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
   create_sparse_array();
 
@@ -6890,52 +6703,49 @@ TEST_CASE_METHOD(
     check_commits_dir_sparse(1, 0, 0);
   }
 
-  // Encrypted remote arrays are not supported
-  if (!serialize_) {
-    SECTION("- write (encrypted) unordered, full") {
-      remove_sparse_array();
-      encryption_type_ = TILEDB_AES_256_GCM;
-      encryption_key_ = "0123456789abcdeF0123456789abcdeF";
-      create_sparse_array();
+  SECTION("- write (encrypted) unordered, full") {
+    remove_sparse_array();
+    encryption_type_ = TILEDB_AES_256_GCM;
+    encryption_key_ = "0123456789abcdeF0123456789abcdeF";
+    create_sparse_array();
 
-      // Consolidation works.
-      write_sparse_unordered();
-      write_sparse_full();
-      consolidate_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 2, 0);
+    // Consolidation works.
+    write_sparse_unordered();
+    write_sparse_full();
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 2, 0);
 
-      // Vacuum works.
-      vacuum_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+    // Vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
 
-      // Second consolidation works.
-      consolidate_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(2, 0, 0);
+    // Second consolidation works.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 0, 0);
 
-      // Second vacuum works.
-      vacuum_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
 
-      // After fragment consolidation and vacuuming, array is still valid.
-      consolidate_sparse();
-      vacuum_sparse();
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 1, 1);
+    // After fragment consolidation and vacuuming, array is still valid.
+    consolidate_sparse();
+    vacuum_sparse();
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 1, 1);
 
-      // Consolidation to get rid of ignore file.
-      consolidate_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(2, 1, 1);
+    // Consolidation to get rid of ignore file.
+    consolidate_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(2, 1, 1);
 
-      // Second vacuum works.
-      vacuum_sparse("commits");
-      read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
-    }
+    // Second vacuum works.
+    vacuum_sparse("commits");
+    read_sparse_unordered_full();
+    check_commits_dir_sparse(1, 0, 0);
   }
 
   remove_sparse_array();
@@ -6950,13 +6760,6 @@ TEST_CASE_METHOD(
   if constexpr (is_experimental_build) {
     return;
   }
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   remove_sparse_array();
 
@@ -7022,13 +6825,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense split fragments",
     "[capi][consolidation][dense][split-fragments]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_dense_array();
   create_dense_array();
   write_dense_subarray(1, 2, 1, 2);
@@ -7223,13 +7019,6 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments/commits out of order",
     "[capi][consolidation][fragments-commits][out-of-order]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
   create_sparse_array();
 
