@@ -44,6 +44,34 @@ RandomLabelGenerator::RandomLabelGenerator()
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+std::string RandomLabelGenerator::generate() {
+  PRNG& prng = PRNG::get();
+  std::lock_guard<std::mutex> lock(mtx_);
+  auto now = tiledb::sm::utils::time::timestamp_now_ms();
+
+  // If no label has been generated this millisecond, generate a new one.
+  if (now != prev_time_) {
+    prev_time_ = now;
+    counter_ = static_cast<uint32_t>(prng());
+    // Clear the top bit of the counter such that a full 2 billion values
+    // could be generated within a single millisecond.
+    counter_ &= 0x7FFFFFFF;
+  } else {
+    counter_ += 1;
+    if (counter_ == 0) {
+      throw RandomLabelException("Maximum generation frequency exceeded.");
+    }
+  }
+
+  // Generate and format a 128-bit, 32-digit hexadecimal random number
+  std::stringstream ss;
+  ss << std::hex << std::setw(8) << std::setfill('0') << counter_;
+  ss << std::hex << std::setw(8) << std::setfill('0')
+     << static_cast<uint32_t>(prng());
+  ss << std::hex << std::setw(16) << std::setfill('0') << prng();
+  return ss.str();
+}
+
 std::string RandomLabelGenerator::generate_random_label() {
   static RandomLabelGenerator generator;
   return generator.generate();
