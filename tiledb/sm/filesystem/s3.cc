@@ -634,12 +634,12 @@ Status S3::disconnect() {
                 make_multipart_abort_request(*state);
             auto outcome = client_->AbortMultipartUpload(abort_request);
             if (!outcome.IsSuccess()) {
-              const Status st = LOG_STATUS(Status_S3Error(
+              ret_st = LOG_STATUS(Status_S3Error(
                   std::string("Failed to disconnect and flush S3 objects. ") +
                   outcome_error_message(outcome)));
-              if (!st.ok()) {
-                ret_st = st;
-              }
+            } else {
+              ret_st = LOG_STATUS(Status_S3Error(
+                  std::string("Failed to disconnect and flush S3 objects. ")));
             }
           }
           return Status::Ok();
@@ -714,7 +714,7 @@ Status S3::flush_object(const URI& uri) {
 
     throw_if_not_ok(wait_for_object_to_propagate(move(bucket), move(key)));
 
-    return finish_flush_object(std::move(outcome), uri, buff);
+    return finish_flush_object(std::move(outcome), uri, buff, false);
   } else {
     Aws::S3::Model::AbortMultipartUploadRequest abort_request =
         make_multipart_abort_request(*state);
@@ -723,7 +723,7 @@ Status S3::flush_object(const URI& uri) {
 
     state_lck.unlock();
 
-    return finish_flush_object(std::move(outcome), uri, buff);
+    return finish_flush_object(std::move(outcome), uri, buff, true);
   }
 }
 
@@ -803,6 +803,9 @@ void S3::finalize_and_flush_object(const URI& uri) {
       throw S3Exception{
           std::string("Failed to flush S3 object ") + uri.c_str() +
           outcome_error_message(outcome)};
+    } else {
+      throw S3Exception{
+          std::string("Failed to flush S3 object ") + uri.c_str()};
     }
   }
 
@@ -1689,7 +1692,8 @@ template <typename R, typename E>
 Status S3::finish_flush_object(
     const Aws::Utils::Outcome<R, E>& outcome,
     const URI& uri,
-    Buffer* const buff) {
+    Buffer* const buff,
+    bool is_abort) {
   Aws::Http::URI aws_uri = uri.c_str();
 
   UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
@@ -1701,10 +1705,13 @@ Status S3::finish_flush_object(
   file_buffers_lck.unlock();
   tdb_delete(buff);
 
-  if (!outcome.IsSuccess()) {
-    return LOG_STATUS(Status_S3Error(
-        std::string("Failed to flush S3 object ") + uri.c_str() +
-        outcome_error_message(outcome)));
+  if (!outcome.IsSuccess() || is_abort) {
+    std::string error_message =
+        std::string("Failed to flush S3 object ") + uri.c_str();
+    if (!is_abort) {
+      error_message += outcome_error_message(outcome);
+    }
+    return LOG_STATUS(Status_S3Error(error_message));
   }
 
   return Status::Ok();
