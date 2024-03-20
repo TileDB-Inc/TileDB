@@ -828,7 +828,7 @@ class ResultTileWithBitmap : public ResultTile {
    */
   ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
       : ResultTile(memory_tracker)
-      , bitmap_(memory_tracker_->get_resource(MemoryType::TILE_BITMAP)) {
+      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP)) {
   }
 
   ResultTileWithBitmap(
@@ -837,7 +837,7 @@ class ResultTileWithBitmap : public ResultTile {
       const FragmentMetadata& frag_md,
       shared_ptr<MemoryTracker> memory_tracker)
       : ResultTile(frag_idx, tile_idx, frag_md, memory_tracker)
-      , bitmap_(memory_tracker_->get_resource(MemoryType::TILE_BITMAP))
+      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP))
       , result_num_(cell_num_) {
   }
 
@@ -989,7 +989,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       , used_(false) {
     if (!dups || include_delete_meta) {
       post_dedup_bitmap_.emplace(
-          this->memory_tracker_->get_resource(MemoryType::TILE_BITMAP));
+          this->memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP));
     }
   }
 

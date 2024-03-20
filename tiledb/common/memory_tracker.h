@@ -99,7 +99,7 @@
 
 namespace tiledb::sm {
 
-//** The type of memory to track. */
+/** The type of memory to track. */
 enum class MemoryType {
   ENUMERATION,
   ENUMERATION_PATHS,
@@ -108,7 +108,6 @@ enum class MemoryType {
   FILTERED_DATA_BLOCK,
   GENERIC_TILE_IO,
   RTREE,
-  TILE_BITMAP,
   TILE_DATA,
   TILE_HILBERT_VALUES,
   TILE_OFFSETS,
@@ -122,7 +121,10 @@ enum class MemoryType {
   METADATA,
   DOMAINS,
   TILE_SUMS,
-  TILE_WRITER_DATA
+  WRITER_TILE_DATA,
+  WRITER_DATA,
+  RESULT_TILE,
+  RESULT_TILE_BITMAP
 };
 
 /**

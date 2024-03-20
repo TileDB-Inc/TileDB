@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,14 @@
 #ifndef TILEDB_INDEXED_LIST_H
 #define TILEDB_INDEXED_LIST_H
 
+#include "pmr.h"
+
 #include <list>
 #include <vector>
+
+namespace tiledb::sm {
+class MemoryTracker;
+}
 
 namespace tiledb::common {
 
@@ -51,9 +57,15 @@ class IndexedList {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Default constructor. */
-  IndexedList() {
-  }
+  /** Deleted Default constructor. */
+  IndexedList() = delete;
+
+  /**
+   * Constructor.
+   *
+   * @param memory_tracker The memory tracker for the underlying containers.
+   */
+  explicit IndexedList(shared_ptr<sm::MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(IndexedList);
   DISABLE_MOVE_AND_MOVE_ASSIGN(IndexedList);
@@ -124,7 +136,7 @@ class IndexedList {
 
     vec_.reserve(num);
     for (uint64_t n = 0; n < num; n++) {
-      emplace_back();
+      emplace_back(memory_tracker_);
     }
   }
 
@@ -177,8 +189,11 @@ class IndexedList {
   }
 
  private:
+  /** The memory tracker for the underlying list. */
+  shared_ptr<sm::MemoryTracker> memory_tracker_;
+
   /** List that contains all the elements. */
-  std::list<T> list_;
+  tdb::pmr::list<T> list_;
 
   /** Vector that contains a pointer to the elements allowing indexed access. */
   std::vector<T*> vec_;

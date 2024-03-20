@@ -174,7 +174,7 @@ WriterTile::WriterTile(
           type,
           cell_size,
           size,
-          memory_tracker->get_resource(MemoryType::TILE_WRITER_DATA))
+          memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
     , filtered_buffer_(0) {
 }
 
