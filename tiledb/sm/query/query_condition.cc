@@ -1265,7 +1265,7 @@ void QueryCondition::apply_tree(
 }
 
 Status QueryCondition::apply(
-    const QueryCondition::Params params,
+    const QueryCondition::Params& params,
     const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
     std::vector<ResultCellSlab>& result_cell_slabs,
     const uint64_t stride) const {
@@ -1945,7 +1945,7 @@ void QueryCondition::apply_ast_node_dense(
 template <typename CombinationOp>
 void QueryCondition::apply_tree_dense(
     const tdb_unique_ptr<ASTNode>& node,
-    const ArraySchema& array_schema,
+    const QueryCondition::Params& params,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t src_cell,
@@ -1956,7 +1956,7 @@ void QueryCondition::apply_tree_dense(
   if (!node->is_expr()) {
     apply_ast_node_dense(
         node,
-        array_schema,
+        params.GetSchema(),
         result_tile,
         start,
         src_cell,
@@ -1989,7 +1989,7 @@ void QueryCondition::apply_tree_dense(
           for (const auto& child : node->get_children()) {
             apply_tree_dense(
                 child,
-                array_schema,
+                params,
                 result_tile,
                 start,
                 src_cell,
@@ -2003,14 +2003,17 @@ void QueryCondition::apply_tree_dense(
         } else if constexpr (std::is_same_v<
                                  CombinationOp,
                                  std::logical_or<uint8_t>>) {
-          std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 1);
+          auto resource = params.GetMemoryTracker()->get_resource(
+              MemoryType::QUERY_CONDITION);
+          tdb::pmr::vector<uint8_t> combination_op_bitmap(
+              result_buffer_size, 1, resource);
           span<uint8_t> combination_op_span(
               combination_op_bitmap.data(), result_buffer_size);
 
           for (const auto& child : node->get_children()) {
             apply_tree_dense(
                 child,
-                array_schema,
+                params,
                 result_tile,
                 start,
                 src_cell,
@@ -2030,13 +2033,16 @@ void QueryCondition::apply_tree_dense(
          *                        = a /\ (cl1'(q; cl2'(q; 0)))
          */
       case QueryConditionCombinationOp::OR: {
-        std::vector<uint8_t> combination_op_bitmap(result_buffer_size, 0);
+        auto resource = params.GetMemoryTracker()->get_resource(
+            MemoryType::QUERY_CONDITION);
+        tdb::pmr::vector<uint8_t> combination_op_bitmap(
+            result_buffer_size, 0, resource);
         span<uint8_t> combination_op_span(
             combination_op_bitmap.data(), result_buffer_size);
         for (const auto& child : node->get_children()) {
           apply_tree_dense(
               child,
-              array_schema,
+              params,
               result_tile,
               start,
               src_cell,
@@ -2063,7 +2069,7 @@ void QueryCondition::apply_tree_dense(
 }
 
 Status QueryCondition::apply_dense(
-    const QueryCondition::Params params,
+    const QueryCondition::Params& params,
     ResultTile* result_tile,
     const uint64_t start,
     const uint64_t length,
@@ -2079,7 +2085,7 @@ Status QueryCondition::apply_dense(
   span<uint8_t> result_span(result_buffer + start, length);
   apply_tree_dense(
       tree_,
-      params.GetSchema(),
+      params,
       result_tile,
       start,
       src_cell,

@@ -56,10 +56,16 @@ enum class QueryConditionCombinationOp : uint8_t;
 
 class QueryCondition {
  public:
+  /** Class to pass query parameters to query condition processing. */
   class Params {
    public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
     Params() = delete;
 
+    /** Constructor setting all parameters. */
     Params(
         shared_ptr<MemoryTracker> memory_tracker,
         const ArraySchema& array_schema)
@@ -67,16 +73,29 @@ class QueryCondition {
         , schema_(array_schema) {
     }
 
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /** Returns the memory tracker. */
     shared_ptr<MemoryTracker> GetMemoryTracker() const {
       return memory_tracker_;
     }
 
+    /** Returns the array schema. */
     const ArraySchema& GetSchema() const {
       return schema_;
     }
 
    private:
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+    /** Memory tracker. */
     shared_ptr<MemoryTracker> memory_tracker_;
+
+    /** Array schema. */
     const ArraySchema& schema_;
   };
 
@@ -217,7 +236,7 @@ class QueryCondition {
   /**
    * Applies this query condition to `result_cell_slabs`.
    *
-   * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param params Query condition parameters.
    * @param fragment_metadata The fragment metadata.
    * @param result_cell_slabs The cell slabs to filter. Mutated to remove cell
    *   slabs that do not meet the criteria in this query condition.
@@ -225,7 +244,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply(
-      const QueryCondition::Params params,
+      const QueryCondition::Params& params,
       const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
       std::vector<ResultCellSlab>& result_cell_slabs,
       uint64_t stride) const;
@@ -233,7 +252,7 @@ class QueryCondition {
   /**
    * Applies this query condition to a set of cells.
    *
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param length The number of cells to process.
@@ -244,7 +263,7 @@ class QueryCondition {
    * @return Status
    */
   Status apply_dense(
-      const QueryCondition::Params params,
+      const QueryCondition::Params& params,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t length,
@@ -256,7 +275,7 @@ class QueryCondition {
   /**
    * Applies this query condition to a set of cells.
    *
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param result_bitmap The bitmap to use for results.
    * @return Status
@@ -433,7 +452,7 @@ class QueryCondition {
    * `result_cell_slabs`.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema associated with `result_cell_slabs`.
+   * @param params Query condition parameters.
    * @param fragment_metadata The fragment metadata.
    * @param stride The stride between cells.
    * @param combination_op The combination op.
@@ -543,7 +562,7 @@ class QueryCondition {
    * Applies the query condition represented with the AST to a set of cells.
    *
    * @param node The node to apply.
-   * @param array_schema The array schema.
+   * @param params Query condition parameters.
    * @param result_tile The result tile to get the cells from.
    * @param start The start cell.
    * @param src_cell The cell offset in the source tile.
@@ -556,7 +575,7 @@ class QueryCondition {
   template <typename CombinationOp = std::logical_and<uint8_t>>
   void apply_tree_dense(
       const tdb_unique_ptr<ASTNode>& node,
-      const ArraySchema& array_schema,
+      const QueryCondition::Params& params,
       ResultTile* result_tile,
       const uint64_t start,
       const uint64_t src_cell,
