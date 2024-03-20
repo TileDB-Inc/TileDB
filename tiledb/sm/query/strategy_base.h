@@ -77,6 +77,7 @@ class StrategyParams {
       Layout layout,
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
+      std::vector<std::optional<Range>>& shape_data,
       bool skip_checks_serialization)
       : array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
@@ -89,6 +90,7 @@ class StrategyParams {
       , layout_(layout)
       , condition_(condition)
       , default_channel_aggregates_(default_channel_aggregates)
+      , shape_data_(shape_data)
       , skip_checks_serialization_(skip_checks_serialization) {
   }
 
@@ -150,6 +152,10 @@ class StrategyParams {
     return default_channel_aggregates_;
   }
 
+  inline std::vector<std::optional<Range>>& shape_data() {
+    return shape_data_;
+  }
+
   /** Return if we should skip checks for serialization. */
   inline bool skip_checks_serialization() {
     return skip_checks_serialization_;
@@ -192,6 +198,9 @@ class StrategyParams {
 
   /** Default channel aggregates. */
   DefaultChannelAggregates& default_channel_aggregates_;
+
+  /** Shape data set on each dimension. */
+  std::vector<std::optional<Range>>& shape_data_;
 
   /** Skip checks for serialization. */
   bool skip_checks_serialization_;
@@ -290,6 +299,9 @@ class StrategyBase {
 
   /** The query subarray (initially the whole domain by default). */
   Subarray& subarray_;
+
+  /** Shape data set on each dimension. */
+  std::vector<std::optional<Range>>& shape_data_;
 
   /** The offset format used for variable-sized attributes. */
   std::string offsets_format_mode_;

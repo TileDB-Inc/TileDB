@@ -58,6 +58,7 @@ StrategyBase::StrategyBase(
     , layout_(params.layout())
     , storage_manager_(params.storage_manager())
     , subarray_(params.subarray())
+    , shape_data_(params.shape_data())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
     , offsets_bitsize_(constants::cell_var_offset_size * 8) {
