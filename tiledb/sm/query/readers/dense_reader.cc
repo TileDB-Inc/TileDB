@@ -1005,10 +1005,13 @@ Status DenseReader::apply_query_condition(
                     }
                   }
 
-                  RETURN_NOT_OK(condition_->apply_dense(
+                  QueryCondition::Params params(
+                      query_memory_tracker_,
                       *(fragment_metadata_[frag_domains[i].fid()]
                             ->array_schema()
-                            .get()),
+                            .get()));
+                  RETURN_NOT_OK(condition_->apply_dense(
+                      params,
                       result_space_tile.result_tile(frag_domains[i].fid()),
                       start,
                       end - start + 1,
