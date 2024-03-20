@@ -238,7 +238,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   void clear_coord_buffers();
 
-  /** Closes all attribute files, flushing their state to storage. */
+  /**
+   * Closes all attribute and dimension files, flushing their state to storage.
+   */
   Status close_files(shared_ptr<FragmentMetadata> meta) const;
 
   /**

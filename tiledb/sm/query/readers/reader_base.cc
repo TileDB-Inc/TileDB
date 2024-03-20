@@ -92,6 +92,11 @@ ReaderBase::ReaderBase(
         "global order query.");
   }
 
+  if (!shape_data_.empty()) {
+    throw ReaderBaseStatusException(
+        "Cannot process query; Shapes are not supported on read queries.");
+  }
+
   // Validate the aggregates and store the requested aggregates by field name.
   for (auto& aggregate : params.default_channel_aggregates()) {
     aggregate.second->validate_output_buffer(
