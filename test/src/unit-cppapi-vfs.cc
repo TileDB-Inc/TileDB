@@ -651,61 +651,42 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
 TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
     "[ls-recursive][callback][wrapper]") {
-  tiledb::test::LocalFsTest local_fs({1});
-  tiledb::test::vfs_config cfg;
-  tiledb::Context ctx(tiledb::Config(&cfg.config));
-  tiledb::VFS vfs(ctx);
-
   tiledb::VFSExperimental::LsObjects data;
-  auto path = local_fs.temp_dir_.to_string();
   auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
   SECTION("Null callback") {
-    CHECK_THROWS(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, nullptr));
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr));
   }
   SECTION("Valid callback") {
-    CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, cb));
+    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
   }
 }
 
 TEST_CASE(
     "CPP API: CallbackWrapperCPP operator() validation",
     "[ls-recursive][callback][wrapper]") {
-  tiledb::test::LocalFsTest local_fs({1});
-  tiledb::test::vfs_config cfg;
-  tiledb::Context ctx(tiledb::Config(&cfg.config));
-  tiledb::VFS vfs(ctx);
-
   tiledb::VFSExperimental::LsObjects data;
   auto cb = [&](std::string_view path, uint64_t object_size) -> bool {
-    if (object_size > 10) {
+    if (object_size > 100) {
       // Throw if object size is greater than 100 bytes.
       throw std::runtime_error("Throwing callback");
-    } else if (!path.ends_with("test_file_1")) {
+    } else if (!path.ends_with(".txt")) {
+      // Reject non-txt files.
       return false;
     }
     data.emplace_back(path, object_size);
     return true;
   };
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
 
-  auto path = local_fs.temp_dir_.to_string();
   SECTION("Callback return true accepts object") {
-    CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(
-        ctx, vfs, path + "/subdir_1", cb));
+    CHECK(wrapper("file.txt", 10) == true);
     CHECK(data.size() == 1);
   }
   SECTION("Callback return false rejects object") {
-    CHECK_NOTHROW(tiledb::VFSExperimental::ls_recursive(ctx, vfs, path, cb));
+    CHECK(wrapper("some/dir/", 0) == false);
     CHECK(data.empty());
   }
   SECTION("Callback exception is propagated") {
-    auto large_file = local_fs.temp_dir_.join_path("/subdir_1/test_file_1");
-    std::string file_data(11, 'a');
-    local_fs.vfs_.open_file(large_file, tiledb::sm::VFSMode::VFS_WRITE).ok();
-    local_fs.vfs_.write(large_file, file_data.data(), file_data.size()).ok();
-    local_fs.vfs_.close_file(large_file).ok();
-    CHECK_THROWS_WITH(
-        tiledb::VFSExperimental::ls_recursive(ctx, vfs, path + "/subdir_1", cb),
-        Catch::Matchers::ContainsSubstring("Throwing callback"));
+    CHECK_THROWS_WITH(wrapper("path", 101) == 0, "Throwing callback");
   }
 }

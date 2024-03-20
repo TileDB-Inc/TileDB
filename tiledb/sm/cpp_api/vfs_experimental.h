@@ -82,6 +82,35 @@ class VFSExperimental {
    */
   using LsObjects = std::vector<std::pair<std::string, uint64_t>>;
 
+  /** Class to wrap C++ FilePredicate for passing to the C API. */
+  class CallbackWrapperCPP {
+   public:
+    /** Default constructor is deleted */
+    CallbackWrapperCPP() = delete;
+
+    /** Constructor */
+    CallbackWrapperCPP(LsCallback cb)
+        : cb_(cb) {
+      if (cb_ == nullptr) {
+        throw std::logic_error("ls_recursive callback function cannot be null");
+      }
+    }
+
+    /**
+     * Operator to wrap the FilePredicate used in the C++ API.
+     *
+     * @param path The path of the object.
+     * @param size The size of the object in bytes.
+     * @return True if the object should be included, False otherwise.
+     */
+    bool operator()(std::string_view path, uint64_t size) {
+      return cb_(path, size);
+    }
+
+   private:
+    LsCallback cb_;
+  };
+
   /* ********************************* */
   /*       PUBLIC STATIC METHODS       */
   /* ********************************* */
@@ -198,35 +227,6 @@ class VFSExperimental {
     CallbackWrapperCPP* cb = static_cast<CallbackWrapperCPP*>(data);
     return (*cb)({path, path_len}, object_size);
   }
-
-  /** Class to wrap C++ FilePredicate for passing to the C API. */
-  class CallbackWrapperCPP {
-   public:
-    /** Default constructor is deleted */
-    CallbackWrapperCPP() = delete;
-
-    /** Constructor */
-    CallbackWrapperCPP(LsCallback cb)
-        : cb_(cb) {
-      if (cb_ == nullptr) {
-        throw std::logic_error("ls_recursive callback function cannot be null");
-      }
-    }
-
-    /**
-     * Operator to wrap the FilePredicate used in the C++ API.
-     *
-     * @param path The path of the object.
-     * @param size The size of the object in bytes.
-     * @return True if the object should be included, False otherwise.
-     */
-    bool operator()(std::string_view path, uint64_t size) {
-      return cb_(path, size);
-    }
-
-   private:
-    LsCallback cb_;
-  };
 };
 }  // namespace tiledb
 
