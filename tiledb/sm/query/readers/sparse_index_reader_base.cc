@@ -728,8 +728,10 @@ void SparseIndexReaderBase::apply_query_condition(
             }
 
             // Remove cells with partial overlap from the bitmap.
+            QueryCondition::Params params(
+                query_memory_tracker_, *(frag_meta->array_schema().get()));
             RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()), *rt, rt->bitmap()));
+                params, *rt, rt->bitmap()));
             rt->count_cells();
           }
 
@@ -743,10 +745,10 @@ void SparseIndexReaderBase::apply_query_condition(
           if (frag_meta->has_delete_meta() &&
               !deletes_consolidation_no_purge_) {
             // Remove cells deleted cells using the open timestamp.
+            QueryCondition::Params params(
+                query_memory_tracker_, *(frag_meta->array_schema().get()));
             RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()),
-                *rt,
-                rt->post_dedup_bitmap()));
+                params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
@@ -754,10 +756,10 @@ void SparseIndexReaderBase::apply_query_condition(
 
           // Compute the result of the query condition for this tile.
           if (condition_.has_value()) {
+            QueryCondition::Params params(
+                query_memory_tracker_, *(frag_meta->array_schema().get()));
             RETURN_NOT_OK(condition_->apply_sparse<BitmapType>(
-                *(frag_meta->array_schema().get()),
-                *rt,
-                rt->post_dedup_bitmap()));
+                params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
@@ -785,19 +787,20 @@ void SparseIndexReaderBase::apply_query_condition(
                 // start.
                 if (delete_timestamp >= frag_meta->timestamp_range().first) {
                   // Apply timestamped condition or regular condition.
+                  QueryCondition::Params params(
+                      query_memory_tracker_,
+                      *(frag_meta->array_schema().get()));
                   if (!frag_meta->has_timestamps() ||
                       delete_timestamp > frag_meta->timestamp_range().second) {
-                    RETURN_NOT_OK(delete_and_update_conditions_[i]
-                                      .apply_sparse<BitmapType>(
-                                          *(frag_meta->array_schema().get()),
-                                          *rt,
-                                          rt->post_dedup_bitmap()));
+                    RETURN_NOT_OK(
+                        delete_and_update_conditions_[i]
+                            .apply_sparse<BitmapType>(
+                                params, *rt, rt->post_dedup_bitmap()));
                   } else {
-                    RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i]
-                                      .apply_sparse<BitmapType>(
-                                          *(frag_meta->array_schema().get()),
-                                          *rt,
-                                          rt->post_dedup_bitmap()));
+                    RETURN_NOT_OK(
+                        timestamped_delete_and_update_conditions_[i]
+                            .apply_sparse<BitmapType>(
+                                params, *rt, rt->post_dedup_bitmap()));
                   }
 
                   if (deletes_consolidation_no_purge_) {

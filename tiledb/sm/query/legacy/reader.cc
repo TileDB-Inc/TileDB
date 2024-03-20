@@ -353,17 +353,19 @@ Status Reader::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
+  QueryCondition::Params params(query_memory_tracker_, array_schema_);
   if (condition_.has_value()) {
     RETURN_NOT_OK(condition_->apply(
-        array_schema_, fragment_metadata_, result_cell_slabs, stride));
+        params, fragment_metadata_, result_cell_slabs, stride));
   }
 
   // Apply delete conditions.
   if (!delete_and_update_conditions_.empty()) {
     for (uint64_t i = 0; i < delete_and_update_conditions_.size(); i++) {
       // For legacy, always run the timestamped condition.
+
       RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i].apply(
-          array_schema_, fragment_metadata_, result_cell_slabs, stride));
+          params, fragment_metadata_, result_cell_slabs, stride));
     }
   }
 
@@ -371,7 +373,7 @@ Status Reader::apply_query_condition(
   if (!delete_timestamps_condition_.empty()) {
     // Remove cells with partial overlap from the bitmap.
     RETURN_NOT_OK(delete_timestamps_condition_.apply(
-        array_schema_, fragment_metadata_, result_cell_slabs, stride));
+        params, fragment_metadata_, result_cell_slabs, stride));
   }
 
   return Status::Ok();
@@ -476,8 +478,10 @@ Status Reader::compute_range_result_coords(
     // Apply partial overlap condition, if required.
     const auto frag_meta = fragment_metadata_[tile->frag_idx()];
     if (process_partial_timestamps(*frag_meta)) {
+      QueryCondition::Params params(
+          query_memory_tracker_, *(frag_meta->array_schema().get()));
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-          *(frag_meta->array_schema().get()), *tile, result_bitmap));
+          params, *tile, result_bitmap));
     }
 
     // Gather results
@@ -1790,8 +1794,9 @@ Status Reader::get_all_result_coords(
     auto resource =
         query_memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP);
     tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
+    QueryCondition::Params params(query_memory_tracker_, array_schema_);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-        *(frag_meta->array_schema().get()), *tile, result_bitmap));
+        params, *tile, result_bitmap));
 
     for (uint64_t i = 0; i < coords_num; ++i) {
       if (result_bitmap[i]) {

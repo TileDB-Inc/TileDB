@@ -76,8 +76,6 @@ std::string memory_type_to_str(MemoryType type) {
       return "TileMinVals";
     case MemoryType::TILE_NULL_COUNTS:
       return "TileNullCounts";
-    case MemoryType::TILE_QUERY_CONDITIONS:
-      return "TileQueryConditions";
     case MemoryType::ATTRIBUTES:
       return "Attributes";
     case MemoryType::DIMENSION_LABELS:
@@ -98,6 +96,8 @@ std::string memory_type_to_str(MemoryType type) {
       return "ResultTileBitmap";
     case MemoryType::RESULT_TILE:
       return "ResultTile";
+    case MemoryType::QUERY_CONDITION:
+      return "QueryCondition";
   }
 
   auto val = std::to_string(static_cast<uint32_t>(type));

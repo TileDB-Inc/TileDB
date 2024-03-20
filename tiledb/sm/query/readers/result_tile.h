@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -984,8 +985,8 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       , hilbert_values_(this->memory_tracker_->get_resource(
             MemoryType::TILE_HILBERT_VALUES))
       , post_dedup_bitmap_(nullopt)
-      , per_cell_delete_condition_(this->memory_tracker_->get_resource(
-            MemoryType::TILE_QUERY_CONDITIONS))
+      , per_cell_delete_condition_(
+            this->memory_tracker_->get_resource(MemoryType::QUERY_CONDITION))
       , used_(false) {
     if (!dups || include_delete_meta) {
       post_dedup_bitmap_.emplace(
