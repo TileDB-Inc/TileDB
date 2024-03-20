@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,7 +34,7 @@
 #include <sstream>
 
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/sm/misc/uuid.h"
+#include "tiledb/common/random/random_label.h"
 
 #include "enumeration.h"
 
@@ -75,10 +75,8 @@ Enumeration::Enumeration(
   }
 
   if (path_name_.empty()) {
-    std::string tmp_uuid;
-    throw_if_not_ok(uuid::generate_uuid(&tmp_uuid, false));
-    path_name_ =
-        "__" + tmp_uuid + "_" + std::to_string(constants::enumerations_version);
+    path_name_ = "__" + tiledb::common::random_label() + "_" +
+                 std::to_string(constants::enumerations_version);
   }
 
   if (path_name.find("/") != std::string::npos) {

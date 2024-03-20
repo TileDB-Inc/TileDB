@@ -38,7 +38,6 @@ commence(object_library array)
         context_resources
         fragment
         generic_tile_io
-        uuid
         vfs
     )
     if(TILEDB_STATS)
