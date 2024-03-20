@@ -89,6 +89,7 @@ UnorderedWriter::UnorderedWriter(
           remote_query,
           fragment_name)
     , frag_uri_(std::nullopt)
+    , cell_pos_(query_memory_tracker_->get_resource(MemoryType::WRITER_DATA))
     , written_buffers_(written_buffers)
     , is_coords_pass_(true) {
   // Check the layout is unordered.
@@ -372,7 +373,7 @@ Status UnorderedWriter::compute_coord_dups() {
 }
 
 Status UnorderedWriter::prepare_tiles(
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute tiles
@@ -380,10 +381,10 @@ Status UnorderedWriter::prepare_tiles(
   for (const auto& it : buffers_) {
     const auto& name = it.first;
     if (written_buffers_.count(name) == 0) {
-      (*tiles).emplace(
+      tiles->emplace(
           std::piecewise_construct,
           std::forward_as_tuple(name),
-          std::forward_as_tuple());
+          std::forward_as_tuple(query_memory_tracker_));
     }
   }
 
@@ -675,7 +676,8 @@ Status UnorderedWriter::unordered_write() {
   frag_uri_ = frag_meta_->fragment_uri();
 
   // Prepare tiles
-  std::unordered_map<std::string, WriterTileTupleVector> tiles;
+  tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_tiles(&tiles));
 
   // No tiles

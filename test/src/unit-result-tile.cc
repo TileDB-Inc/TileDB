@@ -283,7 +283,7 @@ TEST_CASE_METHOD(
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
-      MemoryType::TILE_BITMAP);
+      MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint8_t> result_count(num_cells, 1, resource);
   ResultTile::compute_results_count_sparse_string(
       &rt,
@@ -426,7 +426,7 @@ TEST_CASE_METHOD(
   std::iota(range_indexes.begin(), range_indexes.end(), 0);
 
   auto resource = tiledb::test::get_test_memory_tracker()->get_resource(
-      MemoryType::TILE_BITMAP);
+      MemoryType::RESULT_TILE_BITMAP);
   tdb::pmr::vector<uint64_t> result_count(num_cells, 1, resource);
   ResultTile::compute_results_count_sparse_string(
       &rt,
