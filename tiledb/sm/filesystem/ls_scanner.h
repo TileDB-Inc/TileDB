@@ -316,45 +316,6 @@ class CallbackWrapperCAPI {
   void* data_;
 };
 
-/** Class to wrap C++ FilePredicate for passing to the C API. */
-class CallbackWrapperCPP {
- public:
-  /**
-   * Typedef for ls callback function used to check if a single
-   * result should be included in the final results returned from ls_recursive.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param size The size of the current object in bytes.
-   * @return True if the result should be included, else false.
-   */
-  using LsCallback = std::function<bool(std::string_view, uint64_t)>;
-
-  /** Default constructor is deleted */
-  CallbackWrapperCPP() = delete;
-
-  /** Constructor */
-  CallbackWrapperCPP(LsCallback cb)
-      : cb_(cb) {
-    if (cb_ == nullptr) {
-      throw LsScanException("ls_recursive callback function cannot be null");
-    }
-  }
-
-  /**
-   * Operator to wrap the FilePredicate used in the C++ API.
-   *
-   * @param path The path of the object.
-   * @param size The size of the object in bytes.
-   * @return True if the object should be included, False otherwise.
-   */
-  bool operator()(std::string_view path, uint64_t size) {
-    return cb_(path, size);
-  }
-
- private:
-  LsCallback cb_;
-};
-
 /**
  * Implements the `ls_filtered` function for `std::filesystem` which can be used
  * for Posix and Win32

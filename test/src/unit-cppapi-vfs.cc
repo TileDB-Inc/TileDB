@@ -651,14 +651,13 @@ TEST_CASE("CPP API: Throwing filter", "[cppapi][vfs][ls-recursive]") {
 TEST_CASE(
     "CPP API: CallbackWrapperCPP construction validation",
     "[ls-recursive][callback][wrapper]") {
-  using tiledb::sm::CallbackWrapperCPP;
   tiledb::VFSExperimental::LsObjects data;
   auto cb = [&](std::string_view, uint64_t) -> bool { return true; };
   SECTION("Null callback") {
-    CHECK_THROWS(CallbackWrapperCPP(nullptr));
+    CHECK_THROWS(tiledb::VFSExperimental::CallbackWrapperCPP(nullptr));
   }
   SECTION("Valid callback") {
-    CHECK_NOTHROW(CallbackWrapperCPP(cb));
+    CHECK_NOTHROW(tiledb::VFSExperimental::CallbackWrapperCPP(cb));
   }
 }
 
@@ -677,7 +676,7 @@ TEST_CASE(
     data.emplace_back(path, object_size);
     return true;
   };
-  tiledb::sm::CallbackWrapperCPP wrapper(cb);
+  tiledb::VFSExperimental::CallbackWrapperCPP wrapper(cb);
 
   SECTION("Callback return true accepts object") {
     CHECK(wrapper("file.txt", 10) == true);
