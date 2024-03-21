@@ -27,9 +27,9 @@
  */
 
 #include "tiledb/storage_format/uri/generate_uri.h"
+#include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <sstream>
@@ -42,9 +42,6 @@ std::string generate_timestamped_name(
     uint64_t timestamp_start,
     uint64_t timestamp_end,
     std::optional<format_version_t> version) {
-  std::string uuid;
-  throw_if_not_ok(sm::uuid::generate_uuid(&uuid, false));
-
   if (timestamp_start > timestamp_end) {
     throw std::logic_error(
         "Error generating timestamped name; "
@@ -52,7 +49,8 @@ std::string generate_timestamped_name(
   }
 
   std::stringstream ss;
-  ss << "/__" << timestamp_start << "_" << timestamp_end << "_" << uuid;
+  ss << "/__" << timestamp_start << "_" << timestamp_end << "_"
+     << random_label();
 
   if (version.has_value()) {
     ss << "_" << version.value();
