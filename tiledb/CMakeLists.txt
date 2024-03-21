@@ -123,6 +123,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/version.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrowio
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
