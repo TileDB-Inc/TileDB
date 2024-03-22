@@ -699,6 +699,20 @@ void WriterBase::set_coords_metadata(
   meta->set_last_tile_cell_num(cell_num);
 }
 
+void WriterBase::set_shape_metadata(
+    const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+    shared_ptr<FragmentMetadata> meta) {
+  if (!shape_data_.empty()) {
+    auto dim_num{array_schema_.dim_num()};
+    for (size_t i = 0; i < dim_num; i++) {
+      const auto& dim_name = array_schema_.dimension_ptr(i)->name();
+      if (tiles.count(dim_name)) {
+        meta->set_shape(i, *shape_data_.at(i));
+      }
+    }
+  }
+}
+
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
     std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {

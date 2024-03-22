@@ -1197,6 +1197,19 @@ void Query::set_shape(uint32_t dim_idx, const void* min, const void* max) {
   shape_data_[dim_idx] = Range(&range[0], 2 * coord_size);
 }
 
+const Range& Query::get_shape(uint32_t dim_idx) const {
+  if (shape_data_.empty()) {
+    throw QueryStatusException("No shape data set on this query.");
+  }
+  if (!shape_data_[dim_idx].has_value()) {
+    // There is shape data set on the query, but not yet for this dimension.
+    throw QueryStatusException(
+        "No shape data set on dimension index " + std::to_string(dim_idx) +
+        ".");
+  }
+  return shape_data_[dim_idx].value();
+}
+
 std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
     std::string output_field_name) const {
   auto it = default_channel_aggregates_.find(output_field_name);

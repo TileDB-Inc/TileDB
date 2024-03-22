@@ -7351,6 +7351,7 @@ TEST_CASE("Test set shape API validation", "[query][set_shape]") {
   rc = tiledb_query_set_data_buffer(ctx, query, "a1", a1.data(), &a1_size);
   REQUIRE(rc == TILEDB_OK);
 
+  bool shape_set = false;
   auto expected = TILEDB_OK;
   SECTION("Setting the shape with null ranges fails") {
     // Attempt to set a shape with null ranges.
@@ -7385,13 +7386,39 @@ TEST_CASE("Test set shape API validation", "[query][set_shape]") {
     // Shape must be set on all dimensions.
     query->query_->set_shape(0, &min, &max);
     query->query_->set_shape(1, &minf, &maxf);
+    shape_set = true;
   }
 
   rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == expected);
-  if (expected == TILEDB_OK) {
-    // TODO: Validate written fragments contain shape data.
+  if (expected == TILEDB_OK && shape_set) {
+    // Validate the written fragments contain shape data.
+    auto dim_num = array->array_->array_schema_latest().domain().dim_num();
     auto written_frags = query->query_->get_written_fragment_info();
+    for (const auto& written_frag : written_frags) {
+      std::unordered_map<std::string, std::pair<tiledb::sm::Tile*, uint64_t>>
+          offsets;
+      auto loaded_fragments = tiledb::sm::FragmentMetadata::load(
+          ctx->resources(),
+          tiledb::test::get_test_memory_tracker(),
+          query->query_->array()->opened_array()->array_schema_latest_ptr(),
+          query->query_->array()->array_schemas_all(),
+          *query->query_->array()->encryption_key(),
+          {tiledb::sm::TimestampedURI(
+              written_frag.uri_, written_frag.timestamp_range_)},
+          offsets);
+      for (const auto& frag : loaded_fragments) {
+        auto frag_shape_data = frag->shape_data();
+        CHECK(frag_shape_data.size() == dim_num);
+        for (size_t i = 0; i < dim_num; i++) {
+          auto shape_data_set = query->query_->get_shape(i);
+          REQUIRE(frag_shape_data[i].has_value());
+          auto frag_shape = *frag_shape_data[i];
+          CHECK(shape_data_set == frag_shape);
+        }
+      }
+    }
+  }
 }
 
 // TODO: Convert internal calls to Query::set_shape to tiledb_query_set_shape.

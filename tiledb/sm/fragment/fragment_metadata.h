@@ -555,6 +555,14 @@ class FragmentMetadata {
   void set_mbr(uint64_t tile, const NDRange& mbr);
 
   /**
+   * Set the shape for the dimension at the input index.
+   *
+   * @param dim_idx The index of the dimension.
+   * @param range The range to set for the shape on this dimension.
+   */
+  void set_shape(uint32_t dim_idx, const Range& range);
+
+  /**
    * Resizes the per-tile metadata vectors for the given number of tiles. This
    * is not serialized, and is only used during writes.
    *
@@ -1220,6 +1228,11 @@ class FragmentMetadata {
     return non_empty_domain_;
   }
 
+  /** Shape data accessor. */
+  std::vector<std::optional<Range>>& shape_data() {
+    return shape_data_;
+  }
+
   /** rtree accessor */
   RTree& rtree() {
     return rtree_;
@@ -1304,6 +1317,9 @@ class FragmentMetadata {
    * type of the domain must be the same as the type of the array coordinates.
    */
   NDRange domain_;
+
+  /** Shape data set on each dimension. */
+  std::vector<std::optional<Range>> shape_data_;
 
   /** Stores the size of each attribute file. */
   std::vector<uint64_t> file_sizes_;
@@ -1854,6 +1870,17 @@ class FragmentMetadata {
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
+
+  /**
+   * Writes the shape data to the input buffer.
+   * If there is no shape data available, we write the non-empty domain.
+   */
+  void write_shape_data(Serializer& serializer) const;
+
+  /**
+   * Loads the shape data.
+   */
+  void load_shape_data(Deserializer& deserializer);
 
   /**
    * Writes the tile offsets of the input attribute or dimension to storage.
