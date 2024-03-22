@@ -1,3 +1,9 @@
+# TileDB v2.21.1 Release Notes
+
+## Defects removed
+
+* Do not load group metadata when getting it from REST. [#4821](https://github.com/TileDB-Inc/TileDB/pull/4821)
+
 # TileDB v2.21.0 Release Notes
 
 ## Deprecation announcements
