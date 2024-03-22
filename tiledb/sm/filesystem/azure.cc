@@ -80,12 +80,9 @@ std::string get_config_with_env_fallback(
 }
 
 std::string get_blob_endpoint(
-    const Config& config,
-    const std::string& account_name,
-    bool& has_sas_token) {
+    const Config& config, const std::string& account_name) {
   std::string sas_token = get_config_with_env_fallback(
       config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN");
-  has_sas_token = !sas_token.empty();
 
   std::string result = get_config_with_env_fallback(
       config, "vfs.azure.blob_endpoint", "AZURE_BLOB_ENDPOINT");
@@ -116,6 +113,17 @@ std::string get_blob_endpoint(
   return result;
 }
 
+/**
+ * Check if config has a SAS token set
+ * @param config Configuration parameters.
+ * @return whether there is a SAS token in the config
+ */
+static bool has_sas_token(const Config& config) {
+  std::string sas_token = get_config_with_env_fallback(
+      config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN");
+  return !sas_token.empty();
+}
+
 AzureParameters::AzureParameters(const Config& config)
     : max_parallel_ops_(
           config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find))
@@ -134,8 +142,9 @@ AzureParameters::AzureParameters(const Config& config)
           config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT"))
     , account_key_(get_config_with_env_fallback(
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
-    , blob_endpoint_(get_blob_endpoint(config, account_name_, has_sas_token_))
-    , ssl_cfg_(config) {
+    , blob_endpoint_(get_blob_endpoint(config, account_name_))
+    , ssl_cfg_(config)
+    , has_sas_token_(has_sas_token(config)) {
 }
 
 Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
@@ -178,75 +187,77 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  if (!client_) {
-    ::Azure::Storage::Blobs::BlobClientOptions options;
-    options.Retry.MaxRetries = params.max_retries_;
-    options.Retry.RetryDelay = params.retry_delay_;
-    options.Retry.MaxRetryDelay = params.max_retry_delay_;
+  if (client_) {
+    return *client_;
+  }
 
-    options.Transport.Transport = create_transport(params.ssl_cfg_);
+  ::Azure::Storage::Blobs::BlobClientOptions options;
+  options.Retry.MaxRetries = params.max_retries_;
+  options.Retry.RetryDelay = params.retry_delay_;
+  options.Retry.MaxRetryDelay = params.max_retry_delay_;
+  options.Transport.Transport = create_transport(params.ssl_cfg_);
 
-    // Construct the Azure SDK blob service client.
-    // We pass a shared key if it was specified.
-    if (!params.account_key_.empty()) {
-      client_ =
-          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-              ::Azure::Storage::Blobs::BlobServiceClient,
-              params.blob_endpoint_,
-              make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                  HERE(), params.account_name_, params.account_key_),
-              options));
-      return *client_;
-    }
-    // Otherwise, if we did not specify an SAS token
-    // and we are connecting to an HTTPS endpoint,
-    // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
-    else if (
-        !params.has_sas_token_ &&
-        utils::parse::starts_with(params.blob_endpoint_, "https://")) {
-      try {
-        ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
-        cred_options.Retry = options.Retry;
-        cred_options.Transport = options.Transport;
-        auto credential =
-            make_shared<::Azure::Identity::ChainedTokenCredential>(
-                HERE(),
-                std::vector<std::shared_ptr<
-                    ::Azure::Core::Credentials::TokenCredential>>{
-                    make_shared<::Azure::Identity::EnvironmentCredential>(
-                        HERE(), cred_options),
-                    make_shared<::Azure::Identity::AzureCliCredential>(
-                        HERE(), cred_options),
-                    make_shared<::Azure::Identity::ManagedIdentityCredential>(
-                        HERE(), cred_options),
-                    make_shared<::Azure::Identity::WorkloadIdentityCredential>(
-                        HERE(), cred_options)});
-        // If a token is not available we wouldn't know it until we make a
-        // request and it would be too late. Try getting a token, and if it
-        // fails fall back to anonymous authentication.
-        ::Azure::Core::Credentials::TokenRequestContext tokenContext;
-        // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
-        tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
-        std::ignore = credential->GetToken(tokenContext, {});
-        client_ =
-            tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-                ::Azure::Storage::Blobs::BlobServiceClient,
-                params.blob_endpoint_,
-                credential,
-                options));
-        return *client_;
-      } catch (...) {
-        LOG_INFO(
-            "Failed to get Microsoft Entra ID token, falling back to anonymous "
-            "authentication");
-      }
-    }
+  // Construct the Azure SDK blob service client.
+  // We pass a shared key if it was specified.
+  if (!params.account_key_.empty()) {
     client_ =
         tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
             ::Azure::Storage::Blobs::BlobServiceClient,
             params.blob_endpoint_,
+            make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+                HERE(), params.account_name_, params.account_key_),
             options));
+    return *client_;
   }
+
+  // Otherwise, if we did not specify an SAS token
+  // and we are connecting to an HTTPS endpoint,
+  // use ChainedTokenCredential to authenticate using Microsoft Entra ID.
+  if (!params.has_sas_token_ &&
+      utils::parse::starts_with(params.blob_endpoint_, "https://")) {
+    try {
+      ::Azure::Core::Credentials::TokenCredentialOptions cred_options;
+      cred_options.Retry = options.Retry;
+      cred_options.Transport = options.Transport;
+      auto credential = make_shared<::Azure::Identity::ChainedTokenCredential>(
+          HERE(),
+          std::vector<
+              std::shared_ptr<::Azure::Core::Credentials::TokenCredential>>{
+              make_shared<::Azure::Identity::EnvironmentCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::AzureCliCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::ManagedIdentityCredential>(
+                  HERE(), cred_options),
+              make_shared<::Azure::Identity::WorkloadIdentityCredential>(
+                  HERE(), cred_options)});
+      // If a token is not available we wouldn't know it until we make a
+      // request and it would be too late. Try getting a token, and if it
+      // fails fall back to anonymous authentication.
+      ::Azure::Core::Credentials::TokenRequestContext tokenContext;
+
+      // https://github.com/Azure/azure-sdk-for-cpp/blob/azure-storage-blobs_12.7.0/sdk/storage/azure-storage-blobs/src/blob_service_client.cpp#L84
+      tokenContext.Scopes.emplace_back("https://storage.azure.com/.default");
+      std::ignore = credential->GetToken(tokenContext, {});
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              params.blob_endpoint_,
+              credential,
+              options));
+      return *client_;
+    } catch (...) {
+      LOG_INFO(
+          "Failed to get Microsoft Entra ID token, falling back to anonymous "
+          "authentication");
+    }
+  }
+
+  client_ = tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+      ::Azure::Storage::Blobs::BlobServiceClient,
+      params.blob_endpoint_,
+      options));
+
   return *client_;
 }
 

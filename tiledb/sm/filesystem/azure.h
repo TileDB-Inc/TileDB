@@ -99,14 +99,14 @@ struct AzureParameters {
   /** The Blob Storage account key. */
   std::string account_key_;
 
-  /** Whether the config specifies a SAS token. */
-  bool has_sas_token_;
-
   /** The Blob Storage endpoint to connect to. */
   std::string blob_endpoint_;
 
   /** SSL configuration. */
   SSLConfig ssl_cfg_;
+
+  /** Whether the config specifies a SAS token. */
+  bool has_sas_token_;
 };
 
 class Azure {
