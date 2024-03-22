@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,8 @@
 #include <test/support/tdb_catch.h>
 #include "tiledb/sm/cpp_api/tiledb"
 
+using namespace tiledb;
+
 struct MyData {
   int a;
   float b;
@@ -40,7 +42,6 @@ struct MyData {
 };
 
 TEST_CASE("C++ API: Types", "[cppapi][types]") {
-  using namespace tiledb;
   Context ctx;
 
   CHECK(
@@ -122,6 +123,12 @@ TEST_CASE("C++ API: Types", "[cppapi][types]") {
       impl::type_check<std::vector<char>>(TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
   CHECK_NOTHROW(impl::type_check<std::array<char, 1>>(
       TILEDB_STRING_ASCII, TILEDB_VAR_NUM));
+
+  // Validate byte datatypes
+  CHECK_NOTHROW(impl::type_check<std::byte>(TILEDB_BLOB));
+  CHECK_NOTHROW(impl::type_check<std::byte>(TILEDB_GEOM_WKB));
+  CHECK_NOTHROW(impl::type_check<std::byte>(TILEDB_GEOM_WKT));
+  CHECK_THROWS(impl::type_check<std::byte>(TILEDB_BOOL));
 
   auto a1 = Attribute::create<int>(ctx, "a1");
   auto a2 = Attribute::create<float>(ctx, "a2");
