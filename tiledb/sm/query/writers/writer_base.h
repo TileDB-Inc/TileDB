@@ -272,6 +272,16 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       shared_ptr<FragmentMetadata> meta) const;
 
   /**
+   * Set the shape metadata for each dimension.
+   *
+   * @param tiles The tiles to set the shape metadata.
+   * @param meta The fragment metadata that will store the shape metadata.
+   */
+  void set_shape_metadata(
+      const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+      shared_ptr<FragmentMetadata> meta);
+
+  /**
    * Computes the tiles metadata (min/max/sum/null count).
    *
    * @param tile_num The number of tiles.

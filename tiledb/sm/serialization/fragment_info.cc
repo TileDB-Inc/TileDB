@@ -249,6 +249,7 @@ single_fragment_info_from_capnp(
       single_frag_info_reader.getFragmentSize(),
       meta->non_empty_domain(),
       expanded_non_empty_domain,
+      meta->shape_data(),
       meta};
   // This is needed so that we don't try to load rtee from disk
   single_frag_info.meta()->set_rtree_loaded();

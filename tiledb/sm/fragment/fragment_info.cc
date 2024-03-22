@@ -916,6 +916,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
           sizes[fid],
           non_empty_domain,
           expanded_non_empty_domain,
+          meta->shape_data(),
           meta));
     }
   }
@@ -1157,6 +1158,7 @@ tuple<Status, optional<SingleFragmentInfo>> FragmentInfo::load(
       size,
       non_empty_domain,
       expanded_non_empty_domain,
+      meta->shape_data(),
       meta);
 
   return {Status::Ok(), ret};

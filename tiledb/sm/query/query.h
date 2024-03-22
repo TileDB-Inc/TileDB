@@ -543,12 +543,22 @@ class Query {
       const bool serialization_allow_new_attr = false);
 
   /**
-   * Set the shape for a dimension.
+   * Set the shape for a dimension by index.
+   *
    * @param dim_idx The dimension index to set.
    * @param min Minimum range for the dimension.
    * @param max Maximum range for the dimension.
    */
   void set_shape(uint32_t dim_idx, const void* min, const void* max);
+
+  /**
+   * Get the shape for a dimension by index. If there is no shape set, this
+   * method will throw.
+   *
+   * @param dim_idx The dimension index to retrieve shape.
+   * @return Range for the dimension shape.
+   */
+  const Range& get_shape(uint32_t dim_idx) const;
 
   /**
    * Get the config of the query.

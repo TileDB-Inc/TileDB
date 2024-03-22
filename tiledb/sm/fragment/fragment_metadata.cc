@@ -157,6 +157,18 @@ void FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   return expand_non_empty_domain(mbr);
 }
 
+void FragmentMetadata::set_shape(uint32_t dim_idx, const Range& range) {
+  if (dim_idx >= array_schema_->dim_num()) {
+    throw FragmentMetadataStatusException(
+        "Cannot set shape data for invalid dimension index " +
+        std::to_string(dim_idx));
+  }
+  if (shape_data_.empty()) {
+    shape_data_.resize(array_schema_->dim_num(), nullopt);
+  }
+  shape_data_[dim_idx] = range;
+}
+
 void FragmentMetadata::set_tile_index_base(uint64_t tile_base) {
   tile_index_base_ = tile_base;
 }
@@ -2066,6 +2078,10 @@ void FragmentMetadata::write_footer(Serializer& serializer) const {
   write_file_var_sizes(serializer);
   write_file_validity_sizes(serializer);
   write_generic_tile_offsets(serializer);
+
+  if (version_ >= 22) {
+    write_shape_data(serializer);
+  }
 }
 
 void FragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
@@ -2796,6 +2812,19 @@ void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
     load_non_empty_domain_v3_v4(deserializer);
   } else {
     load_non_empty_domain_v5_or_higher(deserializer);
+  }
+}
+
+void FragmentMetadata::load_shape_data(Deserializer& deserializer) {
+  bool null_shape_data = deserializer.read<char>();
+  if (!null_shape_data) {
+    auto dim_num = array_schema_->dim_num();
+    shape_data_.reserve(dim_num);
+    for (unsigned d = 0; d < dim_num; ++d) {
+      auto dim{array_schema_->dimension_ptr(d)};
+      auto size = 2 * dim->coord_size();
+      shape_data_.emplace_back(Range(deserializer.get_ptr<char>(size), size));
+    }
   }
 }
 
@@ -3750,6 +3779,10 @@ void FragmentMetadata::load_footer(
 
   load_generic_tile_offsets(deserializer);
 
+  if (version_ >= 22) {
+    load_shape_data(deserializer);
+  }
+
   loaded_metadata_.footer_ = true;
 
   // If the footer_size is not set lets calculate from how much of the
@@ -3935,6 +3968,29 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
         serializer.write<uint64_t>(r_start_size);
         serializer.write(r.data(), r_size);
       }
+    }
+  }
+}
+
+void FragmentMetadata::write_shape_data(Serializer& serializer) const {
+  // Write null shape data.
+  auto null_shape_data = (char)shape_data_.empty();
+  serializer.write<char>(null_shape_data);
+
+  // Write domain size.
+  auto& domain = array_schema_->domain();
+  auto dim_num = domain.dim_num();
+  // TODO: If the shape data is empty, write the non-empty domain.
+  if (shape_data_.empty()) {
+    // Write shape dummy values.
+    auto domain_size{2 * dim_num * domain.dimension_ptr(0)->coord_size()};
+    std::vector<uint8_t> d(domain_size, 0);
+    serializer.write(&d[0], domain_size);
+  } else {
+    // Write shape data for each dimension.
+    for (unsigned d = 0; d < dim_num; ++d) {
+      const auto& range = shape_data_[d];
+      serializer.write(range->data(), range->size());
     }
   }
 }

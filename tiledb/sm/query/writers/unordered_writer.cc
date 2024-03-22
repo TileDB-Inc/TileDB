@@ -703,6 +703,7 @@ Status UnorderedWriter::unordered_write() {
     // Compute coordinates metadata
     auto mbrs = compute_mbrs(tiles);
     set_coords_metadata(0, tile_num, tiles, mbrs, frag_meta_);
+    set_shape_metadata(tiles, frag_meta_);
   }
 
   // Compute tile metadata.

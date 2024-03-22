@@ -532,6 +532,8 @@ Status GlobalOrderWriter::filter_last_tiles(uint64_t cell_num) {
   auto mbrs = compute_mbrs(global_write_state_->last_tiles_);
   set_coords_metadata(0, 1, global_write_state_->last_tiles_, mbrs, meta);
 
+  set_shape_metadata(global_write_state_->last_tiles_, meta);
+
   // Compute tile metadata.
   RETURN_NOT_OK(compute_tiles_metadata(1, global_write_state_->last_tiles_));
 
@@ -813,6 +815,8 @@ Status GlobalOrderWriter::global_write() {
     }
 
     set_coords_metadata(idx, idx + num, tiles, mbrs, frag_meta);
+
+    set_shape_metadata(tiles, frag_meta);
 
     // Write tiles for all attributes
     RETURN_CANCEL_OR_ERROR(write_tiles(idx, idx + num, frag_meta, &tiles));
