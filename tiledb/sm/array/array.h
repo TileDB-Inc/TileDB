@@ -170,6 +170,11 @@ class OpenedArray {
     return non_empty_domain_;
   }
 
+  /** Gets a reference to the shape data. */
+  inline std::vector<std::optional<Range>>& shape_data() {
+    return shape_data_;
+  }
+
   /** Gets a reference to the fragment metadata. */
   inline std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata() {
     return fragment_metadata_;
@@ -230,6 +235,9 @@ class OpenedArray {
 
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
+
+  /** The shape data for the array. */
+  std::vector<std::optional<Range>> shape_data_;
 
   /** The metadata of the fragments the array was opened with. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -774,7 +782,7 @@ class Array {
     return opened_array_->non_empty_domain();
   }
 
-  /** Returns the non-empty domain of the opened array. */
+  /** Sets the non-empty domain of the opened array. */
   inline void set_non_empty_domain(const NDRange& non_empty_domain) {
     opened_array_->non_empty_domain() = non_empty_domain;
   }
@@ -783,6 +791,8 @@ class Array {
   inline void set_non_empty_domain_computed(const bool is_computed) {
     opened_array_->non_empty_domain_computed() = is_computed;
   }
+
+  std::vector<std::optional<Range>>& shape_data();
 
   /** Returns the memory tracker. */
   inline shared_ptr<MemoryTracker> memory_tracker() {

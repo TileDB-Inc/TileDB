@@ -1068,6 +1068,25 @@ const NDRange Array::non_empty_domain() {
   return loaded_non_empty_domain();
 }
 
+std::vector<std::optional<Range>>& Array::shape_data() {
+  if (opened_array_->shape_data().empty()) {
+    const auto& frag_meta = opened_array_->fragment_metadata();
+    for (const auto& meta : frag_meta) {
+      if (!meta->shape_data().empty() && opened_array_->shape_data().empty()) {
+        opened_array_->shape_data() = meta->shape_data();
+      } else {
+        // After we have found shape data, ensure it remains the same for all
+        // fragments.
+        if (opened_array_->shape_data() != meta->shape_data()) {
+          throw ArrayException(
+              "Dimension shapes are not consistent across fragments");
+        }
+      }
+    }
+  }
+  return opened_array_->shape_data();
+}
+
 bool Array::serialize_non_empty_domain() const {
   auto found = false;
   auto serialize_ned_array_open = false;
