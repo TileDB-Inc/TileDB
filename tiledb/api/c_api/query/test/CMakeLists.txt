@@ -36,3 +36,15 @@ add_test(
   COMMAND $<TARGET_FILE:unit_capi_query_type>
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable(unit_capi_query_shape EXCLUDE_FROM_ALL)
+target_sources(unit_capi_query_shape PUBLIC unit_capi_query_shape.cc)
+target_link_libraries(unit_capi_query_shape PUBLIC capi_query)
+target_link_libraries(unit_capi_query_shape PUBLIC tiledb_test_support_lib)
+target_link_libraries(unit_capi_query_shape PUBLIC Catch2::Catch2WithMain)
+
+add_test(
+    NAME "unit_capi_query_shape"
+    COMMAND $<TARGET_FILE:unit_capi_query_shape>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
