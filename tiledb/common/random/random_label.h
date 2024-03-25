@@ -51,6 +51,26 @@ class RandomLabelException : public StatusException {
   }
 };
 
+/** Simple struct to return a label with timestamp. */
+struct RandomLabelWithTimestamp {
+  /**
+   * Construct a new random label with timestamp object
+   *
+   * @param random_label Random label.
+   * @param timestamp Timestamp the random label was created.
+   */
+  RandomLabelWithTimestamp(std::string random_label, uint64_t timestamp)
+      : random_label_(random_label)
+      , timestamp_(timestamp) {
+  }
+
+  /** Random label. */
+  std::string random_label_;
+
+  /** Timestamp the label was created. */
+  uint64_t timestamp_;
+};
+
 /**
  * Generates a pseudeo-random label, formatted as a 32-digit hexadecimal number.
  * (Ex. f258d22d4db9139204eef2b4b5d860cc).
@@ -77,12 +97,12 @@ class RandomLabelGenerator {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-  /** Generate a random label. */
-  std::string generate();
+  /** Generate a random label with a timestamp. */
+  RandomLabelWithTimestamp generate();
 
  public:
   /** Generate a random label. */
-  static std::string generate_random_label();
+  static RandomLabelWithTimestamp generate_random_label();
 
  private:
   /* ********************************* */
@@ -111,6 +131,19 @@ class RandomLabelGenerator {
  * @return A random label.
  */
 std::string random_label();
+
+/**
+ * Wrapper function for `generate_random_label`, which returns a PRNG-generated
+ * label as a 32-digit hexadecimal random number.
+ * (Ex. f258d22d4db9139204eef2b4b5d860cc).
+ *
+ * @pre If multiple labels are generated within the same millisecond, they will
+ * be sorted using a counter on the most significant 4 bytes.
+ * @note Labels may be 0-padded to ensure exactly a 128-bit, 32-digit length.
+ *
+ * @return A random label with timestamp.
+ */
+RandomLabelWithTimestamp random_label_with_timestamp();
 
 }  // namespace tiledb::common
 

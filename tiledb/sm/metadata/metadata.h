@@ -136,9 +136,6 @@ class Metadata {
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;
 
-  /** Returns the timestamp range. */
-  const std::pair<uint64_t, uint64_t>& timestamp_range() const;
-
   /**
    * Deletes a metadata item.
    *
@@ -258,12 +255,6 @@ class Metadata {
   mutable std::mutex mtx_;
 
   /**
-   * The timestamp range covered by the metadata that was read or written.
-   * This is used to determine the metadata file name.
-   */
-  std::pair<uint64_t, uint64_t> timestamp_range_;
-
-  /**
    * The URIs of the metadata files that have been loaded to this object.
    * This is needed to know which files to delete upon consolidation.
    */
@@ -271,6 +262,9 @@ class Metadata {
 
   /** The URI of the array metadata file. */
   URI uri_;
+
+  /** Timestamped name. */
+  std::string timestamped_name_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */
