@@ -7418,6 +7418,24 @@ TEST_CASE("Test set shape API validation", "[query][set_shape]") {
         }
       }
     }
+    rc = tiledb_array_close(ctx, array);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Open the array for reads to test loading shape data.
+    tiledb_array_t* array_read;
+    rc = tiledb_array_alloc(ctx, uri.c_str(), &array_read);
+    REQUIRE(rc == TILEDB_OK);
+
+    rc = tiledb_array_open(ctx, array_read, TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Check we can read the shape data from an array opened for reads.
+    auto shapes = array_read->array_->shape_data();
+    for (size_t i = 0; i < dim_num; i++) {
+      REQUIRE(shapes[i].has_value());
+      auto query_shape = query->query_->get_shape(i);
+      CHECK(*shapes[i] == query_shape);
+    }
   }
 }
 
