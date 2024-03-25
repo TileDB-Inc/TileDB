@@ -7412,9 +7412,7 @@ TEST_CASE("Test set shape API validation", "[query][set_shape]") {
         CHECK(frag_shape_data.size() == dim_num);
         for (size_t i = 0; i < dim_num; i++) {
           auto shape_data_set = query->query_->get_shape(i);
-          REQUIRE(frag_shape_data[i].has_value());
-          auto frag_shape = *frag_shape_data[i];
-          CHECK(shape_data_set == frag_shape);
+          CHECK(shape_data_set == frag_shape_data[i]);
         }
       }
     }
@@ -7432,9 +7430,8 @@ TEST_CASE("Test set shape API validation", "[query][set_shape]") {
     // Check we can read the shape data from an array opened for reads.
     auto shapes = array_read->array_->shape_data();
     for (size_t i = 0; i < dim_num; i++) {
-      REQUIRE(shapes[i].has_value());
       auto query_shape = query->query_->get_shape(i);
-      CHECK(*shapes[i] == query_shape);
+      CHECK(shapes[i] == query_shape);
     }
   }
 }

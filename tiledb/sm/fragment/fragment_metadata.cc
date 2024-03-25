@@ -157,16 +157,14 @@ void FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   return expand_non_empty_domain(mbr);
 }
 
-void FragmentMetadata::set_shape(uint32_t dim_idx, const Range& range) {
-  if (dim_idx >= array_schema_->dim_num()) {
+void FragmentMetadata::set_shape_data(const NDRange& range) {
+  if (range.size() > array_schema_->dim_num()) {
     throw FragmentMetadataStatusException(
-        "Cannot set shape data for invalid dimension index " +
-        std::to_string(dim_idx));
+        "Cannot set shape data with " + std::to_string(range.size()) +
+        " dimensions on a fragment with " +
+        std::to_string(array_schema_->dim_num()) + " dimensions.");
   }
-  if (shape_data_.empty()) {
-    shape_data_.resize(array_schema_->dim_num(), nullopt);
-  }
-  shape_data_[dim_idx] = range;
+  shape_data_ = range;
 }
 
 void FragmentMetadata::set_tile_index_base(uint64_t tile_base) {
@@ -3990,7 +3988,7 @@ void FragmentMetadata::write_shape_data(Serializer& serializer) const {
     // Write shape data for each dimension.
     for (unsigned d = 0; d < dim_num; ++d) {
       const auto& range = shape_data_[d];
-      serializer.write(range->data(), range->size());
+      serializer.write(range.data(), range.size());
     }
   }
 }

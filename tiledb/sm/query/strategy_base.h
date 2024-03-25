@@ -90,8 +90,20 @@ class StrategyParams {
       , layout_(layout)
       , condition_(condition)
       , default_channel_aggregates_(default_channel_aggregates)
-      , shape_data_(shape_data)
       , skip_checks_serialization_(skip_checks_serialization) {
+    if (!shape_data.empty()) {
+      std::transform(
+          shape_data.begin(),
+          shape_data.end(),
+          std::back_inserter(shape_data_),
+          [](const auto& range) {
+            if (!range.has_value()) {
+              throw std::logic_error(
+                  "Shape data must be set on all dimensions.");
+            }
+            return range.value();
+          });
+    }
   }
 
   /* ********************************* */
@@ -152,7 +164,7 @@ class StrategyParams {
     return default_channel_aggregates_;
   }
 
-  inline std::vector<std::optional<Range>>& shape_data() {
+  inline NDRange shape_data() {
     return shape_data_;
   }
 
@@ -200,7 +212,7 @@ class StrategyParams {
   DefaultChannelAggregates& default_channel_aggregates_;
 
   /** Shape data set on each dimension. */
-  std::vector<std::optional<Range>>& shape_data_;
+  NDRange shape_data_;
 
   /** Skip checks for serialization. */
   bool skip_checks_serialization_;
@@ -301,7 +313,7 @@ class StrategyBase {
   Subarray& subarray_;
 
   /** Shape data set on each dimension. */
-  std::vector<std::optional<Range>>& shape_data_;
+  NDRange shape_data_;
 
   /** The offset format used for variable-sized attributes. */
   std::string offsets_format_mode_;

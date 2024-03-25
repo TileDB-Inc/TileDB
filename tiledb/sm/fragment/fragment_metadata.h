@@ -555,12 +555,11 @@ class FragmentMetadata {
   void set_mbr(uint64_t tile, const NDRange& mbr);
 
   /**
-   * Set the shape for the dimension at the input index.
+   * Set the shape data for the fragment.
    *
-   * @param dim_idx The index of the dimension.
-   * @param range The range to set for the shape on this dimension.
+   * @param range The range to set for the fragment.
    */
-  void set_shape(uint32_t dim_idx, const Range& range);
+  void set_shape_data(const NDRange& range);
 
   /**
    * Resizes the per-tile metadata vectors for the given number of tiles. This
@@ -1229,7 +1228,7 @@ class FragmentMetadata {
   }
 
   /** Shape data accessor. */
-  std::vector<std::optional<Range>>& shape_data() {
+  NDRange& shape_data() {
     return shape_data_;
   }
 
@@ -1319,7 +1318,7 @@ class FragmentMetadata {
   NDRange domain_;
 
   /** Shape data set on each dimension. */
-  std::vector<std::optional<Range>> shape_data_;
+  NDRange shape_data_;
 
   /** Stores the size of each attribute file. */
   std::vector<uint64_t> file_sizes_;
