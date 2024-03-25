@@ -171,7 +171,7 @@ class OpenedArray {
   }
 
   /** Gets a reference to the shape data. */
-  inline std::vector<std::optional<Range>>& shape_data() {
+  inline NDRange& shape_data() {
     return shape_data_;
   }
 
@@ -237,7 +237,7 @@ class OpenedArray {
   NDRange non_empty_domain_;
 
   /** The shape data for the array. */
-  std::vector<std::optional<Range>> shape_data_;
+  NDRange shape_data_;
 
   /** The metadata of the fragments the array was opened with. */
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata_;
@@ -784,7 +784,7 @@ class Array {
     opened_array_->non_empty_domain_computed() = is_computed;
   }
 
-  std::vector<std::optional<Range>>& shape_data();
+  NDRange& shape_data();
 
   /** Returns the memory tracker. */
   inline shared_ptr<MemoryTracker> memory_tracker() {

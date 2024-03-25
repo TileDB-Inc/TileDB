@@ -72,7 +72,7 @@ class SingleFragmentInfo {
       uint64_t fragment_size,
       const NDRange& non_empty_domain,
       const NDRange& expanded_non_empty_domain,
-      const std::vector<std::optional<Range>> shape_data,
+      const NDRange& shape_data,
       shared_ptr<FragmentMetadata> meta)
       : uri_(uri)
       , name_(meta->fragment_uri().remove_trailing_slash().last_path_part())
@@ -271,7 +271,7 @@ class SingleFragmentInfo {
   shared_ptr<FragmentMetadata> meta_;
 
   /** The shape data set per dimension. */
-  std::vector<std::optional<Range>> shape_data_;
+  NDRange shape_data_;
 
   /**
    * Returns a deep copy of this FragmentInfo.

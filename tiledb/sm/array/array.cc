@@ -1068,7 +1068,7 @@ const NDRange Array::non_empty_domain() {
   return loaded_non_empty_domain();
 }
 
-std::vector<std::optional<Range>>& Array::shape_data() {
+NDRange& Array::shape_data() {
   if (opened_array_->shape_data().empty()) {
     const auto& frag_meta = opened_array_->fragment_metadata();
     for (const auto& meta : frag_meta) {
