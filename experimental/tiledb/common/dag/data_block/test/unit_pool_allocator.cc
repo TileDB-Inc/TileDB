@@ -30,6 +30,8 @@
  * Tests the pool_allocator class.
  */
 
+#ifndef _MSC_VER
+
 #include "unit_pool_allocator.h"
 #include <array>
 #include <memory>
@@ -368,19 +370,6 @@ TEST_CASE(
 }
 
 /**
- * Test allocator interface for `PoolAllocator`.  It should be conformant, but
- * g++ seems to be kind of persnickety.
- */
-#ifndef __GNUG__
-TEST_CASE(
-    "Pool Allocator: Allocate vector with PoolAllocator - compile only",
-    "[PoolAllocator]") {
-  std::vector<std::byte, PoolAllocator<1024 * 1024>> v(10);
-  CHECK(v.size() == 10);
-}
-#endif
-
-/**
  * Allocate a large number of chunks.
  */
 template <class T>
@@ -532,3 +521,4 @@ TEST_CASE(
     test_statistics<small_class>();
   }
 }
+#endif

@@ -29,12 +29,8 @@
  *
  * Implementation of finite state machine policies.
  *
- * The different policies currently include an extensive amount of debugging
- * code.
- *
  * @todo Specialize for `void` Block type.
  *
- * @todo Remove the debugging code.
  */
 
 #ifndef TILEDB_DAG_ITEM_MOVER_H
@@ -125,41 +121,10 @@ class BaseMover<Mover, three_stage, Block> {
    *
    * @pre Called under lock
    */
-  inline void on_move(std::atomic<int>& event) {
-    //    auto state = this->state();
+  inline void on_move(std::atomic<int>&) {
     auto state = static_cast<Mover*>(this)->state();
-    bool debug = static_cast<Mover*>(this)->debug_enabled();
-    // CHECK(is_ready_to_move(state) == "");
 
     moves_[0]++;
-
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << event << "  "
-                << "  base mover swapping items with " + str(state) + " and " +
-                       str(static_cast<Mover*>(this)->next_state())
-                << std::endl;
-
-      std::cout << event;
-      std::cout << "    "
-                << "Action on_move state = (";
-      if constexpr (std::is_fundamental_v<decltype(items_[0])>) {
-        for (auto& j : items_) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
-      } else {
-        for (auto& j : items_) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ? "has_value" :
-                                                         "no_value")
-                    << " ";
-        }
-      }
-      std::cout << ") -> ";
-    }
 
     /*
      * Do the moves, always pushing all elements as far forward as possible. The
@@ -171,13 +136,11 @@ class BaseMover<Mover, three_stage, Block> {
     switch (state) {
       case PortState::st_101:
       case PortState::xt_101:
-        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
       case PortState::st_010:
       case PortState::xt_010:
-        // CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
         break;
 
@@ -189,44 +152,13 @@ class BaseMover<Mover, three_stage, Block> {
 
       case PortState::st_110:
       case PortState::xt_110:
-        //        CHECK(*(items_[1]) != EMPTY_SINK);
         std::swap(*items_[1], *items_[2]);
-        //        CHECK(*(items_[0]) != EMPTY_SINK);
         std::swap(*items_[0], *items_[1]);
         break;
 
       default:
-        if (debug) {
-          std::cout << "???" << std::endl;
-        }
+        throw std::runtime_error("No such case");
         break;
-    }
-    if (debug) {
-      std::cout << "(";
-      if constexpr (std::is_fundamental_v<decltype(items_[0])>) {
-        for (auto& j : items_) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
-      } else {
-        for (auto& j : items_) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ? "has_value" :
-                                                         "no_value")
-                    << " ";
-        }
-      }
-
-      std::cout << ")" << std::endl;
-      std::cout << event << "  "
-                << " source done swapping items with " +
-                       str(static_cast<Mover*>(this)->state()) + " and " +
-                       str(static_cast<Mover*>(this)->next_state())
-                << std::endl;
-      ++event;
     }
   }
 
@@ -264,15 +196,6 @@ class BaseMover<Mover, three_stage, Block> {
   bool is_done() {
     return static_cast<Mover*>(this)->state() == three_stage::done;
   }
-
-#if 0
- private:
-  void debug_msg(const std::string& msg) {
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg << std::endl;
-    }
-  }
-#endif
 };
 
 /**
@@ -341,59 +264,14 @@ class BaseMover<Mover, two_stage, Block> {
    *
    * @pre Called under lock
    */
-  inline void on_move(std::atomic<int>& event) {
-    auto state = static_cast<Mover*>(this)->state();
-    bool debug = static_cast<Mover*>(this)->debug_enabled();
-
+  inline void on_move(std::atomic<int>&) {
     /**
      * Increment the move count.
      *
      * @todo Distinguish between source and sink
      */
     moves_[0]++;
-
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << event << "  "
-                << " source swapping items with " + str(state) + " and " +
-                       str(static_cast<Mover*>(this)->next_state())
-                << std::endl;
-
-      std::cout << event;
-      std::cout << "    "
-                << "Action on_move state = (";
-      for (auto& j : items_) {
-        if constexpr (has_to_string_v<decltype(j->value())>) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
-      }
-      std::cout << ") -> ";
-    }
-
     std::swap(*items_[0], *items_[1]);
-
-    if (debug) {
-      std::cout << "(";
-      for (auto& j : items_) {
-        if constexpr (has_to_string_v<decltype(j->value())>) {
-          std::cout << " "
-                    << (j != nullptr && j->has_value() ?
-                            std::to_string(j->value()) :
-                            "no_value")
-                    << " ";
-        }
-      }
-      std::cout << ")" << std::endl;
-      std::cout << event << "  "
-                << " source done swapping items with " +
-                       str(static_cast<Mover*>(this)->state()) + " and " +
-                       str(static_cast<Mover*>(this)->next_state())
-                << std::endl;
-      ++event;
-    }
   }
 
   constexpr inline static bool is_direct_connection() {
@@ -481,8 +359,6 @@ class ItemMover
    * Invoke `source_fill` event
    */
   scheduler_event_type port_fill(const std::string& msg = "") {
-    debug_msg("    -- filling");
-
     return this->event(PortEvent::source_fill, msg);
   }
 
@@ -490,8 +366,6 @@ class ItemMover
    * Invoke `source_push` event
    */
   scheduler_event_type port_push(const std::string& msg = "") {
-    debug_msg("  -- pushing");
-
     return this->event(PortEvent::source_push, msg);
   }
 
@@ -499,8 +373,6 @@ class ItemMover
    * Invoke `sink_drain` event
    */
   scheduler_event_type port_drain(const std::string& msg = "") {
-    debug_msg("  -- draining");
-
     return this->event(PortEvent::sink_drain, msg);
   }
 
@@ -508,21 +380,15 @@ class ItemMover
    * Invoke `sink_pull` event
    */
   scheduler_event_type port_pull(const std::string& msg = "") {
-    debug_msg("  -- pulling");
-
     return this->event(PortEvent::sink_pull, msg);
   }
 #else
 
   void do_inject(const std::string& msg = "") {
-    debug_msg("  -- injecting");
-
     this->event(PortEvent::source_inject, msg);
   }
 
   void do_extract(const std::string& msg = "") {
-    debug_msg("  -- extracting");
-
     this->event(PortEvent::sink_extract, msg);
   }
 
@@ -540,13 +406,6 @@ class ItemMover
 
   bool is_terminating() {
     return terminating(this->state());
-  }
-
- private:
-  void debug_msg(const std::string& msg) {
-    if (static_cast<Mover*>(this)->debug_enabled()) {
-      std::cout << msg + ": state = " + str(this->state()) + "\n";
-    }
   }
 };
 }  // namespace tiledb::common

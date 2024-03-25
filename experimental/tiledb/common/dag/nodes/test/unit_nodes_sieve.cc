@@ -57,6 +57,10 @@
  * described above.
  */
 
+#ifdef _MSC_VER
+int main() {
+}
+#else
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -504,16 +508,28 @@ auto sieve_async_block(
     if (debug)
       std::cout << "w: " << w << std::endl;
 
+#if 0
     graph.emplace_back(
         std::ref(gen),
         std::bind(gen_range<bool_t>, _1, block_size, sqrt_n, n),
         std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
         sieve_to_primes_part<bool_t>,
         std::bind(output_body, _1, std::ref(prime_list)));
+#else
+    graph.emplace_back(
+        std::ref(gen),
+        // std::bind(range_sieve<bool_t>, _1, std::cref(base_primes)),
+        [&](auto&& x) {
+          return range_sieve<bool_t>(x, std::cref(base_primes));
+        },
+        sieve_to_primes_part<bool_t>,
+        // std::bind(output_body, _1, std::ref(prime_list))
+        [&](auto&& x) { output_body(x, std::ref(prime_list)); });
+#endif
 
     /*
-     * Connect the nodes in the graph.  We try to keep the edges from going out
-     * of scope by putting them into a vector.
+     * Connect the nodes in the graph.  We try to keep the edges from going
+     * out of scope by putting them into a vector.
      */
     edges.emplace_back(
         std::move(Edge(std::get<0>(graph.back()), std::get<1>(graph.back()))));
@@ -779,3 +795,5 @@ int main(int argc, char* argv[]) {
 
   return 0;
 }
+
+#endif

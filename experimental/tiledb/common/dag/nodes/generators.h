@@ -76,7 +76,7 @@ class generators {
    *
    * @return Next number in sequence, up to `max_`,
    */
-  Integral operator()(std::stop_source& stop_source) {
+  Integral operator()(std::stop_source stop_source) {
     if (i_ >= max_) {
       stop_source.request_stop();
       return max_;
@@ -84,6 +84,9 @@ class generators {
     return i_++;
   }
 };
+
+template <class I>
+generators(I, I) -> generators<I>;
 
 template <class T>
 struct distrib_type {

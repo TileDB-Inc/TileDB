@@ -199,7 +199,7 @@ class ManualPolicy
 
  public:
   using scheduler_event_type = SchedulerAction;
-  constexpr static bool wait_returns_{true};
+  // constexpr static bool wait_returns_{true};
 
   ManualPolicy() {
     if constexpr (std::is_same_v<PortState, two_stage>) {
@@ -278,7 +278,7 @@ class AsyncPolicy
   using scheduler_event_type = SchedulerAction;
 
  public:
-  constexpr static bool wait_returns_{true};
+  // constexpr static bool wait_returns_{true};
 
   using state_machine_type =
       PortFiniteStateMachine<AsyncPolicy<Mover, PortState>, PortState>;
@@ -424,7 +424,7 @@ class UnifiedAsyncPolicy : public PortFiniteStateMachine<
   std::condition_variable cv_;
 
  public:
-  constexpr static bool wait_returns_{true};
+  // constexpr static bool wait_returns_{true};
 
   using state_machine_type =
       PortFiniteStateMachine<UnifiedAsyncPolicy<Mover, PortState>, PortState>;
@@ -552,7 +552,7 @@ class DebugPolicy
   using scheduler_event_type = SchedulerAction;
 
  public:
-  constexpr static bool wait_returns_{true};
+  // constexpr static bool wait_returns_{true};
 
   template <class lock_type>
   inline scheduler_event_type on_ac_return(lock_type&, std::atomic<int>&) {
@@ -621,7 +621,7 @@ class DebugPolicyWithLock
   using scheduler_event_type = SchedulerAction;
 
  public:
-  constexpr static bool wait_returns_{true};
+  // constexpr static bool wait_returns_{true};
 
   template <class lock_type>
   inline scheduler_event_type on_ac_return(lock_type&, std::atomic<int>&) {

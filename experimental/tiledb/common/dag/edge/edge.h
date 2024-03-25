@@ -116,29 +116,6 @@ class Edge : public GraphEdge {
     item_mover_ = std::make_shared<mover_type>();
     attach(from, to, item_mover_);
   }
-
-  // Warning!! For CTAD to work, the shared ptrs cannot be references
-  Edge(std::shared_ptr<source_type> from, sink_type& to) {
-    item_mover_ = std::make_shared<mover_type>();
-    attach(*from, to, item_mover_);
-  }
-  Edge(source_type& from, std::shared_ptr<sink_type> to) {
-    item_mover_ = std::make_shared<mover_type>();
-    attach(from, *to, item_mover_);
-  }
-  Edge(std::shared_ptr<source_type> from, std::shared_ptr<sink_type> to) {
-    item_mover_ = std::make_shared<mover_type>();
-    attach(*from, *to, item_mover_);
-  }
-
-  /**
-   * Destructor.
-   */
-  ~Edge() {
-    if (item_mover_->debug_enabled())
-      std::cout << "Edge destructor" << std::endl;
-  }
-
 };  // namespace tiledb::common
 
 }  // namespace tiledb::common

@@ -256,13 +256,19 @@ constexpr const PortAction entry_table<three_stage>[num_states<three_stage>][n_e
  * callbacks at each interesting point in the state machine (such as debugging
  * statements).
  */
+
+template <class Policy>
+struct PortPolicyTraits {
+  constexpr static bool wait_returns_{true};
+};
+
 template <class Policy, class PortState>
 class PortFiniteStateMachine {
  private:
   PortState state_;
   PortState next_state_;
 
-  constexpr static bool wait_returns_ = Policy::wait_returns_;
+  constexpr static bool wait_returns_ = PortPolicyTraits<Policy>::wait_returns_;
 
  public:
   using scheduler_event_type = SchedulerAction;

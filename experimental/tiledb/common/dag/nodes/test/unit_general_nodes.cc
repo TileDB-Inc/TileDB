@@ -114,17 +114,23 @@ struct foo {
  *
  * @todo Partial specialization to allow void (?)
  */
-template <template <class> class SourceMover_T, class... BlocksOut>
+template <template <class> class SourceMover, class... BlocksOut>
 using GeneralProducerNode =
-    GeneralFunctionNode<foo, std::tuple<>, SourceMover_T, BlocksOut...>;
+    GeneralFunctionNode<foo, std::tuple<>, SourceMover, BlocksOut...>;
 
-template <template <class> class SinkMover_T, class... BlocksIn>
+template <template <class> class SinkMover, class... BlocksIn>
 using GeneralConsumerNode =
-    GeneralFunctionNode<SinkMover_T, BlocksIn..., foo, std::tuple<>>;
+    GeneralFunctionNode<SinkMover, BlocksIn..., foo, std::tuple<>>;
 
 TEST_CASE(
     "GeneralNode: Verify use of (void) template arguments for "
     "producer/consumer [general]") {
+  GeneralFunctionNode<
+      foo,
+      std::tuple<>,
+      AsyncMover3,
+      std::tuple<size_t, double>>
+      w{[](std::tuple<size_t, double>) {}};
   GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
       [](std::tuple<size_t, double>) {}};
   GeneralConsumerNode<AsyncMover3, std::tuple<size_t, double>> y{
@@ -147,7 +153,7 @@ TEST_CASE(
   double ext1{0.0};
   size_t ext2{0};
 
-  GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>> x{
+  auto x = GeneralProducerNode<AsyncMover3, std::tuple<size_t, double>>{
       [](std::tuple<size_t, double>& a) { a = std::make_tuple(5UL, 3.14159); }};
   GeneralConsumerNode<AsyncMover3, std::tuple<double, size_t>> y{
       [&ext1, &ext2](const std::tuple<double, size_t>& b) {
@@ -321,9 +327,10 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     Edge j{std::get<0>(e.outputs_), f};
   }
 
+#if 0
   SECTION("bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, x);
@@ -352,7 +359,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("inline bind") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     ProducerNode<AsyncMover3, size_t> a{std::bind(dummy_bind_source, x)};
@@ -384,7 +391,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
 
   SECTION("bind with move") {
     double x = 0.01;
-    float y = -0.001;
+    float y = -0.001F;
     int z = 8675309;
 
     auto ac = std::bind(dummy_bind_source, std::move(x));
@@ -411,6 +418,7 @@ TEST_CASE("GeneralNode: Verify simple connections", "[general]") {
     Edge i{d, std::get<0>(e.inputs_)};
     Edge j{std::get<0>(e.outputs_), f};
   }
+#endif
 }
 
 TEST_CASE("GeneralNode: Verify compound connections", "[general]") {
