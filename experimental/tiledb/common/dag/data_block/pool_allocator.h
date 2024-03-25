@@ -411,12 +411,6 @@ class PoolAllocator {
   void deallocate(pointer_type a) {
     return _allocator<chunk_size>.deallocate(a);
   }
-  // value_type* allocate(size_t) {
-  //  return _allocator<chunk_size>.allocate();
-  // }
-  // void deallocate(value_type* a, size_t) {
-  //  return _allocator<chunk_size>.deallocate(a);
-  //}
   size_t num_instances() {
     return _allocator<chunk_size>.num_instances();
   }
