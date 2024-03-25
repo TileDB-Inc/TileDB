@@ -410,7 +410,7 @@ inline bool datatype_is_time(Datatype type) {
 /** Returns true if the input datatype is a std::byte type. */
 inline bool datatype_is_byte(Datatype type) {
   return (
-      type == Datatype::BOOL || type == Datatype::GEOM_WKB ||
+      type == Datatype::BLOB || type == Datatype::GEOM_WKB ||
       type == Datatype::GEOM_WKT);
 }
 
