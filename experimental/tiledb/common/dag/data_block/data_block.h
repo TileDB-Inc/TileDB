@@ -104,24 +104,6 @@ class DataBlockImpl {
   pointer_t data_{nullptr};
 
  public:
-#if 0
-  /**
-   * Constructor used if the `Allocator` is `std::allocator` of `std::byte`.
-   */
-  template <class R = Allocator>
-  explicit DataBlockImpl(
-      size_t init_size = 0UL,
-      typename std::enable_if<
-          std::is_same_v<R, std::allocator<std::byte>>>::type* = 0)
-      : capacity_{chunk_size_}
-      , size_{init_size}
-      , storage_{allocator_.allocate(chunk_size_),
-                 [&](auto px) { allocator_.deallocate(px, chunk_size_); }}
-      , data_{storage_.get()} {
-  }
-
-#endif
-
   // @todo: Do some initialization here.
   // @todo: Default initialize?
   // Although there is a "size" argument, we don't actually do anything with it.
@@ -298,13 +280,6 @@ class DataBlock : public DataBlockImpl<block_size> {
   using Base = DataBlockImpl<block_size>;
   using Base::Base;
 };
-
-/**
- * Function for getting new `DataBlock`s
- */
-// [[maybe_unused]] static DataBlock make_data_block() {
-//   return new DataBlock;
-// }
 
 }  // namespace tiledb::common
 
