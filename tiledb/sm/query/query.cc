@@ -38,6 +38,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -1169,6 +1170,15 @@ Status Query::set_data_buffer(
 }
 
 void Query::set_shape(uint32_t dim_idx, const void* min, const void* max) {
+  if (type_ != QueryType::WRITE) {
+    throw QueryStatusException(
+        "Cannot set shape on a " + query_type_str(type_) +
+        " query. Applicable only to write queries.");
+  }
+  if (array_schema_->array_type() == ArrayType::DENSE) {
+    throw QueryStatusException(
+        "Cannot set shape on a dense array. Applicable only to sparse arrays.");
+  }
   if (min == nullptr || max == nullptr) {
     throw QueryStatusException(
         "Cannot set shape; Input range is null for dimension index " +

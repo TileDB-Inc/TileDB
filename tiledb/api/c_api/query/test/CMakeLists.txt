@@ -38,10 +38,13 @@ add_test(
 )
 
 add_executable(unit_capi_query_shape EXCLUDE_FROM_ALL)
-target_sources(unit_capi_query_shape PUBLIC unit_capi_query_shape.cc)
-target_link_libraries(unit_capi_query_shape PUBLIC capi_query)
-target_link_libraries(unit_capi_query_shape PUBLIC tiledb_test_support_lib)
-target_link_libraries(unit_capi_query_shape PUBLIC Catch2::Catch2WithMain)
+target_sources(unit_capi_query_shape PRIVATE unit_capi_query_shape.cc)
+target_link_libraries(unit_capi_query_shape PRIVATE capi_query)
+target_link_libraries(unit_capi_query_shape PRIVATE tiledb_test_support_lib)
+target_link_libraries(unit_capi_query_shape PRIVATE Catch2::Catch2WithMain)
+if (NOT MSVC)
+  target_compile_options(unit_capi_query_shape PRIVATE -Wno-deprecated-declarations)
+endif()
 
 add_test(
     NAME "unit_capi_query_shape"
