@@ -37,6 +37,7 @@
 
 #include <functional>
 #include <future>
+#include <sstream>
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
@@ -91,28 +92,21 @@ class ThreadPool {
    * @return std::future referring to the shared state created by this call
    */
 
-  template <class Fn, class... Args>
-  auto async(Fn&& f, Args&&... args) {
+  template <
+      class Fn,
+      class... Args,
+      class R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>>
+  std::future<R> async(Fn&& f, Args&&... args) {
     if (concurrency_level_ == 0) {
-      Task invalid_future;
       LOG_ERROR("Cannot execute task; thread pool uninitialized.");
-      return invalid_future;
+      return {};
     }
 
-    using R = std::invoke_result_t<std::decay_t<Fn>, std::decay_t<Args>...>;
+    auto task =
+        make_shared<std::packaged_task<R()>>(HERE(), std::bind(f, args...));
+    task_queue_.push([task]() { (*task)(); });
 
-    auto task = make_shared<std::packaged_task<R()>>(
-        HERE(),
-        [f = std::forward<Fn>(f),
-         args = std::make_tuple(std::forward<Args>(args)...)]() mutable {
-          return std::apply(std::move(f), std::move(args));
-        });
-
-    std::future<R> future = task->get_future();
-
-    task_queue_.push(task);
-
-    return future;
+    return task->get_future();
   }
 
   /**
@@ -126,6 +120,17 @@ class ThreadPool {
   auto execute(Fn&& f, Args&&... args) {
     return async(std::forward<Fn>(f), std::forward<Args>(args)...);
   }
+
+  /**
+   * Wait on all the given void-returning futures to complete.
+   *
+   * This function is safe to call recursively and may execute pending tasks
+   * with the calling thread while waiting.
+   *
+   * @param tasks Task list to wait on
+   * @return Vector of each task's result or void if the tasks return void.
+   */
+  void wait_all(std::vector<std::future<void>>& tasks);
 
   /**
    * Wait on all the given tasks to complete. This function is safe to call
@@ -154,9 +159,21 @@ class ThreadPool {
   std::vector<Status> wait_all_status(std::vector<Task>& tasks);
 
   /**
-   * Wait on a single tasks to complete. This function is safe to call
-   * recursively and may execute pending tasks on the calling thread while
-   * waiting.
+   * Wait on a single void-returning task to complete.
+   *
+   * This function is safe to call recursively and may execute pending tasks on
+   * the calling thread while waiting. This method will throw the future's
+   * exception if it fails.
+   *
+   * @param task Task to wait on.
+   * @return The task's result.
+   */
+  void wait(std::future<void>& task);
+
+  /**
+   * Wait on a single task returning Status to complete. This function is safe
+   * to call recursively and may execute pending tasks on the calling thread
+   * while waiting.
    *
    * @param task Task to wait on.
    * @return Status::Ok if the task returned Status::Ok, otherwise the error
@@ -169,6 +186,13 @@ class ThreadPool {
   /* ********************************* */
 
  private:
+  /** Tries to run a queued task. Returns whether such task was found.
+   *
+   * @param worker Whether the caller is a worker thread. In that case, the
+   * method will block until a task is available or the thread pool is shutdown.
+   */
+  bool pump(bool worker);
+
   /** The worker thread routine */
   void worker();
 
@@ -177,8 +201,8 @@ class ThreadPool {
 
   /** Producer-consumer queue where functions to be executed are kept */
   ProducerConsumerQueue<
-      shared_ptr<std::packaged_task<Status()>>,
-      std::deque<shared_ptr<std::packaged_task<Status()>>>>
+      std::function<void()>,
+      std::deque<std::function<void()>>>
       task_queue_;
 
   /** The worker threads */

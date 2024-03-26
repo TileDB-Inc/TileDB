@@ -36,6 +36,7 @@
 #include <test/support/tdb_catch.h>
 #include <atomic>
 #include <cstdio>
+#include <future>
 #include <iostream>
 #include <random>
 #include <vector>
@@ -52,6 +53,8 @@ static std::atomic<uint64_t> generator_seed = 0;
 std::once_flag once_flag;
 thread_local static uint64_t local_seed{0};
 thread_local static std::mt19937_64 generator;
+
+using VoidTaskTypes = std::tuple<void, Status>;
 
 /**
  * Get one of the pre-set seeds.
@@ -93,17 +96,36 @@ size_t random_ms(size_t max = 3) {
   return distribution(generator);
 }
 
+bool wait_one(ThreadPool& pool, std::future<void>& task) {
+  pool.wait(task);
+  return true;
+}
+
+bool wait_one(ThreadPool& pool, std::future<Status>& task) {
+  return pool.wait(task).ok();
+}
+
+bool wait_all(ThreadPool& pool, std::vector<std::future<void>>& tasks) {
+  pool.wait_all(tasks);
+  return true;
+}
+
+bool wait_all(ThreadPool& pool, std::vector<std::future<Status>>& task) {
+  return pool.wait_all(task).ok();
+}
+
 /**
  * Use the wait or wait_all function to wait on all status.
  */
+template <class R>
 void wait_all(
-    ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+    ThreadPool& pool, bool use_wait, std::vector<std::future<R>>& results) {
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE(pool.wait(r).ok());
+      REQUIRE(wait_one(pool, r));
     }
   } else {
-    REQUIRE(pool.wait_all(results).ok());
+    REQUIRE(wait_all(pool, results));
   }
 }
 
@@ -151,23 +173,28 @@ uint64_t wait_all_num_status(
   return num_ok;
 }
 
-TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
+TEST_CASE("ThreadPool: Test empty", "[threadpool][empty]") {
   for (int i = 0; i < 10; i++) {
     ThreadPool pool{4};
   }
 }
 
-TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Test single thread",
+    "[threadpool][single-thread]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result = 0;  // needs to be atomic b/c scavenging thread can
                                 // run in addition to thread pool
-  std::vector<ThreadPool::Task> results;
+  std::vector<std::future<TestType>> results;
   ThreadPool pool{1};
 
   for (int i = 0; i < 100; i++) {
-    ThreadPool::Task task = pool.execute([&result]() {
+    auto task = pool.execute([&result]() {
       result++;
-      return Status::Ok();
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -178,22 +205,27 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   REQUIRE(result == 100);
 }
 
-TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Test multiple threads",
+    "[threadpool][multi-thread]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
-  std::vector<ThreadPool::Task> results;
+  std::vector<std::future<TestType>> results;
   ThreadPool pool{4};
   for (int i = 0; i < 100; i++) {
     results.push_back(pool.execute([&result]() {
       result++;
-      return Status::Ok();
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     }));
   }
   wait_all(pool, use_wait, results);
   REQUIRE(result == 100);
 }
 
-TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
+TEST_CASE("ThreadPool: Test wait status", "[threadpool][wait][status]") {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
@@ -215,15 +247,14 @@ struct AtomicHolder {
   std::atomic<int> val_;
 };
 
-TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
+TEST_CASE("ThreadPool: Test no wait", "[threadpool][no-wait]") {
   {
     ThreadPool pool{4};
     auto ptr = tdb::make_shared<AtomicHolder>(HERE(), 0);
     for (int i = 0; i < 5; i++) {
-      ThreadPool::Task task = pool.execute([result = ptr]() {
+      auto task = pool.execute([result = ptr]() {
         result->val_++;
         std::this_thread::sleep_for(std::chrono::milliseconds(random_ms(1000)));
-        return Status::Ok();
       });
       REQUIRE(task.valid());
     }
@@ -299,24 +330,31 @@ TEST_CASE(
 //  }
 // }
 
-TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Test recursion, simplest case",
+    "[threadpool][recursion][simple]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   ThreadPool pool{1};
 
   std::atomic<int> result(0);
 
-  std::vector<ThreadPool::Task> tasks;
+  std::vector<std::future<TestType>> tasks;
   auto a = pool.execute([&pool, &result, use_wait]() {
-    std::vector<ThreadPool::Task> tasks;
+    std::vector<std::future<TestType>> tasks;
     auto b = pool.execute([&result]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       ++result;
-      return Status::Ok();
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
     REQUIRE(b.valid());
     tasks.emplace_back(std::move(b));
     wait_all(pool, use_wait, tasks);
-    return Status::Ok();
+    if constexpr (std::is_same_v<TestType, Status>) {
+      return Status::Ok();
+    }
   });
   REQUIRE(a.valid());
   tasks.emplace_back(std::move(a));
@@ -324,7 +362,8 @@ TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
   REQUIRE(result == 1);
 }
 
-TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Test recursion", "[threadpool]", VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   size_t num_threads = 0;
   SECTION("- One thread") {
@@ -345,22 +384,26 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
   std::atomic<int> result(0);
   const size_t num_tasks = 100;
   const size_t num_nested_tasks = 10;
-  std::vector<ThreadPool::Task> tasks;
+  std::vector<std::future<TestType>> tasks;
   for (size_t i = 0; i < num_tasks; ++i) {
     auto task = pool.execute([&]() {
-      std::vector<ThreadPool::Task> inner_tasks;
+      std::vector<std::future<TestType>> inner_tasks;
       for (size_t j = 0; j < num_nested_tasks; ++j) {
         auto inner_task = pool.execute([&]() {
           std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
           ++result;
-          return Status::Ok();
+          if constexpr (std::is_same_v<TestType, Status>) {
+            return Status::Ok();
+          }
         });
 
         inner_tasks.emplace_back(std::move(inner_task));
       }
 
       wait_all(pool, use_wait, inner_tasks);
-      return Status::Ok();
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -383,11 +426,15 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
           if (--result == 0) {
             cv.notify_all();
           }
-          return Status::Ok();
+          if constexpr (std::is_same_v<TestType, Status>) {
+            return Status::Ok();
+          }
         });
       }
 
-      return Status::Ok();
+      if constexpr (std::is_same_v<TestType, Status>) {
+        return Status::Ok();
+      }
     });
 
     REQUIRE(task.valid());
@@ -402,7 +449,10 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     cv.wait(ul);
 }
 
-TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Test recursion, two pools",
+    "[threadpool][recursion][two-pools]",
+    VoidTaskTypes) {
   bool use_wait = GENERATE(true, false);
   size_t num_threads = 0;
 
@@ -433,33 +483,39 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
     const size_t num_tasks_a = 10;
     const size_t num_tasks_b = 10;
     const size_t num_tasks_c = 10;
-    std::vector<ThreadPool::Task> tasks_a;
+    std::vector<std::future<TestType>> tasks_a;
     for (size_t i = 0; i < num_tasks_a; ++i) {
       auto task_a = pool_a.execute([&]() {
-        std::vector<ThreadPool::Task> tasks_b;
+        std::vector<std::future<TestType>> tasks_b;
         for (size_t j = 0; j < num_tasks_c; ++j) {
           auto task_b = pool_b.execute([&]() {
-            std::vector<ThreadPool::Task> tasks_c;
+            std::vector<std::future<TestType>> tasks_c;
             for (size_t k = 0; k < num_tasks_b; ++k) {
               auto task_c = pool_a.execute([&result]() {
                 std::this_thread::sleep_for(
                     std::chrono::milliseconds(random_ms()));
                 ++result;
-                return Status::Ok();
+                if constexpr (std::is_same_v<TestType, Status>) {
+                  return Status::Ok();
+                }
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return Status::Ok();
+            if constexpr (std::is_same_v<TestType, Status>) {
+              return Status::Ok();
+            }
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return Status::Ok();
+        if constexpr (std::is_same_v<TestType, Status>) {
+          return Status::Ok();
+        }
       });
 
       REQUIRE(task_a.valid());
@@ -475,10 +531,10 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
     tasks_a.clear();
     for (size_t i = 0; i < num_tasks_a; ++i) {
       auto task_a = pool_a.execute([&]() {
-        std::vector<ThreadPool::Task> tasks_b;
+        std::vector<std::future<TestType>> tasks_b;
         for (size_t j = 0; j < num_tasks_b; ++j) {
           auto task_b = pool_b.execute([&]() {
-            std::vector<ThreadPool::Task> tasks_c;
+            std::vector<std::future<TestType>> tasks_c;
             for (size_t k = 0; k < num_tasks_c; ++k) {
               auto task_c = pool_a.execute([&]() {
                 std::this_thread::sleep_for(
@@ -487,21 +543,27 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
                   std::unique_lock<std::mutex> ul(cv_mutex);
                   cv.notify_all();
                 }
-                return Status::Ok();
+                if constexpr (std::is_same_v<TestType, Status>) {
+                  return Status::Ok();
+                }
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return Status::Ok();
+            if constexpr (std::is_same_v<TestType, Status>) {
+              return Status::Ok();
+            }
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return Status::Ok();
+        if constexpr (std::is_same_v<TestType, Status>) {
+          return Status::Ok();
+        }
       });
 
       REQUIRE(task_a.valid());
@@ -655,4 +717,15 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         unbaked_potato_status.to_string());
     REQUIRE(result == 207);
   }
+}
+
+TEMPLATE_LIST_TEST_CASE(
+    "ThreadPool: Deferred futures", "[threadpool][deferred]", VoidTaskTypes) {
+  ThreadPool tp{1};
+  auto future{std::async(std::launch::deferred, []() {
+    if constexpr (std::is_same_v<TestType, Status>) {
+      return Status::Ok();
+    }
+  })};
+  CHECK(wait_one(tp, future));
 }

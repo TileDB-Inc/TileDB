@@ -99,14 +99,26 @@ ThreadPool::ThreadPool(size_t n)
   }
 }
 
-void ThreadPool::worker() {
-  while (true) {
-    auto val = task_queue_.pop();
-    if (val) {
-      (*(*val))();
-    } else {
-      break;
+bool ThreadPool::pump(bool worker) {
+  auto val = worker ? task_queue_.pop() : task_queue_.try_pop();
+  if (val) {
+    try {
+      (*val)();
+    } catch (const std::exception& e) {
+      LOG_ERROR(
+          "Unhandled exception when running thread pool task: " +
+          std::string(e.what()));
+    } catch (...) {
+      LOG_ERROR("Unhandled exception when running thread pool task.");
     }
+    return true;
+  } else {
+    return false;
+  }
+}
+
+void ThreadPool::worker() {
+  while (pump(true)) {
   }
 }
 
@@ -158,8 +170,8 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
       statuses[task_id] = Status_ThreadPoolError("Invalid task future");
       LOG_STATUS_NO_RETURN_VALUE(statuses[task_id]);
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
-        std::future_status::ready) {
+        task.wait_for(std::chrono::milliseconds(0)) !=
+        std::future_status::timeout) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
@@ -188,9 +200,7 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
 
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
+      if (!pump(false)) {
         // If nothing useful to do, yield so we don't burn cycles
         // going through the task list over and over (thereby slowing down other
         // threads).
@@ -205,13 +215,77 @@ std::vector<Status> ThreadPool::wait_all_status(std::vector<Task>& tasks) {
   return statuses;
 }
 
+void ThreadPool::wait_all(std::vector<std::future<void>>& tasks) {
+  std::stringstream exceptions;
+
+  auto log_exception = [&exceptions](const char* message) {
+    // If this is the first exception, add an intro message.
+    if (exceptions.tellp() <= 0) {
+      exceptions << "One or more errors occurred";
+    }
+    exceptions << "\n * " << message;
+  };
+
+  std::queue<size_t> pending_tasks;
+
+  // Create queue of ids of all the pending tasks for processing
+  for (size_t i = 0; i < tasks.size(); ++i) {
+    pending_tasks.push(i);
+  }
+
+  // Process tasks in the pending queue
+  while (!pending_tasks.empty()) {
+    auto task_id = pending_tasks.front();
+    pending_tasks.pop();
+    auto& task = tasks[task_id];
+
+    if (!task.valid()) {
+      log_exception("Invalid task future");
+    } else if (
+        task.wait_for(std::chrono::milliseconds(0)) !=
+        std::future_status::timeout) {
+      // Task is completed, get result, handling possible exceptions
+      try {
+        task.get();
+      } catch (const std::exception& e) {
+        log_exception(e.what());
+      } catch (const std::string& msg) {
+        log_exception(msg.c_str());
+      } catch (...) {
+        log_exception("Unknown exception");
+      }
+    } else {
+      // If the task is not completed, try again later
+      pending_tasks.push(task_id);
+
+      // In the meantime, try to do something useful to make progress (and
+      // avoid deadlock)
+      if (!pump(false)) {
+        // If nothing useful to do, yield so we don't burn cycles
+        // going through the task list over and over (thereby slowing down
+        // other threads).
+        std::this_thread::yield();
+
+        // (An alternative would be to wait some amount of time)
+        // task.wait_for(std::chrono::milliseconds(10));
+      }
+    }
+  }
+
+  // If exceptions is not empty, at least one of the tasks has failed. We
+  // throw an exception containing all exception messages.
+  if (exceptions.tellp() > 0) {
+    throw StatusException(Status_ThreadPoolError(exceptions.str()));
+  }
+}
+
 Status ThreadPool::wait(Task& task) {
   while (true) {
     if (!task.valid()) {
       return Status_ThreadPoolError("Invalid task future");
     } else if (
-        task.wait_for(std::chrono::milliseconds(0)) ==
-        std::future_status::ready) {
+        task.wait_for(std::chrono::milliseconds(0)) !=
+        std::future_status::timeout) {
       // Task is completed, get result, handling possible exceptions
 
       Status st = [&task] {
@@ -237,13 +311,27 @@ Status ThreadPool::wait(Task& task) {
     } else {
       // In the meantime, try to do something useful to make progress (and avoid
       // deadlock)
-      if (auto val = task_queue_.try_pop()) {
-        (*(*val))();
-      } else {
+      if (pump(false)) {
         std::this_thread::yield();
       }
     }
   }
+}
+
+void ThreadPool::wait(std::future<void>& task) {
+  if (!task.valid()) {
+    throw std::runtime_error("Invalid task future");
+  }
+  while (task.wait_for(std::chrono::milliseconds(0)) ==
+         std::future_status::timeout) {
+    // Until the task completes, try to do something useful to make progress
+    // (and avoid deadlock)
+    if (!pump(false)) {
+      std::this_thread::yield();
+    }
+  }
+  // Task is completed, throw any possible exceptions
+  task.get();
 }
 
 }  // namespace tiledb::common
