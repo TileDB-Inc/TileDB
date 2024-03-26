@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,6 +53,12 @@
 #include <thread>
 
 using namespace tiledb::test;
+
+#ifndef TILEDB_TESTS_ENABLE_REST
+constexpr bool rest_tests = false;
+#else
+constexpr bool rest_tests = true;
+#endif
 
 struct GroupFx {
   const std::string GROUP = "group/";
@@ -511,6 +517,116 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group);
   remove_temp_dir(temp_dir);
+}
+
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group Metadata, write/read, rest",
+    "[capi][group][metadata][rest]") {
+  // Create and open group in write mode
+  // TODO: refactor for each supported FS.
+  std::string fs_temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(fs_temp_dir);
+  std::string temp_dir = fs_temp_dir;
+  if constexpr (rest_tests) {
+    std::string rest_uri = "tiledb://unit/";
+    rest_uri += temp_dir;
+    temp_dir = rest_uri;
+  }
+
+  std::string group1_uri = temp_dir + "group1";
+  REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
+
+  tiledb_group_t* group;
+  int rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group, 1);
+  rc = tiledb_group_open(ctx_, group, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Write items
+  int32_t v = 5;
+  rc = tiledb_group_put_metadata(ctx_, group, "aaa", TILEDB_INT32, 1, &v);
+  CHECK(rc == TILEDB_OK);
+  float f[] = {1.1f, 1.2f};
+  rc = tiledb_group_put_metadata(ctx_, group, "bb", TILEDB_FLOAT32, 2, f);
+  CHECK(rc == TILEDB_OK);
+
+  // Close group
+  rc = tiledb_group_close(ctx_, group);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group);
+
+  // Open the group in read mode
+  rc = tiledb_group_alloc(ctx_, group1_uri.c_str(), &group);
+  REQUIRE(rc == TILEDB_OK);
+  set_group_timestamp(group, 1);
+  rc = tiledb_group_open(ctx_, group, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Read
+  const void* v_r;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+  rc = tiledb_group_get_metadata(ctx_, group, "aaa", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_INT32);
+  CHECK(v_num == 1);
+  CHECK(*((const int32_t*)v_r) == 5);
+
+  rc = tiledb_group_get_metadata(ctx_, group, "bb", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(v_num == 2);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
+
+  rc = tiledb_group_get_metadata(ctx_, group, "foo", &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_r == nullptr);
+
+  uint64_t num = 0;
+  rc = tiledb_group_get_metadata_num(ctx_, group, &num);
+  CHECK(rc == TILEDB_OK);
+  CHECK(num == 2);
+
+  const char* key;
+  uint32_t key_len;
+  rc = tiledb_group_get_metadata_from_index(
+      ctx_, group, 10, &key, &key_len, &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_ERR);
+
+  rc = tiledb_group_get_metadata_from_index(
+      ctx_, group, 1, &key, &key_len, &v_type, &v_num, &v_r);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(v_num == 2);
+  CHECK(((const float*)v_r)[0] == 1.1f);
+  CHECK(((const float*)v_r)[1] == 1.2f);
+  CHECK(key_len == strlen("bb"));
+  CHECK(!strncmp(key, "bb", strlen("bb")));
+
+  // Check has_key
+  int32_t has_key = 0;
+  rc = tiledb_group_has_metadata_key(ctx_, group, "bb", &v_type, &has_key);
+  CHECK(rc == TILEDB_OK);
+  CHECK(v_type == TILEDB_FLOAT32);
+  CHECK(has_key == 1);
+
+  // Check not has_key
+  v_type = (tiledb_datatype_t)std::numeric_limits<int32_t>::max();
+  rc = tiledb_group_has_metadata_key(
+      ctx_, group, "non-existent-key", &v_type, &has_key);
+  CHECK(rc == TILEDB_OK);
+  // The API does not touch v_type when no key is found.
+  CHECK((int32_t)v_type == std::numeric_limits<int32_t>::max());
+  CHECK(has_key == 0);
+
+  // Close group
+  rc = tiledb_group_close(ctx_, group);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_group_free(&group);
+  remove_temp_dir(fs_temp_dir);
 }
 
 TEST_CASE_METHOD(
