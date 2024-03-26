@@ -60,12 +60,12 @@ Metadata::Metadata(shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , metadata_map_(memory_tracker_->get_resource(MemoryType::METADATA))
     , metadata_index_(memory_tracker_->get_resource(MemoryType::METADATA))
-    , timestamp_range_([]() -> std::pair<uint64_t, uint64_t> {
+    , loaded_metadata_uris_(memory_tracker_->get_resource(MemoryType::METADATA))
+    , timestamped_name_([]() -> std::string {
       auto t = utils::time::timestamp_now_ms();
-      return std::make_pair(t, t);
-    }())
-    , loaded_metadata_uris_(
-          memory_tracker_->get_resource(MemoryType::METADATA)) {
+      return tiledb::storage_format::generate_timestamped_name(
+          t, t, std::nullopt);
+    }()) {
   build_metadata_index();
 }
 
@@ -79,7 +79,7 @@ Metadata& Metadata::operator=(Metadata& other) {
     metadata_map_.emplace(k, v);
   }
 
-  timestamp_range_ = other.timestamp_range_;
+  timestamped_name_ = other.timestamped_name_;
 
   for (auto& uri : other.loaded_metadata_uris_) {
     loaded_metadata_uris_.emplace_back(uri);
@@ -106,7 +106,6 @@ void Metadata::clear() {
   metadata_map_.clear();
   metadata_index_.clear();
   loaded_metadata_uris_.clear();
-  timestamp_range_ = std::make_pair(0, 0);
   uri_ = URI();
 }
 
@@ -118,10 +117,8 @@ URI Metadata::get_uri(const URI& array_uri) {
 }
 
 void Metadata::generate_uri(const URI& array_uri) {
-  auto ts_name = tiledb::storage_format::generate_timestamped_name(
-      timestamp_range_.first, timestamp_range_.second, std::nullopt);
   uri_ = array_uri.join_path(constants::array_metadata_dir_name)
-             .join_path(ts_name);
+             .join_path(timestamped_name_);
 }
 
 std::map<std::string, Metadata::MetadataValue> Metadata::deserialize(
@@ -187,10 +184,6 @@ void Metadata::serialize(Serializer& serializer) const {
         serializer.write(value.value_.data(), value.value_.size());
     }
   }
-}
-
-const std::pair<uint64_t, uint64_t>& Metadata::timestamp_range() const {
-  return timestamp_range_;
 }
 
 void Metadata::del(const char* key) {
@@ -317,8 +310,10 @@ void Metadata::set_loaded_metadata_uris(
     loaded_metadata_uris_.push_back(uri.uri_);
   }
 
-  timestamp_range_.first = loaded_metadata_uris.front().timestamp_range_.first;
-  timestamp_range_.second = loaded_metadata_uris.back().timestamp_range_.second;
+  timestamped_name_ = tiledb::storage_format::generate_timestamped_name(
+      loaded_metadata_uris.front().timestamp_range_.first,
+      loaded_metadata_uris.back().timestamp_range_.second,
+      std::nullopt);
 }
 
 const tdb::pmr::vector<URI>& Metadata::loaded_metadata_uris() const {
@@ -327,14 +322,15 @@ const tdb::pmr::vector<URI>& Metadata::loaded_metadata_uris() const {
 
 void Metadata::reset(uint64_t timestamp) {
   clear();
-  timestamp = (timestamp != 0) ? timestamp : utils::time::timestamp_now_ms();
-  timestamp_range_ = std::make_pair(timestamp, timestamp);
+  timestamped_name_ = tiledb::storage_format::generate_timestamped_name(
+      timestamp, timestamp, std::nullopt);
 }
 
 void Metadata::reset(
     const uint64_t timestamp_start, const uint64_t timestamp_end) {
   clear();
-  timestamp_range_ = std::make_pair(timestamp_start, timestamp_end);
+  timestamped_name_ = tiledb::storage_format::generate_timestamped_name(
+      timestamp_start, timestamp_end, std::nullopt);
 }
 
 Metadata::iterator Metadata::begin() const {

@@ -44,7 +44,7 @@ RandomLabelGenerator::RandomLabelGenerator()
 /* ********************************* */
 /*                API                */
 /* ********************************* */
-std::string RandomLabelGenerator::generate() {
+RandomLabelWithTimestamp RandomLabelGenerator::generate() {
   PRNG& prng = PRNG::get();
   std::lock_guard<std::mutex> lock(mtx_);
   auto now = tiledb::sm::utils::time::timestamp_now_ms();
@@ -69,26 +69,19 @@ std::string RandomLabelGenerator::generate() {
   ss << std::hex << std::setw(8) << std::setfill('0')
      << static_cast<uint32_t>(prng());
   ss << std::hex << std::setw(16) << std::setfill('0') << prng();
-  return ss.str();
+  return {ss.str(), now};
 }
 
-std::string RandomLabelGenerator::generate_random_label() {
+RandomLabelWithTimestamp RandomLabelGenerator::generate_random_label() {
   static RandomLabelGenerator generator;
   return generator.generate();
 }
 
-/**
- * Wrapper function for `generate_random_label`, which returns a PRNG-generated
- * label as a 32-digit hexadecimal random number.
- * (Ex. f258d22d4db9139204eef2b4b5d860cc).
- *
- * @pre If multiple labels are generated within the same millisecond, they will
- * be sorted using a counter on the most significant 4 bytes.
- * @note Labels may be 0-padded to ensure exactly a 128-bit, 32-digit length.
- *
- * @return A random label.
- */
 std::string random_label() {
+  return RandomLabelGenerator::generate_random_label().random_label_;
+}
+
+RandomLabelWithTimestamp random_label_with_timestamp() {
   return RandomLabelGenerator::generate_random_label();
 }
 
