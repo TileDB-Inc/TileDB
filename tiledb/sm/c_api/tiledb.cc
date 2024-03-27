@@ -953,10 +953,12 @@ int32_t tiledb_query_alloc(
     tiledb_array_t* array,
     tiledb_query_type_t query_type,
     tiledb_query_t** query) {
+  printf("step1b\n");
   // Sanity check
   if (sanity_check(ctx, array) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  printf("step2b\n");
   // Error if array is not open
   if (!array->array_->is_open()) {
     auto st = Status_Error("Cannot create query; Input array is not open");
@@ -966,6 +968,8 @@ int32_t tiledb_query_alloc(
     return TILEDB_ERR;
   }
 
+  printf("step3b\n");
+
   // Error if the query type and array query type do not match
   tiledb::sm::QueryType array_query_type;
   try {
@@ -973,6 +977,8 @@ int32_t tiledb_query_alloc(
   } catch (StatusException& e) {
     return TILEDB_ERR;
   }
+
+  printf("step4b\n");
 
   if (query_type != static_cast<tiledb_query_type_t>(array_query_type)) {
     std::stringstream errmsg;
@@ -989,9 +995,12 @@ int32_t tiledb_query_alloc(
     return TILEDB_ERR;
   }
 
+  printf("step5b\n");
+
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
   if (*query == nullptr) {
+    printf("step6b\n");
     auto st = Status_Error(
         "Failed to allocate TileDB query object; Memory allocation failed");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -1011,6 +1020,8 @@ int32_t tiledb_query_alloc(
     save_error(ctx, st);
     return TILEDB_OOM;
   }
+
+  printf("step7b\n");
 
   // Success
   return TILEDB_OK;
@@ -2576,19 +2587,24 @@ int32_t tiledb_array_create(
     const char* array_uri,
     const tiledb_array_schema_t* array_schema) {
   // Sanity checks
+  printf("step1\n");
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
+  printf("step2\n");
   // Check array name
   tiledb::sm::URI uri(array_uri);
   if (uri.is_invalid()) {
+    printf("step3\n");
     auto st = Status_Error("Failed to create array; Invalid array URI");
     LOG_STATUS_NO_RETURN_VALUE(st);
     save_error(ctx, st);
     return TILEDB_ERR;
   }
+  printf("step4\n");
 
   if (uri.is_tiledb()) {
+    printf("step5\n");
     // Check REST client
     auto rest_client = ctx->storage_manager()->rest_client();
     if (rest_client == nullptr) {
@@ -2602,6 +2618,7 @@ int32_t tiledb_array_create(
     throw_if_not_ok(rest_client->post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
+    printf("step6\n");
     // Create key
     tiledb::sm::EncryptionKey key;
     throw_if_not_ok(
@@ -2629,6 +2646,7 @@ int32_t tiledb_array_create(
       throw_if_not_ok(ctx->storage_manager()->array_create(
           dim_label_ref.uri(uri), dim_label_ref.schema(), key));
     }
+    printf("step7\n");
   }
   return TILEDB_OK;
 }
