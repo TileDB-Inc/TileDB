@@ -288,8 +288,6 @@ TEST_CASE(
         tiledb_query_free(&query);
         rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
         REQUIRE(rc == TILEDB_OK);
-        rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
-        REQUIRE(rc == TILEDB_OK);
       }
     }
 
@@ -328,6 +326,132 @@ TEST_CASE(
       for (size_t i = 0; i < dim_num; i++) {
         auto query_shape = query->query_->get_shape(i);
         CHECK(shapes[i] == query_shape);
+      }
+    }
+  }
+}
+
+TEST_CASE(
+    "Test set shape API written fragments consolidation",
+    "[query][set_shape][fragment-metadata]") {
+  int d1_domain[] = {1, 100};
+  float d2_domain[] = {1.0f, 100.0f};
+  int32_t tile_extent = 10;
+  QueryShapeTest test(
+      TILEDB_SPARSE,
+      {"d1", "d2"},
+      {TILEDB_INT32, TILEDB_FLOAT32},
+      {d1_domain, d2_domain},
+      {&tile_extent, &tile_extent});
+
+  tiledb_array_t* array;
+  auto rc = tiledb_array_alloc(test.ctx_, test.array_uri_.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_query_t* query;
+  rc = tiledb_array_open(test.ctx_, array, TILEDB_WRITE);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
+  REQUIRE(rc == TILEDB_OK);
+  uint64_t min(1), max(2);
+  float minf(1), maxf(2);
+
+  tiledb_layout_t layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
+  DYNAMIC_SECTION(
+      tiledb::sm::layout_str((tiledb::sm::Layout)layout) << " layout") {
+    size_t frag_count = GENERATE(1, 2, 10, 25);
+    std::vector<tiledb::sm::WrittenFragmentInfo> written_frags;
+    written_frags.reserve(frag_count);
+    for (size_t i = 0; i < frag_count; i++) {
+      rc = tiledb_query_set_layout(test.ctx_, query, layout);
+      REQUIRE(rc == TILEDB_OK);
+      query->query_->set_shape(0, &min, &max);
+      query->query_->set_shape(1, &minf, &maxf);
+
+      int mod = i * 4;
+      std::vector<int32_t> d1 = {1 + mod, 2 + mod, 3 + mod, 4 + mod};
+      uint64_t d1_size = d1.size() * sizeof(int32_t);
+      std::vector<float> d2 = {1.0f + mod, 2.0f + mod, 3.0f + mod, 4.0f + mod};
+      uint64_t d2_size = d2.size() * sizeof(float);
+      std::vector<int32_t> a1 = {1 + mod, 2 + mod, 3 + mod, 4 + mod};
+      uint64_t a1_size = a1.size() * sizeof(int32_t);
+      rc = tiledb_query_set_data_buffer(
+          test.ctx_, query, "d1", d1.data(), &d1_size);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_data_buffer(
+          test.ctx_, query, "d2", d2.data(), &d2_size);
+      REQUIRE(rc == TILEDB_OK);
+      rc = tiledb_query_set_data_buffer(
+          test.ctx_, query, "a1", a1.data(), &a1_size);
+      REQUIRE(rc == TILEDB_OK);
+
+      rc = tiledb_query_submit(test.ctx_, query);
+      REQUIRE(rc == TILEDB_OK);
+
+      // For global order finalize the query so we can check written fragments.
+      if (layout == TILEDB_GLOBAL_ORDER) {
+        rc = tiledb_query_finalize(test.ctx_, query);
+        REQUIRE(rc == TILEDB_OK);
+      }
+
+      written_frags.push_back(
+          query->query_->get_written_fragment_info().back());
+      if (i < frag_count - 1) {
+        // Reset the query to prepare to write the next fragment.
+        tiledb_query_free(&query);
+        rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
+        REQUIRE(rc == TILEDB_OK);
+      }
+    }
+
+    rc = tiledb_array_close(test.ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_consolidate(test.ctx_, test.array_uri_.c_str(), nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    // If we wrote >1 fragment, account for the consolidated fragment.
+    CHECK(
+        tiledb::test::num_fragments(test.array_uri_) ==
+        (int32_t)frag_count + (frag_count > 1));
+    rc = tiledb_array_vacuum(test.ctx_, test.array_uri_.c_str(), nullptr);
+    REQUIRE(rc == TILEDB_OK);
+    CHECK(tiledb::test::num_fragments(test.array_uri_) == 1);
+    rc = tiledb_array_open(test.ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+
+    std::vector<std::string> paths;
+    auto cb = [](const char* path, void* data) -> int32_t {
+      static_cast<std::vector<std::string>*>(data)->emplace_back(path);
+      return 1;
+    };
+    auto fragments_uri = test.array_uri_ + "/__fragments";
+    rc = tiledb_vfs_ls(test.ctx_, test.vfs_, fragments_uri.c_str(), cb, &paths);
+    REQUIRE(rc == TILEDB_OK);
+    // We should only have one fragment after consolidation and vacuum.
+    REQUIRE(paths.size() == 1);
+
+    // Validate the written fragments contain shape data.
+    auto dim_num = array->array_->array_schema_latest().domain().dim_num();
+    DYNAMIC_SECTION(written_frags.size() << " written fragments") {
+      std::unordered_map<std::string, std::pair<tiledb::sm::Tile*, uint64_t>>
+          offsets;
+      auto first_range = written_frags.front().timestamp_range_;
+      auto last_range = written_frags.back().timestamp_range_;
+      auto loaded_fragments = tiledb::sm::FragmentMetadata::load(
+          test.ctx_->resources(),
+          tiledb::test::get_test_memory_tracker(),
+          query->query_->array()->opened_array()->array_schema_latest_ptr(),
+          query->query_->array()->array_schemas_all(),
+          *query->query_->array()->encryption_key(),
+          {tiledb::sm::TimestampedURI(
+              tiledb::sm::URI(paths.front()),
+              {first_range.first, last_range.second})},
+          offsets);
+      for (const auto& frag : loaded_fragments) {
+        auto frag_shape_data = frag->shape_data();
+        CHECK(frag_shape_data.size() == dim_num);
+        for (size_t i = 0; i < dim_num; i++) {
+          auto shape_data_set = query->query_->get_shape(i);
+          CHECK(shape_data_set == frag_shape_data[i]);
+        }
       }
     }
   }

@@ -2821,7 +2821,7 @@ void FragmentMetadata::load_shape_data(Deserializer& deserializer) {
     for (unsigned d = 0; d < dim_num; ++d) {
       auto dim{array_schema_->dimension_ptr(d)};
       auto size = 2 * dim->coord_size();
-      shape_data_.emplace_back(Range(deserializer.get_ptr<char>(size), size));
+      shape_data_.emplace_back(deserializer.get_ptr<char>(size), size);
     }
   }
 }
