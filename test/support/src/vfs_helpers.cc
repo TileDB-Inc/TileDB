@@ -58,8 +58,13 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   bool supports_hdfs = false;
   bool supports_azure = false;
   bool supports_gcs = false;
+  bool supports_rest_s3 = false;
   get_supported_fs(
-      &supports_s3, &supports_hdfs, &supports_azure, &supports_gcs);
+      &supports_s3,
+      &supports_hdfs,
+      &supports_azure,
+      &supports_gcs,
+      &supports_rest_s3);
 
   if (supports_s3) {
     fs_vec.emplace_back(std::make_unique<SupportedFsS3>());
@@ -76,6 +81,10 @@ std::vector<std::unique_ptr<SupportedFs>> vfs_test_get_fs_vec() {
   if (supports_gcs) {
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>());
     fs_vec.emplace_back(std::make_unique<SupportedFsGCS>("gs://"));
+  }
+
+  if (supports_rest_s3) {
+    fs_vec.emplace_back(std::make_unique<SupportedFsS3>(true));
   }
 
   fs_vec.emplace_back(std::make_unique<SupportedFsLocal>());
@@ -128,16 +137,16 @@ Status vfs_test_close(
 void vfs_test_remove_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   int is_dir = 0;
-  REQUIRE(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
+  CHECK(tiledb_vfs_is_dir(ctx, vfs, path.c_str(), &is_dir) == TILEDB_OK);
   if (is_dir) {
-    REQUIRE(tiledb_vfs_remove_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+    CHECK(tiledb_vfs_remove_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
   }
 }
 
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path) {
   vfs_test_remove_temp_dir(ctx, vfs, path);
-  REQUIRE(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
+  CHECK(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
 }
 
 Status SupportedFsS3::prepare_config(
@@ -205,6 +214,10 @@ Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
 
 std::string SupportedFsS3::temp_dir() {
   return temp_dir_;
+}
+
+bool SupportedFsS3::is_rest() {
+  return rest_;
 }
 
 Status SupportedFsHDFS::prepare_config(

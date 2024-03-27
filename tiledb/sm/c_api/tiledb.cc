@@ -2937,30 +2937,10 @@ int32_t tiledb_array_encryption_type(
   if (array_uri == nullptr || encryption_type == nullptr)
     return TILEDB_ERR;
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
   auto uri = tiledb::sm::URI(array_uri);
-
-  // Load URIs from the array directory
-  optional<tiledb::sm::ArrayDirectory> array_dir;
-  try {
-    array_dir.emplace(
-        storage_manager->resources(),
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_encryption(array_dir.value(), &enc));
+  throw_if_not_ok(ctx->storage_manager()->array_get_encryption(uri, &enc));
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
