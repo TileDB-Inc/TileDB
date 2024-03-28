@@ -688,7 +688,7 @@ class Query {
       Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
-  tuple<Status, optional<bool>> non_overlapping_ranges();
+  bool non_overlapping_ranges();
 
   /** Returns true if this is a dense query */
   bool is_dense() const;

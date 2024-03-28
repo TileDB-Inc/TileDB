@@ -308,10 +308,10 @@ void check_subarray(
   uint64_t dim_range_num = 0;
   const type::Range* range;
   for (unsigned i = 0; i < dim_num; ++i) {
-    CHECK(subarray.get_range_num(i, &dim_range_num).ok());
+    CHECK_NOTHROW(subarray.get_range_num(i, &dim_range_num));
     CHECK(dim_range_num == ranges[i].size() / 2);
     for (uint64_t j = 0; j < dim_range_num; ++j) {
-      CHECK(subarray.get_range(i, j, &range).ok());
+      CHECK_NOTHROW(subarray.get_range(i, j, &range));
       auto r = (const T*)range->data();
 
       CHECK(r[0] == ranges[i][2 * j]);
@@ -360,70 +360,31 @@ void check_subarray(
 }
 
 template <class T>
-void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
-  CHECK(subarray1.range_num() == subarray2.range_num());
-  // Check dim num
-  auto dim_num1 = subarray1.dim_num();
-  auto dim_num2 = subarray2.dim_num();
-  CHECK(dim_num1 == dim_num2);
-
-  tiledb::sm::ByteVec sa1bytes, sa2bytes;
-  //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  // both and resulting bytes, empty or otherwise, should be the same as well.
-  CHECK(
-      subarray1.to_byte_vec(&sa1bytes).ok() ==
-      subarray2.to_byte_vec(&sa2bytes).ok());
-  CHECK(sa1bytes == sa2bytes);
-
-  const std::vector<std::vector<uint8_t>> sa1tilecoords =
-      subarray1.tile_coords();
-  const std::vector<std::vector<uint8_t>> sa2tilecoords =
-      subarray2.tile_coords();
-  CHECK(sa1tilecoords == sa2tilecoords);
-
-  // Check ranges
-  uint64_t dim_range_num1 = 0;
-  const type::Range* range1;
-  uint64_t dim_range_num2 = 0;
-  const type::Range* range2;
-  if (dim_num1 == dim_num2) {
-    for (unsigned i = 0; i < dim_num1; ++i) {
-      CHECK(subarray1.get_range_num(i, &dim_range_num1).ok());
-      CHECK(subarray2.get_range_num(i, &dim_range_num2).ok());
-      CHECK(dim_range_num1 == dim_range_num2);
-      if (dim_range_num1 == dim_range_num2) {
-        for (uint64_t j = 0; j < dim_range_num1; ++j) {
-          CHECK(subarray1.get_range(i, j, &range1).ok());
-          CHECK(subarray2.get_range(i, j, &range2).ok());
-          auto r1 = (const T*)range1->data();
-          auto r2 = (const T*)range2->data();
-          CHECK(r1[0] == r2[0]);
-          CHECK(r1[1] == r2[1]);
-        }
-      }
-    }
-  }
-}
-
-template <class T>
 bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2) {
   bool equiv_state = 1;  // assume true
-
-  equiv_state &= (subarray1.range_num() == subarray2.range_num());
+  auto rn1 = subarray1.range_num();
+  auto rn2 = subarray2.range_num();
+  if (rn1 != rn2) {
+    return false;
+  }
   // Check dim num
   auto dim_num1 = subarray1.dim_num();
   auto dim_num2 = subarray2.dim_num();
-  equiv_state &= (dim_num1 == dim_num2);
+  if (dim_num1 != dim_num2) {
+    return false;
+  }
 
+  /*
+   * `to_byte_vect()` is only valid when `range_num() == 1`, so only
+   * convert in that case, since `to_byte_vect()` will throw otherwise
+   */
   tiledb::sm::ByteVec sa1bytes, sa2bytes;
-  //.to_byte_vect() only valid when range_num() == 1, but should be same for
-  // both and resulting bytes, empty or otherwise, should be the same as well.
-  equiv_state &=
-      (subarray1.to_byte_vec(&sa1bytes).ok() ==
-       subarray2.to_byte_vec(&sa2bytes).ok());
-  equiv_state &= (sa1bytes == sa2bytes);
+  if (rn1 == 1) {
+    subarray1.to_byte_vec(&sa1bytes);
+    subarray2.to_byte_vec(&sa2bytes);
+    equiv_state &= (sa1bytes == sa2bytes);
+  }
 
   const std::vector<std::vector<uint8_t>> sa1tilecoords =
       subarray1.tile_coords();
@@ -438,13 +399,17 @@ bool subarray_equiv(
   const type::Range* range2;
   if (dim_num1 == dim_num2) {
     for (unsigned i = 0; i < dim_num1; ++i) {
-      equiv_state &= (subarray1.get_range_num(i, &dim_range_num1).ok());
-      equiv_state &= (subarray2.get_range_num(i, &dim_range_num2).ok());
+      try {
+        subarray1.get_range_num(i, &dim_range_num1);
+        subarray2.get_range_num(i, &dim_range_num2);
+      } catch (...) {
+        return false;
+      }
       equiv_state &= (dim_range_num1 == dim_range_num2);
       if (dim_range_num1 == dim_range_num2) {
         for (uint64_t j = 0; j < dim_range_num1; ++j) {
-          CHECK(subarray1.get_range(i, j, &range1).ok());
-          CHECK(subarray2.get_range(i, j, &range2).ok());
+          CHECK_NOTHROW(subarray1.get_range(i, j, &range1));
+          CHECK_NOTHROW(subarray2.get_range(i, j, &range2));
           auto r1 = (const T*)range1->data();
           auto r2 = (const T*)range2->data();
           equiv_state &= (r1[0] == r2[0]);
@@ -867,7 +832,7 @@ void create_subarray(
     auto dim_range_num = ranges[d].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
       type::Range range(&ranges[d][2 * j], 2 * sizeof(T));
-      CHECK(ret.add_range(d, std::move(range), true).ok());
+      CHECK_NOTHROW(ret.add_range(d, std::move(range), true));
     }
   }
 
@@ -1964,27 +1929,6 @@ template void check_subarray<float>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<float>& ranges);
 template void check_subarray<double>(
     tiledb::sm::Subarray& subarray, const SubarrayRanges<double>& ranges);
-
-template void check_subarray_equiv<int8_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint8_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int16_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint16_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int32_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint32_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<int64_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<uint64_t>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<float>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-template void check_subarray_equiv<double>(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 template bool subarray_equiv<int8_t>(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
