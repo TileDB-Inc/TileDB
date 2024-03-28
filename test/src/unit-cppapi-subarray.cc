@@ -467,29 +467,29 @@ TEST_CASE(
   SECTION("- Upper bound OOB") {
     int range[] = {0, 100};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
   }
 
   SECTION("- Lower bound OOB") {
     int range[] = {-1, 2};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
   }
 
   SECTION("- Second range OOB") {
     int range[] = {1, 4};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
     int range2[] = {10, 20};
     auto r2 = Range(&range2[0], &range2[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r2));
   }
 
   SECTION("- Valid ranges") {
     int range[] = {0, 1};
     auto r = Range(&range[0], &range[1], sizeof(int));
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(0, r).ok());
-    CHECK(subarray.ptr().get()->subarray_->add_range_unsafe(1, r).ok());
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(0, r));
+    CHECK_NOTHROW(subarray.ptr().get()->subarray_->add_range_unsafe(1, r));
     expected = TILEDB_OK;
   }
 

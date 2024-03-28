@@ -252,12 +252,12 @@ Status CellSlabIter<T>::init_ranges() {
   ranges_.resize(dim_num);
   for (unsigned d = 0; d < dim_num; ++d) {
     auto dim_dom = (const T*)array_domain[d].data();
-    RETURN_NOT_OK(subarray_->get_range_num(d, &range_num));
+    subarray_->get_range_num(d, &range_num);
     ranges_[d].reserve(range_num);
     tile_extent = *(const T*)array_schema.domain().tile_extent(d).data();
     dim_domain_start = dim_dom[0];
     for (uint64_t j = 0; j < range_num; ++j) {
-      RETURN_NOT_OK(subarray_->get_range(d, j, &r));
+      subarray_->get_range(d, j, &r);
       create_ranges(
           (const T*)(*r).data(), tile_extent, dim_domain_start, &ranges_[d]);
     }

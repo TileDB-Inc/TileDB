@@ -150,7 +150,8 @@ void DenseTilerFx::add_ranges(
     uint64_t range_size,
     tiledb::sm::Subarray* subarray) {
   for (size_t i = 0; i < ranges.size(); ++i)
-    CHECK(subarray->add_range((uint32_t)i, Range(ranges[i], range_size)).ok());
+    CHECK_NOTHROW(
+        subarray->add_range((uint32_t)i, Range(ranges[i], range_size)));
 }
 
 void DenseTilerFx::open_array(

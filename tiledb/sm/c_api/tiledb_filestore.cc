@@ -296,7 +296,7 @@ int32_t tiledb_filestore_uri_import(
   uint64_t range_arr[] = {static_cast<uint64_t>(0), last_space_tile_boundary};
   tiledb::type::Range subarray_range(
       static_cast<void*>(range_arr), sizeof(uint64_t) * 2);
-  throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
+  subarray.add_range(0, std::move(subarray_range));
   query.set_subarray(subarray);
 
   auto tiledb_cloud_fix = [&](uint64_t start, uint64_t end) {
@@ -312,8 +312,7 @@ int32_t tiledb_filestore_uri_import(
     uint64_t cloud_fix_range_arr[] = {start, end};
     tiledb::type::Range subarray_range_cloud_fix(
         static_cast<void*>(cloud_fix_range_arr), sizeof(uint64_t) * 2);
-    throw_if_not_ok(
-        subarray_cloud_fix.add_range(0, std::move(subarray_range_cloud_fix)));
+    subarray_cloud_fix.add_range(0, std::move(subarray_range_cloud_fix));
     query.set_subarray(subarray_cloud_fix);
     uint64_t data_buff_len = end - start + 1;
     throw_if_not_ok(query.set_data_buffer(
@@ -440,7 +439,7 @@ int32_t tiledb_filestore_uri_export(
     uint64_t subarray_range_arr[] = {start_range, end_range};
     tiledb::type::Range subarray_range(
         static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
-    throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
+    subarray.add_range(0, std::move(subarray_range));
 
     tiledb::sm::Query query(context.storage_manager(), array);
     throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
@@ -558,7 +557,7 @@ int32_t tiledb_filestore_buffer_import(
       static_cast<uint64_t>(0), static_cast<uint64_t>(size - 1)};
   tiledb::type::Range subarray_range(
       static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
-  throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
+  subarray.add_range(0, std::move(subarray_range));
 
   query.set_subarray(subarray);
   uint64_t size_tmp = size;
@@ -620,7 +619,7 @@ int32_t tiledb_filestore_buffer_export(
       static_cast<uint64_t>(offset), static_cast<uint64_t>(offset + size - 1)};
   tiledb::type::Range subarray_range(
       static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
-  throw_if_not_ok(subarray.add_range(0, std::move(subarray_range)));
+  subarray.add_range(0, std::move(subarray_range));
 
   tiledb::sm::Query query(context.storage_manager(), array);
   throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));

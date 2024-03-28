@@ -252,10 +252,6 @@ void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
 
 template <class T>
-void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
-
-template <class T>
 bool subarray_equiv(
     tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
