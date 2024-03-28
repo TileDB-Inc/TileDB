@@ -457,6 +457,9 @@ class Config {
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
 
+  /** GCS service account(s) to impersonate. */
+  static const std::string VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT;
+
   /** GCS max parallel ops. */
   static const std::string VFS_GCS_MAX_PARALLEL_OPS;
 
