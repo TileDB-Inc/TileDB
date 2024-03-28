@@ -1,0 +1,119 @@
+name: CI Azure
+on:
+  workflow_call:
+    inputs:
+      ci_backend:
+        description: 'Name of the job backend/target'
+        default: ''
+        required: false
+        type: string
+      ci_option:
+        description: 'Name of the job option for display'
+        default: ''
+        required: false
+        type: string
+      bootstrap_args:
+        default: ''
+        required: false
+        type: string
+      matrix_image:
+        default: ''
+        required: true
+        type: string
+
+env:
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=x64-${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'linux' || 'osx' }} ${{ inputs.bootstrap_args }}"
+  VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+  SCCACHE_GHA_ENABLED: "true"
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os:
+          - ${{ inputs.matrix_image }}
+    runs-on: ${{matrix.os}}
+
+    name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
+    steps:
+      - uses: actions/checkout@v3
+        with:
+            submodules: true
+            fetch-depth: 0
+
+      # Configure required environment variables for vcpkg to use
+      # GitHub's Action Cache
+      - uses: actions/github-script@v6
+        with:
+          script: |
+            core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
+            core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
+
+      - name: Prevent vpckg from building debug variants
+        run: python ./scripts/ci/patch_vcpkg_triplets.py
+
+      - name: Setup sccache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: 'Configure libtiledb'
+        id: configure
+        shell: bash
+        run: |
+          set -e pipefail
+
+          # Show CMake Version
+          cmake --version
+
+          source $GITHUB_WORKSPACE/scripts/ci/bootstrap_libtiledb.sh
+
+      - name: 'Build libtiledb'
+        id: build
+        shell: bash
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # Build libtiledb using previous bootstrap
+
+          source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
+
+      - name: 'Az CLI login'
+        uses: azure/login@v1
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: 'Test libtiledb'
+        id: test
+        shell: bash
+        env:
+          VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
+        run: |
+          set -e pipefail
+
+          #####################################################
+          # Jump to our build directory after starting object
+          # store mock servers
+
+          cd $GITHUB_WORKSPACE/build
+
+          ###################################################
+          # Run tests
+
+          # Bypass Catch2 Framework stdout interception with awk on test output
+          ./tiledb/test/tiledb_unit -d yes "[ci_only][vfs][azure_entra]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+
+      - name: 'Test status check'
+        run: |
+          # tiledb_unit is configured to set a  variable TILEDB_CI_SUCCESS=1
+          # following the test run. If this variable is not set, the build should fail.
+          # see https://github.com/TileDB-Inc/TileDB/pull/1400 (5f0623f4d3)
+          if [[ "${{ steps.test.outputs.TILEDB_CI_SUCCESS }}" -ne 1 ]]; then
+            exit 1;
+          fi
+
+      - name: "Print log files (failed build only)"
+        run: |
+          source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
+        if: ${{ failure() }} # only run this job if the build step failed
