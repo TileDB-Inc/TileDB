@@ -43,12 +43,6 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
-
 struct ConsolidationPlanFx {
   // Constructors/destructors.
   ConsolidationPlanFx();
@@ -89,7 +83,7 @@ ConsolidationPlanFx::ConsolidationPlanFx()
       test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_, config.ptr().get()).ok());
   ctx_ = Context(ctx_c_);
   std::string temp_dir = fs_vec_[0]->temp_dir();
-  if constexpr (rest_tests) {
+  if (fs_vec_[0]->is_rest()) {
     array_name_ = "tiledb://unit/";
   }
   array_name_ += temp_dir + "test_consolidation_plan_array";
@@ -97,8 +91,10 @@ ConsolidationPlanFx::ConsolidationPlanFx()
 }
 
 ConsolidationPlanFx::~ConsolidationPlanFx() {
-  Array::delete_array(ctx_, array_name_);
-  REQUIRE(test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok());
+  test::vfs_test_remove_temp_dir(ctx_c_, vfs_c_, fs_vec_[0]->temp_dir());
+  test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok();
+  tiledb_ctx_free(&ctx_c_);
+  tiledb_vfs_free(&vfs_c_);
 }
 
 void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {

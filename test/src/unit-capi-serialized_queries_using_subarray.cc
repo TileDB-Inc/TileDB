@@ -324,7 +324,7 @@ struct SerializationFx {
 TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense",
-    "[query][dense][serialization][rest]") {
+    "[query][dense][serialization][rest-fails][sc-40489]") {
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
   check_subarray_stats(2, 2);

@@ -40,9 +40,9 @@
 
 using namespace tiledb::test;
 
-struct QueryAggregateFx : TemporaryDirectoryFixture {
+struct QueryAggregateFx {
   QueryAggregateFx()
-      : ctx_(vfs_test_setup_.ctx_c)
+      : ctx(vfs_test_setup_.ctx_c)
       , array_name_(vfs_test_setup_.array_uri("queryaggregate_array")) {
     create_sparse_array();
     write_sparse_array();
@@ -52,7 +52,7 @@ struct QueryAggregateFx : TemporaryDirectoryFixture {
   void write_sparse_array();
 
   VFSTestSetup vfs_test_setup_;
-  tiledb_ctx_t* ctx_;
+  tiledb_ctx_t* ctx;
   std::string array_name_;
 };
 

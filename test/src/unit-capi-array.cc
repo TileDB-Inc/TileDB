@@ -462,7 +462,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ArrayFx, "C API: Test array with encryption", "[capi][array][encryption]") {
+    ArrayFx,
+    "C API: Test array with encryption",
+    "[capi][array][encryption][non-rest]") {
   // Create array schema
   tiledb_array_schema_t* array_schema;
   int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);

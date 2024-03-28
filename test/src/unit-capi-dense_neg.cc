@@ -499,9 +499,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string vector_name = path + "dense_neg_vector";
-  create_temp_dir(temp_dir);
 
   create_dense_vector(vector_name);
   write_dense_vector(vector_name);
@@ -518,9 +516,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string vector_name = path + "dense_neg_array";
-  create_temp_dir(temp_dir);
 
   create_dense_array(vector_name);
   write_dense_array_global(vector_name);

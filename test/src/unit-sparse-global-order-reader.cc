@@ -1193,16 +1193,12 @@ TEST_CASE(
 
 TEST_CASE(
     "Sparse global order reader: attribute copy memory limit",
-    "[sparse-global-order][attribute-copy][memory-limit]") {
-  std::string array_name = "test_sparse_global_order";
+    "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
   config["sm.mem.total_budget"] = "10000";
-  Context ctx(config);
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  VFSTestSetup vfs_test_setup(config.ptr().get());
+  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1237,8 +1233,7 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
-  CHECK_NOTHROW(query.finalize());
+  CHECK_NOTHROW(query.submit_and_finalize());
 
   // Read using a budget that can only fit one of the var size tiles.
   Array array2(ctx, array_name, TILEDB_READ);
@@ -1267,10 +1262,6 @@ TEST_CASE(
   CHECK(result_num == 4);
 
   array2.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE_METHOD(

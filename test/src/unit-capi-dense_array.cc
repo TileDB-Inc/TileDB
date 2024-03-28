@@ -3387,7 +3387,6 @@ TEST_CASE_METHOD(
 
   // Create and write dense array
   std::string array_name = path + "with_ending_slash/";
-  create_temp_dir(temp_dir);
   create_dense_array(array_name);
   write_dense_array(array_name);
   read_dense_array_with_coords_full_global(array_name, true);
@@ -3404,7 +3403,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_write_missing_attributes/";
-  create_temp_dir(temp_dir);
   create_dense_array(array_name);
   write_dense_array_missing_attributes(array_name);
   remove_temp_dir(temp_dir);
@@ -3420,8 +3418,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_read_empty/";
-  create_temp_dir(temp_dir);
-
   create_dense_array_1_attribute(array_name);
 
   // Write a slice
@@ -3508,8 +3504,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_read_empty_merge/";
-  create_temp_dir(temp_dir);
-
   create_dense_array_1_attribute(array_name);
 
   // Write a slice
@@ -3595,8 +3589,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_multi_fragment/";
-  create_temp_dir(temp_dir);
-
   create_dense_array_1_attribute(array_name);
 
   // Write slice [1,2], [3,4]
@@ -3704,7 +3696,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_is_open/";
-  create_temp_dir(temp_dir);
   create_dense_array(array_name);
 
   tiledb_array_t* array;
@@ -3745,7 +3736,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_get_schema/";
-  create_temp_dir(temp_dir);
   create_dense_array(array_name);
 
   // Open array
@@ -3781,7 +3771,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense-col-updates";
-  create_temp_dir(temp_dir);
   create_dense_array_1_attribute(array_name);
 
   // ------ WRITE QUERIES ------ //
@@ -3933,7 +3922,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "unary-range";
-  create_temp_dir(temp_dir);
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -4016,9 +4004,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "default-dim";
-  create_temp_dir(temp_dir);
 
   // Create and write dense array
   create_dense_array(array_name);
@@ -4076,7 +4062,6 @@ TEST_CASE_METHOD(
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
 
   std::string array_name = path + "dense_read_same_tile";
-  create_temp_dir(temp_dir);
 
   create_dense_array_same_tile(array_name);
 
@@ -4194,9 +4179,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "dense_read_multi_index_simple";
-  create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4247,9 +4230,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "dense_read_multi_index_complex";
-  create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4317,9 +4298,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "dense_read_multi_index_cross_tile";
-  create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4370,9 +4349,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "dense_read_multi_out_of_order";
-  create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
 
@@ -4423,9 +4400,7 @@ TEST_CASE_METHOD(
   create_temp_dir(temp_dir);
   std::string path =
       fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-
   std::string array_name = path + "dense_read_multi_index_coalesce";
-  create_temp_dir(temp_dir);
 
   create_large_dense_array_1_attribute(array_name);
 

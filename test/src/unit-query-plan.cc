@@ -39,12 +39,6 @@
 
 using namespace tiledb;
 
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
-
 struct QueryPlanFx {
   QueryPlanFx();
   ~QueryPlanFx();
@@ -268,11 +262,12 @@ QueryPlanFx::QueryPlanFx()
 QueryPlanFx::~QueryPlanFx() {
   test::vfs_test_remove_temp_dir(ctx_c_, vfs_c_, temp_dir_);
   test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok();
+  tiledb_ctx_free(&ctx_c_);
   tiledb_vfs_free(&vfs_c_);
 }
 
 void QueryPlanFx::create_dense_array(const std::string& array_name) {
-  if constexpr (rest_tests) {
+  if (fs_vec_[0]->is_rest()) {
     uri_ = "tiledb://unit/";
   }
 
@@ -347,7 +342,7 @@ void QueryPlanFx::create_dense_array(const std::string& array_name) {
 }
 
 void QueryPlanFx::create_sparse_array(const std::string& array_name) {
-  if constexpr (rest_tests) {
+  if (fs_vec_[0]->is_rest()) {
     uri_ = "tiledb://unit/";
   }
 
