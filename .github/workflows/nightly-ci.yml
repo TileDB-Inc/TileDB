@@ -1,3 +1,5 @@
+name: TileDB Nightly Full CI
+
 on:
   schedule:
     # runs every day at 2:50 UTC
