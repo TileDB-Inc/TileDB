@@ -33,6 +33,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -62,14 +63,7 @@ uint64_t UTF16_OFFSET_2 = sizeof(u"aαbβ") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_3 = sizeof(u"aαbβcγ") - UTF16_NULL_SIZE;
 
 struct StringFx {
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   void create_array(const std::string& array_name);
-  void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
   void write_array(const std::string& array_name);
 };
@@ -217,13 +211,7 @@ void StringFx::write_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -292,13 +280,7 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -334,40 +316,11 @@ void StringFx::read_array(const std::string& array_name) {
   std::free(buffer_a3_val);
 }
 
-void StringFx::delete_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Remove array
-  tiledb_object_t type;
-  rc = tiledb_object_type(ctx, array_name.c_str(), &type);
-  REQUIRE(rc == TILEDB_OK);
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_object_remove(ctx, array_name.c_str());
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  // Clean up
-  tiledb_ctx_free(&ctx);
-}
-
-TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi][string]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  std::string array_name = "foo";
-  delete_array(array_name);
+TEST_CASE_METHOD(
+    StringFx, "C API: Test string support", "[capi][string][rest]") {
+  VFSTestSetup vfs_test_setup;
+  std::string array_name = vfs_test_setup.array_uri("foo");
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
-  delete_array(array_name);
 }

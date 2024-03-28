@@ -38,10 +38,13 @@ target_link_libraries(capi_query_aggregate PUBLIC export)
 target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 #
+# Tests have been moved out to tiledb_unit as they were integration tests. Leaving this as
+# placeholder for unit tests that might be added.
+#
 # Test-compile of object library ensures link-completeness
 #
-add_executable(compile_capi_query_aggregate EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_query_aggregate PRIVATE capi_query_aggregate)
-target_sources(compile_capi_query_aggregate PRIVATE test/compile_capi_query_aggregate_main.cc)
+# add_executable(compile_capi_query_aggregate EXCLUDE_FROM_ALL)
+# target_link_libraries(compile_capi_query_aggregate PRIVATE capi_query_aggregate)
+# target_sources(compile_capi_query_aggregate PRIVATE test/compile_capi_query_aggregate_main.cc)
 
-add_test_subdirectory()
+# add_test_subdirectory()
