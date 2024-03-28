@@ -841,7 +841,7 @@ void NullableArrayFx::do_2d_nullable_test(
 TEST_CASE_METHOD(
     NullableArrayFx,
     "C API: Test 2D array with nullable attributes",
-    "[capi][2d][nullable][rest]") {
+    "[capi][2d][nullable]") {
   // Define the attributes.
   vector<test_attr_t> attrs;
   attrs.emplace_back("a1", TILEDB_INT32, 1, true);

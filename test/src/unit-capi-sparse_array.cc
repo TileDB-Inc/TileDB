@@ -2433,6 +2433,8 @@ TEST_CASE_METHOD(
     check_sorted_reads(
         array_name, TILEDB_FILTER_DELTA, TILEDB_ROW_MAJOR, TILEDB_COL_MAJOR);
   }
+
+  remove_temp_dir(fs_vec_[0]->temp_dir());
 }
 
 TEST_CASE_METHOD(
