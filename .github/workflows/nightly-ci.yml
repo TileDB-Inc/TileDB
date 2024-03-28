@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  ci4:
+  ci1:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: HDFS
