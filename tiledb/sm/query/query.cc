@@ -38,6 +38,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
+#include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -870,6 +871,15 @@ Status Query::process() {
     condition_->rewrite_enumeration_conditions(array_schema());
   }
 
+  // If there are shapes set on the Query, check they are set on all dimensions.
+  if (!shape_data_.empty() &&
+      std::find(shape_data_.cbegin(), shape_data_.cend(), std::nullopt) !=
+          shape_data_.end()) {
+    throw QueryStatusException(
+        "Cannot process query; Shapes must be set on all or none of the "
+        "dimensions.");
+  }
+
   // Update query status.
   status_ = QueryStatus::INPROGRESS;
 
@@ -1157,6 +1167,57 @@ Status Query::set_data_buffer(
   }
 
   return Status::Ok();
+}
+
+void Query::set_shape(uint32_t dim_idx, const void* min, const void* max) {
+  if (type_ != QueryType::WRITE) {
+    throw QueryStatusException(
+        "Cannot set shape on a " + query_type_str(type_) +
+        " query. Applicable only to write queries.");
+  }
+  if (array_schema_->array_type() == ArrayType::DENSE) {
+    throw QueryStatusException(
+        "Cannot set shape on a dense array. Applicable only to sparse arrays.");
+  }
+  if (min == nullptr || max == nullptr) {
+    throw QueryStatusException(
+        "Cannot set shape; Input range is null for dimension index " +
+        std::to_string(dim_idx) + ".");
+  }
+  auto& schema = array_->array_schema_latest();
+  if (dim_idx >= schema.dim_num()) {
+    throw QueryStatusException(
+        "Cannot set shape; Input dimension index " + std::to_string(dim_idx) +
+        " does not exist.");
+  }
+  auto types = schema.dim_types();
+  if (!std::all_of(types.cbegin(), types.cend(), datatype_is_arithmetic)) {
+    throw QueryStatusException(
+        "Cannot set shape; All dimension types for the "
+        "array must be arithmetic types.");
+  }
+  if (shape_data_.empty()) {
+    shape_data_.resize(schema.dim_num(), nullopt);
+  }
+
+  auto coord_size = schema.dimension_ptr(dim_idx)->coord_size();
+  std::vector<uint8_t> range(2 * coord_size);
+  std::memcpy(&range[0], min, coord_size);
+  std::memcpy(&range[coord_size], max, coord_size);
+  shape_data_[dim_idx] = Range(&range[0], 2 * coord_size);
+}
+
+const Range& Query::get_shape(uint32_t dim_idx) const {
+  if (shape_data_.empty()) {
+    throw QueryStatusException("No shape data set on this query.");
+  }
+  if (!shape_data_[dim_idx].has_value()) {
+    // There is shape data set on the query, but not yet for this dimension.
+    throw QueryStatusException(
+        "No shape data set on dimension index " + std::to_string(dim_idx) +
+        ".");
+  }
+  return shape_data_[dim_idx].value();
 }
 
 std::optional<shared_ptr<IAggregator>> Query::get_aggregate(
@@ -1810,6 +1871,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       layout_,
       condition_,
       default_channel_aggregates_,
+      shape_data_,
       skip_checks_serialization);
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {

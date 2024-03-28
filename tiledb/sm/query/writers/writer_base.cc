@@ -700,6 +700,12 @@ void WriterBase::set_coords_metadata(
   meta->set_last_tile_cell_num(cell_num);
 }
 
+void WriterBase::set_shape_metadata(shared_ptr<FragmentMetadata> meta) {
+  if (!shape_data_.empty()) {
+    meta->set_shape_data(shape_data_);
+  }
+}
+
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {

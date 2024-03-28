@@ -238,7 +238,9 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
    */
   void clear_coord_buffers();
 
-  /** Closes all attribute files, flushing their state to storage. */
+  /**
+   * Closes all attribute and dimension files, flushing their state to storage.
+   */
   Status close_files(shared_ptr<FragmentMetadata> meta) const;
 
   /**
@@ -268,6 +270,13 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
       const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
       const std::vector<NDRange>& mbrs,
       shared_ptr<FragmentMetadata> meta) const;
+
+  /**
+   * Set the shape metadata for each dimension.
+   *
+   * @param meta The fragment metadata that will store the shape metadata.
+   */
+  void set_shape_metadata(shared_ptr<FragmentMetadata> meta);
 
   /**
    * Computes the tiles metadata (min/max/sum/null count).

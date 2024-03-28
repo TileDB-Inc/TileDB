@@ -385,6 +385,11 @@ inline bool datatype_is_real(Datatype type) {
   return (type == Datatype::FLOAT32 || type == Datatype::FLOAT64);
 }
 
+/** Returns true if the input datatype is an arithmetic type. */
+inline bool datatype_is_arithmetic(Datatype type) {
+  return datatype_is_integer(type) || datatype_is_real(type);
+}
+
 /** Returns true if the input datatype is a datetime type. */
 inline bool datatype_is_datetime(Datatype type) {
   return (

@@ -894,7 +894,7 @@ TEST_CASE_METHOD(
   uint64_t data_size = data.size() * sizeof(int);
   write_1d_fragment(subarray, data.data(), &data_size);
 
-  total_budget_ = "420";
+  total_budget_ = "423";
   tile_upper_memory_limit_ = "50";
   update_config();
 
@@ -1078,7 +1078,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one as the budget is split across two potential reads. Fixed tiles are
   // both 40 so they both fit in the budget.
-  total_budget_ = "660";
+  total_budget_ = "667";
   tile_upper_memory_limit_ = "210";
   update_config();
 

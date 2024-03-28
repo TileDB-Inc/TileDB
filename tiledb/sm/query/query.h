@@ -543,6 +543,24 @@ class Query {
       const bool serialization_allow_new_attr = false);
 
   /**
+   * Set the shape for a dimension by index.
+   *
+   * @param dim_idx The dimension index to set.
+   * @param min Minimum range for the dimension.
+   * @param max Maximum range for the dimension.
+   */
+  void set_shape(uint32_t dim_idx, const void* min, const void* max);
+
+  /**
+   * Get the shape for a dimension by index. If there is no shape set, this
+   * method will throw.
+   *
+   * @param dim_idx The dimension index to retrieve shape.
+   * @return Range for the dimension shape.
+   */
+  const Range& get_shape(uint32_t dim_idx) const;
+
+  /**
    * Get the config of the query.
    *
    * @return Config from query
@@ -1058,6 +1076,15 @@ class Query {
    * default constructor.
    */
   std::shared_ptr<QueryChannel> aggregate_channel_{};
+
+  /**
+   * Shapes set on each dimension. If no shapes were set on the Query, this
+   * container will remain empty. When the first shape is set, this is resized
+   * to dim_num and unset dimensions are initialized to nullopt. When the query
+   * is submit for processing, all dimensions should have shape data set and
+   * this shouldn't contain any nullopt values.
+   */
+  std::vector<std::optional<Range>> shape_data_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

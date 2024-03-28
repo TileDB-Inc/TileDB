@@ -36,3 +36,18 @@ add_test(
   COMMAND $<TARGET_FILE:unit_capi_query_type>
   WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
 )
+
+add_executable(unit_capi_query_shape EXCLUDE_FROM_ALL)
+target_sources(unit_capi_query_shape PRIVATE unit_capi_query_shape.cc)
+target_link_libraries(unit_capi_query_shape PRIVATE capi_query)
+target_link_libraries(unit_capi_query_shape PRIVATE tiledb_test_support_lib)
+target_link_libraries(unit_capi_query_shape PRIVATE Catch2::Catch2WithMain)
+if (NOT MSVC)
+  target_compile_options(unit_capi_query_shape PRIVATE -Wno-deprecated-declarations)
+endif()
+
+add_test(
+    NAME "unit_capi_query_shape"
+    COMMAND $<TARGET_FILE:unit_capi_query_shape>
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+)
