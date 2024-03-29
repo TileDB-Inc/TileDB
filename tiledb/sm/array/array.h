@@ -784,6 +784,7 @@ class Array {
     opened_array_->non_empty_domain_computed() = is_computed;
   }
 
+  /** Returns a reference to the shape data. */
   NDRange& shape_data();
 
   /** Returns the memory tracker. */
