@@ -1069,17 +1069,40 @@ const NDRange Array::non_empty_domain() {
 }
 
 NDRange& Array::shape_data() {
+  // For dense arrays the shape data is the non-empty domain.
+  if (array_schema_latest().dense()) {
+    if (!non_empty_domain_computed()) {
+      throw_if_not_ok(compute_non_empty_domain());
+    }
+    return loaded_non_empty_domain();
+  }
+
+  // Compute the shape data if it is not already initialized.
   if (opened_array_->shape_data().empty()) {
+    // The array shape data is the per-dimension union across all fragments.
+    auto& array_shape_data = opened_array_->shape_data();
+
+    // Check shape data for each fragment.
     const auto& frag_meta = opened_array_->fragment_metadata();
     for (const auto& meta : frag_meta) {
-      if (!meta->shape_data().empty() && opened_array_->shape_data().empty()) {
-        opened_array_->shape_data() = meta->shape_data();
-      } else {
-        // After we have found shape data, ensure it remains the same for all
-        // fragments.
-        if (opened_array_->shape_data() != meta->shape_data()) {
-          throw ArrayException(
-              "Dimension shapes are not consistent across fragments");
+      // Check each dimension in the fragment shape data.
+      const auto& frag_shape_data = meta->shape_data();
+      for (size_t j = 0; j < frag_shape_data.size(); j++) {
+        auto dim = opened_array_->array_schema_latest().dimension_ptr(j);
+        if (dim->var_size()) {
+          if (!non_empty_domain_computed()) {
+            throw_if_not_ok(compute_non_empty_domain());
+          }
+          // Shape is not supported for var-sized dimensions.
+          array_shape_data[j] = frag_shape_data[j];
+        } else if (array_shape_data.size() < j + 1) {
+          // Initialize array shape with fragment shape for this dimension.
+          array_shape_data.push_back(frag_shape_data[j]);
+        } else {
+          // Expand array shape with fragment shaped for this dimension.
+          // TODO: Throw if one dimension has shapes that cannot be expanded(?)
+          // TODO: Validated in debugger, write tests.
+          dim->expand_range(frag_shape_data[j], &array_shape_data[j]);
         }
       }
     }

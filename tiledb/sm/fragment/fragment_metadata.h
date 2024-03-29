@@ -1698,6 +1698,9 @@ class FragmentMetadata {
   /** Loads the non-empty domain from the input buffer. */
   void load_non_empty_domain(Deserializer& deserializer);
 
+  /** Loads the null non empty domain value from the input buffer. */
+  bool load_null_non_empty_domain(Deserializer& deserializer) const;
+
   /**
    * Loads the non-empty domain from the input buffer,
    * for format versions <= 2.
@@ -1866,6 +1869,9 @@ class FragmentMetadata {
 
   /** Writes the R-tree to a tile. */
   shared_ptr<WriterTile> write_rtree();
+
+  /** Writes the null empty domain value to the input buffer. */
+  void write_null_non_empty_domain(Serializer& serializer) const;
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;

@@ -2060,6 +2060,7 @@ void FragmentMetadata::write_footer(Serializer& serializer) const {
     write_array_schema_name(serializer);
   }
   write_dense(serializer);
+  write_null_non_empty_domain(serializer);
   write_non_empty_domain(serializer);
   write_sparse_tile_num(serializer);
   write_last_tile_cell_num(serializer);
@@ -2804,13 +2805,30 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
+  // Get null non-empty domain
   if (version_ <= 2) {
     load_non_empty_domain_v1_v2(deserializer);
-  } else if (version_ == 3 || version_ == 4) {
-    load_non_empty_domain_v3_v4(deserializer);
-  } else {
-    load_non_empty_domain_v5_or_higher(deserializer);
+    return;
   }
+
+  bool null_non_empty_domain = load_null_non_empty_domain(deserializer);
+  if (!null_non_empty_domain) {
+    if (version_ == 3 || version_ == 4) {
+      load_non_empty_domain_v3_v4(deserializer);
+    } else {
+      load_non_empty_domain_v5_or_higher(deserializer);
+    }
+  }
+}
+
+// ===== FORMAT =====
+// null_non_empty_domain (char)
+bool FragmentMetadata::load_null_non_empty_domain(
+    Deserializer& deserializer) const {
+  // Get null non-empty domain
+  bool null_non_empty_domain = false;
+  null_non_empty_domain = deserializer.read<char>();
+  return null_non_empty_domain;
 }
 
 // ===== FORMAT =====
@@ -2866,72 +2884,54 @@ void FragmentMetadata::load_non_empty_domain_v1_v2(Deserializer& deserializer) {
 // null non_empty_domain (char)
 // non_empty_domain (domain_size)
 void FragmentMetadata::load_non_empty_domain_v3_v4(Deserializer& deserializer) {
-  // Get null non-empty domain
-  bool null_non_empty_domain = false;
-  null_non_empty_domain = deserializer.read<char>();
-
   // Get non-empty domain
-  if (!null_non_empty_domain) {
-    auto dim_num = array_schema_->dim_num();
-    // Note: These versions supports only dimensions domains with the same
-    // type
-    auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
-    auto domain_size = 2 * dim_num * coord_size_0;
-    std::vector<uint8_t> temp(domain_size);
-    deserializer.read(&temp[0], domain_size);
-    non_empty_domain_.resize(dim_num);
-    uint64_t offset = 0;
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
-      Range r(&temp[offset], 2 * coord_size);
-      non_empty_domain_[d] = std::move(r);
-      offset += 2 * coord_size;
-    }
+  auto dim_num = array_schema_->dim_num();
+  // Note: These versions supports only dimensions domains with the same
+  // type
+  auto coord_size_0{array_schema_->domain().dimension_ptr(0)->coord_size()};
+  auto domain_size = 2 * dim_num * coord_size_0;
+  std::vector<uint8_t> temp(domain_size);
+  deserializer.read(&temp[0], domain_size);
+  non_empty_domain_.resize(dim_num);
+  uint64_t offset = 0;
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto coord_size{array_schema_->dimension_ptr(d)->coord_size()};
+    Range r(&temp[offset], 2 * coord_size);
+    non_empty_domain_[d] = std::move(r);
+    offset += 2 * coord_size;
   }
 
   // Get expanded domain
-  if (!non_empty_domain_.empty()) {
-    domain_ = non_empty_domain_;
-    array_schema_->domain().expand_to_tiles(&domain_);
-  }
+  domain_ = non_empty_domain_;
+  array_schema_->domain().expand_to_tiles(&domain_);
 }
 
 // ===== FORMAT =====
-// null_non_empty_domain
 // fix-sized: range(void*)
 // var-sized: range_size(uint64_t) | start_range_size(uint64_t) |
 // range(void*)
 void FragmentMetadata::load_non_empty_domain_v5_or_higher(
     Deserializer& deserializer) {
-  // Get null non-empty domain
-  char null_non_empty_domain = 0;
-  null_non_empty_domain = deserializer.read<char>();
-
   auto& domain{array_schema_->domain()};
-  if (null_non_empty_domain == 0) {
-    auto dim_num = array_schema_->dim_num();
-    non_empty_domain_.resize(dim_num);
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim{domain.dimension_ptr(d)};
-      if (!dim->var_size()) {  // Fixed-sized
-        auto r_size = 2 * dim->coord_size();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size);
-      } else {  // Var-sized
-        uint64_t r_size, start_size;
-        r_size = deserializer.read<uint64_t>();
-        start_size = deserializer.read<uint64_t>();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
-      }
+  auto dim_num = array_schema_->dim_num();
+  non_empty_domain_.resize(dim_num);
+  for (unsigned d = 0; d < dim_num; ++d) {
+    auto dim{domain.dimension_ptr(d)};
+    if (!dim->var_size()) {  // Fixed-sized
+      auto r_size = 2 * dim->coord_size();
+      non_empty_domain_[d] = Range(deserializer.get_ptr<char>(r_size), r_size);
+    } else {  // Var-sized
+      uint64_t r_size, start_size;
+      r_size = deserializer.read<uint64_t>();
+      start_size = deserializer.read<uint64_t>();
+      non_empty_domain_[d] =
+          Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
     }
   }
 
   // Get expanded domain
-  if (!non_empty_domain_.empty()) {
-    domain_ = non_empty_domain_;
-    array_schema_->domain().expand_to_tiles(&domain_);
-  }
+  domain_ = non_empty_domain_;
+  array_schema_->domain().expand_to_tiles(&domain_);
 }
 
 // Applicable only to versions 1 and 2
@@ -3936,16 +3936,20 @@ shared_ptr<WriterTile> FragmentMetadata::write_rtree() {
 }
 
 // ===== FORMAT =====
-// null_non_empty_domain(char)
+// null_non_empty_domain (char)
+void FragmentMetadata::write_null_non_empty_domain(
+    Serializer& serializer) const {
+  // Write null_non_empty_domain
+  auto null_non_empty_domain = (char)non_empty_domain_.empty();
+  serializer.write<char>(null_non_empty_domain);
+}
+
+// ===== FORMAT =====
 // fix-sized: range(void*)
 // var-sized: range_size(uint64_t) | start_range_size(uint64_t) |
 // range(void*)
 // ...
 void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
-  // Write null_non_empty_domain
-  auto null_non_empty_domain = (char)non_empty_domain_.empty();
-  serializer.write<char>(null_non_empty_domain);
-
   // Write domain size
   auto& domain = array_schema_->domain();
   auto dim_num = domain.dim_num();
@@ -3986,12 +3990,9 @@ void FragmentMetadata::write_shape_data(Serializer& serializer) const {
 
   auto& domain = array_schema_->domain();
   auto dim_num = domain.dim_num();
-  // TODO: If the shape data is empty, write the non-empty domain.
+  // If the shape data is empty, write the non-empty domain.
   if (shape_data_.empty()) {
-    // Write shape dummy values.
-    auto domain_size{2 * dim_num * domain.dimension_ptr(0)->coord_size()};
-    std::vector<uint8_t> d(domain_size, 0);
-    serializer.write(&d[0], domain_size);
+    write_non_empty_domain(serializer);
   } else {
     // Write shape data for each dimension.
     for (unsigned d = 0; d < dim_num; ++d) {
