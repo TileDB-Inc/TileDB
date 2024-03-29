@@ -257,7 +257,7 @@ The footer is a simple blob \(i.e., _not a generic tile_\) with the following in
 | Tile null counts offset for attribute/dimension N | `uint64_t` | The offset to the generic tile storing the tile null counts for attribute/dimension N |
 | Fragment min max sum null count offset | `uint64_t` | The offset to the generic tile storing the fragment min max sum null count data. |
 | Processed conditions offset | `uint64_t` | The offset to the generic tile storing the processed conditions. |
-| Null shape data | `uint8_t` | Indicates whether the shape data is null (1) or not (0). |
+| Includes shape data | `uint8_t` | Indicates whether the fragment includes shape data (1) or not (0). |
 | Shape data | [MBR](#mbr) | An MBR denoting the shape data. |
 | Footer length | `uint64_t` | Sum of bytes of the above fields. Only present when there is at least one var-sized dimension. |
 

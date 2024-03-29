@@ -2813,9 +2813,15 @@ void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
   }
 }
 
+// ===== FORMAT =====
+// has_shape_data (char)
+// shape_data: range(void*)
 void FragmentMetadata::load_shape_data(Deserializer& deserializer) {
-  bool null_shape_data = deserializer.read<char>();
-  if (!null_shape_data) {
+  bool has_shape_data = deserializer.read<char>();
+  if (!has_shape_data) {
+    // Load the non-empty domain if there is no shape data.
+    load_non_empty_domain(deserializer);
+  } else {
     auto dim_num = array_schema_->dim_num();
     shape_data_.reserve(dim_num);
     for (unsigned d = 0; d < dim_num; ++d) {
@@ -3970,12 +3976,14 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
   }
 }
 
+// ===== FORMAT =====
+// has_shape_data (char)
+// shape_data: range(void*)
 void FragmentMetadata::write_shape_data(Serializer& serializer) const {
-  // Write null shape data.
-  auto null_shape_data = (char)shape_data_.empty();
-  serializer.write<char>(null_shape_data);
+  // Write has shape data.
+  auto has_shape_data = (char)!shape_data_.empty();
+  serializer.write<char>(has_shape_data);
 
-  // Write domain size.
   auto& domain = array_schema_->domain();
   auto dim_num = domain.dim_num();
   // TODO: If the shape data is empty, write the non-empty domain.
