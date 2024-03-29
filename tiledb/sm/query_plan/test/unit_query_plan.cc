@@ -134,7 +134,7 @@ TEST_CASE_METHOD(QueryPlanFx, "Query plan dump_json", "[query_plan][dump]") {
   stats::Stats stats("foo");
   Subarray subarray(array_shared.get(), &stats, logger_);
   uint64_t r[2]{0, 1};
-  REQUIRE(subarray.add_range(0, r, r + 1, nullptr).ok());
+  subarray.add_range(0, r, r + 1, nullptr);
   query.set_subarray(subarray);
 
   std::vector<uint64_t> data(2);

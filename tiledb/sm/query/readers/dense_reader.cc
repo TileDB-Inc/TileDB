@@ -230,7 +230,7 @@ Status DenseReader::dense_read() {
   // For easy reference.
   const auto dim_num = array_schema_.dim_num();
   auto& subarray = read_state_.partitioner_.current();
-  RETURN_NOT_OK(subarray.compute_tile_coords<DimType>());
+  subarray.compute_tile_coords<DimType>();
   const auto& domain{array_schema_.domain()};
 
   // Cache tile extents.
