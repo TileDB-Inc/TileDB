@@ -1227,6 +1227,10 @@ class FragmentMetadata {
     return non_empty_domain_;
   }
 
+  bool& has_shape_data() {
+    return has_shape_data_;
+  }
+
   /** Shape data accessor. */
   NDRange& shape_data() {
     return shape_data_;
@@ -1349,6 +1353,9 @@ class FragmentMetadata {
 
   /** True if the fragment has delete metadata, and false otherwise. */
   bool has_delete_meta_;
+
+  /** True if the fragment has shape data, false otherwise. */
+  bool has_shape_data_;
 
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;

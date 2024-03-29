@@ -1087,6 +1087,9 @@ NDRange& Array::shape_data() {
     for (const auto& meta : frag_meta) {
       // Check each dimension in the fragment shape data.
       const auto& frag_shape_data = meta->shape_data();
+      if (meta->has_shape_data()) {
+        opened_array_->has_shape_data() = true;
+      }
       for (size_t j = 0; j < frag_shape_data.size(); j++) {
         auto dim = opened_array_->array_schema_latest().dimension_ptr(j);
         if (dim->var_size()) {
@@ -1094,7 +1097,11 @@ NDRange& Array::shape_data() {
             throw_if_not_ok(compute_non_empty_domain());
           }
           // Shape is not supported for var-sized dimensions.
-          array_shape_data[j] = frag_shape_data[j];
+          if (array_shape_data.size() < j + 1) {
+            array_shape_data.push_back(non_empty_domain()[j]);
+          } else {
+            array_shape_data[j] = non_empty_domain()[j];
+          }
         } else if (array_shape_data.size() < j + 1) {
           // Initialize array shape with fragment shape for this dimension.
           array_shape_data.push_back(frag_shape_data[j]);

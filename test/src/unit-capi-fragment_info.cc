@@ -1810,7 +1810,7 @@ TEST_CASE(
       "- Unconsolidated metadata num: 1\n" + "- To vacuum num: 0\n" +
       "- Fragment #1:\n" + "  > URI: " + written_frag_uri + "\n" +
       "  > Type: sparse\n" + "  > Non-empty domain: [a, ddd]\n" +
-      "  > Size: 3442\n" + "  > Cell num: 4\n" +
+      "  > Size: 3460\n" + "  > Cell num: 4\n" +
       "  > Timestamp range: [1, 1]\n" + "  > Format version: " + ver + "\n" +
       "  > Has consolidated metadata: no\n";
   FILE* gold_fout = fopen("gold_fout.txt", "w");

@@ -118,6 +118,7 @@ FragmentMetadata::FragmentMetadata(
     , last_tile_cell_num_(0)
     , has_timestamps_(has_timestamps)
     , has_delete_meta_(has_deletes_meta)
+    , has_shape_data_(false)
     , sparse_tile_num_(0)
     , meta_file_size_(0)
     , rtree_(RTree(
@@ -164,6 +165,7 @@ void FragmentMetadata::set_shape_data(const NDRange& range) {
         " dimensions on a fragment with " +
         std::to_string(array_schema_->dim_num()) + " dimensions.");
   }
+  has_shape_data_ = true;
   shape_data_ = range;
 }
 
@@ -2805,12 +2807,12 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
-  // Get null non-empty domain
   if (version_ <= 2) {
     load_non_empty_domain_v1_v2(deserializer);
     return;
   }
 
+  // Get null non-empty domain.
   bool null_non_empty_domain = load_null_non_empty_domain(deserializer);
   if (!null_non_empty_domain) {
     if (version_ == 3 || version_ == 4) {
@@ -2835,10 +2837,11 @@ bool FragmentMetadata::load_null_non_empty_domain(
 // has_shape_data (char)
 // shape_data: range(void*)
 void FragmentMetadata::load_shape_data(Deserializer& deserializer) {
-  bool has_shape_data = deserializer.read<char>();
-  if (!has_shape_data) {
+  has_shape_data_ = deserializer.read<char>();
+  if (!has_shape_data_) {
     // Load the non-empty domain if there is no shape data.
-    load_non_empty_domain(deserializer);
+    load_non_empty_domain_v5_or_higher(deserializer);
+    shape_data_ = non_empty_domain_;
   } else {
     auto dim_num = array_schema_->dim_num();
     shape_data_.reserve(dim_num);
@@ -3985,13 +3988,12 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
 // shape_data: range(void*)
 void FragmentMetadata::write_shape_data(Serializer& serializer) const {
   // Write has shape data.
-  auto has_shape_data = (char)!shape_data_.empty();
-  serializer.write<char>(has_shape_data);
+  serializer.write<char>((char)has_shape_data_);
 
   auto& domain = array_schema_->domain();
   auto dim_num = domain.dim_num();
   // If the shape data is empty, write the non-empty domain.
-  if (shape_data_.empty()) {
+  if (!has_shape_data_) {
     write_non_empty_domain(serializer);
   } else {
     // Write shape data for each dimension.

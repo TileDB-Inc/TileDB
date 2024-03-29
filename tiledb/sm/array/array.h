@@ -104,6 +104,7 @@ class OpenedArray {
       , metadata_(memory_tracker)
       , metadata_loaded_(false)
       , non_empty_domain_computed_(false)
+      , has_shape_data_(false)
       , encryption_key_(make_shared<EncryptionKey>(HERE()))
       , timestamp_start_(timestamp_start)
       , timestamp_end_opened_at_(timestamp_end_opened_at)
@@ -168,6 +169,10 @@ class OpenedArray {
   /** Gets a reference to the non empty domain. */
   inline NDRange& non_empty_domain() {
     return non_empty_domain_;
+  }
+
+  inline bool& has_shape_data() {
+    return has_shape_data_;
   }
 
   /** Gets a reference to the shape data. */
@@ -235,6 +240,9 @@ class OpenedArray {
 
   /** The non-empty domain of the array. */
   NDRange non_empty_domain_;
+
+  /** True if the opened array has shape data, else false. */
+  bool has_shape_data_;
 
   /** The shape data for the array. */
   NDRange shape_data_;
@@ -782,6 +790,11 @@ class Array {
   /** Set if the non_empty_domain is computed already for this array or not */
   inline void set_non_empty_domain_computed(const bool is_computed) {
     opened_array_->non_empty_domain_computed() = is_computed;
+  }
+
+  /** Returns a reference to has_shape_data_ */
+  inline bool has_shape_data() const {
+    return opened_array_->has_shape_data();
   }
 
   /** Returns a reference to the shape data. */

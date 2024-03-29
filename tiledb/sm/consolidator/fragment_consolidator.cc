@@ -710,10 +710,15 @@ Status FragmentConsolidator::create_queries(
   (*query_w)->set_processed_conditions(processed_conditions);
 
   auto shape_data = array_for_reads->shape_data();
-  for (size_t i = 0; i < shape_data.size(); i++) {
-    (*query_w)->set_shape(
-        i, shape_data[i].start_fixed(), shape_data[i].end_fixed());
+  if (array_for_reads->has_shape_data()) {
+    for (size_t i = 0; i < shape_data.size(); i++) {
+      (*query_w)->set_shape(
+          static_cast<uint32_t>(i),
+          shape_data[i].start_fixed(),
+          shape_data[i].end_fixed());
+    }
   }
+
   // Set the URI for the new fragment.
   auto frag_uri =
       array_for_reads->array_directory().get_fragments_dir(write_version);
