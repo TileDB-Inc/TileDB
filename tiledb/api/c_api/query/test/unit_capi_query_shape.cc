@@ -339,96 +339,30 @@ TEST_CASE(
     }
 
     // Validate the written fragments contain shape data.
-    DYNAMIC_SECTION(frag_count << " written fragments") {
+    DYNAMIC_SECTION(frag_count << " written fragments.") {
       test.validate_shape_data(query, array);
     }
-  }
-}
 
-TEST_CASE(
-    "Test set shape API written fragments consolidation",
-    "[query][set_shape][fragment-metadata]") {
-  int d1_domain[] = {1, 100};
-  float d2_domain[] = {1.0f, 100.0f};
-  int32_t tile_extent = 10;
-  QueryShapeTest test(
-      TILEDB_SPARSE,
-      {"d1", "d2"},
-      {TILEDB_INT32, TILEDB_FLOAT32},
-      {d1_domain, d2_domain},
-      {&tile_extent, &tile_extent});
-
-  tiledb_array_t* array;
-  auto rc = tiledb_array_alloc(test.ctx_, test.array_uri_.c_str(), &array);
-  REQUIRE(rc == TILEDB_OK);
-  tiledb_query_t* query;
-  rc = tiledb_array_open(test.ctx_, array, TILEDB_WRITE);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
-  REQUIRE(rc == TILEDB_OK);
-  uint64_t min(1), max(2);
-  float minf(1), maxf(2);
-
-  tiledb_layout_t layout = GENERATE(TILEDB_GLOBAL_ORDER, TILEDB_UNORDERED);
-  DYNAMIC_SECTION(
-      tiledb::sm::layout_str((tiledb::sm::Layout)layout) << " layout") {
-    size_t frag_count = GENERATE(1, 2, 10, 25);
-    for (size_t i = 0; i < frag_count; i++) {
-      rc = tiledb_query_set_layout(test.ctx_, query, layout);
-      REQUIRE(rc == TILEDB_OK);
-      query->query_->set_shape(0, &min, &max);
-      query->query_->set_shape(1, &minf, &maxf);
-
-      int mod = i * 4;
-      std::vector<int32_t> d1 = {1 + mod, 2 + mod, 3 + mod, 4 + mod};
-      uint64_t d1_size = d1.size() * sizeof(int32_t);
-      std::vector<float> d2 = {1.0f + mod, 2.0f + mod, 3.0f + mod, 4.0f + mod};
-      uint64_t d2_size = d2.size() * sizeof(float);
-      std::vector<int32_t> a1 = {1 + mod, 2 + mod, 3 + mod, 4 + mod};
-      uint64_t a1_size = a1.size() * sizeof(int32_t);
-      rc = tiledb_query_set_data_buffer(
-          test.ctx_, query, "d1", d1.data(), &d1_size);
-      REQUIRE(rc == TILEDB_OK);
-      rc = tiledb_query_set_data_buffer(
-          test.ctx_, query, "d2", d2.data(), &d2_size);
-      REQUIRE(rc == TILEDB_OK);
-      rc = tiledb_query_set_data_buffer(
-          test.ctx_, query, "a1", a1.data(), &a1_size);
-      REQUIRE(rc == TILEDB_OK);
-
-      rc = tiledb_query_submit(test.ctx_, query);
-      REQUIRE(rc == TILEDB_OK);
-
-      // For global order finalize the query so we can check written fragments.
-      if (layout == TILEDB_GLOBAL_ORDER) {
-        rc = tiledb_query_finalize(test.ctx_, query);
+    // If we wrote more than one fragment test with consolidation and vacuum.
+    if (frag_count > 1) {
+      DYNAMIC_SECTION(
+          frag_count << " written fragments consolidate and vacuum.") {
+        rc = tiledb_array_close(test.ctx_, array);
         REQUIRE(rc == TILEDB_OK);
-      }
-
-      if (i < frag_count - 1) {
-        // Reset the query to prepare to write the next fragment.
-        tiledb_query_free(&query);
-        rc = tiledb_query_alloc(test.ctx_, array, TILEDB_WRITE, &query);
+        rc = tiledb_array_consolidate(
+            test.ctx_, test.array_uri_.c_str(), nullptr);
         REQUIRE(rc == TILEDB_OK);
+        // Account for the consolidated fragment created above.
+        CHECK(
+            tiledb::test::num_fragments(test.array_uri_) ==
+            (int32_t)frag_count + 1);
+        // Vacuum to remove the consolidated fragments.
+        rc = tiledb_array_vacuum(test.ctx_, test.array_uri_.c_str(), nullptr);
+        REQUIRE(rc == TILEDB_OK);
+        CHECK(tiledb::test::num_fragments(test.array_uri_) == 1);
+
+        test.validate_shape_data(query, array);
       }
-    }
-
-    DYNAMIC_SECTION(frag_count << " written fragments") {
-      rc = tiledb_array_close(test.ctx_, array);
-      REQUIRE(rc == TILEDB_OK);
-      rc =
-          tiledb_array_consolidate(test.ctx_, test.array_uri_.c_str(), nullptr);
-      REQUIRE(rc == TILEDB_OK);
-      // If we wrote >1 fragment, account for the consolidated fragment.
-      CHECK(
-          tiledb::test::num_fragments(test.array_uri_) ==
-          (int32_t)frag_count + (frag_count > 1));
-      rc = tiledb_array_vacuum(test.ctx_, test.array_uri_.c_str(), nullptr);
-      REQUIRE(rc == TILEDB_OK);
-      // We should only have one fragment after consolidation and vacuum.
-      CHECK(tiledb::test::num_fragments(test.array_uri_) == 1);
-
-      test.validate_shape_data(query, array);
     }
   }
 }
