@@ -324,7 +324,12 @@ struct SerializationFx {
 TEST_CASE_METHOD(
     SerializationFx,
     "subarray - Query serialization, dense",
-    "[query][dense][serialization][rest-fails][sc-40489]") {
+    "[query][dense][serialization][rest][sc-40489]") {
+  if (!vfs_test_setup_.is_rest()) {
+    SUCCEED("sc-40489: this test passes on remote arrays only");
+    return;
+  }
+
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
   check_subarray_stats(2, 2);

@@ -93,7 +93,6 @@ ConsolidationPlanFx::ConsolidationPlanFx()
 ConsolidationPlanFx::~ConsolidationPlanFx() {
   test::vfs_test_remove_temp_dir(ctx_c_, vfs_c_, fs_vec_[0]->temp_dir());
   test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok();
-  tiledb_ctx_free(&ctx_c_);
   tiledb_vfs_free(&vfs_c_);
 }
 
