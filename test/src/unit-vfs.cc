@@ -445,7 +445,11 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   // Getting file_size on a nonexistent blob shouldn't crash on Azure
   uint64_t nbytes = 0;
   URI non_existent = URI(path.to_string() + "non_existent");
-  CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+  if (path.is_file()) {
+    CHECK_THROWS(vfs.file_size(non_existent, &nbytes));
+  } else {
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+  }
 
   // Set up
   bool exists = false;
