@@ -574,6 +574,7 @@ if (TILEDB_TESTS)
   add_dependencies(tests unit_capi_datatype)
   add_dependencies(tests unit_capi_filesystem)
   add_dependencies(tests unit_capi_query_type)
+  add_dependencies(tests unit_capi_query_shape)
   add_dependencies(tests unit_capi_vfs)
   # C API array schema
   add_dependencies(tests unit_capi_filter unit_capi_filter_list unit_capi_dimension_label)

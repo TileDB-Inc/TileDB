@@ -1091,7 +1091,8 @@ NDRange& Array::shape_data() {
         opened_array_->has_shape_data() = true;
       }
       for (size_t j = 0; j < frag_shape_data.size(); j++) {
-        auto dim = opened_array_->array_schema_latest().dimension_ptr(j);
+        auto dim = opened_array_->array_schema_latest().dimension_ptr(
+            (Domain::dimension_size_type)j);
         if (dim->var_size()) {
           if (!non_empty_domain_computed()) {
             throw_if_not_ok(compute_non_empty_domain());
