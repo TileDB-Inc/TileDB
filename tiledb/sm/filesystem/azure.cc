@@ -643,9 +643,9 @@ Status Azure::blob_size(const URI& uri, uint64_t* const nbytes) const {
 
     if (response.Blobs.empty()) {
       error_message = "Blob does not exist.";
+    } else {
+      *nbytes = static_cast<uint64_t>(response.Blobs[0].BlobSize);
     }
-
-    *nbytes = static_cast<uint64_t>(response.Blobs[0].BlobSize);
   } catch (const ::Azure::Storage::StorageException& e) {
     error_message = e.Message;
   }
