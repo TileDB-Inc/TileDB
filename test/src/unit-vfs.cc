@@ -446,7 +446,11 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   uint64_t nbytes = 0;
   URI non_existent = URI(path.to_string() + "non_existent");
   if (path.is_file()) {
+#ifdef _WIN32
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+#else
     CHECK_THROWS(vfs.file_size(non_existent, &nbytes));
+#endif
   } else {
     CHECK(!vfs.file_size(non_existent, &nbytes).ok());
   }
