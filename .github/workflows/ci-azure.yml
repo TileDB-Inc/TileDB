@@ -1,6 +1,7 @@
 name: CI Azure
 on:
   workflow_call:
+  workflow_dispatch:
     inputs:
       ci_backend:
         description: 'Name of the job backend/target'
@@ -20,6 +21,10 @@ on:
         default: ''
         required: true
         type: string
+  push:
+    branches:
+      - dev
+      - release-*
 
 env:
   bootstrap_args: "--enable-ccache --vcpkg-base-triplet=x64-${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'linux' || 'osx' }} ${{ inputs.bootstrap_args }}"
