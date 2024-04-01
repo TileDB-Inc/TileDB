@@ -1008,7 +1008,7 @@ TEST_CASE_METHOD(
   }
 
   // Two result tile (2 * ~1208) will be bigger than the budget (1500).
-  total_budget_ = "10000";
+  total_budget_ = "11000";
   ratio_coords_ = "0.15";
   update_config();
 
