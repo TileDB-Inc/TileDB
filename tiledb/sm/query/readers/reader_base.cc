@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -31,6 +31,7 @@
  */
 
 #include "tiledb/sm/query/readers/reader_base.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -55,8 +56,7 @@
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 using dimension_size_type = uint32_t;
 
@@ -74,6 +74,7 @@ class ReaderBaseStatusException : public StatusException {
 ReaderBase::ReaderBase(
     stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params)
     : StrategyBase(stats, logger, params)
+    , memory_tracker_(params.query_memory_tracker())
     , condition_(params.condition())
     , user_requested_timestamps_(false)
     , use_timestamps_(false)
@@ -586,25 +587,25 @@ Status ReaderBase::read_and_unfilter_coordinate_tiles(
   return Status::Ok();
 }
 
-std::vector<FilteredData> ReaderBase::read_attribute_tiles(
+std::list<FilteredData> ReaderBase::read_attribute_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_attribute_tiles");
   return read_tiles(names, result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_coordinate_tiles(
+std::list<FilteredData> ReaderBase::read_coordinate_tiles(
     const std::vector<std::string>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_coordinate_tiles");
   return read_tiles(NameToLoad::from_string_vec(names), result_tiles);
 }
 
-std::vector<FilteredData> ReaderBase::read_tiles(
+std::list<FilteredData> ReaderBase::read_tiles(
     const std::vector<NameToLoad>& names,
     const std::vector<ResultTile*>& result_tiles) const {
   auto timer_se = stats_->start_timer("read_tiles");
-  std::vector<FilteredData> filtered_data;
+  std::list<FilteredData> filtered_data;
 
   // Shortcut for empty tile vec.
   if (result_tiles.empty() || names.empty()) {
@@ -613,7 +614,6 @@ std::vector<FilteredData> ReaderBase::read_tiles(
 
   uint64_t num_tiles_read{0};
   std::vector<ThreadPool::Task> read_tasks;
-  filtered_data.reserve(names.size());
 
   // Run all attributes independently.
   for (auto n : names) {
@@ -637,7 +637,8 @@ std::vector<FilteredData> ReaderBase::read_tiles(
         nullable,
         val_only,
         storage_manager_,
-        read_tasks);
+        read_tasks,
+        memory_tracker_);
 
     // Go through each tiles and create the attribute tiles.
     for (auto tile : result_tiles) {
@@ -1368,5 +1369,11 @@ template void ReaderBase::validate_attribute_order<uint64_t>(
     std::vector<const void*>&,
     std::vector<uint64_t>&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
+
+template <>
+IndexedList<tiledb::sm::ResultTile>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::RESULT_TILE)) {
+}

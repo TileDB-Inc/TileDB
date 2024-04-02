@@ -17,6 +17,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
+                "azure-identity-cpp",
                 {
                     "name": "libxml2",
                     "default-features": false,

@@ -104,6 +104,9 @@ struct AzureParameters {
 
   /** SSL configuration. */
   SSLConfig ssl_cfg_;
+
+  /** Whether the config specifies a SAS token. */
+  bool has_sas_token_;
 };
 
 class Azure {

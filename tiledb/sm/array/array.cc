@@ -380,7 +380,7 @@ Status Array::open(
       set_array_schemas_all(std::move(array_schemas.value()));
 
       // Set the timestamp
-      opened_array_->metadata().reset(timestamp_for_new_component());
+      opened_array_->metadata().reset(timestamp_end_opened_at());
     } else if (
         query_type == QueryType::DELETE || query_type == QueryType::UPDATE) {
       {
@@ -421,7 +421,7 @@ Status Array::open(
       }
 
       // Updates the timestamp to use for metadata.
-      opened_array_->metadata().reset(timestamp_for_new_component());
+      opened_array_->metadata().reset(timestamp_end_opened_at());
     } else {
       throw ArrayException("Cannot open array; Unsupported query type.");
     }
@@ -1135,10 +1135,6 @@ bool Array::use_refactored_array_open() const {
   }
 
   return refactored_array_open || use_refactored_query_submit();
-}
-
-uint64_t Array::timestamp_for_new_component() const {
-  return new_component_timestamp_.value_or(utils::time::timestamp_now_ms());
 }
 
 bool Array::use_refactored_query_submit() const {

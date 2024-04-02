@@ -263,7 +263,7 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
-  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
+  subarray->set_coalesce_ranges(reader.getCoalesceRanges());
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
@@ -273,14 +273,14 @@ Status subarray_from_capnp(
     auto data_ptr = data.asBytes();
     if (range_reader.hasBufferSizes()) {
       auto ranges = range_buffers_from_capnp(range_reader);
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+      subarray->set_ranges_for_dim(i, ranges);
 
       // Set default indicator
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
       Range range(data_ptr.begin(), data.size());
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
+      subarray->set_ranges_for_dim(i, {range});
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
   }
@@ -514,12 +514,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
+      partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           &config,
           compute_tp,
-          true));
+          true);
     }
   }
 
@@ -1551,9 +1551,9 @@ Status query_to_capnp(
   // that has aggregates on it, this behavior is currently not supported.
   if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
       query.has_aggregates()) {
-    throw Status_SerializationError(
+    throw StatusException(Status_SerializationError(
         "Aggregates are not currently supported in incomplete remote "
-        "queries");
+        "queries"));
   }
   query_channels_to_capnp(query, query_builder);
 

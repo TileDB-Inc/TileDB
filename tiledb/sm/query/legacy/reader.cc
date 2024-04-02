@@ -353,17 +353,19 @@ Status Reader::apply_query_condition(
   if (stride == UINT64_MAX)
     stride = 1;
 
+  QueryCondition::Params params(query_memory_tracker_, array_schema_);
   if (condition_.has_value()) {
     RETURN_NOT_OK(condition_->apply(
-        array_schema_, fragment_metadata_, result_cell_slabs, stride));
+        params, fragment_metadata_, result_cell_slabs, stride));
   }
 
   // Apply delete conditions.
   if (!delete_and_update_conditions_.empty()) {
     for (uint64_t i = 0; i < delete_and_update_conditions_.size(); i++) {
       // For legacy, always run the timestamped condition.
+
       RETURN_NOT_OK(timestamped_delete_and_update_conditions_[i].apply(
-          array_schema_, fragment_metadata_, result_cell_slabs, stride));
+          params, fragment_metadata_, result_cell_slabs, stride));
     }
   }
 
@@ -371,7 +373,7 @@ Status Reader::apply_query_condition(
   if (!delete_timestamps_condition_.empty()) {
     // Remove cells with partial overlap from the bitmap.
     RETURN_NOT_OK(delete_timestamps_condition_.apply(
-        array_schema_, fragment_metadata_, result_cell_slabs, stride));
+        params, fragment_metadata_, result_cell_slabs, stride));
   }
 
   return Status::Ok();
@@ -454,7 +456,7 @@ Status Reader::compute_range_result_coords(
     }
   } else {  // Sparse
     auto resource =
-        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+        query_memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP);
     tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
 
     // Compute result and overwritten bitmap per dimension
@@ -476,8 +478,10 @@ Status Reader::compute_range_result_coords(
     // Apply partial overlap condition, if required.
     const auto frag_meta = fragment_metadata_[tile->frag_idx()];
     if (process_partial_timestamps(*frag_meta)) {
+      QueryCondition::Params params(
+          query_memory_tracker_, *(frag_meta->array_schema().get()));
       RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-          *(frag_meta->array_schema().get()), *tile, result_bitmap));
+          params, *tile, result_bitmap));
     }
 
     // Gather results
@@ -1571,7 +1575,7 @@ Status Reader::compute_result_cell_slabs_global(
     tile_subarrays.emplace_back(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
-    throw_if_not_ok(tile_subarray.template compute_tile_coords<T>());
+    tile_subarray.template compute_tile_coords<T>();
 
     RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
@@ -1726,7 +1730,7 @@ Status Reader::dense_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  IndexedList<ResultTile> sparse_result_tiles;
+  IndexedList<ResultTile> sparse_result_tiles(query_memory_tracker_);
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
 
   // Compute result cell slabs.
@@ -1738,7 +1742,7 @@ Status Reader::dense_read() {
   std::vector<ResultTile*> result_tiles;
   auto& subarray = read_state_.partitioner_.current();
 
-  RETURN_NOT_OK(subarray.compute_tile_coords<T>());
+  subarray.compute_tile_coords<T>();
   RETURN_NOT_OK(compute_result_cell_slabs<T>(
       subarray,
       result_space_tiles,
@@ -1788,10 +1792,11 @@ Status Reader::get_all_result_coords(
   if (fragment_metadata_[tile->frag_idx()]->has_timestamps() &&
       partial_overlap) {
     auto resource =
-        query_memory_tracker_->get_resource(MemoryType::TILE_BITMAP);
+        query_memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP);
     tdb::pmr::vector<uint8_t> result_bitmap(coords_num, 1, resource);
+    QueryCondition::Params params(query_memory_tracker_, array_schema_);
     RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<uint8_t>(
-        *(frag_meta->array_schema().get()), *tile, result_bitmap));
+        params, *tile, result_bitmap));
 
     for (uint64_t i = 0; i < coords_num; ++i) {
       if (result_bitmap[i]) {
@@ -1984,7 +1989,7 @@ Status Reader::sparse_read() {
   // `sparse_result_tiles` will hold all the relevant result tiles of
   // sparse fragments
   std::vector<ResultCoords> result_coords;
-  IndexedList<ResultTile> sparse_result_tiles;
+  IndexedList<ResultTile> sparse_result_tiles(query_memory_tracker_);
 
   RETURN_NOT_OK(compute_result_coords(sparse_result_tiles, result_coords));
   std::vector<ResultTile*> result_tiles;

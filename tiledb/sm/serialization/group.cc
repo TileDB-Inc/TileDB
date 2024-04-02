@@ -70,7 +70,7 @@ Status group_metadata_to_capnp(
   auto config_builder = group_metadata_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  auto metadata = group->metadata();
+  Metadata* metadata = load ? group->metadata() : group->unsafe_metadata();
   if (metadata->num()) {
     auto metadata_builder = group_metadata_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
@@ -157,7 +157,9 @@ Status group_details_to_capnp(
     }
   }
 
-  auto metadata = group->metadata();
+  Metadata* metadata = group->group_uri().is_tiledb() ?
+                           group->unsafe_metadata() :
+                           group->metadata();
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));

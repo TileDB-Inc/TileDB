@@ -131,7 +131,13 @@ TEST_CASE("C API: Test virtual filesystem", "[capi][vfs]") {
   bool hdfs_enabled;
   bool azure_enabled;
   bool gcs_enabled;
-  get_supported_fs(&s3_enabled, &hdfs_enabled, &azure_enabled, &gcs_enabled);
+  bool rest_s3_enabled;
+  get_supported_fs(
+      &s3_enabled,
+      &hdfs_enabled,
+      &azure_enabled,
+      &gcs_enabled,
+      &rest_s3_enabled);
 
   // Sections to test each filesystem, if enabled
   ordinary_vfs x(config);

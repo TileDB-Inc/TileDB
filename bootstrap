@@ -66,7 +66,6 @@ Configuration:
     --enable-ccache                 enables use of ccache (if present)
     --enable-arrow-tests            enables the compilation of the arrow adapter unit tests
     --enable-experimental-features  enables experimental TileDB features
-    --enable-rest-tests             enables REST tests
     --enable-aws-s3-config          enables AWS S3 configuration for tests
     --enable=arg1,arg2...           same as "--enable-arg1 --enable-arg2 ..."
 
@@ -112,7 +111,6 @@ tiledb_ccache="OFF"
 tiledb_arrow_tests="OFF"
 tiledb_experimental_features="OFF"
 tiledb_build_webp="ON"
-tiledb_tests_enable_rest="OFF"
 tiledb_tests_aws_s3_config="OFF"
 enable_multiple=""
 while test $# != 0; do
@@ -150,7 +148,6 @@ while test $# != 0; do
     --enable-ccache) tiledb_ccache="ON";;
     --enable-arrow-tests) tiledb_arrow_tests="ON";;
     --enable-experimental-features) tiledb_experimental_features="ON";;
-    --enable-rest-tests) tiledb_tests_enable_rest="ON";;
     --enable-aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     --enable=*) s=`arg "$1"`
                 enable_multiple+="${enable_multiple:+,}${s}";;
@@ -180,7 +177,6 @@ for en in "${enables[@]}"; do
     static-tiledb) echo "Argument '--enable-static-tiledb' is obsolete and will be removed in a future version. Use --linkage=static instead."
                     enable_static_tiledb="ON";;
     experimental-features) tiledb_experimental_features="ON";;
-    rest-tests) tiledb_tests_enable_rest="ON";;
     aws-s3-config) tiledb_tests_aws_s3_config="ON";;
     *) die "Unknown option: --enable-$en" ;;
   esac
@@ -254,7 +250,6 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     -DTILEDB_REMOVE_DEPRECATIONS=${tiledb_remove_deprecations} \
     -DTILEDB_SANITIZER="${sanitizer}" \
     -DTILEDB_EXPERIMENTAL_FEATURES=${tiledb_experimental_features} \
-    -DTILEDB_TESTS_ENABLE_REST=${tiledb_tests_enable_rest} \
     -DTILEDB_TESTS_AWS_S3_CONFIG=${tiledb_tests_aws_s3_config} \
     ${tiledb_disable_avx2} \
     ${vcpkg_base_triplet} \

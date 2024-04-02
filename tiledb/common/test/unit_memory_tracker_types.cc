@@ -38,7 +38,7 @@
 using namespace tiledb::common;
 
 TEST_CASE("memory_type_to_str") {
-  auto max = static_cast<int>(tiledb::sm::MemoryType::TILE_WRITER_DATA);
+  auto max = static_cast<int>(tiledb::sm::MemoryType::WRITER_TILE_DATA);
   size_t failures = 0;
   for (int8_t i = 0; i < 127; i++) {
     auto val = static_cast<tiledb::sm::MemoryType>(i);

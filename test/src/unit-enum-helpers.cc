@@ -63,3 +63,11 @@ TEST_CASE(
   REQUIRE_THROWS(datatype_max_integral_value(Datatype::FLOAT64));
   REQUIRE_THROWS(datatype_max_integral_value(Datatype::STRING_ASCII));
 }
+
+TEST_CASE("Test datatype_is_byte", "[enums][datatype][datatype_is_byte]") {
+  auto datatype =
+      GENERATE(Datatype::BLOB, Datatype::GEOM_WKB, Datatype::GEOM_WKT);
+
+  CHECK(datatype_is_byte(datatype));
+  CHECK(!datatype_is_byte(Datatype::BOOL));
+}

@@ -124,7 +124,7 @@ TEST_CASE_METHOD(S3Fx, "Test S3 multiupload abort path", "[s3]") {
     CHECK(!exists);
 
     // Flush the file
-    CHECK(s3_.flush_object(URI(largefile)).ok());
+    CHECK(!s3_.flush_object(URI(largefile)).ok());
 
     // After flushing, the file does not exist
     CHECK(s3_.is_object(URI(largefile), &exists).ok());

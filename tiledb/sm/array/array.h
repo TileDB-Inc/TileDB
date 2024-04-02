@@ -585,14 +585,6 @@ class Array {
                new_component_timestamp_.value_or(0);
   }
 
-  /**
-   * Returns the timestamp to use when writing components (fragment,
-   * metadata, etc.)
-   *
-   * If set to use the lastest time, this will get the time when called.
-   */
-  uint64_t timestamp_for_new_component() const;
-
   /** Directly set the timestamp start value. */
   inline void set_timestamp_start(uint64_t timestamp_start) {
     array_dir_timestamp_start_ = timestamp_start;
@@ -839,6 +831,11 @@ class Array {
 
   /** Load array directory for non-remote arrays */
   const ArrayDirectory& load_array_directory();
+
+  /* Get the REST client */
+  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+    return resources_.rest_client();
+  }
 
  private:
   /* ********************************* */

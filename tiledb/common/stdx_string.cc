@@ -31,21 +31,20 @@
 
 namespace tiledb::stdx::string {
 
-bool starts_with(const std::string& value, const std::string& prefix) {
+bool starts_with(std::string_view value, std::string_view prefix) {
   if (prefix.size() > value.size())
     return false;
   return std::equal(prefix.begin(), prefix.end(), value.begin());
 }
 
-bool ends_with(const std::string& value, const std::string& suffix) {
+bool ends_with(std::string_view value, std::string_view suffix) {
   if (suffix.size() > value.size())
     return false;
   return value.compare(value.size() - suffix.size(), suffix.size(), suffix) ==
          0;
 }
 
-size_t common_prefix_size(
-    const std::string_view& a, const std::string_view& b) {
+size_t common_prefix_size(std::string_view a, std::string_view b) {
   size_t size = std::min(a.size(), b.size());
   for (size_t i = 0; i < size; ++i) {
     if (a[i] != b[i])

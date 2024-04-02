@@ -59,43 +59,33 @@ inline auto apply_with_type(Fn&& f, Datatype type, Args&&... args) {
   switch (type) {
     case Datatype::INT32: {
       return f(int32_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::INT64: {
       return f(int64_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::INT8: {
       return f(int8_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::UINT8: {
       return f(uint8_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::INT16: {
       return f(int16_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::UINT16: {
       return f(uint16_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::UINT32: {
       return f(uint32_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::UINT64: {
       return f(uint64_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::FLOAT32: {
       return f(float{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::FLOAT64: {
       return f(double{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::DATETIME_YEAR:
     case Datatype::DATETIME_MONTH:
@@ -120,16 +110,13 @@ inline auto apply_with_type(Fn&& f, Datatype type, Args&&... args) {
     case Datatype::TIME_FS:
     case Datatype::TIME_AS: {
       return f(int64_t{}, std::forward<Args>(args)...);
-      break;
     }
     case Datatype::STRING_ASCII: {
       return f(char{}, std::forward<Args>(args)...);
-      break;
     }
     default: {
       throw std::logic_error(
           "Datatype::" + datatype_str(type) + " is not a valid Datatype");
-      break;
     }
   }
 }

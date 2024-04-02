@@ -54,6 +54,7 @@
 #include "tiledb/sm/query/readers/aggregators/query_channel.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/query/validity_vector.h"
+#include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
 
@@ -687,7 +688,7 @@ class Query {
       Layout layout, const ArraySchema& array_schema);
 
   /** Returns if all ranges for this query are non overlapping. */
-  tuple<Status, optional<bool>> non_overlapping_ranges();
+  bool non_overlapping_ranges();
 
   /** Returns true if this is a dense query */
   bool is_dense() const;
@@ -847,6 +848,12 @@ class Query {
     }
     return aggregate_channel_;
   }
+
+  /**
+   * Returns the REST client configured in the storage manager associated to
+   * this query
+   */
+  RestClient* rest_client() const;
 
  private:
   /* ********************************* */

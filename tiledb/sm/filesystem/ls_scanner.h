@@ -37,6 +37,7 @@
 #include "tiledb/sm/filesystem/uri.h"
 
 #include <cstdint>
+#include <filesystem>
 #include <functional>
 #include <stdexcept>
 
@@ -73,6 +74,10 @@ class LsStopTraversal : public LsScanException {
 };
 
 using FileFilter = std::function<bool(const std::string_view&, uint64_t)>;
+[[maybe_unused]] static bool accept_all_files(
+    const std::string_view&, uint64_t) {
+  return true;
+}
 
 using DirectoryFilter = std::function<bool(const std::string_view&)>;
 /** Static DirectoryFilter used as default argument. */
@@ -311,44 +316,57 @@ class CallbackWrapperCAPI {
   void* data_;
 };
 
-/** Class to wrap C++ FilePredicate for passing to the C API. */
-class CallbackWrapperCPP {
- public:
-  /**
-   * Typedef for ls callback function used to check if a single
-   * result should be included in the final results returned from ls_recursive.
-   *
-   * @param path The path of a visited object for the relative filesystem.
-   * @param size The size of the current object in bytes.
-   * @return True if the result should be included, else false.
+/**
+ * Implements the `ls_filtered` function for `std::filesystem` which can be used
+ * for Posix and Win32
+ */
+template <FilePredicate F, DirectoryPredicate D>
+LsObjects std_filesystem_ls_filtered(
+    const URI& parent, F file_filter, D directory_filter, bool recursive) {
+  /*
+   * The input URI was useful to the top-level VFS to identify this is a
+   * regular filesystem path, but we don't need the "file://" qualifier
+   * anymore and can reason with unqualified strings for the rest of the
+   * function.
    */
-  using LsCallback = std::function<bool(std::string_view, uint64_t)>;
+  const auto parentstr = parent.to_path();
 
-  /** Default constructor is deleted */
-  CallbackWrapperCPP() = delete;
+  LsObjects qualifyingPaths;
 
-  /** Constructor */
-  CallbackWrapperCPP(LsCallback cb)
-      : cb_(cb) {
-    if (cb_ == nullptr) {
-      throw LsScanException("ls_recursive callback function cannot be null");
+  // awkward way of iterating, avoids bug in OSX
+  auto begin = std::filesystem::recursive_directory_iterator(parentstr);
+  auto end = std::filesystem::recursive_directory_iterator();
+
+  for (auto iter = begin; iter != end; ++iter) {
+    auto& entry = *iter;
+    const auto abspath = entry.path().string();
+    const auto absuri = URI(abspath);
+    if (entry.is_directory()) {
+      if (file_filter(absuri, 0) || directory_filter(absuri)) {
+        qualifyingPaths.push_back(
+            std::make_pair(tiledb::sm::URI(abspath).to_string(), 0));
+        if (!recursive) {
+          iter.disable_recursion_pending();
+        }
+      } else {
+        /* do not descend into directories which don't qualify */
+        iter.disable_recursion_pending();
+      }
+    } else {
+      /*
+       * A leaf of the filesystem
+       * (or symbolic link - split to a separate case if we want to descend into
+       * them)
+       */
+      if (file_filter(absuri, entry.file_size())) {
+        qualifyingPaths.push_back(
+            std::make_pair(absuri.to_string(), entry.file_size()));
+      }
     }
   }
 
-  /**
-   * Operator to wrap the FilePredicate used in the C++ API.
-   *
-   * @param path The path of the object.
-   * @param size The size of the object in bytes.
-   * @return True if the object should be included, False otherwise.
-   */
-  bool operator()(std::string_view path, uint64_t size) {
-    return cb_(path, size);
-  }
-
- private:
-  LsCallback cb_;
-};
+  return qualifyingPaths;
+}
 
 }  // namespace tiledb::sm
 
