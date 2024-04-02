@@ -35,7 +35,7 @@
 
 #include <inttypes.h>
 
-Status gzip_compress(
+void gzip_compress(
     shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
     const void* in_bytes,
     uint64_t nbytes) {
@@ -50,20 +50,17 @@ Status gzip_compress(
   tiledb::sm::ConstBuffer const_in_buf(in_bytes, nbytes);
   // Ensure space in output buffer for worst acceptable case.
   if (!out_gzipped_buf->realloc(nbytes + overhead_size).ok()) {
-    return LOG_STATUS(
-        Status_CompressionError("gzip output buffer allocation error"));
+    throw std::logic_error("gzip output buffer allocation error");
   }
   out_gzipped_buf->reset_size();
   out_gzipped_buf->advance_size(overhead_size);
   out_gzipped_buf->advance_offset(overhead_size);
-  if (auto stat =
-          tiledb::sm::GZip::compress(9, &const_in_buf, out_gzipped_buf.get());
-      !stat.ok()) {
-    // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
-    // unable to compress into <= space of in_buf (currently that is not
-    // returned as a distinct error from Gzip::compress())
-    return stat;
-  }
+  tiledb::sm::GZip::compress(9, &const_in_buf, out_gzipped_buf.get());
+
+  // TODO: Handle possibility that 'error' is just 'not enuf buffer', i.e.
+  // unable to compress into <= space of in_buf (currently that is not
+  // returned as a distinct error from Gzip::compress())
+
   // adjust to size actually used
   out_gzipped_buf->set_size(out_gzipped_buf->offset());
   uint64_t compressed_size = out_gzipped_buf->offset() - overhead_size;
@@ -71,15 +68,13 @@ Status gzip_compress(
   // return next 'write()' position to beginning of buffer
   out_gzipped_buf->reset_offset();
   // write sizes to beginning of buffer
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       out_gzipped_buf->write(&uncompressed_size, sizeof(uncompressed_size)));
-  RETURN_NOT_OK(
+  throw_if_not_ok(
       out_gzipped_buf->write(&compressed_size, sizeof(compressed_size)));
-
-  return Status::Ok();
 }
 
-Status gzip_decompress(
+void gzip_decompress(
     shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf) {
   /**
    * Expected compressed buffer format:
@@ -101,8 +96,5 @@ Status gzip_decompress(
 
   tiledb::sm::ConstBuffer gzipped_input_buffer(comp_data, compressed_size);
 
-  RETURN_NOT_OK(
-      tiledb::sm::GZip::decompress(&gzipped_input_buffer, &pa_gunzip_out_buf));
-
-  return Status::Ok();
+  tiledb::sm::GZip::decompress(&gzipped_input_buffer, &pa_gunzip_out_buf);
 }
