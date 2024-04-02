@@ -79,7 +79,7 @@ std::string get_config_with_env_fallback(
   return result;
 }
 
-std::string get_blob_endpoint(
+std::optional<std::string> get_blob_endpoint(
     const Config& config, const std::string& account_name) {
   std::string sas_token = get_config_with_env_fallback(
       config, "vfs.azure.storage_sas_token", "AZURE_STORAGE_SAS_TOKEN");
@@ -90,9 +90,7 @@ std::string get_blob_endpoint(
     if (!account_name.empty()) {
       result = "https://" + account_name + ".blob.core.windows.net";
     } else {
-      LOG_WARN(
-          "Neither the 'vfs.azure.storage_account_name' nor the "
-          "'vfs.azure.blob_endpoint' options are specified.");
+      return std::nullopt;
     }
   } else if (!(utils::parse::starts_with(result, "http://") ||
                utils::parse::starts_with(result, "https://"))) {
@@ -124,7 +122,20 @@ static bool has_sas_token(const Config& config) {
   return !sas_token.empty();
 }
 
-AzureParameters::AzureParameters(const Config& config)
+std::optional<AzureParameters> AzureParameters::create(const Config& config) {
+  auto account_name = get_config_with_env_fallback(
+      config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT");
+  auto blob_endpoint = get_blob_endpoint(config, account_name);
+  if (!blob_endpoint) {
+    return std::nullopt;
+  }
+  return AzureParameters{config, account_name, *blob_endpoint};
+}
+
+AzureParameters::AzureParameters(
+    const Config& config,
+    const std::string& account_name,
+    const std::string& blob_endpoint)
     : max_parallel_ops_(
           config.get<uint64_t>("vfs.azure.max_parallel_ops", Config::must_find))
     , block_list_block_size_(config.get<uint64_t>(
@@ -138,11 +149,10 @@ AzureParameters::AzureParameters(const Config& config)
           "vfs.azure.max_retry_delay_ms", Config::must_find)))
     , use_block_list_upload_(config.get<bool>(
           "vfs.azure.use_block_list_upload", Config::must_find))
-    , account_name_(get_config_with_env_fallback(
-          config, "vfs.azure.storage_account_name", "AZURE_STORAGE_ACCOUNT"))
+    , account_name_(account_name)
     , account_key_(get_config_with_env_fallback(
           config, "vfs.azure.storage_account_key", "AZURE_STORAGE_KEY"))
-    , blob_endpoint_(get_blob_endpoint(config, account_name_))
+    , blob_endpoint_(blob_endpoint)
     , ssl_cfg_(config)
     , has_sas_token_(has_sas_token(config)) {
 }
@@ -153,7 +163,7 @@ Status Azure::init(const Config& config, ThreadPool* const thread_pool) {
         Status_AzureError("Can't initialize with null thread pool."));
   }
   thread_pool_ = thread_pool;
-  azure_params_ = config;
+  azure_params_ = AzureParameters::create(config);
   return Status::Ok();
 }
 
