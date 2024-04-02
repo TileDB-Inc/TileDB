@@ -135,6 +135,10 @@ Vcpkg will not be automatically downloaded if:
 
 In these cases CMake will find the dependencies based on the rules of the [`find_package`](https://cmake.org/cmake/help/latest/command/find_package.html) command. The user is responsible for providing the dependencies.
 
+#### Building a subset of dependencies with vcpkg
+
+To build only a subset of the dependencies with vcpkg, you will need to create empty port overlays for them. A guide with more details is available in the [Conda feedstock for TileDB](https://github.com/conda-forge/tiledb-feedstock/blob/main/recipe/tiledb-patches/system-ports/README.md). See also [the vcpkg team's guidance on system dependencies](https://devblogs.microsoft.com/cppblog/using-system-package-manager-dependencies-with-vcpkg/).
+
 ### Building with sanitizers
 
 TileDB can be built with [clang sanitizers](https://clang.llvm.org/docs/AddressSanitizer.html) enabled. To enable them, you have to bootstrap with the `--enable-sanitizer` flag, as well as the [vcpkg base triplet](#configuration-options) corresponding to your platform:
