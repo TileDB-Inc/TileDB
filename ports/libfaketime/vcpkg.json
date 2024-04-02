@@ -1,0 +1,16 @@
+{
+  "name": "libfaketime",
+  "version-string": "v0.9.10",
+  "description": "",
+  "homepage": "https://github.com/wolfcw/libfaketime",
+  "dependencies": [
+    {
+      "name": "vcpkg-cmake",
+      "host": true
+    },
+    {
+      "name": "vcpkg-cmake-config",
+      "host": true
+    }
+  ]
+}
