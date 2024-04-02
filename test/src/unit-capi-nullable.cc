@@ -838,6 +838,8 @@ void NullableArrayFx::do_2d_nullable_test(
   }
 }
 
+// TODO: Add [rest] tag and fix test issues with cleanup
+// because of the use of dynamic section
 TEST_CASE_METHOD(
     NullableArrayFx,
     "C API: Test 2D array with nullable attributes",

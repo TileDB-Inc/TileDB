@@ -27,6 +27,7 @@
 include(unit_test)
 
 commence(unit_test capi_query_aggregate)
+  this_target_sources(unit_capi_query_aggregate.cc)
   this_target_object_libraries(capi_query_aggregate)
   if (NOT MSVC)
     target_compile_options(unit_capi_query_aggregate PRIVATE -Wno-deprecated-declarations)
