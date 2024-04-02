@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.551">
+<meta name="generator" content="quarto-1.4.552">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -432,6 +432,10 @@ git checkout &lt;version&gt;</code></pre>
 <li>The build tree has been configured by directly calling CMake and the <code>CMAKE_TOOLCHAIN_FILE</code> variable has been set by the user.</li>
 </ul>
 <p>In these cases CMake will find the dependencies based on the rules of the <a href="https://cmake.org/cmake/help/latest/command/find_package.html"><code>find_package</code></a> command. The user is responsible for providing the dependencies.</p>
+<section id="building-a-subset-of-dependencies-with-vcpkg" class="level4">
+<h4 class="anchored" data-anchor-id="building-a-subset-of-dependencies-with-vcpkg">Building a subset of dependencies with vcpkg</h4>
+<p>To build only a subset of the dependencies with vcpkg, you will need to create empty port overlays for them. A guide with more details is available in the <a href="https://github.com/conda-forge/tiledb-feedstock/blob/main/recipe/tiledb-patches/system-ports/README.md">Conda feedstock for TileDB</a>. See also <a href="https://devblogs.microsoft.com/cppblog/using-system-package-manager-dependencies-with-vcpkg/">the vcpkg team’s guidance on system dependencies</a>.</p>
+</section>
 </section>
 <section id="building-with-sanitizers" class="level3">
 <h3 class="anchored" data-anchor-id="building-with-sanitizers">Building with sanitizers</h3>
