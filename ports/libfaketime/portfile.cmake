@@ -1,3 +1,5 @@
+vcpkg_check_linkage(ONLY_DYNAMIC_LIBRARY)
+
 vcpkg_from_github(
     OUT_SOURCE_PATH SOURCE_PATH
     REPO wolfcw/libfaketime
@@ -6,7 +8,7 @@ vcpkg_from_github(
 )
 
 file(COPY "${CMAKE_CURRENT_LIST_DIR}/CMakeLists.txt" DESTINATION "${SOURCE_PATH}")
-file(COPY "${CMAKE_CURRENT_LIST_DIR}/libfaketime-config.cmake.in" DESTINATION "${SOURCE_PATH}")
+file(COPY "${CMAKE_CURRENT_LIST_DIR}/unofficial-libfaketime-config.cmake.in" DESTINATION "${SOURCE_PATH}")
 
 vcpkg_cmake_configure(
     SOURCE_PATH ${SOURCE_PATH}
@@ -15,10 +17,9 @@ vcpkg_cmake_configure(
 vcpkg_cmake_install()
 vcpkg_copy_pdbs()
 vcpkg_fixup_pkgconfig()
-# vcpkg_copy_tools(TOOL_NAMES faketime AUTO_CLEAN)
 vcpkg_cmake_config_fixup(
-        CONFIG_PATH lib/cmake/libfaketime
-        PACKAGE_NAME libfaketime)
+        CONFIG_PATH lib/cmake/unofficial-libfaketime
+        PACKAGE_NAME unofficial-libfaketime)
 
 file(REMOVE_RECURSE "${CURRENT_PACKAGES_DIR}/debug/include")
 

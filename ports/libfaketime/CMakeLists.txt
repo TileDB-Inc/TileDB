@@ -4,7 +4,6 @@ project(libfaketime VERSION 0.9.10)
 
 add_library(
         ${PROJECT_NAME}
-        SHARED
         src/libfaketime.c
 )
 
@@ -34,25 +33,25 @@ install(TARGETS ${PROJECT_NAME}
 )
 
 install(EXPORT ${PROJECT_NAME}
-        FILE ${PROJECT_NAME}-targets.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME}
-        NAMESPACE libfaketime::
+        FILE unofficial-${PROJECT_NAME}-targets.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/unofficial-${PROJECT_NAME}
+        NAMESPACE unofficial::libfaketime::
 )
 
 include(GNUInstallDirs)
 include(CMakePackageConfigHelpers)
 
 configure_package_config_file(
-        ${PROJECT_NAME}-config.cmake.in
-        ${PROJECT_NAME}-config.cmake
-        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+        unofficial-${PROJECT_NAME}-config.cmake.in
+        unofficial-${PROJECT_NAME}-config.cmake
+        INSTALL_DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/unofficial-${PROJECT_NAME})
 
 write_basic_package_version_file(
-        ${PROJECT_NAME}-config-version.cmake
+        unofficial-${PROJECT_NAME}-config-version.cmake
         VERSION ${CMAKE_PROJECT_VERSION}
         COMPATIBILITY SameMajorVersion)
 
 install(FILES
-        ${CMAKE_BINARY_DIR}/${PROJECT_NAME}-config.cmake
-        ${CMAKE_BINARY_DIR}/${PROJECT_NAME}-config-version.cmake
-        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${PROJECT_NAME})
+        ${CMAKE_BINARY_DIR}/unofficial-${PROJECT_NAME}-config.cmake
+        ${CMAKE_BINARY_DIR}/unofficial-${PROJECT_NAME}-config-version.cmake
+        DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/unofficial-${PROJECT_NAME})

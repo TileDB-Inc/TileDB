@@ -364,7 +364,7 @@ endif()
 
 # Only produce timing tests for UNIX based systems (faketime constraint)
 if (NOT MSVC)
-    find_package(libfaketime REQUIRED)
+    find_package(unofficial-libfaketime REQUIRED)
 
     # unit test executable
     add_executable(
@@ -383,7 +383,7 @@ if (NOT MSVC)
     target_link_libraries(
             tiledb_timing_unit
             PUBLIC
-            libfaketime::libfaketime
+            unofficial::libfaketime::libfaketime
             TILEDB_CORE_OBJECTS_ILIB
             TILEDB_CORE_OBJECTS
             Catch2::Catch2
