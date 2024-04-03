@@ -362,8 +362,8 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
     )
 endif()
 
-# Only produce timing tests for Linux based systems (faketime constraint)
-if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+# Only produce timing tests for UNIX based systems (faketime constraint)
+if (NOT MSVC)
     find_package(unofficial-libfaketime REQUIRED)
 
     # unit test executable

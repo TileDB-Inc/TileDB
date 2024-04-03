@@ -7,10 +7,12 @@ add_library(
         src/libfaketime.c
 )
 
-target_link_libraries(
-        ${PROJECT_NAME}
-        rt
-)
+if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    target_link_libraries(
+            ${PROJECT_NAME}
+            rt
+    )
+endif()
 
 target_include_directories(${PROJECT_NAME}
         PUBLIC
