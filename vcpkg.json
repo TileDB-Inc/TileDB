@@ -67,7 +67,10 @@
             "description": "Build tiledb tests",
             "dependencies": [
                 "catch2",
-                "libfaketime"
+                {
+                  "name": "libfaketime",
+                  "platform": "!windows"
+                }
             ]
         },
         "tools": {
