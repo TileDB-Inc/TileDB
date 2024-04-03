@@ -185,6 +185,8 @@ const std::string Config::VFS_AZURE_RETRY_DELAY_MS = "800";
 const std::string Config::VFS_AZURE_MAX_RETRY_DELAY_MS = "60000";
 const std::string Config::VFS_GCS_ENDPOINT = "";
 const std::string Config::VFS_GCS_PROJECT_ID = "";
+const std::string Config::VFS_GCS_SERVICE_ACCOUNT_CREDENTIALS = "";
+const std::string Config::VFS_GCS_EXTERNAL_ACCOUNT_CREDENTIALS = "";
 const std::string Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT = "";
 const std::string Config::VFS_GCS_MAX_PARALLEL_OPS =
     Config::SM_IO_CONCURRENCY_LEVEL;
@@ -422,6 +424,12 @@ const std::map<std::string, std::string> default_config_values = {
     std::make_pair("vfs.gcs.endpoint", Config::VFS_GCS_ENDPOINT),
     std::make_pair("vfs.gcs.project_id", Config::VFS_GCS_PROJECT_ID),
     std::make_pair(
+        "vfs.gcs.service_account_credentials",
+        Config::VFS_GCS_SERVICE_ACCOUNT_CREDENTIALS),
+    std::make_pair(
+        "vfs.gcs.external_account_credentials",
+        Config::VFS_GCS_EXTERNAL_ACCOUNT_CREDENTIALS),
+    std::make_pair(
         "vfs.gcs.impersonate_service_account",
         Config::VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT),
     std::make_pair(
@@ -513,6 +521,8 @@ const std::set<std::string> Config::unserialized_params_ = {
     "vfs.s3.aws_external_id",
     "vfs.s3.aws_load_frequency",
     "vfs.s3.aws_session_name",
+    "vfs.gcs.service_account_credentials",
+    "vfs.gcs.external_account_credentials",
     "vfs.gcs.impersonate_service_account",
     "rest.username",
     "rest.password",
