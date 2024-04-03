@@ -2,7 +2,4 @@
 
 include("${CMAKE_CURRENT_LIST_DIR}/libfaketime-targets.cmake")
 
-set(libfaketime_VERSION @CMAKE_PROJECT_VERSION@)
-set(libfaketime_FOUND true)
-
 check_required_components("libfaketime")

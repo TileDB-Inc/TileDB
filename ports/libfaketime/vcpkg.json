@@ -1,7 +1,9 @@
 {
   "name": "libfaketime",
-  "version-string": "v0.9.10",
-  "description": "",
+  "version": "0.9.10",
+  "license": "GPL-2.0-only",
+  "description": "libfaketime modifies the system time for a single application",
+  "supports": "!windows",
   "homepage": "https://github.com/wolfcw/libfaketime",
   "dependencies": [
     {

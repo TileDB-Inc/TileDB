@@ -28,9 +28,10 @@ After copying the port, add an entry to the table below. You should also contrib
 
 ## List of port overlays
 
-|Port|Reason|
-|----|------|
-|`libmagic`|Updating to the upstream port deferred due to failures.|
-|`openssl`|Pinning to OpenSSL 1.1 until we can move to 3.0 in January 2024.|
-|`pcre2`|To be removed alongside libmagic.|
-|`azure-storage-common-cpp`|Patching to disable default features on libxml2 (https://github.com/Azure/azure-sdk-for-cpp/pull/5221).|
+| Port                       | Reason                                                                                                  |
+|----------------------------|---------------------------------------------------------------------------------------------------------|
+| `libmagic`                 | Updating to the upstream port deferred due to failures.                                                 |
+| `openssl`                  | Pinning to OpenSSL 1.1 until we can move to 3.0 in January 2024.                                        |
+| `pcre2`                    | To be removed alongside libmagic.                                                                       |
+| `azure-storage-common-cpp` | Patching to disable default features on libxml2 (https://github.com/Azure/azure-sdk-for-cpp/pull/5221). |
+| `libfaketime`              | Mock time in timing unit tests                                                                          |
