@@ -1,3 +1,9 @@
+# TileDB v2.21.2 Release Notes
+
+## Defects removed
+
+* Fix crash getting file size on non existent blob on Azure. [#4836](https://github.com/TileDB-Inc/TileDB/pull/4836)
+
 # TileDB v2.21.1 Release Notes
 
 ## Defects removed
