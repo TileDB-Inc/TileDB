@@ -39,6 +39,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "ondemand_metadata.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
@@ -62,6 +63,13 @@ class Buffer;
 class EncryptionKey;
 class TileMetadata;
 class MemoryTracker;
+
+class FragmentMetadataStatusException : public StatusException {
+ public:
+  explicit FragmentMetadataStatusException(const std::string& message)
+      : StatusException("FragmentMetadata", message) {
+  }
+};
 
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
@@ -131,7 +139,6 @@ class FragmentMetadata {
     bool fragment_min_max_sum_null_count_ = false;
     bool processed_conditions_ = false;
   };
-
   /**
    * Stores the start offsets of the generic tiles stored in the
    * metadata file, each separately storing the various metadata
@@ -324,12 +331,6 @@ class FragmentMetadata {
   /** Returns the tile index base value. */
   inline const uint64_t& tile_index_base() const {
     return tile_index_base_;
-  }
-
-  /** Returns the tile offsets. */
-  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets()
-      const {
-    return tile_offsets_;
   }
 
   /** Returns the variable tile offsets. */
@@ -747,17 +748,6 @@ class FragmentMetadata {
   const std::string& array_schema_name();
 
   /**
-   * Retrieves the starting offset of the input tile of the input attribute
-   * or dimension in the file. If the attribute/dimension is var-sized, it
-   * returns the starting offset of the offsets tile.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset to be retrieved.
-   */
-  uint64_t file_offset(const std::string& name, uint64_t tile_idx) const;
-
-  /**
    * Retrieves the starting offset of the input tile of input attribute or
    * dimension in the file. The attribute/dimension must be var-sized.
    *
@@ -785,19 +775,6 @@ class FragmentMetadata {
 
   /** Returns all the MBRs of all tiles in the fragment. */
   const tdb::pmr::vector<NDRange>& mbrs() const;
-
-  /**
-   * Retrieves the size of the tile when it is persisted (e.g. the size of the
-   * compressed tile on disk) for a given attribute or dimension and tile index.
-   * If the attribute/dimension is var-sized, this will return the persisted
-   * size of the offsets tile.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return Size.
-   */
-  uint64_t persisted_tile_size(
-      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -973,24 +950,12 @@ class FragmentMetadata {
   /** Frees the memory associated with the rtree. */
   void free_rtree();
 
-  /** Frees the memory associated with tile_offsets. */
-  void free_tile_offsets();
-
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
    * */
   void load_tile_var_sizes(
       const EncryptionKey& encryption_key, const std::string& name);
-
-  /**
-   * Loads tile offsets for the attribute/dimension names.
-   *
-   * @param encryption_key The key the array got opened with.
-   * @param names The attribute/dimension names.
-   */
-  void load_tile_offsets(
-      const EncryptionKey& encryption_key, std::vector<std::string>& names);
 
   /**
    * Loads min values for the attribute names.
@@ -1120,16 +1085,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** tile_offsets accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets() {
-    return tile_offsets_;
-  }
-
-  /** tile_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_offsets_mtx() {
-    return tile_offsets_mtx_;
-  }
-
   /** tile_var_offsets accessor */
   tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
     return tile_var_offsets_;
@@ -1246,11 +1201,6 @@ class FragmentMetadata {
   }
 
   /**
-   * Resize tile offsets related vectors.
-   */
-  void resize_tile_offsets_vectors(uint64_t size);
-
-  /**
    * Resize tile var offsets related vectors.
    */
   void resize_tile_var_offsets_vectors(uint64_t size);
@@ -1264,6 +1214,14 @@ class FragmentMetadata {
    * Resize tile validity offsets related vectors.
    */
   void resize_tile_validity_offsets_vectors(uint64_t size);
+
+  inline OndemandMetadata& ondemand_metadata() {
+    return ondemand_metadata_;
+  }
+
+  inline const OndemandMetadata& ondemand_metadata() const {
+    return ondemand_metadata_;
+  }
 
  private:
   /* ********************************* */
@@ -1347,9 +1305,6 @@ class FragmentMetadata {
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
 
-  /** Mutex per tile offset loading. */
-  std::deque<std::mutex> tile_offsets_mtx_;
-
   /** Mutex per tile var offset loading. */
   std::deque<std::mutex> tile_var_offsets_mtx_;
 
@@ -1364,12 +1319,6 @@ class FragmentMetadata {
    * Only used in global order writes.
    */
   uint64_t tile_index_base_;
-
-  /**
-   * The tile offsets in their corresponding attribute files. Meaningful only
-   * when there is compression.
-   */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_offsets_;
 
   /**
    * The variable tile offsets in their corresponding attribute files.
@@ -1462,6 +1411,8 @@ class FragmentMetadata {
    */
   std::vector<std::string> processed_conditions_;
 
+  OndemandMetadata ondemand_metadata_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -1519,12 +1470,6 @@ class FragmentMetadata {
    * Expands the non-empty domain using the input MBR.
    */
   void expand_non_empty_domain(const NDRange& mbr);
-
-  /**
-   * Loads the tile offsets for the input attribute or dimension idx
-   * from storage.
-   */
-  void load_tile_offsets(const EncryptionKey& encryption_key, unsigned idx);
 
   /**
    * Loads the variable tile offsets for the input attribute or dimension idx
@@ -1700,18 +1645,6 @@ class FragmentMetadata {
    * for format versions >= 5.
    */
   void load_non_empty_domain_v5_or_higher(Deserializer& deserializer);
-
-  /**
-   * Loads the tile offsets for the input attribute from the input buffer.
-   * Applicable to versions 1 and 2
-   */
-  void load_tile_offsets(Deserializer& deserializer);
-
-  /**
-   * Loads the tile offsets for the input attribute or dimension from the
-   * input buffer.
-   */
-  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets from the input buffer.
@@ -2090,6 +2023,8 @@ class FragmentMetadata {
    * This builds the index mapping for attribute/dimension name to id.
    */
   void build_idx_map();
+
+  friend class OndemandMetadata;
 };
 
 }  // namespace sm

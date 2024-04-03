@@ -217,6 +217,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_identifier.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_info.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/fragment_metadata.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/fragment/ondemand_metadata.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/global_state.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/signal_handlers.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/global_state/watchdog.cc

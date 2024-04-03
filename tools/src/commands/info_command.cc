@@ -142,10 +142,11 @@ void InfoCommand::print_tile_sizes() const {
       uint64_t tile_num = f->tile_num();
       std::vector<std::string> names;
       names.push_back(name);
-      f->load_tile_offsets(enc_key, names);
+      f->ondemand_metadata().load_tile_offsets(enc_key, names);
       f->load_tile_var_sizes(enc_key, name);
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
-        persisted_tile_size += f->persisted_tile_size(name, tile_idx);
+        persisted_tile_size +=
+            f->ondemand_metadata().persisted_tile_size(name, tile_idx);
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {

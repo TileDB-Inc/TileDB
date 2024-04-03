@@ -172,7 +172,8 @@ Status fragment_metadata_from_capnp(
   // refactored query, but readers on the server side require these vectors to
   // have the first dimension properly allocated when loading their data on
   // demand.
-  frag_meta->resize_tile_offsets_vectors(num_dims_and_attrs);
+  frag_meta->ondemand_metadata().resize_tile_offsets_vectors(
+      num_dims_and_attrs);
   loaded_metadata.tile_offsets_.resize(num_dims_and_attrs, false);
 
   // There is a difference in the metadata loaded for versions >= 2
@@ -182,7 +183,7 @@ Status fragment_metadata_from_capnp(
     auto tileoffsets_reader = frag_meta_reader.getTileOffsets();
     uint64_t i = 0;
     for (const auto& t : tileoffsets_reader) {
-      auto& last = frag_meta->tile_offsets()[i];
+      auto& last = frag_meta->ondemand_metadata().tile_offsets()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -474,7 +475,7 @@ void generic_tile_offsets_to_capnp(
 void fragment_meta_sizes_offsets_to_capnp(
     const FragmentMetadata& frag_meta,
     capnp::FragmentMetadata::Builder* frag_meta_builder) {
-  auto& tile_offsets = frag_meta.tile_offsets();
+  auto& tile_offsets = frag_meta.ondemand_metadata().tile_offsets();
   if (!tile_offsets.empty()) {
     auto builder = frag_meta_builder->initTileOffsets(tile_offsets.size());
     for (uint64_t i = 0; i < tile_offsets.size(); ++i) {

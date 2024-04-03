@@ -450,7 +450,8 @@ void ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        fragment->load_tile_offsets(*encryption_key, filtered_names);
+        fragment->ondemand_metadata().load_tile_offsets(
+            *encryption_key, filtered_names);
         return Status::Ok();
       }));
 }
