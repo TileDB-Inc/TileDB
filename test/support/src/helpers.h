@@ -171,6 +171,19 @@ void require_tiledb_ok(tiledb_ctx_t* ctx, int rc);
  * (fixed- or var-sized).
  */
 struct QueryBuffer {
+  QueryBuffer() = default;
+
+  QueryBuffer(
+      void* fixed,
+      uint64_t fixed_size,
+      void* var = nullptr,
+      uint64_t var_size = 0)
+      : fixed_(fixed)
+      , fixed_size_(fixed_size)
+      , var_(var)
+      , var_size_(var_size) {
+  }
+
   /**
    * For fixed-sized attributes/dimensions, it contains the fixed-sized values.
    * For var-sized attributes/dimensions, it contains the offsets.

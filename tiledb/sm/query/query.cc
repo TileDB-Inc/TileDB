@@ -1201,10 +1201,7 @@ void Query::set_shape(uint32_t dim_idx, const void* min, const void* max) {
   }
 
   auto coord_size = schema.dimension_ptr(dim_idx)->coord_size();
-  std::vector<uint8_t> range(2 * coord_size);
-  std::memcpy(&range[0], min, coord_size);
-  std::memcpy(&range[coord_size], max, coord_size);
-  shape_data_[dim_idx] = Range(&range[0], 2 * coord_size);
+  shape_data_[dim_idx] = Range(min, max, coord_size);
 }
 
 const Range& Query::get_shape(uint32_t dim_idx) const {

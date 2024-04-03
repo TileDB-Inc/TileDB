@@ -182,6 +182,7 @@ class Range {
   void set_range(const void* r, uint64_t r_size) {
     range_.resize(r_size);
     std::memcpy(range_.data(), r, r_size);
+    range_start_size_ = r_size / 2;
     var_size_ = false;
   }
 

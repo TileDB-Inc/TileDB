@@ -1108,8 +1108,6 @@ NDRange& Array::shape_data() {
           array_shape_data.push_back(frag_shape_data[j]);
         } else {
           // Expand array shape with fragment shaped for this dimension.
-          // TODO: Throw if one dimension has shapes that cannot be expanded(?)
-          // TODO: Validated in debugger, write tests.
           dim->expand_range(frag_shape_data[j], &array_shape_data[j]);
         }
       }
