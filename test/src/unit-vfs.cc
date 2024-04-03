@@ -765,6 +765,13 @@ TEST_CASE(
     delegates = {"account1", "account2"};
   }
 
+  // Test parsing an edge case.
+  SECTION("Invalid") {
+    impersonate_service_account = ",";
+    target_service_account = "";
+    delegates = {""};
+  }
+
   require_tiledb_ok(cfg.set(
       "vfs.gcs.impersonate_service_account", impersonate_service_account));
 
