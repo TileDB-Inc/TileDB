@@ -443,6 +443,12 @@ class GCS {
   // The GCS project id.
   std::string project_id_;
 
+  // The GCS service account credentials JSON string.
+  std::string service_account_credentials_;
+
+  // The GCS external account credentials JSON string.
+  std::string external_account_credentials_;
+
   // A comma-separated list with the GCS service accounts to impersonate.
   std::string impersonate_service_account_;
 

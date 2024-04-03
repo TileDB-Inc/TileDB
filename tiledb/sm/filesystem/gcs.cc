@@ -102,6 +102,12 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
+  service_account_credentials_ =
+      config.get("vfs.gcs.service_account_credentials", &found);
+  assert(found);
+  external_account_credentials_ =
+      config.get("vfs.gcs.external_account_credentials", &found);
+  assert(found);
   impersonate_service_account_ =
       config.get("vfs.gcs.impersonate_service_account", &found);
   assert(found);
@@ -189,6 +195,17 @@ std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
   shared_ptr<google::cloud::Credentials> creds = nullptr;
   if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
     creds = google::cloud::MakeInsecureCredentials();
+  } else if (!service_account_credentials_.empty()) {
+    if (!external_account_credentials_.empty()) {
+      LOG_WARN(
+          "Both GCS service account credentials and external account "
+          "credentials were specified; picking the former");
+    }
+    creds = google::cloud::MakeServiceAccountCredentials(
+        service_account_credentials_, options);
+  } else if (!external_account_credentials_.empty()) {
+    creds = google::cloud::MakeExternalAccountCredentials(
+        external_account_credentials_, options);
   } else {
     creds = google::cloud::MakeGoogleDefaultCredentials(options);
   }
