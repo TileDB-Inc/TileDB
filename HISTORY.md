@@ -2,7 +2,7 @@
 
 ## Deprecation announcements
 
-* Support for non vcpkg builds will be removed in 2.23. See https://github.com/TileDB-Inc/TileDB/blob/dev/doc/dev/BUILD.md for help on how to move away from non vcpkg builds on your projects.
+* Support for downloading dependencies with CMake `ExternalProject`s by specifying `-DTILEDB_VCPKG=OFF` will be removed in 2.23. Vcpkg will be downloaded and used to manage dependencies by default. See https://github.com/TileDB-Inc/TileDB/blob/dev/doc/dev/BUILD.md for help on how to disable automatically downloading vcpkg and acquire dependencies from the system.
 
 ## New features
 
