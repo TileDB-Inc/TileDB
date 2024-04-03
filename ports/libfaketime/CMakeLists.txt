@@ -7,6 +7,11 @@ add_library(
         src/libfaketime.c
 )
 
+target_link_libraries(
+        ${PROJECT_NAME}
+        rt
+)
+
 target_include_directories(${PROJECT_NAME}
         PUBLIC
         "$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>"
