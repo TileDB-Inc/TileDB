@@ -47,7 +47,6 @@ using namespace tiledb::test;
 
 /** Tests for C API consolidation. */
 struct ConsolidationFx {
-  // Constants
   VFSTestSetup vfs_test_setup_;
 
   // TileDB context
