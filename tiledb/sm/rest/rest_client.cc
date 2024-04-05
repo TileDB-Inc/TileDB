@@ -849,6 +849,8 @@ Status RestClient::post_query_submit(
   url += "&start_timestamp=" + std::to_string(array->timestamp_start());
   url += "&end_timestamp=" + std::to_string(array->timestamp_end());
 
+  std::cout << "Submitting query to REST: " << url << "\n";
+
   // Create the callback that will process the response buffers as they
   // are received.
   auto write_cb = std::bind(

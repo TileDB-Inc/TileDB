@@ -471,7 +471,18 @@ void DenseArrayRESTFx::write_dense_subarray_2D(
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
+  if (rc == TILEDB_ERR) {
+    const char* msg;
+    tiledb_error_t* err = nullptr;
+    rc = tiledb_ctx_get_last_error(ctx_, &err);
+    REQUIRE(rc == TILEDB_OK);
+    if (err != nullptr) {
+      tiledb_error_message(err, &msg);
+    }
+    std::cout << msg << std::endl;
+  }
   REQUIRE_SAFE(rc == TILEDB_OK);
+
   rc = tiledb_query_finalize(ctx_, query);
   REQUIRE_SAFE(rc == TILEDB_OK);
 
