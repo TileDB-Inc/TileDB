@@ -967,9 +967,11 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
       tiledb_config_set(config, "sm.check_coord_dups", "false", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers
@@ -1011,51 +1013,50 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_no_check(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], buffers[2], &buffer_sizes[2]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - this is unsafe but it should be passing
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
@@ -1069,9 +1070,11 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
       tiledb_config_set(config, "sm.dedup_coords", "true", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers for WRITE
@@ -1113,45 +1116,45 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], buffers[2], &buffer_sizes[2]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit WRITE query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1179,37 +1182,37 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
       sizeof(r_buffer_coords_dim1)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
+      ctx_, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
+      ctx_, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
+      ctx_, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
+      ctx_, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
+      ctx_, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit READ query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Check correctness
@@ -1247,13 +1250,12 @@ void SparseArrayFx::check_sparse_array_unordered_with_duplicates_dedup(
       sizeof(c_buffer_coords_dim2)));
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
@@ -1267,9 +1269,11 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
       tiledb_config_set(config, "sm.dedup_coords", "true", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers for WRITE
@@ -1311,45 +1315,45 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
-  CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], buffers[2], &buffer_sizes[2]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit WRITE query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1377,41 +1381,41 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
       sizeof(r_buffer_coords_dim1)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
+      ctx_, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
+      ctx_, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
+      ctx_, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
+      ctx_, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
+      ctx_, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit READ query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1437,8 +1441,6 @@ void SparseArrayFx::check_sparse_array_unordered_with_all_duplicates_dedup(
       r_buffer_coords_dim2,
       c_buffer_coords_dim2,
       sizeof(c_buffer_coords_dim2)));
-
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_sparse_array_global_with_duplicates_error(
@@ -1537,9 +1539,11 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
       tiledb_config_set(config, "sm.check_coord_dups", "false", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers
@@ -1581,20 +1585,20 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
@@ -1603,21 +1607,21 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
       ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - this is unsafe but it should be passing
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
@@ -1627,7 +1631,6 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_no_check(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
@@ -1641,9 +1644,11 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       tiledb_config_set(config, "sm.dedup_coords", "true", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers for WRITE
@@ -1685,20 +1690,20 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
@@ -1707,23 +1712,23 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit WRITE query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1751,14 +1756,14 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       sizeof(r_buffer_coords_dim1)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
+      ctx_, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
@@ -1767,27 +1772,27 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       ctx_, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
+      ctx_, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
+      ctx_, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
+      ctx_, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit READ query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Finalize query
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1828,8 +1833,6 @@ void SparseArrayFx::check_sparse_array_global_with_duplicates_dedup(
       r_buffer_coords_dim2,
       c_buffer_coords_dim2,
       sizeof(c_buffer_coords_dim2)));
-
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
@@ -1843,9 +1846,11 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       tiledb_config_set(config, "sm.dedup_coords", "true", &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
-  REQUIRE(error == nullptr);
+
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
   tiledb_config_free(&config);
 
   // Prepare cell buffers for WRITE
@@ -1887,20 +1892,20 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
 
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3", "d1", "d2"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
@@ -1909,23 +1914,23 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], buffers[3], &buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[3], buffers[4], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], buffers[5], &buffer_sizes[4]);
+      ctx_, query, attributes[4], buffers[5], &buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
 
   // Submit WRITE query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -1953,14 +1958,14 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       sizeof(r_buffer_coords_dim1)};
 
   // Open array
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create READ query
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
+      ctx_, query, attributes[0], r_buffers[0], &r_buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[1], r_buffers[2], &r_buffer_sizes[2]);
@@ -1969,25 +1974,25 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       ctx_, query, attributes[1], (uint64_t*)r_buffers[1], &r_buffer_sizes[1]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
+      ctx_, query, attributes[2], r_buffers[3], &r_buffer_sizes[3]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
+      ctx_, query, attributes[3], r_buffers[4], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
+      ctx_, query, attributes[4], r_buffers[5], &r_buffer_sizes[4]);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_UNORDERED);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit READ query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx, query);
+  rc = tiledb_query_finalize(ctx_, query);
   CHECK(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
@@ -2014,8 +2019,6 @@ void SparseArrayFx::check_sparse_array_global_with_all_duplicates_dedup(
       r_buffer_coords_dim2,
       c_buffer_coords_dim2,
       sizeof(c_buffer_coords_dim2)));
-
-  tiledb_ctx_free(&ctx);
 }
 
 void SparseArrayFx::check_non_empty_domain(const std::string& array_name) {
@@ -2521,20 +2524,16 @@ TEST_CASE_METHOD(
   std::string array_name = prefix_ + "sparse_set_subarray";
   create_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
 
   // Set subarray
@@ -2545,16 +2544,15 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_ERR);
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -2564,66 +2562,61 @@ TEST_CASE_METHOD(
   std::string array_name = prefix_ + "sparse_coords_exist";
   create_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
 
   // Set attribute buffers
   int a1[] = {1, 2};
   uint64_t a1_size = sizeof(a1);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
   char a2[] = {'a', 'b'};
   uint64_t a2_size = sizeof(a2);
   uint64_t a2_off[] = {0, 1};
   uint64_t a2_off_size = sizeof(a2_off);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2, &a2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx, query, "a2", a2_off, &a2_off_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
   float a3[] = {1.1f, 1.2f, 2.1f, 2.2f};
   uint64_t a3_size = sizeof(a3);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a3", a3, &a3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a3", a3, &a3_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - should error
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_ERR);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Set coordinates
   uint64_t coords_dim1[] = {1, 1};
   uint64_t coords_dim2[] = {1, 2};
   uint64_t coords_size = sizeof(coords_dim1);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - ok
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_OK);
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -2633,63 +2626,58 @@ TEST_CASE_METHOD(
   std::string array_name = prefix_ + "sparse_write_global_check";
   create_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
 
   // Set attribute buffers
   int a1[] = {1, 2};
   uint64_t a1_size = sizeof(a1);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
   char a2[] = {'a', 'b'};
   uint64_t a2_size = sizeof(a2);
   uint64_t a2_off[] = {0, 1};
   uint64_t a2_off_size = sizeof(a2_off);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2, &a2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx, query, "a2", a2_off, &a2_off_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
   float a3[] = {1.1f, 1.2f, 2.1f, 2.2f};
   uint64_t a3_size = sizeof(a3);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a3", a3, &a3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a3", a3, &a3_size);
   CHECK(rc == TILEDB_OK);
 
   // Set coordinates
   uint64_t coords_dim1[] = {1, 1};
   uint64_t coords_dim2[] = {2, 1};
   uint64_t coords_size = sizeof(coords_dim1);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query - ok
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_ERR);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_ERR);
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -2700,20 +2688,16 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // ---- First READ query (empty)
   tiledb_query_t* empty_query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &empty_query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &empty_query);
   CHECK(rc == TILEDB_OK);
 
   // Get max buffer sizes for empty query
@@ -2725,25 +2709,25 @@ TEST_CASE_METHOD(
 
   // Set attribute buffers
   auto a1 = (int*)malloc(a1_size);
-  rc = tiledb_query_set_data_buffer(ctx, empty_query, "a1", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, empty_query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
   auto a2_off = (uint64_t*)malloc(a2_off_size);
   auto a2 = (char*)malloc(a2_size);
-  rc = tiledb_query_set_data_buffer(ctx, empty_query, "a2", a2, &a2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, empty_query, "a2", a2, &a2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, empty_query, "a2", a2_off, &a2_off_size);
+      ctx_, empty_query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
   auto a3 = (float*)malloc(a3_size);
-  rc = tiledb_query_set_data_buffer(ctx, empty_query, "a3", a3, &a3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, empty_query, "a3", a3, &a3_size);
   CHECK(rc == TILEDB_OK);
   auto coords_dim1 = (uint64_t*)malloc(coords_size);
   auto coords_dim2 = (uint64_t*)malloc(coords_size);
   rc = tiledb_query_set_data_buffer(
-      ctx, empty_query, "d1", coords_dim1, &coords_size);
+      ctx_, empty_query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, empty_query, "d2", coords_dim2, &coords_size);
+      ctx_, empty_query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Set subarray
@@ -2757,7 +2741,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  CHECK(tiledb_query_submit(ctx, empty_query) == TILEDB_OK);
+  CHECK(tiledb_query_submit(ctx_, empty_query) == TILEDB_OK);
 
   // Check that there are no results
   CHECK(a1_size == 0);
@@ -2776,7 +2760,7 @@ TEST_CASE_METHOD(
 
   // ---- Second READ query (non-empty)
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
 
   // Set max buffer sizes for non-empty query
@@ -2788,24 +2772,24 @@ TEST_CASE_METHOD(
 
   // Set attribute buffers
   a1 = (int*)malloc(a1_size);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a1", a1, &a1_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &a1_size);
   CHECK(rc == TILEDB_OK);
   a2_off = (uint64_t*)malloc(a2_off_size);
   a2 = (char*)malloc(a2_size);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a2", a2, &a2_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2, &a2_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx, query, "a2", a2_off, &a2_off_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &a2_off_size);
   CHECK(rc == TILEDB_OK);
   a3 = (float*)malloc(a3_size);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a3", a3, &a3_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a3", a3, &a3_size);
   CHECK(rc == TILEDB_OK);
   coords_dim1 = (uint64_t*)malloc(coords_size);
   coords_dim2 = (uint64_t*)malloc(coords_size);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d1", coords_dim1, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d1", coords_dim1, &coords_size);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &coords_size);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d2", coords_dim2, &coords_size);
   CHECK(rc == TILEDB_OK);
 
   // Set subarray
@@ -2821,7 +2805,7 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  CHECK(tiledb_query_submit(ctx, query) == TILEDB_OK);
+  CHECK(tiledb_query_submit(ctx_, query) == TILEDB_OK);
 
   // Check that there are no results
   REQUIRE(a1_size == 2 * sizeof(int));
@@ -2850,9 +2834,8 @@ TEST_CASE_METHOD(
   tiledb_query_free(&query);
 
   // Clean up
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -2883,20 +2866,16 @@ TEST_CASE_METHOD(
   write_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[2];
   uint64_t a1_size = sizeof(a1);
@@ -2921,7 +2900,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -2940,12 +2919,11 @@ TEST_CASE_METHOD(
   CHECK(a2[2] == 'b');
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -2960,20 +2938,16 @@ TEST_CASE_METHOD(
   write_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[1];
   uint64_t a1_size = sizeof(a1);
@@ -2998,7 +2972,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3013,12 +2987,11 @@ TEST_CASE_METHOD(
   CHECK(a2_size == sizeof(char));
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -3034,20 +3007,16 @@ TEST_CASE_METHOD(
   write_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[2] = {-1, -1};
   uint64_t a1_size = sizeof(a1);
@@ -3072,7 +3041,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3091,12 +3060,11 @@ TEST_CASE_METHOD(
   CHECK(a2_size == 3 * sizeof(char));
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -3108,20 +3076,16 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[20];
   uint64_t a1_size = sizeof(a1);
@@ -3153,7 +3117,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3179,12 +3143,11 @@ TEST_CASE_METHOD(
   CHECK(coords_dim2[4] == 4);
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -3210,20 +3173,22 @@ TEST_CASE_METHOD(
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(config, &ctx) == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
+  tiledb_config_free(&config);
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[20];
   uint64_t a1_size = sizeof(a1);
@@ -3257,7 +3222,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3271,12 +3236,11 @@ TEST_CASE_METHOD(
   CHECK(coords_size == 7 * sizeof(uint64_t));
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -3288,20 +3252,16 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[3];
   uint64_t a1_size = sizeof(a1);
@@ -3333,7 +3293,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3357,7 +3317,7 @@ TEST_CASE_METHOD(
     CHECK(coords_dim2[1] == 4);
   }
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_get_status(ctx_, query, &status);
   REQUIRE(rc == TILEDB_OK);
@@ -3384,12 +3344,11 @@ TEST_CASE_METHOD(
   }
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -3401,20 +3360,16 @@ TEST_CASE_METHOD(
   create_sparse_array(array_name, TILEDB_COL_MAJOR);
   write_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   int a1[20];
   uint64_t a1_size = sizeof(a1);
@@ -3446,7 +3401,7 @@ TEST_CASE_METHOD(
   rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
 
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
   tiledb_query_status_t status;
   rc = tiledb_query_get_status(ctx_, query, &status);
@@ -3460,12 +3415,11 @@ TEST_CASE_METHOD(
   check_counts(span(coords_dim2, 5), {0, 0, 2, 1, 2});
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(
@@ -5758,22 +5712,18 @@ TEST_CASE_METHOD(
   std::string array_name = prefix_ + "sparse_write_global_check";
   create_sparse_array(array_name);
 
-  // Create TileDB context
-  tiledb_ctx_t* ctx = nullptr;
-  REQUIRE(tiledb_ctx_alloc(nullptr, &ctx) == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  int rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create WRITE query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
 
   // Prepare attribute buffers
@@ -5786,30 +5736,29 @@ TEST_CASE_METHOD(
   uint64_t zero_size = 0;
 
   // Set buffers with zero size
-  rc = tiledb_query_set_data_buffer(ctx, query, "a1", a1, &zero_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a1", a1, &zero_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a2", a2, &zero_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a2", a2, &zero_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_offsets_buffer(ctx, query, "a2", a2_off, &zero_size);
+  rc = tiledb_query_set_offsets_buffer(ctx_, query, "a2", a2_off, &zero_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx, query, "a3", a3, &zero_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "a3", a3, &zero_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx, query, "d1", coords_dim1, &zero_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d1", coords_dim1, &zero_size);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(ctx, query, "d2", coords_dim2, &zero_size);
+  rc = tiledb_query_set_data_buffer(ctx_, query, "d2", coords_dim2, &zero_size);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
-  rc = tiledb_query_submit(ctx, query);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
-  CHECK(tiledb_array_close(ctx, array) == TILEDB_OK);
+  CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
 
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(

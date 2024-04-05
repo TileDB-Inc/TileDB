@@ -1836,16 +1836,17 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(config, "sm.dedup_coords", "true", &error);
   CHECK(rc == TILEDB_OK);
 
-  // Create context
-  tiledb_ctx_t* ctx;
-  rc = tiledb_ctx_alloc(config, &ctx);
-  CHECK(rc == TILEDB_OK);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, config).ok();
+  tiledb_config_free(&config);
 
   // Write
   std::vector<uint64_t> d_off = {0, 2, 4, 8};
   std::string d_val("ccccddddaa");
   std::vector<int32_t> a = {2, 3, 4, 1};
-  write_array_1d(ctx, array_name, TILEDB_UNORDERED, d_off, d_val, a);
+  write_array_1d(ctx_, array_name, TILEDB_UNORDERED, d_off, d_val, a);
 
   // Clean up
   tiledb_config_free(&config);
@@ -1854,9 +1855,9 @@ TEST_CASE_METHOD(
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Check non-empty domain
@@ -1890,7 +1891,7 @@ TEST_CASE_METHOD(
   tiledb_query_status_t status;
   tiledb_query_status_details_t details;
   read_array_1d(
-      ctx,
+      ctx_,
       array,
       layout,
       "a",
@@ -1911,12 +1912,11 @@ TEST_CASE_METHOD(
   CHECK(c_a_matches);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
-  tiledb_ctx_free(&ctx);
 }
 
 TEST_CASE_METHOD(

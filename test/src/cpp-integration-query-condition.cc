@@ -552,7 +552,10 @@ TEST_CASE(
     config.set("sm.query.sparse_global_order.reader", "legacy");
     config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   }
-  Context ctx2 = Context(config);
+
+  vfs_test_setup.update_config(config.ptr().get());
+  Context ctx2 = vfs_test_setup.ctx();
+
   Array array(ctx2, array_uri, TILEDB_READ);
   Query query(ctx2, array);
 

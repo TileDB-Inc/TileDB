@@ -1662,7 +1662,6 @@ TEST_CASE_METHOD(
   // Create TileDB context
   tiledb_config_t* cfg = nullptr;
   tiledb_error_t* err = nullptr;
-  tiledb_ctx_t* ctx = nullptr;
 
   SECTION("- Check out-of-bounds coordinates") {
     check_coords_oob = true;
@@ -1748,35 +1747,37 @@ TEST_CASE_METHOD(
     }
   }
 
-  REQUIRE(tiledb_ctx_alloc(cfg, &ctx) == TILEDB_OK);
-  REQUIRE(err == nullptr);
+  tiledb_ctx_free(&ctx_);
+  tiledb_vfs_free(&vfs_);
+  // reallocate with input config
+  vfs_test_init(fs_vec_, &ctx_, &vfs_, cfg).ok();
   tiledb_config_free(&cfg);
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Submit query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
-  CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_query_set_data_buffer(ctx, query, "a", buffer_a1, &buffer_a1_size);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, "d1", buffer_coords_dim1, &buffer_coords_size);
+      ctx_, query, "a", buffer_a1, &buffer_a1_size);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, "d1", buffer_coords_dim1, &buffer_coords_size);
   CHECK(rc == TILEDB_OK);
   if (dimension == 2) {
     rc = tiledb_query_set_data_buffer(
-        ctx, query, "d2", buffer_coords_dim2, &buffer_coords_size);
+        ctx_, query, "d2", buffer_coords_dim2, &buffer_coords_size);
     CHECK(rc == TILEDB_OK);
   }
-  rc = tiledb_query_submit_and_finalize(ctx, query);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   if (check_coords_oob) {
     CHECK(rc == TILEDB_ERR);
   } else {
@@ -1784,11 +1785,10 @@ TEST_CASE_METHOD(
   }
 
   // Close array and clean up
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
 
   remove_temp_dir(temp_dir);
 }
@@ -1869,11 +1869,17 @@ TEST_CASE_METHOD(
   write_fragment(array, 5);
 
   // Check write
-  CHECK(tiledb::test::num_commits(array_path) == 3);
-  CHECK(tiledb::test::num_fragments(array_path) == 3);
+  // Get the number of write files in the commit directory
+  tiledb::Context ctx(ctx_, false);
+  tiledb::VFS vfs(ctx);
+  CommitsDirectory commits_dir(vfs, array_path);
+  CHECK(commits_dir.file_count(constants::write_file_suffix) == 3);
+  auto uris = vfs.ls(
+      array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  CHECK(static_cast<uint32_t>(uris.size()) == 3);
 
   // Conditionally consolidate commits
-  if (consolidate) {
+  if (consolidate && !fs_vec_[0]->is_rest()) {
     tiledb_config_t* cfg;
     tiledb_error_t* err = nullptr;
     rc = tiledb_config_alloc(&cfg, &err);
@@ -1887,16 +1893,22 @@ TEST_CASE_METHOD(
     tiledb_config_free(&cfg);
 
     // Validate working directory
-    CHECK(tiledb::test::num_commits(array_path) == 3);
-    CHECK(tiledb::test::num_fragments(array_path) == 3);
+    CommitsDirectory commits_dir2(vfs, array_path);
+    CHECK(commits_dir2.file_count(constants::write_file_suffix) == 3);
+    auto uris2 = vfs.ls(
+        array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+    CHECK(static_cast<uint32_t>(uris2.size()) == 3);
   }
 
   // Delete array data
   rc = tiledb_array_delete(ctx_, array_name.c_str());
 
   // Validate working directory after delete
-  CHECK(tiledb::test::num_commits(array_path) == 0);
-  CHECK(tiledb::test::num_fragments(array_path) == 0);
+  CommitsDirectory commits_dir3(vfs, array_path);
+  CHECK(commits_dir3.file_count(constants::write_file_suffix) == 0);
+  auto uris3 = vfs.ls(
+      array_path + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  CHECK(static_cast<uint32_t>(uris3.size()) == 0);
 
   // Try to open array
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);

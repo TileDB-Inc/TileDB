@@ -908,10 +908,10 @@ struct VFSTestSetup {
     // free resources
     tiledb_ctx_free(&ctx_c);
     tiledb_vfs_free(&vfs_c);
+    cfg_c = config;
 
     // reallocate with input config
-    tiledb_ctx_alloc(config, &ctx_c);
-    tiledb_vfs_alloc(ctx_c, config, &vfs_c);
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
   }
 
   bool is_rest() {
