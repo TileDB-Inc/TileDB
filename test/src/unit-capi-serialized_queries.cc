@@ -607,7 +607,10 @@ TEST_CASE_METHOD(
   Config config;
   config.set("sm.query.sparse_global_order.reader", "legacy");
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
-  auto ctx_client = Context(config);
+
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx_c;
+  auto ctx_client = vfs_test_setup_.ctx();
 
   SECTION("- Read all") {
     Array array(ctx_client, array_uri, TILEDB_READ);
