@@ -812,10 +812,10 @@ TEST_CASE(
   GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
-  std::string service_account_credentials = "{\"foo\": \"bar\"}";
+  std::string service_account_key = "{\"foo\": \"bar\"}";
 
-  require_tiledb_ok(cfg.set(
-      "vfs.gcs.service_account_credentials", service_account_credentials));
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
 
   require_tiledb_ok(gcs.init(cfg, &thread_pool));
 
@@ -827,7 +827,7 @@ TEST_CASE(
           credentials.get());
 
   REQUIRE(service_account != nullptr);
-  REQUIRE(service_account->json_object() == service_account_credentials);
+  REQUIRE(service_account->json_object() == service_account_key);
 }
 
 TEST_CASE(
@@ -838,11 +838,11 @@ TEST_CASE(
   GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
-  std::string service_account_credentials = "{\"foo\": \"bar\"}";
+  std::string service_account_key = "{\"foo\": \"bar\"}";
   std::string impersonate_service_account = "account1,account2,account3";
 
-  require_tiledb_ok(cfg.set(
-      "vfs.gcs.service_account_credentials", service_account_credentials));
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
   require_tiledb_ok(cfg.set(
       "vfs.gcs.impersonate_service_account", impersonate_service_account));
 
@@ -865,7 +865,7 @@ TEST_CASE(
           impersonate_credentials->base_credentials().get());
 
   REQUIRE(inner_service_account != nullptr);
-  REQUIRE(inner_service_account->json_object() == service_account_credentials);
+  REQUIRE(inner_service_account->json_object() == service_account_key);
 }
 
 TEST_CASE(
@@ -876,10 +876,11 @@ TEST_CASE(
   GCS gcs;
   // The content of the credentials does not matter; it does not get parsed
   // until it is used in an API request, which we are not doing.
-  std::string external_account_credentials = "{\"foo\": \"bar\"}";
+  std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
 
   require_tiledb_ok(cfg.set(
-      "vfs.gcs.external_account_credentials", external_account_credentials));
+      "vfs.gcs.workload_identity_configuration",
+      workload_identity_configuration));
 
   require_tiledb_ok(gcs.init(cfg, &thread_pool));
 
@@ -891,6 +892,6 @@ TEST_CASE(
           credentials.get());
 
   REQUIRE(external_account != nullptr);
-  REQUIRE(external_account->json_object() == external_account_credentials);
+  REQUIRE(external_account->json_object() == workload_identity_configuration);
 }
 #endif

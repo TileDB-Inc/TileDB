@@ -391,16 +391,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `vfs.gcs.project_id` <br>
  *    Set the GCS project id. <br>
  *    **Default**: ""
- * - `vfs.gcs.service_account_credentials` <br>
- *    Set the JSON string with GCS service account credentials. Takes precedence
- *    over `vfs.gcs.external_account_credentials` if both are specified. If
+ * - `vfs.gcs.service_account_key` <br>
+ *    Set the JSON string with GCS service account key. Takes precedence
+ *    over `vfs.gcs.workload_identity_configuration` if both are specified. If
  *    neither is specified, Application Default Credentials will be used. <br>
  *    **Default**: ""
- * - `vfs.gcs.external_account_credentials` <br>
- *    Set the JSON string with GCS external account credentials, used for
- *    Workload Identity Federation. `vfs.gcs.service_account_credentials` takes
- *    precedence over this if both are specified. If neither is specified,
- *    Application Default Credentials will be used. <br>
+ * - `vfs.gcs.workload_identity_configuration` <br>
+ *    Set the JSON string with Workload Identity Federation credentials.
+ *    `vfs.gcs.service_account_key` takes precedence over this if both are
+ *    specified. If neither is specified, Application Default Credentials will
+ *    be used. <br>
  *    **Default**: ""
  * - `vfs.gcs.impersonate_service_account` <br>
  *    Set the GCS service account to impersonate. A chain of impersonated
