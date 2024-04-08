@@ -193,9 +193,7 @@ static shared_ptr<google::cloud::Credentials> apply_impersonation(
 std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
     const google::cloud::Options& options) const {
   shared_ptr<google::cloud::Credentials> creds = nullptr;
-  if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
-    creds = google::cloud::MakeInsecureCredentials();
-  } else if (!service_account_credentials_.empty()) {
+  if (!service_account_credentials_.empty()) {
     if (!external_account_credentials_.empty()) {
       LOG_WARN(
           "Both GCS service account credentials and external account "
@@ -206,6 +204,8 @@ std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
   } else if (!external_account_credentials_.empty()) {
     creds = google::cloud::MakeExternalAccountCredentials(
         external_account_credentials_, options);
+  } else if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    creds = google::cloud::MakeInsecureCredentials();
   } else {
     creds = google::cloud::MakeGoogleDefaultCredentials(options);
   }
