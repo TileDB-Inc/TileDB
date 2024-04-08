@@ -483,7 +483,8 @@ void ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          fragment->offsets_metadata()->load_tile_var_sizes(
+              *encryption_key, name);
         }
 
         return Status::Ok();
@@ -1059,7 +1060,8 @@ uint64_t ReaderBase::get_attribute_tile_size(
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
-    tile_size += fragment_metadata_[f]->tile_var_size(name, t);
+    tile_size +=
+        fragment_metadata_[f]->offsets_metadata()->tile_var_size(name, t);
   }
 
   if (array_schema_.is_nullable(name)) {

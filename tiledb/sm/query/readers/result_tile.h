@@ -99,7 +99,8 @@ class ResultTile {
               fragment->offsets_metadata()->persisted_tile_size(name, tile_idx))
         , tile_var_size_(
               var_size && !validity_only ?
-                  std::optional(fragment->tile_var_size(name, tile_idx)) :
+                  std::optional(fragment->offsets_metadata()->tile_var_size(
+                      name, tile_idx)) :
                   std::nullopt)
         , tile_var_persisted_size_(
               var_size ?

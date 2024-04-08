@@ -126,6 +126,25 @@ void OndemandFragmentMetadata::load_tile_var_offsets(
   parent_fragment_.loaded_metadata_.tile_var_offsets_[idx] = true;
 }
 
+void OndemandFragmentMetadata::load_tile_var_sizes(
+    const EncryptionKey& encryption_key, unsigned idx) {
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
+
+  if (parent_fragment_.loaded_metadata_.tile_var_sizes_[idx]) {
+    return;
+  }
+
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_var_sizes_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_var_sizes_size", tile->size());
+
+  Deserializer deserializer(tile->data(), tile->size());
+  OffsetsFragmentMetadata::load_tile_var_sizes(idx, deserializer);
+
+  parent_fragment_.loaded_metadata_.tile_var_sizes_[idx] = true;
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */

@@ -102,6 +102,17 @@ class OffsetsFragmentMetadata {
     return tile_var_offsets_mtx_;
   }
 
+  /** Returns the sizes of the uncompressed variable tiles. */
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes()
+      const {
+    return tile_var_sizes_;
+  }
+
+  /** tile_var_sizes  accessor */
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
+    return tile_var_sizes_;
+  }
+
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given attribute or dimension and tile index.
@@ -149,6 +160,11 @@ class OffsetsFragmentMetadata {
   void resize_tile_var_offsets_vectors(uint64_t size);
 
   /**
+   * Resize tile var sizes related vectors.
+   */
+  void resize_tile_var_sizes_vectors(uint64_t size);
+
+  /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
    * compressed tile on disk) for a given var-sized attribute or dimension
    * and tile index.
@@ -169,6 +185,23 @@ class OffsetsFragmentMetadata {
    * @return The file offset to be retrieved.
    */
   uint64_t file_var_offset(const std::string& name, uint64_t tile_idx) const;
+
+  /**
+   * Retrieves the (uncompressed) tile size for a given var-sized attribute or
+   * dimension and tile index.
+   *
+   * @param name The input attribute/dimension.
+   * @param tile_idx The index of the tile in the metadata.
+   * @return Size.
+   */
+  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx);
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension idx
+   * from storage.
+   * */
+  void load_tile_var_sizes(
+      const EncryptionKey& encryption_key, const std::string& name);
 
  protected:
   /* ********************************* */
@@ -200,6 +233,12 @@ class OffsetsFragmentMetadata {
    */
   tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_offsets_;
 
+  /**
+   * The sizes of the uncompressed variable tiles.
+   * Meaningful only when there is compression for variable tiles.
+   */
+  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_sizes_;
+
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
@@ -229,6 +268,19 @@ class OffsetsFragmentMetadata {
    * the input buffer.
    */
   void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension idx
+   * from storage.
+   */
+  virtual void load_tile_var_sizes(
+      const EncryptionKey& encryption_key, unsigned idx) = 0;
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension from
+   * the input buffer.
+   */
+  void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
 };
 
 }  // namespace sm

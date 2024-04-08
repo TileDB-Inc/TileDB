@@ -1478,7 +1478,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
             return Status::Ok();
           }
 
-          fragment_metadata[f]->load_tile_var_sizes(
+          fragment_metadata[f]->offsets_metadata()->load_tile_var_sizes(
               *encryption_key(), var_name);
           return Status::Ok();
         }));
@@ -1502,7 +1502,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
           // Go through all tiles.
           for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
-            total_size += fragment_metadata[f]->tile_var_size(var_name, t);
+            total_size +=
+                fragment_metadata[f]->offsets_metadata()->tile_var_size(
+                    var_name, t);
             cell_num += fragment_metadata[f]->cell_num(t);
           }
         }

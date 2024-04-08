@@ -86,6 +86,9 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
    */
   void load_tile_var_offsets(Deserializer& deserializer);
 
+  /** Loads the variable tile sizes from the input buffer. */
+  void load_tile_var_sizes(Deserializer& deserializer);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -107,6 +110,13 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
    * from storage.
    */
   virtual void load_tile_var_offsets(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension idx
+   * from storage.
+   */
+  virtual void load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned idx) override;
 };
 

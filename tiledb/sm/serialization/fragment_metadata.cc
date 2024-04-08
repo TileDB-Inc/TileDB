@@ -216,13 +216,14 @@ Status fragment_metadata_from_capnp(
   // refactored query, but readers on the server side require these vectors to
   // have the first dimension properly allocated when loading its data on
   // demand.
-  frag_meta->resize_tile_var_sizes_vectors(num_dims_and_attrs);
+  frag_meta->offsets_metadata()->resize_tile_var_sizes_vectors(
+      num_dims_and_attrs);
   loaded_metadata.tile_var_sizes_.resize(num_dims_and_attrs, false);
   if (frag_meta_reader.hasTileVarSizes()) {
     auto tilevarsizes_reader = frag_meta_reader.getTileVarSizes();
     uint64_t i = 0;
     for (const auto& t : tilevarsizes_reader) {
-      auto& last = frag_meta->tile_var_sizes()[i];
+      auto& last = frag_meta->offsets_metadata()->tile_var_sizes()[i];
       last.reserve(t.size());
       for (const auto& v : t) {
         last.emplace_back(v);
@@ -497,7 +498,7 @@ void fragment_meta_sizes_offsets_to_capnp(
       }
     }
   }
-  auto& tile_var_sizes = frag_meta.tile_var_sizes();
+  auto& tile_var_sizes = frag_meta.offsets_metadata()->tile_var_sizes();
   if (!tile_var_sizes.empty()) {
     auto builder = frag_meta_builder->initTileVarSizes(tile_var_sizes.size());
     for (uint64_t i = 0; i < tile_var_sizes.size(); ++i) {

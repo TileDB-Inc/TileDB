@@ -335,12 +335,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** Returns the sizes of the uncompressed variable tiles. */
-  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes()
-      const {
-    return tile_var_sizes_;
-  }
-
   /** Returns the validity tile offsets. */
   inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&
   tile_validity_offsets() const {
@@ -785,16 +779,6 @@ class FragmentMetadata {
   uint64_t tile_size(const std::string& name, uint64_t tile_idx) const;
 
   /**
-   * Retrieves the (uncompressed) tile size for a given var-sized attribute or
-   * dimension and tile index.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return Size.
-   */
-  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx);
-
-  /**
    * Retrieves the tile min value for a given attribute or dimension and tile
    * index.
    *
@@ -925,13 +909,6 @@ class FragmentMetadata {
   void free_rtree();
 
   /**
-   * Loads the variable tile sizes for the input attribute or dimension idx
-   * from storage.
-   * */
-  void load_tile_var_sizes(
-      const EncryptionKey& encryption_key, const std::string& name);
-
-  /**
    * Loads min values for the attribute names.
    *
    * @param encryption_key The key the array got opened with.
@@ -1059,11 +1036,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** tile_var_sizes  accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
-    return tile_var_sizes_;
-  }
-
   /** tile_validity_offsets accessor */
   tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_validity_offsets() {
     return tile_validity_offsets_;
@@ -1163,11 +1135,6 @@ class FragmentMetadata {
   inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
     loaded_metadata_ = loaded_metadata;
   }
-
-  /**
-   * Resize tile var sizes related vectors.
-   */
-  void resize_tile_var_sizes_vectors(uint64_t size);
 
   /**
    * Resize tile validity offsets related vectors.
@@ -1275,12 +1242,6 @@ class FragmentMetadata {
    * Only used in global order writes.
    */
   uint64_t tile_index_base_;
-
-  /**
-   * The sizes of the uncompressed variable tiles.
-   * Meaningful only when there is compression for variable tiles.
-   */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_sizes_;
 
   /**
    * The validity tile offsets in their corresponding attribute files.
@@ -1420,12 +1381,6 @@ class FragmentMetadata {
    * Expands the non-empty domain using the input MBR.
    */
   void expand_non_empty_domain(const NDRange& mbr);
-
-  /**
-   * Loads the variable tile sizes for the input attribute or dimension idx
-   * from storage.
-   * */
-  void load_tile_var_sizes(const EncryptionKey& encryption_key, unsigned idx);
 
   /**
    * Loads the validity tile offsets for the input attribute idx from storage.
@@ -1589,15 +1544,6 @@ class FragmentMetadata {
    * for format versions >= 5.
    */
   void load_non_empty_domain_v5_or_higher(Deserializer& deserializer);
-
-  /** Loads the variable tile sizes from the input buffer. */
-  void load_tile_var_sizes(Deserializer& deserializer);
-
-  /**
-   * Loads the variable tile sizes for the input attribute or dimension
-   * from the input buffer.
-   */
-  void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the validity tile offsets for the input attribute from the

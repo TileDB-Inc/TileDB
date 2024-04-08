@@ -175,6 +175,56 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
       parent_fragment_.array_schema_->attribute_num(), true);
 }
 
+void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+// ===== FORMAT =====
+// tile_var_sizes_attr#0_num (uint64_t)
+// tile_var_sizes_attr#0_#1 (uint64_t) tile_sizes_attr#0_#2 (uint64_t) ...
+// ...
+// tile_var_sizes_attr#<attribute_num-1>_num(uint64_t)
+// tile_var_sizes__attr#<attribute_num-1>_#1 (uint64_t)
+//     tile_var_sizes_attr#<attribute_num-1>_#2 (uint64_t) ...
+void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
+    Deserializer& deserializer) {
+  unsigned int attribute_num = parent_fragment_.array_schema_->attribute_num();
+  uint64_t tile_var_sizes_num = 0;
+
+  // Allocate tile sizes
+  tile_var_sizes_.resize(attribute_num);
+
+  // For all attributes, get the variable tile sizes
+  for (unsigned int i = 0; i < attribute_num; ++i) {
+    // Get number of tile sizes
+    tile_var_sizes_num = deserializer.read<uint64_t>();
+
+    if (tile_var_sizes_num == 0)
+      continue;
+
+    auto size = tile_var_sizes_num * sizeof(uint64_t);
+    if (memory_tracker_ != nullptr &&
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile var sizes; Insufficient memory budget; "
+          "Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
+
+    // Get variable tile sizes
+    tile_var_sizes_[i].resize(tile_var_sizes_num);
+    deserializer.read(&tile_var_sizes_[i][0], size);
+  }
+
+  parent_fragment_.loaded_metadata_.tile_var_sizes_.resize(
+      parent_fragment_.array_schema_->attribute_num(), true);
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */

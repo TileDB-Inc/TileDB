@@ -287,7 +287,8 @@ uint64_t SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        tiles_size += fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
+        tiles_size += fragment_metadata_[f]->offsets_metadata()->tile_var_size(
+            dim_names_[d], t);
       }
     }
   }

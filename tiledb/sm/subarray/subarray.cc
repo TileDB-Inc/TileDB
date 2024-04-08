@@ -1572,7 +1572,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
             tile_size -= constants::cell_var_offset_size;
-            auto tile_var_size = meta->tile_var_size(names[i], ft.second);
+            auto tile_var_size =
+                meta->offsets_metadata()->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
@@ -1896,7 +1897,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
           } else {
             tile_size -= constants::cell_var_offset_size;
             (*result_sizes)[n].size_fixed_ += tile_size;
-            auto tile_var_size = meta->tile_var_size(name[n], tid);
+            auto tile_var_size =
+                meta->offsets_metadata()->tile_var_size(name[n], tid);
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
@@ -1936,7 +1938,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
         } else {
           tile_size -= constants::cell_var_offset_size;
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          auto tile_var_size = meta->tile_var_size(name[n], tid);
+          auto tile_var_size =
+              meta->offsets_metadata()->tile_var_size(name[n], tid);
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
@@ -2609,7 +2612,8 @@ void Subarray::load_relevant_fragment_tile_var_sizes(
           if (!schema->is_field(var_name)) {
             return Status::Ok();
           }
-          meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+          meta[f]->offsets_metadata()->load_tile_var_sizes(
+              *encryption_key, var_name);
           return Status::Ok();
         });
     throw_if_not_ok(status);
