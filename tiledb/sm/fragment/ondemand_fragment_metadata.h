@@ -89,6 +89,13 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
    */
   virtual void load_tile_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the variable tile offsets for the input attribute or dimension idx
+   * from storage.
+   */
+  virtual void load_tile_var_offsets(
+      const EncryptionKey& encryption_key, unsigned idx) override;
 };
 
 }  // namespace sm

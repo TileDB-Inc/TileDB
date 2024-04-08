@@ -335,12 +335,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** Returns the variable tile offsets. */
-  inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets()
-      const {
-    return tile_var_offsets_;
-  }
-
   /** Returns the sizes of the uncompressed variable tiles. */
   inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes()
       const {
@@ -750,16 +744,6 @@ class FragmentMetadata {
   const std::string& array_schema_name();
 
   /**
-   * Retrieves the starting offset of the input tile of input attribute or
-   * dimension in the file. The attribute/dimension must be var-sized.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return The file offset to be retrieved.
-   */
-  uint64_t file_var_offset(const std::string& name, uint64_t tile_idx) const;
-
-  /**
    * Retrieves the starting offset of the input validity tile of the
    * input attribute in the file.
    *
@@ -777,18 +761,6 @@ class FragmentMetadata {
 
   /** Returns all the MBRs of all tiles in the fragment. */
   const tdb::pmr::vector<NDRange>& mbrs() const;
-
-  /**
-   * Retrieves the size of the tile when it is persisted (e.g. the size of the
-   * compressed tile on disk) for a given var-sized attribute or dimension
-   * and tile index.
-   *
-   * @param name The input attribute/dimension.
-   * @param tile_idx The index of the tile in the metadata.
-   * @return Size.
-   */
-  uint64_t persisted_tile_var_size(
-      const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the size of the validity tile when it is persisted (e.g. the size
@@ -1087,16 +1059,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** tile_var_offsets accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
-    return tile_var_offsets_;
-  }
-
-  /** tile_var_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_var_offsets_mtx() {
-    return tile_var_offsets_mtx_;
-  }
-
   /** tile_var_sizes  accessor */
   tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
     return tile_var_sizes_;
@@ -1203,11 +1165,6 @@ class FragmentMetadata {
   }
 
   /**
-   * Resize tile var offsets related vectors.
-   */
-  void resize_tile_var_offsets_vectors(uint64_t size);
-
-  /**
    * Resize tile var sizes related vectors.
    */
   void resize_tile_var_sizes_vectors(uint64_t size);
@@ -1307,9 +1264,6 @@ class FragmentMetadata {
   /** Local mutex for thread-safety. */
   std::mutex mtx_;
 
-  /** Mutex per tile var offset loading. */
-  std::deque<std::mutex> tile_var_offsets_mtx_;
-
   /** The non-empty domain of the fragment. */
   NDRange non_empty_domain_;
 
@@ -1321,12 +1275,6 @@ class FragmentMetadata {
    * Only used in global order writes.
    */
   uint64_t tile_index_base_;
-
-  /**
-   * The variable tile offsets in their corresponding attribute files.
-   * Meaningful only for variable-sized tiles.
-   */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>> tile_var_offsets_;
 
   /**
    * The sizes of the uncompressed variable tiles.
@@ -1472,12 +1420,6 @@ class FragmentMetadata {
    * Expands the non-empty domain using the input MBR.
    */
   void expand_non_empty_domain(const NDRange& mbr);
-
-  /**
-   * Loads the variable tile offsets for the input attribute or dimension idx
-   * from storage.
-   */
-  void load_tile_var_offsets(const EncryptionKey& encryption_key, unsigned idx);
 
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
@@ -1647,18 +1589,6 @@ class FragmentMetadata {
    * for format versions >= 5.
    */
   void load_non_empty_domain_v5_or_higher(Deserializer& deserializer);
-
-  /**
-   * Loads the variable tile offsets from the input buffer.
-   * Applicable to versions 1 and 2
-   */
-  void load_tile_var_offsets(Deserializer& deserializer);
-
-  /**
-   * Loads the variable tile offsets for the input attribute or dimension from
-   * the input buffer.
-   */
-  void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
 
   /** Loads the variable tile sizes from the input buffer. */
   void load_tile_var_sizes(Deserializer& deserializer);

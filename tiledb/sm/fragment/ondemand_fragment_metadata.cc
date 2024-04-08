@@ -102,6 +102,30 @@ void OndemandFragmentMetadata::load_tile_offsets(
   parent_fragment_.loaded_metadata_.tile_offsets_[idx] = true;
 }
 
+void OndemandFragmentMetadata::load_tile_var_offsets(
+    const EncryptionKey& encryption_key, unsigned idx) {
+  // If the tile var offset is already loaded, exit early to avoid the lock
+  if (parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+    return;
+  }
+
+  std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
+
+  if (parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+    return;
+  }
+
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_var_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_var_offsets_size", tile->size());
+
+  Deserializer deserializer(tile->data(), tile->size());
+  OffsetsFragmentMetadata::load_tile_var_offsets(idx, deserializer);
+
+  parent_fragment_.loaded_metadata_.tile_var_offsets_[idx] = true;
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */

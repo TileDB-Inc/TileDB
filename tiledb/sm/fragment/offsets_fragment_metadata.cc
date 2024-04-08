@@ -73,7 +73,9 @@ OffsetsFragmentMetadata::OffsetsFragmentMetadata(
     FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker)
     : parent_fragment_(parent)
     , memory_tracker_(memory_tracker)
-    , tile_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS)) {
+    , tile_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_var_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS)) {
 }
 
 /* ********************************* */
@@ -148,8 +150,7 @@ void OffsetsFragmentMetadata::load_tile_offsets(
   // Load all of the var offsets.
   for (const auto& name : names) {
     if (parent_fragment_.array_schema_->var_size(name)) {
-      parent_fragment_.load_tile_var_offsets(
-          encryption_key, parent_fragment_.idx_map_[name]);
+      load_tile_var_offsets(encryption_key, parent_fragment_.idx_map_[name]);
     }
   }
 
@@ -173,14 +174,14 @@ void OffsetsFragmentMetadata::free_tile_offsets() {
     parent_fragment_.loaded_metadata_.tile_offsets_[i] = false;
   }
 
-  for (uint64_t i = 0; i < parent_fragment_.tile_var_offsets_.size(); i++) {
-    std::lock_guard<std::mutex> lock(parent_fragment_.tile_var_offsets_mtx_[i]);
+  for (uint64_t i = 0; i < tile_var_offsets_.size(); i++) {
+    std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
       memory_tracker_->release_memory(
-          parent_fragment_.tile_var_offsets_[i].size() * sizeof(uint64_t),
+          tile_var_offsets_[i].size() * sizeof(uint64_t),
           MemoryType::TILE_OFFSETS);
     }
-    parent_fragment_.tile_var_offsets_[i].clear();
+    tile_var_offsets_[i].clear();
     parent_fragment_.loaded_metadata_.tile_var_offsets_[i] = false;
   }
 
@@ -234,6 +235,72 @@ uint64_t OffsetsFragmentMetadata::file_offset(
 void OffsetsFragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
   tile_offsets_mtx_.resize(size);
   tile_offsets_.resize(size);
+}
+
+void OffsetsFragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
+  tile_var_offsets_mtx_.resize(size);
+  tile_var_offsets_.resize(size);
+}
+
+uint64_t OffsetsFragmentMetadata::file_var_offset(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+  if (!parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+    throw std::logic_error(
+        "Trying to access tile var offsets metadata that's not loaded");
+  }
+
+  return tile_var_offsets_[idx][tile_idx];
+}
+
+uint64_t OffsetsFragmentMetadata::persisted_tile_var_size(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = parent_fragment_.idx_map_.find(name);
+  assert(it != parent_fragment_.idx_map_.end());
+  auto idx = it->second;
+
+  if (!parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+    throw std::logic_error(
+        "Trying to access persisted tile var offsets metadata that's not "
+        "present");
+  }
+
+  auto tile_num = parent_fragment_.tile_num();
+
+  auto tile_size = (tile_idx != tile_num - 1) ?
+                       tile_var_offsets_[idx][tile_idx + 1] -
+                           tile_var_offsets_[idx][tile_idx] :
+                       parent_fragment_.file_var_sizes_[idx] -
+                           tile_var_offsets_[idx][tile_idx];
+  return tile_size;
+}
+
+void OffsetsFragmentMetadata::load_tile_var_offsets(
+    unsigned idx, Deserializer& deserializer) {
+  uint64_t tile_var_offsets_num = 0;
+
+  // Get number of tile offsets
+  tile_var_offsets_num = deserializer.read<uint64_t>();
+
+  // Get variable tile offsets
+  if (tile_var_offsets_num != 0) {
+    auto size = tile_var_offsets_num * sizeof(uint64_t);
+    if (memory_tracker_ != nullptr &&
+        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
+      throw FragmentMetadataStatusException(
+          "Cannot load tile var offsets; Insufficient memory budget; "
+          "Needed " +
+          std::to_string(size) + " but only had " +
+          std::to_string(memory_tracker_->get_memory_available()) +
+          " from budget " +
+          std::to_string(memory_tracker_->get_memory_budget()));
+    }
+
+    tile_var_offsets_[idx].resize(tile_var_offsets_num);
+    deserializer.read(&tile_var_offsets_[idx][0], size);
+  }
 }
 
 /* ********************************* */

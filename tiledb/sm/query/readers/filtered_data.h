@@ -346,7 +346,8 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset{fragment->file_var_offset(name_, rt->tile_idx())};
+    auto offset{
+        fragment->offsets_metadata()->file_var_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::VAR, fragment, rt, offset);
     return current_data_block(TileType::VAR)->data_at(offset);
   }
@@ -446,7 +447,7 @@ class FilteredData {
       case TileType::FIXED:
         return fragment->offsets_metadata()->file_offset(name_, tile_idx);
       case TileType::VAR:
-        return fragment->file_var_offset(name_, tile_idx);
+        return fragment->offsets_metadata()->file_var_offset(name_, tile_idx);
       case TileType::NULLABLE:
         return fragment->file_validity_offset(name_, tile_idx);
       default:
@@ -471,7 +472,8 @@ class FilteredData {
         return fragment->offsets_metadata()->persisted_tile_size(
             name_, tile_idx);
       case TileType::VAR:
-        return fragment->persisted_tile_var_size(name_, tile_idx);
+        return fragment->offsets_metadata()->persisted_tile_var_size(
+            name_, tile_idx);
       case TileType::NULLABLE:
         return fragment->persisted_tile_validity_size(name_, tile_idx);
       default:
