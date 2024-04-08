@@ -4519,7 +4519,7 @@ void ConsolidationFx::check_ok_num(int num_ok) {
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense",
-    "[capi][consolidation][dense]") {
+    "[capi][consolidation][dense][non-rest]") {
   remove_dense_array();
   create_dense_array();
 
@@ -4554,7 +4554,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse",
-    "[capi][consolidation][sparse]") {
+    "[capi][consolidation][sparse][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -4714,7 +4714,7 @@ void ConsolidationFx::get_vac_files_dense(std::vector<std::string>& files) {
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, wrong configs",
-    "[capi][consolidation][adv][config]") {
+    "[capi][consolidation][adv][config][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -4849,7 +4849,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #1",
-    "[capi][consolidation][adv][adv-1]") {
+    "[capi][consolidation][adv][adv-1][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -4908,7 +4908,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #2",
-    "[capi][consolidation][adv][adv-2]") {
+    "[capi][consolidation][adv][adv-2][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -4967,7 +4967,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #3",
-    "[capi][consolidation][adv][adv-3]") {
+    "[capi][consolidation][adv][adv-3][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5026,7 +5026,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #4",
-    "[capi][consolidation][adv][adv-4]") {
+    "[capi][consolidation][adv][adv-4][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5085,7 +5085,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #5",
-    "[capi][consolidation][adv][adv-5]") {
+    "[capi][consolidation][adv][adv-5][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5144,7 +5144,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #6",
-    "[capi][consolidation][adv][adv-6]") {
+    "[capi][consolidation][adv][adv-6][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5203,7 +5203,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #7",
-    "[capi][consolidation][adv][adv-7]") {
+    "[capi][consolidation][adv][adv-7][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5262,7 +5262,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation #8",
-    "[capi][consolidation][adv][adv-8]") {
+    "[capi][consolidation][adv][adv-8][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5324,7 +5324,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments that don't coincide with space tiles "
     "#1",
-    "[capi][consolidation][not-coinciding-1]") {
+    "[capi][consolidation][not-coinciding-1][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments_not_coinciding();
@@ -5387,7 +5387,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments that don't coincide with space tiles "
     "#2",
-    "[capi][consolidation][not-coinciding-2]") {
+    "[capi][consolidation][not-coinciding-2][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments_not_coinciding_with_gaps();
@@ -5449,7 +5449,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, small buffer size",
-    "[capi][consolidation][adv][buffer-size]") {
+    "[capi][consolidation][adv][buffer-size][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5505,7 +5505,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, encrypted array",
-    "[capi][consolidation][adv][encryption]") {
+    "[capi][consolidation][adv][encryption][non-rest]") {
   remove_dense_vector();
   encryption_type_ = TILEDB_AES_256_GCM;
   encryption_key_ = "0123456789abcdeF0123456789abcdeF";
@@ -5573,7 +5573,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, overwritten fragments, no deletion",
-    "[capi][consolidation][adv][overwritten-no-del]") {
+    "[capi][consolidation][adv][overwritten-no-del][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -5631,7 +5631,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, overwritten fragments, deletion #1",
-    "[capi][adv][consolidation][overwritten-del-1]") {
+    "[capi][adv][consolidation][overwritten-del-1][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_del_1();
@@ -5692,7 +5692,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, overwritten fragments, deletion #2",
-    "[capi][consolidation][adv][overwritten-del-2]") {
+    "[capi][consolidation][adv][overwritten-del-2][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_del_2();
@@ -5754,7 +5754,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, overwritten fragments, deletion #3",
-    "[capi][consolidation][adv][overwritten-del-3]") {
+    "[capi][consolidation][adv][overwritten-del-3][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_del_3();
@@ -5815,7 +5815,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, non-consolidatable",
-    "[capi][consolidation][adv][non-consolidatable]") {
+    "[capi][consolidation][adv][non-consolidatable][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_1();
@@ -5874,7 +5874,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test advanced consolidation, consolidatable",
-    "[capi][consolidation][adv][consolidatable]") {
+    "[capi][consolidation][adv][consolidatable][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_consolidatable_2();
@@ -5961,7 +5961,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation and time traveling",
-    "[capi][consolidation][time-traveling]") {
+    "[capi][consolidation][time-traveling][non-rest]") {
   remove_dense_vector();
   create_dense_vector();
   write_dense_vector_4_fragments();
@@ -6192,7 +6192,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse heterogeneous",
-    "[capi][consolidation][sparse][heter]") {
+    "[capi][consolidation][sparse][heter][non-rest]") {
   remove_sparse_heterogeneous_array();
   create_sparse_heterogeneous_array();
 
@@ -6227,7 +6227,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse string",
-    "[capi][consolidation][sparse][string]") {
+    "[capi][consolidation][sparse][string][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
 
@@ -6339,7 +6339,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidating fragment metadata, sparse string, pass only "
     "context",
-    "[capi][consolidation][fragment-meta][sparse][string]") {
+    "[capi][consolidation][fragment-meta][sparse][string][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
   write_sparse_string_full();
@@ -6425,7 +6425,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation and timestamps",
-    "[capi][consolidation][timestamps]") {
+    "[capi][consolidation][timestamps][non-rest]") {
   remove_dense_array();
   create_dense_array();
 
@@ -6497,7 +6497,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test vacuuming and timestamps",
-    "[capi][vacuuming][timestamps]") {
+    "[capi][vacuuming][timestamps][non-rest]") {
   remove_dense_array();
   create_dense_array();
 
@@ -6847,7 +6847,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse, commits, mixed versions",
-    "[capi][consolidation][commits][mixed-versions]") {
+    "[capi][consolidation][commits][mixed-versions][non-rest]") {
   if constexpr (is_experimental_build) {
     return;
   }
@@ -6920,7 +6920,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense split fragments",
-    "[capi][consolidation][dense][split-fragments]") {
+    "[capi][consolidation][dense][split-fragments][non-rest]") {
   remove_dense_array();
   create_dense_array();
   write_dense_subarray(1, 2, 1, 2);
@@ -6996,7 +6996,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse split fragments",
-    "[capi][consolidation][sparse][split-fragments]") {
+    "[capi][consolidation][sparse][split-fragments][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_row(0);
@@ -7072,7 +7072,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, empty array",
-    "[capi][consolidation][empty]") {
+    "[capi][consolidation][empty][non-rest]") {
   auto sparse = GENERATE(true, false);
   auto mode = GENERATE(
       std::string("commits"),
@@ -7098,7 +7098,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse string, no progress",
-    "[capi][consolidation][sparse][string][no-progress]") {
+    "[capi][consolidation][sparse][string][no-progress][non-rest]") {
   remove_sparse_string_array();
   create_sparse_string_array();
 
@@ -7121,7 +7121,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, fragments/commits out of order",
-    "[capi][consolidation][fragments-commits][out-of-order]") {
+    "[capi][consolidation][fragments-commits][out-of-order][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 

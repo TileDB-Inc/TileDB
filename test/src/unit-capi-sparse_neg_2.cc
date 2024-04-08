@@ -77,7 +77,7 @@ SparseNegFx2::SparseNegFx2()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   auto temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  prefix_ = fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
+  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir);
 }
 
 SparseNegFx2::~SparseNegFx2() {

@@ -218,11 +218,7 @@ NullableArrayFx::~NullableArrayFx() {
 }
 
 const string NullableArrayFx::array_path(const string& array_name) {
-  if (vfs_test_get_fs_vec()[0]->is_rest()) {
-    return "tiledb://unit/" + temp_dir_.path() + array_name;
-  } else {
-    return temp_dir_.path() + array_name;
-  }
+  return vfs_array_uri(vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name);
 }
 
 void NullableArrayFx::create_array(

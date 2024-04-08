@@ -497,9 +497,8 @@ TEST_CASE_METHOD(
     "[capi][dense-neg][dense-neg-vector][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string path =
-      fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-  std::string vector_name = path + "dense_neg_vector";
+  std::string vector_name =
+      vfs_array_uri(fs_vec_[0], temp_dir + "dense_neg_vector");
 
   create_dense_vector(vector_name);
   write_dense_vector(vector_name);
@@ -514,17 +513,16 @@ TEST_CASE_METHOD(
     "[capi][dense-neg][dense-neg-array][rest]") {
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  std::string path =
-      fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
-  std::string vector_name = path + "dense_neg_array";
+  std::string array_name =
+      vfs_array_uri(fs_vec_[0], temp_dir + "dense_neg_array");
 
-  create_dense_array(vector_name);
-  write_dense_array_global(vector_name);
-  write_dense_array_row(vector_name);
-  write_dense_array_col(vector_name);
-  read_dense_array_global(vector_name);
-  read_dense_array_row(vector_name);
-  read_dense_array_col(vector_name);
+  create_dense_array(array_name);
+  write_dense_array_global(array_name);
+  write_dense_array_row(array_name);
+  write_dense_array_col(array_name);
+  read_dense_array_global(array_name);
+  read_dense_array_row(array_name);
+  read_dense_array_col(array_name);
 
   remove_temp_dir(temp_dir);
 }

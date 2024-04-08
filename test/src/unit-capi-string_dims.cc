@@ -180,7 +180,7 @@ StringDimsFx::StringDimsFx()
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
   auto temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
-  prefix_ = fs_vec_[0]->is_rest() ? "tiledb://unit/" + temp_dir : temp_dir;
+  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir);
 }
 
 StringDimsFx::~StringDimsFx() {
@@ -1193,7 +1193,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test sparse array with string dimensions, errors",
-    "[capi][sparse][string-dims][errors][rest-fails][new]") {
+    "[capi][sparse][string-dims][errors][rest-fails][sc-43167]") {
   std::string array_name = prefix_ + "string_dims";
 
   // Create array
@@ -2182,7 +2182,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test multiple var size global writes 1",
-    "[capi][sparse][var-size][multiple-global-writes-1][rest-fails][new]") {
+    "[capi][sparse][var-size][multiple-global-writes-1][rest-fails][sc-"
+    "43168]") {
   std::string array_name = prefix_ + "string_dims";
 
   create_array(
@@ -2290,7 +2291,8 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     StringDimsFx,
     "C API: Test multiple var size global writes 2",
-    "[capi][sparse][var-size][multiple-global-writes-2][rest-fails][new]") {
+    "[capi][sparse][var-size][multiple-global-writes-2][rest-fails][sc-"
+    "43168]") {
   std::string array_name = prefix_ + "string_dims";
 
   create_array(
