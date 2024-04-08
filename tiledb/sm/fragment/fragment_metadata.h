@@ -39,11 +39,11 @@
 #include <unordered_map>
 #include <vector>
 
-#include "ondemand_metadata.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -86,7 +86,9 @@ class FragmentMetadata {
    *     metadata corresponds to.
    */
   FragmentMetadata(
-      ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker);
+      ContextResources* resources,
+      shared_ptr<MemoryTracker> memory_tracker,
+      format_version_t version);
 
   /**
    * Constructor.
@@ -1215,12 +1217,12 @@ class FragmentMetadata {
    */
   void resize_tile_validity_offsets_vectors(uint64_t size);
 
-  inline OndemandMetadata& ondemand_metadata() {
-    return ondemand_metadata_;
+  inline OffsetsFragmentMetadata* offsets_metadata() {
+    return offsets_metadata_;
   }
 
-  inline const OndemandMetadata& ondemand_metadata() const {
-    return ondemand_metadata_;
+  inline const OffsetsFragmentMetadata* offsets_metadata() const {
+    return offsets_metadata_;
   }
 
  private:
@@ -1411,7 +1413,7 @@ class FragmentMetadata {
    */
   std::vector<std::string> processed_conditions_;
 
-  OndemandMetadata ondemand_metadata_;
+  OffsetsFragmentMetadata* offsets_metadata_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -2024,7 +2026,9 @@ class FragmentMetadata {
    */
   void build_idx_map();
 
-  friend class OndemandMetadata;
+  friend class OffsetsFragmentMetadata;
+  friend class OndemandFragmentMetadata;
+  friend class V1V2PreloadedFragmentMetadata;
 };
 
 }  // namespace sm

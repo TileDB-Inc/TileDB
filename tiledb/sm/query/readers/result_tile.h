@@ -96,7 +96,7 @@ class ResultTile {
         const uint64_t tile_idx)
         : tile_size_(validity_only ? 0 : fragment->tile_size(name, tile_idx))
         , tile_persisted_size_(
-              fragment->ondemand_metadata().persisted_tile_size(name, tile_idx))
+              fragment->offsets_metadata()->persisted_tile_size(name, tile_idx))
         , tile_var_size_(
               var_size && !validity_only ?
                   std::optional(fragment->tile_var_size(name, tile_idx)) :

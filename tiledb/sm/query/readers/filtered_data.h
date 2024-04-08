@@ -328,7 +328,7 @@ class FilteredData {
   inline void* fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
     auto offset{
-        fragment->ondemand_metadata().file_offset(name_, rt->tile_idx())};
+        fragment->offsets_metadata()->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
     return current_data_block(TileType::FIXED)->data_at(offset);
   }
@@ -444,7 +444,7 @@ class FilteredData {
       const uint64_t tile_idx) {
     switch (type) {
       case TileType::FIXED:
-        return fragment->ondemand_metadata().file_offset(name_, tile_idx);
+        return fragment->offsets_metadata()->file_offset(name_, tile_idx);
       case TileType::VAR:
         return fragment->file_var_offset(name_, tile_idx);
       case TileType::NULLABLE:
@@ -468,7 +468,7 @@ class FilteredData {
       const uint64_t tile_idx) {
     switch (type) {
       case TileType::FIXED:
-        return fragment->ondemand_metadata().persisted_tile_size(
+        return fragment->offsets_metadata()->persisted_tile_size(
             name_, tile_idx);
       case TileType::VAR:
         return fragment->persisted_tile_var_size(name_, tile_idx);

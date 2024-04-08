@@ -1,5 +1,5 @@
 /**
- * @file  ondemand_metadata.h
+ * @file  offsets_fragment_metadata.h
  *
  * @section LICENSE
  *
@@ -27,11 +27,11 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class OndemandMetadata.
+ * This file defines class OffsetsFragmentMetadata.
  */
 
-#ifndef TILEDB_ONDEMAND_METADATA_H
-#define TILEDB_ONDEMAND_METADATA_H
+#ifndef TILEDB_OFFSETS_FRAGMENT_METADATA_H
+#define TILEDB_OFFSETS_FRAGMENT_METADATA_H
 
 #include <deque>
 #include <mutex>
@@ -52,11 +52,14 @@ namespace sm {
 class FragmentMetadata;
 
 /** Collection of lazily loaded fragment metadata */
-class OndemandMetadata {
+class OffsetsFragmentMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
+
+  /* Destructor */
+  virtual ~OffsetsFragmentMetadata() = default;
 
   /**
    * Constructor.
@@ -65,7 +68,7 @@ class OndemandMetadata {
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    */
-  OndemandMetadata(
+  OffsetsFragmentMetadata(
       FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
@@ -97,18 +100,6 @@ class OndemandMetadata {
       const std::string& name, uint64_t tile_idx) const;
 
   /**
-   * Loads the tile offsets for the input attribute or dimension idx
-   * from storage.
-   */
-  void load_tile_offsets(const EncryptionKey& encryption_key, unsigned idx);
-
-  /**
-   * Loads the tile offsets for the input attribute or dimension from the
-   * input buffer.
-   */
-  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
-
-  /**
    * Loads tile offsets for the attribute/dimension names.
    *
    * @param encryption_key The key the array got opened with.
@@ -116,12 +107,6 @@ class OndemandMetadata {
    */
   void load_tile_offsets(
       const EncryptionKey& encryption_key, std::vector<std::string>& names);
-
-  /**
-   * Loads the tile offsets for the input attribute from the input buffer.
-   * Applicable to versions 1 and 2
-   */
-  void load_tile_offsets(Deserializer& deserializer);
 
   /** Frees the memory associated with tile_offsets. */
   void free_tile_offsets();
@@ -142,7 +127,7 @@ class OndemandMetadata {
    */
   void resize_tile_offsets_vectors(uint64_t size);
 
- private:
+ protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
@@ -166,9 +151,22 @@ class OndemandMetadata {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /**
+   * Loads the tile offsets for the input attribute or dimension idx
+   * from storage.
+   */
+  virtual void load_tile_offsets(
+      const EncryptionKey& encryption_key, unsigned idx) = 0;
+
+  /**
+   * Loads the tile offsets for the input attribute or dimension from the
+   * input buffer.
+   */
+  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_ONDEMAND_METADATA_H
+#endif  // TILEDB_OFFSETS_FRAGMENT_METADATA_H

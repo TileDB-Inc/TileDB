@@ -1,5 +1,5 @@
 /**
- * @file   ondemand_metadata.cc
+ * @file   offsets_fragment_metadata.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the OndemandMetadata class.
+ * This file implements the OffsetsFragmentMetadata class.
  */
 
 #include "tiledb/common/common.h"
@@ -47,7 +47,7 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/fragment/ondemand_metadata.h"
+#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
@@ -69,7 +69,7 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-OndemandMetadata::OndemandMetadata(
+OffsetsFragmentMetadata::OffsetsFragmentMetadata(
     FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker)
     : parent_fragment_(parent)
     , memory_tracker_(memory_tracker)
@@ -80,7 +80,7 @@ OndemandMetadata::OndemandMetadata(
 /*                API                */
 /* ********************************* */
 
-uint64_t OndemandMetadata::persisted_tile_size(
+uint64_t OffsetsFragmentMetadata::persisted_tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -99,35 +99,7 @@ uint64_t OndemandMetadata::persisted_tile_size(
   return tile_size;
 }
 
-void OndemandMetadata::load_tile_offsets(
-    const EncryptionKey& encryption_key, unsigned idx) {
-  if (parent_fragment_.version_ <= 2) {
-    return;
-  }
-
-  // If the tile offset is already loaded, exit early to avoid the lock
-  if (parent_fragment_.loaded_metadata_.tile_offsets_[idx]) {
-    return;
-  }
-
-  std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
-
-  if (parent_fragment_.loaded_metadata_.tile_offsets_[idx]) {
-    return;
-  }
-
-  auto tile = parent_fragment_.read_generic_tile_from_file(
-      encryption_key, parent_fragment_.gt_offsets_.tile_offsets_[idx]);
-  parent_fragment_.resources_->stats().add_counter(
-      "read_tile_offsets_size", tile->size());
-
-  Deserializer deserializer(tile->data(), tile->size());
-  load_tile_offsets(idx, deserializer);
-
-  parent_fragment_.loaded_metadata_.tile_offsets_[idx] = true;
-}
-
-void OndemandMetadata::load_tile_offsets(
+void OffsetsFragmentMetadata::load_tile_offsets(
     unsigned idx, Deserializer& deserializer) {
   uint64_t tile_offsets_num = 0;
 
@@ -152,7 +124,7 @@ void OndemandMetadata::load_tile_offsets(
   }
 }
 
-void OndemandMetadata::load_tile_offsets(
+void OffsetsFragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
   // Sort 'names' in ascending order of their index. The
   // motivation is to load the offsets in order of their
@@ -190,44 +162,7 @@ void OndemandMetadata::load_tile_offsets(
   }
 }
 
-// Applicable only to versions 1 and 2
-void OndemandMetadata::load_tile_offsets(Deserializer& deserializer) {
-  uint64_t tile_offsets_num = 0;
-  unsigned int attribute_num = parent_fragment_.array_schema_->attribute_num();
-
-  // Allocate tile offsets
-  tile_offsets_.resize(attribute_num + 1);
-  tile_offsets_mtx_.resize(attribute_num + 1);
-
-  // For all attributes, get the tile offsets
-  for (unsigned int i = 0; i < attribute_num + 1; ++i) {
-    // Get number of tile offsets
-    tile_offsets_num = deserializer.read<uint64_t>();
-
-    if (tile_offsets_num == 0)
-      continue;
-
-    auto size = tile_offsets_num * sizeof(uint64_t);
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
-      throw FragmentMetadataStatusException(
-          "Cannot load tile offsets; Insufficient memory budget; Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
-          " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
-    }
-
-    // Get tile offsets
-    tile_offsets_[i].resize(tile_offsets_num);
-    deserializer.read(&tile_offsets_[i][0], size);
-  }
-
-  parent_fragment_.loaded_metadata_.tile_offsets_.resize(
-      parent_fragment_.array_schema_->attribute_num() + 1, true);
-}
-
-void OndemandMetadata::free_tile_offsets() {
+void OffsetsFragmentMetadata::free_tile_offsets() {
   for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
@@ -283,7 +218,7 @@ void OndemandMetadata::free_tile_offsets() {
   }
 }
 
-uint64_t OndemandMetadata::file_offset(
+uint64_t OffsetsFragmentMetadata::file_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -296,7 +231,7 @@ uint64_t OndemandMetadata::file_offset(
   return tile_offsets_[idx][tile_idx];
 }
 
-void OndemandMetadata::resize_tile_offsets_vectors(uint64_t size) {
+void OffsetsFragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
   tile_offsets_mtx_.resize(size);
   tile_offsets_.resize(size);
 }

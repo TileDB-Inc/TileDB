@@ -228,7 +228,10 @@ single_fragment_info_from_capnp(
 
     auto memory_tracker = fragment_info->resources()->create_memory_tracker();
     meta = make_shared<FragmentMetadata>(
-        HERE(), fragment_info->resources(), memory_tracker);
+        HERE(),
+        fragment_info->resources(),
+        memory_tracker,
+        frag_meta_reader.getVersion());
     auto st =
         fragment_metadata_from_capnp(schema->second, frag_meta_reader, meta);
   } else {

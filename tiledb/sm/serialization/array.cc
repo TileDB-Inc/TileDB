@@ -307,7 +307,10 @@ void array_from_capnp(
     fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
       auto meta = make_shared<FragmentMetadata>(
-          HERE(), &resources, array->memory_tracker());
+          HERE(),
+          &resources,
+          array->memory_tracker(),
+          frag_meta_reader.getVersion());
       throw_if_not_ok(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
       if (client_side) {

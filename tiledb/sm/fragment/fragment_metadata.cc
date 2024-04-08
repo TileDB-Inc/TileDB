@@ -44,6 +44,8 @@
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
+#include "tiledb/sm/fragment/ondemand_fragment_metadata.h"
+#include "tiledb/sm/fragment/v1v2preloaded_fragment_metadata.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/utils.h"
@@ -71,7 +73,9 @@ namespace tiledb::sm {
 /* ****************************** */
 
 FragmentMetadata::FragmentMetadata(
-    ContextResources* resources, shared_ptr<MemoryTracker> memory_tracker)
+    ContextResources* resources,
+    shared_ptr<MemoryTracker> memory_tracker,
+    format_version_t version)
     : resources_(resources)
     , memory_tracker_(memory_tracker)
     , rtree_(RTree(nullptr, constants::rtree_fanout, memory_tracker_))
@@ -88,7 +92,13 @@ FragmentMetadata::FragmentMetadata(
     , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
           memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
-    , ondemand_metadata_(*this, memory_tracker) {
+    , version_(version) {
+  if (version_ <= 2) {
+    offsets_metadata_ =
+        new V1V2PreloadedFragmentMetadata(*this, memory_tracker);
+  } else {
+    offsets_metadata_ = new OndemandFragmentMetadata(*this, memory_tracker);
+  }
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -131,13 +141,21 @@ FragmentMetadata::FragmentMetadata(
           memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
-    , array_uri_(array_schema_->array_uri())
-    , ondemand_metadata_(*this, memory_tracker) {
+    , array_uri_(array_schema_->array_uri()) {
   build_idx_map();
   array_schema_name_ = array_schema_->name();
+
+  if (version_ <= 2) {
+    offsets_metadata_ =
+        new V1V2PreloadedFragmentMetadata(*this, memory_tracker);
+  } else {
+    offsets_metadata_ = new OndemandFragmentMetadata(*this, memory_tracker);
+  }
 }
 
-FragmentMetadata::~FragmentMetadata() = default;
+FragmentMetadata::~FragmentMetadata() {
+  delete offsets_metadata_;
+};
 
 /* ****************************** */
 /*                API             */
@@ -160,8 +178,8 @@ void FragmentMetadata::set_tile_offset(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < ondemand_metadata_.tile_offsets()[idx].size());
-  ondemand_metadata_.tile_offsets()[idx][tid] = file_sizes_[idx];
+  assert(tid < offsets_metadata_->tile_offsets()[idx].size());
+  offsets_metadata_->tile_offsets()[idx][tid] = file_sizes_[idx];
   file_sizes_[idx] += step;
 }
 
@@ -719,7 +737,7 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
   last_tile_cell_num_ = 0;
 
   // Initialize tile offsets
-  ondemand_metadata_.resize_tile_offsets_vectors(num);
+  offsets_metadata_->resize_tile_offsets_vectors(num);
   file_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
     file_sizes_[i] = 0;
@@ -1202,7 +1220,7 @@ void FragmentMetadata::store_v15_or_higher(
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   for (auto& it : idx_map_) {
     auto i = it.second;
-    assert(num_tiles >= ondemand_metadata_.tile_offsets()[i].size());
+    assert(num_tiles >= offsets_metadata_->tile_offsets()[i].size());
 
     // Get the fixed cell size
     const auto is_dim = array_schema_->is_dim(it.first);
@@ -1210,7 +1228,7 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
     const auto cell_size = var_size ? constants::cell_var_offset_size :
                                       array_schema_->cell_size(it.first);
 
-    ondemand_metadata_.tile_offsets()[i].resize(num_tiles, 0);
+    offsets_metadata_->tile_offsets()[i].resize(num_tiles, 0);
     tile_var_offsets_[i].resize(num_tiles, 0);
     tile_var_sizes_[i].resize(num_tiles, 0);
     tile_validity_offsets_[i].resize(num_tiles, 0);
@@ -3408,7 +3426,8 @@ void FragmentMetadata::load_v1_v2(
   load_non_empty_domain(deserializer);
   load_mbrs(deserializer);
   load_bounding_coords(deserializer);
-  ondemand_metadata().load_tile_offsets(deserializer);
+  static_cast<V1V2PreloadedFragmentMetadata*>(offsets_metadata_)
+      ->load_tile_offsets(deserializer);
   load_tile_var_offsets(deserializer);
   load_tile_var_sizes(deserializer);
   load_last_tile_cell_num(deserializer);
@@ -3501,7 +3520,7 @@ void FragmentMetadata::load_footer(
                  has_delete_meta_ * 2;
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
-  ondemand_metadata_.resize_tile_offsets_vectors(num);
+  offsets_metadata_->resize_tile_offsets_vectors(num);
   tile_var_offsets_.resize(num);
   tile_var_offsets_mtx_.resize(num);
   tile_var_sizes_.resize(num);
@@ -3804,13 +3823,13 @@ void FragmentMetadata::store_tile_offsets(
 void FragmentMetadata::write_tile_offsets(
     unsigned idx, Serializer& serializer) {
   // Write number of tile offsets
-  uint64_t tile_offsets_num = ondemand_metadata_.tile_offsets()[idx].size();
+  uint64_t tile_offsets_num = offsets_metadata_->tile_offsets()[idx].size();
   serializer.write<uint64_t>(tile_offsets_num);
 
   // Write tile offsets
   if (tile_offsets_num != 0) {
     serializer.write(
-        &ondemand_metadata_.tile_offsets()[idx][0],
+        &offsets_metadata_->tile_offsets()[idx][0],
         tile_offsets_num * sizeof(uint64_t));
   }
 }
