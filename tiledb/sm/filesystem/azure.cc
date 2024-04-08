@@ -210,14 +210,22 @@ Azure::AzureClientSingleton::get(const AzureParameters& params) {
   // Construct the Azure SDK blob service client.
   // We pass a shared key if it was specified.
   if (!params.account_key_.empty()) {
-    client_ =
-        tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
-            ::Azure::Storage::Blobs::BlobServiceClient,
-            params.blob_endpoint_,
-            make_shared<::Azure::Storage::StorageSharedKeyCredential>(
-                HERE(), params.account_name_, params.account_key_),
-            options));
-    return *client_;
+    // If we don't have an account name, warn and try other authentication
+    // methods.
+    if (params.account_name_.empty()) {
+      LOG_WARN(
+          "Azure storage account name must be set when specifying account key. "
+          "Account key will be ignored.");
+    } else {
+      client_ =
+          tdb_unique_ptr<::Azure::Storage::Blobs::BlobServiceClient>(tdb_new(
+              ::Azure::Storage::Blobs::BlobServiceClient,
+              params.blob_endpoint_,
+              make_shared<::Azure::Storage::StorageSharedKeyCredential>(
+                  HERE(), params.account_name_, params.account_key_),
+              options));
+      return *client_;
+    }
   }
 
   // Otherwise, if we did not specify an SAS token
