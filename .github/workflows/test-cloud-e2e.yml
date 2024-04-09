@@ -1,50 +1,35 @@
-name: CI Azure
+name: End-to-End cloud service tests
 on:
-  workflow_call:
   workflow_dispatch:
     inputs:
-      ci_backend:
-        description: 'Name of the job backend/target'
-        default: ''
-        required: false
-        type: string
-      ci_option:
-        description: 'Name of the job option for display'
-        default: ''
-        required: false
-        type: string
-      bootstrap_args:
-        default: ''
-        required: false
-        type: string
-      matrix_image:
-        default: ''
+      run_azure:
+        description: 'Run Azure tests'
         required: true
-        type: string
+        default: true
+        type: boolean
   push:
     branches:
       - dev
       - release-*
 
 env:
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=x64-${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'linux' || 'osx' }} ${{ inputs.bootstrap_args }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
 jobs:
-  build:
-    strategy:
-      matrix:
-        os:
-          - ${{ inputs.matrix_image }}
-    runs-on: ${{matrix.os}}
-
-    name: ${{matrix.os}} - ${{ inputs.ci_backend }}${{ inputs.ci_option }}
+  azure:
+    runs-on: ubuntu-latest
+    if: inputs.run_azure != 'false'
+    environment: azure-e2e-test
+    env:
+      bootstrap_args: --enable-azure --enable-ccache
+    permissions:
+      id-token: write # Get OIDC token for authentication to Azure
+    name: Azure
     steps:
       - uses: actions/checkout@v3
         with:
-            submodules: true
-            fetch-depth: 0
+          fetch-depth: 0
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
@@ -83,7 +68,7 @@ jobs:
           source $GITHUB_WORKSPACE/scripts/ci/build_libtiledb.sh
 
       - name: 'Az CLI login'
-        uses: azure/login@v1
+        uses: azure/login@v2
         with:
           client-id: ${{ secrets.AZURE_CLIENT_ID }}
           tenant-id: ${{ secrets.AZURE_TENANT_ID }}
@@ -93,7 +78,9 @@ jobs:
         id: test
         shell: bash
         env:
-          VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
+          # Allow forks to specify different values.
+          AZURE_STORAGE_ACCOUNT: ${{ vars.AZURE_STORAGE_ACCOUNT || 'tiledbci' }}
+          TILEDB_VFS_E2E_TEST_FILE: ${{ vars.AZURE_E2E_TEST_FILE || 'azure://tiledb/test.txt' }}
         run: |
           set -e pipefail
 
@@ -107,7 +94,7 @@ jobs:
           # Run tests
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          ./tiledb/test/tiledb_unit -d yes "[ci_only][vfs][azure_entra]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes "[vfs][e2e]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |
