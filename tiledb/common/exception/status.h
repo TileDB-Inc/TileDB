@@ -271,17 +271,9 @@ inline Status Status_ArraySchemaEvolutionError(const std::string& msg) {
 inline Status Status_IOError(const std::string& msg) {
   return {"[TileDB::IO] Error", msg};
 }
-/** Return a GZip error class Status with a given message **/
-inline Status Status_GZipError(const std::string& msg) {
-  return {"[TileDB::GZip] Error", msg};
-}
 /** Return a ChecksumError error class Status with a given message **/
 inline Status Status_ChecksumError(const std::string& msg) {
   return {"[TileDB::ChecksumError] Error", msg};
-}
-/** Return a Compression error class Status with a given message **/
-inline Status Status_CompressionError(const std::string& msg) {
-  return {"[TileDB::Compression] Error", msg};
 }
 /** Return a Tile error class Status with a given message **/
 inline Status Status_TileError(const std::string& msg) {

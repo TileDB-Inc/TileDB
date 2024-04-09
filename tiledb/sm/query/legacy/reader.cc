@@ -1575,7 +1575,7 @@ Status Reader::compute_result_cell_slabs_global(
     tile_subarrays.emplace_back(
         subarray.crop_to_tile((const T*)&tc[0], cell_order));
     auto& tile_subarray = tile_subarrays.back();
-    throw_if_not_ok(tile_subarray.template compute_tile_coords<T>());
+    tile_subarray.template compute_tile_coords<T>();
 
     RETURN_NOT_OK(compute_result_cell_slabs_row_col<T>(
         tile_subarray,
@@ -1742,7 +1742,7 @@ Status Reader::dense_read() {
   std::vector<ResultTile*> result_tiles;
   auto& subarray = read_state_.partitioner_.current();
 
-  RETURN_NOT_OK(subarray.compute_tile_coords<T>());
+  subarray.compute_tile_coords<T>();
   RETURN_NOT_OK(compute_result_cell_slabs<T>(
       subarray,
       result_space_tiles,

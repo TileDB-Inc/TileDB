@@ -442,6 +442,19 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   Config config = set_config_params(disable_multipart, max_parallel_ops);
   VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
+  // Getting file_size on a nonexistent blob shouldn't crash on Azure
+  uint64_t nbytes = 0;
+  URI non_existent = URI(path.to_string() + "non_existent");
+  if (path.is_file()) {
+#ifdef _WIN32
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+#else
+    CHECK_THROWS(vfs.file_size(non_existent, &nbytes));
+#endif
+  } else {
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+  }
+
   // Set up
   bool exists = false;
   if (path.is_gcs() || path.is_s3() || path.is_azure()) {
@@ -494,7 +507,6 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   CHECK(exists);
 
   // Get file sizes
-  uint64_t nbytes = 0;
   require_tiledb_ok(vfs.file_size(largefile, &nbytes));
   CHECK(nbytes == (buffer_size));
   require_tiledb_ok(vfs.file_size(smallfile, &nbytes));

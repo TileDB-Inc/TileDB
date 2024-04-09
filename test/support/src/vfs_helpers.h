@@ -95,6 +95,10 @@ void vfs_test_remove_temp_dir(
 
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
+
+std::string vfs_array_uri(
+    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name);
+
 /**
  * This class defines and manipulates
  * a list of supported filesystems.
@@ -884,21 +888,35 @@ struct TemporaryDirectoryFixture {
  * {
  * tiledb::test::VFSTestSetup vfs_test_setup{"foo_array"};
  * auto ctx = vfs_test_setup.ctx();
+ * auto array_uri = vfs_test_setup.array_uri("quickstart_sparse");
  * Array array(ctx, array_uri, TILEDB_WRITE);
  * ...
  * } // ctx context is destroyed and VFS directories removed
  *
  */
 struct VFSTestSetup {
-  VFSTestSetup(tiledb_config_t* config = nullptr)
+  VFSTestSetup(tiledb_config_t* config = nullptr, bool remove_tmpdir = true)
       : fs_vec(vfs_test_get_fs_vec())
       , ctx_c{nullptr}
       , vfs_c{nullptr}
       , cfg_c{config} {
     vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
     temp_dir = fs_vec[0]->temp_dir();
-    vfs_test_create_temp_dir(ctx_c, vfs_c, temp_dir);
+    if (remove_tmpdir) {
+      vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
+    }
+    tiledb_vfs_create_dir(ctx_c, vfs_c, temp_dir.c_str());
   };
+
+  void update_config(tiledb_config_t* config) {
+    // free resources
+    tiledb_ctx_free(&ctx_c);
+    tiledb_vfs_free(&vfs_c);
+    cfg_c = config;
+
+    // reallocate with input config
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
+  }
 
   bool is_rest() {
     return fs_vec[0]->is_rest();
@@ -908,10 +926,12 @@ struct VFSTestSetup {
     return fs_vec[0]->is_local();
   }
 
-  std::string array_uri(const std::string& array_name) {
-    return (
-        fs_vec[0]->is_rest() ? "tiledb://unit/" + temp_dir + array_name :
-                               temp_dir + array_name);
+  std::string array_uri(
+      const std::string& array_name, bool strip_tiledb_prefix = false) {
+    auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
+                   ("tiledb://unit/" + temp_dir + array_name) :
+                   (temp_dir + array_name);
+    return uri;
   }
 
   Context ctx() {
@@ -920,7 +940,7 @@ struct VFSTestSetup {
 
   ~VFSTestSetup() {
     vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
-    CHECK(vfs_test_close(fs_vec, ctx_c, vfs_c).ok());
+    vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
 
     tiledb_ctx_free(&ctx_c);
     tiledb_vfs_free(&vfs_c);

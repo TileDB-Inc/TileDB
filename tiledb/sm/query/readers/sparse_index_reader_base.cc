@@ -379,10 +379,10 @@ Status SparseIndexReaderBase::load_initial_data() {
     // Tile ranges computation will not stop if it exceeds memory budget.
     // This is ok as it is a soft limit and will be taken into consideration
     // below.
-    RETURN_NOT_OK(subarray_.precompute_all_ranges_tile_overlap(
+    subarray_.precompute_all_ranges_tile_overlap(
         storage_manager_->compute_tp(),
         read_state_.frag_idx(),
-        &tmp_read_state_));
+        &tmp_read_state_);
 
     if (tmp_read_state_.memory_used_tile_ranges() >
         memory_budget_.ratio_tile_ranges() * memory_budget_.total_budget())
@@ -391,8 +391,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   } else {
     for (const auto& [name, _] : aggregates_) {
       if (array_schema_.is_dim(name)) {
-        throw_if_not_ok(subarray_.load_relevant_fragment_rtrees(
-            storage_manager_->compute_tp()));
+        subarray_.load_relevant_fragment_rtrees(storage_manager_->compute_tp());
         break;
       }
     }

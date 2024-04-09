@@ -55,12 +55,9 @@ void magic_dict::prepare_data() {
     return;
 
   expanded_buffer_ = make_shared<tiledb::sm::ByteVecValue>(HERE());
-  if (!gzip_decompress(
-           expanded_buffer_,
-           reinterpret_cast<const uint8_t*>(&magic_mgc_compressed_bytes[0]))
-           .ok()) {
-    throw std::runtime_error("gzip_decompress failure!");
-  }
+  gzip_decompress(
+      expanded_buffer_,
+      reinterpret_cast<const uint8_t*>(&magic_mgc_compressed_bytes[0]));
 
   uncompressed_magic_dict_ = expanded_buffer_.get()->data();
 }

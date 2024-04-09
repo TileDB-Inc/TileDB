@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
@@ -1122,22 +1123,10 @@ TEST_CASE_METHOD(
 
 TEST_CASE(
     "Sparse global order reader: user buffer cannot fit single cell",
-    "[sparse-global-order][user-buffer][too-small]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(true, false);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
-  std::string array_name = "test_sparse_global_order";
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+    "[sparse-global-order][user-buffer][too-small][rest]") {
+  VFSTestSetup vfs_test_setup;
+  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1171,15 +1160,7 @@ TEST_CASE(
   query.set_offsets_buffer("a", a1_offsets);
 
   // Submit query
-  ServerQueryBuffers server_buffers_;
-  auto rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit_and_finalize();
 
   // Read using a buffer that can't fit a single result
   Array array2(ctx, array_name, TILEDB_READ);
@@ -1198,48 +1179,26 @@ TEST_CASE(
 
   // The user buffer cannot fit a single result so it should return Incomplete
   // with the right reason
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query2,
-      server_buffers_,
-      serialized,
-      refactored_query_v2,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query2.submit();
   REQUIRE(query2.query_status() == Query::Status::INCOMPLETE);
 
-  // For remote arrays the reason is always TILEDB_REASON_USER_BUFFER_SIZE,
-  // but we can't test it here since we simulate "remote" arrays by using a
-  // local URI so the array->is_remote() check will fail, and we won't get the
-  // correct result.
-  if (!serialized) {
-    tiledb_query_status_details_t details;
-    rc = tiledb_query_get_status_details(
-        ctx.ptr().get(), query2.ptr().get(), &details);
-    CHECK(rc == TILEDB_OK);
-    CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
-  }
+  tiledb_query_status_details_t details;
+  auto rc = tiledb_query_get_status_details(
+      ctx.ptr().get(), query2.ptr().get(), &details);
+  CHECK(rc == TILEDB_OK);
+  CHECK(details.incomplete_reason == TILEDB_REASON_USER_BUFFER_SIZE);
 
   array2.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE(
     "Sparse global order reader: attribute copy memory limit",
-    "[sparse-global-order][attribute-copy][memory-limit]") {
-  std::string array_name = "test_sparse_global_order";
+    "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
   config["sm.mem.total_budget"] = "10000";
-  Context ctx(config);
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
+  VFSTestSetup vfs_test_setup(config.ptr().get());
+  std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
+  auto ctx = vfs_test_setup.ctx();
 
   // Create array with var-sized attribute.
   Domain dom(ctx);
@@ -1274,8 +1233,7 @@ TEST_CASE(
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("a", a1_data);
   query.set_offsets_buffer("a", a1_offsets);
-  CHECK_NOTHROW(query.submit());
-  CHECK_NOTHROW(query.finalize());
+  CHECK_NOTHROW(query.submit_and_finalize());
 
   // Read using a budget that can only fit one of the var size tiles.
   Array array2(ctx, array_name, TILEDB_READ);
@@ -1304,10 +1262,6 @@ TEST_CASE(
   CHECK(result_num == 4);
 
   array2.close();
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
-  }
 }
 
 TEST_CASE_METHOD(

@@ -1179,7 +1179,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, simultaneous writes",
-    "[capi][rest][dense][dense-simultaneous-writes]") {
+    "[capi][non-rest][dense][dense-simultaneous-writes]") {
+  // Parallel array open requests on the same array fail on
+  // remote arrays, as locking cannot work on Cloud REST
+  // server to synchronize them, so we exclude this test
+  // from REST-CI
   check_simultaneous_writes();
 }
 

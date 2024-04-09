@@ -113,17 +113,17 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   // underneath add_ranges_list to determine the size of the values being
   // iterated over.
   uint64_t ranges[] = {1, 2, 4, 5, 7, 8, 10, 11};
-  CHECK(sa.add_ranges_list(0, ranges, 8).ok());
-  CHECK(sa.add_ranges_list(1, ranges, 8).ok());
+  CHECK_NOTHROW(sa.add_ranges_list(0, ranges, 8));
+  CHECK_NOTHROW(sa.add_ranges_list(1, ranges, 8));
   uint64_t range_num;
-  CHECK(sa.get_range_num(0, &range_num).ok());
+  CHECK_NOTHROW(sa.get_range_num(0, &range_num));
   CHECK(range_num == 4);
 
   // Check ranges
   for (uint32_t dim_idx = 0; dim_idx < 1; dim_idx++) {
     for (uint32_t idx = 0; idx < range_num; idx++) {
       const void *start, *end;
-      CHECK(sa.get_range(dim_idx, idx, &start, &end).ok());
+      CHECK_NOTHROW(sa.get_range(dim_idx, idx, &start, &end));
       CHECK(*(uint64_t*)start == ranges[idx * 2]);
       CHECK(*(uint64_t*)end == ranges[idx * 2 + 1]);
     }
