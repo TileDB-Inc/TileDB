@@ -53,12 +53,6 @@ struct ConsolidationWithTimestampsFx {
   VFS vfs_;
   sm::StorageManager* sm_;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   // Constructors/destructors.
   ConsolidationWithTimestampsFx();
   ~ConsolidationWithTimestampsFx();
@@ -183,14 +177,7 @@ void ConsolidationWithTimestampsFx::write_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit query
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit_and_finalize();
 
   // Close array.
   array.close();
@@ -220,14 +207,7 @@ void ConsolidationWithTimestampsFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit query
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit_and_finalize();
 
   // Close array.
   array.close();
@@ -323,15 +303,7 @@ void ConsolidationWithTimestampsFx::read_sparse(
   }
 
   // Submit the query.
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -367,15 +339,7 @@ void ConsolidationWithTimestampsFx::reopen_sparse(
   }
 
   // Submit the query.
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -404,17 +368,7 @@ bool ConsolidationWithTimestampsFx::is_array(const std::string& array_name) {
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps",
-    "[cppapi][consolidation-with-timestamps][write-check]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][consolidation-with-timestamps][write-check][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -441,19 +395,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check directory contents",
-    "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
+    "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups][non-"
+    "rest]") {
   remove_sparse_array();
   create_sparse_array(true);
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
 
@@ -505,14 +451,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read",
-    "[cppapi][consolidation-with-timestamps][global-read]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][consolidation-with-timestamps][global-read][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -559,20 +498,11 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check directory contents of "
     "old array",
-    "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups]") {
+    "[cppapi][consolidation-with-timestamps][sparse-unordered-with-dups][non-"
+    "rest]") {
   if constexpr (is_experimental_build) {
     return;
   }
-
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   remove_sparse_array();
   create_sparse_array_v11();
@@ -629,14 +559,8 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read, all cells same "
     "coords",
-    "[cppapi][consolidation-with-timestamps][global-read][same-coords]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][consolidation-with-timestamps][global-read][same-coords][non-"
+    "rest]") {
   remove_sparse_array();
   create_sparse_array();
 
@@ -675,14 +599,8 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, global read, same coords "
     "across tiles",
-    "[cppapi][consolidation-with-timestamps][global-read][across-tiles]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][consolidation-with-timestamps][global-read][across-tiles][non-"
+    "rest]") {
   remove_sparse_array();
   bool allow_dups = GENERATE(true, false);
   create_sparse_array(allow_dups);
@@ -738,19 +656,10 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, all cells same "
     "coords, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][same-coords][mem-"
-    "budget]") {
+    "budget][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
   // Write fragments.
   for (uint64_t i = 0; i < 50; i++) {
     std::vector<int> a(1);
@@ -791,19 +700,10 @@ TEST_CASE_METHOD(
     "CPP API: Test consolidation with timestamps, global read, same cells "
     "across tiles, with memory budget",
     "[cppapi][consolidation-with-timestamps][global-read][across-tiles][mem-"
-    "budget]") {
+    "budget][non-rest]") {
   remove_sparse_array();
   create_sparse_array();
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
   // Write fragments.
   // We write 8 cells per fragment for 6 fragments. Then it gets consolidated
   // into one. So we'll get in order 6xcell1, 6xcell2... total 48 cells. Tile
@@ -851,17 +751,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, partial read with dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -945,17 +838,11 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, partial read without dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][no-dups]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][no-dups][non-"
+    "rest]") {
   remove_sparse_array();
   // No duplicates.
   create_sparse_array();
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1024,17 +911,10 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, full and partial read with "
     "dups",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1177,17 +1057,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, reopen",
-    "[cppapi][consolidation-with-timestamps][partial-read][dups]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][dups][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1292,17 +1165,10 @@ TEST_CASE_METHOD(
     "CPP API: Test read timestamps of unconsolidated fragments, unordered "
     "reader",
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
-    "reader]") {
+    "reader][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1392,7 +1258,7 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test read timestamps, unordered reader, overlapping ranges",
     "[cppapi][consolidation-with-timestamps][read-timestamps][unordered-"
-    "reader][overlapping-ranges][SC-18541]") {
+    "reader][overlapping-ranges][SC-18541][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
@@ -1409,15 +1275,6 @@ TEST_CASE_METHOD(
   sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   // Write second fragment.
@@ -1456,15 +1313,7 @@ TEST_CASE_METHOD(
   query.add_range<uint64_t>(1, 2, 3);
 
   // Submit/finalize the query
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Expect to read what the first 2 writes wrote: each element will
@@ -1522,17 +1371,10 @@ TEST_CASE_METHOD(
     "CPP API: Test read timestamps of unconsolidated fragments, global order "
     "reader",
     "[cppapi][consolidation-with-timestamps][read-timestamps][global-order-"
-    "reader]") {
+    "reader][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(true, false);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   // Write first fragment.
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
@@ -1632,7 +1474,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, check number of tiles read",
-    "[cppapi][consolidation-with-timestamps][partial-read][stats]") {
+    "[cppapi][consolidation-with-timestamps][partial-read][stats][non-rest]") {
   remove_sparse_array();
   // Enable duplicates.
   create_sparse_array(true);
@@ -1718,15 +1560,6 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
-    SECTION("no serialization") {
-      serialize_ = false;
-    }
-#ifdef TILEDB_SERIALIZATION
-    SECTION("serialization enabled global order write") {
-      serialize_ = true;
-      refactored_query_v2_ = GENERATE(true, false);
-    }
-#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1746,15 +1579,6 @@ TEST_CASE_METHOD(
     remove_sparse_array();
     create_sparse_array(false);
 
-    SECTION("no serialization") {
-      serialize_ = false;
-    }
-#ifdef TILEDB_SERIALIZATION
-    SECTION("serialization enabled global order write") {
-      serialize_ = true;
-      refactored_query_v2_ = GENERATE(true, false);
-    }
-#endif
     // Write first fragment.
     write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
     // Write second fragment.
@@ -1785,14 +1609,8 @@ TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, consolidate consolidated"
     " fragment with timestamps",
-    "[cppapi][consolidation-with-timestamps][frag-w-timestamps]") {
+    "[cppapi][consolidation-with-timestamps][frag-w-timestamps][non-rest]") {
   remove_sparse_array();
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   bool dups = GENERATE(true, false);
 
@@ -1869,14 +1687,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationWithTimestampsFx,
     "CPP API: Test consolidation with timestamps, ts tiles kept in memory",
-    "[cppapi][consolidation-with-timestamps][ts-tile-in-memory]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    "[cppapi][consolidation-with-timestamps][ts-tile-in-memory][non-rest]") {
   remove_sparse_array();
 
   // Enable duplicates.
@@ -1908,15 +1719,7 @@ TEST_CASE_METHOD(
   query.set_data_buffer(tiledb_timestamps(), timestamps);
 
   // Submit the query.
-  auto rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   CHECK(query.query_status() == Query::Status::INCOMPLETE);
 
   // Validate.
@@ -1931,15 +1734,7 @@ TEST_CASE_METHOD(
       !memcmp(c_ts.data(), timestamps.data(), c_ts.size() * sizeof(uint64_t)));
 
   // Submit again.
-  rc = test::submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Validate.

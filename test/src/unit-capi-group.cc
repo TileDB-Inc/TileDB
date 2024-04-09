@@ -415,12 +415,10 @@ TEST_CASE_METHOD(
     "[capi][group][metadata][rest][regression][sc-4821]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
-  std::string fs_temp_dir = fs_vec_[0]->temp_dir();
-  create_temp_dir(fs_temp_dir);
-  std::string temp_dir =
-      fs_vec_[0]->is_rest() ? "tiledb://unit/" + fs_temp_dir : fs_temp_dir;
+  std::string temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1");
 
-  std::string group1_uri = temp_dir + "group1";
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group;
@@ -512,7 +510,7 @@ TEST_CASE_METHOD(
   rc = tiledb_group_close(ctx_, group);
   REQUIRE(rc == TILEDB_OK);
   tiledb_group_free(&group);
-  remove_temp_dir(fs_temp_dir);
+  remove_temp_dir(temp_dir);
 }
 
 TEST_CASE_METHOD(

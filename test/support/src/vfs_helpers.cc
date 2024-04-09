@@ -149,6 +149,15 @@ void vfs_test_create_temp_dir(
   CHECK(tiledb_vfs_create_dir(ctx, vfs, path.c_str()) == TILEDB_OK);
 }
 
+std::string vfs_array_uri(
+    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name) {
+  if (fs->is_rest()) {
+    return ("tiledb://unit/" + array_name);
+  } else {
+    return array_name;
+  }
+}
+
 Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {

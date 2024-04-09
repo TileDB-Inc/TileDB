@@ -1247,17 +1247,6 @@ TEST_CASE(
     "Backwards compatibility: Upgrades an array of older version and "
     "write/read it",
     "[backwards-compat][upgrade-version][write-read-new-version]") {
-  bool serialize = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialize = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
   std::string array_name(arrays_dir + "/non_split_coords_v1_4_0");
   Context ctx;
   std::string schema_folder;
@@ -1281,13 +1270,7 @@ TEST_CASE(
       .set_data_buffer("d2", d2_read1);
 
   ServerQueryBuffers server_buffers;
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_read1,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_read1.submit();
   array_read1.close();
 
   for (int i = 0; i < 4; i++) {
@@ -1308,30 +1291,12 @@ TEST_CASE(
   query_write.set_data_buffer("d1", d1_write);
   query_write.set_data_buffer("d2", d2_write);
 
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_write,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_write.submit_and_finalize();
 
   array_write.close();
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();
-
-  if (serialize) {
-    FragmentInfo deserialized_fragment_info(ctx, array_name);
-    tiledb_fragment_info_serialize(
-        ctx.ptr().get(),
-        array_name.c_str(),
-        fragment_info.ptr().get(),
-        deserialized_fragment_info.ptr().get(),
-        tiledb_serialization_type_t(0));
-    fragment_info = deserialized_fragment_info;
-  }
-
   fragment_uri = fragment_info.fragment_uri(1);
 
   // old version fragment
@@ -1353,13 +1318,7 @@ TEST_CASE(
       .set_data_buffer("d1", d1_read2)
       .set_data_buffer("d2", d2_read2);
 
-  submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_read2,
-      server_buffers,
-      serialize,
-      refactored_query_v2);
+  query_read2.submit();
   array_read2.close();
 
   for (int i = 0; i < 2; i++) {
