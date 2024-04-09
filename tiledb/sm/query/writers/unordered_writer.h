@@ -88,7 +88,7 @@ class UnorderedWriter : public WriterBase {
   Status alloc_frag_meta();
 
   /** Returns the cell position vector. */
-  std::vector<uint64_t>& cell_pos() {
+  tdb::pmr::vector<uint64_t>& cell_pos() {
     return cell_pos_;
   }
 
@@ -119,7 +119,7 @@ class UnorderedWriter : public WriterBase {
    * The positions that resulted from sorting and according to which the cells
    * must be re-arranged.
    */
-  std::vector<uint64_t> cell_pos_;
+  tdb::pmr::vector<uint64_t> cell_pos_;
 
   /** The set with the positions of duplicate coordinates/cells. */
   std::set<uint64_t> coord_dups_;
@@ -173,7 +173,7 @@ class UnorderedWriter : public WriterBase {
    * @return Status
    */
   Status prepare_tiles(
-      std::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
+      tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const;
 
   /**
    * It prepares the tiles for the input attribute or dimension, re-organizing

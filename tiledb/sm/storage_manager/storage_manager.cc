@@ -775,15 +775,27 @@ Status StorageManagerCanonical::array_get_non_empty_domain_var_from_name(
 }
 
 Status StorageManagerCanonical::array_get_encryption(
-    const ArrayDirectory& array_dir, EncryptionType* encryption_type) {
-  const URI& uri = array_dir.uri();
-
+    const URI& uri, EncryptionType* encryption_type) {
   if (uri.is_invalid()) {
     return logger_->status(Status_StorageManagerError(
         "Cannot get array encryption; Invalid array URI"));
   }
 
-  const URI& schema_uri = array_dir.latest_array_schema_uri();
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      resources_,
+      uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  const URI& schema_uri = array_dir->latest_array_schema_uri();
 
   // Read tile header
   auto&& header =
@@ -1267,14 +1279,14 @@ Status StorageManagerCanonical::store_group_detail(
   SizeComputationSerializer size_computation_serializer;
   group->serialize(members, size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
 
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   group->serialize(members, serializer);
 
-  stats()->add_counter("write_group_size", tile.size());
+  stats()->add_counter("write_group_size", tile->size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
@@ -1298,13 +1310,13 @@ Status StorageManagerCanonical::store_array_schema(
   SizeComputationSerializer size_computation_serializer;
   array_schema->serialize(size_computation_serializer);
 
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   array_schema->serialize(serializer);
 
-  stats()->add_counter("write_array_schema_size", tile.size());
+  stats()->add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
   bool exists;
@@ -1348,10 +1360,10 @@ Status StorageManagerCanonical::store_array_schema(
     SizeComputationSerializer enumeration_size_serializer;
     enmr->serialize(enumeration_size_serializer);
 
-    WriterTile tile{WriterTile::from_generic(
+    auto tile{WriterTile::from_generic(
         enumeration_size_serializer.size(),
         resources_.ephemeral_memory_tracker())};
-    Serializer serializer(tile.data(), tile.size());
+    Serializer serializer(tile->data(), tile->size());
     enmr->serialize(serializer);
 
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
@@ -1378,10 +1390,10 @@ Status StorageManagerCanonical::store_metadata(
   if (0 == size_computation_serializer.size()) {
     return Status::Ok();
   }
-  WriterTile tile{WriterTile::from_generic(
+  auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
       resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile.data(), tile.size());
+  Serializer serializer(tile->data(), tile->size());
   metadata->serialize(serializer);
 
   stats()->add_counter("write_meta_size", size_computation_serializer.size());

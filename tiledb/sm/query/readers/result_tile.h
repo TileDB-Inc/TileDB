@@ -40,6 +40,7 @@
 #include <vector>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
@@ -549,7 +550,7 @@ class ResultTile {
       const ResultTile* result_tile,
       unsigned dim_idx,
       const Range& range,
-      std::vector<uint8_t>* result_bitmap,
+      tdb::pmr::vector<uint8_t>* result_bitmap,
       const Layout& cell_order);
 
   /**
@@ -570,7 +571,7 @@ class ResultTile {
       unsigned dim_idx,
       const NDRange& ranges,
       const tdb::pmr::vector<uint64_t>& range_indexes,
-      std::vector<BitmapType>& result_count,
+      tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell);
@@ -594,7 +595,7 @@ class ResultTile {
       const uint64_t* buff_off,
       const uint64_t start,
       const uint64_t end,
-      std::vector<BitmapType>& result_count);
+      tdb::pmr::vector<BitmapType>& result_count);
 
   /**
    * Applicable only to sparse arrays.
@@ -614,7 +615,7 @@ class ResultTile {
       unsigned dim_idx,
       const NDRange& ranges,
       const tdb::pmr::vector<uint64_t>& range_indexes,
-      std::vector<BitmapType>& result_count,
+      tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell);
@@ -647,7 +648,7 @@ class ResultTile {
   Status compute_results_sparse(
       unsigned dim_idx,
       const Range& range,
-      std::vector<uint8_t>* result_bitmap,
+      tdb::pmr::vector<uint8_t>* result_bitmap,
       const Layout& cell_order) const;
 
   /**
@@ -667,7 +668,7 @@ class ResultTile {
       unsigned dim_idx,
       const NDRange& ranges,
       const tdb::pmr::vector<uint64_t>& range_indexes,
-      std::vector<BitmapType>& result_count,
+      tdb::pmr::vector<BitmapType>& result_count,
       const Layout& cell_order,
       const uint64_t min_cell,
       const uint64_t max_cell) const;
@@ -742,7 +743,7 @@ class ResultTile {
       const ResultTile*,
       unsigned,
       const Range&,
-      std::vector<uint8_t>*,
+      tdb::pmr::vector<uint8_t>*,
       const Layout&)>>
       compute_results_sparse_func_;
 
@@ -755,7 +756,7 @@ class ResultTile {
       unsigned,
       const NDRange&,
       const tdb::pmr::vector<uint64_t>&,
-      std::vector<uint64_t>&,
+      tdb::pmr::vector<uint64_t>&,
       const Layout&,
       const uint64_t,
       const uint64_t)>>
@@ -770,7 +771,7 @@ class ResultTile {
       unsigned,
       const NDRange&,
       const tdb::pmr::vector<uint64_t>&,
-      std::vector<uint8_t>&,
+      tdb::pmr::vector<uint8_t>&,
       const Layout&,
       const uint64_t,
       const uint64_t)>>
@@ -827,7 +828,8 @@ class ResultTileWithBitmap : public ResultTile {
    * @param memory_tracker The memory tracker to use.
    */
   ResultTileWithBitmap(shared_ptr<MemoryTracker> memory_tracker)
-      : ResultTile(memory_tracker) {
+      : ResultTile(memory_tracker)
+      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP)) {
   }
 
   ResultTileWithBitmap(
@@ -836,6 +838,7 @@ class ResultTileWithBitmap : public ResultTile {
       const FragmentMetadata& frag_md,
       shared_ptr<MemoryTracker> memory_tracker)
       : ResultTile(frag_idx, tile_idx, frag_md, memory_tracker)
+      , bitmap_(memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP))
       , result_num_(cell_num_) {
   }
 
@@ -861,7 +864,7 @@ class ResultTileWithBitmap : public ResultTile {
    *
    * @param cell_idx Cell index.
    */
-  inline std::vector<BitmapType>& bitmap() {
+  inline tdb::pmr::vector<BitmapType>& bitmap() {
     return bitmap_;
   }
 
@@ -953,7 +956,7 @@ class ResultTileWithBitmap : public ResultTile {
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
   /** Bitmap for this tile. */
-  std::vector<BitmapType> bitmap_;
+  tdb::pmr::vector<BitmapType> bitmap_;
 
   /** Number of cells in this bitmap. */
   uint64_t result_num_;
@@ -979,10 +982,16 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
       shared_ptr<MemoryTracker> memory_tracker)
       : ResultTileWithBitmap<BitmapType>(
             frag_idx, tile_idx, frag_md, memory_tracker)
-      , post_dedup_bitmap_(
-            !dups || include_delete_meta ? optional(std::vector<BitmapType>()) :
-                                           nullopt)
+      , hilbert_values_(this->memory_tracker_->get_resource(
+            MemoryType::TILE_HILBERT_VALUES))
+      , post_dedup_bitmap_(nullopt)
+      , per_cell_delete_condition_(
+            this->memory_tracker_->get_resource(MemoryType::QUERY_CONDITION))
       , used_(false) {
+    if (!dups || include_delete_meta) {
+      post_dedup_bitmap_.emplace(
+          this->memory_tracker_->get_resource(MemoryType::RESULT_TILE_BITMAP));
+    }
   }
 
   DISABLE_COPY_AND_COPY_ASSIGN(GlobalOrderResultTile);
@@ -1020,7 +1029,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   void ensure_bitmap_for_query_condition() {
     if (post_dedup_bitmap_.has_value()) {
       if (ResultTileWithBitmap<BitmapType>::has_bmp()) {
-        post_dedup_bitmap_ = ResultTileWithBitmap<BitmapType>::bitmap_;
+        post_dedup_bitmap_->assign(this->bitmap_.begin(), this->bitmap_.end());
       } else {
         post_dedup_bitmap_->resize(ResultTile::cell_num_, 1);
       }
@@ -1036,7 +1045,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns the bitmap that included query condition results. For this tile
    * type, this is 'post_dedup_bitmap_' if allocated, or the regular bitmap.
    */
-  inline std::vector<BitmapType>& post_dedup_bitmap() {
+  inline tdb::pmr::vector<BitmapType>& post_dedup_bitmap() {
     return post_dedup_bitmap_.has_value() && post_dedup_bitmap_->size() > 0 ?
                post_dedup_bitmap_.value() :
                ResultTileWithBitmap<BitmapType>::bitmap_;
@@ -1144,7 +1153,7 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
   /* ********************************* */
 
   /** Hilbert values for this tile. */
-  std::vector<uint64_t> hilbert_values_;
+  tdb::pmr::vector<uint64_t> hilbert_values_;
 
   /**
    * An extra bitmap will be needed for array with no duplicates. For those,
@@ -1152,13 +1161,13 @@ class GlobalOrderResultTile : public ResultTileWithBitmap<BitmapType> {
    * will contain the results before query condition, and post_dedup_bitmap_
    * will contain results after query condition.
    */
-  optional<std::vector<BitmapType>> post_dedup_bitmap_;
+  optional<tdb::pmr::vector<BitmapType>> post_dedup_bitmap_;
 
   /**
    * Delete condition index that deleted a cell. Used for consolidation with
    * delete metadata.
    */
-  std::vector<QueryCondition*> per_cell_delete_condition_;
+  tdb::pmr::vector<QueryCondition*> per_cell_delete_condition_;
 
   /** Was the tile used in the merge. */
   bool used_;
@@ -1212,7 +1221,7 @@ class UnorderedWithDupsResultTile : public ResultTileWithBitmap<BitmapType> {
    * Returns the bitmap that included query condition results. For this tile
    * type, this is stored in the regular bitmap.
    */
-  inline std::vector<BitmapType>& post_dedup_bitmap() {
+  inline tdb::pmr::vector<BitmapType>& post_dedup_bitmap() {
     return ResultTileWithBitmap<BitmapType>::bitmap_;
   }
 

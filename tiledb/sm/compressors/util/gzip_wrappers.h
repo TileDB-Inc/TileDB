@@ -48,9 +48,8 @@
  *
  * @param out_gzipped_buf The returned buffer with the compressed data.
  * @param in_buf The input buffer containing data to be compressed
- * @return Status
  */
-Status gzip_compress(
+void gzip_compress(
     shared_ptr<tiledb::sm::Buffer>& out_gzipped_buf,
     const void* in_bytes,
     uint64_t nbytes);
@@ -61,9 +60,8 @@ Status gzip_compress(
  *
  * @param out_buf The input buffer containing data to be compressed
  * @param comp_buf The buffer with the compressed data to be decompressed
- * @return Status
  */
-Status gzip_decompress(
+void gzip_decompress(
     shared_ptr<tiledb::sm::ByteVecValue>& out_buf, const uint8_t* comp_buf);
 
 #endif  // TILEDB_GZIP_WRAPPER_H

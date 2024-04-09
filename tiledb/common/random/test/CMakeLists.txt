@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -27,6 +27,6 @@
 include(unit_test)
 
 commence(unit_test seedable_global_PRNG)
-  this_target_sources(unit_seedable_global_PRNG.cc)
+  this_target_sources(unit_random_label_generator.cc unit_seedable_global_PRNG.cc)
   this_target_object_libraries(seedable_global_PRNG)
 conclude(unit_test)

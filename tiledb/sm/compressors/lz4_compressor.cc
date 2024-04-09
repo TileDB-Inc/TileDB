@@ -43,11 +43,17 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status LZ4::compress(int, ConstBuffer* input_buffer, Buffer* output_buffer) {
+class LZ4Exception : public StatusException {
+ public:
+  explicit LZ4Exception(const std::string& message)
+      : StatusException("LZ4Exception", message) {
+  }
+};
+
+void LZ4::compress(int, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with LZ4; invalid buffer format"));
+    throw LZ4Exception("Failed compressing with LZ4; invalid buffer format");
 
 // Compress
 #if LZ4_VERSION_NUMBER >= 10705
@@ -66,25 +72,22 @@ Status LZ4::compress(int, ConstBuffer* input_buffer, Buffer* output_buffer) {
 
   // Check error
   if (ret < 0)
-    return Status_CompressionError("LZ4 compression failed");
+    throw LZ4Exception("LZ4 compression failed");
 
   // Set size of compressed data
   output_buffer->advance_size(static_cast<uint64_t>(ret));
   output_buffer->advance_offset(static_cast<uint64_t>(ret));
-
-  return Status::Ok();
 }
 
-Status LZ4::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+void LZ4::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   return LZ4::compress(LZ4::default_level(), input_buffer, output_buffer);
 }
 
-Status LZ4::decompress(
+void LZ4::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with LZ4; invalid buffer format"));
+    throw LZ4Exception("Failed decompressing with LZ4; invalid buffer format");
 
   // Decompress
   int ret = LZ4_decompress_safe(
@@ -95,12 +98,10 @@ Status LZ4::decompress(
 
   // Check error
   if (ret < 0)
-    return Status_CompressionError("LZ4 decompression failed");
+    throw LZ4Exception("LZ4 decompression failed");
 
   // Set size of decompressed data
   output_buffer->advance_offset(static_cast<uint64_t>(ret));
-
-  return Status::Ok();
 }
 
 uint64_t LZ4::overhead(uint64_t nbytes) {

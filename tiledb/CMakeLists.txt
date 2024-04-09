@@ -123,6 +123,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/version.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/vfs_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrowio
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/arrow_io_impl.h
   )
@@ -193,7 +194,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/uri.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/vfs_file_handle.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/ls_scanner.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/win.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filesystem/filesystem_base.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/filter/bit_width_reduction_filter.cc
@@ -236,7 +236,6 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/tdb_time.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/types.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
-  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/uuid.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
@@ -539,31 +538,13 @@ endif()
 if (TILEDB_AZURE)
   message(STATUS "The TileDB library is compiled with Azure support.")
 
-  if (TILEDB_VCPKG)
-    find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-            INTERFACE
-            Azure::azure-storage-blobs
-            )
-  else()
-    find_package(AzureCore_EP REQUIRED)
-    find_package(AzureStorageCommon_EP REQUIRED)
-    find_package(AzureStorageBlobs_EP REQUIRED)
-    if (NOT WIN32)
-      if (NOT TARGET LibXml2::LibXml2)
-        find_package(LibXml2 REQUIRED)
-      endif()
-    endif()
-    target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
-            INTERFACE
-            Azure::azure-storage-blobs
-            Azure::azure-storage-common
-            Azure::azure-core)
-    # Link xml after Azure to allow symbol resolution on all platforms
-    if (NOT WIN32)
-      target_link_libraries(TILEDB_CORE_OBJECTS_ILIB INTERFACE LibXml2::LibXml2)
-    endif()
-  endif()
+  find_package(azure-identity-cpp CONFIG REQUIRED)
+  find_package(azure-storage-blobs-cpp CONFIG REQUIRED)
+  target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
+          INTERFACE
+          Azure::azure-identity
+          Azure::azure-storage-blobs
+          )
 endif()
 
 if (TILEDB_GCS)

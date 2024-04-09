@@ -70,7 +70,13 @@ namespace sm {
 struct AzureParameters {
   AzureParameters() = delete;
 
-  AzureParameters(const Config& config);
+  /**
+   * Creates an AzureParameters object.
+   *
+   * @return AzureParameters or nullopt if config does not have
+   * a storage account or blob endpoint set.
+   */
+  static std::optional<AzureParameters> create(const Config& config);
 
   /**  The maximum number of parallel requests. */
   uint64_t max_parallel_ops_;
@@ -104,6 +110,15 @@ struct AzureParameters {
 
   /** SSL configuration. */
   SSLConfig ssl_cfg_;
+
+  /** Whether the config specifies a SAS token. */
+  bool has_sas_token_;
+
+ private:
+  AzureParameters(
+      const Config& config,
+      const std::string& account_name,
+      const std::string& blob_endpoint);
 };
 
 class Azure {
@@ -359,7 +374,21 @@ class Azure {
    * use of the BlobServiceClient.
    */
   const ::Azure::Storage::Blobs::BlobServiceClient& client() const {
-    assert(azure_params_);
+    // This branch can be entered in two circumstances:
+    // 1. The init method has not been called yet.
+    // 2. The init method has been called, but the config (or environment
+    //    variables) do not contain enough information to get the Azure
+    //    endpoint.
+    // We don't distinguish between the two, because only the latter can
+    // happen under normal circumstances, and the former is a C.41 issue
+    // that will go away once the class is C.41 compliant.
+    if (!azure_params_) {
+      throw StatusException(Status_AzureError(
+          "Azure VFS is not configured. Please set the "
+          "'vfs.azure.storage_account_name' and/or "
+          "'vfs.azure.blob_endpoint' configuration options."));
+    }
+
     return client_singleton_.get(*azure_params_);
   }
 

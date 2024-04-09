@@ -150,6 +150,7 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-capi-partial-attribute-write.cc
   src/unit-capi-query.cc
   src/unit-capi-query_2.cc
+  src/unit-capi-rest-dense_array.cc
   src/unit-capi-smoke-test.cc
   src/unit-capi-sparse_array.cc
   src/unit-capi-sparse_heter.cc
@@ -177,15 +178,16 @@ set(TILEDB_UNIT_TEST_SOURCES
   src/unit-enumerations.cc
   src/unit-enum-helpers.cc
   src/unit-filter-buffer.cc
-  src/unit-filter-pipeline.cc
   src/unit-global-order.cc
   src/unit-ordered-dim-label-reader.cc
   src/unit-tile-metadata.cc
   src/unit-tile-metadata-generator.cc
+  src/unit-query-plan.cc
   src/unit-ReadCellSlabIter.cc
   src/unit-Reader.cc
   src/unit-request-handlers.cc
   src/unit-resource-pool.cc
+  src/unit-rest-enumerations.cc
   src/unit-result-coords.cc
   src/unit-result-tile.cc
   src/unit-s3.cc
@@ -203,6 +205,7 @@ set(TILEDB_UNIT_TEST_SOURCES
 
 if (TILEDB_CPP_API)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
+    src/cpp-integration-filter-pipeline.cc
     src/test-cppapi-dense-array-dimension-label.cc
     src/test-cppapi-dimension-label.cc
     src/test-cppapi-subarray-labels.cc
@@ -253,13 +256,6 @@ if (TILEDB_SERIALIZATION)
     src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
-  )
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  list(APPEND TILEDB_UNIT_TEST_SOURCES
-    src/unit-capi-rest-dense_array.cc
-    src/unit-rest-enumerations.cc
   )
 endif()
 
@@ -326,10 +322,6 @@ endif()
 if (TILEDB_TESTS_AWS_S3_CONFIG)
   message(STATUS "Tests built with AWS S3 config")
   target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_AWS_S3_CONFIG)
-endif()
-
-if (TILEDB_TESTS_ENABLE_REST)
-  target_compile_definitions(tiledb_unit PRIVATE -DTILEDB_TESTS_ENABLE_REST)
 endif()
 
 if (TILEDB_SERIALIZATION)

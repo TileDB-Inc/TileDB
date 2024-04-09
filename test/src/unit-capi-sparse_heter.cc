@@ -61,9 +61,9 @@ struct SparseHeterFx {
 
   // Serialization parameters
   bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
+
+  // Path to prepend to array name according to filesystem/mode
+  std::string prefix_;
 
   // Functions
   SparseHeterFx();
@@ -147,9 +147,13 @@ SparseHeterFx::SparseHeterFx()
     : fs_vec_(vfs_test_get_fs_vec()) {
   // Initialize vfs test
   REQUIRE(vfs_test_init(fs_vec_, &ctx_, &vfs_).ok());
+  auto temp_dir = fs_vec_[0]->temp_dir();
+  create_temp_dir(temp_dir);
+  prefix_ = vfs_array_uri(fs_vec_[0], temp_dir);
 }
 
 SparseHeterFx::~SparseHeterFx() {
+  remove_temp_dir(fs_vec_[0]->temp_dir());
   // Close vfs test
   REQUIRE(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
   tiledb_vfs_free(&vfs_);
@@ -529,13 +533,11 @@ void SparseHeterFx::write_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -578,9 +580,12 @@ void SparseHeterFx::write_sparse_array_int64_float(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_submit(ctx_, query);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_finalize(ctx_, query);
+
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  } else {
+    rc = tiledb_query_submit(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
@@ -723,21 +728,8 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
 TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (float, int64)",
-    "[capi][sparse][heter][float-int64]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-  SECTION("- Serialization") {
-#ifdef TILEDB_SERIALIZATION
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-#endif
-  }
-
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    "[capi][sparse][heter][float-int64][non-rest]") {
+  std::string array_name = prefix_ + "sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1085,26 +1077,13 @@ TEST_CASE_METHOD(
       buff_d1_r,
       buff_d2_r,
       buff_a_r);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
 
 TEST_CASE_METHOD(
     SparseHeterFx,
     "C API: Test sparse array with heterogeneous domains (int64, float)",
-    "[capi][sparse][heter][int64-float]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-  SECTION("- Serialization") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-
-  SupportedFsLocal local_fs;
-  std::string array_name =
-      local_fs.file_prefix() + local_fs.temp_dir() + "sparse_array_heter";
-  create_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
+    "[capi][sparse][heter][int64-float][non-rest]") {
+  std::string array_name = prefix_ + "sparse_array_heter";
 
   // Create array
   float dom_f[] = {1.0f, 20.0f};
@@ -1452,6 +1431,4 @@ TEST_CASE_METHOD(
       buff_d1_r,
       buff_d2_r,
       buff_a_r);
-
-  remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

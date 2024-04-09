@@ -34,6 +34,7 @@
 #ifndef TILEDB_COMMON_PMR_H
 #define TILEDB_COMMON_PMR_H
 
+#include <list>
 #include <map>
 #include <unordered_map>
 #include <vector>
@@ -119,6 +120,67 @@ template <class Tp>
 unique_ptr<Tp> make_unique(memory_resource* resource, size_t size) {
   return make_unique<Tp>(resource, size, alignof(Tp));
 }
+
+/* ********************************* */
+/*         PMR LIST DECLARATION      */
+/* ********************************* */
+template <class Tp>
+using pmr_list = std::list<Tp, polymorphic_allocator<Tp>>;
+
+template <class Tp>
+class list : public pmr_list<Tp> {
+ public:
+  using value_type = typename pmr_list<Tp>::value_type;
+  using allocator_type = typename pmr_list<Tp>::allocator_type;
+  using size_type = typename pmr_list<Tp>::size_type;
+  using difference_type = typename pmr_list<Tp>::difference_type;
+  using reference = typename pmr_list<Tp>::reference;
+  using const_reference = typename pmr_list<Tp>::const_reference;
+  using pointer = typename pmr_list<Tp>::pointer;
+  using const_pointer = typename pmr_list<Tp>::const_pointer;
+  using iterator = typename pmr_list<Tp>::iterator;
+  using const_iterator = typename pmr_list<Tp>::const_iterator;
+  using reverse_iterator = typename pmr_list<Tp>::reverse_iterator;
+  using const_reverse_iterator = typename pmr_list<Tp>::const_reverse_iterator;
+
+  // Delete all default constructors because they don't require an allocator
+  list() = delete;
+  list(const list& other) = delete;
+  list(list&& other) = delete;
+
+  // Delete non-allocator aware copy and move assign.
+  list& operator=(const list& other) = delete;
+  list& operator=(list&& other) noexcept = delete;
+
+  explicit list(const allocator_type& alloc) noexcept
+      : pmr_list<Tp>(alloc) {
+  }
+
+  explicit list(size_type count, const Tp& value, const allocator_type& alloc)
+      : pmr_list<Tp>(count, value, alloc) {
+  }
+
+  explicit list(size_type count, const allocator_type& alloc)
+      : pmr_list<Tp>(count, alloc) {
+  }
+
+  template <class InputIt>
+  list(InputIt first, InputIt last, const allocator_type& alloc)
+      : pmr_list<Tp>(first, last, alloc) {
+  }
+
+  list(const list& other, const allocator_type& alloc)
+      : pmr_list<Tp>(other, alloc) {
+  }
+
+  list(list&& other, const allocator_type& alloc)
+      : pmr_list<Tp>(other, alloc) {
+  }
+
+  list(std::initializer_list<Tp> init, const allocator_type& alloc)
+      : pmr_list<Tp>(init, alloc) {
+  }
+};
 
 /* ********************************* */
 /*       PMR VECTOR DECLARATION      */

@@ -70,13 +70,8 @@ class TileBase {
       const uint64_t size,
       tdb::pmr::memory_resource* resource);
 
-  /** Move constructor. */
-  TileBase(TileBase&& tile);
-
-  /** Move-assign operator. */
-  TileBase& operator=(TileBase&& tile);
-
   DISABLE_COPY_AND_COPY_ASSIGN(TileBase);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(TileBase);
 
   /* ********************************* */
   /*                API                */
@@ -143,9 +138,6 @@ class TileBase {
   void add_extra_offset(TileBase& var_tile) {
     data_as<uint64_t>()[size_ / cell_size_ - 1] = var_tile.size();
   }
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(TileBase& tile);
 
  protected:
   /* ********************************* */
@@ -307,9 +299,6 @@ class Tile : public TileBase {
    */
   uint64_t load_offsets_chunk_data(ChunkData& chunk_data);
 
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(Tile& tile);
-
  private:
   /* ********************************* */
   /*         PRIVATE FUNCTIONS         */
@@ -379,7 +368,7 @@ class WriterTile : public TileBase {
    * @param tile_size to be provided to init_unfiltered call
    * @param memory_tracker The memory tracker to use.
    */
-  static WriterTile from_generic(
+  static shared_ptr<WriterTile> from_generic(
       storage_size_t tile_size, shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -435,13 +424,8 @@ class WriterTile : public TileBase {
       const uint64_t size,
       tdb::pmr::memory_resource* resource);
 
-  /** Move constructor. */
-  WriterTile(WriterTile&& tile);
-
-  /** Move-assign operator. */
-  WriterTile& operator=(WriterTile&& tile);
-
   DISABLE_COPY_AND_COPY_ASSIGN(WriterTile);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(WriterTile);
 
   /* ********************************* */
   /*                API                */
@@ -487,9 +471,6 @@ class WriterTile : public TileBase {
   inline void set_size(uint64_t size) {
     size_ = size;
   }
-
-  /** Swaps the contents (all field values) of this tile with the given tile. */
-  void swap(WriterTile& tile);
 
  private:
   /* ********************************* */

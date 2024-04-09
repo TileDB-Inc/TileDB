@@ -42,12 +42,18 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-Status BZip::compress(
+class BZipException : public StatusException {
+ public:
+  explicit BZipException(const std::string& message)
+      : StatusException("BZipException", message) {
+  }
+};
+
+void BZip::compress(
     int level, ConstBuffer* input_buffer, Buffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed compressing with BZip; invalid buffer format"));
+    throw BZipException("Failed compressing with BZip; invalid buffer format");
 
   // Compress
   auto in_size = (unsigned int)input_buffer->size();
@@ -65,42 +71,38 @@ Status BZip::compress(
   if (rc != BZ_OK) {
     switch (rc) {
       case BZ_CONFIG_ERROR:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip compression error: library has been miscompiled");
       case BZ_PARAM_ERROR:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip compression error: 'output_buffer' or 'output_buffer_size' "
             "is NULL");
       case BZ_MEM_ERROR:
-        return Status_CompressionError(
-            "BZip compression error: insufficient memory");
+        throw BZipException("BZip compression error: insufficient memory");
       case BZ_OUTBUFF_FULL:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip compression error: compressed size exceeds limits for "
             "'output_buffer_size'");
       default:
-        return Status_CompressionError(
-            "BZip compression error: unknown error code");
+        throw BZipException("BZip compression error: unknown error code");
     }
   }
 
   // Set size of compressed data
   output_buffer->advance_size(out_size);
   output_buffer->advance_offset(out_size);
-
-  return Status::Ok();
 }
 
-Status BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
+void BZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
   return BZip::compress(BZip::default_level(), input_buffer, output_buffer);
 }
 
-Status BZip::decompress(
+void BZip::decompress(
     ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    return LOG_STATUS(Status_CompressionError(
-        "Failed decompressing with BZip; invalid buffer format"));
+    throw BZipException(
+        "Failed decompressing with BZip; invalid buffer format");
 
   // Decompress
   auto out_size = (unsigned int)output_buffer->free_space();
@@ -116,30 +118,26 @@ Status BZip::decompress(
   if (rc != BZ_OK) {
     switch (rc) {
       case BZ_CONFIG_ERROR:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip decompression error: library has been miscompiled");
       case BZ_PARAM_ERROR:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip decompression error: 'output_buffer' or 'output_buffer_size' "
             "is NULL");
       case BZ_MEM_ERROR:
-        return Status_CompressionError(
-            "BZip decompression error: insufficient memory");
+        throw BZipException("BZip decompression error: insufficient memory");
       case BZ_DATA_ERROR:
       case BZ_DATA_ERROR_MAGIC:
       case BZ_UNEXPECTED_EOF:
-        return Status_CompressionError(
+        throw BZipException(
             "BZip decompression error: compressed data is corrupted");
       default:
-        return Status_CompressionError(
-            "BZip decompression error: unknown error code ");
+        throw BZipException("BZip decompression error: unknown error code ");
     }
   }
 
   // Set size of compressed data
   output_buffer->advance_offset(out_size);
-
-  return Status::Ok();
 }
 
 uint64_t BZip::overhead(uint64_t nbytes) {

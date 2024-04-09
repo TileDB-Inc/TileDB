@@ -34,7 +34,6 @@ option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
@@ -50,7 +49,7 @@ if (DEFINED TILEDB_STATIC)
 endif()
 
 if (NOT TILEDB_VCPKG)
-  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
 endif()
 
 # enable assertions by default for debug builds

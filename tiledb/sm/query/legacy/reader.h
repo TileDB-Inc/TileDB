@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/indexed_list.h"
 #include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -305,7 +306,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       const std::vector<bool>& single_fragment,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::list<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<std::vector<ResultCoords>>& range_result_coords);
 
   /**
@@ -325,7 +326,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       Subarray& subarray,
       uint64_t range_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::list<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -347,7 +348,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
       uint64_t range_idx,
       uint32_t fragment_idx,
       const std::map<std::pair<unsigned, uint64_t>, size_t>& result_tile_map,
-      std::list<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& range_result_coords);
 
   /**
@@ -382,7 +383,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @return Status
    */
   Status compute_sparse_result_tiles(
-      std::list<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::map<std::pair<unsigned, uint64_t>, size_t>* result_tile_map,
       std::vector<bool>* single_fragment);
 
@@ -574,7 +575,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param result_coords This will store the result coordinates.
    */
   Status compute_result_coords(
-      std::list<ResultTile>& result_tiles,
+      IndexedList<ResultTile>& result_tiles,
       std::vector<ResultCoords>& result_coords);
 
   /**
@@ -651,7 +652,7 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * Erases the coordinate tiles (zipped or separate) from the input result
    * tiles.
    */
-  void erase_coord_tiles(std::list<ResultTile>& result_tiles) const;
+  void erase_coord_tiles(IndexedList<ResultTile>& result_tiles) const;
 
   /** Gets statistics about the result cells. */
   void get_result_cell_stats(

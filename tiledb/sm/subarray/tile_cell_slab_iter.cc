@@ -296,10 +296,10 @@ Status TileCellSlabIter<T>::init_ranges(const Subarray& subarray) {
   const tiledb::type::Range* r;
   ranges_.resize(dim_num_);
   for (int d = 0; d < dim_num_; ++d) {
-    RETURN_NOT_OK(subarray.get_range_num(d, &range_num));
+    subarray.get_range_num(d, &range_num);
     ranges_[d].reserve(range_num);
     for (uint64_t j = 0; j < range_num; ++j) {
-      RETURN_NOT_OK(subarray.get_range(d, j, &r));
+      subarray.get_range(d, j, &r);
       auto range = (const T*)(*r).data();
       ranges_[d].emplace_back(range[0], range[1]);
     }

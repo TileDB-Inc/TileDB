@@ -27,6 +27,7 @@ if(NOT @BUILD_SHARED_LIBS@) # NOT BUILD_SHARED_LIBS
     find_dependency(AWSSDK COMPONENTS @AWS_SERVICES@)
   endif()
   if(@TILEDB_AZURE@) # TILEDB_AZURE
+    find_dependency(azure-identity-cpp)
     find_dependency(azure-storage-blobs-cpp)
   endif()
   if(@TILEDB_GCS@) # TILEDB_GCS

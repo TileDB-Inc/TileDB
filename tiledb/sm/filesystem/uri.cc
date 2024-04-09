@@ -63,7 +63,7 @@ URI::URI(const char* path)
     : URI((path == nullptr) ? std::string("") : std::string(path)) {
 }
 
-URI::URI(const std::string& path) {
+URI::URI(std::string_view path) {
   if (path.empty())
     uri_ = "";
   else if (URI::is_file(path))
@@ -76,7 +76,7 @@ URI::URI(const std::string& path) {
     uri_ = "";
 }
 
-URI::URI(const std::string& path, const bool& get_abs) {
+URI::URI(std::string_view path, const bool& get_abs) {
   if (path.empty()) {
     uri_ = "";
   } else if (URI::is_file(path)) {
@@ -132,7 +132,7 @@ bool URI::is_invalid() const {
   return uri_.empty();
 }
 
-bool URI::is_file(const std::string& path) {
+bool URI::is_file(std::string_view path) {
 #ifdef _WIN32
   return utils::parse::starts_with(path, "file://") ||
          path.find("://") == std::string::npos;
@@ -142,7 +142,7 @@ bool URI::is_file(const std::string& path) {
 #endif
 }
 
-bool URI::contains(const std::string_view& str) const {
+bool URI::contains(std::string_view str) const {
   return uri_.find(str, 0) != std::string::npos;
 }
 
@@ -151,13 +151,13 @@ bool URI::is_file() const {
   return is_file(uri_);
 #else
   // Observed: semantics here differ from sibling
-  // is_file(const std::string& path), here is missing
+  // is_file(std::string_view path), here is missing
   // additional check using "://".
   return utils::parse::starts_with(uri_, "file:///");
 #endif
 }
 
-bool URI::is_hdfs(const std::string& path) {
+bool URI::is_hdfs(std::string_view path) {
   return utils::parse::starts_with(path, "hdfs://");
 }
 
@@ -165,7 +165,7 @@ bool URI::is_hdfs() const {
   return utils::parse::starts_with(uri_, "hdfs://");
 }
 
-bool URI::is_s3(const std::string& path) {
+bool URI::is_s3(std::string_view path) {
   return utils::parse::starts_with(path, "s3://") ||
          utils::parse::starts_with(path, "http://") ||
          utils::parse::starts_with(path, "https://");
@@ -177,7 +177,7 @@ bool URI::is_s3() const {
          utils::parse::starts_with(uri_, "https://");
 }
 
-bool URI::is_azure(const std::string& path) {
+bool URI::is_azure(std::string_view path) {
   return utils::parse::starts_with(path, "azure://");
 }
 
@@ -185,7 +185,7 @@ bool URI::is_azure() const {
   return utils::parse::starts_with(uri_, "azure://");
 }
 
-bool URI::is_gcs(const std::string& path) {
+bool URI::is_gcs(std::string_view path) {
   return utils::parse::starts_with(path, "gcs://") ||
          utils::parse::starts_with(path, "gs://");
 }
@@ -195,7 +195,7 @@ bool URI::is_gcs() const {
          utils::parse::starts_with(uri_, "gs://");
 }
 
-bool URI::is_memfs(const std::string& path) {
+bool URI::is_memfs(std::string_view path) {
   return utils::parse::starts_with(path, "mem://");
 }
 
@@ -203,7 +203,7 @@ bool URI::is_memfs() const {
   return utils::parse::starts_with(uri_, "mem://");
 }
 
-bool URI::is_tiledb(const std::string& path) {
+bool URI::is_tiledb(std::string_view path) {
   return utils::parse::starts_with(path, "tiledb://");
 }
 
@@ -339,6 +339,10 @@ std::string URI::to_path() const {
 
 std::string URI::to_string() const {
   return uri_;
+}
+
+URI::operator std::string_view() const noexcept {
+  return std::string_view(uri_);
 }
 
 bool URI::operator==(const URI& uri) const {

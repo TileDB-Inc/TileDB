@@ -58,7 +58,6 @@ set(INHERITED_CMAKE_ARGS
   -DCMAKE_OSX_ARCHITECTURES=${CMAKE_OSX_ARCHITECTURES}
   -DTILEDB_EXPERIMENTAL_FEATURES=${TILEDB_EXPERIMENTAL_FEATURES}
   -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
-  -DTILEDB_TESTS_ENABLE_REST=${TILEDB_TESTS_ENABLE_REST}
 )
 
 if (libxml2_DIR)
@@ -70,7 +69,6 @@ endif()
 if (TILEDB_TESTS)
   list(APPEND INHERITED_CMAKE_ARGS
     -DTILEDB_TESTS_AWS_S3_CONFIG=${TILEDB_TESTS_AWS_S3_CONFIG}
-    -DTILEDB_TESTS_ENABLE_REST=${TILEDB_TESTS_ENABLE_REST}
   )
 endif()
 
@@ -127,15 +125,6 @@ if (TILEDB_S3 AND NOT TILEDB_VCPKG)
   # Note on Win32: AWS SDK uses builtin WinHTTP instead of libcurl,
   # and builtin BCrypt instead of OpenSSL.
   include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAWSSDK_EP.cmake)
-endif()
-
-if (TILEDB_AZURE AND NOT TILEDB_VCPKG)
-  if (WIN32)
-    include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindWIL_EP.cmake)
-  endif()
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureCore_EP.cmake)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageCommon_EP.cmake)
-  include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/FindAzureStorageBlobs_EP.cmake)
 endif()
 
 if (TILEDB_TESTS)

@@ -403,10 +403,9 @@ class Domain {
    * Gets the index in the domain of a given dimension name
    *
    * @param name Name of dimension to check for
-   * @param dim_idx The index of this dimension in the domain
-   * @return Status
+   * @return Dimension index
    */
-  Status get_dimension_index(const std::string& name, unsigned* dim_idx) const;
+  unsigned get_dimension_index(const std::string& name) const;
 
   /** Returns true if at least one dimension has null tile extent. */
   bool null_tile_extents() const;

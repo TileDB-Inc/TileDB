@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,6 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
@@ -108,7 +109,7 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
  */
 class FragmentConsolidationWorkspace {
  public:
-  FragmentConsolidationWorkspace() = default;
+  FragmentConsolidationWorkspace(shared_ptr<MemoryTracker> memory_tracker);
 
   // Disable copy and move construction/assignment so we don't have
   // to think about it.
@@ -132,29 +133,25 @@ class FragmentConsolidationWorkspace {
       const ArraySchema& array_schema,
       std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
 
-  /**
-   * Accessor for buffers
-   */
-  std::vector<span<std::byte>>& buffers() {
+  /** Accessor for buffers. */
+  tdb::pmr::vector<span<std::byte>>& buffers() {
     return buffers_;
   }
 
-  /**
-   * Access for sizes
-   */
-  std::vector<uint64_t>& sizes() {
+  /** Accessor for sizes. */
+  tdb::pmr::vector<uint64_t>& sizes() {
     return sizes_;
   };
 
  private:
   /*** The backing buffer used for all buffers. */
-  std::vector<std::byte> backing_buffer_;
+  tdb::pmr::vector<std::byte> backing_buffer_;
 
   /*** Spans that point to non-overlapping sections of the buffer. */
-  std::vector<span<std::byte>> buffers_;
+  tdb::pmr::vector<span<std::byte>> buffers_;
 
   /*** The size of each span. */
-  std::vector<uint64_t> sizes_;
+  tdb::pmr::vector<uint64_t> sizes_;
 };
 
 /** Handles fragment consolidation. */

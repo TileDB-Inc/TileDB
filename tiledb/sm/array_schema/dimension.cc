@@ -56,6 +56,143 @@ class DimensionException : public StatusException {
   }
 };
 
+/* ************************ */
+/*     DYNAMIC DISPATCH     */
+/* ************************ */
+
+/**
+ * Dispatches Dimension behavior based on the physical type
+ * of the Dimension
+ *
+ * Subclasses DimensionDispatchFixedSize and DimensionDispatchVarSize
+ * handle the few scenarios where the dispatch is based on
+ * something beyond just the type (namely, function arguments).
+ */
+template <class T>
+class DimensionDispatchTyped : public Dimension::DimensionDispatch {
+ public:
+  using DimensionDispatch::DimensionDispatch;
+
+ protected:
+  void ceil_to_tile(
+      const Range& r, uint64_t tile_num, ByteVecValue* v) const override {
+    return Dimension::ceil_to_tile<T>(&base, r, tile_num, v);
+  }
+  bool check_range(const Range& range, std::string* error) const override {
+    return Dimension::check_range<T>(&base, range, error);
+  }
+  bool coincides_with_tiles(const Range& r) const override {
+    return Dimension::coincides_with_tiles<T>(&base, r);
+  }
+  uint64_t domain_range(const Range& range) const override {
+    return Dimension::domain_range<T>(range);
+  }
+  void expand_range(const Range& r1, Range* r2) const override {
+    return Dimension::expand_range<T>(r1, r2);
+  }
+  void expand_range_v(const void* v, Range* r) const override {
+    return Dimension::expand_range_v<T>(v, r);
+  }
+  void expand_to_tile(Range* range) const override {
+    return Dimension::expand_to_tile<T>(&base, range);
+  }
+  bool oob(const void* coord, std::string* err_msg) const override {
+    return Dimension::oob<T>(&base, coord, err_msg);
+  }
+  bool covered(const Range& r1, const Range& r2) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::covered<T>(r1, r2);
+  }
+  bool overlap(const Range& r1, const Range& r2) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::overlap<T>(r1, r2);
+  }
+  double overlap_ratio(const Range& r1, const Range& r2) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::overlap_ratio<T>(r1, r2);
+  }
+  void relevant_ranges(
+      const NDRange& ranges,
+      const Range& mbr,
+      tdb::pmr::vector<uint64_t>& relevant_ranges) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::relevant_ranges<T>(ranges, mbr, relevant_ranges);
+  }
+  std::vector<bool> covered_vec(
+      const NDRange& ranges,
+      const Range& mbr,
+      const tdb::pmr::vector<uint64_t>& relevant_ranges) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::covered_vec<T>(ranges, mbr, relevant_ranges);
+  }
+  void split_range(const Range& r, const ByteVecValue& v, Range* r1, Range* r2)
+      const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::split_range<T>(r, v, r1, r2);
+  }
+  void splitting_value(
+      const Range& r, ByteVecValue* v, bool* unsplittable) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::splitting_value<T>(r, v, unsplittable);
+  }
+  uint64_t tile_num(const Range& range) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::tile_num<T>(&base, range);
+  }
+  uint64_t map_to_uint64(
+      const void* coord,
+      uint64_t coord_size,
+      int bits,
+      uint64_t max_bucket_val) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::map_to_uint64_2<T>(
+        &base, coord, coord_size, bits, max_bucket_val);
+  }
+  ByteVecValue map_from_uint64(
+      uint64_t value, int bits, uint64_t max_bucket_val) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::map_from_uint64<T>(&base, value, bits, max_bucket_val);
+  }
+  bool smaller_than(
+      const ByteVecValue& value, const Range& range) const override {
+    static_assert(tiledb::type::TileDBFundamental<T>);
+    return Dimension::smaller_than<T>(&base, value, range);
+  }
+};
+
+template <class T>
+class DimensionFixedSize : public DimensionDispatchTyped<T> {
+ public:
+  using DimensionDispatchTyped<T>::DimensionDispatchTyped;
+
+ protected:
+  Range compute_mbr(const WriterTile& tile) const override {
+    return Dimension::compute_mbr<T>(tile);
+  }
+
+  Range compute_mbr_var(const WriterTile&, const WriterTile&) const override {
+    throw std::logic_error(
+        "Fixed-length dimension has no offset tile, function " +
+        std::string(__func__) + " cannot be called");
+  }
+};
+
+class DimensionVarSize : public DimensionDispatchTyped<char> {
+ public:
+  using DimensionDispatchTyped<char>::DimensionDispatchTyped;
+
+ protected:
+  Range compute_mbr(const WriterTile&) const override {
+    throw std::logic_error(
+        "Variable-length dimension requires an offset tile, function " +
+        std::string(__func__) + " cannot be called");
+  }
+
+  /** note: definition at the bottom due to template specialization */
+  Range compute_mbr_var(
+      const WriterTile& tile_off, const WriterTile& tile_val) const override;
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -69,25 +206,7 @@ Dimension::Dimension(
     , type_(type) {
   ensure_datatype_is_supported(type_);
   cell_val_num_ = (datatype_is_string(type)) ? constants::var_num : 1;
-  set_ceil_to_tile_func();
-  set_coincides_with_tiles_func();
-  set_compute_mbr_func();
-  set_domain_range_func();
-  set_expand_range_func();
-  set_expand_range_v_func();
-  set_expand_to_tile_func();
-  set_oob_func();
-  set_covered_func();
-  set_overlap_func();
-  set_overlap_ratio_func();
-  set_relevant_ranges_func();
-  set_covered_vec_func();
-  set_split_range_func();
-  set_splitting_value_func();
-  set_tile_num_func();
-  set_map_to_uint64_2_func();
-  set_map_from_uint64_func();
-  set_smaller_than_func();
+  set_dimension_dispatch();
 }
 
 Dimension::Dimension(
@@ -106,25 +225,7 @@ Dimension::Dimension(
     , tile_extent_(tile_extent)
     , type_(type) {
   ensure_datatype_is_supported(type_);
-  set_ceil_to_tile_func();
-  set_coincides_with_tiles_func();
-  set_compute_mbr_func();
-  set_domain_range_func();
-  set_expand_range_func();
-  set_expand_range_v_func();
-  set_expand_to_tile_func();
-  set_oob_func();
-  set_covered_func();
-  set_overlap_func();
-  set_overlap_ratio_func();
-  set_relevant_ranges_func();
-  set_covered_vec_func();
-  set_split_range_func();
-  set_splitting_value_func();
-  set_tile_num_func();
-  set_map_to_uint64_2_func();
-  set_map_from_uint64_func();
-  set_smaller_than_func();
+  set_dimension_dispatch();
 }
 
 /* ********************************* */
@@ -276,8 +377,7 @@ void Dimension::ceil_to_tile(
 
 void Dimension::ceil_to_tile(
     const Range& r, uint64_t tile_num, ByteVecValue* v) const {
-  assert(ceil_to_tile_func_ != nullptr);
-  ceil_to_tile_func_(this, r, tile_num, v);
+  dispatch_->ceil_to_tile(r, tile_num, v);
 }
 
 template <class T>
@@ -296,8 +396,7 @@ bool Dimension::coincides_with_tiles(const Dimension* dim, const Range& r) {
 }
 
 bool Dimension::coincides_with_tiles(const Range& r) const {
-  assert(coincides_with_tiles_func_ != nullptr);
-  return coincides_with_tiles_func_(this, r);
+  return dispatch_->coincides_with_tiles(r);
 }
 
 template <class T>
@@ -321,8 +420,7 @@ Range Dimension::compute_mbr(const WriterTile& tile) {
 }
 
 Range Dimension::compute_mbr(const WriterTile& tile) const {
-  assert(compute_mbr_func_ != nullptr);
-  return compute_mbr_func_(tile);
+  return dispatch_->compute_mbr(tile);
 }
 
 template <>
@@ -354,8 +452,7 @@ Range Dimension::compute_mbr_var<char>(
 
 Range Dimension::compute_mbr_var(
     const WriterTile& tile_off, const WriterTile& tile_val) const {
-  assert(compute_mbr_var_func_ != nullptr);
-  return compute_mbr_var_func_(tile_off, tile_val);
+  return dispatch_->compute_mbr_var(tile_off, tile_val);
 }
 
 template <class T>
@@ -376,8 +473,7 @@ uint64_t Dimension::domain_range(const Range& range) {
 }
 
 uint64_t Dimension::domain_range(const Range& range) const {
-  assert(domain_range_func_ != nullptr);
-  return domain_range_func_(range);
+  return dispatch_->domain_range(range);
 }
 
 template <class T>
@@ -392,8 +488,7 @@ void Dimension::expand_range_v(const void* v, Range* r) {
 }
 
 void Dimension::expand_range_v(const void* v, Range* r) const {
-  assert(expand_range_v_func_ != nullptr);
-  expand_range_v_func_(v, r);
+  return dispatch_->expand_range_v(v, r);
 }
 
 void Dimension::expand_range_var_v(const char* v, uint64_t v_size, Range* r) {
@@ -419,8 +514,7 @@ void Dimension::expand_range(const Range& r1, Range* r2) {
 }
 
 void Dimension::expand_range(const Range& r1, Range* r2) const {
-  assert(expand_range_func_ != nullptr);
-  expand_range_func_(r1, r2);
+  return dispatch_->expand_range(r1, r2);
 }
 
 void Dimension::expand_range_var(const Range& r1, Range* r2) const {
@@ -461,8 +555,7 @@ void Dimension::expand_to_tile(const Dimension* dim, Range* range) {
 }
 
 void Dimension::expand_to_tile(Range* range) const {
-  assert(expand_to_tile_func_ != nullptr);
-  expand_to_tile_func_(this, range);
+  return dispatch_->expand_to_tile(range);
 }
 
 template <class T>
@@ -492,9 +585,8 @@ Status Dimension::oob(const void* coord) const {
   if (datatype_is_string(type_))
     return Status::Ok();
 
-  assert(oob_func_ != nullptr);
   std::string err_msg;
-  auto ret = oob_func_(this, coord, &err_msg);
+  auto ret = dispatch_->oob(coord, &err_msg);
   if (ret)
     return Status_DimensionError(err_msg);
   return Status::Ok();
@@ -524,8 +616,7 @@ bool Dimension::covered(const Range& r1, const Range& r2) {
 }
 
 bool Dimension::covered(const Range& r1, const Range& r2) const {
-  assert(covered_func_ != nullptr);
-  return covered_func_(r1, r2);
+  return dispatch_->covered(r1, r2);
 }
 
 template <>
@@ -552,8 +643,7 @@ bool Dimension::overlap(const Range& r1, const Range& r2) {
 }
 
 bool Dimension::overlap(const Range& r1, const Range& r2) const {
-  assert(overlap_func_ != nullptr);
-  return overlap_func_(r1, r2);
+  return dispatch_->overlap(r1, r2);
 }
 
 template <>
@@ -695,16 +785,14 @@ double Dimension::overlap_ratio(const Range& r1, const Range& r2) {
 }
 
 double Dimension::overlap_ratio(const Range& r1, const Range& r2) const {
-  assert(overlap_ratio_func_ != nullptr);
-  return overlap_ratio_func_(r1, r2);
+  return dispatch_->overlap_ratio(r1, r2);
 }
 
 void Dimension::relevant_ranges(
     const NDRange& ranges,
     const Range& mbr,
     tdb::pmr::vector<uint64_t>& relevant_ranges) const {
-  assert(relevant_ranges_func_ != nullptr);
-  return relevant_ranges_func_(ranges, mbr, relevant_ranges);
+  return dispatch_->relevant_ranges(ranges, mbr, relevant_ranges);
 }
 
 template <>
@@ -805,8 +893,7 @@ std::vector<bool> Dimension::covered_vec(
     const NDRange& ranges,
     const Range& mbr,
     const tdb::pmr::vector<uint64_t>& relevant_ranges) const {
-  assert(covered_vec_func_ != nullptr);
-  return covered_vec_func_(ranges, mbr, relevant_ranges);
+  return dispatch_->covered_vec(ranges, mbr, relevant_ranges);
 }
 
 template <>
@@ -928,8 +1015,7 @@ void Dimension::split_range(
 
 void Dimension::split_range(
     const Range& r, const ByteVecValue& v, Range* r1, Range* r2) const {
-  assert(split_range_func_ != nullptr);
-  split_range_func_(r, v, r1, r2);
+  dispatch_->split_range(r, v, r1, r2);
 }
 
 template <>
@@ -1061,8 +1147,7 @@ void Dimension::splitting_value<double>(
 
 void Dimension::splitting_value(
     const Range& r, ByteVecValue* v, bool* unsplittable) const {
-  assert(splitting_value_func_ != nullptr);
-  splitting_value_func_(r, v, unsplittable);
+  dispatch_->splitting_value(r, v, unsplittable);
 }
 
 template <>
@@ -1089,8 +1174,7 @@ uint64_t Dimension::tile_num(const Dimension* dim, const Range& range) {
 }
 
 uint64_t Dimension::tile_num(const Range& range) const {
-  assert(tile_num_func_ != nullptr);
-  return tile_num_func_(this, range);
+  return dispatch_->tile_num(range);
 }
 
 uint64_t Dimension::map_to_uint64(
@@ -1098,8 +1182,7 @@ uint64_t Dimension::map_to_uint64(
     uint64_t coord_size,
     int bits,
     uint64_t max_bucket_val) const {
-  assert(map_to_uint64_2_func_ != nullptr);
-  return map_to_uint64_2_func_(this, coord, coord_size, bits, max_bucket_val);
+  return dispatch_->map_to_uint64(coord, coord_size, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1148,8 +1231,7 @@ uint64_t Dimension::map_to_uint64_2<char>(
 
 ByteVecValue Dimension::map_from_uint64(
     uint64_t value, int bits, uint64_t max_bucket_val) const {
-  assert(map_from_uint64_func_ != nullptr);
-  return map_from_uint64_func_(this, value, bits, max_bucket_val);
+  return dispatch_->map_from_uint64(value, bits, max_bucket_val);
 }
 
 template <class T>
@@ -1210,8 +1292,7 @@ ByteVecValue Dimension::map_from_uint64<char>(
 
 bool Dimension::smaller_than(
     const ByteVecValue& value, const Range& range) const {
-  assert(smaller_than_func_ != nullptr);
-  return smaller_than_func_(this, value, range);
+  return dispatch_->smaller_than(value, range);
 }
 
 template <class T>
@@ -1577,200 +1658,24 @@ std::string Dimension::tile_extent_str() const {
   return apply_with_type(g, type_);
 }
 
-void Dimension::set_domain_range_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      domain_range_func_ = domain_range<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_ceil_to_tile_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      ceil_to_tile_func_ = ceil_to_tile<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_coincides_with_tiles_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      coincides_with_tiles_func_ = coincides_with_tiles<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_compute_mbr_func() {
-  if (!var_size()) {  // Fixed-sized
-    compute_mbr_var_func_ = nullptr;
-    auto g = [&](auto T) {
-      if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-        compute_mbr_func_ = compute_mbr<decltype(T)>;
-      }
-    };
-    apply_with_type(g, type_);
-  } else {  // Var-sized
+void Dimension::set_dimension_dispatch() {
+  if (var_size()) {
+    dispatch_ =
+        tdb_unique_ptr<DimensionDispatch>(tdb_new(DimensionVarSize, *this));
     assert(type_ == Datatype::STRING_ASCII);
-    compute_mbr_func_ = nullptr;
-    compute_mbr_var_func_ = compute_mbr_var<char>;
+  } else {
+    // Fixed-sized
+    auto set = [&](auto T) {
+      this->dispatch_ = tdb_unique_ptr<DimensionDispatch>(
+          tdb_new(DimensionFixedSize<decltype(T)>, *this));
+    };
+    apply_with_type(set, type_);
   }
 }
 
-void Dimension::set_expand_range_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      expand_range_func_ = expand_range<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_expand_range_v_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      expand_range_v_func_ = expand_range_v<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_expand_to_tile_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      expand_to_tile_func_ = expand_to_tile<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_oob_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      oob_func_ = oob<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_covered_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      covered_func_ = covered<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_overlap_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      overlap_func_ = overlap<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_overlap_ratio_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      overlap_ratio_func_ = overlap_ratio<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_relevant_ranges_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      relevant_ranges_func_ = relevant_ranges<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_covered_vec_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      covered_vec_func_ = covered_vec<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_split_range_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      split_range_func_ = split_range<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_splitting_value_func() {
-  auto g = [&](auto T) {
-    if constexpr (std::is_same_v<decltype(T), char>) {
-      assert(var_size());
-    }
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      splitting_value_func_ = splitting_value<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_tile_num_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      tile_num_func_ = tile_num<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_map_to_uint64_2_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      map_to_uint64_2_func_ = map_to_uint64_2<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_map_from_uint64_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      map_from_uint64_func_ = map_from_uint64<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
-}
-
-void Dimension::set_smaller_than_func() {
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBFundamental<decltype(T)>) {
-      smaller_than_func_ = smaller_than<decltype(T)>;
-    }
-  };
-  apply_with_type(g, type_);
+Range DimensionVarSize::compute_mbr_var(
+    const WriterTile& tile_off, const WriterTile& tile_val) const {
+  return Dimension::compute_mbr_var<char>(tile_off, tile_val);
 }
 
 }  // namespace tiledb::sm

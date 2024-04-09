@@ -67,14 +67,6 @@ using namespace tiledb::sm::stats;
 namespace tiledb {
 namespace sm {
 
-/** Class for query status exceptions. */
-class QueryStatusException : public StatusException {
- public:
-  explicit QueryStatusException(const std::string& msg)
-      : StatusException("Query", msg) {
-  }
-};
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -113,7 +105,8 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
-    , query_remote_buffer_storage_(std::nullopt) {
+    , query_remote_buffer_storage_(std::nullopt)
+    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {
@@ -202,8 +195,9 @@ Status Query::get_est_result_size(const char* name, uint64_t* size) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size_internal(
+  subarray_.get_est_result_size_internal(
       name, size, &config_, storage_manager_->compute_tp());
+  return Status::Ok();
 }
 
 Status Query::get_est_result_size(
@@ -233,8 +227,9 @@ Status Query::get_est_result_size(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size(
+  subarray_.get_est_result_size(
       name, size_off, size_val, &config_, storage_manager_->compute_tp());
+  return Status::Ok();
 }
 
 Status Query::get_est_result_size_nullable(
@@ -274,8 +269,9 @@ Status Query::get_est_result_size_nullable(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size_nullable(
+  subarray_.get_est_result_size_nullable(
       name, size_val, size_validity, &config_, storage_manager_->compute_tp());
+  return Status::Ok();
 }
 
 Status Query::get_est_result_size_nullable(
@@ -313,13 +309,14 @@ Status Query::get_est_result_size_nullable(
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
 
-  return subarray_.get_est_result_size_nullable(
+  subarray_.get_est_result_size_nullable(
       name,
       size_off,
       size_val,
       size_validity,
       &config_,
       storage_manager_->compute_tp());
+  return Status::Ok();
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>
@@ -1379,8 +1376,8 @@ Status Query::set_est_result_size(
     return LOG_STATUS(Status_SerializationError(
         "Cannot set estimated result size; Unsupported query type."));
   }
-
-  return subarray_.set_est_result_size(est_result_size, max_mem_size);
+  subarray_.set_est_result_size(est_result_size, max_mem_size);
+  return Status::Ok();
 }
 
 Status Query::set_layout(Layout layout) {
@@ -1521,7 +1518,7 @@ void Query::set_subarray(const void* subarray) {
   }
 
   // Set the subarray.
-  throw_if_not_ok(subarray_.set_subarray(subarray));
+  subarray_.set_subarray(subarray);
 }
 
 const Subarray* Query::subarray() const {
@@ -1574,7 +1571,7 @@ Status Query::set_subarray_unsafe(const NDRange& subarray) {
   if (!subarray.empty()) {
     auto dim_num = array_schema_->dim_num();
     for (unsigned d = 0; d < dim_num; ++d)
-      RETURN_NOT_OK(sub.add_range_unsafe(d, subarray[d]));
+      sub.add_range_unsafe(d, subarray[d]);
   }
 
   assert(layout_ == sub.layout());
@@ -1771,7 +1768,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
          layout == Layout::UNORDERED && array_schema.allows_dups();
 }
 
-tuple<Status, optional<bool>> Query::non_overlapping_ranges() {
+bool Query::non_overlapping_ranges() {
   return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
 }
 
@@ -1882,10 +1879,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
           dimension_label_increasing_));
     } else if (use_refactored_sparse_unordered_with_dups_reader(
                    layout_, *array_schema_)) {
-      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
-      RETURN_NOT_OK(st);
-
-      if (*non_overlapping_ranges || !subarray_.is_set() ||
+      if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseUnorderedWithDupsReader<uint8_t>,
@@ -1904,10 +1898,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
         !array_schema_->dense() &&
         (layout_ == Layout::GLOBAL_ORDER || layout_ == Layout::UNORDERED)) {
       // Using the reader for unordered queries to do deduplication.
-      auto&& [st, non_overlapping_ranges]{Query::non_overlapping_ranges()};
-      RETURN_NOT_OK(st);
-
-      if (*non_overlapping_ranges || !subarray_.is_set() ||
+      if (Query::non_overlapping_ranges() || !subarray_.is_set() ||
           subarray_.range_num() == 1) {
         strategy_ = tdb_unique_ptr<IQueryStrategy>(tdb_new(
             SparseGlobalOrderReader<uint8_t>,
@@ -2152,6 +2143,10 @@ void Query::copy_aggregates_data_to_user_buffer() {
     default_channel_aggregate.second->copy_to_user_buffer(
         default_channel_aggregate.first, aggregate_buffers_);
   }
+}
+
+RestClient* Query::rest_client() const {
+  return storage_manager_->rest_client();
 }
 
 }  // namespace sm

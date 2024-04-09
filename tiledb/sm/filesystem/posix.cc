@@ -355,7 +355,7 @@ Status Posix::ls(
   return Status::Ok();
 }
 
-std::string Posix::abs_path(const std::string& path) {
+std::string Posix::abs_path(std::string_view path) {
   std::string resolved_path = abs_path_internal(path);
 
   // Ensure the returned has the same postfix slash as 'path'.
@@ -392,7 +392,7 @@ bool Posix::both_slashes(char a, char b) {
   return a == '/' && b == '/';
 }
 
-std::string Posix::abs_path_internal(const std::string& path) {
+std::string Posix::abs_path_internal(std::string_view path) {
   // Initialize current, home and root
   std::string current = current_dir();
   auto env_home_ptr = getenv("HOME");
@@ -411,15 +411,17 @@ std::string Posix::abs_path_internal(const std::string& path) {
   // Other cases
   std::string ret_dir;
   if (utils::parse::starts_with(path, posix_prefix))
-    return path;
+    return std::string(path);
   else if (utils::parse::starts_with(path, "/"))
-    ret_dir = posix_prefix + path;
+    ret_dir = posix_prefix + std::string(path);
   else if (utils::parse::starts_with(path, "~/"))
-    ret_dir = posix_prefix + home + path.substr(1, path.size() - 1);
+    ret_dir =
+        posix_prefix + home + std::string(path.substr(1, path.size() - 1));
   else if (utils::parse::starts_with(path, "./"))
-    ret_dir = posix_prefix + current + path.substr(1, path.size() - 1);
+    ret_dir =
+        posix_prefix + current + std::string(path.substr(1, path.size() - 1));
   else
-    ret_dir = posix_prefix + current + "/" + path;
+    ret_dir = posix_prefix + current + "/" + std::string(path);
 
   adjacent_slashes_dedup(&ret_dir);
   purge_dots_from_path(&ret_dir);

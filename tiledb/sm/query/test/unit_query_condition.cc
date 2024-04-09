@@ -58,16 +58,17 @@ void check_ast_str(QueryCondition qc, std::string expect) {
 TEST_CASE(
     "QueryCondition: Test default constructor",
     "[QueryCondition][default_constructor]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   QueryCondition query_condition;
   REQUIRE(query_condition.empty());
   REQUIRE(query_condition.field_names().empty());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 }
 
 TEST_CASE("QueryCondition: Test init", "[QueryCondition][value_constructor]") {
@@ -190,6 +191,7 @@ TEST_CASE(
 }
 
 TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   std::string field_name = "blob_attr";
   std::byte value{5};
 
@@ -202,16 +204,17 @@ TEST_CASE("QueryCondition: Test blob type", "[QueryCondition][blob]") {
                   QueryConditionOp::LT)
               .ok());
 
-  shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
+  shared_ptr<ArraySchema> array_schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   shared_ptr<Attribute> attr =
       make_shared<Attribute>(HERE(), "blob_attr", Datatype::BLOB);
   REQUIRE(array_schema->add_attribute(attr).ok());
   std::vector<ResultCellSlab> result_cell_slabs;
   std::vector<shared_ptr<FragmentMetadata>> frag_md;
 
+  QueryCondition::Params params(memory_tracker, *array_schema);
   REQUIRE_THROWS_WITH(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1),
+      query_condition.apply(params, frag_md, result_cell_slabs, 1),
       Catch::Matchers::ContainsSubstring(
           "Cannot perform query comparison; Unsupported datatype " +
           datatype_str(Datatype::BLOB)));
@@ -1065,6 +1068,7 @@ void test_apply_cells<char*>(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const char* const cmp_value = "ae";
   QueryCondition query_condition;
   REQUIRE(query_condition
@@ -1129,10 +1133,10 @@ void test_apply_cells<char*>(
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       true);
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1166,10 +1170,11 @@ void test_apply_cells<char*>(
           array_schema,
           URI(),
           std::make_pair<uint64_t, uint64_t>(0, 0),
-          tiledb::test::create_test_memory_tracker(),
+          memory_tracker,
           true);
+      QueryCondition::Params params(memory_tracker, *array_schema);
       REQUIRE(query_condition_eq_null
-                  .apply(*array_schema, frag_md, result_cell_slabs_eq_null, 1)
+                  .apply(params, frag_md, result_cell_slabs_eq_null, 1)
                   .ok());
 
       REQUIRE(result_cell_slabs_eq_null.size() == (cells / 2));
@@ -1235,8 +1240,7 @@ void test_apply_cells<char*>(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
-          .ok());
+      query_condition.apply(params, frag_md, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1262,6 +1266,7 @@ void test_apply_cells(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const T cmp_value = 5;
   QueryCondition query_condition;
   REQUIRE(
@@ -1315,10 +1320,10 @@ void test_apply_cells(
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       true);
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1377,8 +1382,7 @@ void test_apply_cells(
   std::vector<ResultCellSlab> fill_result_cell_slabs;
   fill_result_cell_slabs.emplace_back(std::move(fill_result_cell_slab));
   REQUIRE(
-      query_condition.apply(*array_schema, frag_md, fill_result_cell_slabs, 1)
-          .ok());
+      query_condition.apply(params, frag_md, fill_result_cell_slabs, 1).ok());
 
   // Verify the fill result cell slabs contain the expected cells.
   auto fill_expected_iter = fill_expected_cell_idx_vec.begin();
@@ -1564,6 +1568,7 @@ void test_apply(
  */
 template <>
 void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
@@ -1571,7 +1576,6 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -1585,11 +1589,8 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+  auto dim{
+      make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -1607,8 +1608,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
       true);
 
   // Initialize the result tile.
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileSizes tile_sizes(
       var_size ? (cells + 1) * constants::cell_var_offset_size :
                  2 * cells * sizeof(char),
@@ -1634,12 +1634,12 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
  */
 template <typename T>
 void test_apply(const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -1648,11 +1648,8 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+  auto dim{
+      make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -1677,8 +1674,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1735,6 +1731,7 @@ TEST_CASE("QueryCondition: Test apply", "[QueryCondition][apply]") {
 TEST_CASE(
     "QueryCondition: Test empty/null strings",
     "[QueryCondition][empty_string][null_string]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
@@ -1748,7 +1745,6 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -1763,10 +1759,7 @@ TEST_CASE(
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -1782,7 +1775,7 @@ TEST_CASE(
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       true);
 
   // Initialize the result tile.
@@ -1795,8 +1788,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, *frag_md[0], tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, *frag_md[0], memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -1892,8 +1884,8 @@ TEST_CASE(
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
-  REQUIRE(
-      query_condition.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(query_condition.apply(params, frag_md, result_cell_slabs, 1).ok());
 
   // Verify the result cell slabs contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -1936,6 +1928,7 @@ void test_apply_cells_dense<char*>(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const char* const cmp_value = "ae";
   QueryCondition query_condition;
   REQUIRE(query_condition
@@ -1991,17 +1984,12 @@ void test_apply_cells_dense<char*>(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2024,9 +2012,10 @@ void test_apply_cells_dense<char*>(
 
       // Apply the query condition.
       std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
+      QueryCondition::Params params(memory_tracker, *array_schema);
       REQUIRE(query_condition_eq_null
                   .apply_dense(
-                      *array_schema,
+                      params,
                       result_tile,
                       0,
                       10,
@@ -2057,6 +2046,7 @@ void test_apply_cells_dense(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const T cmp_value = 5;
   QueryCondition query_condition;
   REQUIRE(
@@ -2101,17 +2091,12 @@ void test_apply_cells_dense(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2294,6 +2279,7 @@ void test_apply_dense(
 template <>
 void test_apply_dense<char*>(
     const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
@@ -2301,7 +2287,6 @@ void test_apply_dense<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -2316,10 +2301,7 @@ void test_apply_dense<char*>(
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2346,8 +2328,7 @@ void test_apply_dense<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2364,12 +2345,12 @@ void test_apply_dense<char*>(
  */
 template <typename T>
 void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -2379,10 +2360,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2407,8 +2385,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2466,6 +2443,7 @@ TEST_CASE(
 TEST_CASE(
     "QueryCondition: Test empty/null strings dense",
     "[QueryCondition][empty_string][null_string][dense]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
@@ -2479,7 +2457,6 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -2494,10 +2471,7 @@ TEST_CASE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -2524,8 +2498,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -2618,17 +2591,12 @@ TEST_CASE(
 
   // Apply the query condition.
   std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_dense(
-                  *array_schema,
-                  &result_tile,
-                  0,
-                  10,
-                  0,
-                  1,
-                  nullptr,
-                  result_bitmap.data())
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition
+          .apply_dense(
+              params, &result_tile, 0, 10, 0, 1, nullptr, result_bitmap.data())
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2670,6 +2638,7 @@ void test_apply_cells_sparse<char*>(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const char* const cmp_value = "ae";
   QueryCondition query_condition;
   REQUIRE(query_condition
@@ -2724,10 +2693,12 @@ void test_apply_cells_sparse<char*>(
   }
 
   // Apply the query condition.
-  std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  auto resource = memory_tracker->get_resource(MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -2749,10 +2720,13 @@ void test_apply_cells_sparse<char*>(
       REQUIRE(query_condition_eq_null.check(*array_schema).ok());
 
       // Apply the query condition.
-      std::vector<uint8_t> result_bitmap_eq_null(cells, 1);
+      QueryCondition::Params params(memory_tracker, *array_schema);
+      auto resource =
+          memory_tracker->get_resource(MemoryType::RESULT_TILE_BITMAP);
+      tdb::pmr::vector<uint8_t> result_bitmap_eq_null(cells, 1, resource);
       REQUIRE(query_condition_eq_null
                   .apply_sparse<uint8_t>(
-                      *array_schema, *result_tile, result_bitmap_eq_null)
+                      params, *result_tile, result_bitmap_eq_null)
                   .ok());
 
       // Verify the result bitmap contain the expected cells.
@@ -2776,6 +2750,7 @@ void test_apply_cells_sparse(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile* const result_tile,
     void* values) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const T cmp_value = 5;
   QueryCondition query_condition;
   REQUIRE(
@@ -2819,10 +2794,12 @@ void test_apply_cells_sparse(
   }
 
   // Apply the query condition.
-  std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, *result_tile, result_bitmap)
-              .ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  auto resource = memory_tracker->get_resource(MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, *result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();
@@ -3005,6 +2982,7 @@ void test_apply_sparse(
 template <>
 void test_apply_sparse<char*>(
     const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   REQUIRE((type == Datatype::STRING_ASCII || type == Datatype::STRING_UTF8));
 
   const std::string field_name = "foo";
@@ -3012,7 +2990,6 @@ void test_apply_sparse<char*>(
   const char* fill_value = "ac";
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -3027,10 +3004,7 @@ void test_apply_sparse<char*>(
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3057,8 +3031,7 @@ void test_apply_sparse<char*>(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3075,12 +3048,12 @@ void test_apply_sparse<char*>(
  */
 template <typename T>
 void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const T fill_value = 3;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -3090,10 +3063,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3118,8 +3088,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
       var_size ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -3249,6 +3218,7 @@ void validate_qc_apply(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   ResultCellSlab result_cell_slab(&result_tile, 0, cells);
   std::vector<ResultCellSlab> result_cell_slabs;
   result_cell_slabs.emplace_back(std::move(result_cell_slab));
@@ -3259,9 +3229,10 @@ void validate_qc_apply(
       array_schema,
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
-      tiledb::test::create_test_memory_tracker(),
+      memory_tracker,
       true);
-  REQUIRE(tp.qc_.apply(*array_schema, frag_md, result_cell_slabs, 1).ok());
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(tp.qc_.apply(params, frag_md, result_cell_slabs, 1).ok());
   REQUIRE(result_cell_slabs.size() == tp.expected_slabs_.size());
   uint64_t result_cell_slabs_size = result_cell_slabs.size();
   for (uint64_t i = 0; i < result_cell_slabs_size; ++i) {
@@ -3291,20 +3262,21 @@ void validate_qc_apply_sparse(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
-  std::vector<uint8_t> sparse_result_bitmap(cells, 1);
-  REQUIRE(tp.qc_
-              .apply_sparse<uint8_t>(
-                  *array_schema, result_tile, sparse_result_bitmap)
-              .ok());
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  auto resource = memory_tracker->get_resource(MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint8_t> sparse_result_bitmap(cells, 1, resource);
+  REQUIRE(
+      tp.qc_.apply_sparse<uint8_t>(params, result_tile, sparse_result_bitmap)
+          .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap[i] == tp.expected_bitmap_[i]);
   }
 
-  std::vector<uint64_t> sparse_result_bitmap1(cells, 2);
-  REQUIRE(tp.qc_
-              .apply_sparse<uint64_t>(
-                  *array_schema, result_tile, sparse_result_bitmap1)
-              .ok());
+  tdb::pmr::vector<uint64_t> sparse_result_bitmap1(cells, 2, resource);
+  REQUIRE(
+      tp.qc_.apply_sparse<uint64_t>(params, result_tile, sparse_result_bitmap1)
+          .ok());
   for (uint64_t i = 0; i < cells; ++i) {
     CHECK(sparse_result_bitmap1[i] == tp.expected_bitmap_[i] * 2);
   }
@@ -3331,10 +3303,12 @@ void validate_qc_apply_dense(
     shared_ptr<const ArraySchema> array_schema,
     ResultTile& result_tile,
     bool negated = false) {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   std::vector<uint8_t> dense_result_bitmap(cells, 1);
+  QueryCondition::Params params(memory_tracker, *array_schema);
   REQUIRE(tp.qc_
               .apply_dense(
-                  *array_schema,
+                  params,
                   &result_tile,
                   0,
                   10,
@@ -3851,12 +3825,12 @@ void populate_test_params_vector(
 TEST_CASE(
     "QueryCondition: Test combinations", "[QueryCondition][combinations]") {
   // Setup.
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const Datatype type = Datatype::UINT64;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -3864,10 +3838,7 @@ TEST_CASE(
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -3892,8 +3863,7 @@ TEST_CASE(
       std::nullopt,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4140,12 +4110,12 @@ TEST_CASE(
     "QueryCondition: Test combinations, string",
     "[QueryCondition][combinations][string]") {
   // Setup.
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const Datatype type = GENERATE(Datatype::STRING_ASCII, Datatype::STRING_UTF8);
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -4156,11 +4126,8 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+  auto dim{
+      make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4186,8 +4153,7 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4501,12 +4467,12 @@ TEST_CASE(
     "QueryCondition: Test combinations, string with UTF-8 data",
     "[QueryCondition][combinations][string][utf-8]") {
   // Setup.
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const Datatype type = Datatype::STRING_UTF8;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -4517,11 +4483,8 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+  auto dim{
+      make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4605,8 +4568,7 @@ TEST_CASE(
       0,
       std::nullopt,
       std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4830,12 +4792,12 @@ TEST_CASE(
     "QueryCondition: Test combinations, nullable attributes",
     "[QueryCondition][combinations][nullable]") {
   // Setup.
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const Datatype type = Datatype::FLOAT32;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -4844,10 +4806,7 @@ TEST_CASE(
               .ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   auto dim{make_shared<tiledb::sm::Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+      HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4872,8 +4831,7 @@ TEST_CASE(
       std::nullopt,
       cells * constants::cell_validity_size,
       0);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -4922,6 +4880,7 @@ TEST_CASE(
 TEST_CASE(
     "QueryCondition: Test empty/null strings sparse",
     "[QueryCondition][empty_string][null_string][sparse]") {
+  auto memory_tracker = tiledb::test::get_test_memory_tracker();
   const std::string field_name = "foo";
   const uint64_t cells = 10;
   const char* fill_value = "ac";
@@ -4935,7 +4894,6 @@ TEST_CASE(
     return;
 
   // Initialize the array schema.
-  auto memory_tracker = tiledb::test::create_test_memory_tracker();
   shared_ptr<ArraySchema> array_schema =
       make_shared<ArraySchema>(HERE(), ArrayType::DENSE, memory_tracker);
   Attribute attr(field_name, type);
@@ -4949,11 +4907,8 @@ TEST_CASE(
   REQUIRE(
       array_schema->add_attribute(make_shared<Attribute>(HERE(), attr)).ok());
   auto domain{make_shared<Domain>(HERE(), memory_tracker)};
-  auto dim{make_shared<Dimension>(
-      HERE(),
-      "dim1",
-      Datatype::UINT32,
-      tiledb::test::get_test_memory_tracker())};
+  auto dim{
+      make_shared<Dimension>(HERE(), "dim1", Datatype::UINT32, memory_tracker)};
   uint32_t bounds[2] = {1, cells};
   Range range(bounds, 2 * sizeof(uint32_t));
   REQUIRE(dim->set_domain(range).ok());
@@ -4980,8 +4935,7 @@ TEST_CASE(
       nullable ? std::optional(cells * constants::cell_validity_size) :
                  std::nullopt,
       nullable ? std::optional(0) : std::nullopt);
-  ResultTile result_tile(
-      0, 0, frag_md, tiledb::test::get_test_memory_tracker());
+  ResultTile result_tile(0, 0, frag_md, memory_tracker);
   ResultTile::TileData tile_data{nullptr, nullptr, nullptr};
   result_tile.init_attr_tile(
       constants::format_version,
@@ -5073,10 +5027,12 @@ TEST_CASE(
   }
 
   // Apply the query condition.
-  std::vector<uint8_t> result_bitmap(cells, 1);
-  REQUIRE(query_condition
-              .apply_sparse<uint8_t>(*array_schema, result_tile, result_bitmap)
-              .ok());
+  auto resource = memory_tracker->get_resource(MemoryType::RESULT_TILE_BITMAP);
+  tdb::pmr::vector<uint8_t> result_bitmap(cells, 1, resource);
+  QueryCondition::Params params(memory_tracker, *array_schema);
+  REQUIRE(
+      query_condition.apply_sparse<uint8_t>(params, result_tile, result_bitmap)
+          .ok());
 
   // Verify the result bitmap contain the expected cells.
   auto expected_iter = expected_cell_idx_vec.begin();

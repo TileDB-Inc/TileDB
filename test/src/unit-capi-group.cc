@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -411,14 +411,14 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     GroupFx,
-    "C API: Group Metadata, write/read",
-    "[capi][group][metadata][read]") {
+    "C API: Group Metadata, write/read, rest",
+    "[capi][group][metadata][rest][regression][sc-4821]") {
   // Create and open group in write mode
   // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1");
 
-  std::string group1_uri = temp_dir + "group1";
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group;

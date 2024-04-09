@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -222,10 +222,10 @@ TEST_CASE(
   cfg.with_delete_meta_ = with_delete_meta;
   cfg.buffer_size_ = 1000;
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace cw(tiledb::test::get_test_memory_tracker());
   cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
-  std::vector<span<std::byte>>& buffers{cw.buffers()};
-  std::vector<uint64_t>& buffer_sizes{cw.sizes()};
+  auto& buffers = cw.buffers();
+  auto& buffer_sizes = cw.sizes();
 
   // Validate.
   CHECK(buffers.size() == expected_sizes.size());

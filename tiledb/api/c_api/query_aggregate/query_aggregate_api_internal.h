@@ -39,6 +39,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/readers/aggregators/operation.h"
+#include "tiledb/sm/query/readers/aggregators/query_channel.h"
 
 struct tiledb_channel_operation_handle_t
     : public tiledb::api::CAPIHandle<tiledb_channel_operation_handle_t> {
@@ -71,6 +72,11 @@ struct tiledb_channel_operation_handle_t
   }
 };
 
+/* Forward declaration */
+namespace tiledb::sm {
+class Query;
+}
+
 struct tiledb_query_channel_handle_t
     : public tiledb::api::CAPIHandle<tiledb_query_channel_handle_t> {
   /**
@@ -78,9 +84,10 @@ struct tiledb_query_channel_handle_t
    */
   static constexpr std::string_view object_type_name{"tiledb_query_channel_t"};
 
- public:
-  tiledb::sm::Query* query_;
+ private:
+  std::shared_ptr<class tiledb::sm::QueryChannel> channel_;
 
+ public:
   /**
    * Default constructor doesn't make sense
    */
@@ -90,14 +97,16 @@ struct tiledb_query_channel_handle_t
    * Ordinary constructor.
    * @param query The query object that owns the channel
    */
-  tiledb_query_channel_handle_t(tiledb_query_t* query)
-      : query_(query->query_) {
+  tiledb_query_channel_handle_t(
+      std::shared_ptr<class tiledb::sm::QueryChannel> channel)
+      : channel_(channel) {
   }
 
   inline void add_aggregate(
       const char* output_field,
       const tiledb_channel_operation_handle_t* operation) {
-    if (query_->is_aggregate(output_field)) {
+    auto& query{channel_->query()};
+    if (query.is_aggregate(output_field)) {
       throw tiledb::api::CAPIStatusException(
           "An aggregate operation for output field: " +
           std::string(output_field) + " already exists.");
@@ -105,8 +114,12 @@ struct tiledb_query_channel_handle_t
 
     // Add the aggregator the the default channel as this is the only channel
     // type we currently support
-    query_->add_aggregator_to_default_channel(
+    query.add_aggregator_to_default_channel(
         output_field, operation->aggregator());
+  }
+
+  inline tiledb::sm::Query& query() {
+    return channel_->query();
   }
 };
 
