@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -48,12 +49,6 @@ using namespace tiledb::test;
 
 class NullableArrayFx {
  public:
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   struct test_dim_t {
     test_dim_t(
         const string& name,
@@ -200,8 +195,7 @@ class NullableArrayFx {
       const void* subarray);
 };
 
-NullableArrayFx::NullableArrayFx()
-    : serialize_(false) {
+NullableArrayFx::NullableArrayFx() {
   // Create a config.
   tiledb_config_t* config = nullptr;
   tiledb_error_t* error = nullptr;
@@ -224,7 +218,7 @@ NullableArrayFx::~NullableArrayFx() {
 }
 
 const string NullableArrayFx::array_path(const string& array_name) {
-  return temp_dir_.path() + array_name;
+  return vfs_array_uri(vfs_test_get_fs_vec()[0], temp_dir_.path() + array_name);
 }
 
 void NullableArrayFx::create_array(
@@ -410,13 +404,11 @@ void NullableArrayFx::write(
   }
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_path(array_name),
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  if (layout != TILEDB_GLOBAL_ORDER) {
+    rc = tiledb_query_submit(ctx_, query);
+  } else {
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
+  }
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -517,13 +509,7 @@ void NullableArrayFx::read(
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx_,
-      array_path(array_name),
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -848,20 +834,12 @@ void NullableArrayFx::do_2d_nullable_test(
   }
 }
 
+// TODO: Add [rest] tag and fix test issues with cleanup
+// because of the use of dynamic section
 TEST_CASE_METHOD(
     NullableArrayFx,
     "C API: Test 2D array with nullable attributes",
     "[capi][2d][nullable]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   // Define the attributes.
   vector<test_attr_t> attrs;
   attrs.emplace_back("a1", TILEDB_INT32, 1, true);
