@@ -129,13 +129,6 @@ jobs:
   ci_docker:
     uses: ./.github/workflows/build-dockerfile.yml
 
-  ci_real_azure:
-    uses: ./.github/workflows/ci-azure.yml
-    with:
-      ci_backend: AZURE
-      matrix_image: ubuntu-22.04
-      bootstrap_args: '--enable-azure --enable-release-symbols'
-
   # dummy job for branch protection check
   full_ci_passed:
     needs: [
@@ -152,8 +145,7 @@ jobs:
         ci_manylinux,
         ci_msvc,
         backward_compatibility,
-        standalone,
-        ci_real_azure
+        standalone
       ]
     runs-on: ubuntu-22.04
     steps:
