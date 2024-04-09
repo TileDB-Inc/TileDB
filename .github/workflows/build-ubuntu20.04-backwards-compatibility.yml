@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0
+
       - name: 'Print env'
         run: ./scripts/ci/posix/print-env.sh
         shell: bash

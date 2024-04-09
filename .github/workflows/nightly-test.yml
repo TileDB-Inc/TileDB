@@ -40,6 +40,12 @@ jobs:
       - name: Checkout TileDB `dev`
         uses: actions/checkout@v3
 
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0
+
       - name: Configure TileDB CMake (not-Windows)
         if: ${{ ! contains(matrix.os, 'windows') }}
         env:

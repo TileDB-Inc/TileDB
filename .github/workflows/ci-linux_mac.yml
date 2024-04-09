@@ -85,6 +85,12 @@ jobs:
             submodules: true
             fetch-depth: 0
 
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0
+
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
       - uses: actions/github-script@v6

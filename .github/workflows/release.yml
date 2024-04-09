@@ -74,6 +74,11 @@ jobs:
       - name: Checkout TileDB
         # v4 uses node 20 which is incompatible with the libc version of the manylinux image
         uses: actions/checkout@v3
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0  
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
         if: ${{ startsWith(matrix.os, 'macos-') == true }}

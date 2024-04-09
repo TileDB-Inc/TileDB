@@ -22,6 +22,11 @@ jobs:
         shell: bash
         run: |
           echo "ref=$(grep -oP '(?<=set\(VCPKG_COMMIT_STRING )\w*' cmake/Options/TileDBToolchain.cmake | head -n 1)" >> "$GITHUB_OUTPUT"
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0    
       # We clone vcpkg ourselves because having FetchContent do it inside
       # the build directory causes compilation errors due to long paths.
       - name: Checkout vcpkg repository

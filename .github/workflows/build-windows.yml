@@ -141,6 +141,12 @@ jobs:
           submodules: true
           fetch-depth: 0
 
+      # Temporary workaround to fix configuration errors with libwebp.
+      - name: Setup CMake 3.29.0
+        uses: jwlawson/actions-setup-cmake@v2
+        with:
+          cmake-version: 3.29.0
+
       - name: Prevent vcpkg from building debug variants
         run: python $env:GITHUB_WORKSPACE/scripts/ci/patch_vcpkg_triplets.py
 
