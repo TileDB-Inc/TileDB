@@ -569,6 +569,11 @@ class Config {
    * - `vfs.gcs.project_id` <br>
    *    Set the GCS project id. <br>
    *    **Default**: ""
+   * - `vfs.gcs.impersonate_service_account` <br>
+   *    Set the GCS service account to impersonate. A chain of impersonated
+   *    accounts can be formed by specifying many service accounts, separated by
+   *    a comma. <br>
+   *    **Default**: ""
    * - `vfs.gcs.multi_part_size` <br>
    *    The part size (in bytes) used in GCS multi part writes.
    *    Any `uint64_t` value is acceptable. Note:
