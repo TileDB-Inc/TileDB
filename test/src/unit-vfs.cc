@@ -37,6 +37,11 @@
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
 #endif
+#ifdef HAVE_GCS
+#include <google/cloud/internal/credentials_impl.h>
+#include <google/cloud/storage/client.h>
+#include "tiledb/sm/filesystem/gcs.h"
+#endif
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -748,5 +753,53 @@ TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The Content-Md5 you specified is not valid.");
   REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+}
+#endif
+
+#ifdef HAVE_GCS
+TEST_CASE(
+    "Validate GCS service account impersonation", "[gcs][impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  std::string impersonate_service_account, target_service_account;
+  std::vector<std::string> delegates;
+
+  SECTION("Simple") {
+    impersonate_service_account = "account1";
+    target_service_account = "account1";
+    delegates = {};
+  }
+
+  SECTION("Delegated") {
+    impersonate_service_account = "account1,account2,account3";
+    target_service_account = "account3";
+    delegates = {"account1", "account2"};
+  }
+
+  // Test parsing an edge case.
+  SECTION("Invalid") {
+    impersonate_service_account = ",";
+    target_service_account = "";
+    delegates = {""};
+  }
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(
+      impersonate_credentials->target_service_account() ==
+      target_service_account);
+  REQUIRE(impersonate_credentials->delegates() == delegates);
 }
 #endif
