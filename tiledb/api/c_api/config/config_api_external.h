@@ -397,7 +397,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    neither is specified, Application Default Credentials will be used. <br>
  *    **Default**: ""
  * - `vfs.gcs.workload_identity_configuration` <br>
- *    Set the JSON string with Workload Identity Federation credentials.
+ *    Set the JSON string with Workload Identity Federation configuration.
  *    `vfs.gcs.service_account_key` takes precedence over this if both are
  *    specified. If neither is specified, Application Default Credentials will
  *    be used. <br>

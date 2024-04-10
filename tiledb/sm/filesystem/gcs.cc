@@ -195,8 +195,8 @@ std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
   if (!service_account_key_.empty()) {
     if (!workload_identity_configuration_.empty()) {
       LOG_WARN(
-          "Both GCS service account credentials and external account "
-          "credentials were specified; picking the former");
+          "Both GCS service account key and workload identity configuration "
+          "were specified; picking the former");
     }
     creds = google::cloud::MakeServiceAccountCredentials(
         service_account_key_, options);
