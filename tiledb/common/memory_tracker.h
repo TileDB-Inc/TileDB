@@ -85,6 +85,12 @@
  * objects and arrays encoded one per line). At runtime the reporter appends
  * a JSON blob once a second to this logfile that can then be analyzed using
  * whatever scripts or software as appropriate.
+ *
+ * Users may also set configuration key
+ * 'sm.memory.tracker.reporter.wait_time_ms' to toggle the duration, in
+ * milliseconds, that the calling thread is blocked in
+ * 'MemoryTrackerReporter::run' before the condition variable is notified. By
+ * default, the thread will wait for 1000 ms.
  */
 
 #ifndef TILEDB_MEMORY_TRACKER_H
@@ -419,6 +425,7 @@ class MemoryTrackerReporter {
       const Config& cfg, shared_ptr<MemoryTrackerManager> manager)
       : manager_(manager)
       , filename_(cfg.get<std::string>("sm.memory.tracker.reporter.filename"))
+      , wait_time_ms_(cfg.get<int>("sm.memory.tracker.reporter.wait_time_ms"))
       , stop_(false) {
   }
 
@@ -441,8 +448,11 @@ class MemoryTrackerReporter {
   /** The MemoryTrackerManager instance on the parent ContextResources. */
   shared_ptr<MemoryTrackerManager> manager_;
 
-  /** An filename set in the config. */
+  /** A filename set in the config. */
   std::optional<std::string> filename_;
+
+  /** A wait time (in milliseconds) set in the config. */
+  std::optional<int> wait_time_ms_;
 
   /** The background reporter thread. */
   std::thread thread_;
