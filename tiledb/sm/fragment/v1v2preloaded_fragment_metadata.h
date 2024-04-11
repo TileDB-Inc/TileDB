@@ -89,6 +89,27 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
   /** Loads the variable tile sizes from the input buffer. */
   void load_tile_var_sizes(Deserializer& deserializer);
 
+  /** Loads the R-tree from storage. */
+  virtual void load_rtree(const EncryptionKey& encryption_key) override;
+
+  /**
+   * Loads the min max sum null count values for the fragment.
+   *
+   * @param encryption_key The key the array got opened with.
+   */
+  virtual void load_fragment_min_max_sum_null_count(
+      const EncryptionKey& encryption_key) override;
+
+  /**
+   * Loads the processed conditions for the fragment. The processed conditions
+   * is the list of delete/update conditions that have already been applied for
+   * this fragment and don't need to be applied again.
+   *
+   * @param encryption_key The key the array got opened with.
+   */
+  virtual void load_processed_conditions(
+      const EncryptionKey& encryption_key) override;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -117,6 +138,36 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
    * from storage.
    */
   virtual void load_tile_var_sizes(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the validity tile offsets for the input attribute idx from storage.
+   */
+  virtual void load_tile_validity_offsets(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the min values for the input attribute idx from storage.
+   */
+  virtual void load_tile_min_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the max values for the input attribute idx from storage.
+   */
+  virtual void load_tile_max_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the sum values for the input attribute idx from storage.
+   */
+  virtual void load_tile_sum_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the null count values for the input attribute idx from storage.
+   */
+  virtual void load_tile_null_count_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 };
 

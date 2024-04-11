@@ -78,12 +78,6 @@ V1V2PreloadedFragmentMetadata::V1V2PreloadedFragmentMetadata(
 /*                API                */
 /* ********************************* */
 
-void V1V2PreloadedFragmentMetadata::load_tile_offsets(
-    const EncryptionKey&, unsigned) {
-  // N/A for v1_v2 preloaded meta
-  return;
-}
-
 // Applicable only to versions 1 and 2
 void V1V2PreloadedFragmentMetadata::load_tile_offsets(
     Deserializer& deserializer) {
@@ -120,12 +114,6 @@ void V1V2PreloadedFragmentMetadata::load_tile_offsets(
 
   parent_fragment_.loaded_metadata_.tile_offsets_.resize(
       parent_fragment_.array_schema_->attribute_num() + 1, true);
-}
-
-void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
-    const EncryptionKey&, unsigned) {
-  // N/A for v1_v2 preloaded meta
-  return;
 }
 
 // ===== FORMAT =====
@@ -175,12 +163,6 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
       parent_fragment_.array_schema_->attribute_num(), true);
 }
 
-void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
-    const EncryptionKey&, unsigned) {
-  // N/A for v1_v2 preloaded meta
-  return;
-}
-
 // ===== FORMAT =====
 // tile_var_sizes_attr#0_num (uint64_t)
 // tile_var_sizes_attr#0_#1 (uint64_t) tile_sizes_attr#0_#2 (uint64_t) ...
@@ -225,8 +207,73 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
       parent_fragment_.array_schema_->attribute_num(), true);
 }
 
+void V1V2PreloadedFragmentMetadata::load_rtree(const EncryptionKey&) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_fragment_min_max_sum_null_count(
+    const EncryptionKey& encryption_key) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
 /* ********************************* */
 /*           PRIVATE METHODS         */
 /* ********************************* */
+
+void V1V2PreloadedFragmentMetadata::load_tile_offsets(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_validity_offsets(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_min_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_max_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_sum_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_tile_null_count_values(
+    const EncryptionKey&, unsigned) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
+
+void V1V2PreloadedFragmentMetadata::load_processed_conditions(
+    const EncryptionKey&) {
+  // N/A for v1_v2 preloaded meta
+  return;
+}
 
 }  // namespace tiledb::sm

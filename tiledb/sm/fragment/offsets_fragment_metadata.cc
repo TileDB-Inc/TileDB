@@ -75,7 +75,18 @@ OffsetsFragmentMetadata::OffsetsFragmentMetadata(
     , memory_tracker_(memory_tracker)
     , tile_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS))
     , tile_var_offsets_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
-    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS)) {
+    , tile_var_sizes_(memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_validity_offsets_(
+          memory_tracker_->get_resource(MemoryType::TILE_OFFSETS))
+    , tile_min_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_min_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MIN_VALS))
+    , tile_max_buffer_(memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_max_var_buffer_(
+          memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
+    , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
+    , tile_null_counts_(
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS)) {
 }
 
 /* ********************************* */
@@ -99,31 +110,6 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_size(
           tile_offsets_[idx][tile_idx + 1] - tile_offsets_[idx][tile_idx] :
           parent_fragment_.file_sizes_[idx] - tile_offsets_[idx][tile_idx];
   return tile_size;
-}
-
-void OffsetsFragmentMetadata::load_tile_offsets(
-    unsigned idx, Deserializer& deserializer) {
-  uint64_t tile_offsets_num = 0;
-
-  // Get number of tile offsets
-  tile_offsets_num = deserializer.read<uint64_t>();
-
-  // Get tile offsets
-  if (tile_offsets_num != 0) {
-    auto size = tile_offsets_num * sizeof(uint64_t);
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
-      throw FragmentMetadataStatusException(
-          "Cannot load tile offsets; Insufficient memory budget; Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
-          " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
-    }
-
-    tile_offsets_[idx].resize(tile_offsets_num);
-    deserializer.read(&tile_offsets_[idx][0], size);
-  }
 }
 
 void OffsetsFragmentMetadata::load_tile_offsets(
@@ -154,7 +140,7 @@ void OffsetsFragmentMetadata::load_tile_offsets(
     }
   }
 
-  // Load all of the var offsets.
+  // Load all of the validity offsets.
   for (const auto& name : names) {
     if (parent_fragment_.array_schema_->is_nullable(name)) {
       parent_fragment_.load_tile_validity_offsets(
@@ -277,32 +263,6 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_var_size(
   return tile_size;
 }
 
-void OffsetsFragmentMetadata::load_tile_var_offsets(
-    unsigned idx, Deserializer& deserializer) {
-  uint64_t tile_var_offsets_num = 0;
-
-  // Get number of tile offsets
-  tile_var_offsets_num = deserializer.read<uint64_t>();
-
-  // Get variable tile offsets
-  if (tile_var_offsets_num != 0) {
-    auto size = tile_var_offsets_num * sizeof(uint64_t);
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
-      throw FragmentMetadataStatusException(
-          "Cannot load tile var offsets; Insufficient memory budget; "
-          "Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
-          " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
-    }
-
-    tile_var_offsets_[idx].resize(tile_var_offsets_num);
-    deserializer.read(&tile_var_offsets_[idx][0], size);
-  }
-}
-
 uint64_t OffsetsFragmentMetadata::tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = parent_fragment_.idx_map_.find(name);
@@ -324,34 +284,266 @@ void OffsetsFragmentMetadata::load_tile_var_sizes(
   load_tile_var_sizes(encryption_key, idx);
 }
 
-void OffsetsFragmentMetadata::load_tile_var_sizes(
-    unsigned idx, Deserializer& deserializer) {
-  uint64_t tile_var_sizes_num = 0;
+void OffsetsFragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
+  tile_var_sizes_.resize(size);
+}
 
-  // Get number of tile sizes
-  tile_var_sizes_num = deserializer.read<uint64_t>();
+void OffsetsFragmentMetadata::load_tile_min_values(
+    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
+  // Sort 'names' in ascending order of their index. The
+  // motivation is to load the offsets in order of their
+  // layout for sequential reads to the file.
+  std::sort(
+      names.begin(),
+      names.end(),
+      [&](const std::string& lhs, const std::string& rhs) {
+        assert(idx_map_.count(lhs) > 0);
+        assert(idx_map_.count(rhs) > 0);
+        return idx_map_[lhs] < idx_map_[rhs];
+      });
 
-  // Get variable tile sizes
-  if (tile_var_sizes_num != 0) {
-    auto size = tile_var_sizes_num * sizeof(uint64_t);
-    if (memory_tracker_ != nullptr &&
-        !memory_tracker_->take_memory(size, MemoryType::TILE_OFFSETS)) {
-      throw FragmentMetadataStatusException(
-          "Cannot load tile var sizes; Insufficient memory budget; "
-          "Needed " +
-          std::to_string(size) + " but only had " +
-          std::to_string(memory_tracker_->get_memory_available()) +
-          " from budget " +
-          std::to_string(memory_tracker_->get_memory_budget()));
-    }
-
-    tile_var_sizes_[idx].resize(tile_var_sizes_num);
-    deserializer.read(&tile_var_sizes_[idx][0], size);
+  // Load all the min values.
+  for (const auto& name : names) {
+    load_tile_min_values(encryption_key, idx_map_[name]);
   }
 }
 
-void OffsetsFragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
-  tile_var_sizes_.resize(size);
+void OffsetsFragmentMetadata::load_tile_max_values(
+    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
+  // Sort 'names' in ascending order of their index. The
+  // motivation is to load the offsets in order of their
+  // layout for sequential reads to the file.
+  std::sort(
+      names.begin(),
+      names.end(),
+      [&](const std::string& lhs, const std::string& rhs) {
+        assert(idx_map_.count(lhs) > 0);
+        assert(idx_map_.count(rhs) > 0);
+        return idx_map_[lhs] < idx_map_[rhs];
+      });
+
+  // Load all the max values.
+  for (const auto& name : names) {
+    load_tile_max_values(encryption_key, idx_map_[name]);
+  }
+}
+
+void OffsetsFragmentMetadata::load_tile_sum_values(
+    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
+  // Sort 'names' in ascending order of their index. The
+  // motivation is to load the offsets in order of their
+  // layout for sequential reads to the file.
+  std::sort(
+      names.begin(),
+      names.end(),
+      [&](const std::string& lhs, const std::string& rhs) {
+        assert(idx_map_.count(lhs) > 0);
+        assert(idx_map_.count(rhs) > 0);
+        return idx_map_[lhs] < idx_map_[rhs];
+      });
+
+  // Load all the sum values.
+  for (const auto& name : names) {
+    load_tile_sum_values(encryption_key, idx_map_[name]);
+  }
+}
+
+void OffsetsFragmentMetadata::load_tile_null_count_values(
+    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
+  // Sort 'names' in ascending order of their index. The
+  // motivation is to load the offsets in order of their
+  // layout for sequential reads to the file.
+  std::sort(
+      names.begin(),
+      names.end(),
+      [&](const std::string& lhs, const std::string& rhs) {
+        assert(idx_map_.count(lhs) > 0);
+        assert(idx_map_.count(rhs) > 0);
+        return idx_map_[lhs] < idx_map_[rhs];
+      });
+
+  // Load all the null count values.
+  for (const auto& name : names) {
+    load_tile_null_count_values(encryption_key, idx_map_[name]);
+  }
+}
+
+std::vector<std::string>& FragmentMetadata::get_processed_conditions() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error(
+        "Trying to access processed conditions metadata that's not present");
+  }
+
+  return processed_conditions_;
+}
+
+std::unordered_set<std::string>&
+FragmentMetadata::get_processed_conditions_set() {
+  if (!loaded_metadata_.processed_conditions_) {
+    throw std::logic_error(
+        "Trying to access processed condition set metadata that's not present");
+  }
+
+  return processed_conditions_set_;
+}
+
+std::vector<uint8_t>& FragmentMetadata::get_min(const std::string& name) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment min metadata that's not loaded");
+  }
+
+  const auto type = array_schema_->type(name);
+  const auto is_dim = array_schema_->is_dim(name);
+  const auto var_size = array_schema_->var_size(name);
+  const auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment min metadata that's not present");
+  }
+
+  return fragment_mins_[idx];
+}
+
+std::vector<uint8_t>& FragmentMetadata::get_max(const std::string& name) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment max metadata that's not loaded");
+  }
+
+  const auto type = array_schema_->type(name);
+  const auto is_dim = array_schema_->is_dim(name);
+  const auto var_size = array_schema_->var_size(name);
+  const auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_min_max_metadata(
+          type, is_dim, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment max metadata that's not present");
+  }
+
+  return fragment_maxs_[idx];
+}
+
+void* FragmentMetadata::get_sum(const std::string& name) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment sum metadata that's not loaded");
+  }
+
+  const auto type = array_schema_->type(name);
+  const auto var_size = array_schema_->var_size(name);
+  const auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment sum metadata that's not present");
+  }
+
+  return &fragment_sums_[idx];
+}
+
+uint64_t FragmentMetadata::get_null_count(const std::string& name) {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.fragment_min_max_sum_null_count_) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment null count metadata that's not loaded");
+  }
+
+  if (!array_schema_->is_nullable(name)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access fragment null count metadata that's not present");
+  }
+
+  return fragment_null_counts_[idx];
+}
+
+uint64_t FragmentMetadata::get_tile_null_count(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_null_count_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile null count metadata that's not loaded");
+  }
+
+  if (!array_schema_->is_nullable(name)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile null count metadata that's not present");
+  }
+
+  return tile_null_counts_[idx][tile_idx];
+}
+
+const void* FragmentMetadata::get_tile_sum(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_sum_[idx]) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile sum metadata that's not loaded");
+  }
+
+  auto type = array_schema_->type(name);
+  auto var_size = array_schema_->var_size(name);
+  auto cell_val_num = array_schema_->cell_val_num(name);
+  if (!TileMetadataGenerator::has_sum_metadata(type, var_size, cell_val_num)) {
+    throw FragmentMetadataStatusException(
+        "Trying to access tile sum metadata that's not present");
+  }
+
+  const void* sum = &tile_sums_[idx][tile_idx * sizeof(uint64_t)];
+  return sum;
+}
+
+void FragmentMetadata::resize_tile_validity_offsets_vectors(uint64_t size) {
+  tile_validity_offsets().resize(size);
+}
+
+uint64_t FragmentMetadata::file_validity_offset(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_validity_offsets_[idx]) {
+    throw std::logic_error(
+        "Trying to access tile validity offsets metadata that's not loaded");
+  }
+
+  return tile_validity_offsets_[idx][tile_idx];
+}
+
+uint64_t FragmentMetadata::persisted_tile_validity_size(
+    const std::string& name, uint64_t tile_idx) const {
+  auto it = idx_map_.find(name);
+  assert(it != idx_map_.end());
+  auto idx = it->second;
+  if (!loaded_metadata_.tile_validity_offsets_[idx]) {
+    throw std::logic_error(
+        "Trying to access persisted tile validity offsets metadata that's not "
+        "present");
+  }
+
+  auto tile_num = this->tile_num();
+
+  auto tile_size =
+      (tile_idx != tile_num - 1) ?
+          tile_validity_offsets_[idx][tile_idx + 1] -
+              tile_validity_offsets_[idx][tile_idx] :
+          file_validity_sizes_[idx] - tile_validity_offsets_[idx][tile_idx];
+  return tile_size;
 }
 
 /* ********************************* */

@@ -74,6 +74,27 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /*                API                */
   /* ********************************* */
 
+  /** Loads the R-tree from storage. */
+  virtual void load_rtree(const EncryptionKey& encryption_key) override;
+
+  /**
+   * Loads the min max sum null count values for the fragment.
+   *
+   * @param encryption_key The key the array got opened with.
+   */
+  virtual void load_fragment_min_max_sum_null_count(
+      const EncryptionKey& encryption_key) override;
+
+  /**
+   * Loads the processed conditions for the fragment. The processed conditions
+   * is the list of delete/update conditions that have already been applied for
+   * this fragment and don't need to be applied again.
+   *
+   * @param encryption_key The key the array got opened with.
+   */
+  virtual void load_processed_conditions(
+      const EncryptionKey& encryption_key) override;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -91,6 +112,12 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
+   * Loads the tile offsets for the input attribute or dimension from the
+   * input buffer.
+   */
+  void load_tile_offsets(unsigned idx, Deserializer& deserializer);
+
+  /**
    * Loads the variable tile offsets for the input attribute or dimension idx
    * from storage.
    */
@@ -98,11 +125,90 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
+   * Loads the variable tile offsets for the input attribute or dimension from
+   * the input buffer.
+   */
+  void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
+
+  /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
    */
   virtual void load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the variable tile sizes for the input attribute or dimension from
+   * the input buffer.
+   */
+  void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the validity tile offsets for the input attribute idx from storage.
+   */
+  virtual void load_tile_validity_offsets(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the validity tile offsets for the input attribute from the
+   * input buffer.
+   */
+  void load_tile_validity_offsets(unsigned idx, ConstBuffer* buff);
+
+  /**
+   * Loads the min values for the input attribute from the input buffer.
+   */
+  void load_tile_min_values(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the min values for the input attribute idx from storage.
+   */
+  virtual void load_tile_min_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the max values for the input attribute from the input buffer.
+   */
+  void load_tile_max_values(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the max values for the input attribute idx from storage.
+   */
+  virtual void load_tile_max_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the sum values for the input attribute from the input buffer.
+   */
+  void load_tile_sum_values(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the sum values for the input attribute idx from storage.
+   */
+  virtual void load_tile_sum_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the null count values for the input attribute from the input
+   * buffer.
+   */
+  void load_tile_null_count_values(unsigned idx, Deserializer& deserializer);
+
+  /**
+   * Loads the null count values for the input attribute idx from storage.
+   */
+  virtual void load_tile_null_count_values(
+      const EncryptionKey& encryption_key, unsigned idx) override;
+
+  /**
+   * Loads the min max sum null count values for the fragment.
+   */
+  void load_fragment_min_max_sum_null_count(Deserializer& deserializer);
+
+  /**
+   * Loads the processed conditions for the fragment.
+   */
+  void load_processed_conditions(Deserializer& deserializer);
 };
 
 }  // namespace sm
