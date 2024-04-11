@@ -460,6 +460,12 @@ class Config {
   /** GCS service account(s) to impersonate. */
   static const std::string VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT;
 
+  /** GCS service account key JSON string. */
+  static const std::string VFS_GCS_SERVICE_ACCOUNT_KEY;
+
+  /** GCS external account credentials JSON string. */
+  static const std::string VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION;
+
   /** GCS max parallel ops. */
   static const std::string VFS_GCS_MAX_PARALLEL_OPS;
 

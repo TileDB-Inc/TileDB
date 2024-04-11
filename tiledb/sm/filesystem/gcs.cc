@@ -102,6 +102,11 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
+  service_account_key_ = config.get("vfs.gcs.service_account_key", &found);
+  assert(found);
+  workload_identity_configuration_ =
+      config.get("vfs.gcs.workload_identity_configuration", &found);
+  assert(found);
   impersonate_service_account_ =
       config.get("vfs.gcs.impersonate_service_account", &found);
   assert(found);
@@ -187,7 +192,18 @@ static shared_ptr<google::cloud::Credentials> apply_impersonation(
 std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
     const google::cloud::Options& options) const {
   shared_ptr<google::cloud::Credentials> creds = nullptr;
-  if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+  if (!service_account_key_.empty()) {
+    if (!workload_identity_configuration_.empty()) {
+      LOG_WARN(
+          "Both GCS service account key and workload identity configuration "
+          "were specified; picking the former");
+    }
+    creds = google::cloud::MakeServiceAccountCredentials(
+        service_account_key_, options);
+  } else if (!workload_identity_configuration_.empty()) {
+    creds = google::cloud::MakeExternalAccountCredentials(
+        workload_identity_configuration_, options);
+  } else if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
     creds = google::cloud::MakeInsecureCredentials();
   } else {
     creds = google::cloud::MakeGoogleDefaultCredentials(options);
