@@ -758,7 +758,8 @@ TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
 
 #ifdef HAVE_GCS
 TEST_CASE(
-    "Validate GCS service account impersonation", "[gcs][impersonation]") {
+    "Validate GCS service account impersonation",
+    "[gcs][credentials][impersonation]") {
   ThreadPool thread_pool(2);
   Config cfg = set_config_params(true);
   GCS gcs;
@@ -801,5 +802,96 @@ TEST_CASE(
       impersonate_credentials->target_service_account() ==
       target_service_account);
   REQUIRE(impersonate_credentials->delegates() == delegates);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials",
+    "[gcs][credentials][service-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(service_account != nullptr);
+  REQUIRE(service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials with impersonation",
+    "[gcs][credentials][service-account-and-impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+  std::string impersonate_service_account = "account1,account2,account3";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(impersonate_credentials->target_service_account() == "account3");
+  REQUIRE(
+      impersonate_credentials->delegates() ==
+      std::vector<std::string>{"account1", "account2"});
+
+  auto inner_service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          impersonate_credentials->base_credentials().get());
+
+  REQUIRE(inner_service_account != nullptr);
+  REQUIRE(inner_service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS external account credentials",
+    "[gcs][credentials][external-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.workload_identity_configuration",
+      workload_identity_configuration));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto external_account =
+      dynamic_cast<google::cloud::internal::ExternalAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(external_account != nullptr);
+  REQUIRE(external_account->json_object() == workload_identity_configuration);
 }
 #endif
