@@ -61,6 +61,8 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class WhiteboxConfig;
+
 /**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
@@ -68,6 +70,10 @@ namespace tiledb::sm {
  */
 class Config {
   friend class ConfigIter;
+  /**
+   * WhiteboxConfig makes available internals of Config for testing.
+   */
+  friend class WhiteboxConfig;
 
  public:
   /* ****************************** */
