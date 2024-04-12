@@ -34,8 +34,23 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/cpp_api/tiledb"
+
+using namespace tiledb::sm;
+
+class tiledb::sm::WhiteboxConfig {
+ public:
+  WhiteboxConfig(tiledb::sm::Config config)
+      : config_(config){};
+
+  const std::map<std::string, std::string>& get_all_params() const {
+    return config_.param_values();
+  }
+
+  tiledb::sm::Config config_;
+};
 
 TEST_CASE("C++ API: Config", "[cppapi][config]") {
   tiledb::Config config;
@@ -159,7 +174,12 @@ TEST_CASE("C++ API: Config Serialization", "[cppapi][config][serialization]") {
   CHECK(rc == TILEDB_OK);
   tiledb::Config config2(&config2_ptr);
 
-  bool config_equal = config1 == config2;
+  auto cfg1 = config1.ptr().get()->config();
+  auto cfg2 = config2.ptr().get()->config();
+  // Check that the deserialized config already contains the values set in
+  // environment variables
+  bool config_equal = cfg1.get_all_params_from_config_or_env() ==
+                      WhiteboxConfig(cfg2).get_all_params();
   CHECK(config_equal);
 
   // Check for inequality

@@ -932,6 +932,17 @@ const char* Config::get_from_config_or_env(
   return *found ? value_config : "";
 }
 
+const std::map<std::string, std::string>
+Config::get_all_params_from_config_or_env() const {
+  std::map<std::string, std::string> values;
+  bool found = false;
+  for (const auto& [key, value] : param_values_) {
+    std::string val = get_from_config_or_env(key, &found);
+    values.emplace(key, val);
+  }
+  return values;
+}
+
 template <class T, bool must_find_>
 optional<T> Config::get_internal(const std::string& key) const {
   auto value = get_internal_string<must_find_>(key);
