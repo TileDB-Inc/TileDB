@@ -42,6 +42,7 @@ if (TILEDB_SERIALIZATION)
 endif()
 
 if (TILEDB_CPP_API)
+  list(APPEND SOURCES targets/sc-10782.cc)
   list(APPEND SOURCES targets/sc-19240_cppapi-vfs-exception.cc)
   list(APPEND SOURCES targets/sc-24079.cc)
   list(APPEND SOURCES targets/sc-25116.cc)
