@@ -4,6 +4,11 @@
 
 * Support for downloading dependencies with CMake `ExternalProject`s by specifying `-DTILEDB_VCPKG=OFF` will be removed in 2.23. Vcpkg will be downloaded and used to manage dependencies by default. See https://github.com/TileDB-Inc/TileDB/blob/dev/doc/dev/BUILD.md for help on how to disable automatically downloading vcpkg and acquire dependencies from the system.
 
+## Configuration changes
+
+* Add `vfs.gcs.service_account_credential` config option that specifies a Google Cloud service account credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+* Add `vfs.gcs.external_account_credential` config option that specifies a Google Cloud Workload Identity Federation credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+
 ## New features
 
 * Support Microsoft Entra ID authentication to Azure. [#4126](https://github.com/TileDB-Inc/TileDB/pull/4126)
