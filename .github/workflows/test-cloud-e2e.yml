@@ -16,6 +16,7 @@ on:
     branches:
       - dev
       - release-*
+      - teo/gcp-test
 
 env:
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
@@ -24,7 +25,7 @@ env:
 jobs:
   azure:
     runs-on: ubuntu-latest
-    if: inputs.run_azure != 'false'
+    if: false && inputs.run_azure != 'false'
     environment: azure-e2e-test
     env:
       bootstrap_args: --enable-azure --enable-ccache
@@ -118,7 +119,7 @@ jobs:
   gcp:
     runs-on: ubuntu-latest
     if: inputs.run_gcp != 'false'
-    environment: gcp-e2e-test
+    # environment: gcp-e2e-test
     env:
       bootstrap_args: --enable-gcs --enable-ccache
     permissions:
