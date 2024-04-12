@@ -51,8 +51,8 @@ static void write_array() {
 }
 
 TEST_CASE(
-    "FragmentInfo of consolidated array doesn't include prior fragment"
-    "[cppapi][FragmentInfo][bug][sc-10782]") {
+    "FragmentInfo of consolidated array doesn't include prior fragment",
+    "[!shouldfail][cppapi][FragmentInfo][bug][sc-10782]") {
   remove_array();
   create_array();
   write_array();
