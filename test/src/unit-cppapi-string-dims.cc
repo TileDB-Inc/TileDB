@@ -1497,6 +1497,7 @@ void read_and_check_sparse_array_string_dim(
 TEST_CASE(
     "C++ API: Test filtering of string dimensions on sparse arrays",
     "[cppapi][string-dims][rle-strings][dict-strings][sparse][rest]") {
+  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create data buffer to use
   std::stringstream repetitions;
   size_t repetition_num = 100;
@@ -1519,7 +1520,6 @@ TEST_CASE(
   auto dim =
       Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr);
 
-  auto f = GENERATE(TILEDB_FILTER_RLE, TILEDB_FILTER_DICTIONARY);
   // Create compressor as a filter
   Filter filter(ctx, f);
   // Create filter list
