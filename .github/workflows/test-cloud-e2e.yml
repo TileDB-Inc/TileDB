@@ -84,17 +84,13 @@ jobs:
         run: |
           set -e pipefail
 
-          #####################################################
-          # Jump to our build directory after starting object
-          # store mock servers
-
           cd $GITHUB_WORKSPACE/build
 
           ###################################################
           # Run tests
 
           # Bypass Catch2 Framework stdout interception with awk on test output
-          ./tiledb/test/tiledb_unit -d yes "[vfs][e2e]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/test/tiledb_unit -d yes "[vfs-e2e]" | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
       - name: 'Test status check'
         run: |

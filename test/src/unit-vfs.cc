@@ -547,7 +547,7 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   }
 }
 
-TEST_CASE("VFS: Test end-to-end", "[.][vfs][e2e]") {
+TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
   auto test_file_ptr = getenv("TILEDB_VFS_E2E_TEST_FILE");
   if (test_file_ptr == nullptr) {
     FAIL("TILEDB_VFS_E2E_TEST_FILE variable is not specified");
