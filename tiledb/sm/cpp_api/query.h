@@ -303,6 +303,8 @@ class Query {
   /**
    * Submit an async query, with callback. Call returns immediately.
    *
+   * Deprecated, call `submit()` on another thread instead.
+   *
    * @note Same notes apply as `Query::submit()`.
    *
    * **Example:**
@@ -316,7 +318,7 @@ class Query {
    * @param callback Callback function.
    */
   template <typename Fn>
-  void submit_async(const Fn& callback) {
+  TILEDB_DEPRECATED void submit_async(const Fn& callback) {
     std::function<void(void*)> wrapper = [&](void*) { callback(); };
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb::impl::tiledb_query_submit_async_func(
@@ -325,6 +327,8 @@ class Query {
 
   /**
    * Submit an async query, with no callback. Call returns immediately.
+   *
+   * Deprecated, call `submit()` on another thread instead.
    *
    * @note Same notes apply as `Query::submit()`.
    *
@@ -336,7 +340,7 @@ class Query {
    * query.submit_async();
    * @endcode
    */
-  void submit_async() {
+  TILEDB_DEPRECATED void submit_async() {
     submit_async([]() {});
   }
 
