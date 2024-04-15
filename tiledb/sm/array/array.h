@@ -420,13 +420,20 @@ class Array {
   Status close();
 
   /**
-   * Deletes the Array data with given URI.
+   * Deletes the fragments with the given parent URI.
    *
-   * @param uri The uri of the Array whose data is to be deleted.
-   *
-   * @pre The Array must be open for exclusive writes
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @param array_dir An optional ArrayDirectory from which to delete fragments.
    */
-  void delete_array(const URI& uri);
+  static void delete_fragments(
+      ContextResources& resources,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timstamp_end,
+      std::optional<ArrayDirectory> array_dir = std::nullopt);
 
   /**
    * Deletes the fragments from the Array with given URI.
@@ -439,6 +446,23 @@ class Array {
    */
   void delete_fragments(
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
+   * Deletes the Array data with given URI.
+   *
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose data is to be deleted.
+   */
+  static void delete_array(ContextResources& resources, const URI& uri);
+
+  /**
+   * Deletes the Array data with given URI.
+   *
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   */
+  void delete_array(const URI& uri);
 
   /**
    * Deletes the fragments with the given URIs from the Array with given URI.

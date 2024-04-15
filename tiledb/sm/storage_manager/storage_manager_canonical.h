@@ -172,23 +172,6 @@ class StorageManagerCanonical {
       const EncryptionKey& encryption_key);
 
   /**
-   * Cleans up the array data.
-   *
-   * @param array_name The name of the array whose data is to be deleted.
-   */
-  void delete_array(const char* array_name);
-
-  /**
-   * Cleans up the array fragments.
-   *
-   * @param array_name The name of the array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete.
-   * @param timestamp_end The end timestamp at which to delete.
-   */
-  void delete_fragments(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.
