@@ -552,6 +552,26 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   }
 }
 
+TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
+  auto test_file_ptr = getenv("TILEDB_VFS_E2E_TEST_FILE");
+  if (test_file_ptr == nullptr) {
+    FAIL("TILEDB_VFS_E2E_TEST_FILE variable is not specified");
+  }
+  URI test_file{test_file_ptr};
+
+  ThreadPool compute_tp(1);
+  ThreadPool io_tp(1);
+  // Will be configured from environment variables.
+  Config config;
+
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  REQUIRE(vfs.supports_uri_scheme(test_file));
+
+  uint64_t nbytes = 0;
+  require_tiledb_ok(vfs.file_size(test_file, &nbytes));
+  CHECK(nbytes > 0);
+}
+
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
