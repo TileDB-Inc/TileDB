@@ -76,7 +76,7 @@ OffsetsFragmentMetadata::OffsetsFragmentMetadata(
     : parent_fragment_(parent)
     , memory_tracker_(memory_tracker)
     , rtree_(RTree(
-          &parent.array_schema()->domain(),
+          parent.array_schema() ? &parent.array_schema()->domain() : nullptr,
           constants::rtree_fanout,
           memory_tracker_))
     , tile_offsets_(memory_tracker->get_resource(MemoryType::TILE_OFFSETS))

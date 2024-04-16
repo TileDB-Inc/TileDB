@@ -1597,8 +1597,8 @@ TileMetadata FragmentMetadata::get_tile_metadata(
 
 void FragmentMetadata::set_processed_conditions(
     std::vector<std::string>& processed_conditions) {
-  offsets_metadata_->get_processed_conditions() = processed_conditions;
-  offsets_metadata_->get_processed_conditions_set() =
+  offsets_metadata_->processed_conditions() = processed_conditions;
+  offsets_metadata_->processed_conditions_set() =
       std::unordered_set<std::string>(
           processed_conditions.begin(), processed_conditions.end());
 }
@@ -3099,11 +3099,11 @@ void FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto serialize_processed_conditions = [this](Serializer& serializer) {
     // Store num conditions.
-    uint64_t num = offsets_metadata_->get_processed_conditions().size();
+    uint64_t num = offsets_metadata_->processed_conditions().size();
     serializer.write<uint64_t>(num);
 
     for (auto& processed_condition :
-         offsets_metadata_->get_processed_conditions()) {
+         offsets_metadata_->processed_conditions()) {
       uint64_t size = processed_condition.size();
       serializer.write<uint64_t>(size);
 

@@ -550,6 +550,21 @@ class OffsetsFragmentMetadata {
     return tile_min_buffer_;
   }
 
+  /** Returns the processed conditions vector. */
+  inline const std::vector<std::string>& processed_conditions() const {
+    return processed_conditions_;
+  }
+
+  /** processed_conditions_ accessor */
+  std::vector<std::string>& processed_conditions() {
+    return processed_conditions_;
+  }
+
+  /** Returns the processed conditions set */
+  std::unordered_set<std::string>& processed_conditions_set() {
+    return processed_conditions_set_;
+  }
+
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
