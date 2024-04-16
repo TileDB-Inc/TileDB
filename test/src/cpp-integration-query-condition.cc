@@ -320,6 +320,11 @@ struct TestParams {
 TEST_CASE(
     "Testing read query with empty QC, with no range.",
     "[query][query-condition][empty][rest]") {
+  // Generate test parameters.
+  TestParams params = GENERATE(
+      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
+      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
+      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
   // Initial setup.
   std::srand(static_cast<uint32_t>(time(0)));
   test::VFSTestSetup vfs_test_setup;
@@ -337,12 +342,6 @@ TEST_CASE(
   // condition specified above.
   std::vector<int> a_data_read_2(num_rows * num_rows);
   std::vector<float> b_data_read_2(num_rows * num_rows);
-
-  // Generate test parameters.
-  TestParams params = GENERATE(
-      TestParams(TILEDB_SPARSE, TILEDB_GLOBAL_ORDER, false, true),
-      TestParams(TILEDB_SPARSE, TILEDB_UNORDERED, true, false),
-      TestParams(TILEDB_DENSE, TILEDB_ROW_MAJOR, false, false));
 
   // Setup by creating buffers to store all elements of the original array.
   create_array(
