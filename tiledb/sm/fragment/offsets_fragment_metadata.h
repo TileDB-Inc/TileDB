@@ -55,6 +55,25 @@ class FragmentMetadata;
 class OffsetsFragmentMetadata {
  public:
   /* ********************************* */
+  /*          TYPE DEFINITIONS         */
+  /* ********************************* */
+
+  /** Keeps track of which metadata is loaded. */
+  struct LoadedMetadata {
+    bool rtree_ = false;
+    std::vector<bool> tile_offsets_;
+    std::vector<bool> tile_var_offsets_;
+    std::vector<bool> tile_var_sizes_;
+    std::vector<bool> tile_validity_offsets_;
+    std::vector<bool> tile_min_;
+    std::vector<bool> tile_max_;
+    std::vector<bool> tile_sum_;
+    std::vector<bool> tile_null_count_;
+    bool fragment_min_max_sum_null_count_ = false;
+    bool processed_conditions_ = false;
+  };
+
+  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -74,6 +93,11 @@ class OffsetsFragmentMetadata {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
+
+  static OffsetsFragmentMetadata* create(
+      FragmentMetadata& parent,
+      shared_ptr<MemoryTracker> memory_tracker,
+      format_version_t version);
 
   /** Returns the tile offsets. */
   inline const tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets()
@@ -433,6 +457,99 @@ class OffsetsFragmentMetadata {
     return rtree_;
   }
 
+  /** loaded_metadata_.rtree_ accessor */
+  void set_rtree_loaded() {
+    loaded_metadata_.rtree_ = true;
+  }
+
+  /**
+   * Retrieves the overlap of all MBRs with the input ND range.
+   */
+  void get_tile_overlap(
+      const NDRange& range,
+      std::vector<bool>& is_default,
+      TileOverlap* tile_overlap);
+
+  /**
+   * Compute tile bitmap for the curent fragment/range/dimension.
+   */
+  void compute_tile_bitmap(
+      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap);
+
+  /** Frees the memory associated with the rtree. */
+  void free_rtree();
+
+  /** loaded_metadata_ accessor */
+  inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
+    loaded_metadata_ = loaded_metadata;
+  }
+
+  /** loaded_metadata accessor . */
+  inline const LoadedMetadata& loaded_metadata() const {
+    return loaded_metadata_;
+  }
+
+  /** loaded_metadata accessor */
+  LoadedMetadata& loaded_metadata() {
+    return loaded_metadata_;
+  }
+
+  /**
+   * Resizes all offsets and reset their loaded flags.
+   */
+  void resize_offsets(uint64_t size);
+
+  /** Returns the fragment mins. */
+  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
+    return fragment_mins_;
+  }
+
+  /** Returns the fragment maxs. */
+  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
+    return fragment_maxs_;
+  }
+
+  /** Returns the fragment sums. */
+  inline const std::vector<uint64_t>& fragment_sums() const {
+    return fragment_sums_;
+  }
+
+  /** Returns the fragment null counts. */
+  inline const std::vector<uint64_t>& fragment_null_counts() const {
+    return fragment_null_counts_;
+  }
+
+  /** fragment_mins accessor */
+  std::vector<std::vector<uint8_t>>& fragment_mins() {
+    return fragment_mins_;
+  }
+
+  /** fragment_maxs accessor */
+  std::vector<std::vector<uint8_t>>& fragment_maxs() {
+    return fragment_maxs_;
+  }
+
+  /** fragment_sums accessor */
+  std::vector<uint64_t>& fragment_sums() {
+    return fragment_sums_;
+  }
+
+  /** fragment_null_counts accessor */
+  std::vector<uint64_t>& fragment_null_counts() {
+    return fragment_null_counts_;
+  }
+
+  /** Returns the tile min buffers. */
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer()
+      const {
+    return tile_min_buffer_;
+  }
+
+  /** tile_min_buffer accessor */
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
+    return tile_min_buffer_;
+  }
+
  protected:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -538,6 +655,9 @@ class OffsetsFragmentMetadata {
 
   /** Set of already processed delete/update conditions for this fragment. */
   std::unordered_set<std::string> processed_conditions_set_;
+
+  /** Keeps track of which metadata has been loaded. */
+  LoadedMetadata loaded_metadata_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

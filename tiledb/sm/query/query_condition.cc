@@ -646,8 +646,10 @@ void QueryCondition::apply_ast_node(
       // delete condition was already processed, GT condition is always true.
       if (field_name == constants::delete_timestamps &&
           (!fragment_metadata[f]->has_delete_meta() ||
-           fragment_metadata[f]->get_processed_conditions_set().count(
-               condition_marker_) != 0)) {
+           fragment_metadata[f]
+                   ->offsets_metadata()
+                   ->get_processed_conditions_set()
+                   .count(condition_marker_) != 0)) {
         assert(Op == QueryConditionOp::GT);
         for (size_t c = starting_index; c < starting_index + length; ++c) {
           result_cell_bitmap[c] = 1;

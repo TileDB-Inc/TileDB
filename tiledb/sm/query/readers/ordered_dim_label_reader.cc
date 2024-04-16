@@ -329,8 +329,10 @@ void OrderedDimLabelReader::load_label_min_max_values() {
       [&](const uint64_t i) {
         auto& fragment = fragment_metadata_[i];
         std::vector<std::string> names = {label_name_};
-        fragment->load_tile_min_values(*encryption_key, names);
-        fragment->load_tile_max_values(*encryption_key, names);
+        fragment->offsets_metadata()->load_tile_min_values(
+            *encryption_key, names);
+        fragment->offsets_metadata()->load_tile_max_values(
+            *encryption_key, names);
         return Status::Ok();
       }));
 }

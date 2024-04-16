@@ -2268,7 +2268,7 @@ void Subarray::precompute_all_ranges_tile_overlap(
                 const auto r_end =
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
-                  meta[f]->compute_tile_bitmap(
+                  meta[f]->offsets_metadata()->compute_tile_bitmap(
                       range_subset_[d][r], d, &tile_bitmaps[d]);
                 }
                 return Status::Ok();
@@ -2522,7 +2522,8 @@ void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
 
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+        meta[relevant_fragments_[f]]->offsets_metadata()->load_rtree(
+            *encryption_key);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -2573,7 +2574,7 @@ void Subarray::compute_relevant_fragment_tile_overlap(
             compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        meta->get_tile_overlap(
+        meta->offsets_metadata()->get_tile_overlap(
             range, is_default_, tile_overlap->at(frag_idx, r));
       }
     }

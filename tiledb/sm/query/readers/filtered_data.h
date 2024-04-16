@@ -365,7 +365,8 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset{fragment->file_validity_offset(name_, rt->tile_idx())};
+    auto offset{fragment->offsets_metadata()->file_validity_offset(
+        name_, rt->tile_idx())};
     ensure_data_block_current(TileType::NULLABLE, fragment, rt, offset);
     return current_data_block(TileType::NULLABLE)->data_at(offset);
   }
@@ -449,7 +450,8 @@ class FilteredData {
       case TileType::VAR:
         return fragment->offsets_metadata()->file_var_offset(name_, tile_idx);
       case TileType::NULLABLE:
-        return fragment->file_validity_offset(name_, tile_idx);
+        return fragment->offsets_metadata()->file_validity_offset(
+            name_, tile_idx);
       default:
         throw std::logic_error("Unexpected");
     }
@@ -475,7 +477,8 @@ class FilteredData {
         return fragment->offsets_metadata()->persisted_tile_var_size(
             name_, tile_idx);
       case TileType::NULLABLE:
-        return fragment->persisted_tile_validity_size(name_, tile_idx);
+        return fragment->offsets_metadata()->persisted_tile_validity_size(
+            name_, tile_idx);
       default:
         throw std::logic_error("Unexpected");
     }

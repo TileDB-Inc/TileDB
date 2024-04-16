@@ -79,14 +79,16 @@ OndemandFragmentMetadata::OndemandFragmentMetadata(
 /* ********************************* */
 
 void OndemandFragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.rtree_) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(encryption_key, gt_offsets_.rtree_);
-  resources_->stats().add_counter("read_rtree_size", tile->size());
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.rtree_);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_rtree_size", tile->size());
 
   // Use the serialized buffer size to approximate memory usage of the rtree.
   if (memory_tracker_ != nullptr &&
@@ -99,7 +101,10 @@ void OndemandFragmentMetadata::load_rtree(const EncryptionKey& encryption_key) {
   }
 
   Deserializer deserializer(tile->data(), tile->size());
-  rtree_.deserialize(deserializer, &array_schema_->domain(), version_);
+  rtree_.deserialize(
+      deserializer,
+      &parent_fragment_.array_schema_->domain(),
+      parent_fragment_.version_);
 
   loaded_metadata_.rtree_ = true;
 }
@@ -110,15 +115,16 @@ void OndemandFragmentMetadata::load_fragment_min_max_sum_null_count(
     return;
   }
 
-  if (version_ <= 11) {
+  if (parent_fragment_.version_ <= 11) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.fragment_min_max_sum_null_count_offset_);
-  resources_->stats().add_counter(
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key,
+      parent_fragment_.gt_offsets_.fragment_min_max_sum_null_count_offset_);
+  parent_fragment_.resources_->stats().add_counter(
       "read_fragment_min_max_sum_null_count_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
@@ -133,15 +139,16 @@ void OndemandFragmentMetadata::load_processed_conditions(
     return;
   }
 
-  if (version_ <= 15) {
+  if (parent_fragment_.version_ <= 15) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.processed_conditions_offsets_);
-  resources_->stats().add_counter(
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key,
+      parent_fragment_.gt_offsets_.processed_conditions_offsets_);
+  parent_fragment_.resources_->stats().add_counter(
       "read_processed_conditions_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
@@ -157,13 +164,13 @@ void OndemandFragmentMetadata::load_processed_conditions(
 void OndemandFragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
   // If the tile offset is already loaded, exit early to avoid the lock
-  if (parent_fragment_.loaded_metadata_.tile_offsets_[idx]) {
+  if (loaded_metadata_.tile_offsets_[idx]) {
     return;
   }
 
   std::lock_guard<std::mutex> lock(tile_offsets_mtx_[idx]);
 
-  if (parent_fragment_.loaded_metadata_.tile_offsets_[idx]) {
+  if (loaded_metadata_.tile_offsets_[idx]) {
     return;
   }
 
@@ -175,7 +182,7 @@ void OndemandFragmentMetadata::load_tile_offsets(
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_offsets(idx, deserializer);
 
-  parent_fragment_.loaded_metadata_.tile_offsets_[idx] = true;
+  loaded_metadata_.tile_offsets_[idx] = true;
 }
 
 void OndemandFragmentMetadata::load_tile_offsets(
@@ -206,13 +213,13 @@ void OndemandFragmentMetadata::load_tile_offsets(
 void OndemandFragmentMetadata::load_tile_var_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
   // If the tile var offset is already loaded, exit early to avoid the lock
-  if (parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+  if (loaded_metadata_.tile_var_offsets_[idx]) {
     return;
   }
 
   std::lock_guard<std::mutex> lock(tile_var_offsets_mtx_[idx]);
 
-  if (parent_fragment_.loaded_metadata_.tile_var_offsets_[idx]) {
+  if (loaded_metadata_.tile_var_offsets_[idx]) {
     return;
   }
 
@@ -224,7 +231,7 @@ void OndemandFragmentMetadata::load_tile_var_offsets(
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_var_offsets(idx, deserializer);
 
-  parent_fragment_.loaded_metadata_.tile_var_offsets_[idx] = true;
+  loaded_metadata_.tile_var_offsets_[idx] = true;
 }
 
 void OndemandFragmentMetadata::load_tile_var_offsets(
@@ -257,7 +264,7 @@ void OndemandFragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, unsigned idx) {
   std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
-  if (parent_fragment_.loaded_metadata_.tile_var_sizes_[idx]) {
+  if (loaded_metadata_.tile_var_sizes_[idx]) {
     return;
   }
 
@@ -269,7 +276,7 @@ void OndemandFragmentMetadata::load_tile_var_sizes(
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_var_sizes(idx, deserializer);
 
-  parent_fragment_.loaded_metadata_.tile_var_sizes_[idx] = true;
+  loaded_metadata_.tile_var_sizes_[idx] = true;
 }
 
 void OndemandFragmentMetadata::load_tile_var_sizes(
@@ -300,19 +307,19 @@ void OndemandFragmentMetadata::load_tile_var_sizes(
 
 void OndemandFragmentMetadata::load_tile_validity_offsets(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ <= 6) {
+  if (parent_fragment_.version_ <= 6) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.tile_validity_offsets_[idx]) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_validity_offsets_[idx]);
-  resources_->stats().add_counter(
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_validity_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
       "read_tile_validity_offsets_size", tile->size());
 
   ConstBuffer cbuff(tile->data(), tile->size());
@@ -552,9 +559,9 @@ void OndemandFragmentMetadata::load_processed_conditions(
 // fragment_max_attr#<attribute_num-1> (max_size)
 // fragment_sum_attr#<attribute_num-1> (uint64_t)
 // fragment_null_count_attr#<attribute_num-1> (uint64_t)
-void FragmentMetadata::load_fragment_min_max_sum_null_count(
+void OndemandFragmentMetadata::load_fragment_min_max_sum_null_count(
     Deserializer& deserializer) {
-  auto num = num_dims_and_attrs();
+  auto num = parent_fragment_.num_dims_and_attrs();
 
   for (unsigned int i = 0; i < num; ++i) {
     // Get min.
@@ -581,19 +588,20 @@ void FragmentMetadata::load_fragment_min_max_sum_null_count(
 
 void OndemandFragmentMetadata::load_tile_min_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ < constants::tile_metadata_min_version) {
+  if (parent_fragment_.version_ < constants::tile_metadata_min_version) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.tile_min_[idx]) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_min_offsets_[idx]);
-  resources_->stats().add_counter("read_tile_min_size", tile->size());
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_min_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_min_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_min_values(idx, deserializer);
@@ -603,19 +611,20 @@ void OndemandFragmentMetadata::load_tile_min_values(
 
 void OndemandFragmentMetadata::load_tile_max_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ < constants::tile_metadata_min_version) {
+  if (parent_fragment_.version_ < constants::tile_metadata_min_version) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.tile_max_[idx]) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_max_offsets_[idx]);
-  resources_->stats().add_counter("read_tile_max_size", tile->size());
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_max_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_max_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_max_values(idx, deserializer);
@@ -625,19 +634,20 @@ void OndemandFragmentMetadata::load_tile_max_values(
 
 void OndemandFragmentMetadata::load_tile_sum_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ < constants::tile_metadata_min_version) {
+  if (parent_fragment_.version_ < constants::tile_metadata_min_version) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.tile_sum_[idx]) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_sum_offsets_[idx]);
-  resources_->stats().add_counter("read_tile_sum_size", tile->size());
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key, parent_fragment_.gt_offsets_.tile_sum_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_sum_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_sum_values(idx, deserializer);
@@ -647,19 +657,21 @@ void OndemandFragmentMetadata::load_tile_sum_values(
 
 void OndemandFragmentMetadata::load_tile_null_count_values(
     const EncryptionKey& encryption_key, unsigned idx) {
-  if (version_ < constants::tile_metadata_min_version) {
+  if (parent_fragment_.version_ < constants::tile_metadata_min_version) {
     return;
   }
 
-  std::lock_guard<std::mutex> lock(mtx_);
+  std::lock_guard<std::mutex> lock(parent_fragment_.mtx_);
 
   if (loaded_metadata_.tile_null_count_[idx]) {
     return;
   }
 
-  auto tile = read_generic_tile_from_file(
-      encryption_key, gt_offsets_.tile_null_count_offsets_[idx]);
-  resources_->stats().add_counter("read_tile_null_count_size", tile->size());
+  auto tile = parent_fragment_.read_generic_tile_from_file(
+      encryption_key,
+      parent_fragment_.gt_offsets_.tile_null_count_offsets_[idx]);
+  parent_fragment_.resources_->stats().add_counter(
+      "read_tile_null_count_size", tile->size());
 
   Deserializer deserializer(tile->data(), tile->size());
   load_tile_null_count_values(idx, deserializer);

@@ -126,21 +126,6 @@ class FragmentMetadata {
   /*          TYPE DEFINITIONS         */
   /* ********************************* */
 
-  /** Keeps track of which metadata is loaded. */
-  struct LoadedMetadata {
-    bool footer_ = false;
-    bool rtree_ = false;
-    std::vector<bool> tile_offsets_;
-    std::vector<bool> tile_var_offsets_;
-    std::vector<bool> tile_var_sizes_;
-    std::vector<bool> tile_validity_offsets_;
-    std::vector<bool> tile_min_;
-    std::vector<bool> tile_max_;
-    std::vector<bool> tile_sum_;
-    std::vector<bool> tile_null_count_;
-    bool fragment_min_max_sum_null_count_ = false;
-    bool processed_conditions_ = false;
-  };
   /**
    * Stores the start offsets of the generic tiles stored in the
    * metadata file, each separately storing the various metadata
@@ -335,32 +320,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** Returns the tile min buffers. */
-  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer()
-      const {
-    return tile_min_buffer_;
-  }
-
-  /** Returns the fragment mins. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
-    return fragment_mins_;
-  }
-
-  /** Returns the fragment maxs. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
-    return fragment_maxs_;
-  }
-
-  /** Returns the fragment sums. */
-  inline const std::vector<uint64_t>& fragment_sums() const {
-    return fragment_sums_;
-  }
-
-  /** Returns the fragment null counts. */
-  inline const std::vector<uint64_t>& fragment_null_counts() const {
-    return fragment_null_counts_;
-  }
-
   /** Returns the fragment timestamp range. */
   inline const std::pair<uint64_t, uint64_t>& timestamp_range() const {
     return timestamp_range_;
@@ -380,20 +339,6 @@ class FragmentMetadata {
   inline const GenericTileOffsets& generic_tile_offsets() const {
     return gt_offsets_;
   }
-
-  /**
-   * Retrieves the overlap of all MBRs with the input ND range.
-   */
-  void get_tile_overlap(
-      const NDRange& range,
-      std::vector<bool>& is_default,
-      TileOverlap* tile_overlap);
-
-  /**
-   * Compute tile bitmap for the curent fragment/range/dimension.
-   */
-  void compute_tile_bitmap(
-      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap);
 
   /**
    * Initializes the fragment metadata structures.
@@ -769,9 +714,6 @@ class FragmentMetadata {
   /** Serializes the fragment metadata footer into the input buffer. */
   void write_footer(Serializer& serializer) const;
 
-  /** Frees the memory associated with the rtree. */
-  void free_rtree();
-
   /**
    * Checks if the fragment overlaps partially (not fully) with a given
    * array open - end time. Assumes overlapping fragment and array open - close
@@ -847,31 +789,6 @@ class FragmentMetadata {
     return tile_index_base_;
   }
 
-  /** tile_min_buffer accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
-    return tile_min_buffer_;
-  }
-
-  /** fragment_mins accessor */
-  std::vector<std::vector<uint8_t>>& fragment_mins() {
-    return fragment_mins_;
-  }
-
-  /** fragment_maxs accessor */
-  std::vector<std::vector<uint8_t>>& fragment_maxs() {
-    return fragment_maxs_;
-  }
-
-  /** fragment_sums accessor */
-  std::vector<uint64_t>& fragment_sums() {
-    return fragment_sums_;
-  }
-
-  /** fragment_null_counts accessor */
-  std::vector<uint64_t>& fragment_null_counts() {
-    return fragment_null_counts_;
-  }
-
   /** version accessor */
   uint32_t& version() {
     return version_;
@@ -900,16 +817,6 @@ class FragmentMetadata {
   /** set the CR pointer during deserialization*/
   void set_context_resources(ContextResources* cr) {
     resources_ = cr;
-  }
-
-  /** loaded_metadata_.rtree_ accessor */
-  void set_rtree_loaded() {
-    loaded_metadata_.rtree_ = true;
-  }
-
-  /** loaded_metadata_ accessor */
-  inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
-    loaded_metadata_ = loaded_metadata;
   }
 
   inline OffsetsFragmentMetadata* offsets_metadata() {
@@ -992,9 +899,6 @@ class FragmentMetadata {
 
   /** Number of sparse tiles. */
   uint64_t sparse_tile_num_;
-
-  /** Keeps track of which metadata has been loaded. */
-  LoadedMetadata loaded_metadata_;
 
   /** The size of the fragment metadata file. */
   uint64_t meta_file_size_;

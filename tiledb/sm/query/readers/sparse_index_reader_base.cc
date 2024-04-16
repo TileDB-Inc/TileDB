@@ -777,9 +777,10 @@ void SparseIndexReaderBase::apply_query_condition(
             for (uint64_t i = 0; i < delete_and_update_conditions_.size();
                  i++) {
               if (!frag_meta->has_delete_meta() ||
-                  frag_meta->get_processed_conditions_set().count(
-                      delete_and_update_conditions_[i].condition_marker()) ==
-                      0) {
+                  frag_meta->offsets_metadata()
+                          ->get_processed_conditions_set()
+                          .count(delete_and_update_conditions_[i]
+                                     .condition_marker()) == 0) {
                 auto delete_timestamp =
                     delete_and_update_conditions_[i].condition_timestamp();
 

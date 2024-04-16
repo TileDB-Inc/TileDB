@@ -114,8 +114,9 @@ class ResultTile {
                              constants::cell_validity_size) :
                          std::nullopt)
         , tile_validity_persisted_size_(
-              nullable ? std::optional(fragment->persisted_tile_validity_size(
-                             name, tile_idx)) :
+              nullable ? std::optional(fragment->offsets_metadata()
+                                           ->persisted_tile_validity_size(
+                                               name, tile_idx)) :
                          std::nullopt) {
     }
 

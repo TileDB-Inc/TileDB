@@ -112,7 +112,7 @@ void V1V2PreloadedFragmentMetadata::load_tile_offsets(
     deserializer.read(&tile_offsets_[i][0], size);
   }
 
-  parent_fragment_.loaded_metadata_.tile_offsets_.resize(
+  loaded_metadata_.tile_offsets_.resize(
       parent_fragment_.array_schema_->attribute_num() + 1, true);
 }
 
@@ -159,7 +159,7 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_offsets(
     deserializer.read(&tile_var_offsets_[i][0], size);
   }
 
-  parent_fragment_.loaded_metadata_.tile_var_offsets_.resize(
+  loaded_metadata_.tile_var_offsets_.resize(
       parent_fragment_.array_schema_->attribute_num(), true);
 }
 
@@ -203,7 +203,7 @@ void V1V2PreloadedFragmentMetadata::load_tile_var_sizes(
     deserializer.read(&tile_var_sizes_[i][0], size);
   }
 
-  parent_fragment_.loaded_metadata_.tile_var_sizes_.resize(
+  loaded_metadata_.tile_var_sizes_.resize(
       parent_fragment_.array_schema_->attribute_num(), true);
 }
 
@@ -213,7 +213,7 @@ void V1V2PreloadedFragmentMetadata::load_rtree(const EncryptionKey&) {
 }
 
 void V1V2PreloadedFragmentMetadata::load_fragment_min_max_sum_null_count(
-    const EncryptionKey& encryption_key) {
+    const EncryptionKey&) {
   // N/A for v1_v2 preloaded meta
   return;
 }

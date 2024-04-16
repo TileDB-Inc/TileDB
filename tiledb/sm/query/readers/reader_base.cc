@@ -520,10 +520,14 @@ void ReaderBase::load_tile_metadata(
           }
         }
 
-        fragment->load_tile_max_values(*encryption_key, to_load);
-        fragment->load_tile_min_values(*encryption_key, to_load);
-        fragment->load_tile_sum_values(*encryption_key, to_load);
-        fragment->load_tile_null_count_values(*encryption_key, to_load);
+        fragment->offsets_metadata()->load_tile_max_values(
+            *encryption_key, to_load);
+        fragment->offsets_metadata()->load_tile_min_values(
+            *encryption_key, to_load);
+        fragment->offsets_metadata()->load_tile_sum_values(
+            *encryption_key, to_load);
+        fragment->offsets_metadata()->load_tile_null_count_values(
+            *encryption_key, to_load);
 
         return Status::Ok();
       }));
@@ -542,7 +546,8 @@ void ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          fragment->load_processed_conditions(*encryption_key);
+          fragment->offsets_metadata()->load_processed_conditions(
+              *encryption_key);
         }
 
         return Status::Ok();
