@@ -104,10 +104,10 @@ OffsetsFragmentMetadata* OffsetsFragmentMetadata::create(
     shared_ptr<MemoryTracker> memory_tracker,
     format_version_t version) {
   if (version <= 2) {
-    return new V1V2PreloadedFragmentMetadata(parent, memory_tracker);
+    return tdb_new(V1V2PreloadedFragmentMetadata, parent, memory_tracker);
   }
 
-  return new OndemandFragmentMetadata(parent, memory_tracker);
+  return tdb_new(OndemandFragmentMetadata, parent, memory_tracker);
 }
 
 uint64_t OffsetsFragmentMetadata::persisted_tile_size(

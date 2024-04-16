@@ -116,7 +116,7 @@ FragmentMetadata::FragmentMetadata(
 }
 
 FragmentMetadata::~FragmentMetadata() {
-  delete offsets_metadata_;
+  tdb_delete(offsets_metadata_);
 };
 
 /* ****************************** */
