@@ -569,6 +569,25 @@ class Config {
    * - `vfs.gcs.project_id` <br>
    *    Set the GCS project id. <br>
    *    **Default**: ""
+   * - `vfs.gcs.service_account_key` <br>
+   *    **Experimental** <br>
+   *    Set the JSON string with GCS service account key. Takes precedence
+   *    over `vfs.gcs.workload_identity_configuration` if both are specified. If
+   *    neither is specified, Application Default Credentials will be used. <br>
+   *    **Default**: ""
+   * - `vfs.gcs.workload_identity_configuration` <br>
+   *    **Experimental** <br>
+   *    Set the JSON string with Workload Identity Federation configuration.
+   *    `vfs.gcs.service_account_key` takes precedence over this if both are
+   *    specified. If neither is specified, Application Default Credentials will
+   *    be used. <br>
+   *    **Default**: ""
+   * - `vfs.gcs.impersonate_service_account` <br>
+   *    **Experimental** <br>
+   *    Set the GCS service account to impersonate. A chain of impersonated
+   *    accounts can be formed by specifying many service accounts, separated by
+   *    a comma. <br>
+   *    **Default**: ""
    * - `vfs.gcs.multi_part_size` <br>
    *    The part size (in bytes) used in GCS multi part writes.
    *    Any `uint64_t` value is acceptable. Note:
@@ -817,10 +836,12 @@ class Config {
    *    together with the open array <br>
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
    * - `rest.use_refactored_array_open_and_query_submit` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    and submitting a query will be used <br>
    *    **Default**: false

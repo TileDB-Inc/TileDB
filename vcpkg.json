@@ -1,7 +1,6 @@
 {
     "builtin-baseline": "72010900b7cee36cea77aebb97695095c9358eaf",
     "dependencies": [
-        "boost-container",
         "bzip2",
         "libmagic",
         "lz4",
@@ -18,6 +17,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
+                "azure-identity-cpp",
                 {
                     "name": "libxml2",
                     "default-features": false,

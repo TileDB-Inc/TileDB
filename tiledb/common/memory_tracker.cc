@@ -50,46 +50,96 @@ class MemoryTrackerException : public common::StatusException {
 
 std::string memory_type_to_str(MemoryType type) {
   switch (type) {
-    case MemoryType::RTREE:
-      return "RTree";
-    case MemoryType::FOOTER:
-      return "Footer";
-    case MemoryType::TILE_OFFSETS:
-      return "TileOffsets";
-    case MemoryType::TILE_MIN_VALS:
-      return "TileMinVals";
-    case MemoryType::TILE_MAX_VALS:
-      return "TileMaxVals";
-    case MemoryType::TILE_SUMS:
-      return "TileSums";
-    case MemoryType::TILE_NULL_COUNTS:
-      return "TileNullCounts";
+    case MemoryType::ATTRIBUTES:
+      return "Attributes";
+    case MemoryType::CONSOLIDATION_BUFFERS:
+      return "ConsolidationBuffers";
+    case MemoryType::DIMENSION_LABELS:
+      return "DimensionLabels";
+    case MemoryType::DIMENSIONS:
+      return "Dimensions";
+    case MemoryType::DOMAINS:
+      return "Domains";
     case MemoryType::ENUMERATION:
       return "Enumeration";
-    default:
-      auto val = std::to_string(static_cast<uint32_t>(type));
-      throw std::logic_error("Invalid memory type: " + val);
+    case MemoryType::ENUMERATION_PATHS:
+      return "EnumerationPaths";
+    case MemoryType::FILTERED_DATA:
+      return "FilteredData";
+    case MemoryType::FILTERED_DATA_BLOCK:
+      return "FilteredDataBlock";
+    case MemoryType::FOOTER:
+      return "Footer";
+    case MemoryType::GENERIC_TILE_IO:
+      return "GenericTileIO";
+    case MemoryType::METADATA:
+      return "Metadata";
+    case MemoryType::QUERY_CONDITION:
+      return "QueryCondition";
+    case MemoryType::RESULT_TILE:
+      return "ResultTile";
+    case MemoryType::RESULT_TILE_BITMAP:
+      return "ResultTileBitmap";
+    case MemoryType::RTREE:
+      return "RTree";
+    case MemoryType::TILE_DATA:
+      return "TileData";
+    case MemoryType::TILE_HILBERT_VALUES:
+      return "TileHilbertValues";
+    case MemoryType::TILE_MAX_VALS:
+      return "TileMaxVals";
+    case MemoryType::TILE_MIN_VALS:
+      return "TileMinVals";
+    case MemoryType::TILE_NULL_COUNTS:
+      return "TileNullCounts";
+    case MemoryType::TILE_OFFSETS:
+      return "TileOffsets";
+    case MemoryType::TILE_SUMS:
+      return "TileSums";
+    case MemoryType::WRITER_DATA:
+      return "WriterData";
+    case MemoryType::WRITER_TILE_DATA:
+      return "WriterTileData";
   }
+
+  auto val = std::to_string(static_cast<uint32_t>(type));
+  throw std::logic_error("Invalid memory type: " + val);
 }
 
 std::string memory_tracker_type_to_str(MemoryTrackerType type) {
   switch (type) {
     case MemoryTrackerType::ANONYMOUS:
       return "Anonymous";
+    case MemoryTrackerType::ARRAY_CREATE:
+      return "ArrayCreate";
+    case MemoryTrackerType::ARRAY_LOAD:
+      return "ArrayLoad";
     case MemoryTrackerType::ARRAY_READ:
       return "ArrayRead";
     case MemoryTrackerType::ARRAY_WRITE:
       return "ArrayWrite";
+    case MemoryTrackerType::CONSOLIDATOR:
+      return "Consolidator";
+    case MemoryTrackerType::ENUMERATION_CREATE:
+      return "EnumerationCreate";
+    case MemoryTrackerType::EPHEMERAL:
+      return "Ephemeral";
+    case MemoryTrackerType::FRAGMENT_INFO_LOAD:
+      return "FragmentInfoLoad";
+    case MemoryTrackerType::GROUP:
+      return "Group";
     case MemoryTrackerType::QUERY_READ:
       return "QueryRead";
     case MemoryTrackerType::QUERY_WRITE:
       return "QueryWrite";
-    case MemoryTrackerType::CONSOLIDATOR:
-      return "Consolidator";
-    default:
-      auto val = std::to_string(static_cast<uint32_t>(type));
-      throw std::logic_error("Invalid memory tracker type: " + val);
+    case MemoryTrackerType::REST_CLIENT:
+      return "RestClient";
+    case MemoryTrackerType::SCHEMA_EVOLUTION:
+      return "SchemaEvolution";
   }
+
+  auto val = std::to_string(static_cast<uint32_t>(type));
+  throw std::logic_error("Invalid memory tracker type: " + val);
 }
 
 uint64_t MemoryTrackerResource::get_count() {
@@ -318,7 +368,9 @@ void MemoryTrackerReporter::run() {
 
   while (true) {
     std::unique_lock<std::mutex> lk(mutex_);
-    cv_.wait_for(lk, std::chrono::milliseconds(1000), [&] { return stop_; });
+    int wait_time = wait_time_ms_.has_value() ? wait_time_ms_.value() : 1000;
+    cv_.wait_for(
+        lk, std::chrono::milliseconds(wait_time), [&] { return stop_; });
 
     if (stop_) {
       return;

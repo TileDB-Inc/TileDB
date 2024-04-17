@@ -1,8 +1,18 @@
 name: REST CI
 
 on:
-  - workflow_call
-  - workflow_dispatch
+  workflow_call:
+  workflow_dispatch:
+    inputs:
+      ref:
+        type: string
+        required: false
+
+  push:
+    branches:
+      - dev
+      - release-*
+      - refs/tags/*
 
 jobs:
   rest-ci:
@@ -10,11 +20,11 @@ jobs:
 
     steps:
       # For easy access to lookup dispatched CI job.
-      - name: Print URL for TileDB-REST-CI actions
-        run: echo https://github.com/TileDB-Inc/TileDB-REST-CI/actions
+      - name: Print URL for REST CI actions
+        run: echo https://github.com/TileDB-Inc/TileDB-Internal/actions
 
       # If this workflow fails on the remote repository, this CI job will also fail.
-      - name: Workflow dispatch to TileDB-REST-CI
+      - name: Workflow dispatch to REST CI
         id: trigger-step
         uses: aurelien-baudet/workflow-dispatch@v2
         env:
@@ -22,12 +32,12 @@ jobs:
         # Skip if no PAT is set (e.g. for PRs from forks).
         if: env.TILEDB_REST_CI_PAT != null
         with:
-          repo: TileDB-Inc/TileDB-REST-CI
-          # Trigger workflow on TileDB-REST-CI at this ref.
+          repo: TileDB-Inc/TileDB-Internal
+          # Trigger workflow on TileDB-Internal at this ref.
           ref: "main"
           workflow: full-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
           # Pass TileDB core ref to test against REST.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
-          inputs: '{ "tiledb_ref": "${{ github.head_ref || github.ref_name }}"}'
+          inputs: '{ "tiledb_ref": "${{ github.event.inputs.ref || github.head_ref || github.ref_name }}"}'
           wait-for-completion-timeout: 90m

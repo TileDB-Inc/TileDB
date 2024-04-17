@@ -68,6 +68,7 @@ class StrategyParams {
 
   StrategyParams(
       shared_ptr<MemoryTracker> array_memory_tracker,
+      shared_ptr<MemoryTracker> query_memory_tracker,
       StorageManager* storage_manager,
       shared_ptr<OpenedArray> array,
       Config& config,
@@ -79,6 +80,7 @@ class StrategyParams {
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
       : array_memory_tracker_(array_memory_tracker)
+      , query_memory_tracker_(query_memory_tracker)
       , storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
@@ -98,6 +100,10 @@ class StrategyParams {
   /** Return the array memory tracker. */
   inline shared_ptr<MemoryTracker> array_memory_tracker() {
     return array_memory_tracker_;
+  }
+
+  inline shared_ptr<MemoryTracker> query_memory_tracker() {
+    return query_memory_tracker_;
   }
 
   /** Return the storage manager. */
@@ -157,6 +163,9 @@ class StrategyParams {
 
   /** Array Memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;
+
+  /** Query Memory tracker. */
+  shared_ptr<MemoryTracker> query_memory_tracker_;
 
   /** Storage manager. */
   StorageManager* storage_manager_;
@@ -248,8 +257,11 @@ class StrategyBase {
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
-  /** The memory tracker. */
+  /** The array memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;
+
+  /** The query memory tracker. */
+  shared_ptr<MemoryTracker> query_memory_tracker_;
 
   /** The class stats. */
   stats::Stats* stats_;

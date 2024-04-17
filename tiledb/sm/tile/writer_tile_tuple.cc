@@ -48,60 +48,39 @@ WriterTileTuple::WriterTileTuple(
     const bool var_size,
     const bool nullable,
     const uint64_t cell_size,
-    const Datatype type)
-    : fixed_tile_(
-          var_size ? WriterTile(
-                         array_schema.write_version(),
-                         constants::cell_var_offset_type,
-                         constants::cell_var_offset_size,
-                         cell_num_per_tile * constants::cell_var_offset_size) :
-                     WriterTile(
-                         array_schema.write_version(),
-                         type,
-                         cell_size,
-                         cell_num_per_tile * cell_size))
-    , var_tile_(
-          var_size ? std::optional<WriterTile>(WriterTile(
-                         array_schema.write_version(),
-                         type,
-                         datatype_size(type),
-                         cell_num_per_tile * constants::cell_var_offset_size)) :
-                     std::nullopt)
-    , validity_tile_(
-          nullable ? std::optional<WriterTile>(WriterTile(
-                         array_schema.write_version(),
-                         constants::cell_validity_type,
-                         constants::cell_validity_size,
-                         cell_num_per_tile * constants::cell_validity_size)) :
-                     std::nullopt)
+    const Datatype type,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , fixed_tile_(
+          array_schema.write_version(),
+          var_size ? constants::cell_var_offset_type : type,
+          var_size ? constants::cell_var_offset_size : cell_size,
+          var_size ? cell_num_per_tile * constants::cell_var_offset_size :
+                     cell_num_per_tile * cell_size,
+          memory_tracker_)
     , cell_size_(cell_size)
     , var_pre_filtered_size_(0)
     , min_size_(0)
     , max_size_(0)
     , null_count_(0)
     , cell_num_(cell_num_per_tile) {
-}
+  if (var_size) {
+    var_tile_.emplace(
+        array_schema.write_version(),
+        type,
+        datatype_size(type),
+        cell_num_per_tile * constants::cell_var_offset_size,
+        memory_tracker_);
+  }
 
-WriterTileTuple::WriterTileTuple(WriterTileTuple&& tile)
-    : fixed_tile_(std::move(tile.fixed_tile_))
-    , var_tile_(std::move(tile.var_tile_))
-    , validity_tile_(std::move(tile.validity_tile_))
-    , cell_size_(std::move(tile.cell_size_))
-    , var_pre_filtered_size_(std::move(tile.var_pre_filtered_size_))
-    , min_(std::move(tile.min_))
-    , min_size_(std::move(tile.min_size_))
-    , max_(std::move(tile.max_))
-    , max_size_(std::move(tile.max_size_))
-    , sum_(std::move(tile.sum_))
-    , null_count_(std::move(tile.null_count_))
-    , cell_num_(std::move(tile.cell_num_)) {
-}
-
-WriterTileTuple& WriterTileTuple::operator=(WriterTileTuple&& tile) {
-  // Swap with the argument
-  swap(tile);
-
-  return *this;
+  if (nullable) {
+    validity_tile_.emplace(
+        array_schema.write_version(),
+        constants::cell_validity_type,
+        constants::cell_validity_size,
+        cell_num_per_tile * constants::cell_validity_size,
+        memory_tracker_);
+  }
 }
 
 /* ****************************** */
@@ -133,21 +112,6 @@ void WriterTileTuple::set_metadata(
   if (var_tile_.has_value()) {
     var_pre_filtered_size_ = var_tile_->size();
   }
-}
-
-void WriterTileTuple::swap(WriterTileTuple& tile) {
-  std::swap(fixed_tile_, tile.fixed_tile_);
-  std::swap(var_tile_, tile.var_tile_);
-  std::swap(validity_tile_, tile.validity_tile_);
-  std::swap(cell_size_, tile.cell_size_);
-  std::swap(var_pre_filtered_size_, tile.var_pre_filtered_size_);
-  std::swap(min_, tile.min_);
-  std::swap(min_size_, tile.min_size_);
-  std::swap(max_, tile.max_);
-  std::swap(max_size_, tile.max_size_);
-  std::swap(sum_, tile.sum_);
-  std::swap(null_count_, tile.null_count_);
-  std::swap(cell_num_, tile.cell_num_);
 }
 
 }  // namespace sm

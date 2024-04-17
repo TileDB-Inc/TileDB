@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -288,6 +288,17 @@ inline bool tiledb_string_type(tiledb_datatype_t type) {
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
+      return true;
+    default:
+      return false;
+  }
+}
+
+inline bool tiledb_byte_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_BLOB:
+    case TILEDB_GEOM_WKB:
+    case TILEDB_GEOM_WKT:
       return true;
     default:
       return false;

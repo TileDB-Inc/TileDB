@@ -52,6 +52,15 @@
 #include <string>
 #include <thread>
 
+/**
+ * Helper function to set environment variables across platforms.
+ *
+ * @param __name Name of the environment variable.
+ * @param __value Value of the environment variable.
+ * @return 0 on success, -1 on error.
+ */
+int setenv_local(const char* __name, const char* __value);
+
 // A mutex for protecting the thread-unsafe Catch2 macros.
 extern std::mutex catch2_macro_mutex;
 
@@ -241,10 +250,6 @@ void check_subarray(
 template <class T>
 void check_subarray(
     tiledb::Subarray& subarray, const SubarrayRanges<T>& ranges);
-
-template <class T>
-void check_subarray_equiv(
-    tiledb::sm::Subarray& subarray1, tiledb::sm::Subarray& subarray2);
 
 template <class T>
 bool subarray_equiv(
@@ -495,7 +500,8 @@ void get_supported_fs(
     bool* s3_supported,
     bool* hdfs_supported,
     bool* azure_supported,
-    bool* gcs_supported);
+    bool* gcs_supported,
+    bool* rest_s3_supported);
 
 /**
  * Opens an array.

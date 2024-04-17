@@ -58,6 +58,14 @@ class FragmentConsolidatorException : public StatusException {
   }
 };
 
+FragmentConsolidationWorkspace::FragmentConsolidationWorkspace(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : backing_buffer_(
+          memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS))
+    , buffers_(memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS))
+    , sizes_(memory_tracker->get_resource(MemoryType::CONSOLIDATION_BUFFERS)) {
+}
+
 void FragmentConsolidationWorkspace::resize_buffers(
     stats::Stats* stats,
     const FragmentConsolidationConfig& config,
@@ -239,7 +247,7 @@ Status FragmentConsolidator::consolidate(
     return st;
   }
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
 
   uint32_t step = 0;
   std::vector<TimestampedURI> to_consolidate;
@@ -380,7 +388,7 @@ Status FragmentConsolidator::consolidate_fragments(
         "Cannot consolidate; Not all fragments could be found"));
   }
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace cw(consolidator_memory_tracker_);
 
   // Consolidate the selected fragments
   URI new_fragment_uri;
@@ -835,13 +843,13 @@ Status FragmentConsolidator::compute_next_to_consolidate(
 
 void FragmentConsolidator::set_query_buffers(
     Query* query, FragmentConsolidationWorkspace& cw) const {
-  std::vector<span<std::byte>>* buffers{&cw.buffers()};
-  std::vector<uint64_t>* buffer_sizes{&cw.sizes()};
+  auto buffers = &cw.buffers();
+  auto buffer_sizes = &cw.sizes();
 
   const auto& array_schema = query->array_schema();
   auto dim_num = array_schema.dim_num();
   auto dense = array_schema.dense();
-  auto attributes = array_schema.attributes();
+  auto& attributes = array_schema.attributes();
   unsigned bid = 0;
 
   // Here the first buffer should always be the fixed buffer (either offsets

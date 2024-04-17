@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,8 +33,18 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/temporary_local_directory.h"
+#ifdef HAVE_AZURE
+#include <azure/storage/blobs.hpp>
+#include "tiledb/sm/filesystem/azure.h"
+#endif
+#ifdef HAVE_GCS
+#include <google/cloud/internal/credentials_impl.h>
+#include <google/cloud/storage/client.h>
+#include "tiledb/sm/filesystem/gcs.h"
+#endif
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
+#include "tiledb/sm/global_state/unit_test_config.h"
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/path_win.h"
 #endif
@@ -53,15 +63,25 @@ void require_tiledb_ok(Status st) {
   REQUIRE(st.ok());
 }
 
-void require_tiledb_err(Status st) {
-  REQUIRE(!st.ok());
-}
-
-Config set_config_params() {
+Config set_config_params(
+    bool disable_multipart = false, uint64_t parallel_ops = 1) {
   Config config;
 
   if constexpr (tiledb::sm::filesystem::gcs_enabled) {
     require_tiledb_ok(config.set("vfs.gcs.project_id", "TODO"));
+    if (parallel_ops != 1) {
+      require_tiledb_ok(
+          config.set("vfs.gcs.max_parallel_ops", std::to_string(parallel_ops)));
+      require_tiledb_ok(config.set(
+          "vfs.gcs.multi_part_size", std::to_string(4 * 1024 * 1024)));
+    }
+    if (disable_multipart) {
+      require_tiledb_ok(
+          config.set("vfs.gcs.max_parallel_ops", std::to_string(1)));
+      require_tiledb_ok(config.set("vfs.gcs.use_multi_part_upload", "false"));
+      require_tiledb_ok(config.set(
+          "vfs.gcs.max_direct_upload_size", std::to_string(4 * 1024 * 1024)));
+    }
   }
 
   if constexpr (tiledb::sm::filesystem::s3_enabled) {
@@ -69,6 +89,11 @@ Config set_config_params() {
     require_tiledb_ok(config.set("vfs.s3.scheme", "https"));
     require_tiledb_ok(config.set("vfs.s3.use_virtual_addressing", "false"));
     require_tiledb_ok(config.set("vfs.s3.verify_ssl", "false"));
+    if (disable_multipart) {
+      require_tiledb_ok(config.set("vfs.s3.max_parallel_ops", "1"));
+      require_tiledb_ok(config.set("vfs.s3.multipart_part_size", "10000000"));
+      require_tiledb_ok(config.set("vfs.s3.use_multipart_upload", "false"));
+    }
   }
 
   if constexpr (tiledb::sm::filesystem::azure_enabled) {
@@ -87,9 +112,27 @@ Config set_config_params() {
     // require_tiledb_ok(config.set("vfs.azure.storage_sas_token", ""));
     // require_tiledb_ok(config.set(
     //   "vfs.azure.blob_endpoint", "http://127.0.0.1:10000/devstoreaccount2"));
+    if (parallel_ops != 1) {
+      require_tiledb_ok(config.set(
+          "vfs.azure.max_parallel_ops", std::to_string(parallel_ops)));
+      require_tiledb_ok(config.set(
+          "vfs.azure.block_list_block_size", std::to_string(4 * 1024 * 1024)));
+    }
+    if (disable_multipart) {
+      require_tiledb_ok(config.set("vfs.azure.use_block_list_upload", "false"));
+    }
   }
 
   return config;
+}
+
+std::string local_path() {
+  std::string local_prefix = "";
+  if constexpr (!tiledb::sm::filesystem::windows_enabled) {
+    local_prefix = "file://";
+  }
+
+  return local_prefix + unit_vfs_dir_.path();
 }
 
 TEST_CASE("VFS: Test long local paths", "[vfs]") {
@@ -99,11 +142,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
 
   SECTION("- Deep hierarchy") {
     // Create a nested path with a long total length
-    std::string local_prefix = "";
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    std::string tmpdir = local_prefix + unit_vfs_dir_.path();
+    std::string tmpdir = local_path();
     bool success = true;
     while (tmpdir.size() < 512) {
       tmpdir += "subdir/";
@@ -113,8 +152,8 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
       }
     }
 
-    // On some Windows platforms, the path length of a directory must be <= 248
-    // chars. On others (that have opted in to a configuration that allows
+    // On some Windows platforms, the path length of a directory must be <=
+    // 248 chars. On others (that have opted in to a configuration that allows
     // long paths) the limit is ~32,767. Here we check for either case.
     if (success) {
       // Check we can create files within the deep hierarchy
@@ -138,11 +177,7 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
     for (unsigned i = 0; i < 256; i++) {
       name += "x";
     }
-    std::string local_prefix = "";
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    std::string tmpdir = local_prefix + unit_vfs_dir_.path();
+    std::string tmpdir = local_path();
     URI testfile(tmpdir + name);
 
     // Creating the URI and checking its existence is fine on posix
@@ -162,45 +197,21 @@ TEST_CASE("VFS: Test long local paths", "[vfs]") {
   }
 }
 
-TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
+using AllBackends =
+    std::tuple<LocalFsTest, GCSTest, GSTest, S3Test, AzureTest, HDFSTest>;
+TEMPLATE_LIST_TEST_CASE(
+    "VFS: URI semantics and file management", "[vfs][uri]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   Config config = set_config_params();
   VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
 
-  // Sections to test each enabled filesystem
-  URI path;
-  std::string local_prefix = "";
-  SECTION("Filesystem: Local") {
-    if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-      local_prefix = "file://";
-    }
-    path = URI(local_prefix + unit_vfs_dir_.path());
-  }
-
-  if constexpr (tiledb::sm::filesystem::gcs_enabled) {
-    SECTION("Filesystem: GCS") {
-      path = URI("gcs://vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::s3_enabled) {
-    SECTION("Filesystem: S3") {
-      path = URI("s3://vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::hdfs_enabled) {
-    SECTION("Filesystem: HDFS") {
-      path = URI("hdfs:///vfs-" + random_label() + "/");
-    }
-  }
-
-  if constexpr (tiledb::sm::filesystem::azure_enabled) {
-    SECTION("Filesystem: Azure") {
-      path = URI("azure://vfs-" + random_label() + "/");
-    }
-  }
+  URI path = fs.temp_dir_.add_trailing_slash();
 
   // Set up
   bool exists = false;
@@ -399,16 +410,174 @@ TEST_CASE("VFS: URI semantics and file management", "[vfs][uri]") {
   }
 }
 
+TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
+  TestType fs({0});
+  if (!fs.is_supported()) {
+    return;
+  }
+
+  bool disable_multipart = GENERATE(true, false);
+  uint64_t max_parallel_ops = 1;
+  uint64_t chunk_size = 1024 * 1024;
+  int multiplier = 5;
+
+  URI path = fs.temp_dir_.add_trailing_slash();
+
+  if constexpr (
+      std::is_same<TestType, GCSTest>::value ||
+      std::is_same<TestType, GSTest>::value) {
+    chunk_size = 4 * 1024 * 1024;
+    multiplier = 1;
+
+    if (!disable_multipart) {
+      max_parallel_ops = GENERATE(1, 4);
+    }
+  }
+
+  if constexpr (std::is_same<TestType, AzureTest>::value) {
+    max_parallel_ops = 2;
+    chunk_size = 4 * 1024 * 1024;
+    if (disable_multipart) {
+      multiplier = 1;
+    }
+  }
+
+  ThreadPool compute_tp(4);
+  ThreadPool io_tp(4);
+  Config config = set_config_params(disable_multipart, max_parallel_ops);
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+
+  // Getting file_size on a nonexistent blob shouldn't crash on Azure
+  uint64_t nbytes = 0;
+  URI non_existent = URI(path.to_string() + "non_existent");
+  if (path.is_file()) {
+#ifdef _WIN32
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+#else
+    CHECK_THROWS(vfs.file_size(non_existent, &nbytes));
+#endif
+  } else {
+    CHECK(!vfs.file_size(non_existent, &nbytes).ok());
+  }
+
+  // Set up
+  bool exists = false;
+  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
+    if (exists) {
+      require_tiledb_ok(vfs.remove_bucket(path));
+    }
+    require_tiledb_ok(vfs.create_bucket(path));
+  } else {
+    require_tiledb_ok(vfs.is_dir(path, &exists));
+    if (exists) {
+      require_tiledb_ok(vfs.remove_dir(path));
+    }
+    require_tiledb_ok(vfs.create_dir(path));
+  }
+
+  // Prepare buffers
+  uint64_t buffer_size = multiplier * max_parallel_ops * chunk_size;
+  auto write_buffer = new char[buffer_size];
+  for (uint64_t i = 0; i < buffer_size; i++)
+    write_buffer[i] = (char)('a' + (i % 26));
+  uint64_t buffer_size_small = 1024 * 1024;
+  auto write_buffer_small = new char[buffer_size_small];
+  for (uint64_t i = 0; i < buffer_size_small; i++)
+    write_buffer_small[i] = (char)('a' + (i % 26));
+
+  // Write to two files
+  URI largefile = URI(path.to_string() + "largefile");
+  require_tiledb_ok(vfs.write(largefile, write_buffer, buffer_size));
+  URI smallfile = URI(path.to_string() + "smallfile");
+  require_tiledb_ok(
+      vfs.write(smallfile, write_buffer_small, buffer_size_small));
+
+  // On non-local and hdfs systems, before flushing, the files do not exist
+  if (!(path.is_file() || path.is_hdfs())) {
+    require_tiledb_ok(vfs.is_file(largefile, &exists));
+    CHECK(!exists);
+    require_tiledb_ok(vfs.is_file(smallfile, &exists));
+    CHECK(!exists);
+
+    // Flush the files
+    require_tiledb_ok(vfs.close_file(largefile));
+    require_tiledb_ok(vfs.close_file(smallfile));
+  }
+
+  // After flushing, the files exist
+  require_tiledb_ok(vfs.is_file(largefile, &exists));
+  CHECK(exists);
+  require_tiledb_ok(vfs.is_file(smallfile, &exists));
+  CHECK(exists);
+
+  // Get file sizes
+  require_tiledb_ok(vfs.file_size(largefile, &nbytes));
+  CHECK(nbytes == (buffer_size));
+  require_tiledb_ok(vfs.file_size(smallfile, &nbytes));
+  CHECK(nbytes == buffer_size_small);
+
+  // Read from the beginning
+  auto read_buffer = new char[26];
+  require_tiledb_ok(vfs.read(largefile, 0, read_buffer, 26));
+  bool allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + i)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok);
+
+  // Read from a different offset
+  require_tiledb_ok(vfs.read(largefile, 11, read_buffer, 26));
+  allok = true;
+  for (int i = 0; i < 26; i++) {
+    if (read_buffer[i] != static_cast<char>('a' + (i + 11) % 26)) {
+      allok = false;
+      break;
+    }
+  }
+  CHECK(allok);
+
+  // Clean up
+  if (path.is_gcs() || path.is_s3() || path.is_azure()) {
+    require_tiledb_ok(vfs.remove_bucket(path));
+    require_tiledb_ok(vfs.is_bucket(path, &exists));
+    REQUIRE(!exists);
+  } else {
+    require_tiledb_ok(vfs.remove_dir(path));
+    require_tiledb_ok(vfs.is_dir(path, &exists));
+    REQUIRE(!exists);
+  }
+}
+
+TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
+  auto test_file_ptr = getenv("TILEDB_VFS_E2E_TEST_FILE");
+  if (test_file_ptr == nullptr) {
+    FAIL("TILEDB_VFS_E2E_TEST_FILE variable is not specified");
+  }
+  URI test_file{test_file_ptr};
+
+  ThreadPool compute_tp(1);
+  ThreadPool io_tp(1);
+  // Will be configured from environment variables.
+  Config config;
+
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  REQUIRE(vfs.supports_uri_scheme(test_file));
+
+  uint64_t nbytes = 0;
+  require_tiledb_ok(vfs.file_size(test_file, &nbytes));
+  CHECK(nbytes > 0);
+}
+
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
   VFS vfs_ls{&g_helper_stats, &compute_tp, &io_tp, Config{}};
 
-  std::string local_prefix = "";
-  if constexpr (!tiledb::sm::filesystem::windows_enabled) {
-    local_prefix = "file://";
-  }
-  std::string path = local_prefix + unit_vfs_dir_.path();
+  std::string path = local_path();
   std::string dir = path + "ls_dir";
   std::string file = dir + "/file";
   std::string subdir = dir + "/subdir";
@@ -542,3 +711,207 @@ TEST_CASE(
         Catch::Matchers::ContainsSubstring("Throwing FileFilter"));
   }
 }
+
+#ifdef HAVE_AZURE
+TEST_CASE("VFS: Construct Azure Blob Storage endpoint URIs", "[azure][uri]") {
+  std::string sas_token, custom_endpoint, expected_endpoint;
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  SECTION("SAS token without leading question mark") {
+    sas_token = "baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token with leading question mark") {
+    sas_token = "?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("SAS token in both endpoint and config option") {
+    sas_token = "baz=qux&foo=bar";
+    custom_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+    expected_endpoint =
+        "https://devstoreaccount1.blob.core.windows.net?baz=qux&foo=bar";
+  }
+  SECTION("No SAS token") {
+    sas_token = "";
+    expected_endpoint = "https://devstoreaccount1.blob.core.windows.net";
+  }
+  Config config;
+  require_tiledb_ok(
+      config.set("vfs.azure.storage_account_name", "devstoreaccount1"));
+  require_tiledb_ok(config.set("vfs.azure.blob_endpoint", custom_endpoint));
+  require_tiledb_ok(config.set("vfs.azure.storage_sas_token", sas_token));
+  tiledb::sm::Azure azure;
+  ThreadPool thread_pool(1);
+  require_tiledb_ok(azure.init(config, &thread_pool));
+  REQUIRE(azure.client().GetUrl() == expected_endpoint);
+}
+#endif
+
+#ifdef HAVE_S3
+TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
+  Config cfg = set_config_params(true);
+
+  // Check the edge case of a key matching the ConfigIter prefix.
+  REQUIRE(cfg.set("vfs.s3.custom_headers.", "").ok());
+
+  // Set an unexpected value for Content-MD5, which minio should reject
+  REQUIRE(cfg.set("vfs.s3.custom_headers.Content-MD5", "unexpected").ok());
+
+  // Recreate a new S3 client because config is not dynamic
+  ThreadPool thread_pool(2);
+  S3 s3{&g_helper_stats, &thread_pool, cfg};
+  auto uri = URI("s3://tiledb-" + random_label() + "/writefailure");
+
+  // This is a buffered write, which is why it should not throw.
+  CHECK_NOTHROW(s3.write(uri, "Validate s3 custom headers", 26));
+
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "The Content-Md5 you specified is not valid.");
+  REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+}
+#endif
+
+#ifdef HAVE_GCS
+TEST_CASE(
+    "Validate GCS service account impersonation",
+    "[gcs][credentials][impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  std::string impersonate_service_account, target_service_account;
+  std::vector<std::string> delegates;
+
+  SECTION("Simple") {
+    impersonate_service_account = "account1";
+    target_service_account = "account1";
+    delegates = {};
+  }
+
+  SECTION("Delegated") {
+    impersonate_service_account = "account1,account2,account3";
+    target_service_account = "account3";
+    delegates = {"account1", "account2"};
+  }
+
+  // Test parsing an edge case.
+  SECTION("Invalid") {
+    impersonate_service_account = ",";
+    target_service_account = "";
+    delegates = {""};
+  }
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(
+      impersonate_credentials->target_service_account() ==
+      target_service_account);
+  REQUIRE(impersonate_credentials->delegates() == delegates);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials",
+    "[gcs][credentials][service-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(service_account != nullptr);
+  REQUIRE(service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials with impersonation",
+    "[gcs][credentials][service-account-and-impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+  std::string impersonate_service_account = "account1,account2,account3";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(impersonate_credentials->target_service_account() == "account3");
+  REQUIRE(
+      impersonate_credentials->delegates() ==
+      std::vector<std::string>{"account1", "account2"});
+
+  auto inner_service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          impersonate_credentials->base_credentials().get());
+
+  REQUIRE(inner_service_account != nullptr);
+  REQUIRE(inner_service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS external account credentials",
+    "[gcs][credentials][external-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.workload_identity_configuration",
+      workload_identity_configuration));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto external_account =
+      dynamic_cast<google::cloud::internal::ExternalAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(external_account != nullptr);
+  REQUIRE(external_account->json_object() == workload_identity_configuration);
+}
+#endif

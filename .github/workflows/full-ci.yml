@@ -56,21 +56,12 @@ jobs:
   ci4:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
-      ci_backend: HDFS
-      matrix_image: ubuntu-22.04
-      matrix_compiler_cc: 'gcc-13'
-      matrix_compiler_cxx: 'g++-13'
-      bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
-
-  ci5:
-    uses: ./.github/workflows/ci-linux_mac.yml
-    with:
       ci_backend: S3
       matrix_image: macos-12
       timeout: 120
       bootstrap_args: '--enable=s3,serialization,tools --enable-release-symbols'
 
-  ci6:
+  ci5:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: GCS
@@ -78,14 +69,14 @@ jobs:
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
-  ci7:
+  ci6:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_option: Experimental
       matrix_image: ubuntu-22.04
       bootstrap_args: '--enable=experimental-features,serialization --enable-release-symbols'
 
-  ci8:
+  ci7:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: S3
@@ -93,7 +84,7 @@ jobs:
       timeout: 120
       bootstrap_args: '--enable-s3 --enable-release-symbols'
 
-  ci9:
+  ci8:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_option: ASAN
@@ -104,7 +95,7 @@ jobs:
       bootstrap_args: '--enable-serialization'
       asan: true
 
-  ci10:
+  ci9:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: AZURE
@@ -138,10 +129,6 @@ jobs:
   ci_docker:
     uses: ./.github/workflows/build-dockerfile.yml
 
-  ci_rest:
-    uses: ./.github/workflows/ci-rest.yml
-    secrets: inherit
-
   # dummy job for branch protection check
   full_ci_passed:
     needs: [
@@ -155,7 +142,6 @@ jobs:
         ci7,
         ci8,
         ci9,
-        ci10,
         ci_manylinux,
         ci_msvc,
         backward_compatibility,

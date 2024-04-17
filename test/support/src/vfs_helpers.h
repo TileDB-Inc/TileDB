@@ -96,6 +96,9 @@ void vfs_test_remove_temp_dir(
 void vfs_test_create_temp_dir(
     tiledb_ctx_t* ctx, tiledb_vfs_t* vfs, const std::string& path);
 
+std::string vfs_array_uri(
+    const std::unique_ptr<SupportedFs>& fs, const std::string& array_name);
+
 /**
  * This class defines and manipulates
  * a list of supported filesystems.
@@ -149,6 +152,20 @@ class SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir() = 0;
+
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  virtual bool is_rest() = 0;
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  virtual bool is_local() = 0;
 };
 
 /**
@@ -157,10 +174,11 @@ class SupportedFs {
  */
 class SupportedFsS3 : public SupportedFs {
  public:
-  SupportedFsS3()
+  SupportedFsS3(bool rest = false)
       : s3_prefix_("s3://")
       , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
-      , temp_dir_(s3_bucket_ + "tiledb_test/") {
+      , temp_dir_(s3_bucket_ + "tiledb_test/")
+      , rest_(rest) {
   }
 
   ~SupportedFsS3() = default;
@@ -204,6 +222,22 @@ class SupportedFsS3 : public SupportedFs {
    */
   virtual std::string temp_dir();
 
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  virtual bool is_rest();
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return false;
+  }
+
  private:
   /* ********************************* */
   /*           ATTRIBUTES              */
@@ -217,6 +251,9 @@ class SupportedFsS3 : public SupportedFs {
 
   /** The directory name of the S3 filesystem. */
   std::string temp_dir_;
+
+  /** If the filesystem is accessed via REST. */
+  bool rest_;
 };
 
 /**
@@ -268,6 +305,24 @@ class SupportedFsHDFS : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -330,6 +385,24 @@ class SupportedFsAzure : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -397,6 +470,24 @@ class SupportedFsGCS : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return false;
+  }
 
  private:
   /* ********************************* */
@@ -478,6 +569,24 @@ class SupportedFsLocal : public SupportedFs {
    */
   std::string file_prefix();
 
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return true;
+  }
+
  private:
   /* ********************************* */
   /*           ATTRIBUTES              */
@@ -549,6 +658,24 @@ class SupportedFsMem : public SupportedFs {
    * @return string directory name
    */
   virtual std::string temp_dir();
+
+  /**
+   * Checks if the filesystem is accessed via REST
+   *
+   * @return true if REST, false if not
+   */
+  inline bool is_rest() {
+    return false;
+  }
+
+  /**
+   * Checks if the filesystem is local or remote
+   *
+   * @return true if local, false if not
+   */
+  inline bool is_local() {
+    return true;
+  }
 
  private:
   /* ********************************* */
@@ -749,6 +876,83 @@ struct TemporaryDirectoryFixture {
   const std::vector<std::unique_ptr<SupportedFs>> supported_filesystems_;
 };
 
+/*
+ * Class to instantiate when setting up a test case to run for all VFSs and
+ * REST
+ *
+ * Example usage: In the beginning of the test define a VFSTestSetup variable
+ * and then just use the Context and the rest of the resources it encapsulates
+ * in the test. The resources will be automatically get freed when the variable
+ * will get out of scope.
+ *
+ * {
+ * tiledb::test::VFSTestSetup vfs_test_setup{"foo_array"};
+ * auto ctx = vfs_test_setup.ctx();
+ * auto array_uri = vfs_test_setup.array_uri("quickstart_sparse");
+ * Array array(ctx, array_uri, TILEDB_WRITE);
+ * ...
+ * } // ctx context is destroyed and VFS directories removed
+ *
+ */
+struct VFSTestSetup {
+  VFSTestSetup(tiledb_config_t* config = nullptr, bool remove_tmpdir = true)
+      : fs_vec(vfs_test_get_fs_vec())
+      , ctx_c{nullptr}
+      , vfs_c{nullptr}
+      , cfg_c{config} {
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
+    temp_dir = fs_vec[0]->temp_dir();
+    if (remove_tmpdir) {
+      vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
+    }
+    tiledb_vfs_create_dir(ctx_c, vfs_c, temp_dir.c_str());
+  };
+
+  void update_config(tiledb_config_t* config) {
+    // free resources
+    tiledb_ctx_free(&ctx_c);
+    tiledb_vfs_free(&vfs_c);
+    cfg_c = config;
+
+    // reallocate with input config
+    vfs_test_init(fs_vec, &ctx_c, &vfs_c, cfg_c).ok();
+  }
+
+  bool is_rest() {
+    return fs_vec[0]->is_rest();
+  }
+
+  bool is_local() {
+    return fs_vec[0]->is_local();
+  }
+
+  std::string array_uri(
+      const std::string& array_name, bool strip_tiledb_prefix = false) {
+    auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
+                   ("tiledb://unit/" + temp_dir + array_name) :
+                   (temp_dir + array_name);
+    return uri;
+  }
+
+  Context ctx() {
+    return Context(ctx_c, false);
+  }
+
+  ~VFSTestSetup() {
+    vfs_test_remove_temp_dir(ctx_c, vfs_c, temp_dir);
+    vfs_test_close(fs_vec, ctx_c, vfs_c).ok();
+
+    tiledb_ctx_free(&ctx_c);
+    tiledb_vfs_free(&vfs_c);
+  };
+
+  std::vector<std::unique_ptr<SupportedFs>> fs_vec;
+  tiledb_ctx_handle_t* ctx_c;
+  tiledb_vfs_handle_t* vfs_c;
+  tiledb_config_handle_t* cfg_c;
+  std::string temp_dir;
+};
+
 /**
  * Denies write access to a local filesystem path.
  *
@@ -914,11 +1118,19 @@ class GCSTest : public VFSTestBase {
   }
 };
 
+/** Stub test object for tiledb::sm::GS functionality. */
+class GSTest : public VFSTestBase {
+ public:
+  explicit GSTest(const std::vector<size_t>& test_tree)
+      : VFSTestBase(test_tree, "gs://") {
+  }
+};
+
 /** Stub test object for tiledb::sm::HDFS functionality. */
 class HDFSTest : public VFSTestBase {
  public:
   explicit HDFSTest(const std::vector<size_t>& test_tree)
-      : VFSTestBase(test_tree, "hdfs://") {
+      : VFSTestBase(test_tree, "hdfs:///") {
   }
 };
 

@@ -49,6 +49,8 @@
 #include "tiledb/sm/misc/utils.h"
 #include "uri.h"
 
+#include "hadoop/hdfs.h"
+
 #include <dlfcn.h>
 #include <cassert>
 #include <climits>

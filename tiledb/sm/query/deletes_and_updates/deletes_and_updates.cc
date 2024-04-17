@@ -36,6 +36,7 @@
 #include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 using namespace tiledb;
@@ -150,19 +151,24 @@ Status DeletesAndUpdates::dowork() {
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
-  WriterTile serialized_condition =
+  auto serialized_condition =
       update_values_.empty() ?
           tiledb::sm::deletes_and_updates::serialization::serialize_condition(
-              condition_->negated_condition()) :
+              condition_->negated_condition(), query_memory_tracker_) :
           tiledb::sm::deletes_and_updates::serialization::
               serialize_update_condition_and_values(
-                  condition_->negated_condition(), update_values_);
+                  condition_->negated_condition(),
+                  update_values_,
+                  query_memory_tracker_);
   new_fragment_str += update_values_.empty() ? constants::delete_file_suffix :
                                                constants::update_file_suffix;
 
   auto uri = commit_uri.join_path(new_fragment_str);
-  RETURN_NOT_OK(storage_manager_->store_data_to_generic_tile(
-      serialized_condition, uri, *array_->encryption_key()));
+  GenericTileIO::store_data(
+      storage_manager_->resources(),
+      uri,
+      serialized_condition,
+      *array_->encryption_key());
 
   return Status::Ok();
 }

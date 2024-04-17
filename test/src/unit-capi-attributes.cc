@@ -62,12 +62,6 @@ struct Attributesfx {
   // Vector of supported filesystems
   const std::vector<std::unique_ptr<SupportedFs>> fs_vec_;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  tiledb::test::ServerQueryBuffers server_buffers_;
-
   // Functions
   Attributesfx();
   ~Attributesfx();
@@ -156,7 +150,7 @@ void Attributesfx::create_dense_vector(
 TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with illegal filesystem characters in the name",
-    "[capi][attributes][illegal_name]") {
+    "[capi][attributes][illegal_name][rest]") {
   const std::vector<std::string> attr_names = {
       "miles!hour",  "miles#hour", "miles$hour", "miles%hour",  "miles&hour",
       "miles'hour",  "miles(hour", "miles)hour", "miles*hour",  "miles+hour",
@@ -164,25 +158,12 @@ TEST_CASE_METHOD(
       "miles?hour",  "miles@hour", "miles[hour", "miles]hour",  "miles[hour",
       "miles\"hour", "miles<hour", "miles>hour", "miles\\hour", "miles|hour"};
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+  size_t num = 0;
   for (const auto& attr_name : attr_names) {
     for (const auto& fs : fs_vec_) {
       std::string temp_dir = fs->temp_dir();
-      std::string array_name = temp_dir + "array-illegal-char";
-      // serialization is not supported for memfs arrays
-      if (serialize_ &&
-          tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
-        continue;
-      }
+      std::string array_name = vfs_array_uri(
+          fs, temp_dir + "array-illegal-char" + std::to_string(num++));
 
       // Create new TileDB context with file lock config disabled, rest the
       // same.
@@ -225,13 +206,7 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_a1, &buffer_a1_size);
       CHECK(rc == TILEDB_OK);
-      rc = tiledb::test::submit_query_wrapper(
-          ctx_,
-          array_name,
-          &query,
-          server_buffers_,
-          serialize_,
-          refactored_query_v2_);
+      rc = tiledb_query_submit_and_finalize(ctx_, query);
       CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
@@ -259,13 +234,8 @@ TEST_CASE_METHOD(
       rc = tiledb_query_set_data_buffer(
           ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
       CHECK(rc == TILEDB_OK);
-      rc = submit_query_wrapper(
-          ctx_,
-          array_name,
-          &query,
-          server_buffers_,
-          serialize_,
-          refactored_query_v2_);
+      rc = tiledb_query_submit(ctx_, query);
+
       CHECK(rc == TILEDB_OK);
 
       // Close array and clean up
@@ -280,6 +250,7 @@ TEST_CASE_METHOD(
       CHECK(buffer_read_size == sizeof(buffer_read_c));
 
       remove_temp_dir(temp_dir);
+      CHECK(vfs_test_close(fs_vec_, ctx_, vfs_).ok());
     }
   }
 }
@@ -287,27 +258,13 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with std::byte",
-    "[capi][attributes][byte]") {
+    "[capi][attributes][byte][rest-fails][sc-40489]") {
   auto datatype = GENERATE(TILEDB_BLOB, TILEDB_GEOM_WKB, TILEDB_GEOM_WKT);
 
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
-    std::string array_name = temp_dir;
+    std::string array_name = vfs_array_uri(fs, temp_dir + "byte-attribute");
     std::string attr_name = "a";
-    // serialization is not supported for memfs arrays
-    if (serialize_ &&
-        tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
-      continue;
-    }
 
     // Create new TileDB context with file lock config disabled, rest the
     // same.
@@ -346,13 +303,7 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-    rc = submit_query_wrapper(
-        ctx_,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -407,25 +358,25 @@ TEST_CASE_METHOD(
         ts_open = ts_open + 2;
         rc = tiledb_array_schema_evolution_set_timestamp_range(
             ctx_, schema_evolution2, ts_open, ts_open);
-        if (serialize_) {
-          // Serialize the array schema evolution
-          tiledb_buffer_t* buffer;
-          rc = tiledb_serialize_array_schema_evolution(
-              ctx_,
-              schema_evolution2,
-              (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-              0,
-              &buffer);
-          REQUIRE(rc == TILEDB_OK);
-          rc = tiledb_deserialize_array_schema_evolution(
-              ctx_,
-              buffer,
-              (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
-              1,
-              &schema_evolution2);
-          REQUIRE(rc == TILEDB_OK);
-          tiledb_buffer_free(&buffer);
-        }
+#ifdef TILEDB_SERIALIZATION
+        // Serialize the array schema evolution
+        tiledb_buffer_t* buffer;
+        rc = tiledb_serialize_array_schema_evolution(
+            ctx_,
+            schema_evolution2,
+            (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+            0,
+            &buffer);
+        REQUIRE(rc == TILEDB_OK);
+        rc = tiledb_deserialize_array_schema_evolution(
+            ctx_,
+            buffer,
+            (tiledb_serialization_type_t)tiledb::sm::SerializationType::CAPNP,
+            1,
+            &schema_evolution2);
+        REQUIRE(rc == TILEDB_OK);
+        tiledb_buffer_free(&buffer);
+#endif
         rc = tiledb_array_evolve(ctx_, array_name.c_str(), schema_evolution2);
         REQUIRE(rc == TILEDB_OK);
 
@@ -460,14 +411,7 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-
-    rc = submit_query_wrapper(
-        ctx_,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
+    rc = tiledb_query_submit(ctx_, query);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -492,24 +436,10 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     Attributesfx,
     "C API: Test attributes with tiledb_bool datatype",
-    "[capi][attributes][tiledb_bool]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
+    "[capi][attributes][tiledb_bool][rest]") {
   for (const auto& fs : fs_vec_) {
     std::string temp_dir = fs->temp_dir();
-    std::string array_name = temp_dir;
-    // serialization is not supported for memfs arrays
-    if (serialize_ &&
-        tiledb::sm::utils::parse::starts_with(array_name, "mem://")) {
-      continue;
-    }
+    std::string array_name = vfs_array_uri(fs, temp_dir + "bool-attribute");
 
     std::string attr_name = "attr";
 
@@ -554,13 +484,7 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_write, &buffer_write_size);
     CHECK(rc == TILEDB_OK);
-    rc = submit_query_wrapper(
-        ctx_,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
+    rc = tiledb_query_submit_and_finalize(ctx_, query);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up
@@ -588,13 +512,7 @@ TEST_CASE_METHOD(
     rc = tiledb_query_set_data_buffer(
         ctx_, query, attr_name.c_str(), buffer_read, &buffer_read_size);
     CHECK(rc == TILEDB_OK);
-    rc = submit_query_wrapper(
-        ctx_,
-        array_name,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_);
+    rc = tiledb_query_submit(ctx_, query);
     CHECK(rc == TILEDB_OK);
 
     // Close array and clean up

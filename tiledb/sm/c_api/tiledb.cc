@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -52,6 +52,7 @@
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/common/heap_profiler.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
@@ -257,8 +258,10 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
   (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-      HERE(), static_cast<tiledb::sm::ArrayType>(array_type));
+      HERE(), static_cast<tiledb::sm::ArrayType>(array_type), memory_tracker);
   if ((*array_schema)->array_schema_ == nullptr) {
     auto st = Status_Error("Failed to allocate TileDB array schema object");
     LOG_STATUS_NO_RETURN_VALUE(st);
@@ -512,8 +515,11 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -603,8 +609,11 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
+    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+
     // Load latest array schema
-    auto&& array_schema_latest = array_dir->load_array_schema_latest(key);
+    auto&& array_schema_latest =
+        array_dir->load_array_schema_latest(key, tracker);
     (*array_schema)->array_schema_ = array_schema_latest;
   }
   return TILEDB_OK;
@@ -820,8 +829,10 @@ int32_t tiledb_array_schema_evolution_alloc(
   }
 
   // Create a new SchemaEvolution object
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   (*array_schema_evolution)->array_schema_evolution_ =
-      new (std::nothrow) tiledb::sm::ArraySchemaEvolution();
+      new (std::nothrow) tiledb::sm::ArraySchemaEvolution(memory_tracker);
   if ((*array_schema_evolution)->array_schema_evolution_ == nullptr) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
@@ -1742,10 +1753,7 @@ int32_t tiledb_subarray_set_coalesce_ranges(
   // Sanity check
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0));
-
+  subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0);
   return TILEDB_OK;
 }
 
@@ -1756,7 +1764,7 @@ int32_t tiledb_subarray_set_subarray(
   if (sanity_check(ctx, subarray_obj) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(subarray_obj->subarray_->set_subarray(subarray_vals));
+  subarray_obj->subarray_->set_subarray(subarray_vals);
 
   return TILEDB_OK;
 }
@@ -1771,7 +1779,7 @@ int32_t tiledb_subarray_add_range(
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  throw_if_not_ok(subarray->subarray_->add_range(dim_idx, start, end, stride));
+  subarray->subarray_->add_range(dim_idx, start, end, stride);
 
   return TILEDB_OK;
 }
@@ -1784,9 +1792,7 @@ int32_t tiledb_subarray_add_point_ranges(
     uint64_t count) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_point_ranges(dim_idx, start, count));
-
+  subarray->subarray_->add_point_ranges(dim_idx, start, count);
   return TILEDB_OK;
 }
 
@@ -1799,10 +1805,7 @@ int32_t tiledb_subarray_add_range_by_name(
     const void* stride) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->add_range_by_name(dim_name, start, end, stride));
-
+  subarray->subarray_->add_range_by_name(dim_name, start, end, stride);
   return TILEDB_OK;
 }
 
@@ -1816,10 +1819,7 @@ int32_t tiledb_subarray_add_range_var(
     uint64_t end_size) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_range_var(
-      dim_idx, start, start_size, end, end_size));
-
+  subarray->subarray_->add_range_var(dim_idx, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
@@ -1833,10 +1833,8 @@ int32_t tiledb_subarray_add_range_var_by_name(
     uint64_t end_size) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->add_range_var_by_name(
-      dim_name, start, start_size, end, end_size));
-
+  subarray->subarray_->add_range_var_by_name(
+      dim_name, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
@@ -1847,9 +1845,7 @@ int32_t tiledb_subarray_get_range_num(
     uint64_t* range_num) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_num(dim_idx, range_num));
-
+  subarray->subarray_->get_range_num(dim_idx, range_num);
   return TILEDB_OK;
 }
 
@@ -1860,10 +1856,7 @@ int32_t tiledb_subarray_get_range_num_from_name(
     uint64_t* range_num) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range_num_from_name(dim_name, range_num));
-
+  subarray->subarray_->get_range_num_from_name(dim_name, range_num);
   return TILEDB_OK;
 }
 
@@ -1877,10 +1870,7 @@ int32_t tiledb_subarray_get_range(
     const void** stride) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range(dim_idx, range_idx, start, end, stride));
-
+  subarray->subarray_->get_range(dim_idx, range_idx, start, end, stride);
   return TILEDB_OK;
 }
 
@@ -1893,10 +1883,8 @@ int32_t tiledb_subarray_get_range_var_size(
     uint64_t* end_size) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_size(
-      dim_idx, range_idx, start_size, end_size));
-
+  subarray->subarray_->get_range_var_size(
+      dim_idx, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
@@ -1910,10 +1898,8 @@ int32_t tiledb_subarray_get_range_from_name(
     const void** stride) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_from_name(
-      dim_name, range_idx, start, end, stride));
-
+  subarray->subarray_->get_range_from_name(
+      dim_name, range_idx, start, end, stride);
   return TILEDB_OK;
 }
 
@@ -1926,10 +1912,8 @@ int32_t tiledb_subarray_get_range_var_size_from_name(
     uint64_t* end_size) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_size_from_name(
-      dim_name, range_idx, start_size, end_size));
-
+  subarray->subarray_->get_range_var_size_from_name(
+      dim_name, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
@@ -1942,10 +1926,7 @@ int32_t tiledb_subarray_get_range_var(
     void* end) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(
-      subarray->subarray_->get_range_var(dim_idx, range_idx, start, end));
-
+  subarray->subarray_->get_range_var(dim_idx, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -1958,10 +1939,7 @@ int32_t tiledb_subarray_get_range_var_from_name(
     void* end) {
   if (sanity_check(ctx, subarray) == TILEDB_ERR)
     return TILEDB_ERR;
-
-  throw_if_not_ok(subarray->subarray_->get_range_var_from_name(
-      dim_name, range_idx, start, end));
-
+  subarray->subarray_->get_range_var_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
@@ -2926,30 +2904,10 @@ int32_t tiledb_array_encryption_type(
   if (array_uri == nullptr || encryption_type == nullptr)
     return TILEDB_ERR;
 
-  // For easy reference
-  auto storage_manager = ctx->storage_manager();
   auto uri = tiledb::sm::URI(array_uri);
-
-  // Load URIs from the array directory
-  optional<tiledb::sm::ArrayDirectory> array_dir;
-  try {
-    array_dir.emplace(
-        storage_manager->resources(),
-        uri,
-        0,
-        UINT64_MAX,
-        tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-  } catch (const std::logic_error& le) {
-    auto st = Status_ArrayDirectoryError(le.what());
-    LOG_STATUS_NO_RETURN_VALUE(st);
-    save_error(ctx, st);
-    return TILEDB_ERR;
-  }
-
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_encryption(array_dir.value(), &enc));
+  throw_if_not_ok(ctx->storage_manager()->array_get_encryption(uri, &enc));
 
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
@@ -3438,13 +3396,16 @@ int32_t tiledb_deserialize_array(
     return TILEDB_OOM;
   }
 
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_deserialize(
               (*array)->array_.get(),
               (tiledb::sm::SerializationType)serialize_type,
               buffer->buffer(),
-              ctx->storage_manager()))) {
+              ctx->storage_manager(),
+              memory_tracker))) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -3500,10 +3461,13 @@ int32_t tiledb_deserialize_array_schema(
   }
 
   try {
-    (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
-        HERE(),
+    auto memory_tracker = ctx->context().resources().create_memory_tracker();
+    memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
+    (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
-            (tiledb::sm::SerializationType)serialize_type, buffer->buffer()));
+            (tiledb::sm::SerializationType)serialize_type,
+            buffer->buffer(),
+            memory_tracker);
   } catch (...) {
     delete *array_schema;
     *array_schema = nullptr;
@@ -3650,12 +3614,15 @@ int32_t tiledb_deserialize_array_schema_evolution(
     return TILEDB_OOM;
   }
 
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::array_schema_evolution_deserialize(
               &((*array_schema_evolution)->array_schema_evolution_),
               (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer()))) {
+              buffer->buffer(),
+              memory_tracker))) {
     delete *array_schema_evolution;
     *array_schema_evolution = nullptr;
     return TILEDB_ERR;
@@ -3766,11 +3733,14 @@ int32_t tiledb_deserialize_query_and_array(
   }
 
   // First deserialize the array included in the query
+  auto memory_tracker = ctx->resources().create_memory_tracker();
+  memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_LOAD);
   throw_if_not_ok(tiledb::sm::serialization::array_from_query_deserialize(
       buffer->buffer(),
       (tiledb::sm::SerializationType)serialize_type,
       *(*array)->array_,
-      ctx->storage_manager()));
+      ctx->storage_manager(),
+      memory_tracker));
 
   // Create query struct
   *query = new (std::nothrow) tiledb_query_t;
@@ -4007,9 +3977,13 @@ int32_t tiledb_serialize_array_metadata(
   auto buf = tiledb_buffer_handle_t::make_handle();
 
   // Get metadata to serialize, this will load it if it does not exist
-  tiledb::sm::Metadata* metadata;
-  if (SAVE_ERROR_CATCH(ctx, array->array_->metadata(&metadata))) {
-    tiledb_buffer_handle_t::break_handle(buf);
+  sm::Metadata* metadata = nullptr;
+  try {
+    metadata = &array->array_->metadata();
+  } catch (StatusException& e) {
+    auto st = Status_Error(e.what());
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
     return TILEDB_ERR;
   }
 
@@ -4271,13 +4245,16 @@ int32_t tiledb_deserialize_fragment_info(
     return TILEDB_ERR;
   }
 
+  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  memory_tracker->set_type(sm::MemoryTrackerType::FRAGMENT_INFO_LOAD);
   if (SAVE_ERROR_CATCH(
           ctx,
           tiledb::sm::serialization::fragment_info_deserialize(
               fragment_info->fragment_info_,
               (tiledb::sm::SerializationType)serialize_type,
               uri,
-              buffer->buffer()))) {
+              buffer->buffer(),
+              memory_tracker))) {
     return TILEDB_ERR;
   }
 

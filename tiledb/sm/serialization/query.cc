@@ -263,26 +263,24 @@ Status subarray_to_capnp(
 
 Status subarray_from_capnp(
     const capnp::Subarray::Reader& reader, Subarray* subarray) {
-  RETURN_NOT_OK(subarray->set_coalesce_ranges(reader.getCoalesceRanges()));
+  subarray->set_coalesce_ranges(reader.getCoalesceRanges());
   auto ranges_reader = reader.getRanges();
   uint32_t dim_num = ranges_reader.size();
   for (uint32_t i = 0; i < dim_num; i++) {
     auto range_reader = ranges_reader[i];
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(range_reader.getType(), &type));
 
     auto data = range_reader.getBuffer();
     auto data_ptr = data.asBytes();
     if (range_reader.hasBufferSizes()) {
       auto ranges = range_buffers_from_capnp(range_reader);
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, ranges));
+      subarray->set_ranges_for_dim(i, ranges);
 
       // Set default indicator
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     } else {
       // Handle 1.7 style ranges where there is a single range with no sizes
       Range range(data_ptr.begin(), data.size());
-      RETURN_NOT_OK(subarray->set_ranges_for_dim(i, {range}));
+      subarray->set_ranges_for_dim(i, {range});
       subarray->set_is_default(i, range_reader.getHasDefaultRange());
     }
   }
@@ -516,12 +514,12 @@ Status subarray_partitioner_from_capnp(
         partition_info_reader.getSubarray(), &partition_info->partition_));
 
     if (compute_current_tile_overlap) {
-      throw_if_not_ok(partition_info->partition_.precompute_tile_overlap(
+      partition_info->partition_.precompute_tile_overlap(
           partition_info->start_,
           partition_info->end_,
           &config,
           compute_tp,
-          true));
+          true);
     }
   }
 
@@ -1552,10 +1550,10 @@ Status query_to_capnp(
   // The server should throw if it's about to serialize an incomplete query
   // that has aggregates on it, this behavior is currently not supported.
   if (!client_side && query.status() == QueryStatus::INCOMPLETE &&
-      !query.has_aggregates()) {
-    throw Status_SerializationError(
+      query.has_aggregates()) {
+    throw StatusException(Status_SerializationError(
         "Aggregates are not currently supported in incomplete remote "
-        "queries");
+        "queries"));
   }
   query_channels_to_capnp(query, query_builder);
 
@@ -2284,7 +2282,8 @@ Status array_from_query_deserialize(
     const Buffer& serialized_buffer,
     SerializationType serialize_type,
     Array& array,
-    StorageManager* storage_manager) {
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -2299,7 +2298,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -2327,7 +2330,11 @@ Status array_from_query_deserialize(
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
         RETURN_NOT_OK(array_from_capnp(
-            query_reader.getArray(), storage_manager, &array, false));
+            query_reader.getArray(),
+            storage_manager,
+            &array,
+            false,
+            memory_tracker));
         break;
       }
       default:
@@ -3190,7 +3197,11 @@ Status query_deserialize(
 }
 
 Status array_from_query_deserialize(
-    const Buffer&, SerializationType, Array&, StorageManager*) {
+    const Buffer&,
+    SerializationType,
+    Array&,
+    StorageManager*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }

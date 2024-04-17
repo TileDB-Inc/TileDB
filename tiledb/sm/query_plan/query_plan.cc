@@ -35,8 +35,10 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
+#include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/query/query.h"
+#include "tiledb/sm/rest/rest_client.h"
 
 #include "external/include/nlohmann/json.hpp"
 
@@ -49,6 +51,24 @@ namespace sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 QueryPlan::QueryPlan(Query& query) {
+  if (query.array()->is_remote()) {
+    auto rest_client = query.rest_client();
+    if (!rest_client) {
+      throw std::runtime_error(
+          "Failed to create a query plan; Remote query"
+          "with no REST client.");
+    }
+
+    rest_client->post_query_plan_from_rest(
+        query.array()->array_uri(), query, *this);
+
+    // We need to transition the query status to INITIALIZED to mimic the
+    // behavior of getting a query plan locally
+    query.set_status(QueryStatus::INITIALIZED);
+
+    return;
+  }
+
   array_uri_ = query.array()->array_uri().to_string();
   vfs_backend_ = URI(array_uri_).backend_name();
   query_layout_ = query.layout();

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -55,9 +55,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 class ArraySerializationException : public StatusException {
  public:
@@ -102,8 +100,7 @@ Status metadata_from_capnp(
     auto entry_reader = entries_reader[i];
     auto key = std::string{std::string_view{
         entry_reader.getKey().cStr(), entry_reader.getKey().size()}};
-    Datatype type = Datatype::UINT8;
-    RETURN_NOT_OK(datatype_enum(entry_reader.getType(), &type));
+    Datatype type = datatype_enum(entry_reader.getType());
     uint32_t value_num = entry_reader.getValueNum();
 
     auto value_ptr = entry_reader.getValue();
@@ -205,10 +202,8 @@ Status array_to_capnp(
       // If this is the Cloud server, it should load and serialize metadata
       // If this is the client, it should have previously received the array
       // metadata from the Cloud server, so it should just serialize it
-      Metadata* metadata = nullptr;
-      // Get metadata. If not loaded, load it first.
-      RETURN_NOT_OK(array->metadata(&metadata));
-      RETURN_NOT_OK(metadata_to_capnp(metadata, &array_metadata_builder));
+      auto& metadata = array->metadata();
+      RETURN_NOT_OK(metadata_to_capnp(&metadata, &array_metadata_builder));
     }
   } else {
     if (array->non_empty_domain_computed()) {
@@ -230,7 +225,8 @@ Status array_from_capnp(
     const capnp::Array::Reader& array_reader,
     StorageManager* storage_manager,
     Array* array,
-    const bool client_side) {
+    const bool client_side,
+    shared_ptr<MemoryTracker> memory_tracker) {
   // The serialized URI is set if it exists
   // this is used for backwards compatibility with pre TileDB 2.5 clients that
   // want to serialized a query object TileDB >= 2.5 no longer needs to receive
@@ -267,11 +263,10 @@ Status array_from_capnp(
     if (all_schemas_reader.hasEntries()) {
       auto entries = array_reader.getArraySchemasAll().getEntries();
       for (auto array_schema_build : entries) {
-        auto schema{array_schema_from_capnp(
-            array_schema_build.getValue(), array->array_uri())};
-        schema.set_array_uri(array->array_uri());
-        all_schemas[array_schema_build.getKey()] =
-            make_shared<ArraySchema>(HERE(), schema);
+        auto schema = array_schema_from_capnp(
+            array_schema_build.getValue(), array->array_uri(), memory_tracker);
+        schema->set_array_uri(array->array_uri());
+        all_schemas[array_schema_build.getKey()] = schema;
       }
     }
     array->set_array_schemas_all(std::move(all_schemas));
@@ -280,10 +275,9 @@ Status array_from_capnp(
   if (array_reader.hasArraySchemaLatest()) {
     auto array_schema_latest_reader = array_reader.getArraySchemaLatest();
     auto array_schema_latest{array_schema_from_capnp(
-        array_schema_latest_reader, array->array_uri())};
-    array_schema_latest.set_array_uri(array->array_uri());
-    array->set_array_schema_latest(
-        make_shared<ArraySchema>(HERE(), array_schema_latest));
+        array_schema_latest_reader, array->array_uri(), memory_tracker)};
+    array_schema_latest->set_array_uri(array->array_uri());
+    array->set_array_schema_latest(array_schema_latest);
   }
 
   // Deserialize array directory
@@ -541,7 +535,8 @@ Status array_deserialize(
     Array* array,
     SerializationType serialize_type,
     const Buffer& serialized_buffer,
-    StorageManager* storage_manager) {
+    StorageManager* storage_manager,
+    shared_ptr<MemoryTracker> memory_tracker) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -553,7 +548,8 @@ Status array_deserialize(
             kj::StringPtr(static_cast<const char*>(serialized_buffer.data())),
             array_builder);
         capnp::Array::Reader array_reader = array_builder.asReader();
-        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
+        RETURN_NOT_OK(array_from_capnp(
+            array_reader, storage_manager, array, true, memory_tracker));
         break;
       }
       case SerializationType::CAPNP: {
@@ -573,7 +569,8 @@ Status array_deserialize(
                 serialized_buffer.size() / sizeof(::capnp::word)),
             readerOptions);
         capnp::Array::Reader array_reader = reader.getRoot<capnp::Array>();
-        RETURN_NOT_OK(array_from_capnp(array_reader, storage_manager, array));
+        RETURN_NOT_OK(array_from_capnp(
+            array_reader, storage_manager, array, true, memory_tracker));
         break;
       }
       default: {
@@ -706,7 +703,11 @@ Status array_serialize(Array*, SerializationType, Buffer*, const bool) {
 }
 
 Status array_deserialize(
-    Array*, SerializationType, const Buffer&, StorageManager*) {
+    Array*,
+    SerializationType,
+    const Buffer&,
+    StorageManager*,
+    shared_ptr<MemoryTracker>) {
   return LOG_STATUS(Status_SerializationError(
       "Cannot deserialize; serialization not enabled."));
 }
@@ -733,6 +734,4 @@ Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

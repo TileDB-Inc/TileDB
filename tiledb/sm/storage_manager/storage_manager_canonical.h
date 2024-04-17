@@ -372,13 +372,11 @@ class StorageManagerCanonical {
   /**
    * Retrieves the encryption type from an array.
    *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
+   * @param uri The URI of the array.
    * @param encryption_type Set to the encryption type of the array.
    * @return Status
    */
-  Status array_get_encryption(
-      const ArrayDirectory& array_dir, EncryptionType* encryption_type);
+  Status array_get_encryption(const URI& uri, EncryptionType* encryption_type);
 
   /**
    * Pushes an async query to the queue.
@@ -590,17 +588,6 @@ class StorageManagerCanonical {
    */
   Status store_metadata(
       const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
-
-  /**
-   * Stores data into persistent storage.
-   *
-   * @param tile Tile to store.
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_data_to_generic_tile(
-      WriterTile& tile, const URI& uri, const EncryptionKey& encryption_key);
 
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -85,12 +85,17 @@
  * objects and arrays encoded one per line). At runtime the reporter appends
  * a JSON blob once a second to this logfile that can then be analyzed using
  * whatever scripts or software as appropriate.
+ *
+ * Users may also set configuration key
+ * 'sm.memory.tracker.reporter.wait_time_ms' to toggle the duration, in
+ * milliseconds, that the calling thread is blocked in
+ * 'MemoryTrackerReporter::run' before the condition variable is notified. By
+ * default, the thread will wait for 1000 ms.
  */
 
 #ifndef TILEDB_MEMORY_TRACKER_H
 #define TILEDB_MEMORY_TRACKER_H
 
-#include <chrono>
 #include <condition_variable>
 #include <thread>
 
@@ -98,30 +103,70 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
-//** The type of memory to track. */
+/** The type of memory to track. */
 enum class MemoryType {
-  RTREE,
+  ATTRIBUTES,
+  CONSOLIDATION_BUFFERS,
+  DIMENSION_LABELS,
+  DIMENSIONS,
+  DOMAINS,
+  ENUMERATION,
+  ENUMERATION_PATHS,
+  FILTERED_DATA,
+  FILTERED_DATA_BLOCK,
   FOOTER,
-  TILE_OFFSETS,
-  TILE_MIN_VALS,
+  GENERIC_TILE_IO,
+  METADATA,
+  QUERY_CONDITION,
+  RESULT_TILE,
+  RESULT_TILE_BITMAP,
+  RTREE,
+  TILE_DATA,
+  TILE_HILBERT_VALUES,
   TILE_MAX_VALS,
-  TILE_SUMS,
+  TILE_MIN_VALS,
   TILE_NULL_COUNTS,
-  ENUMERATION
+  TILE_OFFSETS,
+  TILE_SUMS,
+  WRITER_DATA,
+  WRITER_TILE_DATA
 };
+
+/**
+ * Return a string representation of type
+ *
+ * @param type The MemoryType to convert.
+ * @return A string representation.
+ */
+std::string memory_type_to_str(MemoryType type);
 
 /** The type of MemoryTracker. */
 enum class MemoryTrackerType {
   ANONYMOUS,
+  ARRAY_CREATE,
+  ARRAY_LOAD,
   ARRAY_READ,
   ARRAY_WRITE,
+  CONSOLIDATOR,
+  ENUMERATION_CREATE,
+  EPHEMERAL,
+  FRAGMENT_INFO_LOAD,
+  GROUP,
   QUERY_READ,
   QUERY_WRITE,
-  CONSOLIDATOR
+  REST_CLIENT,
+  SCHEMA_EVOLUTION
 };
+
+/**
+ * Return a string representation of type
+ *
+ * @param type The MemoryTrackerType to convert.
+ * @return A string representation.
+ */
+std::string memory_tracker_type_to_str(MemoryTrackerType type);
 
 class MemoryTrackerResource : public tdb::pmr::memory_resource {
  public:
@@ -380,6 +425,7 @@ class MemoryTrackerReporter {
       const Config& cfg, shared_ptr<MemoryTrackerManager> manager)
       : manager_(manager)
       , filename_(cfg.get<std::string>("sm.memory.tracker.reporter.filename"))
+      , wait_time_ms_(cfg.get<int>("sm.memory.tracker.reporter.wait_time_ms"))
       , stop_(false) {
   }
 
@@ -402,8 +448,11 @@ class MemoryTrackerReporter {
   /** The MemoryTrackerManager instance on the parent ContextResources. */
   shared_ptr<MemoryTrackerManager> manager_;
 
-  /** An filename set in the config. */
+  /** A filename set in the config. */
   std::optional<std::string> filename_;
+
+  /** A wait time (in milliseconds) set in the config. */
+  std::optional<int> wait_time_ms_;
 
   /** The background reporter thread. */
   std::thread thread_;
@@ -418,7 +467,6 @@ class MemoryTrackerReporter {
   bool stop_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_OPEN_ARRAY_MEMORY_TRACKER_H

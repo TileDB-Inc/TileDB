@@ -95,16 +95,17 @@ class FragmentMetadata {
    * @param timestamp_range The timestamp range of the fragment.
    *     In TileDB, timestamps are in ms elapsed since
    *     1970-01-01 00:00:00 +0000 (UTC).
+   * @param memory_tracker Memory tracker for the fragment metadata.
    * @param dense Indicates whether the fragment is dense or sparse.
    * @param has_timestamps Does the fragment contains timestamps.
    * @param has_delete_meta Does the fragment contains delete metadata.
    */
   FragmentMetadata(
       ContextResources* resources,
-      shared_ptr<MemoryTracker> memory_tracker,
       const shared_ptr<const ArraySchema>& array_schema,
       const URI& fragment_uri,
       const std::pair<uint64_t, uint64_t>& timestamp_range,
+      shared_ptr<MemoryTracker> memory_tracker,
       bool dense = true,
       bool has_timestamps = false,
       bool has_delete_mata = false);
@@ -833,7 +834,7 @@ class FragmentMetadata {
   const NDRange& mbr(uint64_t tile_idx) const;
 
   /** Returns all the MBRs of all tiles in the fragment. */
-  const std::vector<NDRange>& mbrs() const;
+  const tdb::pmr::vector<NDRange>& mbrs() const;
 
   /**
    * Retrieves the size of the tile when it is persisted (e.g. the size of the
@@ -1726,7 +1727,7 @@ class FragmentMetadata {
   void store_footer(const EncryptionKey& encryption_key);
 
   /** Writes the R-tree to a tile. */
-  WriterTile write_rtree();
+  shared_ptr<WriterTile> write_rtree();
 
   /** Writes the non-empty domain to the input buffer. */
   void write_non_empty_domain(Serializer& serializer) const;
@@ -1914,7 +1915,7 @@ class FragmentMetadata {
    * Reads the contents of a generic tile starting at the input offset,
    * and returns a tile.
    */
-  Tile read_generic_tile_from_file(
+  shared_ptr<Tile> read_generic_tile_from_file(
       const EncryptionKey& encryption_key, uint64_t offset) const;
 
   /**
@@ -1936,7 +1937,7 @@ class FragmentMetadata {
    */
   void write_generic_tile_to_file(
       const EncryptionKey& encryption_key,
-      WriterTile& tile,
+      shared_ptr<WriterTile> tile,
       uint64_t* nbytes) const;
 
   /**
@@ -1945,7 +1946,7 @@ class FragmentMetadata {
    * retrieval upon reading (as its size is predictable based on the
    * number of attributes).
    */
-  void write_footer_to_file(WriterTile&) const;
+  void write_footer_to_file(shared_ptr<WriterTile>) const;
 
   /**
    * Simple clean up function called in the case of error. It removes the

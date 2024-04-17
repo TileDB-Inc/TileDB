@@ -257,9 +257,12 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const uint64_t num_range_threads);
 
   /** Make an aggregate buffer. */
+  template <class DimType>
   AggregateBuffer make_aggregate_buffer(
       const bool var_sized,
       const bool nullable,
+      const bool is_dim,
+      DimType& dim_val,
       const uint64_t cell_size,
       const uint64_t min_cell,
       const uint64_t max_cell,
@@ -280,6 +283,10 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
       const std::string& name,
       ResultSpaceTile<DimType>& rst,
       const Subarray& tile_subarray) const {
+    if (array_schema_.is_dim(name)) {
+      return false;
+    }
+
     // Make sure there are no filtered results by the query condition and that
     // there are only one fragment domain for this tile. Having more fragment
     // domains for a tile means we'll have to merge data for many sources so we

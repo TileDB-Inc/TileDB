@@ -1,11 +1,11 @@
 /**
- * @file compile_uuid_main.cc
+ * @file test/support/test/compile_mem_helpers_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "../uuid.h"
+#include "../src/mem_helpers.h"
 
 int main() {
-  (void)tiledb::sm::uuid::generate_uuid(nullptr, false);
+  tiledb::test::get_test_memory_tracker();
   return 0;
 }

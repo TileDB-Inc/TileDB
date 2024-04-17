@@ -58,7 +58,8 @@ typedef int32_t (*tiledb_ls_callback_t)(
  * on error. The callback is responsible for writing gathered entries into the
  * `data` buffer, for example using a pointer to a user-defined struct.
  *
- * Currently only S3 is supported, and the `path` must be a valid S3 URI.
+ * Currently only Posix and S3 are supported, and the `path` must be a valid URI
+ * for one of those filesystems.
  *
  * **Example:**
  *

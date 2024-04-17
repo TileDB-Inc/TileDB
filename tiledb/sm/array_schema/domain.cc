@@ -37,10 +37,12 @@
 #include "tiledb/common/blank.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
+#include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/misc/tdb_math.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/type/apply_with_type.h"
 #include "tiledb/type/range/range.h"
 
 #include <cassert>
@@ -57,7 +59,13 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-Domain::Domain() {
+Domain::Domain(shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , dimensions_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   cell_order_ = Layout::ROW_MAJOR;
   tile_order_ = Layout::ROW_MAJOR;
   dim_num_ = 0;
@@ -67,11 +75,20 @@ Domain::Domain() {
 Domain::Domain(
     Layout cell_order,
     const std::vector<shared_ptr<Dimension>> dimensions,
-    Layout tile_order)
-    : cell_order_(cell_order)
-    , dimensions_(dimensions)
+    Layout tile_order,
+    shared_ptr<MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , cell_order_(cell_order)
+    , dimensions_(
+          dimensions.begin(),
+          dimensions.end(),
+          memory_tracker_->get_resource(MemoryType::DIMENSIONS))
+    , dimension_ptrs_(memory_tracker_->get_resource(MemoryType::DIMENSIONS))
     , dim_num_(static_cast<dimension_size_type>(dimensions.size()))
-    , tile_order_(tile_order) {
+    , tile_order_(tile_order)
+    , cell_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , cell_order_cmp_func_2_(memory_tracker_->get_resource(MemoryType::DOMAINS))
+    , tile_order_cmp_func_(memory_tracker_->get_resource(MemoryType::DOMAINS)) {
   /*
    * Verify that the input vector has no non-null elements in order to meet the
    * class invariant. Initialize the dimensions mirror.
@@ -90,32 +107,6 @@ Domain::Domain(
 
   // Compute number of cells per tile
   set_tile_cell_order_cmp_funcs();
-}
-
-Domain::Domain(Domain&& rhs)
-    : cell_num_per_tile_(rhs.cell_num_per_tile_)
-    , cell_order_(rhs.cell_order_)
-    , dimensions_(move(rhs.dimensions_))
-    , dimension_ptrs_(move(rhs.dimension_ptrs_))
-    , dim_num_(rhs.dim_num_)
-    , tile_order_(rhs.tile_order_)
-    , cell_order_cmp_func_(move(rhs.cell_order_cmp_func_))
-    , cell_order_cmp_func_2_(move(rhs.cell_order_cmp_func_2_))
-    , tile_order_cmp_func_(move(rhs.tile_order_cmp_func_)) {
-}
-
-Domain& Domain::operator=(Domain&& rhs) {
-  cell_num_per_tile_ = rhs.cell_num_per_tile_;
-  cell_order_ = rhs.cell_order_;
-  dim_num_ = rhs.dim_num_;
-  cell_order_cmp_func_ = move(rhs.cell_order_cmp_func_);
-  tile_order_cmp_func_ = move(rhs.tile_order_cmp_func_);
-  dimensions_ = move(rhs.dimensions_);
-  dimension_ptrs_ = move(rhs.dimension_ptrs_);
-  tile_order_ = rhs.tile_order_;
-  cell_order_cmp_func_2_ = move(rhs.cell_order_cmp_func_2_);
-
-  return *this;
 }
 
 /* ********************************* */
@@ -312,8 +303,19 @@ int Domain::cell_order_cmp(
 }
 
 void Domain::crop_ndrange(NDRange* ndrange) const {
-  for (unsigned d = 0; d < dim_num_; ++d)
-    dimension_ptrs_[d]->crop_range(&(*ndrange)[d]);
+  for (unsigned d = 0; d < dim_num_; ++d) {
+    auto type = dimension_ptrs_[d]->type();
+    auto g = [&](auto T) {
+      if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
+        tiledb::type::crop_range<decltype(T)>(
+            dimension_ptrs_[d]->domain(), (*ndrange)[d]);
+      } else {
+        throw std::invalid_argument(
+            "Unsupported dimension datatype " + datatype_str(type));
+      }
+    };
+    apply_with_type(g, type);
+  }
 }
 
 shared_ptr<Domain> Domain::deserialize(
@@ -321,7 +323,8 @@ shared_ptr<Domain> Domain::deserialize(
     uint32_t version,
     Layout cell_order,
     Layout tile_order,
-    FilterPipeline& coords_filters) {
+    FilterPipeline& coords_filters,
+    shared_ptr<MemoryTracker> memory_tracker) {
   Status st;
   // Load type
   Datatype type = Datatype::INT32;
@@ -333,13 +336,13 @@ shared_ptr<Domain> Domain::deserialize(
   std::vector<shared_ptr<Dimension>> dimensions;
   auto dim_num = deserializer.read<uint32_t>();
   for (uint32_t i = 0; i < dim_num; ++i) {
-    auto dim{
-        Dimension::deserialize(deserializer, version, type, coords_filters)};
+    auto dim{Dimension::deserialize(
+        deserializer, version, type, coords_filters, memory_tracker)};
     dimensions.emplace_back(std::move(dim));
   }
 
   return tiledb::common::make_shared<Domain>(
-      HERE(), cell_order, dimensions, tile_order);
+      HERE(), cell_order, dimensions, tile_order, memory_tracker);
 }
 
 const Range& Domain::domain(unsigned i) const {
@@ -529,16 +532,14 @@ Status Domain::has_dimension(const std::string& name, bool* has_dim) const {
   return Status::Ok();
 }
 
-Status Domain::get_dimension_index(
-    const std::string& name, unsigned* dim_idx) const {
+unsigned Domain::get_dimension_index(const std::string& name) const {
   for (unsigned d = 0; d < dim_num_; ++d) {
     if (dimension_ptrs_[d]->name() == name) {
-      *dim_idx = d;
-      return Status::Ok();
+      return d;
     }
   }
 
-  return Status_DomainError(
+  throw std::invalid_argument(
       "Cannot get dimension index; Invalid dimension name");
 }
 
@@ -597,8 +598,9 @@ const ByteVecValue& Domain::tile_extent(unsigned i) const {
 
 std::vector<ByteVecValue> Domain::tile_extents() const {
   std::vector<ByteVecValue> ret(dim_num_);
-  for (unsigned d = 0; d < dim_num_; ++d)
+  for (unsigned d = 0; d < dim_num_; ++d) {
     ret[d] = tile_extent(d);
+  }
 
   return ret;
 }

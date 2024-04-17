@@ -311,7 +311,7 @@ void WriterBase::refresh_config() {
 
 shared_ptr<FragmentMetadata> WriterBase::create_fragment_metadata() {
   return make_shared<FragmentMetadata>(
-      HERE(), &storage_manager_->resources(), array_memory_tracker_);
+      HERE(), &storage_manager_->resources(), query_memory_tracker_);
 }
 
 Status WriterBase::add_written_fragment_info(const URI& uri) {
@@ -623,7 +623,8 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
 }
 
 std::vector<NDRange> WriterBase::compute_mbrs(
-    const std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
+    const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles)
+    const {
   auto timer_se = stats_->start_timer("compute_coord_meta");
 
   // Applicable only if there are coordinates
@@ -669,7 +670,7 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 void WriterBase::set_coords_metadata(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
-    const std::unordered_map<std::string, WriterTileTupleVector>& tiles,
+    const tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles,
     const std::vector<NDRange>& mbrs,
     shared_ptr<FragmentMetadata> meta) const {
   // Applicable only if there are coordinates
@@ -701,7 +702,7 @@ void WriterBase::set_coords_metadata(
 
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
   auto compute_tp = storage_manager_->compute_tp();
 
   // Parallelize over attributes?
@@ -710,7 +711,7 @@ Status WriterBase::compute_tiles_metadata(
       auto tiles_it = tiles.begin();
       std::advance(tiles_it, i);
       const auto& attr = tiles_it->first;
-      auto& attr_tiles = tiles[attr];
+      auto& attr_tiles = tiles.at(attr);
       const auto type = array_schema_.type(attr);
       const auto is_dim = array_schema_.is_dim(attr);
       const auto var_size = array_schema_.var_size(attr);
@@ -792,10 +793,10 @@ Status WriterBase::create_fragment(
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
       &storage_manager_->resources(),
-      array_memory_tracker_,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
+      query_memory_tracker_,
       dense,
       has_timestamps,
       has_delete_metadata);
@@ -805,7 +806,7 @@ Status WriterBase::create_fragment(
 }
 
 Status WriterBase::filter_tiles(
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
   auto status = parallel_for(
       storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
@@ -951,8 +952,14 @@ Status WriterBase::init_tiles(
       coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
   tiles->reserve(tile_num);
   for (uint64_t i = 0; i < tile_num; i++) {
-    tiles->emplace_back(WriterTileTuple(
-        array_schema_, cell_num_per_tile, var_size, nullable, cell_size, type));
+    tiles->emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
   }
 
   return Status::Ok();
@@ -1042,7 +1049,7 @@ Status WriterBase::write_tiles(
     const uint64_t start_tile_idx,
     const uint64_t end_tile_idx,
     shared_ptr<FragmentMetadata> frag_meta,
-    std::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* const tiles) {
   auto timer_se = stats_->start_timer("write_num_tiles");
 
   assert(!tiles->empty());
@@ -1196,3 +1203,17 @@ bool WriterBase::remote_query() const {
 }
 
 }  // namespace tiledb::sm
+
+template <>
+IndexedList<tiledb::sm::WriterTileTuple>::IndexedList(
+    shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
+}
+
+template <>
+IndexedList<tiledb::common::IndexedList<tiledb::sm::WriterTileTuple>>::
+    IndexedList(shared_ptr<tiledb::sm::MemoryTracker> memory_tracker)
+    : memory_tracker_(memory_tracker)
+    , list_(memory_tracker->get_resource(sm::MemoryType::WRITER_TILE_DATA)) {
+}

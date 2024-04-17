@@ -62,6 +62,7 @@
 #include <optional>
 #include <random>
 
+#include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 
 #include "../bit_width_reduction_filter.h"
@@ -78,6 +79,7 @@
 #include "add_1_including_metadata_filter.h"
 #include "add_1_out_of_place_filter.h"
 #include "add_n_in_place_filter.h"
+#include "filter_test_support.h"
 #include "filtered_tile_checker.h"
 #include "pseudo_checksum_filter.h"
 #include "tile_data_generator.h"
@@ -91,178 +93,18 @@
 
 using namespace tiledb::sm;
 
-// A dummy `Stats` instance.
-static tiledb::sm::stats::Stats dummy_stats("test");
-
-class SimpleTestData {};
-
-/**
- * Original variable length test from the pipeline tests.
- *
- * For this test target size is 10 cells per chunk. Below is a list of value
- * cell lengths, the cell they are added to, and the rational.
- *
- * target = 8 cells
- * min = 4 cells
- * max = 12 cells
- *
- * | # Cells | Previous/New # Cell in Chunk | Notes                            |
- * |:-------:|:--------|:------------------------------------------------------|
- * |  4      |  0 / 4  | chunk 0: initial chunk                                |
- * |  10     |  4 / 14 | chunk 0: new > max, prev. <= min (next new)           |
- * |  6      |  0 / 6  | chunk 1: new <= target                                |
- * |  11     |  6 / 11 | chunk 2: target < new <= max, prev. > min  (next new) |
- * |  7      |  0 / 7  | chunk 3: new <= target                                |
- * |  9      |  7 / 16 | chunk 4: new > max, prev. > min (this new)            |
- * |  1      |  9 / 10 | chunk 4: new <= target                                |
- * |  10     | 10 / 20 | chunk 5: new > max, prev. > min (this new)            |
- * |  20     |  0 / 20 | chunk 6: new > max, prev. < min (next new)            |
- * |  2      |  0 / 2  | chunk 7: new <= target                                |
- * |  2      |  2 / 4  | chunk 7: new <= target                                |
- * |  2      |  4 / 6  | chunk 7: new <= target                                |
- * |  2      |  6 / 8  | chunk 7: new <= target                                |
- * |  2      |  8 / 10 | chunk 7: new <= target                                |
- * |  12     | 10 / 24 | chunk 8: new > max, prev. > min (this new)            |
- *
- */
-class SimpleVariableTestData {
- public:
-  SimpleVariableTestData()
-      : target_ncells_per_chunk_{10}
-      , elements_per_chunk_{14, 6, 11, 7, 10, 10, 20, 10, 12}
-      , tile_data_generator_{
-            {4, 10, 6, 11, 7, 9, 1, 10, 20, 2, 2, 2, 2, 2, 12}} {
-    WriterTile::set_max_tile_chunk_size(
-        target_ncells_per_chunk_ * sizeof(uint64_t));
-  }
-  ~SimpleVariableTestData() {
-    WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
-  }
-
-  /** Returns the number elements (cells) stored in each chunk. */
-  const std::vector<uint64_t>& elements_per_chunk() const {
-    return elements_per_chunk_;
-  }
-
-  const TileDataGenerator& tile_data_generator() const {
-    return tile_data_generator_;
-  }
-
- private:
-  uint64_t target_ncells_per_chunk_{};
-  std::vector<uint64_t> elements_per_chunk_{};
-  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator_;
-};
-
-/**
- * Checks the following:
- *
- * 1. Pipeline runs forward without error.
- * 2. Filtered buffer data is as expected.
- * 3. Pipeline runs backward without error.
- * 4. Result from roundtrip matches the original data.
- */
-void check_run_pipeline_full(
-    Config& config,
-    ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
-    FilterPipeline& pipeline,
-    const TileDataGenerator* test_data,
-    const FilteredTileChecker& filtered_buffer_checker) {
-  // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
-                &tp)
-            .ok());
-
-  // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
-
-  // Check the filtered buffer has the expected data.
-  auto filtered_buffer = tile.filtered_buffer();
-  filtered_buffer_checker.check(filtered_buffer);
-
-  // Run the data in reverse.
-  auto unfiltered_tile =
-      test_data->create_filtered_buffer_tile(filtered_buffer);
-  ChunkData chunk_data;
-  unfiltered_tile.load_chunk_data(chunk_data);
-  CHECK(pipeline
-            .run_reverse(
-                &dummy_stats,
-                &unfiltered_tile,
-                nullptr,
-                chunk_data,
-                0,
-                chunk_data.filtered_chunks_.size(),
-                tp.concurrency_level(),
-                config)
-            .ok());
-
-  // Check the original data is reverted.
-  test_data->check_tile_data(unfiltered_tile);
-}
-
-/**
- * Checks the following:
- *
- * 1. Pipeline runs forward without error.
- * 2. Pipeline runs backward without error.
- * 3. Result from roundtrip matches the original data.
- */
-void check_run_pipeline_roundtrip(
-    Config& config,
-    ThreadPool& tp,
-    WriterTile& tile,
-    std::optional<WriterTile>& offsets_tile,
-    FilterPipeline& pipeline,
-    TileDataGenerator* test_data) {
-  // Run the pipeline forward.
-  CHECK(pipeline
-            .run_forward(
-                &dummy_stats,
-                &tile,
-                offsets_tile.has_value() ? &offsets_tile.value() : nullptr,
-                &tp)
-            .ok());
-
-  // Check the original unfiltered data was removed.
-  CHECK(tile.size() == 0);
-
-  // Run the data in reverse.
-  auto unfiltered_tile =
-      test_data->create_filtered_buffer_tile(tile.filtered_buffer());
-  ChunkData chunk_data;
-  unfiltered_tile.load_chunk_data(chunk_data);
-  CHECK(pipeline
-            .run_reverse(
-                &dummy_stats,
-                &unfiltered_tile,
-                nullptr,
-                chunk_data,
-                0,
-                chunk_data.filtered_chunks_.size(),
-                tp.concurrency_level(),
-                config)
-            .ok());
-
-  // Check the original data is reverted.
-  test_data->check_tile_data(unfiltered_tile);
-}
-
 TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
   // Create TileDB needed for running pipeline.
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline.
@@ -281,7 +123,8 @@ TEST_CASE("Filter: Test empty pipeline", "[filter][empty-pipeline]") {
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE(
@@ -290,10 +133,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint16_t, Datatype::UINT16> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline.
@@ -312,7 +158,8 @@ TEST_CASE(
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE(
@@ -321,10 +168,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   const auto& tile_data_generator = test_data.tile_data_generator();
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   // Create pipeline to test and expected filtered data checker.
@@ -341,7 +191,8 @@ TEST_CASE(
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE(
@@ -350,10 +201,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   FilterPipeline pipeline;
@@ -373,7 +227,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -394,7 +249,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -405,10 +261,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   const auto& tile_data_generator = test_data.tile_data_generator();
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
@@ -428,7 +287,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -450,7 +310,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -461,10 +322,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create pipeline to test.
@@ -484,7 +348,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -504,7 +369,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -515,10 +381,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   const auto& tile_data_generator = test_data.tile_data_generator();
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
@@ -538,7 +407,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -558,7 +428,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -569,10 +440,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
@@ -595,7 +469,8 @@ TEST_CASE(
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE(
@@ -605,10 +480,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   const auto& tile_data_generator = test_data.tile_data_generator();
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
@@ -630,7 +508,8 @@ TEST_CASE(
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
@@ -638,10 +517,13 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
@@ -663,7 +545,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -693,7 +576,8 @@ TEST_CASE("Filter: Test pseudo-checksum", "[filter][pseudo-checksum]") {
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -703,10 +587,13 @@ TEST_CASE(
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   const auto& tile_data_generator = test_data.tile_data_generator();
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   // Create filter pipeline.
@@ -729,7 +616,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 
   SECTION("- Multi-stage") {
@@ -761,7 +649,8 @@ TEST_CASE(
         offsets_tile,
         pipeline,
         &tile_data_generator,
-        filtered_buffer_checker);
+        filtered_buffer_checker,
+        tracker);
   }
 }
 
@@ -770,10 +659,13 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   // Create filter pipeline.
@@ -804,7 +696,8 @@ TEST_CASE("Filter: Test pipeline modify filter", "[filter][modify]") {
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
@@ -812,10 +705,12 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   SimpleVariableTestData test_data{};
   auto&& [tile, offsets_tile] =
-      test_data.tile_data_generator().create_writer_tiles();
+      test_data.tile_data_generator().create_writer_tiles(tracker);
   const auto& elements_per_chunk = test_data.elements_per_chunk();
 
   FilterPipeline pipeline;
@@ -845,7 +740,8 @@ TEST_CASE("Filter: Test pipeline modify filter var", "[filter][modify][var]") {
       offsets_tile,
       pipeline,
       &test_data.tile_data_generator(),
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
@@ -853,10 +749,13 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
   Config config;
   ThreadPool tp(4);
 
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Set-up test data.
   IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
       100);
-  auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
   std::vector<uint64_t> elements_per_chunk{100};
 
   const uint64_t expected_checksum = 5350;
@@ -894,13 +793,16 @@ TEST_CASE("Filter: Test pipeline copy", "[filter][copy]") {
       offsets_tile,
       pipeline,
       &tile_data_generator,
-      filtered_buffer_checker);
+      filtered_buffer_checker,
+      tracker);
 }
 
 TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
   // Create TileDB needed for running pipeline.
   Config config;
   ThreadPool tp(4);
+
+  auto tracker = tiledb::test::create_test_memory_tracker();
 
   // Create an encryption key.
   EncryptionKey encryption_key;
@@ -947,7 +849,8 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
       100);
   for (int i = 0; i < 100; i++) {
     // Create fresh input tiles.
-    auto&& [tile, offsets_tile] = tile_data_generator.create_writer_tiles();
+    auto&& [tile, offsets_tile] =
+        tile_data_generator.create_writer_tiles(tracker);
 
     // Construct a random pipeline
     FilterPipeline pipeline;
@@ -980,6 +883,149 @@ TEST_CASE("Filter: Test random pipeline", "[filter][random]") {
     // input data.
     // Run the pipeline tests.
     check_run_pipeline_roundtrip(
-        config, tp, tile, offsets_tile, pipeline, &tile_data_generator);
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+}
+
+TEST_CASE("Filter: Test compression", "[filter][compression]") {
+  // Create resources for running pipeline tests.
+  Config config;
+  ThreadPool tp(4);
+  FilterPipeline pipeline;
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
+  //  Set-up test data.
+  IncrementTileDataGenerator<uint64_t, Datatype::UINT64> tile_data_generator(
+      100);
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
+
+  SECTION("- Simple") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+
+  SECTION("- With checksum stage") {
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+
+  SECTION("- With multiple stages") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+}
+
+TEST_CASE("Filter: Test compression var", "[filter][compression][var]") {
+  // Create TileDB resources for running the filter pipeline.
+  Config config;
+  ThreadPool tp(4);
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
+  // Set-up test data.
+  SimpleVariableTestData test_data{};
+  const auto& tile_data_generator = test_data.tile_data_generator();
+  auto&& [tile, offsets_tile] =
+      tile_data_generator.create_writer_tiles(tracker);
+
+  FilterPipeline pipeline;
+
+  SECTION("- Simple") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+
+  SECTION("- With checksum stage") {
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
+  }
+
+  SECTION("- With multiple stages") {
+    pipeline.add_filter(Add1InPlace(Datatype::UINT64));
+    pipeline.add_filter(PseudoChecksumFilter(Datatype::UINT64));
+    pipeline.add_filter(Add1OutOfPlace(Datatype::UINT64));
+    pipeline.add_filter(
+        CompressionFilter(tiledb::sm::Compressor::LZ4, 5, Datatype::UINT64));
+
+    // Check the pipelines run forward and backward without error and returns
+    // the input data.
+    check_run_pipeline_roundtrip(
+        config,
+        tp,
+        tile,
+        offsets_tile,
+        pipeline,
+        &tile_data_generator,
+        tracker);
   }
 }

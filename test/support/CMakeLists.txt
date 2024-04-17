@@ -112,4 +112,9 @@ commence(object_library tdb_catch)
   this_target_object_libraries(seedable_global_PRNG)
 conclude(object_library)
 
+commence(object_library mem_helpers)
+  this_target_sources(src/mem_helpers.cc)
+  this_target_object_libraries(baseline)
+conclude(object_library)
+
 add_test_subdirectory()

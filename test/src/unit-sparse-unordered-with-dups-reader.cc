@@ -768,10 +768,10 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
   shared_ptr<FragmentMetadata> fragment = make_shared<FragmentMetadata>(
       HERE(),
       nullptr,
-      create_test_memory_tracker(),
       array->array_->array_schema_latest_ptr(),
       URI(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
+      tiledb::test::create_test_memory_tracker(),
       true);
   fragments.emplace_back(std::move(fragment));
 
@@ -1527,21 +1527,23 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Create a Query buffer.
@@ -1743,21 +1745,23 @@ TEST_CASE_METHOD(
   auto&& [array, fragments] = open_default_array_1d_with_fragments(capacity);
 
   // Make a vector of tiles.
-  std::vector<UnorderedWithDupsResultTile<uint64_t>> rt;
+  std::list<UnorderedWithDupsResultTile<uint64_t>> rt;
   for (uint64_t t = 0; t < num_tiles; t++) {
-    rt.emplace_back(0, t, *fragments[0]);
+    rt.emplace_back(
+        0, t, *fragments[0], tiledb::test::get_test_memory_tracker());
 
     // Allocate and set the bitmap if required.
     if (bitmaps[t].size() > 0) {
-      rt.back().bitmap() = bitmaps[t];
+      rt.back().bitmap().assign(bitmaps[t].begin(), bitmaps[t].end());
       rt.back().count_cells();
     }
   }
 
   // Create the result_tiles pointer vector.
   std::vector<ResultTile*> result_tiles(rt.size());
-  for (uint64_t i = 0; i < rt.size(); i++) {
-    result_tiles[i] = &rt[i];
+  uint64_t i = 0;
+  for (auto& t : rt) {
+    result_tiles[i++] = &t;
   }
 
   // Call the function.

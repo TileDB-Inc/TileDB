@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -32,6 +32,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "../fragment_consolidator.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -47,13 +48,19 @@ shared_ptr<ArraySchema> make_schema(
     const std::vector<bool> attr_nullable) {
   // Initialize the array schema.
   shared_ptr<ArraySchema> array_schema = make_shared<ArraySchema>(
-      HERE(), sparse ? ArrayType::SPARSE : ArrayType::DENSE);
+      HERE(),
+      sparse ? ArrayType::SPARSE : ArrayType::DENSE,
+      tiledb::test::create_test_memory_tracker());
 
   // Create the domain/dimensions.
-  Domain domain;
+  auto memory_tracker = tiledb::test::create_test_memory_tracker();
+  auto domain{make_shared<Domain>(HERE(), memory_tracker)};
   for (uint64_t d = 0; d < dim_types.size(); d++) {
     auto dim{make_shared<Dimension>(
-        HERE(), "d" + std::to_string(d + 1), dim_types[d])};
+        HERE(),
+        "d" + std::to_string(d + 1),
+        dim_types[d],
+        tiledb::test::get_test_memory_tracker())};
 
     switch (dim_types[d]) {
       case Datatype::INT8: {
@@ -129,9 +136,9 @@ shared_ptr<ArraySchema> make_schema(
       }
     }
 
-    REQUIRE(domain.add_dimension(dim).ok());
+    REQUIRE(domain->add_dimension(dim).ok());
   }
-  REQUIRE(array_schema->set_domain(make_shared<Domain>(HERE(), domain)).ok());
+  REQUIRE(array_schema->set_domain(domain).ok());
 
   // Create the attributes.
   for (uint64_t a = 0; a < attr_types.size(); a++) {
@@ -215,10 +222,10 @@ TEST_CASE(
   cfg.with_delete_meta_ = with_delete_meta;
   cfg.buffer_size_ = 1000;
 
-  FragmentConsolidationWorkspace cw;
+  FragmentConsolidationWorkspace cw(tiledb::test::get_test_memory_tracker());
   cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
-  std::vector<span<std::byte>>& buffers{cw.buffers()};
-  std::vector<uint64_t>& buffer_sizes{cw.sizes()};
+  auto& buffers = cw.buffers();
+  auto& buffer_sizes = cw.sizes();
 
   // Validate.
   CHECK(buffers.size() == expected_sizes.size());

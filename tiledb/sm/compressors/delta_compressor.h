@@ -33,7 +33,7 @@
 #ifndef TILEDB_DELTA_H
 #define TILEDB_DELTA_H
 
-#include "tiledb/common/status.h"
+#include "tiledb/common/common.h"
 
 using namespace tiledb::common;
 

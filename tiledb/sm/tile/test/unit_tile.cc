@@ -30,6 +30,7 @@
  * Tests the `Tile` class.
  */
 
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/tile/tile.h"
 
@@ -39,6 +40,9 @@
 using namespace tiledb::sm;
 
 TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
+  // Create our test memory tracker.
+  auto tracker = tiledb::test::create_test_memory_tracker();
+
   // Initialize the test Tile.
   const format_version_t format_version = 0;
   const Datatype data_type = Datatype::UINT32;
@@ -46,7 +50,14 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   const uint64_t cell_size = sizeof(uint32_t);
   const unsigned int dim_num = 1;
   Tile tile(
-      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
+      format_version,
+      data_type,
+      cell_size,
+      dim_num,
+      tile_size,
+      nullptr,
+      0,
+      tracker);
   CHECK(tile.size() == tile_size);
 
   // Create a buffer to write to the test Tile.
@@ -113,84 +124,4 @@ TEST_CASE("Tile: Test basic IO", "[Tile][basic_io]") {
   read_offset = 0;
   CHECK_NOTHROW(tile.read(read_buffer.data(), read_offset, tile_size));
   CHECK(memcmp(read_buffer.data(), write_buffer_copy.data(), tile_size) == 0);
-}
-
-TEST_CASE("Tile: Test move constructor", "[Tile][move_constructor]") {
-  // Instantiate and initialize the first test Tile.
-  const format_version_t format_version = 0;
-  const Datatype data_type = Datatype::UINT32;
-  const uint64_t tile_size = 1024 * 1024;
-  const uint64_t cell_size = sizeof(uint32_t);
-  const unsigned int dim_num = 1;
-  Tile tile1(
-      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
-
-  // Create a buffer to write to the first test Tile.
-  const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  std::vector<uint32_t> buffer(buffer_len);
-  for (uint32_t i = 0; i < buffer_len; ++i) {
-    buffer[i] = i;
-  }
-
-  // Write the buffer to the first test Tile.
-  CHECK_NOTHROW(tile1.write(buffer.data(), 0, tile_size));
-
-  // Instantiate a second test tile with the move constructor.
-  Tile tile2(std::move(tile1));
-
-  // Verify all public attributes are identical.
-  CHECK(tile2.cell_size() == cell_size);
-  CHECK(tile2.zipped_coords_dim_num() == dim_num);
-  CHECK(tile2.filtered() == false);
-  CHECK(tile2.format_version() == format_version);
-  CHECK(tile2.size() == tile_size);
-  CHECK(tile2.stores_coords() == true);
-  CHECK(tile2.type() == Datatype::UINT32);
-
-  // Read the second test tile to verify it contains the data
-  // written to the first test tile.
-  std::vector<uint32_t> read_buffer(buffer_len);
-  uint64_t read_offset = 0;
-  CHECK_NOTHROW(tile2.read(read_buffer.data(), read_offset, tile_size));
-  CHECK(memcmp(read_buffer.data(), buffer.data(), tile_size) == 0);
-}
-
-TEST_CASE("Tile: Test move-assignment", "[Tile][move_assignment]") {
-  // Instantiate and initialize the first test Tile.
-  const format_version_t format_version = 0;
-  const Datatype data_type = Datatype::UINT32;
-  const uint64_t tile_size = 1024 * 1024;
-  const uint64_t cell_size = sizeof(uint32_t);
-  const unsigned int dim_num = 1;
-  Tile tile1(
-      format_version, data_type, cell_size, dim_num, tile_size, nullptr, 0);
-
-  // Create a buffer to write to the first test Tile.
-  const uint32_t buffer_len = tile_size / sizeof(uint32_t);
-  std::vector<uint32_t> buffer(buffer_len);
-  for (uint32_t i = 0; i < buffer_len; ++i) {
-    buffer[i] = i;
-  }
-
-  // Write the buffer to the first test Tile.
-  CHECK_NOTHROW(tile1.write(buffer.data(), 0, tile_size));
-
-  // Instantiate a third test tile with the move constructor.
-  Tile tile2 = std::move(tile1);
-
-  // Verify all public attributes are identical.
-  CHECK(tile2.cell_size() == cell_size);
-  CHECK(tile2.zipped_coords_dim_num() == dim_num);
-  CHECK(tile2.filtered() == false);
-  CHECK(tile2.format_version() == format_version);
-  CHECK(tile2.size() == tile_size);
-  CHECK(tile2.stores_coords() == true);
-  CHECK(tile2.type() == Datatype::UINT32);
-
-  // Read the second test tile to verify it contains the data
-  // written to the first test tile.
-  std::vector<uint32_t> read_buffer(buffer_len);
-  uint64_t read_offset = 0;
-  CHECK_NOTHROW(tile2.read(read_buffer.data(), read_offset, tile_size));
-  CHECK(memcmp(read_buffer.data(), buffer.data(), tile_size) == 0);
 }

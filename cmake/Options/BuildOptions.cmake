@@ -34,14 +34,22 @@ option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
-option(TILEDB_TESTS_ENABLE_REST "Enables REST tests (requires running REST server)" OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
 set(TILEDB_INSTALL_LIBDIR "" CACHE STRING "If non-empty, install TileDB library to this directory instead of CMAKE_INSTALL_LIBDIR.")
 
+if (DEFINED TILEDB_STATIC)
+  message(DEPRECATION "TILEDB_STATIC is deprecated and will be removed in version 2.28, to be released in Q3 2024. Use BUILD_SHARED_LIBS INSTEAD. Building both static and shared libraries is no longer available.")
+  if (TILEDB_STATIC)
+    set(BUILD_SHARED_LIBS OFF)
+  else()
+    set(BUILD_SHARED_LIBS ON)
+  endif()
+endif()
+
 if (NOT TILEDB_VCPKG)
-  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
 endif()
 
 # enable assertions by default for debug builds

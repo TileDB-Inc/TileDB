@@ -53,6 +53,8 @@ class ArraySchemaEvolution;
 class Config;
 class FragmentInfo;
 class Query;
+class MemoryTracker;
+class QueryPlan;
 
 enum class SerializationType : uint8_t;
 
@@ -66,10 +68,20 @@ class RestClient {
       stats::Stats* parent_stats,
       const Config* config,
       ThreadPool* compute_tp,
-      const std::shared_ptr<Logger>& logger);
+      const std::shared_ptr<Logger>& logger,
+      ContextResources& resources);
 
   /** Sets a header that will be attached to all requests. */
   Status set_header(const std::string& name, const std::string& value);
+
+  /**
+   * Check if use_refactored_array_open_and_query_submit is set in
+   * input config so that rest_client chooses the right URI
+   *
+   * @param config Config to check
+   *
+   * */
+  static bool use_refactored_query(const Config& config);
 
   /**
    * Check if an array exists by making a REST call. To start with this fetches
@@ -252,7 +264,18 @@ class RestClient {
       uint64_t timestamp_start,
       uint64_t timestamp_end,
       Array* array,
-      const std::vector<std::string>& enumeration_names);
+      const std::vector<std::string>& enumeration_names,
+      shared_ptr<MemoryTracker> memory_tracker = nullptr);
+
+  /**
+   * Get the requested query plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param query Query to fetch query plan for.
+   * @param query_plan The requested query plan.
+   */
+  void post_query_plan_from_rest(
+      const URI& uri, Query& query, QueryPlan& query_plan);
 
   /**
    * Post a data query to rest server
@@ -382,6 +405,21 @@ class RestClient {
    */
   Status post_vacuum_to_rest(const URI& uri, const Config& config);
 
+  inline std::string rest_server() const {
+    return rest_server_;
+  }
+
+  /**
+   * Get consolidation plan from the REST server via POST request.
+   *
+   * @param uri Array URI.
+   * @param config Config of the array.
+   * @param fragment_size Maximum fragment size for constructing the plan.
+   * @return The requested consolidation plan
+   */
+  std::vector<std::vector<std::string>> post_consolidation_plan_from_rest(
+      const URI& uri, const Config& config, uint64_t fragment_size);
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -413,12 +451,6 @@ class RestClient {
    */
   bool resubmit_incomplete_;
 
-  /**
-   * If true, the new, experimental REST routes and APIs for opening an array
-   * and submitting a query will be used
-   */
-  bool use_refactored_array_and_query_;
-
   /** Collection of extra headers that are attached to REST requests. */
   std::unordered_map<std::string, std::string> extra_headers_;
 
@@ -433,6 +465,9 @@ class RestClient {
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
+
+  /** The class MemoryTracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /* ********************************* */
   /*         PRIVATE METHODS           */

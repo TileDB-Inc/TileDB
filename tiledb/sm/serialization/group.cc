@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,9 +58,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -72,13 +70,7 @@ Status group_metadata_to_capnp(
   auto config_builder = group_metadata_builder->initConfig();
   RETURN_NOT_OK(config_to_capnp(group->config(), &config_builder));
 
-  Metadata* metadata;
-  if (load) {
-    RETURN_NOT_OK(group->metadata(&metadata));
-  } else {
-    metadata = const_cast<Metadata*>(group->metadata());
-  }
-
+  Metadata* metadata = load ? group->metadata() : group->unsafe_metadata();
   if (metadata->num()) {
     auto metadata_builder = group_metadata_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &metadata_builder));
@@ -165,13 +157,9 @@ Status group_details_to_capnp(
     }
   }
 
-  Metadata* metadata;
-  if (group->group_uri().is_tiledb()) {
-    metadata = const_cast<Metadata*>(group->metadata());
-  } else {
-    RETURN_NOT_OK(group->metadata(&metadata));
-  }
-
+  Metadata* metadata = group->group_uri().is_tiledb() ?
+                           group->unsafe_metadata() :
+                           group->metadata();
   if (metadata->num()) {
     auto group_metadata_builder = group_details_builder->initMetadata();
     RETURN_NOT_OK(metadata_to_capnp(metadata, &group_metadata_builder));
@@ -831,6 +819,4 @@ Status group_metadata_serialize(Group*, SerializationType, Buffer*, bool) {
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

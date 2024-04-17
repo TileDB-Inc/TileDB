@@ -112,6 +112,13 @@ GlobalOrderWriter::GlobalOrderWriter(
 GlobalOrderWriter::~GlobalOrderWriter() {
 }
 
+GlobalOrderWriter::GlobalWriteState::GlobalWriteState(
+    shared_ptr<MemoryTracker> memory_tracker)
+    : last_tiles_(memory_tracker->get_resource(MemoryType::WRITER_TILE_DATA))
+    , last_var_offsets_(memory_tracker->get_resource(MemoryType::WRITER_DATA))
+    , cells_written_(memory_tracker->get_resource(MemoryType::WRITER_DATA)) {
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -174,7 +181,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
     return logger_->status(
         Status_WriterError("Cannot initialize global write state; State not "
                            "properly finalized"));
-  global_write_state_.reset(new GlobalWriteState);
+  global_write_state_.reset(tdb_new(GlobalWriteState, query_memory_tracker_));
 
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = this->create_fragment_metadata();
@@ -198,20 +205,18 @@ Status GlobalOrderWriter::init_global_write_state() {
     const auto capacity = array_schema_.capacity();
     const auto cell_num_per_tile =
         coords_info_.has_coords_ ? capacity : domain.cell_num_per_tile();
-    auto last_tile_vector = std::pair<std::string, WriterTileTupleVector>(
-        name, WriterTileTupleVector());
-    try {
-      last_tile_vector.second.emplace_back(WriterTileTuple(
-          array_schema_,
-          cell_num_per_tile,
-          var_size,
-          nullable,
-          cell_size,
-          type));
-    } catch (const std::logic_error& le) {
-      return Status_WriterError(le.what());
-    }
-    global_write_state_->last_tiles_.emplace(std::move(last_tile_vector));
+    auto last_tiles_it = global_write_state_->last_tiles_.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(name),
+        std::forward_as_tuple(query_memory_tracker_));
+    last_tiles_it.first->second.emplace_back(
+        array_schema_,
+        cell_num_per_tile,
+        var_size,
+        nullable,
+        cell_size,
+        type,
+        query_memory_tracker_);
 
     // Initialize cells written
     global_write_state_->cells_written_[name] = 0;
@@ -751,7 +756,8 @@ Status GlobalOrderWriter::global_write() {
     RETURN_CANCEL_OR_ERROR(compute_coord_dups(&coord_dups));
   }
 
-  std::unordered_map<std::string, WriterTileTupleVector> tiles;
+  tdb::pmr::unordered_map<std::string, WriterTileTupleVector> tiles(
+      query_memory_tracker_->get_resource(MemoryType::WRITER_TILE_DATA));
   RETURN_CANCEL_OR_ERROR(prepare_full_tiles(coord_dups, &tiles));
 
   // Find number of tiles and gather stats
@@ -861,12 +867,15 @@ void GlobalOrderWriter::nuke_global_write_state() {
 
 Status GlobalOrderWriter::prepare_full_tiles(
     const std::set<uint64_t>& coord_dups,
-    std::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) const {
   auto timer_se = stats_->start_timer("prepare_tiles");
 
   // Initialize attribute and coordinate tiles
   for (const auto& it : buffers_) {
-    (*tiles)[it.first] = WriterTileTupleVector();
+    tiles->emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(it.first),
+        std::forward_as_tuple(query_memory_tracker_));
   }
 
   auto num = buffers_.size();
@@ -876,7 +885,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
         std::advance(buff_it, i);
         const auto& name = buff_it->first;
         RETURN_CANCEL_OR_ERROR(
-            prepare_full_tiles(name, coord_dups, &(*tiles)[name]));
+            prepare_full_tiles(name, coord_dups, &tiles->at(name)));
         return Status::Ok();
       });
 
@@ -918,7 +927,7 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   }
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
       global_write_state_->cells_written_[name] % cell_num_per_tile;
@@ -968,16 +977,26 @@ Status GlobalOrderWriter::prepare_full_tiles_fixed(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, false, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          false,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      tile_it->fixed_tile().swap(last_tile.fixed_tile());
+      tile_it->fixed_tile().write(
+          last_tile.fixed_tile().data(), 0, last_tile.fixed_tile().size());
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
@@ -1089,7 +1108,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
     return Status::Ok();
 
   // First fill the last tile
-  auto& last_tile = global_write_state_->last_tiles_[name][0];
+  auto& last_tile = global_write_state_->last_tiles_.at(name)[0];
   auto& last_var_offset = global_write_state_->last_var_offsets_[name];
   uint64_t cell_idx = 0;
   uint64_t last_tile_cell_idx =
@@ -1161,8 +1180,6 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
         ++cell_idx;
       } while (last_tile_cell_idx != cell_num_per_tile && cell_idx != cell_num);
     }
-
-    last_tile.var_tile().set_size(last_var_offset);
   }
 
   // Initialize full tiles and set previous last tile as first tile
@@ -1175,19 +1192,33 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
   if (full_tile_num > 0) {
     tiles->reserve(full_tile_num);
     for (uint64_t i = 0; i < full_tile_num; i++) {
-      tiles->emplace_back(WriterTileTuple(
-          array_schema_, cell_num_per_tile, true, nullable, cell_size, type));
+      tiles->emplace_back(
+          array_schema_,
+          cell_num_per_tile,
+          true,
+          nullable,
+          cell_size,
+          type,
+          query_memory_tracker_);
     }
 
     // Handle last tile (it must be either full or empty)
     auto tile_it = tiles->begin();
     if (last_tile_cell_idx == cell_num_per_tile) {
-      last_var_offset = 0;
-      tile_it->offset_tile().swap(last_tile.offset_tile());
-      tile_it->var_tile().swap(last_tile.var_tile());
+      tile_it->offset_tile().write(
+          last_tile.offset_tile().data(), 0, last_tile.offset_tile().size());
+      tile_it->var_tile().write_var(
+          last_tile.var_tile().data(), 0, last_var_offset);
+      tile_it->var_tile().set_size(last_var_offset);
       if (nullable) {
-        tile_it->validity_tile().swap(last_tile.validity_tile());
+        tile_it->validity_tile().write(
+            last_tile.validity_tile().data(),
+            0,
+            last_tile.validity_tile().size());
       }
+
+      last_var_offset = 0;
+
       tile_it++;
     } else if (last_tile_cell_idx != 0) {
       return Status_WriterError(
@@ -1355,7 +1386,7 @@ Status GlobalOrderWriter::prepare_full_tiles_var(
 uint64_t GlobalOrderWriter::num_tiles_to_write(
     uint64_t start,
     uint64_t tile_num,
-    std::unordered_map<std::string, WriterTileTupleVector>& tiles) {
+    tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) {
   // Cache variables to prevent map lookups.
   const auto buf_names = buffer_names();
   std::vector<bool> var_size;
@@ -1367,7 +1398,7 @@ uint64_t GlobalOrderWriter::num_tiles_to_write(
   for (auto& name : buf_names) {
     var_size.emplace_back(array_schema_.var_size(name));
     nullable.emplace_back(array_schema_.is_nullable(name));
-    writer_tile_vectors.emplace_back(&tiles[name]);
+    writer_tile_vectors.emplace_back(&tiles.at(name));
   }
 
   // Make sure we don't write more than the desired fragment size.

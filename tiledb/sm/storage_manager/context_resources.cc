@@ -55,6 +55,7 @@ ContextResources::ContextResources(
     size_t io_thread_count,
     std::string stats_name)
     : memory_tracker_manager_(make_shared<MemoryTrackerManager>(HERE()))
+    , ephemeral_memory_tracker_(memory_tracker_manager_->create_tracker())
     , memory_tracker_reporter_(make_shared<MemoryTrackerReporter>(
           HERE(), config, memory_tracker_manager_))
     , config_(config)
@@ -63,6 +64,8 @@ ContextResources::ContextResources(
     , io_tp_(io_thread_count)
     , stats_(make_shared<stats::Stats>(HERE(), stats_name))
     , vfs_(stats_.get(), &compute_tp_, &io_tp_, config) {
+  ephemeral_memory_tracker_->set_type(MemoryTrackerType::EPHEMERAL);
+
   /*
    * Explicitly register our `stats` object with the global.
    */
@@ -76,7 +79,7 @@ ContextResources::ContextResources(
     auto server_address = config_.get<std::string>("rest.server_address");
     if (server_address) {
       auto client = tdb::make_shared<RestClient>(HERE());
-      auto st = client->init(&stats(), &config_, &compute_tp(), logger_);
+      auto st = client->init(&stats(), &config_, &compute_tp(), logger_, *this);
       throw_if_not_ok(st);
       rest_client_ = client;
     }
@@ -87,6 +90,10 @@ ContextResources::ContextResources(
 
 shared_ptr<MemoryTracker> ContextResources::create_memory_tracker() const {
   return memory_tracker_manager_->create_tracker();
+}
+
+shared_ptr<MemoryTracker> ContextResources::ephemeral_memory_tracker() const {
+  return ephemeral_memory_tracker_;
 }
 
 }  // namespace tiledb::sm

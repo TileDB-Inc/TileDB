@@ -45,11 +45,7 @@ capi_return_t tiledb_datatype_to_str(
 
 capi_return_t tiledb_datatype_from_str(
     const char* str, tiledb_datatype_t* datatype) {
-  tiledb::sm::Datatype val = tiledb::sm::Datatype::UINT8;
-  if (!tiledb::sm::datatype_enum(str, &val).ok()) {
-    return TILEDB_ERR;
-  }
-  *datatype = (tiledb_datatype_t)val;
+  *datatype = (tiledb_datatype_t)tiledb::sm::datatype_enum(str);
   return TILEDB_OK;
 }
 
