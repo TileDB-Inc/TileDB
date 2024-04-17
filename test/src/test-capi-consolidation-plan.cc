@@ -43,16 +43,9 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
-
 struct ConsolidationPlanFx {
   // Constructors/destructors.
   ConsolidationPlanFx();
-  ~ConsolidationPlanFx();
 
   // Functions.
   void create_sparse_array(bool allows_dups = false, bool encrypt = false);
@@ -67,38 +60,24 @@ struct ConsolidationPlanFx {
   bool is_array(const std::string& array_name);
   void check_last_error(std::string expected);
 
-  // TileDB context.
-  Context ctx_;
-  // Full URI initialized using fs_vec_ random temp directory.
-  std::string array_name_;
+  VFSTestSetup vfs_test_setup_;
 
-  // Vector of supported filsystems
-  tiledb_vfs_handle_t* vfs_c_{nullptr};
-  tiledb_ctx_handle_t* ctx_c_{nullptr};
-  const std::vector<std::unique_ptr<test::SupportedFs>> fs_vec_;
+  // TileDB context
+  tiledb_ctx_t* ctx_c_;
+  std::string array_name_;
+  Context ctx_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 };
 
-ConsolidationPlanFx::ConsolidationPlanFx()
-    : fs_vec_(test::vfs_test_get_fs_vec()) {
+ConsolidationPlanFx::ConsolidationPlanFx() {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
-  REQUIRE(
-      test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_, config.ptr().get()).ok());
-  ctx_ = Context(ctx_c_);
-  std::string temp_dir = fs_vec_[0]->temp_dir();
-  if constexpr (rest_tests) {
-    array_name_ = "tiledb://unit/";
-  }
-  array_name_ += temp_dir + "test_consolidation_plan_array";
-  test::vfs_test_create_temp_dir(ctx_c_, vfs_c_, temp_dir);
-}
-
-ConsolidationPlanFx::~ConsolidationPlanFx() {
-  Array::delete_array(ctx_, array_name_);
-  REQUIRE(test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok());
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_c_ = vfs_test_setup_.ctx_c;
+  ctx_ = vfs_test_setup_.ctx();
+  array_name_ = vfs_test_setup_.array_uri("test_consolidation_plan_array");
 }
 
 void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {
@@ -174,7 +153,7 @@ void ConsolidationPlanFx::write_sparse(
 void ConsolidationPlanFx::check_last_error(std::string expected) {
   const char* msg = "unset";
   tiledb_error_t* err{nullptr};
-  tiledb_ctx_get_last_error(ctx_.ptr().get(), &err);
+  tiledb_ctx_get_last_error(ctx_c_, &err);
   if (err != nullptr) {
     tiledb_error_message(err, &msg);
   }
@@ -193,23 +172,20 @@ TEST_CASE_METHOD(
 
   tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
-      TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
-                       ctx_.ptr().get(),
-                       array.ptr().get(),
-                       1024 * 1024,
-                       &consolidation_plan));
+      TILEDB_OK ==
+      tiledb_consolidation_plan_create_with_mbr(
+          ctx_c_, array.ptr().get(), 1024 * 1024, &consolidation_plan));
 
   uint64_t num_nodes = 11;
   CHECK(
       TILEDB_OK == tiledb_consolidation_plan_get_num_nodes(
-                       ctx_.ptr().get(), consolidation_plan, &num_nodes));
+                       ctx_c_, consolidation_plan, &num_nodes));
   CHECK(num_nodes == 0);
 
   uint64_t num_fragments = 11;
   CHECK(
-      TILEDB_ERR ==
-      tiledb_consolidation_plan_get_num_fragments(
-          ctx_.ptr().get(), consolidation_plan, 0, &num_fragments));
+      TILEDB_ERR == tiledb_consolidation_plan_get_num_fragments(
+                        ctx_c_, consolidation_plan, 0, &num_fragments));
   CHECK(num_fragments == 11);
   check_last_error(
       "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
@@ -217,7 +193,7 @@ TEST_CASE_METHOD(
   const char* frag_uri = nullptr;
   CHECK(
       TILEDB_ERR == tiledb_consolidation_plan_get_fragment_uri(
-                        ctx_.ptr().get(), consolidation_plan, 0, 0, &frag_uri));
+                        ctx_c_, consolidation_plan, 0, 0, &frag_uri));
   CHECK(frag_uri == nullptr);
   check_last_error(
       "Error: ConsolidationPlan: Trying to access a node that doesn't exist.");
@@ -236,16 +212,13 @@ TEST_CASE_METHOD(
 
   tiledb_consolidation_plan_t* consolidation_plan{};
   CHECK(
-      TILEDB_OK == tiledb_consolidation_plan_create_with_mbr(
-                       ctx_.ptr().get(),
-                       array.ptr().get(),
-                       1024 * 1024,
-                       &consolidation_plan));
+      TILEDB_OK ==
+      tiledb_consolidation_plan_create_with_mbr(
+          ctx_c_, array.ptr().get(), 1024 * 1024, &consolidation_plan));
 
   // Check dump
   char* str = nullptr;
-  tiledb_consolidation_plan_dump_json_str(
-      ctx_.ptr().get(), consolidation_plan, &str);
+  tiledb_consolidation_plan_dump_json_str(ctx_c_, consolidation_plan, &str);
 
   std::string plan(str);
   CHECK(plan == "{\n  \"nodes\": [\n  ]\n}\n");

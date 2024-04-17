@@ -49,11 +49,17 @@
 
 using namespace tiledb::common;
 
-namespace google::cloud::storage {
+namespace google::cloud {
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
+class Credentials;
+class Options;
+GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
+namespace storage {
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_BEGIN
 class Client;
 GOOGLE_CLOUD_CPP_INLINE_NAMESPACE_END
-}  // namespace google::cloud::storage
+}  // namespace storage
+}  // namespace google::cloud
 
 namespace tiledb {
 
@@ -309,6 +315,17 @@ class GCS {
    */
   Status flush_object(const URI& uri);
 
+  /**
+   * Creates a GCS credentials object.
+   *
+   * This method is intended to be used by testing code only.
+   *
+   * @param options Options to configure the credentials.
+   * @return shared pointer to credentials
+   */
+  std::shared_ptr<google::cloud::Credentials> make_credentials(
+      const google::cloud::Options& options) const;
+
  private:
   /* ********************************* */
   /*         PRIVATE DATATYPES         */
@@ -425,6 +442,15 @@ class GCS {
 
   // The GCS project id.
   std::string project_id_;
+
+  // The GCS service account credentials JSON string.
+  std::string service_account_key_;
+
+  // The GCS external account credentials JSON string.
+  std::string workload_identity_configuration_;
+
+  // A comma-separated list with the GCS service accounts to impersonate.
+  std::string impersonate_service_account_;
 
   // The GCS REST client.
   mutable tdb_unique_ptr<google::cloud::storage::Client> client_;

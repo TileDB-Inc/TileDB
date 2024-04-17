@@ -102,6 +102,14 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   }
   project_id_ = config.get("vfs.gcs.project_id", &found);
   assert(found);
+  service_account_key_ = config.get("vfs.gcs.service_account_key", &found);
+  assert(found);
+  workload_identity_configuration_ =
+      config.get("vfs.gcs.workload_identity_configuration", &found);
+  assert(found);
+  impersonate_service_account_ =
+      config.get("vfs.gcs.impersonate_service_account", &found);
+  assert(found);
   RETURN_NOT_OK(config.get<uint64_t>(
       "vfs.gcs.max_parallel_ops", &max_parallel_ops_, &found));
   assert(found);
@@ -127,20 +135,94 @@ Status GCS::init(const Config& config, ThreadPool* const thread_pool) {
   return Status::Ok();
 }
 
+/**
+ * Builds a chain of service account impersonation credentials.
+ *
+ * @param credentials The set of credentials to start the chain.
+ * @param service_accounts A comma-separated list of service accounts, where
+ * each account will be used to impersonate the next.
+ * @options Options to set to the credentials.
+ * @return The new set of credentials.
+ */
+static shared_ptr<google::cloud::Credentials> apply_impersonation(
+    shared_ptr<google::cloud::Credentials> credentials,
+    std::string service_accounts,
+    google::cloud::Options options) {
+  if (service_accounts.empty()) {
+    return credentials;
+  }
+  auto last_comma_pos = service_accounts.rfind(',');
+  // If service_accounts is a comma-separated list, we have to extract the first
+  // items to a vector and pass them via DelegatesOption, and pass only the last
+  // account to MakeImpersonateServiceAccountCredentials.
+  if (last_comma_pos != std::string_view::npos) {
+    // Create a view over all service accounts except the last one.
+    auto delegates_str =
+        std::string_view(service_accounts).substr(0, last_comma_pos);
+    std::vector<std::string> delegates;
+    while (true) {
+      auto comma_pos = delegates_str.find(',');
+      // Get the characters before the comma. We don't have to check for npos
+      // yet; substr will trim the size if it is too big.
+      delegates.push_back(std::string(delegates_str.substr(0, comma_pos)));
+      if (comma_pos != std::string_view::npos) {
+        // If there is another comma, discard it and the characters before it.
+        delegates_str = delegates_str.substr(comma_pos + 1);
+      } else {
+        // Otherwise exit the loop; we have processed all intermediate service
+        // accounts.
+        break;
+      }
+    }
+    options.set<google::cloud::DelegatesOption>(std::move(delegates));
+    // Trim service_accounts to its last member.
+    service_accounts = service_accounts.substr(last_comma_pos + 1);
+  }
+  // If service_accounts had any comas, by now it should be left to just the
+  // last part.
+  if (service_accounts.find(',') != std::string::npos) {
+    throw std::logic_error(
+        "Internal error: service_accounts string was not decomposed.");
+  }
+  // Create the credential.
+  return google::cloud::MakeImpersonateServiceAccountCredentials(
+      std::move(credentials), std::move(service_accounts), std::move(options));
+}
+
+std::shared_ptr<google::cloud::Credentials> GCS::make_credentials(
+    const google::cloud::Options& options) const {
+  shared_ptr<google::cloud::Credentials> creds = nullptr;
+  if (!service_account_key_.empty()) {
+    if (!workload_identity_configuration_.empty()) {
+      LOG_WARN(
+          "Both GCS service account key and workload identity configuration "
+          "were specified; picking the former");
+    }
+    creds = google::cloud::MakeServiceAccountCredentials(
+        service_account_key_, options);
+  } else if (!workload_identity_configuration_.empty()) {
+    creds = google::cloud::MakeExternalAccountCredentials(
+        workload_identity_configuration_, options);
+  } else if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
+    creds = google::cloud::MakeInsecureCredentials();
+  } else {
+    creds = google::cloud::MakeGoogleDefaultCredentials(options);
+  }
+  return apply_impersonation(creds, impersonate_service_account_, options);
+}
+
 Status GCS::init_client() const {
   assert(state_ == State::INITIALIZED);
 
   std::lock_guard<std::mutex> lck(client_init_mtx_);
 
-  // Client is a google::cloud::storage::StatusOr which compares (in)valid as
-  // bool
   if (client_) {
     return Status::Ok();
   }
 
-  google::cloud::storage::ChannelOptions channel_options;
+  google::cloud::Options ca_options;
   if (!ssl_cfg_.ca_file().empty()) {
-    channel_options.set_ssl_root_path(ssl_cfg_.ca_file());
+    ca_options.set<google::cloud::CARootsFilePathOption>(ssl_cfg_.ca_file());
   }
 
   if (!ssl_cfg_.ca_path().empty()) {
@@ -150,43 +232,27 @@ Status GCS::init_client() const {
   }
 
   // Note that the order here is *extremely important*
-  // We must call ::GoogleDefaultCredentials *with* a channel_options
+  // We must call make_credentials *with* a ca_options
   // argument, or else the Curl handle pool will be default-initialized
   // with no root dir (CURLOPT_CAINFO), defaulting to build host path.
-  // Later initializations of ClientOptions/Client with the channel_options
+  // Later initializations of ClientOptions/Client with the ca_options
   // do not appear to sufficiently reset the internal option, leading to
   // CA verification failures when using lib from systemA on systemB.
-  // Ideally we could use CreateDefaultClientOptions(channel_options)
-  // signature, but that function is header-only/unimplemented
-  // (as of GCS 1.15).
 
   // Creates the client using the credentials file pointed to by the
   // env variable GOOGLE_APPLICATION_CREDENTIALS
   try {
-    shared_ptr<google::cloud::storage::oauth2::Credentials> creds = nullptr;
-    if (!endpoint_.empty() || getenv("CLOUD_STORAGE_EMULATOR_ENDPOINT")) {
-      creds = google::cloud::storage::oauth2::CreateAnonymousCredentials();
-    } else {
-      auto status_or_creds =
-          google::cloud::storage::oauth2::GoogleDefaultCredentials(
-              channel_options);
-      if (!status_or_creds) {
-        return LOG_STATUS(Status_GCSError(
-            "Failed to initialize GCS credentials: " +
-            status_or_creds.status().message()));
-      }
-      creds = *status_or_creds;
-    }
-    google::cloud::storage::ClientOptions client_options(
-        creds, channel_options);
+    auto client_options = ca_options;
+    client_options.set<google::cloud::UnifiedCredentialsOption>(
+        make_credentials(ca_options));
     if (!endpoint_.empty()) {
-      client_options.set_endpoint(endpoint_);
+      client_options.set<google::cloud::storage::RestEndpointOption>(endpoint_);
     }
-    client_ = tdb_unique_ptr<google::cloud::storage::Client>(tdb_new(
-        google::cloud::storage::Client,
-        client_options,
-        google::cloud::storage::LimitedTimeRetryPolicy(
-            std::chrono::milliseconds(request_timeout_ms_))));
+    client_options.set<google::cloud::storage::RetryPolicyOption>(
+        make_shared<google::cloud::storage::LimitedTimeRetryPolicy>(
+            HERE(), std::chrono::milliseconds(request_timeout_ms_)));
+    client_ = tdb_unique_ptr<google::cloud::storage::Client>(
+        tdb_new(google::cloud::storage::Client, client_options));
   } catch (const std::exception& e) {
     return LOG_STATUS(
         Status_GCSError("Failed to initialize GCS: " + std::string(e.what())));

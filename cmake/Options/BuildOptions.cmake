@@ -49,7 +49,7 @@ if (DEFINED TILEDB_STATIC)
 endif()
 
 if (NOT TILEDB_VCPKG)
-  message(DEPRECATION "Disabling TILEDB_VCPKG is deprecated and will be removed in a future version.")
+  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
 endif()
 
 # enable assertions by default for debug builds

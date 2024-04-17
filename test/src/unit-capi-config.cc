@@ -690,6 +690,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.read_logging_mode"] = "";
   all_param_values["vfs.gcs.endpoint"] = "";
   all_param_values["vfs.gcs.project_id"] = "";
+  all_param_values["vfs.gcs.service_account_key"] = "";
+  all_param_values["vfs.gcs.workload_identity_configuration"] = "";
+  all_param_values["vfs.gcs.impersonate_service_account"] = "";
   all_param_values["vfs.gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   all_param_values["vfs.gcs.multi_part_size"] = "5242880";
@@ -760,6 +763,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["read_logging_mode"] = "";
   vfs_param_values["gcs.endpoint"] = "";
   vfs_param_values["gcs.project_id"] = "";
+  vfs_param_values["gcs.service_account_key"] = "";
+  vfs_param_values["gcs.workload_identity_configuration"] = "";
+  vfs_param_values["gcs.impersonate_service_account"] = "";
   vfs_param_values["gcs.max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   vfs_param_values["gcs.multi_part_size"] = "5242880";
@@ -823,6 +829,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   std::map<std::string, std::string> gcs_param_values;
   gcs_param_values["endpoint"] = "";
   gcs_param_values["project_id"] = "";
+  gcs_param_values["service_account_key"] = "";
+  gcs_param_values["workload_identity_configuration"] = "";
+  gcs_param_values["impersonate_service_account"] = "";
   gcs_param_values["max_parallel_ops"] =
       std::to_string(std::thread::hardware_concurrency());
   gcs_param_values["multi_part_size"] = "5242880";

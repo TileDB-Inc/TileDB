@@ -37,6 +37,11 @@
 #include <azure/storage/blobs.hpp>
 #include "tiledb/sm/filesystem/azure.h"
 #endif
+#ifdef HAVE_GCS
+#include <google/cloud/internal/credentials_impl.h>
+#include <google/cloud/storage/client.h>
+#include "tiledb/sm/filesystem/gcs.h"
+#endif
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
@@ -547,6 +552,26 @@ TEMPLATE_LIST_TEST_CASE("VFS: File I/O", "[vfs][uri][file_io]", AllBackends) {
   }
 }
 
+TEST_CASE("VFS: Test end-to-end", "[.vfs-e2e]") {
+  auto test_file_ptr = getenv("TILEDB_VFS_E2E_TEST_FILE");
+  if (test_file_ptr == nullptr) {
+    FAIL("TILEDB_VFS_E2E_TEST_FILE variable is not specified");
+  }
+  URI test_file{test_file_ptr};
+
+  ThreadPool compute_tp(1);
+  ThreadPool io_tp(1);
+  // Will be configured from environment variables.
+  Config config;
+
+  VFS vfs{&g_helper_stats, &compute_tp, &io_tp, config};
+  REQUIRE(vfs.supports_uri_scheme(test_file));
+
+  uint64_t nbytes = 0;
+  require_tiledb_ok(vfs.file_size(test_file, &nbytes));
+  CHECK(nbytes > 0);
+}
+
 TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   ThreadPool compute_tp(4);
   ThreadPool io_tp(4);
@@ -748,5 +773,145 @@ TEST_CASE("Validate vfs.s3.custom_headers.*", "[s3][custom-headers]") {
   auto matcher = Catch::Matchers::ContainsSubstring(
       "The Content-Md5 you specified is not valid.");
   REQUIRE_THROWS_WITH(s3.flush_object(uri), matcher);
+}
+#endif
+
+#ifdef HAVE_GCS
+TEST_CASE(
+    "Validate GCS service account impersonation",
+    "[gcs][credentials][impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  std::string impersonate_service_account, target_service_account;
+  std::vector<std::string> delegates;
+
+  SECTION("Simple") {
+    impersonate_service_account = "account1";
+    target_service_account = "account1";
+    delegates = {};
+  }
+
+  SECTION("Delegated") {
+    impersonate_service_account = "account1,account2,account3";
+    target_service_account = "account3";
+    delegates = {"account1", "account2"};
+  }
+
+  // Test parsing an edge case.
+  SECTION("Invalid") {
+    impersonate_service_account = ",";
+    target_service_account = "";
+    delegates = {""};
+  }
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(
+      impersonate_credentials->target_service_account() ==
+      target_service_account);
+  REQUIRE(impersonate_credentials->delegates() == delegates);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials",
+    "[gcs][credentials][service-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(service_account != nullptr);
+  REQUIRE(service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS service account credentials with impersonation",
+    "[gcs][credentials][service-account-and-impersonation]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string service_account_key = "{\"foo\": \"bar\"}";
+  std::string impersonate_service_account = "account1,account2,account3";
+
+  require_tiledb_ok(
+      cfg.set("vfs.gcs.service_account_key", service_account_key));
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.impersonate_service_account", impersonate_service_account));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto impersonate_credentials =
+      dynamic_cast<google::cloud::internal::ImpersonateServiceAccountConfig*>(
+          credentials.get());
+  REQUIRE(impersonate_credentials != nullptr);
+  REQUIRE(impersonate_credentials->target_service_account() == "account3");
+  REQUIRE(
+      impersonate_credentials->delegates() ==
+      std::vector<std::string>{"account1", "account2"});
+
+  auto inner_service_account =
+      dynamic_cast<google::cloud::internal::ServiceAccountConfig*>(
+          impersonate_credentials->base_credentials().get());
+
+  REQUIRE(inner_service_account != nullptr);
+  REQUIRE(inner_service_account->json_object() == service_account_key);
+}
+
+TEST_CASE(
+    "Validate GCS external account credentials",
+    "[gcs][credentials][external-account]") {
+  ThreadPool thread_pool(2);
+  Config cfg = set_config_params(true);
+  GCS gcs;
+  // The content of the credentials does not matter; it does not get parsed
+  // until it is used in an API request, which we are not doing.
+  std::string workload_identity_configuration = "{\"foo\": \"bar\"}";
+
+  require_tiledb_ok(cfg.set(
+      "vfs.gcs.workload_identity_configuration",
+      workload_identity_configuration));
+
+  require_tiledb_ok(gcs.init(cfg, &thread_pool));
+
+  auto credentials = gcs.make_credentials({});
+
+  // We are using an internal class only for inspection purposes.
+  auto external_account =
+      dynamic_cast<google::cloud::internal::ExternalAccountConfig*>(
+          credentials.get());
+
+  REQUIRE(external_account != nullptr);
+  REQUIRE(external_account->json_object() == workload_identity_configuration);
 }
 #endif

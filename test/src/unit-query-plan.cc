@@ -37,31 +37,24 @@
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/cpp_api/tiledb_experimental"
 
-using namespace tiledb;
-
-#ifndef TILEDB_TESTS_ENABLE_REST
-constexpr bool rest_tests = false;
-#else
-constexpr bool rest_tests = true;
-#endif
+using namespace tiledb::test;
 
 struct QueryPlanFx {
   QueryPlanFx();
-  ~QueryPlanFx();
 
   void create_dense_array(const std::string& array_name);
   void create_sparse_array(const std::string& array_name);
 
-  // Vector of supported filsystems
-  tiledb_ctx_handle_t* ctx_c_{nullptr};
-  tiledb_vfs_handle_t* vfs_c_{nullptr};
-  const std::vector<std::unique_ptr<test::SupportedFs>> fs_vec_;
+  VFSTestSetup vfs_test_setup_;
 
-  std::string temp_dir_;
-  std::string abs_uri_;
+  // TileDB context
+  tiledb_ctx_t* ctx_c_;
   std::string uri_;
-  Context ctx_;
 };
+
+QueryPlanFx::QueryPlanFx()
+    : ctx_c_(vfs_test_setup_.ctx_c) {
+}
 
 TEST_CASE_METHOD(
     QueryPlanFx,
@@ -253,31 +246,8 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
 }
 
-QueryPlanFx::QueryPlanFx()
-    : fs_vec_(test::vfs_test_get_fs_vec()) {
-  auto rc = test::vfs_test_init(fs_vec_, &ctx_c_, &vfs_c_);
-  if (!rc.ok()) {
-    throw std::runtime_error("Error initializing vfs in test set up.");
-  }
-
-  ctx_ = Context(ctx_c_);
-  temp_dir_ = fs_vec_[0]->temp_dir();
-  test::vfs_test_create_temp_dir(ctx_c_, vfs_c_, temp_dir_);
-}
-
-QueryPlanFx::~QueryPlanFx() {
-  test::vfs_test_remove_temp_dir(ctx_c_, vfs_c_, temp_dir_);
-  test::vfs_test_close(fs_vec_, ctx_c_, vfs_c_).ok();
-  tiledb_vfs_free(&vfs_c_);
-}
-
 void QueryPlanFx::create_dense_array(const std::string& array_name) {
-  if constexpr (rest_tests) {
-    uri_ = "tiledb://unit/";
-  }
-
-  abs_uri_ = temp_dir_ + "/" + array_name;
-  uri_ += abs_uri_;
+  uri_ = vfs_test_setup_.array_uri(array_name);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
@@ -347,12 +317,7 @@ void QueryPlanFx::create_dense_array(const std::string& array_name) {
 }
 
 void QueryPlanFx::create_sparse_array(const std::string& array_name) {
-  if constexpr (rest_tests) {
-    uri_ = "tiledb://unit/";
-  }
-
-  abs_uri_ = temp_dir_ + "/" + array_name;
-  uri_ += abs_uri_;
+  uri_ = vfs_test_setup_.array_uri(array_name);
 
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};

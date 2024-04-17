@@ -368,7 +368,9 @@ void MemoryTrackerReporter::run() {
 
   while (true) {
     std::unique_lock<std::mutex> lk(mutex_);
-    cv_.wait_for(lk, std::chrono::milliseconds(1000), [&] { return stop_; });
+    int wait_time = wait_time_ms_.has_value() ? wait_time_ms_.value() : 1000;
+    cv_.wait_for(
+        lk, std::chrono::milliseconds(wait_time), [&] { return stop_; });
 
     if (stop_) {
       return;

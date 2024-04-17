@@ -61,12 +61,20 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class WhiteboxConfig;
+
 /**
  * This class manages the TileDB configuration options.
  * It is implemented as a simple map from string to string.
  * Parsing to appropriate types happens on demand.
  */
 class Config {
+  friend class ConfigIter;
+  /**
+   * WhiteboxConfig makes available internals of Config for testing.
+   */
+  friend class WhiteboxConfig;
+
  public:
   /* ****************************** */
   /*        CONFIG DEFAULTS         */
@@ -457,6 +465,15 @@ class Config {
   /** GCS project id. */
   static const std::string VFS_GCS_PROJECT_ID;
 
+  /** GCS service account(s) to impersonate. */
+  static const std::string VFS_GCS_IMPERSONATE_SERVICE_ACCOUNT;
+
+  /** GCS service account key JSON string. */
+  static const std::string VFS_GCS_SERVICE_ACCOUNT_KEY;
+
+  /** GCS external account credentials JSON string. */
+  static const std::string VFS_GCS_WORKLOAD_IDENTITY_CONFIGURATION;
+
   /** GCS max parallel ops. */
   static const std::string VFS_GCS_MAX_PARALLEL_OPS;
 
@@ -689,9 +706,6 @@ class Config {
   Status get_vector(
       const std::string& param, std::vector<T>* value, bool* found) const;
 
-  /** Returns the param -> value map. */
-  const std::map<std::string, std::string>& param_values() const;
-
   /** Gets the set parameters. */
   const std::set<std::string>& set_params() const;
 
@@ -705,6 +719,10 @@ class Config {
 
   /** Compares configs for equality. */
   bool operator==(const Config& rhs) const;
+
+  /** Get all config params taking into account environment variables */
+  const std::map<std::string, std::string> get_all_params_from_config_or_env()
+      const;
 
  private:
   /* ********************************* */
@@ -782,6 +800,9 @@ class Config {
 
   template <bool must_find_>
   optional<std::string> get_internal_string(const std::string& key) const;
+
+  /** Returns the param -> value map. */
+  const std::map<std::string, std::string>& param_values() const;
 };
 
 /**
