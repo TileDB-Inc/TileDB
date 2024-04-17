@@ -114,13 +114,13 @@ class Logger {
    *     details.
    * @param args positional arguments to format.
    */
-  template <typename Arg1, typename... Args>
-  void trace(std::string_view fmt, const Arg1& arg1, const Args&... args) {
+  template <typename... Args>
+  void trace(fmt::format_string<Args...> fmt, Args&&... args) {
     // Check that this level is enabled to avoid needlessly formatting the
     // string.
     if (!should_log(Level::TRACE))
       return;
-    trace(fmt::format(fmt, arg1, args...));
+    trace(fmt::format(fmt, std::forward<Args...>(args)...));
   }
 
   /**
