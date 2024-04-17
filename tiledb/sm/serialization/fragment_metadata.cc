@@ -182,12 +182,10 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       frag_meta_reader.getHasTimestamps(),
       frag_meta_reader.getHasDeleteMeta());
 
-  RTree rtree;
+  RTree rtree(&array_schema->domain(), constants::rtree_fanout, memory_tracker);
   if (frag_meta_reader.hasRtree()) {
     auto data = frag_meta_reader.getRtree();
-    auto& domain = array_schema->domain();
     // If there are no levels, we still need domain_ properly initialized
-    rtree = RTree(&domain, constants::rtree_fanout);
     Deserializer deserializer(data.begin(), data.size());
     // What we actually deserialize is not something written on disk in a
     // possibly historical format, but what has been serialized in
@@ -196,7 +194,8 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
     // the version of a fragment is on disk, we will be serializing _on wire_ in
     // fragment_metadata_to_capnp in the "modern" (post v5) way, so we need to
     // deserialize it as well in that way.
-    rtree.deserialize(deserializer, &domain, constants::format_version);
+    rtree.deserialize(
+        deserializer, &array_schema->domain(), constants::format_version);
   }
 
   return make_shared<FragmentMetadata>(
