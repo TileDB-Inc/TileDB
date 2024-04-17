@@ -643,6 +643,49 @@ class Array {
         config ? config->ptr().get() : nullptr));
   }
 
+  /**
+   * @brief Consolidates the fragments with the input uris into a single
+   * fragment.
+   *
+   * You must first finalize all queries to the array before consolidation can
+   * begin (as consolidation temporarily acquires an exclusive lock on the
+   * array).
+   *
+   * **Example:**
+   * @code{.cpp}
+   * const char* fragment_uris[2] = {
+   * "__1712657401931_1712657401931_285cf8a0eff4df875a04cfbea96d5c00_21",
+   * "__1712657401948_1712657401948_285cf8a0efdsafas6a5a04cfbesajads_21"};
+   *
+   * tiledb::Array::consolidate(
+   *     ctx,
+   *     "s3://bucket-name/array-name",
+   *      fragment_uris,
+   *      2,
+   *      config);
+   * @endcode
+   *
+   * @param ctx TileDB context
+   * @param array_uri The URI of the TileDB array to be consolidated.
+   * @param fragment_uris Fragment names of the fragments to consolidate. The
+   *     names can be recovered using tiledb_fragment_info_get_fragment_name.
+   * @param num_fragments The number of fragments to consolidate.
+   * @param config Configuration parameters for the consolidation.
+   */
+  static void consolidate(
+      const Context& ctx,
+      const std::string& array_uri,
+      const char* fragment_uris[],
+      const size_t num_fragments,
+      Config* const config = nullptr) {
+    ctx.handle_error(tiledb_array_consolidate_fragments(
+        ctx.ptr().get(),
+        array_uri.c_str(),
+        fragment_uris,
+        num_fragments,
+        config ? config->ptr().get() : nullptr));
+  }
+
   // clang-format off
   /**
    * @copybrief Array::consolidate(const Context&,const std::string&,tiledb_encryption_type_t,const void*,uint32_t,const Config&)
