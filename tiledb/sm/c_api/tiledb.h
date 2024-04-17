@@ -3367,7 +3367,12 @@ TILEDB_EXPORT int32_t tiledb_array_vacuum(
 
 /**
  * Retrieves the non-empty domain from an array. This is the union of the
- * non-empty domains of the array fragments.
+ * non-empty domains of the array fragments. This API only works for arrays that
+ * have numeric dimensions and all dimensions of the same type.
+ *
+ * The domain passed in is memory that can contain the number of dimensions * 2
+ * * sizeof(type of dimension). The previous two is because we return the non
+ * empty domain as min/max. Dimensions are returned in order.
  *
  * **Example:**
  *
