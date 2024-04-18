@@ -32,7 +32,6 @@
 
 #include <test/support/tdb_catch.h>
 #include "tiledb/common/logger.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
 

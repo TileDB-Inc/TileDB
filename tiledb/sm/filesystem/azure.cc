@@ -40,7 +40,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/platform/cert_file.h"
 #include "tiledb/sm/filesystem/azure.h"

@@ -43,7 +43,6 @@
 
 #include "tiledb/common/blank.h"
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"

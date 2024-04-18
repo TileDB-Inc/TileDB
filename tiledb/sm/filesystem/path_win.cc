@@ -35,7 +35,7 @@
 #include "path_win.h"
 #include <algorithm>
 #include <string>
-#include "tiledb/common/logger_public.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/stdx_string.h"
 
 #if !defined(NOMINMAX)
