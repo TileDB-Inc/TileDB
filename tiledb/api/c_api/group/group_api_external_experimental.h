@@ -403,6 +403,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_remove_member(
 TILEDB_EXPORT capi_return_t tiledb_group_get_member_count(
     tiledb_ctx_t* ctx, tiledb_group_t* group, uint64_t* count) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Get a member of a group by index and details of group.
  * Deprecated, use \p tiledb_group_get_member_by_index_v2 instead.
@@ -441,6 +442,7 @@ TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_index(
     char** uri,
     tiledb_object_t* type,
     char** name) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 /**
  * Get a member of a group by index and details of group
@@ -481,6 +483,7 @@ TILEDB_EXPORT capi_return_t tiledb_group_get_member_by_index_v2(
     tiledb_object_t* type,
     tiledb_string_t** name) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Get a member of a group by name and details of group.
  * Deprecated, use \p tiledb_group_get_member_by_name_v2.
@@ -518,6 +521,7 @@ TILEDB_DEPRECATED_EXPORT capi_return_t tiledb_group_get_member_by_name(
     const char* name,
     char** uri,
     tiledb_object_t* type) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 /**
  * Get a member of a group by name and details of group.

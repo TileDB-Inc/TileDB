@@ -42,6 +42,7 @@
 namespace tiledb {
 namespace impl {
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * @cond
  * Doxygen is disabled for this function, as it conflicts with the C
@@ -56,12 +57,13 @@ namespace impl {
  * @param callback_data Data to pass callback
  * @return TILEDB_OK for success and TILEDB_ERR for error.
  */
-TILEDB_EXPORT int tiledb_query_submit_async_func(
+TILEDB_DEPRECATED_EXPORT int tiledb_query_submit_async_func(
     tiledb_ctx_t* ctx,
     tiledb_query_t* query,
     void* callback_func,
     void* callback_data = nullptr) noexcept;
 /** @endcond */
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 inline size_t type_size(tiledb_datatype_t type) {
   return tiledb_datatype_size(type);

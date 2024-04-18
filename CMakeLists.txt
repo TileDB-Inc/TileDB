@@ -318,6 +318,7 @@ endif()
 
 list(APPEND TILEDB_C_API_FILENAME_HEADERS
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+    "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_deprecated.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_enum.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_version.h"
     "${CMAKE_SOURCE_DIR}/tiledb/sm/c_api/tiledb_experimental.h"

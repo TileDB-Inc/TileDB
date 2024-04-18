@@ -7266,6 +7266,7 @@ CAPI_INTERFACE(
       ctx, array, serialization_type, request, response);
 }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -7277,6 +7278,7 @@ int32_t tiledb::impl::tiledb_query_submit_async_func(
   return api_entry<tiledb::api::impl::tiledb_query_submit_async_func>(
       ctx, query, callback_func, callback_data);
 }
+#endif
 
 /* ****************************** */
 /*          FRAGMENT INFO         */
