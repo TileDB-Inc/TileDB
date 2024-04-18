@@ -35,7 +35,7 @@
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 
 using namespace tiledb;
 

@@ -457,57 +457,10 @@ inline Status logger_format_from_string(
   return Status::Ok();
 }
 
-/** Logs a trace. */
-void LOG_TRACE(const std::string& msg);
-
-/** Logs debug. */
-void LOG_DEBUG(const std::string& msg);
-
-/** Logs info. */
-void LOG_INFO(const std::string& msg);
-
-/** Logs a warning. */
-void LOG_WARN(const std::string& msg);
-
-/** Logs an error. */
-void LOG_ERROR(const std::string& msg);
-
-/** Logs a status. */
-Status LOG_STATUS(const Status& st);
-
-/** Logs a status without returning it. */
-void LOG_STATUS_NO_RETURN_VALUE(const Status& st);
-
-/** Logs a status exception. */
-void LOG_STATUS(const StatusException& st);
-
-/** Logs trace. */
-void LOG_TRACE(const std::stringstream& msg);
-
-/** Logs debug. */
-void LOG_DEBUG(const std::stringstream& msg);
-
-/** Logs info. */
-void LOG_INFO(const std::stringstream& msg);
-
-/** Logs a warning. */
-void LOG_WARN(const std::stringstream& msg);
-
-/** Logs an error. */
-void LOG_ERROR(const std::stringstream& msg);
-
 }  // namespace common
-
-/*
- * Make the simple log functions available to the `tiledb` namespace
- */
-using common::LOG_DEBUG;
-using common::LOG_ERROR;
-using common::LOG_INFO;
-using common::LOG_STATUS;
-using common::LOG_TRACE;
-using common::LOG_WARN;
-
 }  // namespace tiledb
+
+// Also include the public-permissible logger functions here.
+#include "tiledb/common/logger_public.h"
 
 #endif  // TILEDB_LOGGER_H

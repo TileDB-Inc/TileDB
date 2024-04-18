@@ -38,7 +38,7 @@
 #endif
 
 #include <sstream>
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 
 namespace tiledb {
 namespace common {

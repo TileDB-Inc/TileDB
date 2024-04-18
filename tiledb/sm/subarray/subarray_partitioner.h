@@ -37,6 +37,7 @@
 
 #include <unordered_map>
 #include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/stats/stats.h"

@@ -36,6 +36,7 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"

@@ -40,7 +40,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/misc/constants.h"
 

@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"

@@ -34,7 +34,7 @@
 #define TILEDB_RANGE_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 

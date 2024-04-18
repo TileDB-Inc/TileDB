@@ -42,7 +42,7 @@
 #endif
 // clang-format on
 
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"

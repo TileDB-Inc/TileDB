@@ -41,6 +41,7 @@
 #include <vector>
 
 #include "constants.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 
 namespace tiledb {

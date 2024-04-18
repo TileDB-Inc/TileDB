@@ -27,7 +27,8 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Logger and the public logging functions.
+ * This file defines class Logger, declared in logger.h, and the public logging
+ * functions, declared in logger_public.h.
  */
 
 #include <spdlog/fmt/fmt.h>

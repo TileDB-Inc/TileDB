@@ -31,7 +31,7 @@
  */
 
 #include "dimension.h"
-#include "tiledb/common/logger.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/buffer/buffer.h"

@@ -47,6 +47,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"

@@ -38,6 +38,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
+#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
