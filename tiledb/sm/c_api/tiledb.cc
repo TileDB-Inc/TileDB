@@ -2754,10 +2754,7 @@ int32_t tiledb_array_get_non_empty_domain(
     return TILEDB_ERR;
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain(
-      array->array_.get(), domain, &is_empty_b));
-
+  array->array_->non_empty_domain(domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;

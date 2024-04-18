@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -62,8 +62,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class OpenedArray;
@@ -243,31 +242,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status array_upgrade_version(const URI& uri, const Config& config);
-
-  /**
-   * Retrieves the non-empty domain from an array. This is the union of the
-   * non-empty domains of the array fragments.
-   *
-   * @param array An open array object (must be already open).
-   * @param domain The domain to be retrieved.
-   * @param is_empty `true` if the non-empty domain is empty (the array
-   *     is empty).
-   * @return Status
-   */
-  Status array_get_non_empty_domain(
-      Array* array, NDRange* domain, bool* is_empty);
-
-  /**
-   * Retrieves the non-empty domain from an array. This is the union of the
-   * non-empty domains of the array fragments.
-   *
-   * @param array An open array object (must be already open).
-   * @param domain The domain to be retrieved.
-   * @param is_empty `ture` if the non-empty domain is empty (the array
-   *     is empty).
-   * @return Status
-   */
-  Status array_get_non_empty_domain(Array* array, void* domain, bool* is_empty);
 
   /**
    * Retrieves the non-empty domain from an array on the given dimension.
@@ -720,7 +694,6 @@ class StorageManagerCanonical {
   Status set_default_tags();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_STORAGE_MANAGER_CANONICAL_H
