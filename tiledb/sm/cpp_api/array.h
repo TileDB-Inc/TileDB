@@ -661,6 +661,7 @@ class Array {
    * @param config Configuration parameters for the consolidation.
    */
   // clang-format on
+  TILEDB_DEPRECATED
   static void consolidate(
       const Context& ctx,
       const std::string& uri,
@@ -819,6 +820,7 @@ class Array {
    * @param encryption_key The encryption key to use.
    */
   // clang-format on
+  TILEDB_DEPRECATED
   static void create(
       const std::string& uri,
       const ArraySchema& schema,
@@ -1176,6 +1178,7 @@ class Array {
    * @param config Configuration parameters for the consolidation.
    */
   // clang-format on
+  TILEDB_DEPRECATED
   static void consolidate_metadata(
       const Context& ctx,
       const std::string& uri,
