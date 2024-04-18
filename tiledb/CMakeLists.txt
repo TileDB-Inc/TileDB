@@ -482,7 +482,6 @@ endif()
 
 if (TILEDB_REMOVE_DEPRECATIONS)
   add_definitions(-DTILEDB_REMOVE_DEPRECATIONS)
-else()
   message(STATUS "The TileDB library is compiled without deprecated APIs.")
 endif()
 
@@ -826,6 +825,10 @@ if(BUILD_SHARED_LIBS)
   set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_shared)
 else()
   set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_static)
+endif()
+
+if(TILEDB_REMOVE_DEPRECATIONS)
+  target_compile_definitions(tiledb PUBLIC TILEDB_REMOVE_DEPRECATIONS)
 endif()
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
