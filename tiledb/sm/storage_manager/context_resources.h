@@ -34,7 +34,6 @@
 #define TILEDB_CONTEXT_RESOURCES_H
 
 #include "tiledb/common/exception/exception.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/vfs.h"

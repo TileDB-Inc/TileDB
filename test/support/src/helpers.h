@@ -33,7 +33,6 @@
 #ifndef TILEDB_TEST_HELPERS_H
 #define TILEDB_TEST_HELPERS_H
 
-#include <tiledb/common/logger_public.h>
 #include "test/support/src/coords_workaround.h"
 #include "test/support/src/mem_helpers.h"
 #include "tiledb.h"
