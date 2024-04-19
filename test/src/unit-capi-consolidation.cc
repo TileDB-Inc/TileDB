@@ -7139,8 +7139,11 @@ TEST_CASE_METHOD(
   if constexpr (tiledb::platform::is_os_windows) {
     return;
   }
-
   if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+  char* manylinux_var = getenv("TILEDB_MANYLINUX");
+  if (manylinux_var && strlen(manylinux_var) > 0) {
     return;
   }
 
@@ -7240,8 +7243,11 @@ TEST_CASE_METHOD(
   if constexpr (tiledb::platform::is_os_windows) {
     return;
   }
-
   if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+  char* manylinux_var = getenv("TILEDB_MANYLINUX");
+  if (manylinux_var && strlen(manylinux_var) > 0) {
     return;
   }
 
@@ -7324,7 +7330,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test vacuuming resumes fine in case of error deleting fragment",
     "[capi][vacuuming][resume][frag]") {
-  bool dense_test;
+  bool dense_test = true;
   std::string array_uri;
   std::string commits_uri;
 
@@ -7407,7 +7413,7 @@ TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test vacuuming resumes fine in case of error deleting commit file",
     "[capi][vacuuming][resume][wrt]") {
-  bool dense_test;
+  bool dense_test = true;
   std::string array_uri;
   std::string commits_uri;
 
