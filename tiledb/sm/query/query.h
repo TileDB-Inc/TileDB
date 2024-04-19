@@ -257,8 +257,8 @@ class Query {
    * @return estimated result size
    */
   FieldDataSize internal_est_result_size(const char* name);
- public:
 
+ public:
   /** Retrieves the number of written fragments. */
   Status get_written_fragment_num(uint32_t* num) const;
 

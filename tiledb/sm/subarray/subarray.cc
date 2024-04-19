@@ -1142,7 +1142,7 @@ FieldDataSize Subarray::get_est_result_size(
    * Special fix-ups may be necessary if data is empty or very short.
    */
   if (is_variable_sized) {
-    if (r.variable_ == 0 ) {
+    if (r.variable_ == 0) {
       // Assert: no variable data for a variable-sized field
       // Ensure that there are no offsets.
       r.fixed_ = 0;
@@ -1171,7 +1171,7 @@ FieldDataSize Subarray::get_est_result_size(
      * least one cell.
      */
     const auto cell_size = array_schema.cell_size(name);
-    if ( 0 < r.fixed_ && r.fixed_ < cell_size) {
+    if (0 < r.fixed_ && r.fixed_ < cell_size) {
       r.fixed_ = cell_size;
       if (is_nullable) {
         r.validity_ = 1;
