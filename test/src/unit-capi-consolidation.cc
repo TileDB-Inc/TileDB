@@ -34,6 +34,7 @@
 #include "test/support/src/helpers.h"
 #include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/platform/platform.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/misc/tdb_time.h"
@@ -132,11 +133,13 @@ struct ConsolidationFx {
   void consolidate_sparse_heterogeneous();
   void consolidate_sparse_string(
       uint64_t buffer_size = 10000, bool error_expected = false);
-  void vacuum_dense(const std::string& mode = "fragments");
+  void vacuum_dense(
+      const std::string& mode = "fragments", bool expect_fail = false);
   void vacuum_sparse(
       const std::string& mode = "fragments",
       uint64_t start = 0,
-      uint64_t end = UINT64_MAX);
+      uint64_t end = UINT64_MAX,
+      bool expect_fail = false);
   void remove_dense_vector();
   void remove_dense_array();
   void remove_sparse_array();
@@ -144,12 +147,12 @@ struct ConsolidationFx {
   void remove_sparse_string_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
-  void check_commits_dir_dense(int num_commits, int num_wrt, int num_ignore);
-  void check_commits_dir_sparse(int num_commits, int num_wrt, int num_ignore);
+  void check_commits_dir(
+      int num_commits, int num_wrt, int num_ignore, bool dense = true);
   void check_ok_num(int num_ok);
   void get_array_meta_files_dense(std::vector<std::string>& files);
   void get_array_meta_vac_files_dense(std::vector<std::string>& files);
-  void get_vac_files_dense(std::vector<std::string>& files);
+  void get_vac_files(std::vector<std::string>& files, bool dense = true);
 
   // Used to get the number of directories or files of another directory
   struct get_num_struct {
@@ -4376,7 +4379,7 @@ void ConsolidationFx::consolidate_sparse_string(
   REQUIRE(rc == (error_expected ? TILEDB_ERR : TILEDB_OK));
 }
 
-void ConsolidationFx::vacuum_dense(const std::string& mode) {
+void ConsolidationFx::vacuum_dense(const std::string& mode, bool expect_fail) {
   int rc;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
@@ -4386,13 +4389,14 @@ void ConsolidationFx::vacuum_dense(const std::string& mode) {
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(err == nullptr);
   rc = tiledb_array_vacuum(ctx_, dense_array_uri_.c_str(), cfg);
-  REQUIRE(rc == TILEDB_OK);
+
+  REQUIRE(rc == (expect_fail ? TILEDB_ERR : TILEDB_OK));
 
   tiledb_config_free(&cfg);
 }
 
 void ConsolidationFx::vacuum_sparse(
-    const std::string& mode, uint64_t start, uint64_t end) {
+    const std::string& mode, uint64_t start, uint64_t end, bool expect_fail) {
   int rc;
   tiledb_config_t* cfg;
   tiledb_error_t* err = nullptr;
@@ -4411,7 +4415,7 @@ void ConsolidationFx::vacuum_sparse(
   REQUIRE(err == nullptr);
 
   rc = tiledb_array_vacuum(ctx_, sparse_array_uri_.c_str(), cfg);
-  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(rc == (expect_fail ? TILEDB_ERR : TILEDB_OK));
 
   tiledb_config_free(&cfg);
 }
@@ -4451,56 +4455,34 @@ bool ConsolidationFx::is_array(const std::string& array_name) {
   return type == TILEDB_ARRAY;
 }
 
-void ConsolidationFx::check_commits_dir_dense(
-    int num_commits, int num_wrt, int num_ignore) {
+void ConsolidationFx::check_commits_dir(
+    int num_commits, int num_wrt, int num_ignore, bool dense) {
   int32_t rc;
   get_num_struct data;
+
+  std::string array_commits_uri = dense_array_commits_dir_;
+  if (!dense) {
+    array_commits_uri = sparse_array_commits_dir_;
+  }
 
   // Check number of consolidated commits files
   data = {ctx_, vfs_, 0};
   rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_commits_dir_.c_str(), &get_commits_num, &data);
+      ctx_, vfs_, array_commits_uri.c_str(), &get_commits_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == num_commits);
 
   // Check number of wrt files
   data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_commits_dir_.c_str(), &get_wrt_num, &data);
+  rc =
+      tiledb_vfs_ls(ctx_, vfs_, array_commits_uri.c_str(), &get_wrt_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == num_wrt);
 
   // Check number of ignore files
   data = {ctx_, vfs_, 0};
   rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_commits_dir_.c_str(), &get_ignore_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == num_ignore);
-}
-
-void ConsolidationFx::check_commits_dir_sparse(
-    int num_commits, int num_wrt, int num_ignore) {
-  int32_t rc;
-  get_num_struct data;
-
-  // Check number of consolidated commits files
-  data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, sparse_array_commits_dir_.c_str(), &get_commits_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == num_commits);
-
-  // Check number of wrt files
-  data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, sparse_array_commits_dir_.c_str(), &get_wrt_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == num_wrt);
-
-  // Check number of ignore files
-  data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, sparse_array_commits_dir_.c_str(), &get_ignore_num, &data);
+      ctx_, vfs_, array_commits_uri.c_str(), &get_ignore_num, &data);
   CHECK(rc == TILEDB_OK);
   CHECK(data.num == num_ignore);
 }
@@ -4702,11 +4684,22 @@ void ConsolidationFx::get_array_meta_vac_files_dense(
   CHECK(rc == TILEDB_OK);
 }
 
-void ConsolidationFx::get_vac_files_dense(std::vector<std::string>& files) {
+void ConsolidationFx::get_vac_files(
+    std::vector<std::string>& files, bool dense) {
   files.clear();
-  tiledb::sm::URI dense_array_uri(dense_array_uri_.c_str());
+  std::string array_uri = dense_array_uri_;
+  if (!dense) {
+    array_uri = sparse_array_uri_;
+  }
+  tiledb::sm::URI dense_array_uri(array_uri.c_str());
   int rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_uri.c_str(), &get_vac_files_callback, &files);
+      ctx_,
+      vfs_,
+      dense_array_uri.add_trailing_slash()
+          .join_path(tiledb::sm::constants::array_commits_dir_name)
+          .c_str(),
+      &get_vac_files_callback,
+      &files);
   CHECK(rc == TILEDB_OK);
 }
 
@@ -6571,22 +6564,22 @@ TEST_CASE_METHOD(
     write_dense_subarray();
     consolidate_dense("commits");
     read_dense_full_subarray();
-    check_commits_dir_dense(1, 2, 0);
+    check_commits_dir(1, 2, 0);
 
     // Vacuum works.
     vacuum_dense("commits");
     read_dense_full_subarray();
-    check_commits_dir_dense(1, 0, 0);
+    check_commits_dir(1, 0, 0);
 
     // Second consolidation works.
     consolidate_dense("commits");
     read_dense_full_subarray();
-    check_commits_dir_dense(2, 0, 0);
+    check_commits_dir(2, 0, 0);
 
     // Second vacuum works.
     vacuum_dense("commits");
     read_dense_full_subarray();
-    check_commits_dir_dense(1, 0, 0);
+    check_commits_dir(1, 0, 0);
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
@@ -6594,17 +6587,17 @@ TEST_CASE_METHOD(
       consolidate_dense();
       vacuum_dense();
       read_dense_full_subarray();
-      check_commits_dir_dense(1, 1, 1);
+      check_commits_dir(1, 1, 1);
 
       // Consolidation to get rid of ignore file.
       consolidate_dense("commits");
       read_dense_full_subarray();
-      check_commits_dir_dense(2, 1, 1);
+      check_commits_dir(2, 1, 1);
 
       // Second vacuum works.
       vacuum_dense("commits");
       read_dense_full_subarray();
-      check_commits_dir_dense(1, 0, 0);
+      check_commits_dir(1, 0, 0);
     }
   }
 
@@ -6618,17 +6611,17 @@ TEST_CASE_METHOD(
     // Vacuum works.
     vacuum_dense("commits");
     read_dense_subarray_full();
-    check_commits_dir_dense(1, 0, 0);
+    check_commits_dir(1, 0, 0);
 
     // Second consolidation works.
     consolidate_dense("commits");
     read_dense_subarray_full();
-    check_commits_dir_dense(2, 0, 0);
+    check_commits_dir(2, 0, 0);
 
     // Second vacuum works.
     vacuum_dense("commits");
     read_dense_subarray_full();
-    check_commits_dir_dense(1, 0, 0);
+    check_commits_dir(1, 0, 0);
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
@@ -6636,17 +6629,17 @@ TEST_CASE_METHOD(
       consolidate_dense();
       vacuum_dense();
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 1, 1);
+      check_commits_dir(1, 1, 1);
 
       // Consolidation to get rid of ignore file.
       consolidate_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(2, 1, 1);
+      check_commits_dir(2, 1, 1);
 
       // Second vacuum works.
       vacuum_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+      check_commits_dir(1, 0, 0);
     }
   }
 
@@ -6666,33 +6659,33 @@ TEST_CASE_METHOD(
       // Vacuum works.
       vacuum_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+      check_commits_dir(1, 0, 0);
 
       // Second consolidation works.
       consolidate_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(2, 0, 0);
+      check_commits_dir(2, 0, 0);
 
       // Second vacuum works.
       vacuum_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+      check_commits_dir(1, 0, 0);
 
       // After fragment consolidation and vacuuming, array is still valid.
       consolidate_dense();
       vacuum_dense();
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 1, 1);
+      check_commits_dir(1, 1, 1);
 
       // Consolidation to get rid of ignore file.
       consolidate_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(2, 1, 1);
+      check_commits_dir(2, 1, 1);
 
       // Second vacuum works.
       vacuum_dense("commits");
       read_dense_subarray_full();
-      check_commits_dir_dense(1, 0, 0);
+      check_commits_dir(1, 0, 0);
     }
   }
 
@@ -6712,22 +6705,22 @@ TEST_CASE_METHOD(
     write_sparse_unordered();
     consolidate_sparse("commits");
     read_sparse_full_unordered();
-    check_commits_dir_sparse(1, 2, 0);
+    check_commits_dir(1, 2, 0, false);
 
     // Vacuum works.
     vacuum_sparse("commits");
     read_sparse_full_unordered();
-    check_commits_dir_sparse(1, 0, 0);
+    check_commits_dir(1, 0, 0, false);
 
     // Second consolidation works.
     consolidate_sparse("commits");
     read_sparse_full_unordered();
-    check_commits_dir_sparse(2, 0, 0);
+    check_commits_dir(2, 0, 0, false);
 
     // Second vacuum works.
     vacuum_sparse("commits");
     read_sparse_full_unordered();
-    check_commits_dir_sparse(1, 0, 0);
+    check_commits_dir(1, 0, 0, false);
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
@@ -6735,17 +6728,17 @@ TEST_CASE_METHOD(
       consolidate_sparse();
       vacuum_sparse();
       read_sparse_full_unordered();
-      check_commits_dir_sparse(1, 1, 1);
+      check_commits_dir(1, 1, 1, false);
 
       // Consolidation to get rid of ignore file.
       consolidate_sparse("commits");
       read_sparse_full_unordered();
-      check_commits_dir_sparse(2, 1, 1);
+      check_commits_dir(2, 1, 1, false);
 
       // Second vacuum works.
       vacuum_sparse("commits");
       read_sparse_full_unordered();
-      check_commits_dir_sparse(1, 0, 0);
+      check_commits_dir(1, 0, 0, false);
     }
   }
 
@@ -6755,22 +6748,22 @@ TEST_CASE_METHOD(
     write_sparse_full();
     consolidate_sparse("commits");
     read_sparse_unordered_full();
-    check_commits_dir_sparse(1, 2, 0);
+    check_commits_dir(1, 2, 0, false);
 
     // Vacuum works.
     vacuum_sparse("commits");
     read_sparse_unordered_full();
-    check_commits_dir_sparse(1, 0, 0);
+    check_commits_dir(1, 0, 0, false);
 
     // Second consolidation works.
     consolidate_sparse("commits");
     read_sparse_unordered_full();
-    check_commits_dir_sparse(2, 0, 0);
+    check_commits_dir(2, 0, 0, false);
 
     // Second vacuum works.
     vacuum_sparse("commits");
     read_sparse_unordered_full();
-    check_commits_dir_sparse(1, 0, 0);
+    check_commits_dir(1, 0, 0, false);
 
     // After fragment consolidation and vacuuming, array is still valid.
     // Fragment consolidation not yet supported on remote arrays
@@ -6778,17 +6771,17 @@ TEST_CASE_METHOD(
       consolidate_sparse();
       vacuum_sparse();
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 1, 1);
+      check_commits_dir(1, 1, 1, false);
 
       // Consolidation to get rid of ignore file.
       consolidate_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(2, 1, 1);
+      check_commits_dir(2, 1, 1, false);
 
       // Second vacuum works.
       vacuum_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+      check_commits_dir(1, 0, 0, false);
     }
   }
 
@@ -6804,38 +6797,38 @@ TEST_CASE_METHOD(
       write_sparse_full();
       consolidate_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 2, 0);
+      check_commits_dir(1, 2, 0, false);
 
       // Vacuum works.
       vacuum_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+      check_commits_dir(1, 0, 0, false);
 
       // Second consolidation works.
       consolidate_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(2, 0, 0);
+      check_commits_dir(2, 0, 0, false);
 
       // Second vacuum works.
       vacuum_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+      check_commits_dir(1, 0, 0, false);
 
       // After fragment consolidation and vacuuming, array is still valid.
       consolidate_sparse();
       vacuum_sparse();
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 1, 1);
+      check_commits_dir(1, 1, 1, false);
 
       // Consolidation to get rid of ignore file.
       consolidate_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(2, 1, 1);
+      check_commits_dir(2, 1, 1, false);
 
       // Second vacuum works.
       vacuum_sparse("commits");
       read_sparse_unordered_full();
-      check_commits_dir_sparse(1, 0, 0);
+      check_commits_dir(1, 0, 0, false);
     }
   }
 
@@ -6878,40 +6871,40 @@ TEST_CASE_METHOD(
   write_sparse_unordered();
   consolidate_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 1, 0);
+  check_commits_dir(1, 1, 0, false);
   check_ok_num(1);
 
   // Vacuum works.
   vacuum_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 0, 0);
+  check_commits_dir(1, 0, 0, false);
   check_ok_num(0);
 
   // Second consolidation works.
   consolidate_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(2, 0, 0);
+  check_commits_dir(2, 0, 0, false);
 
   // Second vacuum works.
   vacuum_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 0, 0);
+  check_commits_dir(1, 0, 0, false);
 
   // After fragment consolidation and vacuuming, array is still valid.
   consolidate_sparse();
   vacuum_sparse();
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 1, 1);
+  check_commits_dir(1, 1, 1, false);
 
   // Consolidation to get rid of ignore file.
   consolidate_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(2, 1, 1);
+  check_commits_dir(2, 1, 1, false);
 
   // Second vacuum works.
   vacuum_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 0, 0);
+  check_commits_dir(1, 0, 0, false);
 
   remove_sparse_array();
 }
@@ -6939,8 +6932,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get fragment URIs
-  const char* uri1;
-  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri1);
+  const char* uri;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri);
   CHECK(rc == TILEDB_OK);
   const char* uri2;
   rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
@@ -6959,7 +6952,7 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri1, '/') + 1, strrchr(uri2, '/') + 1};
+  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
   rc = tiledb_array_consolidate_fragments(
       ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
   CHECK(rc == TILEDB_OK);
@@ -7015,8 +7008,8 @@ TEST_CASE_METHOD(
   CHECK(rc == TILEDB_OK);
 
   // Get fragment URIs
-  const char* uri1;
-  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri1);
+  const char* uri;
+  rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 1, &uri);
   CHECK(rc == TILEDB_OK);
   const char* uri2;
   rc = tiledb_fragment_info_get_fragment_uri(ctx_, fragment_info, 3, &uri2);
@@ -7035,7 +7028,7 @@ TEST_CASE_METHOD(
   REQUIRE(err == nullptr);
 
   // Consolidate
-  const char* uris[2] = {strrchr(uri1, '/') + 1, strrchr(uri2, '/') + 1};
+  const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
   rc = tiledb_array_consolidate_fragments(
       ctx_, sparse_array_uri_.c_str(), uris, 2, cfg);
   CHECK(rc == TILEDB_OK);
@@ -7132,7 +7125,368 @@ TEST_CASE_METHOD(
   vacuum_sparse("fragments");
   vacuum_sparse("commits");
   read_sparse_full_unordered();
-  check_commits_dir_sparse(1, 0, 1);
+  check_commits_dir(1, 0, 1, false);
 
   remove_sparse_array();
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test vacuuming leaves array dir in a consistent state",
+    "[capi][vacuuming][fail][frag]") {
+  // This test uses a permissions trick to make vacuuming fail in the middle of
+  // the process, this trick does not work on windows or remote stores
+  if constexpr (tiledb::platform::is_os_windows) {
+    return;
+  }
+
+  if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+
+  bool dense_test = true;
+  std::string array_uri;
+  std::string commits_uri;
+
+  SECTION("- sparse array") {
+    dense_test = false;
+    array_uri = sparse_array_uri_;
+    commits_uri = sparse_array_commits_dir_;
+  }
+  SECTION("- dense array") {
+    dense_test = true;
+    array_uri = dense_array_uri_;
+    commits_uri = dense_array_commits_dir_;
+  }
+
+  if (dense_test) {
+    remove_dense_array();
+    create_dense_array();
+  } else {
+    remove_sparse_array();
+    create_sparse_array();
+  }
+
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  if (dense_test) {
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
+  } else {
+    write_sparse_full();
+    write_sparse_full();
+  }
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+
+  if (dense_test) {
+    consolidate_dense("fragments", start1, end1);
+  } else {
+    consolidate_sparse("fragments", start1, end1);
+  }
+
+  // Get the uri of a fragment which is supposed to be vacuumed
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  int rc = tiledb_fragment_info_alloc(ctx_, array_uri.c_str(), &fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+
+  const char* uri;
+  rc = tiledb_fragment_info_get_to_vacuum_uri(ctx_, fragment_info, 1, &uri);
+  REQUIRE(rc == TILEDB_OK);
+
+  {
+    // Remove the write permission bit for the fragment and start vacuuming
+    DenyWriteAccess dwa{tiledb::sm::URI(std::string(uri)).to_path()};
+
+    // This fails when trying to remove the fragment directory
+    if (dense_test) {
+      vacuum_dense("fragments", true);
+    } else {
+      vacuum_sparse("fragments", start1, end1, true);
+    }
+  }
+
+  tiledb_fragment_info_free(&fragment_info);
+
+  // The .vac files should always remain when vacuuming fails.
+  std::vector<std::string> vac_files;
+  get_vac_files(vac_files, dense_test);
+  CHECK(!vac_files.empty());
+
+  // Array open should work fine if vacuuming failed midway
+  tiledb_array_t* array;
+  rc = tiledb_array_alloc(ctx_, array_uri.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Clean up
+  if (dense_test) {
+    remove_dense_array();
+  } else {
+    remove_sparse_array();
+  }
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test vacuuming leaves array dir in a consistent state",
+    "[capi][vacuuming][fail][wrt]") {
+  // This test uses a permissions trick to make vacuuming fail in the middle of
+  // the process, this trick does not work on windows or remote stores
+  if constexpr (tiledb::platform::is_os_windows) {
+    return;
+  }
+
+  if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+
+  bool dense_test = true;
+  std::string array_uri;
+  std::string commits_uri;
+
+  SECTION("- sparse array") {
+    dense_test = false;
+    array_uri = sparse_array_uri_;
+    commits_uri = sparse_array_commits_dir_;
+  }
+  SECTION("- dense array") {
+    dense_test = true;
+    array_uri = dense_array_uri_;
+    commits_uri = dense_array_commits_dir_;
+  }
+
+  if (dense_test) {
+    remove_dense_array();
+    create_dense_array();
+  } else {
+    remove_sparse_array();
+    create_sparse_array();
+  }
+
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  if (dense_test) {
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
+  } else {
+    write_sparse_full();
+    write_sparse_full();
+  }
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+
+  if (dense_test) {
+    consolidate_dense("fragments", start1, end1);
+  } else {
+    consolidate_sparse("fragments", start1, end1);
+  }
+
+  {
+    // We need to remove the write permission bit for the parent directory
+    // (commits dir) so that consolidator won't be able to delete the wrt file
+    DenyWriteAccess dwa{tiledb::sm::URI(commits_uri).to_path()};
+
+    // This fails when trying to remove the commit file for the fragment
+    if (dense_test) {
+      vacuum_dense("fragments", true);
+    } else {
+      vacuum_sparse("fragments", start1, end1, true);
+    }
+  }
+
+  // The .vac files should always remain when vacuuming fails.
+  std::vector<std::string> vac_files;
+  get_vac_files(vac_files, dense_test);
+  CHECK(!vac_files.empty());
+
+  // Array open should work fine if vacuuming failed midway
+  tiledb_array_t* array;
+  int rc = tiledb_array_alloc(ctx_, array_uri.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_close(ctx_, array);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_array_free(&array);
+
+  // Clean up
+  if (dense_test) {
+    remove_dense_array();
+  } else {
+    remove_sparse_array();
+  }
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test vacuuming resumes fine in case of error deleting fragment",
+    "[capi][vacuuming][resume][frag]") {
+  bool dense_test;
+  std::string array_uri;
+  std::string commits_uri;
+
+  SECTION("- sparse array") {
+    dense_test = false;
+    array_uri = sparse_array_uri_;
+    commits_uri = sparse_array_commits_dir_;
+  }
+  SECTION("- dense array") {
+    dense_test = true;
+    array_uri = dense_array_uri_;
+    commits_uri = dense_array_commits_dir_;
+  }
+
+  if (dense_test) {
+    remove_dense_array();
+    create_dense_array();
+  } else {
+    remove_sparse_array();
+    create_sparse_array();
+  }
+
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  if (dense_test) {
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
+  } else {
+    write_sparse_full();
+    write_sparse_full();
+  }
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+
+  if (dense_test) {
+    consolidate_dense("fragments", start1, end1);
+  } else {
+    consolidate_sparse("fragments", start1, end1);
+  }
+
+  // Get the uri of a fragment which is supposed to be vacuumed
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  int rc = tiledb_fragment_info_alloc(ctx_, array_uri.c_str(), &fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  const char* uri;
+  rc = tiledb_fragment_info_get_to_vacuum_uri(ctx_, fragment_info, 1, &uri);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Simulate partial vacuuming, only 1 fragment was deleted,
+  // vacuum file still exists
+  rc = tiledb_vfs_remove_dir(ctx_, vfs_, uri);
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_fragment_info_free(&fragment_info);
+
+  // Vacuuming resumes fine if vac file still exists.
+  if (dense_test) {
+    vacuum_dense("fragments");
+  } else {
+    vacuum_sparse("fragments");
+  }
+
+  // No vacuum files left
+  std::vector<std::string> vac_files;
+  get_vac_files(vac_files, dense_test);
+
+  CHECK(vac_files.empty());
+
+  check_commits_dir(0, 1, 0, dense_test);
+
+  // Clean up
+  if (dense_test) {
+    remove_dense_array();
+  } else {
+    remove_sparse_array();
+  }
+}
+
+TEST_CASE_METHOD(
+    ConsolidationFx,
+    "C API: Test vacuuming resumes fine in case of error deleting commit file",
+    "[capi][vacuuming][resume][wrt]") {
+  bool dense_test;
+  std::string array_uri;
+  std::string commits_uri;
+
+  SECTION("- sparse array") {
+    dense_test = false;
+    array_uri = sparse_array_uri_;
+    commits_uri = sparse_array_commits_dir_;
+  }
+  SECTION("- dense array") {
+    dense_test = true;
+    array_uri = dense_array_uri_;
+    commits_uri = dense_array_commits_dir_;
+  }
+
+  if (dense_test) {
+    remove_dense_array();
+    create_dense_array();
+  } else {
+    remove_sparse_array();
+    create_sparse_array();
+  }
+
+  auto start1 = tiledb::sm::utils::time::timestamp_now_ms();
+  if (dense_test) {
+    write_dense_subarray(1, 2, 3, 4);
+    write_dense_subarray(1, 2, 3, 4);
+  } else {
+    write_sparse_full();
+    write_sparse_full();
+  }
+  auto end1 = tiledb::sm::utils::time::timestamp_now_ms();
+
+  if (dense_test) {
+    consolidate_dense("fragments", start1, end1);
+  } else {
+    consolidate_sparse("fragments", start1, end1);
+  }
+
+  // Get the uri of a fragment which is supposed to be vacuumed
+  tiledb_fragment_info_t* fragment_info = nullptr;
+  int rc = tiledb_fragment_info_alloc(ctx_, array_uri.c_str(), &fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_fragment_info_load(ctx_, fragment_info);
+  REQUIRE(rc == TILEDB_OK);
+  const char* uri;
+  rc = tiledb_fragment_info_get_to_vacuum_uri(ctx_, fragment_info, 1, &uri);
+  REQUIRE(rc == TILEDB_OK);
+  auto frag_name = tiledb::sm::URI(uri).last_path_part();
+
+  auto commit_uri = tiledb::sm::URI(commits_uri)
+                        .add_trailing_slash()
+                        .join_path(frag_name + ".wrt");
+
+  // Simulate partial vacuuming, delete only the commit file for only one
+  // fragment, vacuum file still exists
+  rc = tiledb_vfs_remove_file(ctx_, vfs_, commit_uri.c_str());
+  REQUIRE(rc == TILEDB_OK);
+
+  tiledb_fragment_info_free(&fragment_info);
+
+  // Vacuuming resumes fine if vac file still exists.
+  if (dense_test) {
+    vacuum_dense("fragments");
+  } else {
+    vacuum_sparse("fragments");
+  }
+
+  // No vacuum files left
+  std::vector<std::string> vac_files;
+  get_vac_files(vac_files, dense_test);
+
+  CHECK(vac_files.empty());
+
+  check_commits_dir(0, 1, 0, dense_test);
+
+  // Clean up
+  if (dense_test) {
+    remove_dense_array();
+  } else {
+    remove_sparse_array();
+  }
 }
