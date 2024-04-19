@@ -221,8 +221,6 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_get_open_timestamp_end
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_delete_fragments
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_delete_fragments_list
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_open
@@ -241,11 +239,7 @@ Array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_create
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_create_with_key
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_array_consolidate
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_consolidate_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_vacuum
     :project: TileDB-C
@@ -315,8 +309,6 @@ Array Schema
 .. doxygenfunction:: tiledb_array_schema_check
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_load
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_load_with_key
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_get_array_type
     :project: TileDB-C
@@ -436,8 +428,6 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_config
     :project: TileDB-C
-.. doxygenfunction:: tiledb_query_set_subarray
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_data_buffer
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_set_offsets_buffer
@@ -462,8 +452,6 @@ Query
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_submit
     :project: TileDB-C
-.. doxygenfunction:: tiledb_query_submit_async
-    :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_status
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_type
@@ -473,30 +461,6 @@ Query
 .. doxygenfunction:: tiledb_query_get_array
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_has_results
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_add_range
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_add_range_by_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_from_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_add_range_var
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_add_range_var_by_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_var
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_var_from_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_var_size
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_var_size_from_name
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_num
-    :project: TileDB-C
-.. doxygenfunction:: tiledb_query_get_range_num_from_name
     :project: TileDB-C
 .. doxygenfunction:: tiledb_query_get_est_result_size
     :project: TileDB-C
@@ -748,7 +712,7 @@ Fragment Info
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_load
     :project: TileDB-C
-.. doxygenfunction:: tiledb_fragment_info_get_fragment_name
+.. doxygenfunction:: tiledb_fragment_info_get_fragment_name_v2
     :project: TileDB-C
 .. doxygenfunction:: tiledb_fragment_info_get_fragment_num
     :project: TileDB-C
@@ -810,6 +774,11 @@ Fragment Info
 Experimental
 -------------
 .. autodoxygenfile:: tiledb_experimental.h
+    :project: TileDB-C
+
+Deprecated
+-------------
+.. autodoxygenfile:: tiledb_deprecated.h
     :project: TileDB-C
 
 Serialization
