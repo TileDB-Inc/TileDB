@@ -746,7 +746,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * @param[in] ctx The TileDB context.
  * @param[in] array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
- * @param[in] fragment_uris URIs of the fragments to consolidate.
+ * @param[in] fragment_uris Fragment names of the fragments to consolidate. The
+ *     names can be recovered using tiledb_fragment_info_get_fragment_name.
  * @param[in] num_fragments Number of URIs to consolidate.
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from \p ctx).
