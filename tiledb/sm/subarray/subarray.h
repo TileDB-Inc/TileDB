@@ -66,6 +66,23 @@ class Range;
 
 namespace tiledb::sm {
 
+struct FieldDataSize {
+  /**
+   * The size of fixed-length field data in bytes.
+   */
+  size_t fixed_;
+
+  /**
+   * The size of variable-length field data in bytes.
+   */
+  size_t variable_;
+
+  /**
+   * The size of validity data in bytes.
+   */
+  size_t validity_;
+};
+
 class Array;
 class ArraySchema;
 class OpenedArray;
@@ -919,96 +936,28 @@ class Subarray {
    */
   bool is_unary() const;
 
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized
-   * attribute/dimension.
-   */
-  void get_est_result_size_internal(
-      const char* name,
-      uint64_t* size,
-      const Config* config,
-      ThreadPool* compute_tp);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input var-sized
-   * attribute/dimension.
-   */
-  void get_est_result_size(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      const Config* config,
-      ThreadPool* compute_tp);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input fixed-sized,
-   * nullable attribute.
-   */
-  void get_est_result_size_nullable(
-      const char* name,
-      uint64_t* size,
-      uint64_t* size_validity,
-      const Config* config,
-      ThreadPool* compute_tp);
-
-  /**
-   * Gets the estimated result size (in bytes) for the input var-sized,
-   * nullable attribute.
-   */
-  void get_est_result_size_nullable(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      uint64_t* size_validity,
-      const Config* config,
-      ThreadPool* compute_tp);
-
   /** Returns whether the estimated result size has been computed or not. */
   bool est_result_size_computed();
 
-  /*
-   * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized attribute/dimension.
+  /**
+   * The estimated result size in bytes for a field.
+   *
+   * This function handles all fields. The field may be a dimension or
+   * attribute, fixed-length or variable, nullable or not. If a particular
+   * size is not relevant to the field type, then it's returned as zero.
    */
-  void get_max_memory_size(
-      const char* name,
-      uint64_t* size,
-      const Config* config,
-      ThreadPool* compute_tp);
+  FieldDataSize get_est_result_size(
+      const char* name, const Config* config, ThreadPool* compute_tp);
 
   /**
-   * Gets the maximum memory required to produce the result (in bytes)
-   * for the input var-sized attribute/dimension.
+   * The maximum memory in bytes required for a field.
+   *
+   * This function handles all fields. The field may be a dimension or
+   * attribute, fixed-length or variable, nullable or not. If a particular
+   * size is not relevant to the field type, then it's returned as zero.
    */
-  void get_max_memory_size(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      const Config* config,
-      ThreadPool* compute_tp);
-
-  /*
-   * Gets the maximum memory required to produce the result (in bytes)
-   * for the input fixed-sized, nullable attribute.
-   */
-  void get_max_memory_size_nullable(
-      const char* name,
-      uint64_t* size,
-      uint64_t* size_validity,
-      const Config* config,
-      ThreadPool* compute_tp);
-
-  /**
-   * Gets the maximum memory required to produce the result (in bytes)
-   * for the input var-sized, nullable attribute.
-   */
-  void get_max_memory_size_nullable(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      uint64_t* size_validity,
-      const Config* config,
-      ThreadPool* compute_tp);
+  FieldDataSize get_max_memory_size(
+      const char* name, const Config* config, ThreadPool* compute_tp);
 
   /**
    * Returns the range coordinates (for all dimensions) given a flattened
@@ -1017,12 +966,6 @@ class Subarray {
    * subarray range.
    */
   std::vector<uint64_t> get_range_coords(uint64_t range_idx) const;
-
-  /**
-   * Advances the input range coords to the next coords along the
-   * subarray range layout.
-   */
-  void get_next_range_coords(std::vector<uint64_t>* range_coords) const;
 
   /**
    * Returns a subarray consisting of the dimension ranges specified by
