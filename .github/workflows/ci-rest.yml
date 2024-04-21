@@ -21,7 +21,9 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-REST-CI
           # Trigger workflow on TileDB-REST-CI at this ref.
-          ref: "main"
+          # cdbb1ffb4214dd3bd469db145c6181e42217c213 is last commit to be compatible with release-2.18
+          # ss/test-release-2.18 is set to commit cdbb1ff
+          ref: "ss/test-release-2.18"
           workflow: full-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
           # Pass TileDB core ref to test against REST.
