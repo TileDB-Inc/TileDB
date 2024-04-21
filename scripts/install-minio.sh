@@ -26,6 +26,9 @@
 
 # Installs dependencies for minio.
 
+# Define MINIO_VERSION to default if not set
+MINIO_VERSION=${MINIO_VERSION:="RELEASE.2024-02-09T21-25-16Z"}
+
 die() {
   echo "$@" 1>&2 ; popd 2>/dev/null; exit 1
 }
@@ -50,7 +53,7 @@ install_brew_pkgs() {
   #brew install minio/stable/minio
 
   # Use direct installation due to failed download from homebrew
-  curl -O https://dl.min.io/server/minio/release/darwin-amd64/minio
+  curl --output minio https://dl.min.io/server/minio/release/darwin-amd64/archive/minio.${MINIO_VERSION}
   chmod +x ./minio
   sudo mv ./minio /usr/local/bin/
 }
