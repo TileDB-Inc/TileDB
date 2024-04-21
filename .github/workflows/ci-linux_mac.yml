@@ -48,6 +48,7 @@ env:
   bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
+  MINIO_VERSION: "RELEASE.2024-02-09T21-25-16Z"
 
 jobs:
   build:
