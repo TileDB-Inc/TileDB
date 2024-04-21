@@ -27,6 +27,9 @@
 # Starts a minio server and exports credentials to the environment
 # ('source' this script instead of executing).
 
+# Define MINIO_VERSION to default if not set
+MINIO_VERSION=${MINIO_VERSION:="RELEASE.2024-02-09T21-25-16Z"}
+
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
 if [[ "$BASH_SOURCE" = $0 ]]; then
@@ -50,7 +53,7 @@ run_docker_minio() {
   docker run -v /tmp/minio-data:/tmp/minio-data \
        -e MINIO_ROOT_USER=minio -e MINIO_ROOT_PASSWORD=miniosecretkey \
        -d -p 9999:9000 \
-       minio/minio server -S /tmp/minio-data/test_certs \
+       minio/minio:${MINIO_VERSION} server -S /tmp/minio-data/test_certs \
          /tmp/minio-data || die "could not run docker minio"
 }
 
