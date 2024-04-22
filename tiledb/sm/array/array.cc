@@ -1123,6 +1123,91 @@ void Array::non_empty_domain(void* domain, bool* is_empty) {
   }
 }
 
+void Array::non_empty_domain_from_index(
+    unsigned idx, void* domain, bool* is_empty) {
+  if (!is_open_) {
+    throw ArrayException("[non_empty_domain_from_index] Array is not open");
+  }
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num())
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  if (array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is var-sized");
+  }
+
+  NDRange dom;
+  throw_if_not_ok(
+      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  if (*is_empty)
+    return;
+
+  std::memcpy(domain, dom[idx].data(), dom[idx].size());
+}
+
+void Array::non_empty_domain_var_size_from_index(
+    unsigned idx, uint64_t* start_size, uint64_t* end_size, bool* is_empty) {
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num())
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  if (!array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is fixed-sized");
+  }
+
+  NDRange dom;
+  throw_if_not_ok(
+      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  if (*is_empty) {
+    *start_size = 0;
+    *end_size = 0;
+    return;
+  }
+
+  *start_size = dom[idx].start_size();
+  *end_size = dom[idx].end_size();
+}
+
+void Array::non_empty_domain_var_from_index(
+    unsigned idx, void* start, void* end, bool* is_empty) {
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num())
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  if (!array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is fixed-sized");
+  }
+
+  NDRange dom;
+  throw_if_not_ok(
+      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  if (*is_empty)
+    return;
+
+  auto start_str = dom[idx].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = dom[idx].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
+}
+
 bool Array::serialize_non_empty_domain() const {
   auto found = false;
   auto serialize_ned_array_open = false;

@@ -2811,10 +2811,7 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
     return TILEDB_ERR;
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain_from_index(
-      array->array_.get(), idx, domain, &is_empty_b));
-
+  array->array_->non_empty_domain_from_index(idx, domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2850,11 +2847,8 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
     return TILEDB_ERR;
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_size_from_index(
-          array->array_.get(), idx, start_size, end_size, &is_empty_b));
-
+  array->array_->non_empty_domain_var_size_from_index(
+      idx, start_size, end_size, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2892,11 +2886,7 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
     return TILEDB_ERR;
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_from_index(
-          array->array_.get(), idx, start, end, &is_empty_b));
-
+  array->array_->non_empty_domain_var_from_index(idx, start, end, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
