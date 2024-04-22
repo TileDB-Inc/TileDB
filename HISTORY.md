@@ -1,3 +1,14 @@
+# TileDB v2.18.5 Release Notes
+
+## Defects removed
+
+* Fix out of order consolidation. [#4597](https://github.com/TileDB-Inc/TileDB/pull/4597)
+* Vac files should only be removed if paths removal was fully successful. [#4889](https://github.com/TileDB-Inc/TileDB/pull/4889)
+
+## Build System Changes
+
+* Fix linker errors when building with MSVC. [#4759](https://github.com/TileDB-Inc/TileDB/pull/4759)
+
 # TileDB v2.18.4 Release Notes
 
 ## Defects removed
