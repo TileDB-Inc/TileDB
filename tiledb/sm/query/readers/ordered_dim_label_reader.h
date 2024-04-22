@@ -36,7 +36,6 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"

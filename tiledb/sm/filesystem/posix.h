@@ -45,7 +45,6 @@
 #include <string>
 #include <vector>
 
-#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/filesystem_base.h"

@@ -37,7 +37,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/indexed_list.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/iquery_strategy.h"
