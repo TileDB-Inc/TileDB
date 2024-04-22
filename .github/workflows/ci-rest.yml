@@ -21,9 +21,11 @@ jobs:
         with:
           repo: TileDB-Inc/TileDB-REST-CI
           # Trigger workflow on TileDB-REST-CI at this ref.
-          ref: "main"
+          # cdbb1ffb4214dd3bd469db145c6181e42217c213 is last commit to be compatible with release-2.18
+          # release-2.18 is set to commit cdbb1ff. The github action had trouble using the sha directly as the ref, so we use the branch
+          ref: "release-2.18"
           workflow: full-ci.yml
           token: ${{ secrets.TILEDB_REST_CI_PAT }}
           # Pass TileDB core ref to test against REST.
           # github.head_ref will only be set for PRs, so fallback to github.ref_name if triggered via push event.
-          inputs: '{ "tiledb_ref": "${{ github.head_ref || github.ref_name }}"}'
+          inputs: '{ "tiledb_ref": "${{ github.head_ref || github.ref_name }}", "cloud_rest_ref": "2.18.6"}'
