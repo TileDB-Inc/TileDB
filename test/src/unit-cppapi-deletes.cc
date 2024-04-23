@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/ast_helpers.h"
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -49,7 +50,198 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-struct DeletesFx {
+struct DeletesVFSFx {
+  // TileDB context.
+  VFSTestSetup vfs_test_setup_;
+  Context ctx_;
+  const std::string array_name_;
+  const std::string vfs_array_name_;
+
+  // Constructors/destructors.
+  DeletesVFSFx();
+
+  // Functions.
+  void set_legacy();
+  void set_purge_deleted_cells();
+  void create_sparse_array(bool allows_dups = false);
+  void write_sparse(
+      std::vector<int> a1,
+      std::vector<uint64_t> dim1,
+      std::vector<uint64_t> dim2,
+      uint64_t timestamp);
+  void read_sparse(
+      std::vector<int>& a1,
+      std::vector<uint64_t>& dim1,
+      std::vector<uint64_t>& dim2,
+      std::string& stats,
+      tiledb_layout_t layout,
+      uint64_t timestamp);
+  void consolidate_sparse(bool vacuum = false);
+  void consolidate_commits_sparse(bool vacuum);
+  void write_delete_condition(QueryCondition& qc, uint64_t timestamp);
+};
+
+DeletesVFSFx::DeletesVFSFx()
+    : array_name_(vfs_test_setup_.array_uri("test_deletes_array"))
+    , vfs_array_name_(vfs_test_setup_.array_uri("test_deletes_array", true)) {
+  Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+}
+
+void DeletesVFSFx::set_purge_deleted_cells() {
+  Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
+  config.set("sm.consolidation.purge_deleted_cells", "true");
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+}
+
+void DeletesVFSFx::set_legacy() {
+  Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
+  config.set("sm.query.sparse_global_order.reader", "legacy");
+  config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+}
+
+void DeletesVFSFx::create_sparse_array(bool allows_dups) {
+  // Create dimensions.
+  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
+  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
+
+  // Create domain.
+  Domain domain(ctx_);
+  domain.add_dimension(d1);
+  domain.add_dimension(d2);
+
+  // Create attributes.
+  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
+
+  // Create array schema.
+  ArraySchema schema(ctx_, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.set_capacity(20);
+  schema.add_attributes(a1);
+
+  if (allows_dups) {
+    schema.set_allows_dups(true);
+  }
+
+  // Set up filters.
+  Filter filter(ctx_, TILEDB_FILTER_NONE);
+  FilterList filter_list(ctx_);
+  filter_list.add_filter(filter);
+  schema.set_coords_filter_list(filter_list);
+
+  Array::create(array_name_.c_str(), schema);
+}
+
+void DeletesVFSFx::write_sparse(
+    std::vector<int> a1,
+    std::vector<uint64_t> dim1,
+    std::vector<uint64_t> dim2,
+    uint64_t timestamp) {
+  // Open array.
+  std::unique_ptr<Array> array;
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_.c_str(),
+      TILEDB_WRITE,
+      TemporalPolicy(TimeTravel, timestamp));
+
+  // Create query.
+  Query query(ctx_, *array, TILEDB_WRITE);
+  query.set_layout(TILEDB_GLOBAL_ORDER);
+  query.set_data_buffer("a1", a1);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+
+  // Submit/finalize the query.
+  query.submit_and_finalize();
+
+  // Close array.
+  array->close();
+}
+
+void DeletesVFSFx::read_sparse(
+    std::vector<int>& a1,
+    std::vector<uint64_t>& dim1,
+    std::vector<uint64_t>& dim2,
+    std::string& stats,
+    tiledb_layout_t layout,
+    uint64_t timestamp) {
+  // Open array.
+  std::unique_ptr<Array> array;
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_.c_str(),
+      TILEDB_READ,
+      TemporalPolicy(TimeTravel, timestamp));
+
+  // Create query.
+  Query query(ctx_, *array, TILEDB_READ);
+  query.set_layout(layout);
+  query.set_data_buffer("a1", a1);
+  query.set_data_buffer("d1", dim1);
+  query.set_data_buffer("d2", dim2);
+
+  // Submit the query.
+  query.submit();
+
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Get the query stats.
+  stats = query.stats();
+
+  // Close array.
+  array->close();
+}
+
+void DeletesVFSFx::consolidate_sparse(bool vacuum) {
+  auto config = ctx_.config();
+  Array::consolidate(ctx_, array_name_.c_str(), &config);
+
+  if (vacuum) {
+    REQUIRE_NOTHROW(Array::vacuum(ctx_, array_name_.c_str(), &config));
+  }
+}
+
+void DeletesVFSFx::consolidate_commits_sparse(bool vacuum) {
+  auto config = ctx_.config();
+  config["sm.consolidation.mode"] = "commits";
+  Array::consolidate(ctx_, array_name_.c_str(), &config);
+
+  if (vacuum) {
+    config["sm.vacuum.mode"] = "commits";
+    REQUIRE_NOTHROW(Array::vacuum(ctx_, array_name_.c_str(), &config));
+  }
+}
+
+void DeletesVFSFx::write_delete_condition(
+    QueryCondition& qc, uint64_t timestamp) {
+  // Open array.
+  std::unique_ptr<Array> array;
+  array = std::make_unique<Array>(
+      ctx_,
+      array_name_.c_str(),
+      TILEDB_DELETE,
+      TemporalPolicy(TimeTravel, timestamp));
+
+  // Create query.
+  Query query(ctx_, *array, TILEDB_DELETE);
+
+  query.set_condition(qc);
+  query.submit();
+  CHECK(query.query_status() == Query::Status::COMPLETE);
+
+  // Close array.
+  array->close();
+}
+
+struct DeletesLocalFx {
   // Constants.
   const char* SPARSE_ARRAY_NAME = "test_deletes_array";
   const std::string GROUP_NAME = "test_deletes_group/";
@@ -59,18 +251,12 @@ struct DeletesFx {
   VFS vfs_;
   sm::StorageManager* sm_;
 
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 
   // Constructors/destructors.
-  DeletesFx();
-  ~DeletesFx();
+  DeletesLocalFx();
+  ~DeletesLocalFx();
 
   // Functions.
   void set_legacy();
@@ -114,7 +300,7 @@ struct DeletesFx {
   std::vector<std::string> list_schemas(const std::string& array_name);
 };
 
-DeletesFx::DeletesFx()
+DeletesLocalFx::DeletesLocalFx()
     : vfs_(ctx_) {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
@@ -123,10 +309,10 @@ DeletesFx::DeletesFx()
   vfs_ = VFS(ctx_);
 }
 
-DeletesFx::~DeletesFx() {
+DeletesLocalFx::~DeletesLocalFx() {
 }
 
-void DeletesFx::set_purge_deleted_cells() {
+void DeletesLocalFx::set_purge_deleted_cells() {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.consolidation.purge_deleted_cells", "true");
@@ -136,7 +322,7 @@ void DeletesFx::set_purge_deleted_cells() {
   vfs_ = VFS(ctx_);
 }
 
-void DeletesFx::set_legacy() {
+void DeletesLocalFx::set_legacy() {
   Config config;
   config.set("sm.consolidation.buffer_size", "1000");
   config.set("sm.query.sparse_global_order.reader", "legacy");
@@ -147,12 +333,12 @@ void DeletesFx::set_legacy() {
   vfs_ = VFS(ctx_);
 }
 
-void DeletesFx::create_dir(const std::string& path) {
+void DeletesLocalFx::create_dir(const std::string& path) {
   remove_dir(path);
   vfs_.create_dir(path.c_str());
 }
 
-void DeletesFx::create_simple_array(const std::string& path) {
+void DeletesLocalFx::create_simple_array(const std::string& path) {
   // Create domain.
   Domain domain(ctx_);
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 1}}, 1);
@@ -170,7 +356,7 @@ void DeletesFx::create_simple_array(const std::string& path) {
   Array::create(path, schema);
 }
 
-void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
+void DeletesLocalFx::create_sparse_array(bool allows_dups, bool encrypt) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
@@ -206,7 +392,7 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 }
 
-void DeletesFx::create_sparse_array_v11() {
+void DeletesLocalFx::create_sparse_array_v11() {
   // Get the v11 sparse array.
   std::string v11_arrays_dir =
       std::string(TILEDB_TEST_INPUTS_DIR) + "/arrays/sparse_array_v11";
@@ -218,7 +404,7 @@ void DeletesFx::create_sparse_array_v11() {
           SPARSE_ARRAY_NAME) == TILEDB_OK);
 }
 
-void DeletesFx::write_sparse(
+void DeletesLocalFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
@@ -249,19 +435,13 @@ void DeletesFx::write_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit/finalize the query.
-  submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  query.submit_and_finalize();
 
   // Close array.
   array->close();
 }
 
-void DeletesFx::write_sparse_v11(uint64_t timestamp) {
+void DeletesLocalFx::write_sparse_v11(uint64_t timestamp) {
   // Prepare cell buffers.
   std::vector<int> buffer_a1{0, 1, 2, 3};
   std::vector<uint64_t> buffer_a2{0, 1, 3, 6};
@@ -285,19 +465,13 @@ void DeletesFx::write_sparse_v11(uint64_t timestamp) {
   query.set_data_buffer("d2", buffer_coords_dim2);
 
   // Submit/finalize the query.
-  submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  query.submit_and_finalize();
 
   // Close array.
   array.close();
 }
 
-std::vector<tiledb::Object> DeletesFx::read_group(
+std::vector<tiledb::Object> DeletesLocalFx::read_group(
     const tiledb::Group& group) const {
   std::vector<tiledb::Object> ret;
   uint64_t count = group.member_count();
@@ -309,7 +483,7 @@ std::vector<tiledb::Object> DeletesFx::read_group(
   return ret;
 }
 
-void DeletesFx::read_sparse(
+void DeletesLocalFx::read_sparse(
     std::vector<int>& a1,
     std::vector<uint64_t>& dim1,
     std::vector<uint64_t>& dim2,
@@ -342,14 +516,8 @@ void DeletesFx::read_sparse(
   query.set_data_buffer("d2", dim2);
 
   // Submit the query.
-  submit_query_wrapper(
-      ctx_,
-      SPARSE_ARRAY_NAME,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_,
-      false);
+  query.submit();
+
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Get the query stats.
@@ -359,7 +527,7 @@ void DeletesFx::read_sparse(
   array->close();
 }
 
-void DeletesFx::consolidate_sparse(bool vacuum) {
+void DeletesLocalFx::consolidate_sparse(bool vacuum) {
   auto config = ctx_.config();
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
 
@@ -368,7 +536,7 @@ void DeletesFx::consolidate_sparse(bool vacuum) {
   }
 }
 
-void DeletesFx::consolidate_commits_sparse(bool vacuum) {
+void DeletesLocalFx::consolidate_commits_sparse(bool vacuum) {
   auto config = ctx_.config();
   config["sm.consolidation.mode"] = "commits";
   Array::consolidate(ctx_, SPARSE_ARRAY_NAME, &config);
@@ -379,7 +547,7 @@ void DeletesFx::consolidate_commits_sparse(bool vacuum) {
   }
 }
 
-void DeletesFx::consolidate_sparse_with_timestamps(
+void DeletesLocalFx::consolidate_sparse_with_timestamps(
     bool vacuum, int timestamp_start, int timestamp_end) {
   auto config = ctx_.config();
   config["sm.consolidation.timestamp_start"] =
@@ -393,7 +561,7 @@ void DeletesFx::consolidate_sparse_with_timestamps(
   }
 }
 
-void DeletesFx::write_delete_condition(
+void DeletesLocalFx::write_delete_condition(
     QueryCondition& qc, uint64_t timestamp, bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -416,27 +584,14 @@ void DeletesFx::write_delete_condition(
   Query query(ctx_, *array, TILEDB_DELETE);
 
   query.set_condition(qc);
-  // Submit the query. In certain tests we want to check if this call throws, so
-  // we call directly query.submit() if serialization is not enabled.
-  if (!serialize_) {
-    query.submit();
-  } else {
-    submit_query_wrapper(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        &query,
-        server_buffers_,
-        serialize_,
-        refactored_query_v2_,
-        false);
-  }
+  query.submit();
   CHECK(query.query_status() == Query::Status::COMPLETE);
 
   // Close array.
   array->close();
 }
 
-void DeletesFx::check_delete_conditions(
+void DeletesLocalFx::check_delete_conditions(
     std::vector<QueryCondition> qcs, uint64_t timestamp, bool encrypt) {
   // Open array.
   std::unique_ptr<Array> array;
@@ -471,27 +626,27 @@ void DeletesFx::check_delete_conditions(
   array->close();
 }
 
-void DeletesFx::remove_dir(const std::string& path) {
+void DeletesLocalFx::remove_dir(const std::string& path) {
   if (vfs_.is_dir(path)) {
     vfs_.remove_dir(path);
   }
 }
 
-void DeletesFx::remove_array(const std::string& array_name) {
+void DeletesLocalFx::remove_array(const std::string& array_name) {
   if (is_array(array_name)) {
     vfs_.remove_dir(array_name);
   }
 }
 
-void DeletesFx::remove_sparse_array() {
+void DeletesLocalFx::remove_sparse_array() {
   remove_array(SPARSE_ARRAY_NAME);
 }
 
-bool DeletesFx::is_array(const std::string& array_name) {
+bool DeletesLocalFx::is_array(const std::string& array_name) {
   return vfs_.is_dir(array_name);
 }
 
-void DeletesFx::validate_array_dir_after_delete(const std::string& path) {
+void DeletesLocalFx::validate_array_dir_after_delete(const std::string& path) {
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_commits_dir_name));
   REQUIRE(
       !vfs_.is_dir(path + tiledb::sm::constants::array_fragment_meta_dir_name));
@@ -502,13 +657,13 @@ void DeletesFx::validate_array_dir_after_delete(const std::string& path) {
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::array_schema_dir_name));
 }
 
-void DeletesFx::validate_group_dir_after_delete(const std::string& path) {
+void DeletesLocalFx::validate_group_dir_after_delete(const std::string& path) {
   REQUIRE(!vfs_.is_file(path + tiledb::sm::constants::group_filename));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_detail_dir_name));
   REQUIRE(!vfs_.is_dir(path + tiledb::sm::constants::group_metadata_dir_name));
 }
 
-std::vector<std::string> DeletesFx::list_schemas(
+std::vector<std::string> DeletesLocalFx::list_schemas(
     const std::string& array_name) {
   auto& enum_dir = tiledb::sm::constants::array_enumerations_dir_name;
   auto schemas =
@@ -532,23 +687,12 @@ std::vector<std::string> DeletesFx::list_schemas(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test writing delete condition",
     "[cppapi][deletes][write-check]") {
   remove_sparse_array();
 
   bool encrypt = GENERATE(true, false);
-
-#ifdef TILEDB_SERIALIZATION
-  // serialization not supported for encrypted arrays
-  if (!encrypt) {
-    serialize_ = GENERATE(false, true);
-    if (serialize_) {
-      refactored_query_v2_ = GENERATE(true, false);
-    }
-  }
-#endif
-
   create_sparse_array(false, encrypt);
 
   // Define query condition (a1 < 4).
@@ -572,7 +716,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, writing invalid delete condition",
     "[cppapi][deletes][write-check][invalid]") {
   remove_sparse_array();
@@ -589,7 +733,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, open for delete invalid version",
     "[cppapi][deletes][invalid-version]") {
   if constexpr (is_experimental_build) {
@@ -612,17 +756,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesVFSFx,
     "CPP API: Test deletes, reading with delete condition",
-    "[cppapi][deletes][read]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-  remove_sparse_array();
-
+    "[cppapi][deletes][read][rest-fails][sc-45852]") {
   bool consolidate = GENERATE(true, false);
   bool purge_deleted_cells = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
@@ -655,7 +791,7 @@ TEST_CASE_METHOD(
   }
 
   // Consolidate with delete.
-  if (consolidate) {
+  if (consolidate && !vfs_test_setup_.is_rest()) {
     consolidate_sparse(vacuum);
   }
 
@@ -715,22 +851,13 @@ TEST_CASE_METHOD(
       c_dim1_3.data(), dim1_3.data(), c_dim1_3.size() * sizeof(uint64_t)));
   CHECK(!memcmp(
       c_dim2_3.data(), dim2_3.data(), c_dim2_3.size() * sizeof(uint64_t)));
-
-  remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, reading with delete condition, consolidated "
     "fragment",
     "[cppapi][deletes][read][consolidated]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   bool consolidate = GENERATE(true, false);
@@ -908,19 +1035,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesVFSFx,
     "CPP API: Test deletes, reading with delete condition, delete duplicates "
     "from later fragments",
-    "[cppapi][deletes][duplicates]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  remove_sparse_array();
-
+    "[cppapi][deletes][duplicates][rest-fails][sc-45852]") {
   bool purge_deleted_cells = GENERATE(true, false);
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
@@ -954,7 +1072,7 @@ TEST_CASE_METHOD(
   }
 
   // Consolidate with delete.
-  if (consolidate) {
+  if (consolidate && !vfs_test_setup_.is_rest()) {
     consolidate_sparse(vacuum);
   }
 
@@ -982,21 +1100,12 @@ TEST_CASE_METHOD(
   CHECK(!memcmp(c_a1.data(), a1.data(), c_a1.size() * sizeof(int)));
   CHECK(!memcmp(c_dim1.data(), dim1.data(), c_dim1.size() * sizeof(uint64_t)));
   CHECK(!memcmp(c_dim2.data(), dim2.data(), c_dim2.size() * sizeof(uint64_t)));
-
-  remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, commits consolidation",
     "[cppapi][deletes][commits][consolidation]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   bool vacuum = GENERATE(false, true);
 
   remove_sparse_array();
@@ -1045,16 +1154,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, consolidation, delete same cell earlier",
     "[cppapi][deletes][consolidation][same-cell]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   bool allows_dups = GENERATE(true, false);
@@ -1172,16 +1274,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, multiple consolidation with deletes",
     "[cppapi][deletes][consolidation][multiple]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1293,16 +1388,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, multiple cells with same coords in same fragment",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1478,18 +1566,11 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test deletes, multiple cells with same coords in same fragment, "
     "across tiles",
     "[cppapi][deletes][consolidation][multiple-cells-same-coords][across-"
     "tiles]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   bool purge_deleted_cells = GENERATE(true, false);
@@ -1665,17 +1746,10 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test consolidating fragment with delete timestamp, with purge "
     "option",
     "[cppapi][deletes][consolidation][with-delete-meta][purge]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
 
   create_sparse_array(false);
@@ -1719,7 +1793,7 @@ TEST_CASE_METHOD(
 // TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
 #ifndef _WIN32
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Test writing delete in middle of fragment consolidated without "
     "timestamps",
     "[cppapi][deletes][write][old-consolidated-fragment]") {
@@ -1754,7 +1828,7 @@ TEST_CASE_METHOD(
 #endif
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Deletion of invalid fragment writes",
     "[cppapi][deletes][fragments][invalid]") {
   // Note: An array must be open in MODIFY_EXCLUSIVE mode to delete fragments
@@ -1781,18 +1855,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesVFSFx,
     "CPP API: Deletion of fragment writes by timestamp and uri",
-    "[cppapi][deletes][fragments]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  remove_sparse_array();
-
+    "[cppapi][deletes][fragments][rest-fails][sc-25074]") {
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
@@ -1807,12 +1872,13 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
+  CHECK(tiledb::test::num_fragments(vfs_array_name_) == 4);
 
   if (consolidate) {
+    auto vfs = VFS(ctx_);
     consolidate_commits_sparse(vacuum);
-    CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 4);
-    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
+    CHECK(tiledb::test::num_fragments(vfs_array_name_) == 4);
+    CommitsDirectory commits_dir(vfs, vfs_array_name_);
     if (vacuum) {
       CHECK(commits_dir.dir_size() == 1);
     } else {
@@ -1825,24 +1891,25 @@ TEST_CASE_METHOD(
 
   // Delete fragments
   SECTION("delete fragments by timestamps") {
-    Array::delete_fragments(ctx_, SPARSE_ARRAY_NAME, 2, 6);
+    Array::delete_fragments(ctx_, array_name_, 2, 6);
   }
 
   SECTION("delete fragments by uris") {
-    FragmentInfo fragment_info(ctx_, std::string(SPARSE_ARRAY_NAME));
+    FragmentInfo fragment_info(ctx_, std::string(array_name_));
     fragment_info.load();
     auto fragment_name1 = fragment_info.fragment_uri(1);
     auto fragment_name2 = fragment_info.fragment_uri(2);
     const char* fragment_uris[2] = {
         fragment_name1.c_str(), fragment_name2.c_str()};
-    Array::delete_fragments_list(ctx_, SPARSE_ARRAY_NAME, fragment_uris, 2);
+    Array::delete_fragments_list(ctx_, array_name_, fragment_uris, 2);
   }
 
   // Check commits directory after deletion
   if (consolidate) {
+    auto vfs = VFS(ctx_);
     /* Note: An ignore file is written by delete_fragments if there are
      * consolidated commits to be ignored by the delete. */
-    CommitsDirectory commits_dir(vfs_, SPARSE_ARRAY_NAME);
+    CommitsDirectory commits_dir(vfs, vfs_array_name_);
     CHECK(
         commits_dir.file_count(
             tiledb::sm::constants::con_commits_file_suffix) == 1);
@@ -1854,7 +1921,7 @@ TEST_CASE_METHOD(
       CHECK(commits_dir.dir_size() == 4);
     }
   }
-  CHECK(tiledb::test::num_fragments(SPARSE_ARRAY_NAME) == 2);
+  CHECK(tiledb::test::num_fragments(vfs_array_name_) == 2);
 
   // Read array
   uint64_t buffer_size = 4;
@@ -1869,21 +1936,12 @@ TEST_CASE_METHOD(
   CHECK(c_a1 == a1);
   CHECK(c_dim1 == dim1);
   CHECK(c_dim2 == dim2);
-
-  remove_sparse_array();
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Deletion of fragment writes consolidated with timestamps",
     "[cppapi][deletes][fragments][consolidation_with_timestamps]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
   remove_sparse_array();
   bool vacuum = GENERATE(true, false);
 
@@ -1943,14 +2001,9 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx, "CPP API: Deletion of array data", "[cppapi][deletes][array]") {
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
+    DeletesLocalFx,
+    "CPP API: Deletion of array data",
+    "[cppapi][deletes][array]") {
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME) + "/";
 
@@ -2022,19 +2075,12 @@ TEST_CASE_METHOD(
 // TODO: remove once tiledb_vfs_copy_dir is implemented for windows.
 #ifndef _WIN32
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Deletion of older-versioned array data",
     "[cppapi][deletes][array][older_version]") {
   if constexpr (is_experimental_build) {
     return;
   }
-
-#ifdef TILEDB_SERIALIZATION
-  serialize_ = GENERATE(false, true);
-  if (serialize_) {
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
 
   remove_sparse_array();
   auto array_name = std::string(SPARSE_ARRAY_NAME) + "/";
@@ -2082,7 +2128,7 @@ TEST_CASE_METHOD(
 #endif
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Deletion of invalid group writes",
     "[cppapi][deletes][group][invalid]") {
   create_dir(GROUP_NAME);
@@ -2107,7 +2153,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Deletion of group writes",
     "[cppapi][deletes][group]") {
   create_dir(GROUP_NAME);
@@ -2205,7 +2251,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    DeletesFx,
+    DeletesLocalFx,
     "CPP API: Recursive deletion of group writes",
     "[cppapi][deletes][group][recursive]") {
   create_dir(GROUP_NAME);
