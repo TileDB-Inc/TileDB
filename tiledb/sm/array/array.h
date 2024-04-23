@@ -815,6 +815,46 @@ class Array {
       unsigned idx, void* start, void* end, bool* is_empty);
 
   /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param name The dimension name.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_from_name(
+      const char* name, void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain size of the open array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param name The dimension name.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_size_from_name(
+      const char* name,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+
+   * @param name The dimension name.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_from_name(
+      const char* name, void* start, void* end, bool* is_empty);
+
+  /**
    * Retrieves the array metadata object that is already loaded. If it's not yet
    * loaded it will be empty.
    */
