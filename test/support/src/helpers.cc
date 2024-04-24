@@ -1251,6 +1251,15 @@ int32_t num_fragments(const std::string& array_name) {
   return static_cast<uint32_t>(uris.size());
 }
 
+int32_t num_fragments(Context ctx, const std::string& array_name) {
+  VFS vfs(ctx);
+
+  // Get all URIs in the array directory
+  auto uris = vfs.ls(
+      array_name + "/" + tiledb::sm::constants::array_fragments_dir_name);
+  return static_cast<uint32_t>(uris.size());
+}
+
 std::string random_string(const uint64_t l) {
   static const char char_set[] =
       "0123456789"

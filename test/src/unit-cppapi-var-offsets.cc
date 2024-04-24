@@ -42,6 +42,10 @@ struct VariableOffsetsFx {
   test::VFSTestSetup vfs_test_setup_;
   Context ctx;
 
+  VariableOffsetsFx()
+      : ctx(vfs_test_setup_.ctx()) {
+  }
+
   void create_sparse_array(const std::string& array_name) {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))

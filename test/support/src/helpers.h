@@ -774,6 +774,12 @@ int32_t num_commits(const std::string& array_name);
 int32_t num_fragments(const std::string& array_name);
 
 /**
+ * Returns the number of fragments in the input array,
+ * given a context.
+ */
+int32_t num_fragments(Context ctx, const std::string& array_name);
+
+/**
  * Creates a random string of length l.
  */
 std::string random_string(const uint64_t l);

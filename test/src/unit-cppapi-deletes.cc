@@ -1872,12 +1872,12 @@ TEST_CASE_METHOD(
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 5);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 7);
-  CHECK(tiledb::test::num_fragments(vfs_array_name_) == 4);
+  CHECK(tiledb::test::num_fragments(ctx_, vfs_array_name_) == 4);
 
   if (consolidate) {
     auto vfs = VFS(ctx_);
     consolidate_commits_sparse(vacuum);
-    CHECK(tiledb::test::num_fragments(vfs_array_name_) == 4);
+    CHECK(tiledb::test::num_fragments(ctx_, vfs_array_name_) == 4);
     CommitsDirectory commits_dir(vfs, vfs_array_name_);
     if (vacuum) {
       CHECK(commits_dir.dir_size() == 1);
@@ -1921,7 +1921,7 @@ TEST_CASE_METHOD(
       CHECK(commits_dir.dir_size() == 4);
     }
   }
-  CHECK(tiledb::test::num_fragments(vfs_array_name_) == 2);
+  CHECK(tiledb::test::num_fragments(ctx_, vfs_array_name_) == 2);
 
   // Read array
   uint64_t buffer_size = 4;

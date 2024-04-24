@@ -38,8 +38,7 @@
 using namespace tiledb;
 using namespace tiledb::test;
 
-void create_int32_array(const std::string& array_name) {
-  Context ctx;
+void create_int32_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<int32_t>(ctx, "d1", {{0, 100}});
   auto d2 = Dimension::create<int32_t>(ctx, "d2", {{0, 200}});
@@ -54,8 +53,8 @@ void create_int32_array(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_int32_array_negative_domain(const std::string& array_name) {
-  Context ctx;
+void create_int32_array_negative_domain(
+    Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<int32_t>(ctx, "d1", {{-50, 50}});
   auto d2 = Dimension::create<int32_t>(ctx, "d2", {{-100, 100}});
@@ -70,8 +69,7 @@ void create_int32_array_negative_domain(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_float32_array(const std::string& array_name) {
-  Context ctx;
+void create_float32_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create<float>(ctx, "d1", {{0.0, 1.0}});
   auto d2 = Dimension::create<float>(ctx, "d2", {{0.0, 2.0}});
@@ -86,8 +84,7 @@ void create_float32_array(const std::string& array_name) {
   Array::create(array_name, schema);
 }
 
-void create_string_array(const std::string& array_name) {
-  Context ctx;
+void create_string_array(Context ctx, const std::string& array_name) {
   Domain domain(ctx);
   auto d1 = Dimension::create(ctx, "d1", TILEDB_STRING_ASCII, nullptr, nullptr);
   auto d2 = Dimension::create(ctx, "d2", TILEDB_STRING_ASCII, nullptr, nullptr);
@@ -104,12 +101,12 @@ void create_string_array(const std::string& array_name) {
 
 template <class T1, class T2>
 void write_2d_array(
+    Context ctx,
     const std::string& array_name,
     std::vector<T1>& buff_d1,
     std::vector<T2>& buff_d2,
     std::vector<int32_t>& buff_a,
     tiledb_layout_t layout) {
-  Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
   query_w.set_data_buffer("a", buff_a);
@@ -127,6 +124,7 @@ void write_2d_array(
 }
 
 void write_2d_array(
+    Context ctx,
     const std::string& array_name,
     std::vector<uint64_t>& off_d1,
     std::string& buff_d1,
@@ -134,7 +132,6 @@ void write_2d_array(
     std::string& buff_d2,
     std::vector<int32_t>& buff_a,
     tiledb_layout_t layout) {
-  Context ctx;
   Array array_w(ctx, array_name, TILEDB_WRITE);
   Query query_w(ctx, array_w, TILEDB_WRITE);
   query_w.set_data_buffer("a", buff_a);
@@ -219,7 +216,7 @@ TEST_CASE("C++ API: Test Hilbert, errors", "[cppapi][hilbert][error]") {
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Hilbert order not applicable to write queries
   Array array_w(ctx, array_name, TILEDB_WRITE);
@@ -258,14 +255,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Read
   SECTION("- Global order") {
@@ -370,7 +367,8 @@ TEST_CASE(
     // fully removed for overlapping ranges, this section can be deleted.
     Config cfg;
     cfg["sm.merge_overlapping_ranges_experimental"] = "false";
-    ctx = Context(cfg);
+    vfs_test_setup.update_config(cfg.ptr().get());
+    ctx = vfs_test_setup.ctx();
 
     // regression test for sc-11244
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -413,14 +411,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_d1 = {1, 1, 4, 5};
   std::vector<int32_t> buff_d2 = {1, 3, 2, 4};
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -525,7 +523,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
@@ -556,14 +554,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -620,21 +618,21 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {2, 2, 3, 7};
   buff_d2 = {1, 2, 7, 7};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -673,14 +671,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -712,21 +710,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array(array_name);
+  create_int32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {1, 1, 5, 4};
   std::vector<int32_t> buff_d2 = {1, 3, 4, 2};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {2, 2, 3, 7};
   buff_d2 = {1, 2, 7, 7};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -778,7 +776,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
@@ -831,14 +829,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_d1 = {-49, -49, -46, -45};
   std::vector<int32_t> buff_d2 = {-99, -97, -98, -96};
   std::vector<int32_t> buff_a = {3, 2, 1, 4};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -944,14 +942,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -1012,21 +1010,21 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {-48, -48, -47, -43};
   buff_d2 = {-99, -98, -93, -93};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1064,21 +1062,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {-48, -48, -47, -43};
   buff_d2 = {-99, -98, -93, -93};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -1123,14 +1121,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_int32_array_negative_domain(array_name);
+  create_int32_array_negative_domain(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {3, 2, 4, 1};
   std::vector<int32_t> buff_d1 = {-49, -49, -45, -46};
   std::vector<int32_t> buff_d2 = {-99, -97, -96, -98};
   write_2d_array<int32_t, int32_t>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1155,7 +1153,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1213,14 +1211,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.41f, 0.4f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.41f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -1341,14 +1339,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   SECTION("- Col-major") {
     Array array_r(ctx, array_name, TILEDB_READ);
@@ -1409,21 +1407,21 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {0.2f, 0.2f, 0.3f, 0.7f};
   buff_d2 = {0.2f, 0.1f, 0.7f, 0.7f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1471,21 +1469,21 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
   buff_d1 = {0.2f, 0.2f, 0.3f, 0.7f};
   buff_d2 = {0.2f, 0.1f, 0.7f, 0.7f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -1540,14 +1538,14 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_float32_array(array_name);
+  create_float32_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   std::vector<float> buff_d1 = {0.1f, 0.1f, 0.4f, 0.5f};
   std::vector<float> buff_d2 = {0.3f, 0.1f, 0.2f, 0.4f};
   write_2d_array<float, float>(
-      array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx, array_name, buff_d1, buff_d2, buff_a, TILEDB_UNORDERED);
 
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r, TILEDB_READ);
@@ -1572,7 +1570,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write array
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1652,7 +1650,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1661,7 +1659,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
@@ -1670,7 +1675,14 @@ TEST_CASE(
   buff_d2 = std::string("aceyellowredgrey");
   off_d2 = {0, 3, 9, 12};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);
@@ -1728,7 +1740,7 @@ TEST_CASE(
     CHECK_NOTHROW(vfs.remove_dir(array_name));
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write first fragment
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1737,7 +1749,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Write second fragment
   buff_a = {5, 6, 7, 8};
@@ -1746,7 +1765,14 @@ TEST_CASE(
   buff_d2 = std::string("aceyellowredgrey");
   off_d2 = {0, 3, 9, 12};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Consolidate and vacuum
   Config config;
@@ -1814,7 +1840,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
   auto buff_d1 = std::string("cameldog331a");
@@ -1822,7 +1848,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   SECTION("- Row-major") {
     // Read
@@ -1918,7 +1951,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -1927,7 +1960,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   SECTION("- entire domain") {
     // Read array
@@ -2144,7 +2184,7 @@ TEST_CASE(
   auto array_name{vfs_test_setup.array_uri("hilbert_array")};
 
   // Create array
-  create_string_array(array_name);
+  create_string_array(ctx, array_name);
 
   // Write
   std::vector<int32_t> buff_a = {2, 3, 1, 4};
@@ -2153,7 +2193,14 @@ TEST_CASE(
   auto buff_d2 = std::string("stockstopt1cat");
   std::vector<uint64_t> off_d2 = {0, 5, 9, 11};
   write_2d_array(
-      array_name, off_d1, buff_d1, off_d2, buff_d2, buff_a, TILEDB_UNORDERED);
+      ctx,
+      array_name,
+      off_d1,
+      buff_d1,
+      off_d2,
+      buff_d2,
+      buff_a,
+      TILEDB_UNORDERED);
 
   // Read
   Array array_r(ctx, array_name, TILEDB_READ);
