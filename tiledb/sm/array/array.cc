@@ -99,6 +99,11 @@ Array::Array(
     , memory_tracker_(storage_manager->resources().create_memory_tracker())
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
+  log_event(true, Event::CONSTRUCT);
+}
+
+Array::~Array() {
+  log_event(true, Event::DESTRUCT);
 }
 
 /* ********************************* */
@@ -122,6 +127,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  log_event(true, Event::OPEN_NO_FRAGMENTS);
+
   auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
   // Checks
@@ -222,6 +229,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  // Delegate and log in the open method that takes a timestamp range
   return Array::open(
       query_type,
       array_dir_timestamp_start_,
@@ -238,6 +246,8 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
+  log_event(true, Event::OPEN);
+
   auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
   Status st;
@@ -435,6 +445,8 @@ Status Array::open(
 }
 
 Status Array::close() {
+  log_event(true, Event::CLOSE);
+
   Status st;
   // Check if array is open
   if (!is_open()) {
@@ -786,6 +798,8 @@ Status Array::get_max_buffer_size(
 }
 
 Status Array::reopen() {
+  // Delegate and log in the reopen method that takes a timestamp range.
+
   // Note: Array will only reopen for reads. This is why we are checking the
   // timestamp for the array directory and not new components. This needs to be
   // updated if non-read reopens are allowed.
@@ -802,6 +816,8 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
+  log_event(true, Event::REOPEN);
+
   auto timer = resources_.stats().start_timer("array_reopen");
   // Check the array was opened already in READ mode.
   if (!is_open_) {

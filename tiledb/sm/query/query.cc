@@ -107,6 +107,7 @@ Query::Query(
     , fragment_size_(std::numeric_limits<uint64_t>::max())
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
+  log_event(false, Event::CONSTRUCT);
   assert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {
@@ -138,6 +139,8 @@ Query::Query(
 }
 
 Query::~Query() {
+  log_event(false, Event::DESTRUCT);
+
   bool found = false;
   bool use_malloc_trim = false;
   const Status& st =

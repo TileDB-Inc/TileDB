@@ -51,6 +51,31 @@ class logger;
 namespace tiledb {
 namespace common {
 
+enum Event {
+  NONE, OPEN, OPEN_NO_FRAGMENTS, REOPEN, CLOSE, CONSTRUCT, DESTRUCT,
+};
+
+struct LogItem {
+  /// The timestamp for the log entry.
+  uint64_t _timestamp;
+  /// ID for the associated array.
+  uint64_t _id;
+  /// True if event actor is an array, else false.
+  bool _is_array;
+  /// The event for the log entry.
+  Event _event;
+};
+
+class RestLogger {
+ public:
+  /// Latest array ID created.
+  uint64_t _latest_array_id;
+  /// Current index in the log.
+  uint64_t _index;
+  /// Reserve 1k log items.
+  std::array<LogItem, 1000> _logs;
+};
+
 /** Definition of class Logger. */
 class Logger {
  public:
@@ -431,6 +456,8 @@ class Logger {
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
+
+void log_event(bool is_array, Event event);
 
 /**
  * Returns a global logger to be used for general logging

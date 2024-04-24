@@ -289,7 +289,7 @@ class Array {
       ConsistencyController& cc = controller());
 
   /** Destructor. */
-  ~Array() = default;
+  ~Array();
 
   DISABLE_COPY_AND_COPY_ASSIGN(Array);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Array);

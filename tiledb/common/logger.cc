@@ -43,6 +43,7 @@
 #include "tiledb/common/logger.h"
 
 namespace tiledb::common {
+std::atomic<RestLogger> g_rest_logger;
 
 spdlog::level::level_enum to_spdlog_level(Logger::Level lvl) {
   switch (lvl) {
@@ -306,6 +307,25 @@ std::string Logger::add_tag(const std::string& tag, uint64_t id) {
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
+
+void log_event(bool is_array, Event event) {
+  auto logger = g_rest_logger.load();
+  RestLogger new_logger;
+
+  uint64_t ms_since_epoch =
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          std::chrono::system_clock::now().time_since_epoch())
+          .count();
+  if (is_array && event == Event::CONSTRUCT) {
+    logger._latest_array_id++;
+  }
+
+  do {
+    new_logger = logger;
+    new_logger._logs[new_logger._index++] =
+        LogItem{ms_since_epoch, new_logger._latest_array_id, is_array, event};
+  } while (!g_rest_logger.compare_exchange_strong(logger, new_logger));
+}
 
 std::string global_logger_name(const Logger::Format format) {
   std::string name{
