@@ -1124,7 +1124,7 @@ FieldDataSize Subarray::get_est_result_size(
   }
 
   bool is_variable_sized{
-      array_schema.var_size(name) || name == constants::coords};
+      name != constants::coords && array_schema.var_size(name)};
   bool is_nullable{array_schema.is_nullable(name)};
 
   // Compute tile overlap for each fragment
@@ -1202,7 +1202,7 @@ FieldDataSize Subarray::get_max_memory_size(
   }
 
   bool is_variable_sized{
-      array_schema.var_size(name) || name == constants::coords};
+      name != constants::coords && array_schema.var_size(name)};
   bool is_nullable{array_schema.is_nullable(name)};
 
   // Compute tile overlap for each fragment
