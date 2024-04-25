@@ -60,7 +60,8 @@ enum Event {
   CONSTRUCT,
   DESTRUCT,
   QUERY_SUBMIT_START,
-  QUERY_SUBMIT_END
+  QUERY_SUBMIT_END,
+  QUERY_CANCEL
 };
 
 struct LogItem {

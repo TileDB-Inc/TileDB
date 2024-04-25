@@ -808,6 +808,8 @@ const std::vector<UpdateValue>& Query::update_values() const {
 }
 
 Status Query::cancel() {
+  g_rest_logger.log_event(
+    rest_logger_id_, array_rest_logger_id_, false, Event::QUERY_CANCEL);
   status_ = QueryStatus::FAILED;
   return Status::Ok();
 }
