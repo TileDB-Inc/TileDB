@@ -145,7 +145,6 @@ Query::~Query() {
   g_rest_logger.log_event(
       rest_logger_id_, array_rest_logger_id_, false, Event::DESTRUCT);
 
-  storage_manager_->compute_tp()->cancel_all_tasks();
   bool found = false;
   bool use_malloc_trim = false;
   const Status& st =
