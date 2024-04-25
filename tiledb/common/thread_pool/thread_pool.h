@@ -77,6 +77,10 @@ class ThreadPool {
   /* ********************************* */
 
  public:
+  void cancel_all_tasks() {
+    shutdown();
+  }
+
   size_t concurrency_level() {
     return concurrency_level_;
   }
