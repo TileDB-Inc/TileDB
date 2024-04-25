@@ -76,7 +76,9 @@ class StrategyParams {
       Layout layout,
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization)
+      bool skip_checks_serialization,
+      uint64_t rest_logger_id,
+      uint64_t array_rest_logger_id)
       : array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
       , storage_manager_(storage_manager)
@@ -88,7 +90,9 @@ class StrategyParams {
       , layout_(layout)
       , condition_(condition)
       , default_channel_aggregates_(default_channel_aggregates)
-      , skip_checks_serialization_(skip_checks_serialization) {
+      , skip_checks_serialization_(skip_checks_serialization)
+      , rest_logger_id_(rest_logger_id)
+      , array_rest_logger_id_(array_rest_logger_id) {
   }
 
   /* ********************************* */
@@ -154,6 +158,16 @@ class StrategyParams {
     return skip_checks_serialization_;
   }
 
+  /** Get rest logger id. */
+  uint64_t rest_logger_id() {
+    return rest_logger_id_;
+  }
+
+  /** Get rest logger id for the array. */
+  uint64_t array_rest_logger_id() {
+    return array_rest_logger_id_;
+  }
+
  private:
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
@@ -194,6 +208,12 @@ class StrategyParams {
 
   /** Skip checks for serialization. */
   bool skip_checks_serialization_;
+
+  /** Id for the rest logger. */
+  uint64_t rest_logger_id_;
+
+  /** Array Id for the rest logger. */
+  uint64_t array_rest_logger_id_;
 };
 
 /** Processes read or write queries. */
@@ -301,6 +321,12 @@ class StrategyBase {
 
   /** The offset bitsize used for variable-sized attributes. */
   uint32_t offsets_bitsize_;
+
+  /** Id for the rest logger. */
+  uint64_t rest_logger_id_;
+
+  /** Array Id for the rest logger. */
+  uint64_t array_rest_logger_id_;
 
   /* ********************************* */
   /*          PROTECTED METHODS        */

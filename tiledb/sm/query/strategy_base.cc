@@ -60,7 +60,9 @@ StrategyBase::StrategyBase(
     , subarray_(params.subarray())
     , offsets_format_mode_(Config::SM_OFFSETS_FORMAT_MODE)
     , offsets_extra_element_(false)
-    , offsets_bitsize_(constants::cell_var_offset_size * 8) {
+    , offsets_bitsize_(constants::cell_var_offset_size * 8)
+    , rest_logger_id_(params.rest_logger_id())
+    , array_rest_logger_id_(params.array_rest_logger_id()) {
 }
 
 void StrategyBase::set_stats(const stats::StatsData& data) {

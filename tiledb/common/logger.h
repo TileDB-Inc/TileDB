@@ -52,29 +52,54 @@ namespace tiledb {
 namespace common {
 
 enum Event {
-  NONE, OPEN, OPEN_NO_FRAGMENTS, REOPEN, CLOSE, CONSTRUCT, DESTRUCT,
+  NONE,
+  OPEN,
+  OPEN_NO_FRAGMENTS,
+  REOPEN,
+  CLOSE,
+  CONSTRUCT,
+  DESTRUCT,
+  QUERY_SUBMIT_START,
+  QUERY_SUBMIT_END
 };
 
 struct LogItem {
-  /// The timestamp for the log entry.
-  uint64_t _timestamp;
-  /// ID for the associated array.
-  uint64_t _id;
-  /// True if event actor is an array, else false.
-  bool _is_array;
-  /// The event for the log entry.
-  Event _event;
+  /** The timestamp for the log entry. */
+  uint64_t timestamp_;
+  /** ID for the object. */
+  uint64_t id_;
+  /** ID for the associated array. */
+  uint64_t array_id_;
+  /** True if event actor is an array, else false. */
+  bool is_array_;
+  /** The event for the log entry. */
+  Event event_;
 };
 
 class RestLogger {
  public:
-  /// Latest array ID created.
-  uint64_t _latest_array_id;
-  /// Current index in the log.
-  uint64_t _index;
-  /// Reserve 1k log items.
-  std::array<LogItem, 1000> _logs;
+  void log_event(uint64_t id, uint64_t array_id, bool is_array, Event event) {
+    uint64_t ms_since_epoch =
+        std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::system_clock::now().time_since_epoch())
+            .count();
+
+    uint64_t idx = ++index_;
+
+    logs_[idx] = LogItem{ms_since_epoch, id, array_id, is_array, event};
+  }
+
+  /** Latest array ID created. */
+  std::atomic<uint64_t> object_id_;
+
+  /** Current index in the log. */
+  std::atomic<uint64_t> index_;
+
+  /** Reserve 1k log items. */
+  std::array<LogItem, 100000> logs_;
 };
+
+extern RestLogger g_rest_logger;
 
 /** Definition of class Logger. */
 class Logger {
@@ -456,8 +481,6 @@ class Logger {
 /* ********************************* */
 /*              GLOBAL               */
 /* ********************************* */
-
-void log_event(bool is_array, Event event);
 
 /**
  * Returns a global logger to be used for general logging

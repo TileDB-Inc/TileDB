@@ -854,6 +854,16 @@ class Query {
    */
   RestClient* rest_client() const;
 
+  /** Get rest logger id. */
+  uint64_t rest_logger_id() {
+    return rest_logger_id_;
+  }
+
+  /** Get rest logger id for the array. */
+  uint64_t array_rest_logger_id() {
+    return array_rest_logger_id_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1057,6 +1067,12 @@ class Query {
    * default constructor.
    */
   std::shared_ptr<QueryChannel> aggregate_channel_{};
+
+  /** Id for the rest logger. */
+  uint64_t rest_logger_id_;
+
+  /** Array Id for the rest logger. */
+  uint64_t array_rest_logger_id_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

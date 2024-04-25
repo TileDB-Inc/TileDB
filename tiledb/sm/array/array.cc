@@ -98,12 +98,15 @@ Array::Array(
     , remote_(array_uri.is_tiledb())
     , memory_tracker_(storage_manager->resources().create_memory_tracker())
     , consistency_controller_(cc)
-    , consistency_sentry_(nullopt) {
-  log_event(true, Event::CONSTRUCT);
+    , consistency_sentry_(nullopt)
+    , rest_logger_id_(++g_rest_logger.object_id_) {
+  g_rest_logger.log_event(
+      rest_logger_id_, rest_logger_id_, true, Event::CONSTRUCT);
 }
 
 Array::~Array() {
-  log_event(true, Event::DESTRUCT);
+  g_rest_logger.log_event(
+      rest_logger_id_, rest_logger_id_, true, Event::DESTRUCT);
 }
 
 /* ********************************* */
@@ -127,7 +130,8 @@ Status Array::open_without_fragments(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  log_event(true, Event::OPEN_NO_FRAGMENTS);
+  g_rest_logger.log_event(
+      rest_logger_id_, rest_logger_id_, true, Event::OPEN_NO_FRAGMENTS);
 
   auto timer = resources_.stats().start_timer("array_open_without_fragments");
   Status st;
@@ -246,7 +250,7 @@ Status Array::open(
     EncryptionType encryption_type,
     const void* encryption_key,
     uint32_t key_length) {
-  log_event(true, Event::OPEN);
+  g_rest_logger.log_event(rest_logger_id_, rest_logger_id_, true, Event::OPEN);
 
   auto timer = resources_.stats().start_timer(
       "array_open_" + query_type_str(query_type));
@@ -445,7 +449,7 @@ Status Array::open(
 }
 
 Status Array::close() {
-  log_event(true, Event::CLOSE);
+  g_rest_logger.log_event(rest_logger_id_, rest_logger_id_, true, Event::CLOSE);
 
   Status st;
   // Check if array is open
@@ -816,7 +820,8 @@ Status Array::reopen() {
 }
 
 Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
-  log_event(true, Event::REOPEN);
+  g_rest_logger.log_event(
+      rest_logger_id_, rest_logger_id_, true, Event::REOPEN);
 
   auto timer = resources_.stats().start_timer("array_reopen");
   // Check the array was opened already in READ mode.

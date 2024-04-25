@@ -106,8 +106,11 @@ Query::Query(
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
     , query_remote_buffer_storage_(std::nullopt)
-    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
-  log_event(false, Event::CONSTRUCT);
+    , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)}
+    , rest_logger_id_(++g_rest_logger.object_id_)
+    , array_rest_logger_id_(array->rest_logger_id()) {
+  g_rest_logger.log_event(
+      rest_logger_id_, array_rest_logger_id_, false, Event::CONSTRUCT);
   assert(array->is_open());
 
   if (array->get_query_type() == QueryType::READ) {
@@ -139,7 +142,8 @@ Query::Query(
 }
 
 Query::~Query() {
-  log_event(false, Event::DESTRUCT);
+  g_rest_logger.log_event(
+      rest_logger_id_, array_rest_logger_id_, false, Event::DESTRUCT);
 
   bool found = false;
   bool use_malloc_trim = false;
@@ -1817,7 +1821,9 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       layout_,
       condition_,
       default_channel_aggregates_,
-      skip_checks_serialization);
+      skip_checks_serialization,
+      rest_logger_id_,
+      array_rest_logger_id_);
   if (type_ == QueryType::WRITE || type_ == QueryType::MODIFY_EXCLUSIVE) {
     if (layout_ == Layout::COL_MAJOR || layout_ == Layout::ROW_MAJOR) {
       if (!array_schema_->dense()) {

@@ -1247,7 +1247,8 @@ Status StorageManagerCanonical::object_iter_next_preorder(
 
 Status StorageManagerCanonical::query_submit(Query* query) {
   // Process the query
-  QueryInProgress in_progress(this);
+  QueryInProgress in_progress(
+      this, query->rest_logger_id(), query->array_rest_logger_id());
   auto st = query->process();
 
   return st;

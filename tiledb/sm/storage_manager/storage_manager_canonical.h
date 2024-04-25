@@ -47,6 +47,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
+#include "tiledb/common/logger.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"
@@ -650,9 +651,19 @@ class StorageManagerCanonical {
      * Constructor. Calls increment_in_progress() on given
      * StorageManagerCanonical.
      */
-    QueryInProgress(StorageManagerCanonical* sm)
-        : sm(sm) {
+    QueryInProgress(
+        StorageManagerCanonical* sm,
+        uint64_t rest_logger_id,
+        uint64_t array_rest_logger_id)
+        : sm(sm)
+        , rest_logger_id_(rest_logger_id)
+        , array_rest_logger_id_(array_rest_logger_id) {
       sm->increment_in_progress();
+      g_rest_logger.log_event(
+          rest_logger_id_,
+          array_rest_logger_id_,
+          true,
+          Event::QUERY_SUBMIT_START);
     }
 
     /**
@@ -661,7 +672,18 @@ class StorageManagerCanonical {
      */
     ~QueryInProgress() {
       sm->decrement_in_progress();
+      g_rest_logger.log_event(
+          rest_logger_id_,
+          array_rest_logger_id_,
+          true,
+          Event::QUERY_SUBMIT_END);
     }
+
+    /** Id for the rest logger. */
+    uint64_t rest_logger_id_;
+
+    /** Array Id for the rest logger. */
+    uint64_t array_rest_logger_id_;
   };
 
   /* ********************************* */

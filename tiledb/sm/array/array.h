@@ -837,6 +837,11 @@ class Array {
     return resources_.rest_client();
   }
 
+  /** Get rest logger id. */
+  uint64_t rest_logger_id() {
+    return rest_logger_id_;
+  }
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -937,6 +942,9 @@ class Array {
    * ConsistencySentry registration and the is_open_ flag.
    */
   std::mutex mtx_;
+
+  /** Id for the rest logger. */
+  uint64_t rest_logger_id_;
 
   /* ********************************* */
   /*          PRIVATE METHODS          */

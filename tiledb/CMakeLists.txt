@@ -409,11 +409,6 @@ add_library(TILEDB_CORE_OBJECTS OBJECT
 )
 
 # List of libraries to be linked to TILEDB_CORE_OBJECTS.
-target_link_libraries(baseline
-  PUBLIC
-    atomic
-)
-
 set(TILEDB_CORE_OBJECTS_LIBS
   baseline
 )
