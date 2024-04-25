@@ -1067,35 +1067,51 @@ const NDRange Array::non_empty_domain() {
 }
 
 void Array::non_empty_domain(NDRange* domain, bool* is_empty) {
-  if (domain == nullptr)
-    throw ArrayException("[non_empty_domain] Domain object is null");
+  if (domain == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Domain object is null");
+  }
+  if (is_empty == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] is_empty* is null");
+  }
 
-  if (!is_open())
+  if (!is_open()) {
     throw ArrayException("[non_empty_domain] Array is not open");
+  }
 
   QueryType query_type{get_query_type()};
-  if (query_type != QueryType::READ)
+  if (query_type != QueryType::READ) {
     throw ArrayException("[non_empty_domain] Array not opened for reads");
+  }
 
   *domain = non_empty_domain();
   *is_empty = domain->empty();
 }
 
 void Array::non_empty_domain(void* domain, bool* is_empty) {
-  if (!array_schema_latest().domain().all_dims_same_type())
+  if (domain == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Domain object is null");
+  }
+  if (is_empty == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] is_empty* is null");
+  }
+
+  if (!array_schema_latest().domain().all_dims_same_type()) {
     throw ArrayException(
         "[non_empty_domain] Function non-applicable to arrays with "
         "heterogenous dimensions");
+  }
 
-  if (!array_schema_latest().domain().all_dims_fixed())
+  if (!array_schema_latest().domain().all_dims_fixed()) {
     throw ArrayException(
         "[non_empty_domain] Function non-applicable to arrays with "
         "variable-sized dimensions");
+  }
 
   NDRange dom;
   non_empty_domain(&dom, is_empty);
-  if (*is_empty)
+  if (*is_empty) {
     return;
+  }
 
   const auto& array_schema = array_schema_latest();
   auto dim_num = array_schema.dim_num();

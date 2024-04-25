@@ -83,13 +83,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class StorageManagerException : public StatusException {
- public:
-  explicit StorageManagerException(const std::string& message)
-      : StatusException("StorageManager", message) {
-  }
-};
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
