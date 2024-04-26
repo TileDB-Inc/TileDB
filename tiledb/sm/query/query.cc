@@ -152,47 +152,52 @@ Query::~Query() {
 /* ****************************** */
 
 void Query::field_require_array_fixed(
-    const std::string_view origin, const char* name) {
-  if (!array_schema_->is_field(name)) {
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->is_field(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": '" + name + "' is not an array field");
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not an array field");
   }
-  if (array_schema_->var_size(name)) {
+  if (array_schema_->var_size(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": '" + name + "' is not fixed-sized");
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not fixed-sized");
   }
 }
 
 void Query::field_require_array_variable(
-    const std::string_view origin, const char* name) {
-  if (!array_schema_->is_field(name)) {
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->is_field(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": '" + name + "' is not an array field");
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not an array field");
   }
-  if (!array_schema_->var_size(name)) {
+  if (!array_schema_->var_size(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": '" + name + "' is not variable-sized");
+        std::string{origin} + ": '" + std::string{field_name} +
+        "' is not variable-sized");
   }
 }
 
 void Query::field_require_array_nullable(
-    const std::string_view origin, const char* name) {
-  if (!array_schema_->attribute(name)) {
+    const std::string_view origin, std::string_view field_name) {
+  if (!array_schema_->attribute(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": '" + name +
+        std::string{origin} + ": '" + std::string{field_name} +
         "' is not the name of an attribute");
   }
-  if (!array_schema_->is_nullable(name)) {
+  if (!array_schema_->is_nullable(field_name.data())) {
     throw QueryException(
-        std::string{origin} + ": attribute '" + name + "' is not nullable");
+        std::string{origin} + ": attribute '" + std::string{field_name} +
+        "' is not nullable");
   }
 }
 
 void Query::field_require_array_nonnull(
-    const std::string_view origin, const char* name) {
-  if (array_schema_->is_nullable(name)) {
+    const std::string_view origin, std::string_view field_name) {
+  if (array_schema_->is_nullable(field_name.data())) {
     throw QueryException(
-        std::string(origin) + ": field '" + name +
+        std::string(origin) + ": field '" + std::string(field_name) +
         "' is not a nonnull array field");
   }
 }
@@ -200,7 +205,7 @@ void Query::field_require_array_nonnull(
 constexpr std::string_view origin_est_result_size{
     "query estimated result size"};
 
-FieldDataSize Query::internal_est_result_size(const char* name) {
+FieldDataSize Query::internal_est_result_size(std::string_view field_name) {
   if (type_ != QueryType::READ) {
     throw QueryException(
         std::string{origin_est_result_size} +
@@ -217,12 +222,13 @@ FieldDataSize Query::internal_est_result_size(const char* name) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
   return subarray_.get_est_result_size(
-      name, &config_, storage_manager_->compute_tp());
+      field_name, &config_, storage_manager_->compute_tp());
 }
 
-FieldDataSize Query::get_est_result_size_fixed_nonnull(const char* name) {
-  field_require_array_fixed(origin_est_result_size, name);
-  if (name == constants::coords) {
+FieldDataSize Query::get_est_result_size_fixed_nonnull(
+    std::string_view field_name) {
+  field_require_array_fixed(origin_est_result_size, field_name);
+  if (field_name == constants::coords) {
     if (!array_schema_->domain().all_dims_same_type()) {
       throw QueryException(
           std::string{origin_est_result_size} +
@@ -236,26 +242,29 @@ FieldDataSize Query::get_est_result_size_fixed_nonnull(const char* name) {
           "in arrays with domains with variable-sized dimensions");
     }
   }
-  field_require_array_nonnull(origin_est_result_size, name);
-  return internal_est_result_size(name);
+  field_require_array_nonnull(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
-FieldDataSize Query::get_est_result_size_variable_nonnull(const char* name) {
-  field_require_array_variable(origin_est_result_size, name);
-  field_require_array_nonnull(origin_est_result_size, name);
-  return internal_est_result_size(name);
+FieldDataSize Query::get_est_result_size_variable_nonnull(
+    std::string_view field_name) {
+  field_require_array_variable(origin_est_result_size, field_name);
+  field_require_array_nonnull(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
-FieldDataSize Query::get_est_result_size_fixed_nullable(const char* name) {
-  field_require_array_fixed(origin_est_result_size, name);
-  field_require_array_nullable(origin_est_result_size, name);
-  return internal_est_result_size(name);
+FieldDataSize Query::get_est_result_size_fixed_nullable(
+    std::string_view field_name) {
+  field_require_array_fixed(origin_est_result_size, field_name);
+  field_require_array_nullable(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
-FieldDataSize Query::get_est_result_size_variable_nullable(const char* name) {
-  field_require_array_variable(origin_est_result_size, name);
-  field_require_array_nullable(origin_est_result_size, name);
-  return internal_est_result_size(name);
+FieldDataSize Query::get_est_result_size_variable_nullable(
+    std::string_view field_name) {
+  field_require_array_variable(origin_est_result_size, field_name);
+  field_require_array_nullable(origin_est_result_size, field_name);
+  return internal_est_result_size(field_name);
 }
 
 std::unordered_map<std::string, Subarray::ResultSize>

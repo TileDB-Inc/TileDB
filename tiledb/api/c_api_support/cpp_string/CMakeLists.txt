@@ -1,9 +1,9 @@
 #
-# tiledb/api/c_api_support/CMakeLists.txt
+# tiledb/api/c_api_support/handle/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,8 +24,17 @@
 # THE SOFTWARE.
 #
 
-include(common)
+include(common NO_POLICY_SCOPE)
+include(object_library)
 
-add_subdirectory(cpp_string)
-add_subdirectory(exception_wrapper)
-add_subdirectory(handle)
+list(APPEND SOURCES
+    cpp_string.cc
+)
+gather_sources(${SOURCES})
+
+commence(object_library capi_support_cpp_string)
+  this_target_sources(${SOURCES})
+  this_target_object_libraries(baseline)
+conclude(object_library)
+
+add_test_subdirectory()
