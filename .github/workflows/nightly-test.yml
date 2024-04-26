@@ -16,7 +16,7 @@ jobs:
           - os: macos-latest
           - os: macos-latest # ASAN build
             sanitizer: "address"
-            base_triplet: "x64-osx"
+            base_triplet: "arm64-osx"
           - os: macos-latest
             experimental: ON
           - os: windows-latest
