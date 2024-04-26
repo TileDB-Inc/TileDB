@@ -383,6 +383,17 @@ class VFS {
   /*                API                */
   /* ********************************* */
 
+  /** Gets the default VFS of a context. */
+  static VFS get_default(const Context& ctx) {
+    tiledb_vfs_t* vfs;
+    int rc = tiledb_vfs_get_default(ctx.ptr().get(), &vfs);
+    if (rc != TILEDB_OK)
+      throw std::runtime_error(
+          "[TileDB::C++API] Error: Failed to get default VFS object");
+
+    return VFS{ctx, std::shared_ptr<tiledb_vfs_t>{vfs, impl::Deleter{}}};
+  }
+
   /** Creates an object store bucket with the input URI. */
   void create_bucket(const std::string& uri) const {
     auto& ctx = ctx_.get();
@@ -580,6 +591,11 @@ class VFS {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+
+  explicit VFS(const Context& ctx, std::shared_ptr<tiledb_vfs_t> vfs)
+      : ctx_(ctx)
+      , vfs_(vfs) {
+  }
 
   /** Creates a TileDB C VFS object, using the input config. */
   void create_vfs(tiledb_config_t* config) {
