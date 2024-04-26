@@ -32,7 +32,7 @@
 #include "../cpp_string.h"
 
 int main() {
-  auto sv{tiledb::api::to_cpp_string_view("")};
+  auto sv{tiledb::api::to_string_view<"a">("")};
   if (sv.data() == nullptr) {
     return 1;
   }
