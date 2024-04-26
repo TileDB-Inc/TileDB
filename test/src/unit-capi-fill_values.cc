@@ -52,7 +52,7 @@ void check_dump(
 
   // Clean up
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "gold_fout.txt") == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, "fout.txt") == TILEDB_OK);
   tiledb_vfs_free(&vfs);

@@ -477,7 +477,7 @@ TEST_CASE("C API: WEBP Filter", "[capi][filter][webp]") {
     tiledb_ctx_t* ctx;
     tiledb_ctx_alloc(nullptr, &ctx);
     tiledb_vfs_t* vfs;
-    tiledb_vfs_alloc(ctx, nullptr, &vfs);
+    tiledb_vfs_get_default(ctx, &vfs);
     int32_t is_dir = false;
     tiledb_vfs_is_dir(ctx, vfs, webp_array_name.c_str(), &is_dir);
     if (is_dir) {

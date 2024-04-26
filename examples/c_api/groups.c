@@ -103,7 +103,7 @@ void create_arrays_groups() {
 
   // Create dense_arrays folder
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, NULL, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
   tiledb_vfs_create_dir(ctx, vfs, "my_group/dense_arrays");
   tiledb_vfs_free(&vfs);
 

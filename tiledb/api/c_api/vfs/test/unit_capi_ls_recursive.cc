@@ -50,7 +50,7 @@ TEST_CASE("C API: ls_recursive callback", "[vfs][ls-recursive]") {
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(vfs_config.config, &ctx);
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
 
   LsObjects data;
   tiledb_ls_callback_t cb = [](const char* path,
@@ -98,7 +98,7 @@ TEST_CASE("C API: ls_recursive throwing callback", "[vfs][ls-recursive]") {
   tiledb_ctx_t* ctx;
   tiledb_ctx_alloc(vfs_config.config, &ctx);
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, vfs_config.config, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
 
   LsObjects data;
   tiledb_ls_callback_t cb =

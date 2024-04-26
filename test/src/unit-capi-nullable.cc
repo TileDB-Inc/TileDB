@@ -207,7 +207,7 @@ NullableArrayFx::NullableArrayFx() {
   throw_if_setup_failed(ctx_ != nullptr);
 
   // Create the VFS.
-  throw_if_setup_failed(tiledb_vfs_alloc(ctx_, config, &vfs_));
+  throw_if_setup_failed(tiledb_vfs_get_default(ctx_, &vfs_));
   throw_if_setup_failed(vfs_ != nullptr);
   tiledb_config_free(&config);
 }

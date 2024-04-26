@@ -265,7 +265,7 @@ int main() {
   tiledb_ctx_alloc(NULL, &ctx);
 
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, NULL, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
 
   int32_t is_dir = 0;
   tiledb_vfs_is_dir(ctx, vfs, array_name, &is_dir);

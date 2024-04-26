@@ -78,7 +78,7 @@ PartialAttrWriteFx::PartialAttrWriteFx() {
   tiledb_config_set(
       config, "sm.allow_separate_attribute_writes", "true", &error);
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(tiledb_vfs_alloc(ctx_, nullptr, &vfs_) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_get_default(ctx_, &vfs_) == TILEDB_OK);
 }
 
 PartialAttrWriteFx::~PartialAttrWriteFx() {

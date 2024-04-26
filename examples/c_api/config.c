@@ -46,7 +46,7 @@ void set_get_config_ctx_vfs() {
 
   // Set/Get config to/from bfs
   tiledb_vfs_t* vfs;
-  tiledb_vfs_alloc(ctx, config, &vfs);
+  tiledb_vfs_get_default(ctx, &vfs);
   tiledb_vfs_get_config(ctx, vfs, &config_vfs);
 
   // Clean up

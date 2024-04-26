@@ -185,7 +185,7 @@ void CDenseFx::update_config() {
 
   REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
   REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_get_default(ctx_, &vfs_) == TILEDB_OK);
   tiledb_config_free(&config);
 }
 

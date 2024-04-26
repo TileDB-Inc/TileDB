@@ -42,16 +42,17 @@ struct ordinary_vfs {
   tiledb_ctx_handle_t* ctx{nullptr};
   tiledb_vfs_handle_t* vfs{nullptr};
   ordinary_vfs(tiledb_config_t* config = nullptr) {
-    auto rc = tiledb_ctx_alloc(nullptr, &ctx);
+    auto rc = tiledb_ctx_alloc(config, &ctx);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test context");
     }
-    rc = tiledb_vfs_alloc(ctx, config, &vfs);
+    rc = tiledb_vfs_get_default(ctx, &vfs);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test vfs");
     }
     if (vfs == nullptr) {
-      throw std::logic_error("tiledb_vfs_alloc returned OK but without vfs");
+      throw std::logic_error(
+          "tiledb_vfs_get_default returned OK but without vfs");
     }
   }
   ~ordinary_vfs() {

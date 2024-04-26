@@ -48,7 +48,7 @@ TEST_CASE(
   tiledb_ctx_t* ctx = nullptr;
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create fragment info object
@@ -189,7 +189,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   bool encrypt = false;
@@ -572,7 +572,7 @@ TEST_CASE("C API: Test MBR fragment info", "[capi][fragment_info][mbr]") {
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Key
@@ -771,7 +771,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   remove_dir(array_name, ctx, vfs);
@@ -956,7 +956,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1168,7 +1168,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1364,7 +1364,7 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1567,7 +1567,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1735,7 +1735,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1843,7 +1843,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
@@ -1958,7 +1958,7 @@ TEST_CASE(
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  rc = tiledb_vfs_alloc(ctx, nullptr, &vfs);
+  rc = tiledb_vfs_get_default(ctx, &vfs);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array

@@ -47,7 +47,7 @@ void remove_file(const std::string& filename) {
   int rc = tiledb_ctx_alloc(nullptr, &ctx);
   REQUIRE(rc == TILEDB_OK);
   tiledb_vfs_t* vfs = nullptr;
-  REQUIRE(tiledb_vfs_alloc(ctx, nullptr, &vfs) == TILEDB_OK);
+  REQUIRE(tiledb_vfs_get_default(ctx, &vfs) == TILEDB_OK);
   CHECK(tiledb_vfs_remove_file(ctx, vfs, filename.c_str()) == TILEDB_OK);
   tiledb_vfs_free(&vfs);
   tiledb_ctx_free(&ctx);
