@@ -775,7 +775,8 @@ bool ArraySchema::is_dim_label(const std::string& name) const {
 }
 
 bool ArraySchema::is_field(const std::string& name) const {
-  return is_attr(name) || is_dim(name) || is_special_attribute(name);
+  return is_attr(name) || is_dim(name) || is_dim_label(name) ||
+         is_special_attribute(name);
 }
 
 bool ArraySchema::is_nullable(const std::string& name) const {

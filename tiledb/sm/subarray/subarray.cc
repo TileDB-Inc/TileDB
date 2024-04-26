@@ -1103,22 +1103,12 @@ Layout Subarray::layout() const {
   return layout_;
 }
 
-void Subarray::get_est_result_size_internal(
-    const char* name,
-    uint64_t* size,
-    const Config* config,
-    ThreadPool* compute_tp) {
+FieldDataSize Subarray::get_est_result_size(
+    const char* name, const Config* config, ThreadPool* compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr) {
     throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension name cannot be null");
-  }
-
-  // Check size pointer
-  if (size == nullptr) {
-    throw SubarrayException(
-        "Cannot get estimated result size; Input size cannot be null");
+        "Cannot get estimated result size; field name cannot be null");
   }
 
   // Check if name is attribute or dimension
@@ -1129,242 +1119,74 @@ void Subarray::get_est_result_size_internal(
   // Check if attribute/dimension exists
   if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     throw SubarrayException(
-        std::string("Cannot get estimated result size; Attribute/Dimension '") +
-        name + "' does not exist");
+        std::string("Cannot get estimated result size; ") +
+        "there is no field named '" + name + "'");
   }
 
-  // Check if the attribute/dimension is fixed-sized
-  if (array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must be fixed-sized");
-  }
-
-  // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must not be nullable");
-  }
+  bool is_variable_sized{
+      name != constants::coords && array_schema.var_size(name)};
+  bool is_nullable{array_schema.is_nullable(name)};
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
-  *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
 
-  // If the size is non-zero, ensure it is large enough to
-  // contain at least one cell.
-  const auto cell_size = array_schema.cell_size(name);
-  if (*size > 0 && *size < cell_size)
-    *size = cell_size;
+  FieldDataSize r{
+      static_cast<size_t>(std::ceil(est_result_size_[name].size_fixed_)),
+      is_variable_sized ?
+          static_cast<size_t>(std::ceil(est_result_size_[name].size_var_)) :
+          0,
+      is_nullable ? static_cast<size_t>(
+                        std::ceil(est_result_size_[name].size_validity_)) :
+                    0};
+  /*
+   * Special fix-ups may be necessary if data is empty or very short.
+   */
+  if (is_variable_sized) {
+    if (r.variable_ == 0) {
+      // Assert: no variable data for a variable-sized field
+      // Ensure that there are no offsets.
+      r.fixed_ = 0;
+      r.validity_ = 0;
+    } else {
+      // Ensure that there's space for at least one offset value.
+      const auto off_cell_size = constants::cell_var_offset_size;
+      if (r.fixed_ < off_cell_size) {
+        r.fixed_ = off_cell_size;
+      }
+      // Ensure that there's space for at least one data value.
+      const auto val_cell_size = datatype_size(array_schema.type(name));
+      if (r.variable_ < val_cell_size) {
+        r.variable_ = val_cell_size;
+      }
+      if (is_nullable) {
+        const auto validity_cell_size = constants::cell_validity_size;
+        if (r.validity_ < validity_cell_size) {
+          r.validity_ = validity_cell_size;
+        }
+      }
+    }
+  } else {
+    /*
+     * If the fixed data is not empty, ensure it is large enough to contain at
+     * least one cell.
+     */
+    const auto cell_size = array_schema.cell_size(name);
+    if (0 < r.fixed_ && r.fixed_ < cell_size) {
+      r.fixed_ = cell_size;
+      if (is_nullable) {
+        r.validity_ = 1;
+      }
+    }
+  }
+  return r;
 }
 
-void Subarray::get_est_result_size(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    const Config* config,
-    ThreadPool* compute_tp) {
+FieldDataSize Subarray::get_max_memory_size(
+    const char* name, const Config* config, ThreadPool* compute_tp) {
   // Check attribute/dimension name
   if (name == nullptr) {
     throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension name cannot be null");
-  }
-
-  // Check size pointer
-  if (size_off == nullptr || size_val == nullptr) {
-    throw SubarrayException(
-        "Cannot get estimated result size; Input sizes cannot be null");
-  }
-
-  // Check if name is attribute or dimension
-  const auto& array_schema = array_->array_schema_latest();
-  const bool is_dim = array_schema.is_dim(name);
-  const bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute/dimension exists
-  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
-    throw SubarrayException(
-        std::string("Cannot get estimated result size; Attribute/Dimension '") +
-        name + "' does not exist");
-  }
-
-  // Check if the attribute/dimension is var-sized
-  if (!array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must be var-sized");
-  }
-
-  // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must not be nullable");
-  }
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size_off =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
-  *size_val =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_var_));
-
-  // If the value size is non-zero, ensure both it and the offset size
-  // are large enough to contain at least one cell. Otherwise, ensure
-  // the offset size is also zero.
-  if (*size_val > 0) {
-    const auto off_cell_size = constants::cell_var_offset_size;
-    if (*size_off < off_cell_size)
-      *size_off = off_cell_size;
-
-    const uint64_t val_cell_size = datatype_size(array_schema.type(name));
-    if (*size_val < val_cell_size)
-      *size_val = val_cell_size;
-  } else {
-    *size_off = 0;
-  }
-}
-
-void Subarray::get_est_result_size_nullable(
-    const char* name,
-    uint64_t* size,
-    uint64_t* size_validity,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr)
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute name cannot be null");
-
-  // Check size pointer
-  if (size == nullptr || size_validity == nullptr)
-    throw SubarrayException(
-        "Cannot get estimated result size; Input sizes cannot be null");
-
-  // Check if name is attribute
-  const auto& array_schema = array_->array_schema_latest();
-  const bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute exists
-  if (!is_attr)
-    throw SubarrayException(
-        std::string("Cannot get estimated result size; Attribute '") + name +
-        "' does not exist");
-
-  // Check if the attribute is fixed-sized
-  if (array_schema.var_size(name))
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be fixed-sized");
-
-  // Check if attribute is nullable
-  if (!array_schema.is_nullable(name))
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be nullable");
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size = static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
-  *size_validity =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_validity_));
-
-  // If the size is non-zero, ensure it is large enough to
-  // contain at least one cell.
-  const auto cell_size = array_schema.cell_size(name);
-  if (*size > 0 && *size < cell_size) {
-    *size = cell_size;
-    *size_validity = 1;
-  }
-}
-
-void Subarray::get_est_result_size_nullable(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr)
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute name cannot be null");
-
-  // Check size pointer
-  if (size_off == nullptr || size_val == nullptr || size_validity == nullptr)
-    throw SubarrayException(
-        "Cannot get estimated result size; Input sizes cannot be null");
-
-  // Check if name is attribute
-  const auto& array_schema = array_->array_schema_latest();
-  const bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute exists
-  if (!is_attr)
-    throw SubarrayException(
-        std::string("Cannot get estimated result size; Attribute '") + name +
-        "' does not exist");
-
-  // Check if the attribute is var-sized
-  if (!array_schema.var_size(name))
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be var-sized");
-
-  // Check if attribute is nullable
-  if (!array_schema.is_nullable(name))
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be nullable");
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size_off =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_fixed_));
-  *size_val =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_var_));
-  *size_validity =
-      static_cast<uint64_t>(std::ceil(est_result_size_[name].size_validity_));
-
-  // If the value size is non-zero, ensure both it and the offset and
-  // validity sizes are large enough to contain at least one cell. Otherwise,
-  // ensure the offset and validity sizes are also zero.
-  if (*size_val > 0) {
-    const uint64_t off_cell_size = constants::cell_var_offset_size;
-    if (*size_off < off_cell_size)
-      *size_off = off_cell_size;
-
-    const uint64_t val_cell_size = datatype_size(array_schema.type(name));
-    if (*size_val < val_cell_size)
-      *size_val = val_cell_size;
-
-    const uint64_t validity_cell_size = constants::cell_validity_size;
-    if (*size_validity < validity_cell_size)
-      *size_validity = validity_cell_size;
-  } else {
-    *size_off = 0;
-    *size_validity = 0;
-  }
-}
-
-void Subarray::get_max_memory_size(
-    const char* name,
-    uint64_t* size,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension cannot be null");
-  }
-
-  // Check size pointer
-  if (size == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Input size cannot be null");
+        "Cannot get max memory size; field name cannot be null");
   }
 
   // Check if name is attribute or dimension
@@ -1375,170 +1197,20 @@ void Subarray::get_max_memory_size(
   // Check if attribute/dimension exists
   if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
     throw SubarrayException(
-        std::string("Cannot get max memory size; Attribute/Dimension '") +
-        name + "' does not exist");
+        std::string("Cannot get max memory size; ") +
+        "there is no field named '" + name + "'");
   }
 
-  // Check if the attribute/dimension is fixed-sized
-  if (name != constants::coords && array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension must be fixed-sized");
-  }
-
-  // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must not be nullable");
-  }
+  bool is_variable_sized{
+      name != constants::coords && array_schema.var_size(name)};
+  bool is_nullable{array_schema.is_nullable(name)};
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
-  *size = max_mem_size_[name].size_fixed_;
-}
-
-void Subarray::get_max_memory_size(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension cannot be null");
-  }
-
-  // Check size pointer
-  if (size_off == nullptr || size_val == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Input sizes cannot be null");
-  }
-
-  // Check if name is attribute or dimension
-  const auto& array_schema = array_->array_schema_latest();
-  bool is_dim = array_schema.is_dim(name);
-  bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute/dimension exists
-  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
-    throw SubarrayException(
-        std::string("Cannot get max memory size; Attribute/Dimension '") +
-        name + "' does not exist");
-  }
-
-  // Check if the attribute/dimension is var-sized
-  if (!array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension must be var-sized");
-  }
-
-  // Check if attribute/dimension is nullable
-  if (array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute/Dimension must not be nullable");
-  }
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size_off = max_mem_size_[name].size_fixed_;
-  *size_val = max_mem_size_[name].size_var_;
-}
-
-void Subarray::get_max_memory_size_nullable(
-    const char* name,
-    uint64_t* size,
-    uint64_t* size_validity,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute name
-  if (name == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute cannot be null");
-  }
-  // Check size pointer
-  if (size == nullptr || size_validity == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Input sizes cannot be null");
-  }
-  // Check if name is attribute
-  const auto& array_schema = array_->array_schema_latest();
-  bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute exists
-  if (!is_attr) {
-    throw SubarrayException(
-        std::string("Cannot get max memory size; Attribute '") + name +
-        "' does not exist");
-  }
-
-  // Check if the attribute is fixed-sized
-  if (array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute must be fixed-sized");
-  }
-
-  // Check if attribute is nullable
-  if (!array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be nullable");
-  }
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size = max_mem_size_[name].size_fixed_;
-  *size_validity = max_mem_size_[name].size_validity_;
-}
-
-void Subarray::get_max_memory_size_nullable(
-    const char* name,
-    uint64_t* size_off,
-    uint64_t* size_val,
-    uint64_t* size_validity,
-    const Config* config,
-    ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension cannot be null");
-  }
-
-  // Check size pointer
-  if (size_off == nullptr || size_val == nullptr || size_validity == nullptr) {
-    throw SubarrayException(
-        "Cannot get max memory size; Input sizes cannot be null");
-  }
-  // Check if name is attribute or dimension
-  const auto& array_schema = array_->array_schema_latest();
-  bool is_attr = array_schema.is_attr(name);
-
-  // Check if attribute exists
-  if (!is_attr) {
-    throw SubarrayException(
-        std::string("Cannot get max memory size; Attribute '") + name +
-        "' does not exist");
-  }
-
-  // Check if the attribute is var-sized
-  if (!array_schema.var_size(name)) {
-    throw SubarrayException(
-        "Cannot get max memory size; Attribute/Dimension must be var-sized");
-  }
-
-  // Check if attribute is nullable
-  if (!array_schema.is_nullable(name)) {
-    throw SubarrayException(
-        "Cannot get estimated result size; "
-        "Attribute must be nullable");
-  }
-
-  // Compute tile overlap for each fragment
-  compute_est_result_size(config, compute_tp);
-  *size_off = max_mem_size_[name].size_fixed_;
-  *size_val = max_mem_size_[name].size_var_;
-  *size_validity = max_mem_size_[name].size_validity_;
+  return {
+      max_mem_size_[name].size_fixed_,
+      is_variable_sized ? max_mem_size_[name].size_var_ : 0,
+      is_nullable ? max_mem_size_[name].size_validity_ : 0};
 }
 
 std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
@@ -1573,36 +1245,6 @@ std::vector<uint64_t> Subarray::get_range_coords(uint64_t range_idx) const {
   }
 
   return ret;
-}
-
-void Subarray::get_next_range_coords(
-    std::vector<uint64_t>* range_coords) const {
-  auto dim_num = array_->array_schema_latest().dim_num();
-  auto layout =
-      (layout_ == Layout::UNORDERED) ?
-          ((cell_order_ == Layout::HILBERT) ? Layout::ROW_MAJOR : cell_order_) :
-          layout_;
-
-  if (layout == Layout::ROW_MAJOR) {
-    auto d = dim_num - 1;
-    ++(*range_coords)[d];
-    while ((*range_coords)[d] >= range_subset_[d].num_ranges() && d != 0) {
-      (*range_coords)[d] = 0;
-      --d;
-      ++(*range_coords)[d];
-    }
-  } else if (layout == Layout::COL_MAJOR) {
-    auto d = (unsigned)0;
-    ++(*range_coords)[d];
-    while ((*range_coords)[d] >= range_subset_[d].num_ranges() &&
-           d != dim_num - 1) {
-      (*range_coords)[d] = 0;
-      ++d;
-      ++(*range_coords)[d];
-    }
-  } else {
-    // Global order - noop
-  }
 }
 
 uint64_t Subarray::range_idx(const std::vector<uint64_t>& range_coords) const {
