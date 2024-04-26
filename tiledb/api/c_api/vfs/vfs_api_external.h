@@ -109,6 +109,28 @@ TILEDB_EXPORT capi_return_t tiledb_vfs_alloc(
 TILEDB_EXPORT void tiledb_vfs_free(tiledb_vfs_t** vfs) TILEDB_NOEXCEPT;
 
 /**
+ * Retrieves a reference to the default VFS of a TileDB
+ * context. This is useful to avoid allocating multiple
+ * VFS objects, and to access the raw data of in-memory
+ * arrays.
+ *
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_vfs_t* vfs;
+ * tiledb_vfs_get_default(ctx, &vfs);
+ * // Make sure to free the retrieved VFS
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param vfs The VFS to be retrieved.
+ * @return `TILEDB_OK` for success and `TILEDB_OOM` or `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT capi_return_t
+tiledb_vfs_get_default(tiledb_ctx_t* ctx, tiledb_vfs_t** vfs) TILEDB_NOEXCEPT;
+
+/**
  * Retrieves the config from a VFS context.
  *
  * **Example:**

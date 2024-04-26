@@ -75,6 +75,14 @@ void tiledb_vfs_free(tiledb_vfs_t** vfs) {
   tiledb_vfs_t::break_handle(*vfs);
 }
 
+capi_return_t tiledb_vfs_get_default(
+    tiledb_ctx_handle_t* ctx, tiledb_vfs_handle_t** vfs) {
+  api::ensure_output_pointer_is_valid(vfs);
+  *vfs = tiledb_vfs_handle_t::make_handle(std::shared_ptr<sm::VFS>(
+      ctx->get_shared_ptr(), ctx->storage_manager()->vfs()));
+  return TILEDB_OK;
+}
+
 capi_return_t tiledb_vfs_get_config(
     tiledb_vfs_t* vfs, tiledb_config_t** config) {
   ensure_vfs_is_valid(vfs);
@@ -232,7 +240,7 @@ capi_return_t tiledb_vfs_open(
   auto vfs_mode = static_cast<tiledb::sm::VFSMode>(mode);
 
   // Throws if opening the uri is unsuccessful
-  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs(), vfs_mode);
+  *fh = tiledb_vfs_fh_t::make_handle(fh_uri, vfs->vfs().get(), vfs_mode);
 
   return TILEDB_OK;
 }
@@ -351,6 +359,11 @@ CAPI_INTERFACE(
 
 CAPI_INTERFACE_VOID(vfs_free, tiledb_vfs_t** vfs) {
   return tiledb::api::api_entry_void<tiledb::api::tiledb_vfs_free>(vfs);
+}
+
+CAPI_INTERFACE(vfs_get_default, tiledb_ctx_t* ctx, tiledb_vfs_t** vfs) {
+  return tiledb::api::api_entry_with_context<
+      tiledb::api::tiledb_vfs_get_default>(ctx, vfs);
 }
 
 CAPI_INTERFACE(

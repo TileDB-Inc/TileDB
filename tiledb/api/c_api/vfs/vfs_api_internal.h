@@ -50,7 +50,7 @@ struct tiledb_vfs_handle_t
   static constexpr std::string_view object_type_name{"vfs"};
 
  private:
-  using vfs_type = tiledb::sm::VFS;
+  using vfs_type = shared_ptr<tiledb::sm::VFS>;
   vfs_type vfs_;
 
  public:
@@ -59,92 +59,100 @@ struct tiledb_vfs_handle_t
       ThreadPool* compute_tp,
       ThreadPool* io_tp,
       const tiledb::sm::Config& config)
-      : vfs_{parent_stats, compute_tp, io_tp, config} {
+      : vfs_{make_shared<tiledb::sm::VFS>(
+            HERE(), parent_stats, compute_tp, io_tp, config)} {
   }
 
-  vfs_type* vfs() {
-    return &vfs_;
+  /**
+   * Constructor from shared pointer to a `VFS`.
+   */
+  explicit tiledb_vfs_handle_t(vfs_type vfs)
+      : vfs_{std::move(vfs)} {
+  }
+
+  vfs_type vfs() {
+    return vfs_;
   }
 
   tiledb::sm::Config config() const {
-    return vfs_.config();
+    return vfs_->config();
   }
 
   Status create_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.create_bucket(uri);
+    return vfs_->create_bucket(uri);
   }
 
   Status remove_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_bucket(uri);
+    return vfs_->remove_bucket(uri);
   }
 
   Status empty_bucket(const tiledb::sm::URI& uri) const {
-    return vfs_.empty_bucket(uri);
+    return vfs_->empty_bucket(uri);
   }
 
   Status is_empty_bucket(const tiledb::sm::URI& uri, bool* is_empty) const {
-    return vfs_.is_empty_bucket(uri, is_empty);
+    return vfs_->is_empty_bucket(uri, is_empty);
   }
 
   Status is_bucket(const tiledb::sm::URI& uri, bool* is_bucket) const {
-    return vfs_.is_bucket(uri, is_bucket);
+    return vfs_->is_bucket(uri, is_bucket);
   }
 
   Status create_dir(const tiledb::sm::URI& uri) const {
-    return vfs_.create_dir(uri);
+    return vfs_->create_dir(uri);
   }
 
   Status is_dir(const tiledb::sm::URI& uri, bool* is_dir) const {
-    return vfs_.is_dir(uri, is_dir);
+    return vfs_->is_dir(uri, is_dir);
   }
 
   Status remove_dir(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_dir(uri);
+    return vfs_->remove_dir(uri);
   }
 
   Status is_file(const tiledb::sm::URI& uri, bool* is_file) const {
-    return vfs_.is_file(uri, is_file);
+    return vfs_->is_file(uri, is_file);
   }
 
   Status remove_file(const tiledb::sm::URI& uri) const {
-    return vfs_.remove_file(uri);
+    return vfs_->remove_file(uri);
   }
 
   Status dir_size(const tiledb::sm::URI& dir_name, uint64_t* dir_size) const {
-    return vfs_.dir_size(dir_name, dir_size);
+    return vfs_->dir_size(dir_name, dir_size);
   }
 
   Status file_size(const tiledb::sm::URI& uri, uint64_t* size) const {
-    return vfs_.file_size(uri, size);
+    return vfs_->file_size(uri, size);
   }
 
   Status move_file(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.move_file(old_uri, new_uri);
+    return vfs_->move_file(old_uri, new_uri);
   }
 
   Status move_dir(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.move_dir(old_uri, new_uri);
+    return vfs_->move_dir(old_uri, new_uri);
   }
 
   Status copy_file(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.copy_file(old_uri, new_uri);
+    return vfs_->copy_file(old_uri, new_uri);
   }
 
   Status copy_dir(
       const tiledb::sm::URI& old_uri, const tiledb::sm::URI& new_uri) {
-    return vfs_.copy_dir(old_uri, new_uri);
+    return vfs_->copy_dir(old_uri, new_uri);
   }
 
   Status ls(
       const tiledb::sm::URI& parent, std::vector<tiledb::sm::URI>* uris) const {
-    return vfs_.ls(parent, uris);
+    return vfs_->ls(parent, uris);
   }
 
   Status touch(const tiledb::sm::URI& uri) const {
-    return vfs_.touch(uri);
+    return vfs_->touch(uri);
   }
 
   void ls_recursive(
@@ -152,7 +160,7 @@ struct tiledb_vfs_handle_t
       tiledb_ls_callback_t cb,
       void* data) const {
     tiledb::sm::CallbackWrapperCAPI wrapper(cb, data);
-    vfs_.ls_recursive(parent, wrapper);
+    vfs_->ls_recursive(parent, wrapper);
   }
 };
 

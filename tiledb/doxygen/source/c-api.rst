@@ -613,6 +613,8 @@ VFS
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_free
     :project: TileDB-C
+.. doxygenfunction:: tiledb_vfs_get_default
+    :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_get_config
     :project: TileDB-C
 .. doxygenfunction:: tiledb_vfs_create_bucket

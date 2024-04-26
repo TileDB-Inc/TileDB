@@ -200,6 +200,15 @@ class CAPIHandle {
     return *self_.get();
   }
 
+  /**
+   * Shared pointer
+   *
+   * @return shared pointer to our stored object
+   */
+  inline shared_ptr_type get_shared_ptr() {
+    return self_;
+  }
+
   inline static std::string handle_name() {
     return std::string(T::object_type_name);
   }
