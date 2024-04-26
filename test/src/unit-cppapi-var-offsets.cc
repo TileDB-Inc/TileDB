@@ -40,13 +40,8 @@ using namespace tiledb;
 
 struct VariableOffsetsFx {
   test::VFSTestSetup vfs_test_setup_;
-  Context ctx;
 
-  VariableOffsetsFx()
-      : ctx(vfs_test_setup_.ctx()) {
-  }
-
-  void create_sparse_array(const std::string& array_name) {
+  void create_sparse_array(Context ctx, const std::string& array_name) {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
         .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
@@ -248,7 +243,7 @@ struct VariableOffsetsFx {
     array.close();
   }
 
-  void create_dense_array(const std::string& array_name) {
+  void create_dense_array(Context ctx, const std::string& array_name) {
     Domain dom(ctx);
     dom.add_dimension(Dimension::create<int64_t>(ctx, "d1", {{1, 4}}, 2))
         .add_dimension(Dimension::create<int64_t>(ctx, "d2", {{1, 4}}, 2));
@@ -467,7 +462,8 @@ TEST_CASE_METHOD(
     "C++ API: Test element offsets : sparse array",
     "[var-offsets][element-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
-  create_sparse_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
 
@@ -559,7 +555,8 @@ TEST_CASE_METHOD(
     "C++ API: Test element offsets : dense array",
     "[var-offsets][element-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_element_offset");
-  create_dense_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
 
@@ -607,7 +604,8 @@ TEST_CASE_METHOD(
     "C++ API: Test offsets extra element: sparse array",
     "[var-offsets][extra-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
-  create_sparse_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
@@ -1147,7 +1145,8 @@ TEST_CASE_METHOD(
     "C++ API: Test offsets extra element: dense array",
     "[var-offsets][extra-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_extra_offset");
-  create_dense_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   std::vector<uint64_t> data_offsets = {0, 4, 12, 20};
@@ -1474,7 +1473,8 @@ TEST_CASE_METHOD(
     "C++ API: Test 32-bit offsets: sparse array",
     "[var-offsets][32bit-offset][sparse][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
-  create_sparse_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_sparse_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   // Create 32 bit byte offsets buffer to use
@@ -1615,7 +1615,8 @@ TEST_CASE_METHOD(
     "C++ API: Test 32-bit offsets: dense array",
     "[var-offsets][32bit-offset][dense][rest]") {
   std::string array_name = vfs_test_setup_.array_uri("test_32bit_offset");
-  create_dense_array(array_name);
+  auto ctx = vfs_test_setup_.ctx();
+  create_dense_array(ctx, array_name);
 
   std::vector<int32_t> data = {1, 2, 3, 4, 5, 6};
   // Create 32 bit offsets byte buffer to use
@@ -1691,6 +1692,7 @@ TEST_CASE_METHOD(
     "[var-offsets-dim][32bit-offset][sparse][rest]") {
   std::string array_name =
       vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
+  auto ctx = vfs_test_setup_.ctx();
 
   /*
     Write an array with string dimension and make sure we get back
