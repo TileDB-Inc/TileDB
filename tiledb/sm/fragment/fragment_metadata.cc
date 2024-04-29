@@ -2064,6 +2064,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   }
 
   sparse_tile_num_ = mbr_num;
+  offsets_metadata_->loaded_metadata().rtree_ = true;
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {
