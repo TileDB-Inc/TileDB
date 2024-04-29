@@ -1702,7 +1702,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of fragment writes by timestamp and uri",
-    "[cppapi][deletes][fragments][rest-fails][sc-25074]") {
+    "[cppapi][deletes][fragments][rest-fails][sc-46338]") {
   // Conditionally consolidate and vacuum
   bool consolidate = GENERATE(true, false);
   bool vacuum = GENERATE(true, false);
