@@ -290,6 +290,9 @@ class VFSFilebuf : public std::streambuf {
 
 }  // namespace impl
 
+class DefaultVFSMarker {};
+static constexpr DefaultVFSMarker DefaultVFS{};
+
 /**
  * Implements a virtual filesystem that enables performing directory/file
  * operations with a unified API on different filesystems, such as local
@@ -353,7 +356,7 @@ class VFS {
   using filebuf = impl::VFSFilebuf;
 
   /**
-   * Constructor.
+   * Creates a VFS.
    *
    * @param ctx A TileDB context.
    */
@@ -363,7 +366,24 @@ class VFS {
   }
 
   /**
-   * Constructor.
+   * Creates a reference to the default VFS of a context.
+   * The first parameter must be `tiledb::DefaultVFS`.
+   *
+   * **Example:**
+   *
+   * @code{.cpp}
+   * tiledb::VFS vfs(tiledb::DefaultVFS, ctx);
+   * @endcode
+   *
+   * @param ctx A TileDB context.
+   */
+  explicit VFS(DefaultVFSMarker, const Context& ctx)
+      : ctx_(ctx)
+      , vfs_(get_default(ctx)) {
+  }
+
+  /**
+   * Creates a VFS.
    *
    * @param ctx TileDB context.
    * @param config TileDB config.
@@ -382,17 +402,6 @@ class VFS {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /** Gets the default VFS of a context. */
-  static VFS get_default(const Context& ctx) {
-    tiledb_vfs_t* vfs;
-    int rc = tiledb_vfs_get_default(ctx.ptr().get(), &vfs);
-    if (rc != TILEDB_OK)
-      throw std::runtime_error(
-          "[TileDB::C++API] Error: Failed to get default VFS object");
-
-    return VFS{ctx, std::shared_ptr<tiledb_vfs_t>{vfs, impl::Deleter{}}};
-  }
 
   /** Creates an object store bucket with the input URI. */
   void create_bucket(const std::string& uri) const {
@@ -606,6 +615,17 @@ class VFS {
           "[TileDB::C++API] Error: Failed to create VFS object");
 
     vfs_ = std::shared_ptr<tiledb_vfs_t>(vfs, deleter_);
+  }
+
+  /** Gets the default VFS of a context. */
+  static std::shared_ptr<tiledb_vfs_t> get_default(const Context& ctx) {
+    tiledb_vfs_t* vfs;
+    int rc = tiledb_vfs_get_default(ctx.ptr().get(), &vfs);
+    if (rc != TILEDB_OK)
+      throw std::runtime_error(
+          "[TileDB::C++API] Error: Failed to get default VFS object");
+
+    return std::shared_ptr<tiledb_vfs_t>{vfs, impl::Deleter{}};
   }
 };
 
