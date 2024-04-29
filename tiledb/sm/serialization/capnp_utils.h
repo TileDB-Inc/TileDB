@@ -194,7 +194,7 @@ capnp_2d_list_to_vector(
         ::capnp::Kind::LIST>::Reader list{fGetList()};
     result.reserve(list.size());
     for (const auto& t : list) {
-      result.emplace_back(t.begin(), t.end(), resource);
+      result.emplace_back(t.begin(), t.end());
     }
   }
   return result;
