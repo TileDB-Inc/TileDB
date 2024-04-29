@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
 #include "test/support/src/serialization_wrappers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/tiledb"
 #include "tiledb/sm/misc/utils.h"
@@ -423,22 +424,22 @@ TEST_CASE("C++ API: Test subarray (dense)", "[cppapi][dense][subarray]") {
   }
 }
 
-#ifdef TILEDB_SERIALIZATION
 TEST_CASE(
     "C++ API: Test serialized OOB subarray error (dense)",
-    "[cppapi][dense][subarray][oob][serialization]") {
-  bool query_v2 = GENERATE(true, false);
-
-  std::string array_name = "cpp_unit_array";
+    "[cppapi][dense][subarray][oob][serialization][rest]") {
+  auto reader_type = GENERATE("legacy", "refactored");
   tiledb::Config cfg;
-  cfg.set("config.logging_level", "3");
-  cfg["sm.query.dense.reader"] = GENERATE("legacy", "refactored");
-  tiledb::Context ctx(cfg);
+  cfg["sm.query.dense.reader"] = reader_type;
+  tiledb::test::VFSTestSetup vfs_test_setup(cfg.ptr().get());
 
-  VFS vfs(ctx);
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  // SC-45976 : Different behaviour between local and remote arrays when
+  // submitting query with ranges oob of domain
+  if (!vfs_test_setup.is_rest()) {
+    return;
   }
+
+  tiledb::Context ctx(vfs_test_setup.ctx());
+  std::string array_name = vfs_test_setup.array_uri("cpp_unit_array");
 
   // Create
   tiledb::Domain domain(ctx);
@@ -499,21 +500,14 @@ TEST_CASE(
 
   std::vector<int> a(4);
   query.set_data_buffer("a", a);
-  tiledb::test::ServerQueryBuffers buffers;
-  CHECK(
-      submit_query_wrapper(
-          ctx, array_name, &query, buffers, true, query_v2, false) == expected);
-
   if (expected == TILEDB_OK) {
+    CHECK_NOTHROW(query.submit());
     CHECK(query.query_status() == tiledb::Query::Status::COMPLETE);
     CHECK(a == std::vector<int>{1, 2, 3, 4});
-  }
-
-  if (vfs.is_dir(array_name)) {
-    vfs.remove_dir(array_name);
+  } else {
+    CHECK_THROWS(query.submit());
   }
 }
-#endif
 
 TEST_CASE(
     "C++ API: Test subarray (incomplete) - Subarray-query",
