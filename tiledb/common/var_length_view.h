@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2024 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2021 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -69,28 +69,27 @@ class var_length_view : public std::ranges::view_base {
   template <class Value>
   struct private_iterator;
 
-  // The type of the iterator over the var length data range, and the type that
-  // can index into it
+  /** The type of the iterator over the var length data range */
   using data_iterator_type = std::ranges::iterator_t<R>;
+
+  /** The type that can index into the var length data range */
   using data_index_type = std::iter_difference_t<data_iterator_type>;
 
-  // The type of the iterator over the index range -- It should derference to
-  // something that can index into the data range (e.g., the data_index_type)
+  /** The type of the iterator over the index range -- It should dereference to
+   * something that can index into the data range (e.g., the data_index_type) */
   using index_iterator_type = std::ranges::iterator_t<const I>;
 
-  // They type dereferenced by the iterator is a subrange
+  /** The type dereferenced by the iterator is a subrange */
   using var_length_type = std::ranges::subrange<data_iterator_type>;
+
+  /** The type of the iterator over the var length view */
   using var_length_iterator = private_iterator<var_length_type>;
+
+  /** The type of the const iterator over the var length view */
   using var_length_const_iterator = private_iterator<var_length_type const>;
 
-  std::ranges::iterator_t<R> data_begin_;
-  std::ranges::iterator_t<R> data_end_;
-
-  // const_iterator is c++23.  For now we just use an iterator to const
-  std::ranges::iterator_t<const I> index_begin_;
-  std::ranges::iterator_t<const I> index_end_;
-
  public:
+  /** Primary constructor */
   var_length_view(R& data, const I& index)
       : data_begin_(std::ranges::begin(data))
       , data_end_(std::ranges::end(data))
@@ -98,33 +97,40 @@ class var_length_view : public std::ranges::view_base {
       , index_end_(std::ranges::cend(index) - 1) {
   }
 
+  /** Return iterator to the beginning of the var length view */
   auto begin() {
     return var_length_iterator(data_begin_, index_begin_, 0);
   }
 
+  /** Return iterator to the end of the var length view */
   auto end() {
     return var_length_iterator(
         data_begin_, index_begin_, index_end_ - index_begin_);
   }
 
+  /** Return const iterator to the beginning of the var length view */
   auto begin() const {
     return var_length_const_iterator(data_begin_, index_begin_, 0);
   }
 
+  /** Return const iterator to the end of the var length view */
   auto end() const {
     return var_length_const_iterator(
         data_begin_, index_begin_, index_end_ - index_begin_);
   }
 
+  /** Return const iterator to the beginning of the var length view */
   auto cbegin() const {
     return var_length_const_iterator(data_begin_, index_begin_, 0);
   }
 
+  /** Return const iterator to the end of the var length view */
   auto cend() const {
     return var_length_const_iterator(
         data_begin_, index_begin_, index_end_ - index_begin_);
   }
 
+  /** Return the number of subranges in the var length view */
   auto size() const {
     return index_end_ - index_begin_;
   }
@@ -134,11 +140,10 @@ class var_length_view : public std::ranges::view_base {
   struct private_iterator : public iterator_facade<private_iterator<Value>> {
     using value_type_ = Value;
 
-    data_index_type index_;
-    data_iterator_type data_begin_;
-    index_iterator_type offsets_begin_;
-
+    /** Default constructor */
     private_iterator() = default;
+
+    /** Primary constructor */
     private_iterator(
         data_iterator_type data_begin,
         index_iterator_type offsets_begin,
@@ -146,7 +151,6 @@ class var_length_view : public std::ranges::view_base {
         : index_(index)
         , data_begin_(data_begin)
         , offsets_begin_(offsets_begin) {
-      // ...
     }
 
     /*************************************************************************
@@ -168,24 +172,48 @@ class var_length_view : public std::ranges::view_base {
           data_begin_ + offsets_begin_[index_ + 1]};
     }
 
+    /** Advance the iterator by n */
     auto advance(data_index_type n) {
       index_ += n;
       return *this;
     }
 
+    /** Return the distance to another iterator */
     auto distance_to(const private_iterator& other) const {
       return other.index_ - index_;
     }
 
+    /** Compare two iterators for equality */
     bool operator==(const private_iterator& other) const {
       return data_begin_ == other.data_begin_ &&
              offsets_begin_ == other.offsets_begin_ && index_ == other.index_;
     }
 
+    /** Flag to indicate that the iterator is not a single pass iterator */
     static const bool single_pass_iterator = false;
+
+    /** The index to the current location of the iterator */
+    data_index_type index_;
+
+    /** Iterator to the beginning of the data range */
+    data_iterator_type data_begin_;
+
+    /** Iterator to the beginning of the index range */
+    index_iterator_type offsets_begin_;
   };
 
-  // using iterator = private_iterator;
+  /** The beginning of the data range */
+  std::ranges::iterator_t<R> data_begin_;
+
+  /** The end of the data range */
+  std::ranges::iterator_t<R> data_end_;
+
+  // const_iterator is c++23.  For now we just use an iterator to const
+  /** The beginning of the index range */
+  std::ranges::iterator_t<const I> index_begin_;
+
+  /** The end of the index range */
+  std::ranges::iterator_t<const I> index_end_;
 };
 
 #endif  // TILEDB_VAR_LENGTH_VIEW_H
