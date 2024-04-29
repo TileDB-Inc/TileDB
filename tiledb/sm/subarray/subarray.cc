@@ -1105,10 +1105,13 @@ Layout Subarray::layout() const {
 
 FieldDataSize Subarray::get_est_result_size(
     std::string_view field_name, const Config* config, ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (field_name.empty()) {
-    throw SubarrayException(
-        "Cannot get estimated result size; field name cannot be empty");
+  /*
+   * This check throws a logic error because we expect the field name to have
+   * already been validated in the C API.
+   */
+  if (field_name.data()==nullptr) {
+    throw std::logic_error(
+        "Cannot get estimated result size; field name is null");
   }
 
   // Check if name is attribute or dimension
