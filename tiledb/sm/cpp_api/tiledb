@@ -48,6 +48,7 @@
 
 #include "array.h"
 #include "array_schema.h"
+#include "array_schema_evolution.h"
 #include "attribute.h"
 #include "config.h"
 #include "context.h"
