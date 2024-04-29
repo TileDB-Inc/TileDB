@@ -87,11 +87,12 @@ cpp_api_src_path = os.path.join(TILEDB_SRC_PATH, 'tiledb/sm/cpp_api/')
 breathe_projects = {'TileDB-C': doxygen_xml_dir, 'TileDB-C++': doxygen_xml_dir}
 breathe_default_project = 'TileDB-C'
 breathe_projects_source = {
-    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_experimental.h', 'tiledb_serialization.h']),
+    'TileDB-C': (c_api_src_path, ['tiledb.h', 'tiledb_deprecated.h', 'tiledb_experimental.h', 'tiledb_serialization.h']),
     'TileDB-C++': (cpp_api_src_path, ['tiledb', 'tiledb_experimental'])
 }
 breathe_domain_by_file_pattern = {
     '*/c_api/tiledb.h': 'c',
+    '*/c_api/tiledb_deprecated.h': 'c',
     '*/c_api/tiledb_experimental.h': 'c',
     '*/c_api/tiledb_serialization.h': 'c',
     '*/cpp_api/tiledb': 'cpp',
