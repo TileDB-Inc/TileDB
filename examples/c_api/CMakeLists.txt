@@ -48,6 +48,10 @@ endfunction()
 # Get the example sources
 file(GLOB TILEDB_EXAMPLE_SOURCES_CAPI "*.c")
 
+if(TILEDB_REMOVE_DEPRECATIONS)
+  list(FILTER TILEDB_EXAMPLE_SOURCES_CAPI EXCLUDE REGEX "async")
+endif()
+
 # Iterate over all example sources and call the build function
 foreach(EXAMPLE_SOURCE ${TILEDB_EXAMPLE_SOURCES_CAPI})
   # Get the binary name

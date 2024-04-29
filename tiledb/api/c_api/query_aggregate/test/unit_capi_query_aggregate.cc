@@ -41,11 +41,6 @@
 using namespace tiledb::test;
 
 struct QueryAggregateFx : TemporaryDirectoryFixture {
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  ServerQueryBuffers server_buffers_;
-
   QueryAggregateFx()
       : array_name_(temp_dir_ + "queryaggregate_array") {
     rm_array();
@@ -335,15 +330,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates COUNT test",
     "[capi][query_aggregate][count]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -371,16 +357,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Count", &count, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
-
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
   CHECK(count == 9);
 
   // Clean up
@@ -394,15 +371,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates SUM test",
     "[capi][query_aggregate][sum]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -434,16 +402,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Sum", &sum, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
-
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
   CHECK(sum == 55);
 
   // Clean up
@@ -458,15 +417,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates MEAN test",
     "[capi][query_aggregate][mean]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -499,15 +449,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Mean", &mean, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
 
   CHECK(mean == 5.5);
 
@@ -523,15 +465,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates MIN test",
     "[capi][query_aggregate][min]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -563,15 +496,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Min", &min, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
 
   CHECK(min == 1);
 
@@ -587,15 +512,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates MAX test",
     "[capi][query_aggregate][max]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -627,15 +543,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Max", &max, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
 
   CHECK(max == 10);
 
@@ -651,15 +559,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates NULL_COUNT test",
     "[capi][query_aggregate][null_count]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -692,15 +591,7 @@ TEST_CASE_METHOD(
       tiledb_query_set_data_buffer(ctx, query, "Null", &nullcount, &size) ==
       TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
-  REQUIRE(rc == 0);
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
 
   CHECK(nullcount == 8);
 
@@ -812,15 +703,6 @@ TEST_CASE_METHOD(
     QueryAggregateFx,
     "C API: Query aggregates serialization test",
     "[capi][query_aggregate][serialization][incompletes]") {
-  SECTION("- No serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("- Serialization") {
-    serialize_ = true;
-  }
-#endif
-
   tiledb_array_t* array;
   REQUIRE(tiledb_array_alloc(ctx, array_name_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
@@ -857,23 +739,11 @@ TEST_CASE_METHOD(
   REQUIRE(
       tiledb_query_set_data_buffer(ctx, query, "a", &a, &a_size) == TILEDB_OK);
 
-  int rc = submit_query_wrapper(
-      ctx,
-      array_name_.c_str(),
-      &query,
-      server_buffers_,
-      serialize_,
-      false,
-      false);
+  REQUIRE(tiledb_query_submit(ctx, query) == TILEDB_OK);
 
-  if (serialize_) {
-    CHECK(rc != 0);
-  } else {
-    tiledb_query_status_t status;
-    REQUIRE(tiledb_query_get_status(ctx, query, &status) == TILEDB_OK);
-    REQUIRE(status == TILEDB_INCOMPLETE);
-    CHECK(rc == 0);
-  }
+  tiledb_query_status_t status;
+  REQUIRE(tiledb_query_get_status(ctx, query, &status) == TILEDB_OK);
+  REQUIRE(status == TILEDB_INCOMPLETE);
 
   // Clean up
   CHECK(tiledb_aggregate_free(ctx, &sum_op) == TILEDB_OK);

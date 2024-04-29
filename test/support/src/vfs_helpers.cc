@@ -173,8 +173,7 @@ Status SupportedFsS3::prepare_config(
           config, "vfs.s3.use_virtual_addressing", "false", &error) ==
       TILEDB_OK);
   REQUIRE(
-      tiledb_config_set(config, "vfs.s3.verify_ssl", "false", &error) ==
-      TILEDB_OK);
+      tiledb_config_set(config, "ssl.verify", "false", &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 #endif
 
@@ -468,7 +467,7 @@ tiledb::sm::Config VFSTestBase::create_test_config() {
     cfg.set("vfs.s3.endpoint_override", "localhost:9999").ok();
     cfg.set("vfs.s3.scheme", "https").ok();
     cfg.set("vfs.s3.use_virtual_addressing", "false").ok();
-    cfg.set("vfs.s3.verify_ssl", "false").ok();
+    cfg.set("ssl.verify", "false").ok();
   }
   cfg.set("vfs.azure.storage_account_name", "devstoreaccount1").ok();
   cfg.set(

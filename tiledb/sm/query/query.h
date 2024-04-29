@@ -39,7 +39,6 @@
 #include <utility>
 #include <vector>
 
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/dimension.h"
@@ -64,12 +63,13 @@ namespace tiledb {
 namespace sm {
 
 /** Class for query status exceptions. */
-class QueryStatusException : public StatusException {
+class QueryException : public StatusException {
  public:
-  explicit QueryStatusException(const std::string& msg)
+  explicit QueryException(const std::string& msg)
       : StatusException("Query", msg) {
   }
 };
+using QueryStatusException = QueryException;
 
 class Array;
 class ArrayDimensionLabelQueries;
@@ -172,35 +172,92 @@ class Query {
   /* ********************************* */
 
   /**
+   * Require that a name be that of a fixed-size field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is fixed-sized
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param name The name of a field
+   */
+  void field_require_array_fixed(
+      const std::string_view origin, const char* name);
+
+  /**
+   * Require that a name be that of a variable-size field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is variable-sized
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param name The name of a field
+   */
+  void field_require_array_variable(
+      const std::string_view origin, const char* name);
+
+  /**
+   * Require that a field be a nullable field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of an attribute of the source array
+   * - The attribute is nullable
+   *
+   * @param origin The name of the operation that this validation is a part of
+   * @param name The name of a field
+   */
+  void field_require_array_nullable(
+      const std::string_view origin, const char* name);
+
+  /**
+   * Require that a field be a nonnull field from the source array.
+   *
+   * Validate these conditions and throw if any are not met.
+   * - The name is that of a field in the array
+   * - The field is not nullable
+   *
+   * @param origin The name of the operation that this validation is a part of.
+   * @param name The name of a field
+   */
+  void field_require_array_nonnull(
+      const std::string_view origin, const char* name);
+
+  /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(const char* name, uint64_t* size);
+  FieldDataSize get_est_result_size_fixed_nonnull(const char* name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
-  Status get_est_result_size(
-      const char* name, uint64_t* size_off, uint64_t* size_val);
+  FieldDataSize get_est_result_size_variable_nonnull(const char* name);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized,
    * nullable attribute.
    */
-  Status get_est_result_size_nullable(
-      const char* name, uint64_t* size_val, uint64_t* size_validity);
+  FieldDataSize get_est_result_size_fixed_nullable(const char* name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized,
    * nullable attribute.
    */
-  Status get_est_result_size_nullable(
-      const char* name,
-      uint64_t* size_off,
-      uint64_t* size_val,
-      uint64_t* size_validity);
+  FieldDataSize get_est_result_size_variable_nullable(const char* name);
 
+ private:
+  /**
+   * Common part of all `est_result_size_*` functions, called after argument
+   * validation.
+   *
+   * @param name The name of a field
+   * @return estimated result size
+   */
+  FieldDataSize internal_est_result_size(const char* name);
+
+ public:
   /** Retrieves the number of written fragments. */
   Status get_written_fragment_num(uint32_t* num) const;
 

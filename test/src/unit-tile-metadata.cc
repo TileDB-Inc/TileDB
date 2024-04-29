@@ -44,9 +44,6 @@ using namespace tiledb;
 
 template <typename TestType>
 struct CPPFixedTileMetadataFx {
-  // Buffers to allocate on server side for serialized queries
-  test::ServerQueryBuffers server_buffers_;
-
   CPPFixedTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -118,9 +115,7 @@ struct CPPFixedTileMetadataFx {
       tiledb_layout_t layout,
       bool nullable,
       bool all_null,
-      uint64_t cell_val_num,
-      const bool serialized,
-      const bool refactored_query_v2) {
+      uint64_t cell_val_num) {
     std::default_random_engine random_engine;
 
     // Generate random, sorted strings for the string ascii type.
@@ -263,14 +258,11 @@ struct CPPFixedTileMetadataFx {
     }
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx_,
-        ARRAY_NAME,
-        &query,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
 
     array.close();
   }
@@ -658,17 +650,6 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     FixedTypesUnderTest) {
   typedef TestType T;
   std::string test = GENERATE("nullable", "all null", "non nullable");
-
-  bool serialized = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -685,13 +666,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
     CPPFixedTileMetadataFx<T>::write_fragment(
-        f,
-        layout,
-        nullable,
-        all_null,
-        cell_val_num,
-        serialized,
-        refactored_query_v2);
+        f, layout, nullable, all_null, cell_val_num);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {
@@ -702,9 +677,6 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 struct CPPVarTileMetadataFx {
-  // Buffers to allocate on server side for serialized queries
-  test::ServerQueryBuffers server_buffers_;
-
   CPPVarTileMetadataFx()
       : vfs_(ctx_) {
     if (vfs_.is_dir(ARRAY_NAME))
@@ -739,12 +711,7 @@ struct CPPVarTileMetadataFx {
   }
 
   void write_fragment(
-      uint64_t f,
-      tiledb_layout_t layout,
-      bool nullable,
-      bool all_null,
-      const bool serialized,
-      const bool refactored_query_v2) {
+      uint64_t f, tiledb_layout_t layout, bool nullable, bool all_null) {
     std::default_random_engine random_engine;
 
     uint64_t max_string_size = 100;
@@ -840,14 +807,12 @@ struct CPPVarTileMetadataFx {
     }
 
     // Submit query
-    auto rc = test::submit_query_wrapper(
-        ctx_,
-        ARRAY_NAME,
-        &query,
-        server_buffers_,
-        serialized,
-        refactored_query_v2);
-    REQUIRE(rc == TILEDB_OK);
+    if (layout == TILEDB_GLOBAL_ORDER) {
+      query.submit_and_finalize();
+    } else {
+      query.submit();
+    }
+
     array.close();
   }
 
@@ -1063,18 +1028,6 @@ TEST_CASE_METHOD(
     "TileMetadata: var data type tile",
     "[tile-metadata][var-data]") {
   std::string test = GENERATE("nullable", "all null", "non nullable");
-
-  bool serialized = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
   tiledb_layout_t layout =
       GENERATE(TILEDB_UNORDERED, TILEDB_GLOBAL_ORDER, TILEDB_ROW_MAJOR);
 
@@ -1088,8 +1041,7 @@ TEST_CASE_METHOD(
 
   for (uint64_t f = 0; f < num_frag; f++) {
     // Write a fragment.
-    CPPVarTileMetadataFx::write_fragment(
-        f, layout, nullable, all_null, serialized, refactored_query_v2);
+    CPPVarTileMetadataFx::write_fragment(f, layout, nullable, all_null);
   }
 
   for (uint64_t f = 0; f < num_frag; f++) {

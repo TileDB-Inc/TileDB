@@ -1135,99 +1135,29 @@ Status SubarrayPartitioner::compute_splitting_value_multi_range(
 }
 
 bool SubarrayPartitioner::must_split(Subarray* partition) {
-  const auto& array_schema = subarray_.array()->array_schema_latest();
-  bool must_split = false;
-
-  uint64_t size_fixed;
-  uint64_t size_var;
-  uint64_t size_validity;
-  uint64_t mem_size_fixed;
-  uint64_t mem_size_var;
-  uint64_t mem_size_validity;
   for (const auto& b : budget_) {
-    // Compute max sizes
+    /*
+     * Compute max memory size and, if needed, estimated result size
+     */
     auto name = b.first;
-    auto var_size = array_schema.var_size(name);
-    auto nullable = array_schema.is_nullable(name);
-
-    // Compute est sizes
-    size_fixed = 0;
-    size_var = 0;
-    size_validity = 0;
-    mem_size_fixed = 0;
-    mem_size_var = 0;
-    mem_size_validity = 0;
-    // Compute max memory sizes
-    if (var_size) {
-      if (!nullable) {
-        partition->get_max_memory_size(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_var,
-            config_,
-            compute_tp_);
-      } else {
-        partition->get_max_memory_size_nullable(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_var,
-            &mem_size_validity,
-            config_,
-            compute_tp_);
-      }
-    } else {
-      if (!nullable) {
-        partition->get_max_memory_size(
-            b.first.c_str(), &mem_size_fixed, config_, compute_tp_);
-      } else {
-        partition->get_est_result_size_nullable(
-            b.first.c_str(), &size_fixed, &size_validity, config_, compute_tp_);
-        partition->get_max_memory_size_nullable(
-            b.first.c_str(),
-            &mem_size_fixed,
-            &mem_size_validity,
-            config_,
-            compute_tp_);
-      }
-    }
-
-    // Compute estimated result sizes
-    if (!skip_split_on_est_size_) {
-      if (var_size) {
-        if (!nullable) {
-          partition->get_est_result_size(
-              b.first.c_str(), &size_fixed, &size_var, config_, compute_tp_);
-        } else {
-          partition->get_est_result_size_nullable(
-              b.first.c_str(),
-              &size_fixed,
-              &size_var,
-              &size_validity,
-              config_,
-              compute_tp_);
-        }
-      } else {
-        if (!nullable) {
-          partition->get_est_result_size_internal(
-              b.first.c_str(), &size_fixed, config_, compute_tp_);
-        } else {
-          partition->get_est_result_size_nullable(
-              b.first.c_str(),
-              &size_fixed,
-              &size_validity,
-              config_,
-              compute_tp_);
-        }
-      }
-    }
+    auto mem_size{
+        partition->get_max_memory_size(b.first.c_str(), config_, compute_tp_)};
+    auto est_size{
+        skip_split_on_est_size_ ?
+            // Skip the estimate and use a default object that's all zeros.
+            FieldDataSize{} :
+            // Perform the estimate
+            partition->get_est_result_size(
+                b.first.c_str(), config_, compute_tp_)};
 
     // If we try to split a unary range because of memory budgets, throw an
     // error. This can happen when the memory budget cannot fit even one tile.
     // It will cause the reader to process the query cell by cell, which will
     // make it very slow.
     if (!skip_unary_partitioning_budget_check_ &&
-        (mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
-         mem_size_validity > memory_budget_validity_)) {
+        (mem_size.fixed_ > memory_budget_ ||
+         mem_size.variable_ > memory_budget_var_ ||
+         mem_size.validity_ > memory_budget_validity_)) {
       if (partition->is_unary()) {
         throw SubarrayPartitionerStatusException(
             "Trying to partition a unary range because of memory budget, this "
@@ -1241,16 +1171,16 @@ bool SubarrayPartitioner::must_split(Subarray* partition) {
 
     // Check for budget overflow
     if ((!skip_split_on_est_size_ &&
-         (size_fixed > b.second.size_fixed_ || size_var > b.second.size_var_ ||
-          size_validity > b.second.size_validity_)) ||
-        mem_size_fixed > memory_budget_ || mem_size_var > memory_budget_var_ ||
-        mem_size_validity > memory_budget_validity_) {
-      must_split = true;
-      break;
+         (est_size.fixed_ > b.second.size_fixed_ ||
+          est_size.variable_ > b.second.size_var_ ||
+          est_size.validity_ > b.second.size_validity_)) ||
+        mem_size.fixed_ > memory_budget_ ||
+        mem_size.variable_ > memory_budget_var_ ||
+        mem_size.validity_ > memory_budget_validity_) {
+      return true;
     }
   }
-
-  return must_split;
+  return false;
 }
 
 Status SubarrayPartitioner::next_from_multi_range(bool* unsplittable) {

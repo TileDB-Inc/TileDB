@@ -375,6 +375,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
 TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
     TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Note: This API is deprecated and replaced with tiledb_array_delete (above).
  *
@@ -393,6 +394,7 @@ TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
  */
 TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
     tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 /**
  * Evolve array schema of an array.
@@ -519,6 +521,7 @@ TILEDB_EXPORT int32_t tiledb_subarray_add_point_ranges(
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /**
  * Adds a set of point ranges along subarray dimension index. Each value
  * in the target array is added as `add_range(x,x)` for count elements.
@@ -549,6 +552,7 @@ TILEDB_DEPRECATED_EXPORT int32_t tiledb_query_add_point_ranges(
     uint32_t dim_idx,
     const void* start,
     uint64_t count) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
 
 /**
  * Get the number of relevant fragments from the subarray. Should only be
@@ -746,7 +750,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * @param[in] ctx The TileDB context.
  * @param[in] array_uri The name of the TileDB array whose metadata will
  *     be consolidated.
- * @param[in] fragment_uris URIs of the fragments to consolidate.
+ * @param[in] fragment_uris Fragment names of the fragments to consolidate. The
+ *     names can be recovered using tiledb_fragment_info_get_fragment_name.
  * @param[in] num_fragments Number of URIs to consolidate.
  * @param config Configuration parameters for the consolidation
  *     (`nullptr` means default, which will use the config from \p ctx).

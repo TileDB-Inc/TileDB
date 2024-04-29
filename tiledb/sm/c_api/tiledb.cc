@@ -1541,11 +1541,17 @@ int32_t tiledb_query_get_est_result_size(
     const tiledb_query_t* query,
     const char* name,
     uint64_t* size) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
-
-  throw_if_not_ok(query->query_->get_est_result_size(name, size));
-
+  }
+  if (name == nullptr) {
+    throw CAPIStatusException("Pointer to field name may not be NULL");
+  }
+  if (size == nullptr) {
+    throw CAPIStatusException("Pointer to size may not be NULL");
+  }
+  auto est_size{query->query_->get_est_result_size_fixed_nonnull(name)};
+  *size = est_size.fixed_;
   return TILEDB_OK;
 }
 
@@ -1555,10 +1561,22 @@ int32_t tiledb_query_get_est_result_size_var(
     const char* name,
     uint64_t* size_off,
     uint64_t* size_val) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  if (name == nullptr) {
+    throw CAPIStatusException("Pointer to field name may not be NULL");
+  }
+  if (size_off == nullptr) {
+    throw CAPIStatusException("Pointer to offset size may not be NULL");
+  }
+  if (size_val == nullptr) {
+    throw CAPIStatusException("Pointer to value size may not be NULL");
+  }
 
-  throw_if_not_ok(query->query_->get_est_result_size(name, size_off, size_val));
+  auto est_size{query->query_->get_est_result_size_variable_nonnull(name)};
+  *size_off = est_size.fixed_;
+  *size_val = est_size.variable_;
 
   return TILEDB_OK;
 }
@@ -1569,12 +1587,22 @@ int32_t tiledb_query_get_est_result_size_nullable(
     const char* name,
     uint64_t* size_val,
     uint64_t* size_validity) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  if (name == nullptr) {
+    throw CAPIStatusException("Pointer to field name may not be NULL");
+  }
+  if (size_val == nullptr) {
+    throw CAPIStatusException("Pointer to value size may not be NULL");
+  }
+  if (size_validity == nullptr) {
+    throw CAPIStatusException("Pointer to validity size may not be NULL");
+  }
 
-  throw_if_not_ok(query->query_->get_est_result_size_nullable(
-      name, size_val, size_validity));
-
+  auto est_size{query->query_->get_est_result_size_fixed_nullable(name)};
+  *size_val = est_size.fixed_;
+  *size_validity = est_size.validity_;
   return TILEDB_OK;
 }
 
@@ -1585,12 +1613,25 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
     uint64_t* size_off,
     uint64_t* size_val,
     uint64_t* size_validity) {
-  if (sanity_check(ctx, query) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
-
-  throw_if_not_ok(query->query_->get_est_result_size_nullable(
-      name, size_off, size_val, size_validity));
-
+  }
+  if (name == nullptr) {
+    throw CAPIStatusException("Pointer to field name may not be NULL");
+  }
+  if (size_off == nullptr) {
+    throw CAPIStatusException("Pointer to offset size may not be NULL");
+  }
+  if (size_val == nullptr) {
+    throw CAPIStatusException("Pointer to value size may not be NULL");
+  }
+  if (size_validity == nullptr) {
+    throw CAPIStatusException("Pointer to validity size may not be NULL");
+  }
+  auto est_size{query->query_->get_est_result_size_variable_nullable(name)};
+  *size_off = est_size.fixed_;
+  *size_val = est_size.variable_;
+  *size_validity = est_size.validity_;
   return TILEDB_OK;
 }
 
@@ -2754,10 +2795,7 @@ int32_t tiledb_array_get_non_empty_domain(
     return TILEDB_ERR;
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain(
-      array->array_.get(), domain, &is_empty_b));
-
+  array->array_->non_empty_domain(domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -7266,6 +7304,7 @@ CAPI_INTERFACE(
       ctx, array, serialization_type, request, response);
 }
 
+#ifndef TILEDB_REMOVE_DEPRECATIONS
 /* ****************************** */
 /*            C++ API             */
 /* ****************************** */
@@ -7277,6 +7316,7 @@ int32_t tiledb::impl::tiledb_query_submit_async_func(
   return api_entry<tiledb::api::impl::tiledb_query_submit_async_func>(
       ctx, query, callback_func, callback_data);
 }
+#endif
 
 /* ****************************** */
 /*          FRAGMENT INFO         */

@@ -41,3 +41,8 @@ commence(unit_test memory_tracker_types)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 
+commence(unit_test common_utils)
+    this_target_sources(main.cc unit_iterator_facade.cc unit_var_length_view.cc)
+    this_target_object_libraries(baseline)
+conclude(unit_test)
+

@@ -754,9 +754,29 @@ class Array {
 
   /**
    * Returns the non-empty domain of the opened array. If the non_empty_domain
-   * has not been computed or loaded it will be loaded first
+   * has not been computed or loaded it will be loaded first.
    */
   const NDRange non_empty_domain();
+
+  /**
+   * Retrieves the non-empty domain from the opened array.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain(NDRange* domain, bool* is_empty);
+
+  /**
+   * Retrieves the non-empty domain from the opened array.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @pre The array dimensions are numeric and of the same type.
+   *
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain(void* domain, bool* is_empty);
 
   /**
    * Retrieves the array metadata object that is already loaded. If it's not yet
