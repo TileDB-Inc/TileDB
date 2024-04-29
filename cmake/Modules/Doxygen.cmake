@@ -34,6 +34,7 @@ if(DOXYGEN_FOUND)
   list(APPEND TILEDB_C_API_HEADERS
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/api/c_api/api_external_common.h"
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb.h"
+      "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/c_api/tiledb_deprecated.h"
   )
   file(GLOB TILEDB_CPP_API_HEADERS
       "${CMAKE_CURRENT_SOURCE_DIR}/tiledb/sm/cpp_api/*.h"

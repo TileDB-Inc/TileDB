@@ -83,6 +83,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_evolution.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/array_schema_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/as_built_experimental.h
@@ -113,6 +114,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_channel.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_condition.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_deprecated.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/query_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/schema_base.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/stats.h
@@ -480,7 +482,6 @@ endif()
 
 if (TILEDB_REMOVE_DEPRECATIONS)
   add_definitions(-DTILEDB_REMOVE_DEPRECATIONS)
-else()
   message(STATUS "The TileDB library is compiled without deprecated APIs.")
 endif()
 
@@ -824,6 +825,10 @@ if(BUILD_SHARED_LIBS)
   set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_shared)
 else()
   set_target_properties(tiledb PROPERTIES EXPORT_NAME tiledb_static)
+endif()
+
+if(TILEDB_REMOVE_DEPRECATIONS)
+  target_compile_definitions(tiledb PUBLIC TILEDB_REMOVE_DEPRECATIONS)
 endif()
 
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/sm/c_api/tiledb_version.h" ver)
