@@ -217,7 +217,7 @@ Status Group::open(QueryType query_type) {
 Status Group::close() {
   // Check if group is open
   if (!is_open_)
-    return Status_GroupError("Cannot close group; Group not open.");
+    return Status::Ok();
 
   if (remote_) {
     // Update group metadata for write queries if metadata was written by the
