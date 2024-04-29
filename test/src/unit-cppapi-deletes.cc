@@ -1638,6 +1638,11 @@ TEST_CASE_METHOD(
     "CPP API: Test writing delete in middle of fragment consolidated without "
     "timestamps",
     "[cppapi][deletes][write][old-consolidated-fragment]") {
+  // Copying across filesystems is not supported currently
+  if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+
   if constexpr (is_experimental_build) {
     return;
   }
@@ -1679,7 +1684,7 @@ TEST_CASE_METHOD(
   create_sparse_array();
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 1);
   write_sparse({0, 1, 2, 3}, {1, 1, 1, 2}, {1, 2, 4, 3}, 3);
-  CHECK(tiledb::test::num_fragments(array_name_) == 2);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 2);
 
   // Try to delete a fragment uri that doesn't exist
   std::string extraneous_fragment =
@@ -1689,7 +1694,7 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(
       Array::delete_fragments_list(ctx_, array_name_, extraneous_fragments, 1),
       Catch::Matchers::ContainsSubstring("Failed to delete fragments_list"));
-  CHECK(tiledb::test::num_fragments(array_name_) == 2);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 2);
 
   remove_sparse_array();
 }
@@ -1806,8 +1811,8 @@ TEST_CASE_METHOD(
     num_commits -= 2;
     num_fragments -= 2;
   }
-  CHECK(tiledb::test::num_commits(array_name_) == num_commits);
-  CHECK(tiledb::test::num_fragments(array_name_) == num_fragments);
+  CHECK(tiledb::test::num_commits(ctx_, array_name_) == num_commits);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == num_fragments);
 
   // Delete fragments at timestamps 2 - 4
   Array::delete_fragments(ctx_, array_name_, 2, 4);
@@ -1820,8 +1825,8 @@ TEST_CASE_METHOD(
   }
 
   // Validate working directory
-  CHECK(tiledb::test::num_commits(array_name_) == num_commits);
-  CHECK(tiledb::test::num_fragments(array_name_) == num_fragments);
+  CHECK(tiledb::test::num_commits(ctx_, array_name_) == num_commits);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == num_fragments);
 
   // Read array
   uint64_t buffer_size = 4;
@@ -1864,8 +1869,8 @@ TEST_CASE_METHOD(
   array->close();
 
   // Check write
-  CHECK(tiledb::test::num_commits(array_name_) == 4);
-  CHECK(tiledb::test::num_fragments(array_name_) == 4);
+  CHECK(tiledb::test::num_commits(ctx_, array_name_) == 4);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 4);
   auto schemas = list_schemas(array_name);
   CHECK(schemas.size() == 1);
   auto meta =
@@ -1888,7 +1893,7 @@ TEST_CASE_METHOD(
     CHECK(
         commits_dir.file_count(
             tiledb::sm::constants::con_commits_file_suffix) == 1);
-    CHECK(tiledb::test::num_fragments(array_name_) == 4);
+    CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 4);
     auto frag_meta = vfs_.ls(
         array_name + tiledb::sm::constants::array_fragment_meta_dir_name);
     CHECK(frag_meta.size() == 1);
@@ -1899,7 +1904,7 @@ TEST_CASE_METHOD(
 
   // Check working directory after delete
   REQUIRE(vfs_.is_file(extraneous_file_path));
-  CHECK(tiledb::test::num_fragments(array_name_) == 0);
+  CHECK(tiledb::test::num_fragments(ctx_, array_name_) == 0);
   validate_array_dir_after_delete(array_name);
 
   // Try to open array
@@ -1916,6 +1921,11 @@ TEST_CASE_METHOD(
     DeletesFx,
     "CPP API: Deletion of older-versioned array data",
     "[cppapi][deletes][array][older_version]") {
+  // Copying across filesystems is not supported currently
+  if (!vfs_test_setup_.is_local()) {
+    return;
+  }
+
   if constexpr (is_experimental_build) {
     return;
   }

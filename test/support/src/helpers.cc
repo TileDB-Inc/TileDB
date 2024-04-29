@@ -1232,8 +1232,7 @@ void read_array(
   tiledb_query_free(&query);
 }
 
-int32_t num_commits(const std::string& array_name) {
-  Context ctx;
+int32_t num_commits(Context ctx, const std::string& array_name) {
   VFS vfs(ctx);
 
   // Get the number of write files in the commit directory
@@ -1241,14 +1240,10 @@ int32_t num_commits(const std::string& array_name) {
   return commits_dir.file_count(sm::constants::write_file_suffix);
 }
 
-int32_t num_fragments(const std::string& array_name) {
+int32_t num_commits(const std::string& array_name) {
   Context ctx;
-  VFS vfs(ctx);
 
-  // Get all URIs in the array directory
-  auto uris = vfs.ls(
-      array_name + "/" + tiledb::sm::constants::array_fragments_dir_name);
-  return static_cast<uint32_t>(uris.size());
+  return num_commits(ctx, array_name);
 }
 
 int32_t num_fragments(Context ctx, const std::string& array_name) {
@@ -1258,6 +1253,12 @@ int32_t num_fragments(Context ctx, const std::string& array_name) {
   auto uris = vfs.ls(
       array_name + "/" + tiledb::sm::constants::array_fragments_dir_name);
   return static_cast<uint32_t>(uris.size());
+}
+
+int32_t num_fragments(const std::string& array_name) {
+  Context ctx;
+
+  return num_fragments(ctx, array_name);
 }
 
 std::string random_string(const uint64_t l) {
