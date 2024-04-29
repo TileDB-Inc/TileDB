@@ -151,8 +151,10 @@ TEST_CASE("C API Support to_string_view_internal - max 2, length 4 string") {
 // -------------------------------------------------------
 
 template <tiledb::api::StringConstant description>
-inline std::string_view to_string_view(const char* candidate_c_string) {
-  return tiledb::api::to_string_view<description>(candidate_c_string);
+inline std::string_view to_string_view(const char* p) {
+  // See above for rationale for `launder`
+  const char* q{std::launder(p)};
+  return tiledb::api::to_string_view<description>(q);
 }
 
 TEST_CASE("C API Support to_string_view - null input") {
