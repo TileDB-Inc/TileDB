@@ -1109,7 +1109,7 @@ FieldDataSize Subarray::get_est_result_size(
    * This check throws a logic error because we expect the field name to have
    * already been validated in the C API.
    */
-  if (field_name.data()==nullptr) {
+  if (field_name.data() == nullptr) {
     throw std::logic_error(
         "Cannot get estimated result size; field name is null");
   }

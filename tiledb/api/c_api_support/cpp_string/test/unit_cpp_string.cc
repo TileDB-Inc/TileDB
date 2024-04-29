@@ -41,8 +41,14 @@
  * Proxy to move the function under test into the global namespace
  */
 template <size_t N = tiledb::api::default_max_c_string_length>
-inline std::string_view to_cpp_string_view_internal(const char* p) {
-  return tiledb::api::to_string_view_internal<N>(p);
+std::string_view to_cpp_string_view_internal(const char* p) {
+  /*
+   * We launder the pointer to avoid overzealous optimizers from noticing that
+   * we're passing short strings to a function with large bounds for what it
+   * might access.
+   */
+  const char* q{std::launder(p)};
+  return tiledb::api::to_string_view_internal<N>(q);
 }
 
 TEST_CASE("C API Support to_string_view_internal - max default, null input") {
