@@ -136,8 +136,8 @@ class FragmentMetadata {
       tdb::pmr::vector<tdb::pmr::vector<char>>&& tile_max_var_buffer,
       tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& tile_sums,
       tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_null_counts,
-      std::vector<std::vector<uint8_t>>&& fragment_mins,
-      std::vector<std::vector<uint8_t>>&& fragment_maxs,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_mins,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_maxs,
       std::vector<uint64_t>&& fragment_sums,
       std::vector<uint64_t>&& fragment_null_counts,
       uint32_t version,
@@ -440,12 +440,14 @@ class FragmentMetadata {
   }
 
   /** Returns the fragment mins. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& fragment_mins()
+      const {
     return fragment_mins_;
   }
 
   /** Returns the fragment maxs. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& fragment_maxs()
+      const {
     return fragment_maxs_;
   }
 
@@ -943,7 +945,8 @@ class FragmentMetadata {
    * @param name The input attribute/dimension.
    * @return Value.
    */
-  const std::vector<uint8_t>& get_min(const std::string& name) const;
+  const tiledb::common::pmr::vector<uint8_t>& get_min(
+      const std::string& name) const;
 
   /**
    * Retrieves the max value for a given attribute or dimension.
@@ -951,7 +954,8 @@ class FragmentMetadata {
    * @param name The input attribute/dimension.
    * @return Value.
    */
-  const std::vector<uint8_t>& get_max(const std::string& name) const;
+  const tiledb::common::pmr::vector<uint8_t>& get_max(
+      const std::string& name) const;
 
   /**
    * Retrieves the sum value for a given attribute or dimension.
@@ -1301,12 +1305,12 @@ class FragmentMetadata {
   /**
    * Fragment min values.
    */
-  std::vector<std::vector<uint8_t>> fragment_mins_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> fragment_mins_;
 
   /**
    * Fragment max values.
    */
-  std::vector<std::vector<uint8_t>> fragment_maxs_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> fragment_maxs_;
 
   /**
    * Fragment sum values, ignored for var sized attributes/dimensions.

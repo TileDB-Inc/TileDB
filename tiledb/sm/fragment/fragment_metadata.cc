@@ -95,7 +95,9 @@ FragmentMetadata::FragmentMetadata(
           memory_tracker_->get_resource(MemoryType::TILE_MAX_VALS))
     , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
-          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS)) {
+          memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
+    , fragment_mins_(memory_tracker_->get_resource(MemoryType::FRAGMENT_MINS))
+    , fragment_maxs_(memory_tracker_->get_resource(MemoryType::FRAGMENT_MAXS)) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -137,6 +139,8 @@ FragmentMetadata::FragmentMetadata(
     , tile_sums_(memory_tracker_->get_resource(MemoryType::TILE_SUMS))
     , tile_null_counts_(
           memory_tracker_->get_resource(MemoryType::TILE_NULL_COUNTS))
+    , fragment_mins_(memory_tracker_->get_resource(MemoryType::FRAGMENT_MINS))
+    , fragment_maxs_(memory_tracker_->get_resource(MemoryType::FRAGMENT_MAXS))
     , version_(array_schema_->write_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
@@ -167,8 +171,8 @@ FragmentMetadata::FragmentMetadata(
     tdb::pmr::vector<tdb::pmr::vector<char>>&& tile_max_var_buffer,
     tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& tile_sums,
     tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_null_counts,
-    std::vector<std::vector<uint8_t>>&& fragment_mins,
-    std::vector<std::vector<uint8_t>>&& fragment_maxs,
+    tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_mins,
+    tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_maxs,
     std::vector<uint64_t>&& fragment_sums,
     std::vector<uint64_t>&& fragment_null_counts,
     uint32_t version,
@@ -1949,7 +1953,7 @@ uint64_t FragmentMetadata::get_tile_null_count(
   return tile_null_counts_[idx][tile_idx];
 }
 
-const std::vector<uint8_t>& FragmentMetadata::get_min(
+const tiledb::common::pmr::vector<uint8_t>& FragmentMetadata::get_min(
     const std::string& name) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
@@ -1972,7 +1976,7 @@ const std::vector<uint8_t>& FragmentMetadata::get_min(
   return fragment_mins_[idx];
 }
 
-const std::vector<uint8_t>& FragmentMetadata::get_max(
+const tiledb::common::pmr::vector<uint8_t>& FragmentMetadata::get_max(
     const std::string& name) const {
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());

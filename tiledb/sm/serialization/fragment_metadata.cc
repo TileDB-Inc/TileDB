@@ -265,11 +265,11 @@ shared_ptr<FragmentMetadata> fragment_metadata_from_capnp(
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMins(),
           [&] { return frag_meta_reader.getFragmentMins(); },
-          memory_tracker->get_resource(MemoryType::TILE_MIN_VALS)),
+          memory_tracker->get_resource(MemoryType::FRAGMENT_MINS)),
       utils::capnp_2d_list_to_vector<uint8_t>(
           frag_meta_reader.hasFragmentMaxs(),
           [&] { return frag_meta_reader.getFragmentMaxs(); },
-          memory_tracker->get_resource(MemoryType::TILE_MAX_VALS)),
+          memory_tracker->get_resource(MemoryType::FRAGMENT_MAXS)),
       utils::capnp_list_to_vector<uint64_t>(
           frag_meta_reader.hasFragmentSums(),
           [&] { return frag_meta_reader.getFragmentSums(); }),
