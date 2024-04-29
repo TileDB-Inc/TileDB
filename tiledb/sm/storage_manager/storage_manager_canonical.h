@@ -662,7 +662,7 @@ class StorageManagerCanonical {
       g_rest_logger.log_event(
           rest_logger_id_,
           array_rest_logger_id_,
-          false,
+          true,
           Event::QUERY_SUBMIT_START);
     }
 
@@ -675,7 +675,7 @@ class StorageManagerCanonical {
       g_rest_logger.log_event(
           rest_logger_id_,
           array_rest_logger_id_,
-          false,
+          true,
           Event::QUERY_SUBMIT_END);
     }
 

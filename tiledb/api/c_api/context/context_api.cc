@@ -35,6 +35,7 @@
 #include "context_api_external.h"
 #include "context_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/logger.h"
 
 namespace tiledb::api {
 
@@ -115,7 +116,9 @@ capi_return_t tiledb_ctx_is_supported_fs(
 }
 
 capi_return_t tiledb_ctx_cancel_tasks(tiledb_ctx_t* ctx) {
+  g_rest_logger.log_event(++g_rest_logger.object_id_, 0, false, Event::CONTEXT_CANCEL_TASKS);
   throw_if_not_ok(ctx->storage_manager()->cancel_all_tasks());
+  g_rest_logger.log_event(0, 0, false, Event::CONTEXT_CANCEL_TASKS);
   return TILEDB_OK;
 }
 
