@@ -497,64 +497,6 @@ Status StorageManagerCanonical::array_upgrade_version(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_get_non_empty_domain(
-    Array* array, NDRange* domain, bool* is_empty) {
-  if (domain == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Domain object is null"));
-
-  if (array == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Array object is null"));
-
-  if (!array->is_open())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Array is not open"));
-
-  QueryType query_type{array->get_query_type()};
-  if (query_type != QueryType::READ)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Array not opened for reads"));
-
-  *domain = array->non_empty_domain();
-  *is_empty = domain->empty();
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_get_non_empty_domain(
-    Array* array, void* domain, bool* is_empty) {
-  if (array == nullptr)
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Array object is null"));
-
-  if (!array->array_schema_latest().domain().all_dims_same_type())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Function non-applicable to arrays with "
-        "heterogenous dimensions"));
-
-  if (!array->array_schema_latest().domain().all_dims_fixed())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Function non-applicable to arrays with "
-        "variable-sized dimensions"));
-
-  NDRange dom;
-  RETURN_NOT_OK(array_get_non_empty_domain(array, &dom, is_empty));
-  if (*is_empty)
-    return Status::Ok();
-
-  const auto& array_schema = array->array_schema_latest();
-  auto dim_num = array_schema.dim_num();
-  auto domain_c = (unsigned char*)domain;
-  uint64_t offset = 0;
-  for (unsigned d = 0; d < dim_num; ++d) {
-    std::memcpy(&domain_c[offset], dom[d].data(), dom[d].size());
-    offset += dom[d].size();
-  }
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::array_get_non_empty_domain_from_name(
     Array* array, const char* name, void* domain, bool* is_empty) {
   // Sanity check

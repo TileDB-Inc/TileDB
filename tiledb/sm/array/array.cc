@@ -1133,9 +1133,10 @@ void Array::non_empty_domain_from_index(
   auto& array_domain{array_schema.domain()};
 
   // Sanity checks
-  if (idx >= array_schema.dim_num())
+  if (idx >= array_schema.dim_num()) {
     throw ArrayException(
         "Cannot get non-empty domain; Invalid dimension index");
+  }
   if (array_domain.dimension_ptr(idx)->var_size()) {
     throw ArrayException(
         "Cannot get non-empty domain; Dimension '" +
@@ -1143,10 +1144,10 @@ void Array::non_empty_domain_from_index(
   }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
-  if (*is_empty)
+  non_empty_domain(&dom, is_empty);
+  if (*is_empty) {
     return;
+  }
 
   std::memcpy(domain, dom[idx].data(), dom[idx].size());
 }
@@ -1158,9 +1159,10 @@ void Array::non_empty_domain_var_size_from_index(
   auto& array_domain{array_schema.domain()};
 
   // Sanity checks
-  if (idx >= array_schema.dim_num())
+  if (idx >= array_schema.dim_num()) {
     throw ArrayException(
         "Cannot get non-empty domain; Invalid dimension index");
+  }
   if (!array_domain.dimension_ptr(idx)->var_size()) {
     throw ArrayException(
         "Cannot get non-empty domain; Dimension '" +
@@ -1168,8 +1170,7 @@ void Array::non_empty_domain_var_size_from_index(
   }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  non_empty_domain(&dom, is_empty);
   if (*is_empty) {
     *start_size = 0;
     *end_size = 0;
@@ -1187,9 +1188,10 @@ void Array::non_empty_domain_var_from_index(
   auto& array_domain{array_schema.domain()};
 
   // Sanity checks
-  if (idx >= array_schema.dim_num())
+  if (idx >= array_schema.dim_num()) {
     throw ArrayException(
         "Cannot get non-empty domain; Invalid dimension index");
+  }
   if (!array_domain.dimension_ptr(idx)->var_size()) {
     throw ArrayException(
         "Cannot get non-empty domain; Dimension '" +
@@ -1197,10 +1199,10 @@ void Array::non_empty_domain_var_from_index(
   }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
-  if (*is_empty)
+  non_empty_domain(&dom, is_empty);
+  if (*is_empty) {
     return;
+  }
 
   auto start_str = dom[idx].start_str();
   std::memcpy(start, start_str.data(), start_str.size());
