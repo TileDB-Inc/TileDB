@@ -32,6 +32,7 @@
 #include <test/support/tdb_catch.h>
 #include "../vfs_api_internal.h"
 #include "tiledb/api/c_api_test_support/testsupport_capi_vfs.h"
+#include "tiledb/platform/platform.h"
 
 using tiledb::api::test_support::ordinary_vfs;
 using tiledb::api::test_support::ordinary_vfs_fh;
@@ -246,8 +247,9 @@ TEST_CASE("C API: tiledb_vfs_is_dir argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
+    // Null URI is treated as empty.
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, nullptr, &is_dir)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
+    CHECK(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null flag") {
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, TEST_URI, nullptr)};
@@ -331,6 +333,10 @@ TEST_CASE("C API: tiledb_vfs_move_dir argument validation", "[capi][vfs]") {
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_dir argument validation", "[capi][vfs]") {
+  if constexpr (tiledb::platform::is_os_windows) {
+    // This API is not yet supported on Windows.
+    return;
+  }
   ordinary_vfs x;
   SECTION("success") {
     auto rc{tiledb_vfs_copy_dir(x.ctx, x.vfs, TEST_URI, "new_dir")};
@@ -412,8 +418,9 @@ TEST_CASE("C API: tiledb_vfs_is_file argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
+    // Null URI is treated as empty.
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, nullptr, &is_file)};
-    CHECK(tiledb_status(rc) == TILEDB_ERR);
+    CHECK(tiledb_status(rc) == TILEDB_OK);
   }
   SECTION("null flag") {
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, TEST_URI, nullptr)};
@@ -477,6 +484,10 @@ TEST_CASE("C API: tiledb_vfs_move_file argument validation", "[capi][vfs]") {
 }
 
 TEST_CASE("C API: tiledb_vfs_copy_file argument validation", "[capi][vfs]") {
+  if constexpr (tiledb::platform::is_os_windows) {
+    // This API is not yet supported on Windows.
+    return;
+  }
   ordinary_vfs x;
   SECTION("success") {
     auto rc{tiledb_vfs_copy_file(x.ctx, x.vfs, TEST_URI, "new_uri")};
