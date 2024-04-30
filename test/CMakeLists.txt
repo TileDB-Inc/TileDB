@@ -366,8 +366,6 @@ endif()
 find_library(
         LIBFAKETIME
         NAMES faketime
-        PATHS "${_VCPKG_INSTALLED_DIR}/${VCPKG_TARGET_TRIPLET}/lib"
-        NO_DEFAULT_PATH
 )
 
 if (LIBFAKETIME)
