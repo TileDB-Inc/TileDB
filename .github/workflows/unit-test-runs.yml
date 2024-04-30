@@ -32,6 +32,16 @@ jobs:
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
 
+      - name: Setup MSVC toolset
+        uses: TheMrMilchmann/setup-msvc-dev@v3
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+        with:
+          arch: x64
+          # By default Visual Studio 2022 chooses the earliest installed toolset
+          # version for the main build and vcpkg chooses the latest. Force it to
+          # use the latest (14.39 currently).
+          toolset: '14.39'
+
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
       - uses: actions/github-script@v6
