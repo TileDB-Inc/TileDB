@@ -272,7 +272,7 @@ int Domain::cell_order_cmp_2(const void* coord_a, const void* coord_b) {
 
 int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
-  if (cell_order_ == Layout::ROW_MAJOR) {
+  if (cell_order_ == Layout::ROW_MAJOR || cell_order_ == Layout::HILBERT) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto res = cell_order_cmp_func_[d](
           dimension_ptr(d),
