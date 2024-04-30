@@ -38,7 +38,6 @@ make -C tiledb install
 ls -la
 
 make -j4 -C tiledb tiledb_unit
-make -j4 -C tiledb tiledb_timing_unit
 make -j4 -C tiledb unit_vfs
 make -j4 -C tiledb tiledb_regression
 make -j4 -C tiledb all_link_complete
