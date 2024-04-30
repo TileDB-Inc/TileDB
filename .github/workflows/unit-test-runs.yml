@@ -61,6 +61,7 @@ jobs:
           cmake -S . \
             -B build \
             -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
             -DTILEDB_ASSERTIONS=ON
           cmake --build build -j4
