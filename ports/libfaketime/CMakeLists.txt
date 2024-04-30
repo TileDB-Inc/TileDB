@@ -7,6 +7,8 @@ add_library(
         src/libfaketime.c
 )
 
+set_target_properties(${PROJECT_NAME} PROPERTIES PREFIX "")
+
 if (CMAKE_SYSTEM_NAME STREQUAL "Linux")
     target_link_libraries(
             ${PROJECT_NAME}
