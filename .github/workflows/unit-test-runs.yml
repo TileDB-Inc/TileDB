@@ -9,7 +9,6 @@ env:
   TILEDB_AZURE: OFF
   TILEDB_GCS: OFF
   TILEDB_SERIALIZATION: ON
-  TILEDB_TOOLS: ON
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
 jobs:
@@ -17,15 +16,21 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v3
 
       - name: 'Homebrew setup'
         run: brew install automake pkg-config
-        if: ${{ startsWith(matrix.os, 'macos-') == true }}
+        if: ${{ startsWith(matrix.os, 'macos-') }}
+
+      - name: Install Ninja
+        uses: seanmiddleditch/gha-setup-ninja@v4
 
       # Configure required environment variables for vcpkg to use
       # GitHub's Action Cache
@@ -45,28 +50,27 @@ jobs:
           echo "uname -v: " $(uname -v)
           printenv
         shell: bash
+        if: ${{ !startsWith(matrix.os, 'windows-') }}
 
-      - name: 'Build and run standalone unit tests'
-        id: test
+      - name: 'Build standalone unit tests'
         run: |
-
-          mkdir -p $GITHUB_WORKSPACE/build
-          pushd $GITHUB_WORKSPACE/build
-
-          cmake .. \
+          cmake -S . \
+            -B build \
+            -G Ninja \
             -DTILEDB_AZURE=${TILEDB_AZURE}\
             -DTILEDB_GCS=${TILEDB_GCS} \
             -DTILEDB_S3=${TILEDB_S3} \
             -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
             -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
-          make -j4
+          cmake --build build -j4
           # Build all unit tests
-          make -C tiledb tests -j4
-          # Run all unit tests
-          make -C tiledb test ARGS="-R '^unit_'" -R "test_assert"
-          make -C tiledb test ARGS="-R 'test_ci_asserts'"
+          cmake --build build/tiledb --target tests -j4
 
-          popd
+      - name: 'Run standalone unit tests'
+        run: |
+          ctest -C build/tiledb -R '^unit_' -R 'test_assert'
+          ctest -C build/tiledb -R 'test_ci_asserts'
+
       - name: "Print log files (failed build only)"
         run: |
           source $GITHUB_WORKSPACE/scripts/ci/print_logs.sh
