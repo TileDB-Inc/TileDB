@@ -364,41 +364,13 @@ endif()
 
 # Only produce timing tests for UNIX based systems (faketime constraint)
 if (NOT WIN32)
-    find_package(unofficial-libfaketime REQUIRED)
-
-    # unit test executable
-    add_executable(
-            tiledb_timing_unit EXCLUDE_FROM_ALL
-            $<TARGET_OBJECTS:TILEDB_CORE_OBJECTS>
-            "src/unit-capi-metadata.cc"
-            "src/unit.cc"
-    )
-
-    target_include_directories(
-            tiledb_timing_unit BEFORE PRIVATE
-            ${TILEDB_CORE_INCLUDE_DIR}
-            ${TILEDB_EXPORT_HEADER_DIR}
-    )
-
-    target_link_libraries(
-            tiledb_timing_unit
-            PUBLIC
-            unofficial::libfaketime::libfaketime
-            TILEDB_CORE_OBJECTS_ILIB
-            TILEDB_CORE_OBJECTS
-            Catch2::Catch2
-            tiledb_test_support_lib
-    )
-
-    target_compile_options(tiledb_timing_unit PRIVATE -Wno-deprecated-declarations)
-
     add_test(
             NAME "tiledb_timing_unit"
-            COMMAND tiledb_timing_unit --durations=yes
+            COMMAND tiledb_unit --durations=yes [sub-millisecond]
             WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
     )
 
-    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00")
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=set:${CMAKE_BINARY_DIR}/vcpkg_installed/x64-linux/lib/liblibfaketime.so")
 endif()
 
 add_test(
