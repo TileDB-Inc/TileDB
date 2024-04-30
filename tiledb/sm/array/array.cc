@@ -1213,16 +1213,18 @@ void Array::non_empty_domain_var_from_index(
 void Array::non_empty_domain_from_name(
     const char* name, void* domain, bool* is_empty) {
   // Sanity check
-  if (name == nullptr)
-    throw ArrayException("Cannot get non-empty domain; Invalid dimension name");
+  if (name == nullptr) {
+    throw std::invalid_argument(
+        "[non_empty_domain_from_name] Invalid dimension name");
+  }
 
   // Check if array is open - must be open for reads
-  if (!is_open_)
-    throw ArrayException("Cannot get non-empty domain; Array is not open");
+  if (!is_open_) {
+    throw ArrayException("[non_empty_domain_from_name] Array is not open");
+  }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  non_empty_domain(&dom, is_empty);
 
   const auto& array_schema = array_schema_latest();
   auto& array_domain{array_schema.domain()};
@@ -1236,8 +1238,9 @@ void Array::non_empty_domain_from_name(
             "Cannot get non-empty domain; Dimension '" + dim_name +
             "' is variable-sized");
       }
-      if (!*is_empty)
+      if (!*is_empty) {
         std::memcpy(domain, dom[d].data(), dom[d].size());
+      }
       return;
     }
   }
@@ -1253,12 +1256,12 @@ void Array::non_empty_domain_var_size_from_name(
     uint64_t* end_size,
     bool* is_empty) {
   // Sanity check
-  if (name == nullptr)
-    throw ArrayException("Cannot get non-empty domain; Invalid dimension name");
+  if (name == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
+  }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  non_empty_domain(&dom, is_empty);
 
   const auto& array_schema = array_schema_latest();
   auto& array_domain{array_schema.domain()};
@@ -1291,12 +1294,12 @@ void Array::non_empty_domain_var_size_from_name(
 void Array::non_empty_domain_var_from_name(
     const char* name, void* start, void* end, bool* is_empty) {
   // Sanity check
-  if (name == nullptr)
-    throw ArrayException("Cannot get non-empty domain; Invalid dimension name");
+  if (name == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
+  }
 
   NDRange dom;
-  throw_if_not_ok(
-      storage_manager_->array_get_non_empty_domain(this, &dom, is_empty));
+  non_empty_domain(&dom, is_empty);
 
   const auto& array_schema = array_schema_latest();
   auto& array_domain{array_schema.domain()};
