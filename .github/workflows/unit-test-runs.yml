@@ -3,12 +3,6 @@ on:
   workflow_call:
 
 env:
-  BACKWARDS_COMPATIBILITY_ARRAYS: OFF
-  TILEDB_ASSERTIONS: ON
-  TILEDB_S3: OFF
-  TILEDB_AZURE: OFF
-  TILEDB_GCS: OFF
-  TILEDB_SERIALIZATION: ON
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
 
 jobs:
@@ -67,11 +61,8 @@ jobs:
           cmake -S . \
             -B build \
             -G Ninja \
-            -DTILEDB_AZURE=${TILEDB_AZURE}\
-            -DTILEDB_GCS=${TILEDB_GCS} \
-            -DTILEDB_S3=${TILEDB_S3} \
-            -DTILEDB_SERIALIZATION=${TILEDB_SERIALIZATION} \
-            -DTILEDB_ASSERTIONS=${TILEDB_ASSERTIONS}
+            -DTILEDB_SERIALIZATION=ON \
+            -DTILEDB_ASSERTIONS=ON
           cmake --build build -j4
           # Build all unit tests
           cmake --build build/tiledb --target tests -j4
