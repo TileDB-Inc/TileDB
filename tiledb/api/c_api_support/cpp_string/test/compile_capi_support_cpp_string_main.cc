@@ -1,5 +1,6 @@
 /*
  * @file
+ * tiledb/api/c_api_support/cpp_string/test/compile_capi_support_cpp_string_main.cc
  *
  * @section LICENSE
  *
