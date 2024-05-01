@@ -255,6 +255,10 @@ class MemoryTracker {
   bool take_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
     if (memory_usage_ + size <= memory_budget_) {
+      if (mem_type == MemoryType::TILE_OFFSETS) {
+        // tile offsets are only measured in the counter_
+        return true;
+      }
       memory_usage_ += size;
       memory_usage_by_type_[mem_type] += size;
       return true;
@@ -312,7 +316,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_available() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_ - memory_usage_;
+    return memory_budget_ - memory_usage_ - counters_[MemoryType::TILE_OFFSETS];
   }
 
   /**
@@ -345,7 +349,7 @@ class MemoryTracker {
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
-      , total_counter_(0){};
+      , total_counter_(0) {};
 
  private:
   /** Protects all non-atomic member variables. */
