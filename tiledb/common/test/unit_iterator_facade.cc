@@ -622,9 +622,10 @@ struct simple_mutable_struct {
   using iterator = simple_mutable_iterator<SValue>;
   using const_iterator = simple_mutable_iterator<const SValue>;
 
-  using value_type = std::iterator_traits<iterator>::value_type;
-  using reference = std::iterator_traits<iterator>::reference;
-  using const_reference = std::iterator_traits<const_iterator>::reference;
+  using value_type = typename std::iterator_traits<iterator>::value_type;
+  using reference = typename std::iterator_traits<iterator>::reference;
+  using const_reference =
+      typename std::iterator_traits<const_iterator>::reference;
 
   auto begin() {
     return iterator{value.begin()};
