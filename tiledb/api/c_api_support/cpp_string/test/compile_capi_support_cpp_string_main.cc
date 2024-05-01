@@ -1,11 +1,12 @@
-/**
- * @file tiledb/api/c_api_support/c_api_support.h
+/*
+ * @file
+ * tiledb/api/c_api_support/cpp_string/test/compile_capi_support_cpp_string_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,21 +28,14 @@
  *
  * @section DESCRIPTION
  *
- * This file includes all the support functions that appear generally in C API
- * implementation functions:
- *   - Exception wrappers and error handling
- *   - Argument validation
  */
 
-#ifndef TILEDB_CAPI_SUPPORT_H
-#define TILEDB_CAPI_SUPPORT_H
+#include "../cpp_string.h"
 
-#include "argument_validation.h"
-#include "tiledb/api/c_api_support/cpp_string/cpp_string.h"
-#include "tiledb/api/c_api_support/exception_wrapper/capi_definition.h"
-#include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
-#if __has_include("capi_function_override.h")
-#include "capi_function_override.h"
-#endif
-
-#endif  // TILEDB_CAPI_SUPPORT_H
+int main() {
+  auto sv{tiledb::api::to_string_view<"a">("")};
+  if (sv.data() == nullptr) {
+    return 1;
+  }
+  return 0;
+}

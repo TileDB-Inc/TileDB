@@ -1104,39 +1104,45 @@ Layout Subarray::layout() const {
 }
 
 FieldDataSize Subarray::get_est_result_size(
-    const char* name, const Config* config, ThreadPool* compute_tp) {
-  // Check attribute/dimension name
-  if (name == nullptr) {
-    throw SubarrayException(
-        "Cannot get estimated result size; field name cannot be null");
+    std::string_view field_name, const Config* config, ThreadPool* compute_tp) {
+  /*
+   * This check throws a logic error because we expect the field name to have
+   * already been validated in the C API.
+   */
+  if (field_name.data() == nullptr) {
+    throw std::logic_error(
+        "Cannot get estimated result size; field name is null");
   }
 
   // Check if name is attribute or dimension
   const auto& array_schema = array_->array_schema_latest();
-  const bool is_dim = array_schema.is_dim(name);
-  const bool is_attr = array_schema.is_attr(name);
+  const bool is_dim = array_schema.is_dim(field_name.data());
+  const bool is_attr = array_schema.is_attr(field_name.data());
 
   // Check if attribute/dimension exists
-  if (!ArraySchema::is_special_attribute(name) && !is_dim && !is_attr) {
+  if (!ArraySchema::is_special_attribute(field_name.data()) && !is_dim &&
+      !is_attr) {
     throw SubarrayException(
         std::string("Cannot get estimated result size; ") +
-        "there is no field named '" + name + "'");
+        "there is no field named '" + std::string(field_name) + "'");
   }
 
   bool is_variable_sized{
-      name != constants::coords && array_schema.var_size(name)};
-  bool is_nullable{array_schema.is_nullable(name)};
+      field_name != constants::coords &&
+      array_schema.var_size(field_name.data())};
+  bool is_nullable{array_schema.is_nullable(field_name.data())};
 
   // Compute tile overlap for each fragment
   compute_est_result_size(config, compute_tp);
 
   FieldDataSize r{
-      static_cast<size_t>(std::ceil(est_result_size_[name].size_fixed_)),
-      is_variable_sized ?
-          static_cast<size_t>(std::ceil(est_result_size_[name].size_var_)) :
-          0,
-      is_nullable ? static_cast<size_t>(
-                        std::ceil(est_result_size_[name].size_validity_)) :
+      static_cast<size_t>(
+          std::ceil(est_result_size_[field_name.data()].size_fixed_)),
+      is_variable_sized ? static_cast<size_t>(std::ceil(
+                              est_result_size_[field_name.data()].size_var_)) :
+                          0,
+      is_nullable ? static_cast<size_t>(std::ceil(
+                        est_result_size_[field_name.data()].size_validity_)) :
                     0};
   /*
    * Special fix-ups may be necessary if data is empty or very short.
@@ -1154,7 +1160,8 @@ FieldDataSize Subarray::get_est_result_size(
         r.fixed_ = off_cell_size;
       }
       // Ensure that there's space for at least one data value.
-      const auto val_cell_size = datatype_size(array_schema.type(name));
+      const auto val_cell_size =
+          datatype_size(array_schema.type(field_name.data()));
       if (r.variable_ < val_cell_size) {
         r.variable_ = val_cell_size;
       }
@@ -1170,7 +1177,7 @@ FieldDataSize Subarray::get_est_result_size(
      * If the fixed data is not empty, ensure it is large enough to contain at
      * least one cell.
      */
-    const auto cell_size = array_schema.cell_size(name);
+    const auto cell_size = array_schema.cell_size(field_name.data());
     if (0 < r.fixed_ && r.fixed_ < cell_size) {
       r.fixed_ = cell_size;
       if (is_nullable) {

@@ -946,7 +946,9 @@ class Subarray {
    * size is not relevant to the field type, then it's returned as zero.
    */
   FieldDataSize get_est_result_size(
-      const char* name, const Config* config, ThreadPool* compute_tp);
+      std::string_view field_name,
+      const Config* config,
+      ThreadPool* compute_tp);
 
   /**
    * The maximum memory in bytes required for a field.
