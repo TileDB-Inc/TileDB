@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <catch2/catch_all.hpp>
+#include <numeric>
 #include <ranges>
 #include "../iterator_facade.h"
 
@@ -508,7 +509,7 @@ struct foo {
     void advance(int n) {
       index_ += n;
     }
-    int distance_to(iterator o) const {
+    size_t distance_to(iterator o) const {
       return o.index_ - index_;
     }
   };
@@ -844,7 +845,8 @@ void iterator_test() {
   CHECK(std::forward_iterator<I>);
   CHECK(std::bidirectional_iterator<I>);
   CHECK(std::random_access_iterator<I>);
-  if (std::is_same_v<
+  if constexpr (
+      std::is_same_v<
           std::remove_cvref_t<I>,
           typename std::vector<
               typename std::iterator_traits<I>::value_type>::iterator> ||
