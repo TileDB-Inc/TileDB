@@ -116,9 +116,44 @@ TEST_CASE(
 // Simple test that the alt_var_length_view can be constructed
 TEST_CASE("alt_var_length_view: Basic constructor", "[alt_var_length_view]") {
   std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+  std::vector<size_t> o = {0, 3, 6, 10};
+  std::vector<std::vector<double>> expected = {
+      {1.0, 2.0, 3.0},
+      {4.0, 5.0, 6.0},
+      {7.0, 8.0, 9.0, 10.0},
+  };
 
-  SECTION("Arrow format") {
-    std::vector<size_t> o = {0, 3, 6, 10};
+  SECTION("iterator pair") {
+    auto u = alt_var_length_view(r.begin(), r.end(), o.begin(), o.end());
+    auto v = alt_var_length_view{r.begin(), r.end(), o.begin(), o.end()};
+    alt_var_length_view w(r.begin(), r.end(), o.begin(), o.end());
+    alt_var_length_view x{r.begin(), r.end(), o.begin(), o.end()};
+
+    CHECK(size(u) == 3);
+    CHECK(size(v) == 3);
+    CHECK(size(w) == 3);
+    CHECK(size(x) == 3);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+  SECTION("iterator pair with size") {
+    auto u = alt_var_length_view(r.begin(), r.end(), 6, o.begin(), o.end(), 3);
+    auto v = alt_var_length_view{r.begin(), r.end(), 6, o.begin(), o.end(), 3};
+    alt_var_length_view w(r.begin(), r.end(), 6, o.begin(), o.end(), 3);
+    alt_var_length_view x{r.begin(), r.end(), 6, o.begin(), o.end(), 3};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+  SECTION("range") {
     auto u = alt_var_length_view(r, o);
     auto v = alt_var_length_view{r, o};
     alt_var_length_view w(r, o);
@@ -128,18 +163,94 @@ TEST_CASE("alt_var_length_view: Basic constructor", "[alt_var_length_view]") {
     CHECK(size(v) == 3);
     CHECK(size(w) == 3);
     CHECK(size(x) == 3);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
   }
-  SECTION("TileDB format") {
-    std::vector<size_t> o = {0, 3, 6};
-    auto u = alt_var_length_view(r, o, 10);
-    auto v = alt_var_length_view{r, o, 10};
-    alt_var_length_view w(r, o, 10);
-    alt_var_length_view x{r, o, 10};
+
+  SECTION("range with size") {
+    auto u = alt_var_length_view(r, 6, o, 3);
+    auto v = alt_var_length_view{r, 6, o, 3};
+    alt_var_length_view w(r, 6, o, 3);
+    alt_var_length_view x{r, 6, o, 3};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+
+  SECTION("iterator pair, tiledb format") {
+    auto u =
+        alt_var_length_view(r.begin(), r.end(), o.begin(), o.end() - 1, 10);
+    auto v =
+        alt_var_length_view{r.begin(), r.end(), o.begin(), o.end() - 1, 10};
+    alt_var_length_view w(r.begin(), r.end(), o.begin(), o.end() - 1, 10);
+    alt_var_length_view x{r.begin(), r.end(), o.begin(), o.end() - 1, 10};
 
     CHECK(size(u) == 3);
     CHECK(size(v) == 3);
     CHECK(size(w) == 3);
     CHECK(size(x) == 3);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+
+  SECTION("iterator pair with size, tiledb format") {
+    auto u =
+        alt_var_length_view(r.begin(), r.end(), 6, o.begin(), o.end(), 2, 6);
+    auto v =
+        alt_var_length_view{r.begin(), r.end(), 6, o.begin(), o.end(), 2, 6};
+    alt_var_length_view w(r.begin(), r.end(), 6, o.begin(), o.end(), 2, 6);
+    alt_var_length_view x{r.begin(), r.end(), 6, o.begin(), o.end(), 2, 6};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+
+  SECTION("range, tiledb format") {
+    auto u = alt_var_length_view(r, std::ranges::views::take(o, 3), 10);
+    auto v = alt_var_length_view{r, std::ranges::views::take(o, 3), 10};
+    alt_var_length_view w(r, std::ranges::views::take(o, 3), 10);
+    alt_var_length_view x{r, std::ranges::views::take(o, 3), 10};
+
+    CHECK(size(u) == 3);
+    CHECK(size(v) == 3);
+    CHECK(size(w) == 3);
+    CHECK(size(x) == 3);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+
+  SECTION("range with size, tiledb format") {
+    auto u = alt_var_length_view(r, 6, o, 2, 6);
+    auto v = alt_var_length_view{r, 6, o, 2, 6};
+    alt_var_length_view w(r, 6, o, 2, 6);
+    alt_var_length_view x{r, 6, o, 2, 6};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
   }
 }
 

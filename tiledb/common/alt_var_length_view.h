@@ -34,10 +34,10 @@
  * The difference between `alt_var_length_view` and `var_length_view` is that
  * `alt_var_length_view` maintains a materialized range of subranges, whereas
  * `var_length_view` creates subrange views on the fly as proxy objects.  As a
- * result
- * * An `alt_var_length_view` does not need to refer to the offsets array after
- * it is constructed
- * * An `alt_var_length_view` can be sorted
+ * result:
+ *   -  An `alt_var_length_view` does not need to refer to the offsets array
+ * after it is constructed
+ *   -  An `alt_var_length_view` can be sorted
  *
  *
  * Usage example:
@@ -69,12 +69,15 @@
  * @tparam I Type of the index range, assumed to be a random access range.
  *
  * @todo R could be a view rather than a range.
+ * @todo Would using `std::ranges::view_interface` be better tha `view_base`?
  */
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range I>
 class alt_var_length_view : public std::ranges::view_base {
-  // Forward reference of the iterator over the range of variable length data
+  /**
+   * Forward reference of the iterator over the range of variable length data
+   */
   template <class Value>
   struct private_iterator;
 
@@ -115,30 +118,167 @@ class alt_var_length_view : public std::ranges::view_base {
   /** Move assignment */
   alt_var_length_view& operator=(alt_var_length_view&&) = default;
 
-  /** Primary constructor. All offsets are contained in the input (notably, the
-   * index to the end of the data range). */
-  alt_var_length_view(R& data, const I& index) {
-    auto data_begin(std::ranges::begin(data));
+  /**
+   * Constructor taking iterator pairs for the data and index ranges, arrow
+   * format
+   */
+  alt_var_length_view(
+      std::ranges::iterator_t<R> data_begin,
+      [[maybe_unused]] std::ranges::iterator_t<R> data_end,
+      std::ranges::iterator_t<const I> begin_index,
+      std::ranges::iterator_t<const I> index_end) {
+    auto num_subranges = index_end - begin_index - 1;
 
-    subranges_.reserve(std::ranges::size(index) - 1);
-    for (size_t i = 0; i < std::ranges::size(index) - 1; ++i) {
-      subranges_.emplace_back(data_begin + index[i], data_begin + index[i + 1]);
+    subranges_.reserve(num_subranges);
+    for (long i = 0; i < num_subranges; ++i) {
+      subranges_.emplace_back(
+          data_begin + begin_index[i], data_begin + begin_index[i + 1]);
     }
   }
 
-  /** Constructor. The offsets do not contain the final index value (which would
-   * be the end of the data range), so the final index is passed in as a
-   * separate argument.
+  /**
+   * Constructor taking iterator pairs for the data and index ranges, tiledb
+   * format
    */
-  alt_var_length_view(R& data, const I& index, data_index_type end_index) {
+  alt_var_length_view(
+      std::ranges::iterator_t<R> data_begin,
+      [[maybe_unused]] std::ranges::iterator_t<R> data_end,
+      std::ranges::iterator_t<const I> begin_index,
+      std::ranges::iterator_t<const I> index_end,
+      data_index_type missing_index) {
+    auto num_subranges = index_end - begin_index;
+
+    subranges_.reserve(num_subranges);
+    for (long i = 0; i < num_subranges - 1; ++i) {
+      subranges_.emplace_back(
+          data_begin + begin_index[i], data_begin + begin_index[i + 1]);
+    }
+    subranges_.emplace_back(
+        data_begin + begin_index[num_subranges - 1],
+        data_begin + missing_index);
+  }
+
+  /**
+   * Constructor taking iterator pairs for the data and index ranges, with
+   * sizes, arrow format
+   */
+  alt_var_length_view(
+      std::ranges::iterator_t<R> data_begin,
+      [[maybe_unused]] std::ranges::iterator_t<R> data_end,
+      [[maybe_unused]] std::ranges::range_difference_t<R> n_data,
+      std::ranges::iterator_t<const I> begin_index,
+      [[maybe_unused]] std::ranges::iterator_t<const I> index_end,
+      std::ranges::range_difference_t<I> n_index) {
+    auto num_subranges = n_index - 1;
+
+    subranges_.reserve(num_subranges);
+    for (long i = 0; i < num_subranges; ++i) {
+      subranges_.emplace_back(
+          data_begin + begin_index[i], data_begin + begin_index[i + 1]);
+    }
+  }
+
+  /**
+   * Constructor taking iterator pairs for the data and index ranges, with
+   * sizes, tiledb format
+   */
+  alt_var_length_view(
+      std::ranges::iterator_t<R> data_begin,
+      [[maybe_unused]] std::ranges::iterator_t<R> data_end,
+      [[maybe_unused]] std::ranges::range_difference_t<R> n_data,
+      std::ranges::iterator_t<const I> begin_index,
+      [[maybe_unused]] std::ranges::iterator_t<const I> index_end,
+      std::ranges::range_difference_t<I> n_index,
+      data_index_type missing_index) {
+    auto num_subranges = n_index;
+
+    subranges_.reserve(num_subranges);
+    for (long i = 0; i < num_subranges - 1; ++i) {
+      subranges_.emplace_back(
+          data_begin + begin_index[i], data_begin + begin_index[i + 1]);
+    }
+    subranges_.emplace_back(
+        data_begin + begin_index[num_subranges - 1],
+        data_begin + missing_index);
+  }
+
+  /**
+   * Constructor taking ranges for the data and index ranges arrow
+   * format
+   */
+  alt_var_length_view(R& data, const I& index) {
+    auto num_subranges = std::ranges::size(index) - 1;
     auto data_begin(std::ranges::begin(data));
+    auto index_begin(std::ranges::begin(index));
 
-    subranges_.reserve(std::ranges::size(index) - 1);
+    subranges_.reserve(num_subranges);
 
-    for (size_t i = 0; i < std::ranges::size(index) - 1; ++i) {
+    for (size_t i = 0; i < num_subranges; ++i) {
+      subranges_.emplace_back(
+          data_begin + index_begin[i], data_begin + index_begin[i + 1]);
+    }
+  }
+
+  /**
+   * Constructor taking ranges for the data and index ranges
+   * tiledb format
+   */
+  alt_var_length_view(R& data, const I& index, data_index_type missing_index) {
+    auto num_subranges = std::ranges::size(index);
+    auto data_begin(std::ranges::begin(data));
+    [[maybe_unused]] auto index_begin(std::ranges::begin(index));
+
+    subranges_.reserve(num_subranges);
+
+    for (size_t i = 0; i < num_subranges - 1; ++i) {
       subranges_.emplace_back(data_begin + index[i], data_begin + index[i + 1]);
     }
-    subranges_.emplace_back(data_begin + index.back(), data_begin + end_index);
+    subranges_.emplace_back(
+        data_begin + index.back(), data_begin + missing_index);
+  }
+
+  /**
+   * Constructor taking ranges for the data and index ranges, with sizes, arrow
+   * format
+   */
+  alt_var_length_view(
+      R& data,
+      [[maybe_unused]] std::ranges::range_difference_t<R> n_data,
+      const I& index,
+      std::ranges::range_difference_t<I> n_index) {
+    auto num_subranges = n_index - 1;
+    auto data_begin(std::ranges::begin(data));
+    auto index_begin(std::ranges::begin(index));
+
+    subranges_.reserve(num_subranges);
+
+    for (long i = 0; i < num_subranges; ++i) {
+      subranges_.emplace_back(
+          data_begin + index_begin[i], data_begin + index_begin[i + 1]);
+    }
+  }
+
+  /**
+   * Constructor taking ranges for the data and index ranges, with sizes,
+   * tiledb format
+   */
+  alt_var_length_view(
+      R& data,
+      [[maybe_unused]] std::ranges::range_difference_t<R> n_data,
+      const I& index,
+      std::ranges::range_difference_t<I> n_index,
+      data_index_type missing_index) {
+    auto num_subranges = n_index;
+    auto data_begin(std::ranges::begin(data));
+    [[maybe_unused]] auto index_begin(std::ranges::begin(index));
+
+    subranges_.reserve(num_subranges);
+
+    for (long i = 0; i < num_subranges - 1; ++i) {
+      subranges_.emplace_back(data_begin + index[i], data_begin + index[i + 1]);
+    }
+    subranges_.emplace_back(
+        data_begin + index[num_subranges - 1], data_begin + missing_index);
   }
 
   /** Return iterator to the beginning of the var length view */
@@ -180,4 +320,23 @@ class alt_var_length_view : public std::ranges::view_base {
   std::vector<var_length_type> subranges_;
 };
 
+/** Deduction guide for alt_var_length_view */
+template <class R, class I>
+alt_var_length_view(R, R, I, I)
+    -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
+
+/** Deduction guide for alt_var_length_view */
+template <class R, class I, class J>
+alt_var_length_view(R, R, I, I, J)
+    -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
+
+/** Deduction guide for alt_var_length_view */
+template <class R, class I, class J, class K>
+alt_var_length_view(R, R, J, I, I, K)
+    -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
+
+/** Deduction guide for alt_var_length_view */
+template <class R, class I, class J, class K, class L>
+alt_var_length_view(R, R, J, I, I, K, L)
+    -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
 #endif  // TILEDB_ALT_VAR_LENGTH_VIEW_H
