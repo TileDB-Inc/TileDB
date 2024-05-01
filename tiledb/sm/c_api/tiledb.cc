@@ -2801,14 +2801,13 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
     uint32_t idx,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain_from_index(
-      array->array_.get(), idx, domain, &is_empty_b));
-
+  array->array_->non_empty_domain_from_index(idx, domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2840,15 +2839,16 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_size_from_index(
-          array->array_.get(), idx, start_size, end_size, &is_empty_b));
-
+  array->array_->non_empty_domain_var_size_from_index(
+      idx, start_size, end_size, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2882,15 +2882,15 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_from_index(
-          array->array_.get(), idx, start, end, &is_empty_b));
-
+  array->array_->non_empty_domain_var_from_index(idx, start, end, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;

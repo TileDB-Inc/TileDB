@@ -497,37 +497,6 @@ Status StorageManagerCanonical::array_upgrade_version(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_get_non_empty_domain_from_index(
-    Array* array, unsigned idx, void* domain, bool* is_empty) {
-  // Check if array is open - must be open for reads
-  if (!array->is_open())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Array is not open"));
-
-  // For easy reference
-  const auto& array_schema = array->array_schema_latest();
-  auto& array_domain{array_schema.domain()};
-
-  // Sanity checks
-  if (idx >= array_schema.dim_num())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Invalid dimension index"));
-  if (array_domain.dimension_ptr(idx)->var_size()) {
-    std::string errmsg = "Cannot get non-empty domain; Dimension '";
-    errmsg += array_domain.dimension_ptr(idx)->name();
-    errmsg += "' is variable-sized";
-    return logger_->status(Status_StorageManagerError(errmsg));
-  }
-
-  NDRange dom;
-  array->non_empty_domain(&dom, is_empty);
-  if (*is_empty)
-    return Status::Ok();
-
-  std::memcpy(domain, dom[idx].data(), dom[idx].size());
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::array_get_non_empty_domain_from_name(
     Array* array, const char* name, void* domain, bool* is_empty) {
   // Sanity check
@@ -565,41 +534,6 @@ Status StorageManagerCanonical::array_get_non_empty_domain_from_name(
   return logger_->status(Status_StorageManagerError(
       std::string("Cannot get non-empty domain; Dimension name '") + name +
       "' does not exist"));
-}
-
-Status StorageManagerCanonical::array_get_non_empty_domain_var_size_from_index(
-    Array* array,
-    unsigned idx,
-    uint64_t* start_size,
-    uint64_t* end_size,
-    bool* is_empty) {
-  // For easy reference
-  const auto& array_schema = array->array_schema_latest();
-  auto& array_domain{array_schema.domain()};
-
-  // Sanity checks
-  if (idx >= array_schema.dim_num())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Invalid dimension index"));
-  if (!array_domain.dimension_ptr(idx)->var_size()) {
-    std::string errmsg = "Cannot get non-empty domain; Dimension '";
-    errmsg += array_domain.dimension_ptr(idx)->name();
-    errmsg += "' is fixed-sized";
-    return logger_->status(Status_StorageManagerError(errmsg));
-  }
-
-  NDRange dom;
-  array->non_empty_domain(&dom, is_empty);
-  if (*is_empty) {
-    *start_size = 0;
-    *end_size = 0;
-    return Status::Ok();
-  }
-
-  *start_size = dom[idx].start_size();
-  *end_size = dom[idx].end_size();
-
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::array_get_non_empty_domain_var_size_from_name(
@@ -644,37 +578,6 @@ Status StorageManagerCanonical::array_get_non_empty_domain_var_size_from_name(
   return logger_->status(Status_StorageManagerError(
       std::string("Cannot get non-empty domain; Dimension name '") + name +
       "' does not exist"));
-}
-
-Status StorageManagerCanonical::array_get_non_empty_domain_var_from_index(
-    Array* array, unsigned idx, void* start, void* end, bool* is_empty) {
-  // For easy reference
-  const auto& array_schema = array->array_schema_latest();
-  auto& array_domain{array_schema.domain()};
-
-  // Sanity checks
-  if (idx >= array_schema.dim_num())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get non-empty domain; Invalid dimension index"));
-  if (!array_domain.dimension_ptr(idx)->var_size()) {
-    std::string errmsg = "Cannot get non-empty domain; Dimension '";
-    errmsg += array_domain.dimension_ptr(idx)->name();
-    errmsg += "' is fixed-sized";
-    return logger_->status(Status_StorageManagerError(errmsg));
-  }
-
-  NDRange dom;
-  array->non_empty_domain(&dom, is_empty);
-
-  if (*is_empty)
-    return Status::Ok();
-
-  auto start_str = dom[idx].start_str();
-  std::memcpy(start, start_str.data(), start_str.size());
-  auto end_str = dom[idx].end_str();
-  std::memcpy(end, end_str.data(), end_str.size());
-
-  return Status::Ok();
 }
 
 Status StorageManagerCanonical::array_get_non_empty_domain_var_from_name(
