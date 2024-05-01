@@ -38,6 +38,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/query/legacy/read_cell_slab_iter.h"
 #include "tiledb/sm/query/legacy/reader.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -82,7 +83,19 @@ struct ReadCellSlabIterFx {
       const std::vector<NDRange>& domain_slices,
       const std::vector<std::vector<uint8_t>>& tile_coords,
       std::map<const T*, ResultSpaceTile<T>>& result_space_tiles);
+  URI generate_fragment_uri();
 };
+
+URI ReadCellSlabIterFx::generate_fragment_uri() {
+  uint64_t timestamp = array_->array_->timestamp_end_opened_at();
+  auto write_version = array_->array_->array_schema_latest().write_version();
+
+  auto new_fragment_str = tiledb::storage_format::generate_timestamped_name(
+      timestamp, write_version);
+  auto frag_dir_uri =
+      array_->array_->array_directory().get_fragments_dir(write_version);
+  return frag_dir_uri.join_path(new_fragment_str);
+}
 
 ReadCellSlabIterFx::ReadCellSlabIterFx()
     : fs_vec_(vfs_test_get_fs_vec())
@@ -262,7 +275,7 @@ TEST_CASE_METHOD(
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -336,7 +349,7 @@ TEST_CASE_METHOD(
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -414,7 +427,7 @@ TEST_CASE_METHOD(
         HERE(),
         nullptr,
         array_->array_->array_schema_latest_ptr(),
-        URI(),
+        generate_fragment_uri(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);
@@ -497,7 +510,7 @@ TEST_CASE_METHOD(
         HERE(),
         nullptr,
         array_->array_->array_schema_latest_ptr(),
-        URI(),
+        generate_fragment_uri(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);
@@ -720,7 +733,7 @@ TEST_CASE_METHOD(
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -906,7 +919,7 @@ TEST_CASE_METHOD(
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -1105,7 +1118,7 @@ TEST_CASE_METHOD(
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       tiledb::test::create_test_memory_tracker(),
       true);
@@ -1351,7 +1364,7 @@ TEST_CASE_METHOD(
         HERE(),
         nullptr,
         array_->array_->array_schema_latest_ptr(),
-        URI(),
+        generate_fragment_uri(),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tiledb::test::create_test_memory_tracker(),
         true);
