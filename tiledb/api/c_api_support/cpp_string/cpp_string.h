@@ -32,6 +32,7 @@
 #ifndef TILEDB_CAPI_SUPPORT_CPP_STRING_H
 #define TILEDB_CAPI_SUPPORT_CPP_STRING_H
 
+#include <algorithm>                 // std::copy_n
 #include <cstring>                   // std::memchr
 #include <string>                    // std::string_view
 #include "../argument_validation.h"  // CAPIException
