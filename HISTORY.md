@@ -6,8 +6,8 @@
 
 ## Configuration changes
 
-* Add `vfs.gcs.service_account_credential` config option that specifies a Google Cloud service account credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
-* Add `vfs.gcs.external_account_credential` config option that specifies a Google Cloud Workload Identity Federation credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+* Add `vfs.gcs.service_account_key` config option that specifies a Google Cloud service account credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+* Add `vfs.gcs.workload_identity_configuration` config option that specifies a Google Cloud Workload Identity Federation credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
 
 ## New features
 
