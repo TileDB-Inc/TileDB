@@ -56,6 +56,7 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/serialization/array.h"
 #include "tiledb/sm/serialization/query.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 int setenv_local(const char* __name, const char* __value) {
 #ifdef _WIN32
@@ -1454,6 +1455,21 @@ int deserialize_array_and_query(
   tiledb_array_t* array;
   return tiledb_deserialize_query_and_array(
       ctx, c_buff, TILEDB_CAPNP, clientside ? 1 : 0, array_uri, query, &array);
+}
+
+sm::URI generate_fragment_uri(sm::Array* array) {
+  if (array == nullptr) {
+    return sm::URI(tiledb::storage_format::generate_timestamped_name(
+        TILEDB_TIMESTAMP_NOW_MS, constants::format_version));
+  }
+
+  uint64_t timestamp = array->timestamp_end_opened_at();
+  auto write_version = array->array_schema_latest().write_version();
+
+  auto new_fragment_str = tiledb::storage_format::generate_timestamped_name(
+      timestamp, write_version);
+  auto frag_dir_uri = array->array_directory().get_fragments_dir(write_version);
+  return frag_dir_uri.join_path(new_fragment_str);
 }
 
 template void check_subarray<int8_t>(

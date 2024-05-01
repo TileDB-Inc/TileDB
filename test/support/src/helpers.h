@@ -917,6 +917,13 @@ int deserialize_array_and_query(
     const char* array_uri,
     bool clientside);
 
+/**
+ * Helper function that generates a fragment uri for an array.
+ *
+ * @param array a tiledb array
+ * @return a test fragment uri
+ */
+sm::URI generate_fragment_uri(sm::Array* array);
 }  // namespace tiledb::test
 
 #endif

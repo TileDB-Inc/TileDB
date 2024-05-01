@@ -1131,7 +1131,7 @@ void test_apply_cells<char*>(
       HERE(),
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1168,7 +1168,7 @@ void test_apply_cells<char*>(
           HERE(),
           nullptr,
           array_schema,
-          URI(),
+          generate_fragment_uri(nullptr),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           memory_tracker,
           true);
@@ -1318,7 +1318,7 @@ void test_apply_cells(
       HERE(),
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1602,7 +1602,7 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1661,7 +1661,7 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1773,7 +1773,7 @@ TEST_CASE(
       HERE(),
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2313,7 +2313,7 @@ void test_apply_dense<char*>(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2372,7 +2372,7 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2483,7 +2483,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3016,7 +3016,7 @@ void test_apply_sparse<char*>(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3075,7 +3075,7 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3227,7 +3227,7 @@ void validate_qc_apply(
       HERE(),
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3850,7 +3850,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4139,7 +4139,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4496,7 +4496,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4818,7 +4818,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4920,7 +4920,7 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      URI(),
+      generate_fragment_uri(nullptr),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
