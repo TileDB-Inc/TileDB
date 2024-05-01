@@ -240,8 +240,14 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
           num += deletes_consolidation_no_purge_;
         }
 
+        unsigned num_vectors = schema->attribute_num() + 1 +
+                               fragment->has_timestamps() +
+                               fragment->has_delete_meta() * 2;
+        num_vectors += (fragment->version() >= 5) ? schema->dim_num() : 0;
+
         // Finally set the size of the loaded data.
-        ret[frag_idx] = num * tile_num * sizeof(uint64_t);
+        ret[frag_idx] =
+            num * tile_num * sizeof(uint64_t) + (num_vectors * 4 * 32);
         return Status::Ok();
       }));
 
@@ -433,6 +439,9 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Load per fragment tile offsets memory usage.
   per_frag_tile_offsets_usage_ = tile_offset_sizes();
+
+  // todo per frag metadata usage. This needs to be calculated in our memory
+  // estimation so that we know
 
   // Set a limit to the array memory.
   if (!array_memory_tracker_->set_budget(
