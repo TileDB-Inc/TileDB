@@ -103,19 +103,54 @@ TEST_CASE(
 }
 
 // Simple test that the var_length_view can be constructed
-TEST_CASE("var_length_view: Basic constructor", "[var_length_view]") {
+TEST_CASE("var_length_view: Constructors", "[var_length_view]") {
   std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
   std::vector<size_t> o = {0, 3, 6, 10};
 
-  auto u = var_length_view(r, o);
-  auto v = var_length_view{r, o};
-  var_length_view w(r, o);
-  var_length_view x{r, o};
+  SECTION("iterator pair") {
+    auto u = var_length_view(r.begin(), r.end(), o.begin(), o.end());
+    auto v = var_length_view{r.begin(), r.end(), o.begin(), o.end()};
+    var_length_view w(r.begin(), r.end(), o.begin(), o.end());
+    var_length_view x{r.begin(), r.end(), o.begin(), o.end()};
 
-  CHECK(size(u) == 3);
-  CHECK(size(v) == 3);
-  CHECK(size(w) == 3);
-  CHECK(size(x) == 3);
+    CHECK(size(u) == 3);
+    CHECK(size(v) == 3);
+    CHECK(size(w) == 3);
+    CHECK(size(x) == 3);
+  }
+  SECTION("iterator pair with size") {
+    auto u = var_length_view(r.begin(), r.end(), 6, o.begin(), o.end(), 3);
+    auto v = var_length_view{r.begin(), r.end(), 6, o.begin(), o.end(), 3};
+    var_length_view w(r.begin(), r.end(), 6, o.begin(), o.end(), 3);
+    var_length_view x{r.begin(), r.end(), 6, o.begin(), o.end(), 3};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+  }
+  SECTION("range") {
+    auto u = var_length_view(r, o);
+    auto v = var_length_view{r, o};
+    var_length_view w(r, o);
+    var_length_view x{r, o};
+
+    CHECK(size(u) == 3);
+    CHECK(size(v) == 3);
+    CHECK(size(w) == 3);
+    CHECK(size(x) == 3);
+  }
+  SECTION("range with size") {
+    auto u = var_length_view(r, 6, o, 3);
+    auto v = var_length_view{r, 6, o, 3};
+    var_length_view w(r, 6, o, 3);
+    var_length_view x{r, 6, o, 3};
+
+    CHECK(size(u) == 2);
+    CHECK(size(v) == 2);
+    CHECK(size(w) == 2);
+    CHECK(size(x) == 2);
+  }
 }
 
 // Check that the sizes of the var_length_view are correct
