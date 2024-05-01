@@ -310,12 +310,14 @@ void read_png_array(
 
   std::vector<unsigned> subarray = {1, array_height, 1, array_width};
   auto output_width = subarray[3], output_height = subarray[1];
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
 
   // Allocate query and set subarray.
   std::vector<uint8_t> rgba(output_height * output_width);
   Query query(ctx, array);
   query.set_layout(TILEDB_ROW_MAJOR)
-      .set_subarray(subarray)
+      .set_subarray(sub)
       .set_data_buffer("rgba", rgba);
   // Read from the array.
   query.submit();

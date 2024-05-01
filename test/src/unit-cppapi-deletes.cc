@@ -40,6 +40,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/encryption_type.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -168,20 +169,29 @@ void DeletesFx::create_simple_array(const std::string& path) {
 }
 
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
+  Config cfg;
+  if (encrypt) {
+    std::string enc_type_str =
+        encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
+    cfg["sm.encryption_type"] = enc_type_str.c_str();
+    cfg["sm.encryption_key"] = key_;
+  }
+  Context ctx(cfg);
+
   // Create dimensions.
-  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
-  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
+  auto d1 = Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
+  auto d2 = Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
 
   // Create domain.
-  Domain domain(ctx_);
+  Domain domain(ctx);
   domain.add_dimension(d1);
   domain.add_dimension(d2);
 
   // Create attributes.
-  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
+  auto a1 = Attribute::create<int32_t>(ctx, "a1");
 
   // Create array schema.
-  ArraySchema schema(ctx_, TILEDB_SPARSE);
+  ArraySchema schema(ctx, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
   schema.add_attributes(a1);
@@ -191,16 +201,12 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 
   // Set up filters.
-  Filter filter(ctx_, TILEDB_FILTER_NONE);
-  FilterList filter_list(ctx_);
+  Filter filter(ctx, TILEDB_FILTER_NONE);
+  FilterList filter_list(ctx);
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(array_name_.c_str(), schema, enc_type_, key_);
-  } else {
-    Array::create(array_name_.c_str(), schema);
-  }
+  Array::create(array_name_.c_str(), schema);
 }
 
 void DeletesFx::write_sparse(

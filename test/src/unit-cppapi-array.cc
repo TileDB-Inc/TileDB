@@ -2025,8 +2025,7 @@ TEST_CASE(
 
 TEST_CASE(
     "C++ API: Close array with running query",
-    "[cppapi][close-before-read][non-rest]") {
-  // async queries not supported on remote arrays (REST)
+    "[cppapi][close-before-read][rest]") {
   tiledb::test::VFSTestSetup vfs_test_setup{};
   Context ctx{vfs_test_setup.ctx()};
   auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
@@ -2062,7 +2061,8 @@ TEST_CASE(
   query.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read);
-  query.submit_async();
+  std::future<void> submit_async =
+      std::async(std::launch::async, [&query] { query.submit(); });
   array.close();
 
   uint64_t i = 0;

@@ -54,21 +54,17 @@ struct CppConsolidationPlanFx {
   VFS vfs_;
   Config cfg_;
 
-  std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
-
   // Constructors/destructors.
   CppConsolidationPlanFx();
   ~CppConsolidationPlanFx();
 
   // Functions.
-  void create_sparse_array(bool allows_dups = false, bool encrypt = false);
+  void create_sparse_array(bool allows_dups = false);
   std::string write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
-      uint64_t timestamp,
-      bool encrypt = false);
+      uint64_t timestamp);
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -97,8 +93,7 @@ CppConsolidationPlanFx::~CppConsolidationPlanFx() {
   remove_sparse_array();
 }
 
-void CppConsolidationPlanFx::create_sparse_array(
-    bool allows_dups, bool encrypt) {
+void CppConsolidationPlanFx::create_sparse_array(bool allows_dups) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 999}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 999}}, 2);
@@ -127,35 +122,21 @@ void CppConsolidationPlanFx::create_sparse_array(
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(SPARSE_ARRAY_NAME, schema, enc_type_, key_);
-  } else {
-    Array::create(SPARSE_ARRAY_NAME, schema);
-  }
+  Array::create(SPARSE_ARRAY_NAME, schema);
 }
 
 std::string CppConsolidationPlanFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
-    uint64_t timestamp,
-    bool encrypt) {
+    uint64_t timestamp) {
   // Open array.
   std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_,
-        SPARSE_ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimestampStartEnd, 0, timestamp));
-  }
+  array = std::make_unique<Array>(
+      ctx_,
+      SPARSE_ARRAY_NAME,
+      TILEDB_WRITE,
+      TemporalPolicy(TimestampStartEnd, 0, timestamp));
 
   // Create query.
   Query query(ctx_, *array, TILEDB_WRITE);

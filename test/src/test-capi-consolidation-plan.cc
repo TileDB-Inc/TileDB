@@ -48,13 +48,12 @@ struct ConsolidationPlanFx {
   ConsolidationPlanFx();
 
   // Functions.
-  void create_sparse_array(bool allows_dups = false, bool encrypt = false);
+  void create_sparse_array(bool allows_dups = false);
   void write_sparse(
       std::vector<int> a1,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
-      uint64_t timestamp,
-      bool encrypt = false);
+      uint64_t timestamp);
   void remove_sparse_array();
   void remove_array(const std::string& array_name);
   bool is_array(const std::string& array_name);
@@ -66,9 +65,6 @@ struct ConsolidationPlanFx {
   tiledb_ctx_t* ctx_c_;
   std::string array_name_;
   Context ctx_;
-
-  std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 };
 
 ConsolidationPlanFx::ConsolidationPlanFx() {
@@ -80,7 +76,7 @@ ConsolidationPlanFx::ConsolidationPlanFx() {
   array_name_ = vfs_test_setup_.array_uri("test_consolidation_plan_array");
 }
 
-void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {
+void ConsolidationPlanFx::create_sparse_array(bool allows_dups) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
@@ -109,35 +105,20 @@ void ConsolidationPlanFx::create_sparse_array(bool allows_dups, bool encrypt) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(array_name_, schema, enc_type_, key_);
-  } else {
-    Array::create(array_name_, schema);
-  }
+  Array::create(array_name_, schema);
 }
 
 void ConsolidationPlanFx::write_sparse(
     std::vector<int> a1,
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
-    uint64_t timestamp,
-    bool encrypt) {
+    uint64_t timestamp) {
   // Open array.
-  std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        array_name_,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_, array_name_, TILEDB_WRITE, TemporalPolicy(TimeTravel, timestamp));
-  }
+  Array array(
+      ctx_, array_name_, TILEDB_WRITE, TemporalPolicy(TimeTravel, timestamp));
 
   // Create query.
-  Query query(ctx_, *array, TILEDB_WRITE);
+  Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer("a1", a1);
   query.set_data_buffer("d1", dim1);
@@ -147,7 +128,7 @@ void ConsolidationPlanFx::write_sparse(
   query.submit_and_finalize();
 
   // Close array.
-  array->close();
+  array.close();
 }
 
 void ConsolidationPlanFx::check_last_error(std::string expected) {
