@@ -362,6 +362,22 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux" AND CMAKE_CXX_COMPILER_ID STREQUAL "GNU
     )
 endif()
 
+# Only produce timing tests for UNIX based systems (faketime constraint)
+find_library(
+        LIBFAKETIME
+        NAMES faketime
+)
+
+if (LIBFAKETIME)
+    add_test(
+            NAME "tiledb_timing_unit"
+            COMMAND tiledb_unit --durations=yes [sub-millisecond]
+            WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    set_property(TEST tiledb_timing_unit PROPERTY ENVIRONMENT_MODIFICATION "FAKETIME=set:2020-12-24 20:30:00;LD_PRELOAD=set:${LIBFAKETIME}")
+endif()
+
 add_test(
   NAME "tiledb_unit"
   COMMAND tiledb_unit --durations=yes
