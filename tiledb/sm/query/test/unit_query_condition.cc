@@ -42,8 +42,10 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/query_condition_combination_op.h"
 #include "tiledb/sm/enums/query_condition_op.h"
+#include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
+#include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -1131,7 +1133,9 @@ void test_apply_cells<char*>(
       HERE(),
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1168,7 +1172,9 @@ void test_apply_cells<char*>(
           HERE(),
           nullptr,
           array_schema,
-          generate_fragment_uri(nullptr),
+          URI(tiledb::storage_format::generate_timestamped_name(
+              tiledb::sm::utils::time::timestamp_now_ms(),
+              constants::format_version)),
           std::make_pair<uint64_t, uint64_t>(0, 0),
           memory_tracker,
           true);
@@ -1318,7 +1324,9 @@ void test_apply_cells(
       HERE(),
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1602,7 +1610,9 @@ void test_apply<char*>(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1661,7 +1671,9 @@ void test_apply(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -1773,7 +1785,9 @@ TEST_CASE(
       HERE(),
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2313,7 +2327,9 @@ void test_apply_dense<char*>(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2372,7 +2388,9 @@ void test_apply_dense(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -2483,7 +2501,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3016,7 +3036,9 @@ void test_apply_sparse<char*>(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3075,7 +3097,9 @@ void test_apply_sparse(const Datatype type, bool var_size, bool nullable) {
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3227,7 +3251,9 @@ void validate_qc_apply(
       HERE(),
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -3850,7 +3876,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4139,7 +4167,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4496,7 +4526,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4818,7 +4850,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
@@ -4920,7 +4954,9 @@ TEST_CASE(
   FragmentMetadata frag_md(
       nullptr,
       array_schema,
-      generate_fragment_uri(nullptr),
+      URI(tiledb::storage_format::generate_timestamped_name(
+          tiledb::sm::utils::time::timestamp_now_ms(),
+          constants::format_version)),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker,
       true);
