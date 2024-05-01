@@ -295,23 +295,6 @@ class Domain {
   void get_tile_coords(const T* coords, T* tile_coords) const;
 
   /**
-   * Retrieves the end of a cell slab starting at the `start` input
-   * coordinates. The cell slab is determined based on the domain
-   * tile/cell order and the input query `layout`. Essentially a
-   * cell slab is a contiguous (in the global cell order) range of
-   * cells that follow the query layout.
-   *
-   * @tparam T The domain type.
-   * @param subarray The subarray in which the end of the cell slab must
-   *     be contained.
-   * @param start The start coordinates.
-   * @param layout The query layout.
-   * @param end The cell slab end coordinates to be retrieved.
-   */
-  template <class T>
-  void get_end_of_cell_slab(T* subarray, T* start, Layout layout, T* end) const;
-
-  /**
    * Retrieves the next tile coordinates along the array tile order within a
    * given tile domain. Applicable only to **dense** arrays.
    *
