@@ -465,16 +465,16 @@ class OffsetsFragmentMetadata {
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
    */
-  void get_tile_overlap(
+  virtual void get_tile_overlap(
       const NDRange& range,
       std::vector<bool>& is_default,
-      TileOverlap* tile_overlap);
+      TileOverlap* tile_overlap) = 0;
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
    */
-  void compute_tile_bitmap(
-      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap);
+  virtual void compute_tile_bitmap(
+      const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) = 0;
 
   /** Frees the memory associated with the rtree. */
   void free_rtree();

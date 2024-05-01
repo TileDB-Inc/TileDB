@@ -68,7 +68,7 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
       FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker);
 
   /* Destructor */
-  virtual ~V1V2PreloadedFragmentMetadata() = default;
+  ~V1V2PreloadedFragmentMetadata() = default;
 
   /* ********************************* */
   /*                API                */
@@ -109,6 +109,22 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
    */
   virtual void load_processed_conditions(
       const EncryptionKey& encryption_key) override;
+
+  /**
+   * Retrieves the overlap of all MBRs with the input ND range.
+   */
+  virtual void get_tile_overlap(
+      const NDRange& range,
+      std::vector<bool>& is_default,
+      TileOverlap* tile_overlap) override;
+
+  /**
+   * Compute tile bitmap for the curent fragment/range/dimension.
+   */
+  virtual void compute_tile_bitmap(
+      const Range& range,
+      unsigned d,
+      std::vector<uint8_t>* tile_bitmap) override;
 
  private:
   /* ********************************* */

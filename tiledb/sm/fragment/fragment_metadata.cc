@@ -106,13 +106,14 @@ FragmentMetadata::FragmentMetadata(
     , sparse_tile_num_(0)
     , meta_file_size_(0)
     , tile_index_base_(0)
-    , version_(array_schema_->write_version())
+    , version_(FragmentID{fragment_uri}.array_format_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri()) {
   build_idx_map();
   array_schema_name_ = array_schema_->name();
-  offsets_metadata_ = OffsetsFragmentMetadata::create(
-      *this, memory_tracker, array_schema->write_version());
+
+  offsets_metadata_ =
+      OffsetsFragmentMetadata::create(*this, memory_tracker, version_);
 }
 
 FragmentMetadata::~FragmentMetadata() {
@@ -2064,7 +2065,6 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   }
 
   sparse_tile_num_ = mbr_num;
-  offsets_metadata_->loaded_metadata().rtree_ = true;
 }
 
 void FragmentMetadata::load_non_empty_domain(Deserializer& deserializer) {

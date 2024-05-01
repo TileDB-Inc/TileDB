@@ -591,32 +591,6 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_validity_size(
   return tile_size;
 }
 
-void OffsetsFragmentMetadata::get_tile_overlap(
-    const NDRange& range,
-    std::vector<bool>& is_default,
-    TileOverlap* tile_overlap) {
-  if (rtree_.domain() == nullptr) {
-    // For v1_v2 domain on rtree is empty
-    *tile_overlap = TileOverlap();
-    return;
-  }
-
-  assert(loaded_metadata_.rtree_);
-  *tile_overlap = rtree_.get_tile_overlap(range, is_default);
-}
-
-void OffsetsFragmentMetadata::compute_tile_bitmap(
-    const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) {
-  if (rtree_.domain() == nullptr) {
-    // For v1_v2 domain on rtree is empty
-    return;
-  }
-
-  assert(loaded_metadata_.rtree_);
-
-  rtree_.compute_tile_bitmap(range, d, tile_bitmap);
-}
-
 // TODO: maybe remove, this is unused at the moment
 void OffsetsFragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
