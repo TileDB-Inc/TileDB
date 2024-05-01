@@ -349,7 +349,7 @@ class MemoryTracker {
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
-      , total_counter_(0) {};
+      , total_counter_(0){};
 
  private:
   /** Protects all non-atomic member variables. */
