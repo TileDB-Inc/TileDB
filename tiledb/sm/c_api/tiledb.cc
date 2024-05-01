@@ -2807,8 +2807,10 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
     uint32_t idx,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b;
   array->array_->non_empty_domain_from_index(idx, domain, &is_empty_b);
