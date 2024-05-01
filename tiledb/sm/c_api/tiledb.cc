@@ -2819,11 +2819,14 @@ int32_t tiledb_array_get_non_empty_domain_from_name(
     const char* name,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  auto field_name{to_string_view<"field name">(name)};
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b;
-  array->array_->non_empty_domain_from_name(name, domain, &is_empty_b);
+  array->array_->non_empty_domain_from_name(field_name, domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2858,8 +2861,12 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
   array->array_->non_empty_domain_var_size_from_name(
@@ -2897,8 +2904,12 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
   array->array_->non_empty_domain_var_from_name(name, start, end, &is_empty_b);

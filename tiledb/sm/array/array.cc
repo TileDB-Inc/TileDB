@@ -1211,9 +1211,9 @@ void Array::non_empty_domain_var_from_index(
 }
 
 void Array::non_empty_domain_from_name(
-    const char* name, void* domain, bool* is_empty) {
+    std::string_view field_name, void* domain, bool* is_empty) {
   // Sanity check
-  if (name == nullptr) {
+  if (field_name.data() == nullptr) {
     throw std::invalid_argument(
         "[non_empty_domain_from_name] Invalid dimension name");
   }
@@ -1231,7 +1231,7 @@ void Array::non_empty_domain_from_name(
   auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name{array_schema.dimension_ptr(d)->name()};
-    if (name == dim_name) {
+    if (field_name == dim_name) {
       // Sanity check
       if (array_domain.dimension_ptr(d)->var_size()) {
         throw ArrayException(
@@ -1246,17 +1246,17 @@ void Array::non_empty_domain_from_name(
   }
 
   throw ArrayException(
-      "Cannot get non-empty domain; Dimension name '" + std::string(name) +
-      "' does not exist");
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
 }
 
 void Array::non_empty_domain_var_size_from_name(
-    const char* name,
+    std::string_view field_name,
     uint64_t* start_size,
     uint64_t* end_size,
     bool* is_empty) {
   // Sanity check
-  if (name == nullptr) {
+  if (field_name.data() == nullptr) {
     throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
   }
 
@@ -1268,7 +1268,7 @@ void Array::non_empty_domain_var_size_from_name(
   auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name{array_schema.dimension_ptr(d)->name()};
-    if (name == dim_name) {
+    if (field_name == dim_name) {
       // Sanity check
       if (!array_domain.dimension_ptr(d)->var_size()) {
         throw ArrayException(
@@ -1287,14 +1287,14 @@ void Array::non_empty_domain_var_size_from_name(
   }
 
   throw ArrayException(
-      "Cannot get non-empty domain; Dimension name '" + std::string(name) +
-      "' does not exist");
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
 }
 
 void Array::non_empty_domain_var_from_name(
-    const char* name, void* start, void* end, bool* is_empty) {
+    std::string_view field_name, void* start, void* end, bool* is_empty) {
   // Sanity check
-  if (name == nullptr) {
+  if (field_name.data() == nullptr) {
     throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
   }
 
@@ -1306,7 +1306,7 @@ void Array::non_empty_domain_var_from_name(
   auto dim_num = array_schema.dim_num();
   for (unsigned d = 0; d < dim_num; ++d) {
     const auto& dim_name{array_schema.dimension_ptr(d)->name()};
-    if (name == dim_name) {
+    if (field_name == dim_name) {
       // Sanity check
       if (!array_domain.dimension_ptr(d)->var_size()) {
         throw ArrayException(
@@ -1324,8 +1324,8 @@ void Array::non_empty_domain_var_from_name(
   }
 
   throw ArrayException(
-      "Cannot get non-empty domain; Dimension name '" + std::string(name) +
-      "' does not exist");
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
 }
 
 bool Array::serialize_non_empty_domain() const {
