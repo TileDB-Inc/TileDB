@@ -72,7 +72,7 @@ jobs:
       matrix_image: ubuntu-22.04
       matrix_compiler_cc: 'gcc-13'
       matrix_compiler_cxx: 'g++-13'
-      timeout: 300
+      timeout: 480
       bootstrap_args: '--enable-hdfs --enable-static-tiledb --disable-werror'
 
   create_issue_on_fail:
