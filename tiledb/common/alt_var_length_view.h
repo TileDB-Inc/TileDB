@@ -71,7 +71,20 @@
  * @note We use view_interface instead of view_base to get operator[] (among
  * other things).
  */
+
+/** @todo This should go in some common place */
+#define GCC_VERSION \
+  (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL__)
+
+#if GCC_VERSION > 120000
 template <std::ranges::viewable_range R, std::ranges::viewable_range I>
+  requires std::ranges::random_access_range<R> &&
+           std::ranges::random_access_range<I>
+#else
+template <
+    std::ranges::random_access_range R,
+    std::ranges::random_access_range I>
+#endif
 class alt_var_length_view
     : public std::ranges::view_interface<alt_var_length_view<R, I>> {
   /**
