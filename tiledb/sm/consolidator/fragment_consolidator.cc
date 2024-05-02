@@ -558,20 +558,15 @@ Status FragmentConsolidator::consolidate_internal(
   cw.resize_buffers(stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
-  auto query_r = (Query*)nullptr;
-  auto query_w = (Query*)nullptr;
-  auto st = create_queries(
+  tdb_unique_ptr<Query> query_r = nullptr;
+  tdb_unique_ptr<Query> query_w = nullptr;
+  RETURN_NOT_OK(create_queries(
       array_for_reads,
       array_for_writes,
       union_non_empty_domains,
-      &query_r,
-      &query_w,
-      new_fragment_uri);
-  if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    return st;
-  }
+      query_r,
+      query_w,
+      new_fragment_uri));
 
   // Get the vacuum URI
   URI vac_uri;
@@ -579,26 +574,16 @@ Status FragmentConsolidator::consolidate_internal(
     vac_uri =
         array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   } catch (std::exception& e) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     std::throw_with_nested(
         std::logic_error("[FragmentConsolidator::consolidate_internal] "));
   }
 
   // Read from one array and write to the other
-  try {
-    copy_array(query_r, query_w, cw);
-  } catch (...) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    throw;
-  };
+  copy_array(query_r.get(), query_w.get(), cw);
 
   // Finalize write query
-  st = query_w->finalize();
+  auto st = query_w->finalize();
   if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     bool is_dir = false;
     auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
     (void)st2;  // Perhaps report this once we support an error stack
@@ -614,8 +599,6 @@ Status FragmentConsolidator::consolidate_internal(
       vac_uri,
       to_consolidate);
   if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     bool is_dir = false;
     throw_if_not_ok(
         storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
@@ -623,10 +606,6 @@ Status FragmentConsolidator::consolidate_internal(
       throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
     return st;
   }
-
-  // Clean up
-  tdb_delete(query_r);
-  tdb_delete(query_w);
 
   return st;
 }
@@ -667,8 +646,8 @@ Status FragmentConsolidator::create_queries(
     shared_ptr<Array> array_for_reads,
     shared_ptr<Array> array_for_writes,
     const NDRange& subarray,
-    Query** query_r,
-    Query** query_w,
+    tdb_unique_ptr<Query>& query_r,
+    tdb_unique_ptr<Query>& query_w,
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_create_queries");
 
@@ -679,48 +658,50 @@ Status FragmentConsolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  *query_r = tdb_new(Query, storage_manager_, array_for_reads);
-  RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
+  query_r =
+      tdb_unique_ptr<Query>(tdb_new(Query, storage_manager_, array_for_reads));
+  RETURN_NOT_OK(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {
     NDRange read_subarray = subarray;
     auto& domain{array_for_reads->array_schema_latest().domain()};
     domain.expand_to_tiles(&read_subarray);
-    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(read_subarray));
+    RETURN_NOT_OK(query_r->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
   if (config_.with_timestamps_ && !dense) {
-    throw_if_not_ok((*query_r)->set_consolidation_with_timestamps());
+    throw_if_not_ok(query_r->set_consolidation_with_timestamps());
   }
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
-  auto first = (*query_r)->first_fragment_uri();
-  auto last = (*query_r)->last_fragment_uri();
+  auto first = query_r->first_fragment_uri();
+  auto last = query_r->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
   auto fragment_name = storage_format::generate_consolidated_fragment_name(
       first, last, write_version);
 
   // Create write query
-  *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
-  RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
-  (*query_w)->set_fragment_size(config_.max_fragment_size_);
+  query_w = tdb_unique_ptr<Query>(
+      tdb_new(Query, storage_manager_, array_for_writes, fragment_name));
+  RETURN_NOT_OK(query_w->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK(query_w->disable_checks_consolidation());
+  query_w->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
-    RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
+    RETURN_NOT_OK(query_w->set_subarray_unsafe(subarray));
   }
 
   // Set the processed conditions on new fragment.
   const auto& delete_and_update_tiles_location =
-      (*query_r)->array()->array_directory().delete_and_update_tiles_location();
+      query_r->array()->array_directory().delete_and_update_tiles_location();
   std::vector<std::string> processed_conditions;
   processed_conditions.reserve(delete_and_update_tiles_location.size());
   for (auto& location : delete_and_update_tiles_location) {
     processed_conditions.emplace_back(location.condition_marker());
   }
-  (*query_w)->set_processed_conditions(processed_conditions);
+  query_w->set_processed_conditions(processed_conditions);
 
   // Set the URI for the new fragment.
   auto frag_uri =
