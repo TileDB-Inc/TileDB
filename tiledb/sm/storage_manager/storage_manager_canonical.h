@@ -243,56 +243,6 @@ class StorageManagerCanonical {
   Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
-   * Retrieves the non-empty domain from an array on the given dimension.
-   * This is the union of the non-empty domains of the array fragments.
-   *
-   * @param array An open array object (must be already open).
-   * @param name The dimension name.
-   * @param domain The domain to be retrieved.
-   * @param is_empty `ture` if the non-empty domain is empty (the array
-   *     is empty).
-   * @return Status
-   */
-  Status array_get_non_empty_domain_from_name(
-      Array* array, const char* name, void* domain, bool* is_empty);
-
-  /**
-   * Retrieves the non-empty domain size from an array on the given dimension.
-   * This is the union of the non-empty domains of the array fragments.
-   * Applicable only to var-sized dimensions.
-   *
-   * @param array An open array object (must be already open).
-   * @param name The dimension name.
-   * @param start_size The size in bytes of the range start.
-   * @param end_size The size in bytes of the range end.
-   * @param is_empty `ture` if the non-empty domain is empty (the array
-   *     is empty).
-   * @return Status
-   */
-  Status array_get_non_empty_domain_var_size_from_name(
-      Array* array,
-      const char* name,
-      uint64_t* start_size,
-      uint64_t* end_size,
-      bool* is_empty);
-
-  /**
-   * Retrieves the non-empty domain from an array on the given dimension.
-   * This is the union of the non-empty domains of the array fragments.
-   * Applicable only to var-sized dimensions.
-   *
-   * @param array An open array object (must be already open).
-   * @param name The dimension name.
-   * @param start The domain range start to set.
-   * @param end The domain range end to set.
-   * @param is_empty `ture` if the non-empty domain is empty (the array
-   *     is empty).
-   * @return Status
-   */
-  Status array_get_non_empty_domain_var_from_name(
-      Array* array, const char* name, void* start, void* end, bool* is_empty);
-
-  /**
    * Retrieves the encryption type from an array.
    *
    * @param uri The URI of the array.
