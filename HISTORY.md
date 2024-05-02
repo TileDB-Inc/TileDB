@@ -8,7 +8,6 @@
 
 * Improve diagnostics when an Azure endpoint is not configured. [#4845](https://github.com/TileDB-Inc/TileDB/pull/4845)
 * Do not attempt Azure shared key authentication if no account name is specified. [#4856](https://github.com/TileDB-Inc/TileDB/pull/4856)
-* Stop using deprecated Google Cloud SDK APIs. [#4799](https://github.com/TileDB-Inc/TileDB/pull/4799)
 * Clarify the documentation for the non empty domain CAPI. [#4885](https://github.com/TileDB-Inc/TileDB/pull/4885)
 * Make closing a group that is not open a no-op. [#4917](https://github.com/TileDB-Inc/TileDB/pull/4917)
 
