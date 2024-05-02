@@ -1,3 +1,76 @@
+# TileDB v2.23.0 Release Notes
+
+## Deprecation announcements
+
+* All deprecated APIs will be removed in version 2.26. TileDB can be built with `--remove-deprecations` to validate that projects are not using any deprecated APIs.
+
+## Improvements
+
+* Improve diagnostics when an Azure endpoint is not configured. [#4845](https://github.com/TileDB-Inc/TileDB/pull/4845)
+* Do not attempt Azure shared key authentication if no account name is specified. [#4856](https://github.com/TileDB-Inc/TileDB/pull/4856)
+* Stop using deprecated Google Cloud SDK APIs. [#4799](https://github.com/TileDB-Inc/TileDB/pull/4799)
+* Clarify the documentation for the non empty domain CAPI. [#4885](https://github.com/TileDB-Inc/TileDB/pull/4885)
+* Make closing a group that is not open a no-op. [#4917](https://github.com/TileDB-Inc/TileDB/pull/4917)
+
+## Defects removed
+
+* Fix wrong fallback cell order for Hilbert. [#4924](https://github.com/TileDB-Inc/TileDB/pull/4924)
+* Config serialization should take into account environment variables. [#4865](https://github.com/TileDB-Inc/TileDB/pull/4865)
+* Vac files should only be removed if paths removal was fully successful. [#4889](https://github.com/TileDB-Inc/TileDB/pull/4889)
+* Fix C query condition examples. [#4912](https://github.com/TileDB-Inc/TileDB/pull/4912)
+
+### C++ API
+
+* `Query::submit_async` is deprecated. Call `Query::submit()` on another thread instead. [#4879](https://github.com/TileDB-Inc/TileDB/pull/4879)
+* Overloads of methods and constructors in `Array` and `ArraySchema` that accept encryption keys are deprecated. Specify the encryption key with the `sm.encryption_type` and `sm.encryption_key` config options instead. [#4879](https://github.com/TileDB-Inc/TileDB/pull/4879)
+* Add C++ API for tiledb_array_consolidate_fragments. [#4884](https://github.com/TileDB-Inc/TileDB/pull/4884)
+
+## Build System Changes
+
+* Vcpkg is always enabled; turning the `TILEDB_VCPKG` option off is no longer supported and fails. [#4570](https://github.com/TileDB-Inc/TileDB/pull/4570)
+* Update the `TILEDB_REMOVE_DEPRECATIONS` option to exclude all deprecated C and C++ APIs from the library binary and the headers. [#4887](https://github.com/TileDB-Inc/TileDB/pull/4887)
+
+## Internal Improvements
+
+* Implement iterator facade for external sort. [#4914](https://github.com/TileDB-Inc/TileDB/pull/4914)
+* Implement var_length_view and unit tests for external sort. [#4918](https://github.com/TileDB-Inc/TileDB/pull/4918)
+* Implement permutation view for external sort. [#4920](https://github.com/TileDB-Inc/TileDB/pull/4920)
+* Implement proxy sort for external sort. [#4922](https://github.com/TileDB-Inc/TileDB/pull/4922)
+* Implement alt var length view for external sort. [#4925](https://github.com/TileDB-Inc/TileDB/pull/4925)
+
+# TileDB v2.22.0 Release Notes
+
+## Deprecation announcements
+
+* Support for downloading dependencies with CMake `ExternalProject`s by specifying `-DTILEDB_VCPKG=OFF` will be removed in 2.23. Vcpkg will be downloaded and used to manage dependencies by default. See https://github.com/TileDB-Inc/TileDB/blob/dev/doc/dev/BUILD.md for help on how to disable automatically downloading vcpkg and acquire dependencies from the system.
+
+## Configuration changes
+
+* Add `vfs.gcs.service_account_key` config option that specifies a Google Cloud service account credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+* Add `vfs.gcs.workload_identity_configuration` config option that specifies a Google Cloud Workload Identity Federation credential JSON string. [#4855](https://github.com/TileDB-Inc/TileDB/pull/4855)
+
+## New features
+
+* Support Microsoft Entra ID authentication to Azure. [#4126](https://github.com/TileDB-Inc/TileDB/pull/4126)
+
+## Improvements
+
+* Allow to set buffers for geometry types with CPP API more easily. [#4826](https://github.com/TileDB-Inc/TileDB/pull/4826)
+
+## Defects removed
+
+* Throw error when an upload fails due to bad state. [#4815](https://github.com/TileDB-Inc/TileDB/pull/4815)
+* Single-process sub-millisecond temporal disambiguation of random labels. [#4800](https://github.com/TileDB-Inc/TileDB/pull/4800)
+* Expose VFSExperimental and relocate CallbackWrapperCPP. [#4820](https://github.com/TileDB-Inc/TileDB/pull/4820)
+* Do not load group metadata when getting it from REST. [#4821](https://github.com/TileDB-Inc/TileDB/pull/4821)
+* Fix crash getting file size on non existent blob on Azure. [#4836](https://github.com/TileDB-Inc/TileDB/pull/4836)
+
+# TileDB v2.21.2 Release Notes
+
+## Defects removed
+
+* Fix crash getting file size on non existent blob on Azure. [#4836](https://github.com/TileDB-Inc/TileDB/pull/4836)
+
 # TileDB v2.21.1 Release Notes
 
 ## Defects removed
@@ -224,6 +297,17 @@
 ## Test only changes
 
 * Remove UnitTestConfig::array_encryption_key_length. [#4482](https://github.com/TileDB-Inc/TileDB/pull/4482)
+
+# TileDB v2.18.5 Release Notes
+
+## Defects removed
+
+* Fix out of order consolidation. [#4597](https://github.com/TileDB-Inc/TileDB/pull/4597)
+* Vac files should only be removed if paths removal was fully successful. [#4889](https://github.com/TileDB-Inc/TileDB/pull/4889)
+
+## Build System Changes
+
+* Fix linker errors when building with MSVC. [#4759](https://github.com/TileDB-Inc/TileDB/pull/4759)
 
 # TileDB v2.18.4 Release Notes
 
