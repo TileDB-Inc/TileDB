@@ -120,10 +120,10 @@ class var_length_view : public std::ranges::view_base {
    */
   var_length_view(
       std::ranges::iterator_t<R> data_begin,
-      std::ranges::iterator_t<R> data_end,
+      [[maybe_unused]] std::ranges::iterator_t<R> data_end,
       std::ranges::range_difference_t<R> n_data,
       std::ranges::iterator_t<const I> index_begin,
-      std::ranges::iterator_t<const I> index_end,
+      [[maybe_unused]] std::ranges::iterator_t<const I> index_end,
       std::ranges::range_difference_t<I> n_index)
       : data_begin_(data_begin)
       , data_end_(data_begin + n_data)
