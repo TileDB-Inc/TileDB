@@ -66,6 +66,12 @@ TEST_CASE(
   CHECK(std::ranges::view<test_type>);
 }
 
+struct dummy_compare {
+  bool operator()(auto&&, auto&&) const {
+    return true;
+  }
+};
+
 // Test that the alt_var_length_view iterators satisfy the expected concepts
 TEST_CASE(
     "alt_var_length_view: Iterator concepts",
@@ -92,6 +98,29 @@ TEST_CASE(
   CHECK(std::bidirectional_iterator<test_type_const_iterator>);
   CHECK(std::random_access_iterator<test_type_iterator>);
   CHECK(std::random_access_iterator<test_type_const_iterator>);
+
+  using ZI = test_type_iterator;
+  CHECK(std::indirectly_writable<ZI, std::iter_rvalue_reference_t<ZI>>);
+  CHECK(std::indirectly_writable<ZI, std::iter_value_t<ZI>>);
+
+  CHECK(std::indirectly_movable<ZI, ZI>);
+
+  CHECK(std::indirectly_movable_storable<ZI, ZI>);
+
+  CHECK(std::movable<std::iter_value_t<ZI>>);
+  CHECK(std::constructible_from<
+        std::iter_value_t<ZI>,
+        std::iter_rvalue_reference_t<ZI>>);
+  CHECK(std::assignable_from<
+        std::iter_value_t<ZI>&,
+        std::iter_rvalue_reference_t<ZI>>);
+  CHECK(std::forward_iterator<ZI>);
+
+  CHECK(std::indirectly_swappable<ZI, ZI>);
+  CHECK(std::permutable<ZI>);
+  CHECK(!std::sortable<ZI>);
+
+  CHECK(std::sortable<ZI, dummy_compare>);
 }
 
 // Test that the alt_var_length_view value_type satisfies the expected concepts

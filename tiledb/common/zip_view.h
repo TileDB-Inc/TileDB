@@ -35,6 +35,23 @@
  * of all views. The size of produced view is the minimum of sizes of all
  * adapted views. 2) zip is a customization point object that constructs a
  * zip_view.
+ *
+ * @note This implementation is specialized to random access iterators.  In the
+ * implementation, we keep begin iterators for all of the constituents and the
+ * iterator keeps and index and indexes into the begin iterators.  There are
+ * two alternatives:
+ *
+ * 1) Use a tuple of iterators that we advance, rather than keeping an index.
+ * This would work for all ranges (down to input ranges), but would be slower
+ * on advancing.  It might be faster on dereferencing, since we wouldn't have
+ * to index into the tuple.
+ *
+ * 2) Maintain a pointer back to the container from which the iterator came.
+ * In that case the iterator would not need to maintain its own set of
+ * iterators.  However, this would still only work for random access ranges and
+ * there would be an additional level of indirection.
+ *
+ * @todo Implement and evaluate the above alternatives
  */
 
 #ifndef TILEDB_ZIP_VIEW_H
@@ -43,24 +60,34 @@
 #include <ranges>
 #include "iterator_facade.h"
 
-// @todo Should this take viewable ranges?
-// template <std::ranges::viewable_range... Rngs>
+/*
+ * @todo Should this take viewable ranges?  E.g.,
+ * template <std::ranges::viewable_range... Rngs>
+ *
+ * See discussion of randeom access above
+ */
 template <std::ranges::random_access_range... Rngs>
-class zip_view {
+class zip_view : public std::ranges::view_interface<zip_view<Rngs...>> {
   /**
    * Forward declaration to private (random access) iterator class
-   * @todo gneralize to non-random access ranges
+   * @todo Generalize to non-random access ranges
    */
   template <std::ranges::random_access_range... Rs>
-  struct private_iterator;
+  struct zip_iterator;
 
-  using iterator_type = private_iterator<Rngs...>;
-  using const_iterator_type = private_iterator<const Rngs...>;
+  template <class... Ts>
+  struct zip_reference;
+
+  using iterator_type = zip_iterator<Rngs...>;
+  using const_iterator_type = zip_iterator<const Rngs...>;
 
  public:
   /****************************************************************************
    * Constructors
    ****************************************************************************/
+
+  /** Default constructor */
+  zip_view() = default;
 
   /**
    * Construct a zip view from a set of ranges.  The ranges are stored in a
@@ -71,7 +98,7 @@ class zip_view {
    * @param rngs The ranges to zip
    */
   template <class... Ranges>
-  zip_view(Ranges&&... rngs)
+  constexpr explicit zip_view(Ranges&&... rngs)
       : ranges_{std::forward<Ranges>(rngs)...} {
   }
 
@@ -86,6 +113,11 @@ class zip_view {
    * in which case the size of the zipped view is the minimum of the sizes of
    * the ranges being zipped, and the end iterator is the begin iterator plus
    * the size of the zipped view.
+   *
+   * @note Some of these should be automatically generated via CRTP with
+   * view_interface, but they don't seem to be.
+   *
+   * @todo Investigate defined behavior of CRTP with view_interface
    *
    ****************************************************************************/
 
@@ -116,7 +148,7 @@ class zip_view {
   auto begin() const {
     return std::apply(
         [](auto&&... rngs) {
-          return const_iterator_type(std::ranges::cbegin(rngs)...);
+          return const_iterator_type(std::ranges::begin(rngs)...);
         },
         ranges_);
   }
@@ -130,11 +162,11 @@ class zip_view {
   {
     return std::apply(
         [this](auto&&... rngs) {
-          return const_iterator_type(
-              std::ranges::cbegin(rngs)..., this->size());
+          return const_iterator_type(std::ranges::begin(rngs)..., this->size());
         },
         ranges_);
   }
+
   /** Return an iterator to the beginning of a const zipped view. */
   auto cbegin() const {
     return std::apply(
@@ -178,17 +210,24 @@ class zip_view {
    * @tparam Rs
    */
   template <std::ranges::random_access_range... Rs>
-  struct private_iterator : public iterator_facade<private_iterator<Rs...>> {
-    using value_type_ = std::tuple<std::ranges::range_reference_t<Rs>...>;
-    using index_type =
-        std::common_type_t<std::ranges::range_difference_t<Rs>...>;
+  struct zip_iterator : public iterator_facade<zip_iterator<Rs...>> {
+    using index_type = std::common_type_t<std::remove_cvref_t<
+        std::ranges::range_difference_t<std::remove_cvref_t<Rs>>>...>;
+
+    /**
+     * The reference and value types for the iterator.  Since the iterator
+     * returns a proxy -- tuple of references -- it is very important to get
+     * these exactly right, particularly for things like std::swap and
+     * std::sort.
+     */
+    using reference = std::tuple<std::ranges::range_reference_t<Rs>...>;
+    using value_type = std::tuple<std::ranges::range_value_t<Rs>...>;
 
     /** Default constructor */
-    private_iterator() = default;
+    zip_iterator() = default;
 
     /** Construct an iterator from a set of begin iterators */
-    private_iterator(
-        std::ranges::iterator_t<Rs>... begins, index_type index = 0)
+    zip_iterator(std::ranges::iterator_t<Rs>... begins, index_type index = 0)
         : index_(index)
         , begins_(begins...) {
     }
@@ -203,9 +242,11 @@ class zip_view {
      * iterator sinc the facade bases many type aliases and other functions
      * based on it and its signature
      */
-    value_type_ dereference() const {
+    reference dereference() const {
       return std::apply(
-          [this](auto&&... iters) { return value_type_(iters[index_]...); },
+          [this]<typename... Is>(Is&&... iters) {
+            return reference(std::forward<Is>(iters)[index_]...);
+          },
           begins_);
     }
 
@@ -216,12 +257,12 @@ class zip_view {
     }
 
     /** Return the distance to another iterator */
-    auto distance_to(const private_iterator& other) const {
+    auto distance_to(const zip_iterator& other) const {
       return other.index_ - index_;
     }
 
     /** Compare two iterators for equality */
-    bool operator==(const private_iterator& other) const {
+    bool operator==(const zip_iterator& other) const {
       return begins_ == other.begins_ && index_ == other.index_;
     }
 
@@ -234,6 +275,48 @@ class zip_view {
 
     /** Begin iterators for each of the ranges being zipped */
     std::tuple<std::ranges::iterator_t<Rs>...> begins_;
+
+    /*
+     * Should we decide to start using std::ranges for containers and
+     * algorithms, we will need to implement iter_move and iter_swap for proxy
+     * iterators.
+     */
+#if 0
+    friend constexpr auto iter_move(const zip_iterator& rhs) {
+      return std::apply(
+          [&]<typename... _Ts>(_Ts&&... __elts) {
+            return std::tuple<
+                std::invoke_result_t<decltype(std::ranges::iter_move), _Ts>...>(
+                std::ranges::iter_move(
+                    (std::forward<_Ts>(__elts) + rhs.index_))...);
+          },
+          rhs.begins_);
+    }
+
+    friend constexpr void iter_swap(
+        const zip_iterator& lhs, const zip_iterator& rhs) {
+      [&]<size_t... _Is>(std::index_sequence<_Is...>) {
+        (std::ranges::iter_swap(
+             std::get<_Is>(lhs.begins_) + lhs.index_,
+             std::get<_Is>(rhs.begins_) + rhs.index_),
+         ...);
+      }(std::make_index_sequence<sizeof...(Rs)>{});
+    }
+
+#else
+    /** Function to swap values pointed to by two iterators */
+    friend constexpr void iter_swap(
+        const zip_iterator& lhs, const zip_iterator& rhs) {
+      [&]<size_t... _Is>(std::index_sequence<_Is...>) {
+        (std::swap(
+             std::get<_Is>(lhs.begins_)[lhs.index_],
+             std::get<_Is>(rhs.begins_)[rhs.index_]),
+         ...);
+      }(std::make_index_sequence<sizeof...(Rs)>{});
+    }
+#endif
+
+    friend class zip_view;
   };
 
  private:
@@ -257,5 +340,38 @@ struct _fn {
 inline namespace _cpo {
 inline constexpr auto zip = _zip::_fn{};
 }  // namespace _cpo
+
+/**
+ * Define "swap()" for tuples of references
+ *
+ * Based on nwgraph implementation
+ *
+ * Also, Eric Niebler can "live with this"
+ * template< class T, class U >
+ * void swap( pair< T&, U& > && a, pair< T&, U& > && b )
+ * {
+ *   swap(a.first, b.first);
+ *   swap(a.second, b.second);
+ * }
+ *
+ * We generalize Eric's example to tuples.
+ *
+ * @note Different C++ libraries implement std::sort differently.  Some use
+ * std::swap at all levels of the algorithm.  Others use insertion sort for
+ * small length containers -- which will not invoke std::swap.  (In that case
+ * it is very important to get the reference/value types of the iterator right.)
+ */
+namespace std {
+template <class... Ts>
+  requires(std::is_swappable<Ts>::value && ...)
+void swap(std::tuple<Ts&...>&& x, std::tuple<Ts&...>&& y) {
+  using std::get;
+  using std::swap;
+
+  [&]<std::size_t... i>(std::index_sequence<i...>) {
+    (swap(get<i>(x), get<i>(y)), ...);
+  }(std::make_index_sequence<sizeof...(Ts)>());
+}
+}  // namespace std
 
 #endif  // TILEDB_ZIP_VIEW_H
