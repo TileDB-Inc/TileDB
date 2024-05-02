@@ -176,7 +176,7 @@ class SupportedFsS3 : public SupportedFs {
  public:
   SupportedFsS3(bool rest = false)
       : s3_prefix_("s3://")
-      , s3_bucket_(s3_prefix_ + "tiledb-" + random_label() + "/")
+      , s3_bucket_(s3_prefix_ + "tiledb-shaun/")
       , temp_dir_(s3_bucket_ + "tiledb_test/")
       , rest_(rest) {
   }
@@ -929,7 +929,7 @@ struct VFSTestSetup {
   std::string array_uri(
       const std::string& array_name, bool strip_tiledb_prefix = false) {
     auto uri = (fs_vec[0]->is_rest() && !strip_tiledb_prefix) ?
-                   ("tiledb://unit/" + temp_dir + array_name) :
+                   ("tiledb://demo/" + temp_dir + array_name) :
                    (temp_dir + array_name);
     return uri;
   }

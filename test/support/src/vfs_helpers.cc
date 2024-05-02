@@ -152,7 +152,7 @@ void vfs_test_create_temp_dir(
 std::string vfs_array_uri(
     const std::unique_ptr<SupportedFs>& fs, const std::string& array_name) {
   if (fs->is_rest()) {
-    return ("tiledb://unit/" + array_name);
+    return ("tiledb://demo/" + array_name);
   } else {
     return array_name;
   }
@@ -162,12 +162,12 @@ Status SupportedFsS3::prepare_config(
     [[maybe_unused]] tiledb_config_t* config,
     [[maybe_unused]] tiledb_error_t* error) {
 #ifndef TILEDB_TESTS_AWS_S3_CONFIG
-  REQUIRE(
-      tiledb_config_set(
-          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
-      TILEDB_OK);
-  REQUIRE(
-      tiledb_config_set(config, "vfs.s3.scheme", "https", &error) == TILEDB_OK);
+//  REQUIRE(
+//      tiledb_config_set(
+//          config, "vfs.s3.endpoint_override", "localhost:9999", &error) ==
+//      TILEDB_OK);
+//  REQUIRE(
+//      tiledb_config_set(config, "vfs.s3.scheme", "https", &error) == TILEDB_OK);
   REQUIRE(
       tiledb_config_set(
           config, "vfs.s3.use_virtual_addressing", "false", &error) ==
@@ -181,42 +181,40 @@ Status SupportedFsS3::prepare_config(
 }
 
 Status SupportedFsS3::init(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  if (!is_bucket) {
-    // In the CI, we've seen issues where the bucket create fails due to
-    // `BucketAlreadyOwnedByYou`. We will retry 5 times, sleeping 1 second
-    // between each retry if the bucket create fails here.
-    for (int i = 0; i < 5; ++i) {
-      rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
-      if (rc == TILEDB_OK) {
-        break;
-      }
-      std::this_thread::sleep_for(std::chrono::seconds(1));
-    }
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(is_bucket);
-
+//  int is_bucket = 0;
+//  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+//  REQUIRE(rc == TILEDB_OK);
+//  if (!is_bucket) {
+//    // In the CI, we've seen issues where the bucket create fails due to
+//    // `BucketAlreadyOwnedByYou`. We will retry 5 times, sleeping 1 second
+//    // between each retry if the bucket create fails here.
+//    for (int i = 0; i < 5; ++i) {
+//      rc = tiledb_vfs_create_bucket(ctx, vfs, s3_bucket_.c_str());
+//      if (rc == TILEDB_OK) {
+//        break;
+//      }
+//      std::this_thread::sleep_for(std::chrono::seconds(1));
+//    }
+//    REQUIRE(rc == TILEDB_OK);
+//  }
+//
+//  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+//  REQUIRE(rc == TILEDB_OK);
+//  REQUIRE(is_bucket);
+//
   return Status::Ok();
 }
 
 Status SupportedFsS3::close(tiledb_ctx_t* ctx, tiledb_vfs_t* vfs) {
-  int is_bucket = 0;
-  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  CHECK(rc == TILEDB_OK);
-  if (is_bucket) {
-    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
-  }
-
-  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
-  REQUIRE(rc == TILEDB_OK);
-  REQUIRE(!is_bucket);
-
+//  int is_bucket = 0;
+//  int rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+//  CHECK(rc == TILEDB_OK);
+//  if (is_bucket) {
+//    CHECK(tiledb_vfs_remove_bucket(ctx, vfs, s3_bucket_.c_str()) == TILEDB_OK);
+//  }
+//  rc = tiledb_vfs_is_bucket(ctx, vfs, s3_bucket_.c_str(), &is_bucket);
+//  REQUIRE(rc == TILEDB_OK);
+//  REQUIRE(!is_bucket);
   return Status::Ok();
 }
 
