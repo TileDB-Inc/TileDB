@@ -32,15 +32,16 @@
 
 #include <algorithm>
 #include <catch2/catch_all.hpp>
+#include <type_traits>
 #include <vector>
-#include "../zip_view.h"
-
 #include "../alt_var_length_view.h"
+#include "../zip_view.h"
 
 TEST_CASE("zip_view: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
 }
 
+/** Test that the zip_view type satisfies the expected range concepts */
 TEST_CASE("zip_view: Range concepts", "[zip_view][concepts]") {
   using test_type = zip_view<std::vector<double>, std::vector<int>>;
 
@@ -55,35 +56,75 @@ TEST_CASE("zip_view: Range concepts", "[zip_view][concepts]") {
   CHECK(std::ranges::random_access_range<test_type>);
   CHECK(!std::ranges::contiguous_range<test_type>);
   CHECK(std::ranges::common_range<test_type>);
+  CHECK(std::ranges::viewable_range<test_type>);
 
-  // @todo Fix so that it passes on ubuntu.
-  // CHECK(std::ranges::viewable_range<test_type>);
-
-  // @todo: Should this be a view?
-  CHECK(!std::ranges::view<test_type>);
+  CHECK(std::ranges::view<test_type>);
 }
 
+/** Test that the zip_view iterator satisfies the expected concepts */
 TEST_CASE("zip_view: Iterator concepts", "[zip_view][concepts]") {
   using test_type = zip_view<std::vector<double>, std::vector<int>>;
   using test_type_iterator = std::ranges::iterator_t<test_type>;
   using test_type_const_iterator = std::ranges::iterator_t<const test_type>;
+  // using test_type_const_iterator = decltype((const test_type){}.begin());
+  CHECK(std::is_same_v<
+        test_type_const_iterator,
+        decltype(std::declval<const test_type>().begin())>);
 
   CHECK(std::input_or_output_iterator<test_type_iterator>);
-  CHECK(std::input_or_output_iterator<test_type_const_iterator>);
   CHECK(std::input_iterator<test_type_iterator>);
-  CHECK(std::input_iterator<test_type_const_iterator>);
-  CHECK(!std::output_iterator<
-        test_type_iterator,
-        std::ranges::range_value_t<test_type>>);
+
+  CHECK(std::input_or_output_iterator<test_type_const_iterator>);
+
+  /*
+   * The following tests fail for the const iterator.  Whcih seems to be
+   * correct behavior:
+   * cf https://quuxplusone.github.io/blog/2023/08/13/non-const-iterable-ranges/
+   *
+   * The tests here are the fine grained constituents of forward iterator,
+   * which we include to zoom in on exactly where the failure is.  It appears
+   * to be in the common_reference concepts below.  The concept checks fail in
+   * that the code does not even compile.
+   */
+  CHECK(!std::input_iterator<test_type_const_iterator>);
+  CHECK(!std::indirectly_readable<test_type_const_iterator>);
+  CHECK(!std::common_reference_with<
+        std::iter_reference_t<test_type_const_iterator>&&,
+        std::iter_value_t<test_type_const_iterator>&>);
+
+  CHECK(std::common_reference_with<
+        std::iter_reference_t<test_type_const_iterator>&&,
+        std::iter_reference_t<test_type_const_iterator>&>);
+  CHECK(std::common_reference_with<
+        std::iter_reference_t<test_type_const_iterator>&&,
+        std::iter_rvalue_reference_t<test_type_const_iterator>&>);
+
   CHECK(!std::output_iterator<
         test_type_const_iterator,
         std::ranges::range_value_t<test_type>>);
+  CHECK(!std::forward_iterator<test_type_const_iterator>);
+  CHECK(!std::bidirectional_iterator<test_type_const_iterator>);
+  CHECK(!std::random_access_iterator<test_type_const_iterator>);
+
+  /*
+   * These will not compile
+  using T = std::iter_reference_t<test_type_const_iterator>;
+  using U = std::iter_value_t<test_type_const_iterator>;
+
+  CHECK(std::same_as<
+        std::common_reference_t<T, U>,
+        std::common_reference_t<U, T>>);
+  CHECK(std::convertible_to<T, std::common_reference_t<T, U>>);
+  CHECK(std::convertible_to<U, std::common_reference_t<T, U>>);
+   */
+
+  CHECK(!std::output_iterator<
+        test_type_iterator,
+        std::ranges::range_value_t<test_type>>);
+
   CHECK(std::forward_iterator<test_type_iterator>);
-  CHECK(std::forward_iterator<test_type_const_iterator>);
   CHECK(std::bidirectional_iterator<test_type_iterator>);
-  CHECK(std::bidirectional_iterator<test_type_const_iterator>);
   CHECK(std::random_access_iterator<test_type_iterator>);
-  CHECK(std::random_access_iterator<test_type_const_iterator>);
 }
 
 // Test that the zip_view value_type satisfies the expected concepts
@@ -103,6 +144,7 @@ TEST_CASE("zip_view: value_type concepts", "[zip_view][concepts]") {
   CHECK(std::is_same_v<test_iterator_reference_type, range_reference_type>);
 }
 
+/** Test zip_view constructors */
 TEST_CASE("zip_view: constructor", "[zip_view]") {
   std::vector<int> a{1, 2, 3};
   std::vector<int> b{4, 5, 6};
@@ -139,6 +181,7 @@ TEST_CASE("zip_view: constructor", "[zip_view]") {
   }
 }
 
+/** Test that size returns the min of the sizes of the input ranges */
 TEST_CASE("zip_view: size()", "[zip_view]") {
   std::vector<int> a{1, 2, 3};
   std::vector<int> b{4, 5, 6, 7, 8, 9};
@@ -153,6 +196,7 @@ TEST_CASE("zip_view: size()", "[zip_view]") {
   CHECK(zip(a, b, c).size() == 3);
 }
 
+/** The end() of the zipped ranges should be begin() + size() */
 TEST_CASE("zip_view: end()", "[zip_view]") {
   std::vector<int> a{1, 2, 3};
   std::vector<int> b{4, 5, 6, 7, 8, 9};
@@ -178,6 +222,7 @@ TEST_CASE("zip_view: end()", "[zip_view]") {
   CHECK(zip(a, b, c).end() - zip(a, b, c).begin() == 3);
 }
 
+/** Exercise the zip_view iterator */
 TEST_CASE("zip_view: basic iterator properties", "[zip_view]") {
   std::vector<int> a{1, 2, 3};
   std::vector<int> b{4, 5, 6, 7, 8, 9};
@@ -219,6 +264,7 @@ TEST_CASE("zip_view: basic iterator properties", "[zip_view]") {
   CHECK(it[0] == std::tuple{2, 5, 11});
 }
 
+/** Test zip with an alt_var_length_view */
 TEST_CASE("zip_view: alt_var_length_view", "[zip_view]") {
   std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
   std::vector<size_t> o = {0, 3, 6, 10};
@@ -240,6 +286,7 @@ TEST_CASE("zip_view: alt_var_length_view", "[zip_view]") {
       std::get<3>(*it++), std::vector<double>{7.0, 8.0, 9.0, 10.0}));
 }
 
+/** Use zip_view with std::for_each and with range-based for */
 TEST_CASE(
     "zip_view: for, std::for_each with alt_var_length_view", "[zip_view]") {
   std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};

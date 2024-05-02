@@ -65,16 +65,15 @@
  * alt_var_length_view is a random_access_iterator that dereferences to a
  * subrange of the data range.
  *
- * @tparam R Type of the data range, assumed to be a random access range.
- * @tparam I Type of the index range, assumed to be a random access range.
+ * @tparam R Type of the data range, required to be viewable_range
+ * @tparam I Type of the index range, required to be viewable_range
  *
- * @todo R could be a view rather than a range.
- * @todo Would using `std::ranges::view_interface` be better tha `view_base`?
+ * @note We use view_interface instead of view_base to get operator[] (among
+ * other things).
  */
-template <
-    std::ranges::random_access_range R,
-    std::ranges::random_access_range I>
-class alt_var_length_view : public std::ranges::view_base {
+template <std::ranges::viewable_range R, std::ranges::viewable_range I>
+class alt_var_length_view
+    : public std::ranges::view_interface<alt_var_length_view<R, I>> {
   /**
    * Forward reference of the iterator over the range of variable length data
    */
