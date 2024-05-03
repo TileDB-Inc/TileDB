@@ -40,17 +40,17 @@ TEST_CASE("sort_zip: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
 }
 
-std::vector<double> q = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
-std::vector<double> r = {
-    21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
-
-std::vector<size_t> o = {0, 3, 6, 10};
-std::vector<size_t> p = {0, 2, 7, 10};
-
 using avl_test_type =
     alt_var_length_view<std::vector<double>, std::vector<size_t>>;
 
 TEST_CASE("sort_zip: swap alt_var_length_view", "[zip_view]") {
+  std::vector<double> q = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+  std::vector<double> r = {
+      21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
+
+  std::vector<size_t> o = {0, 3, 6, 10};
+  std::vector<size_t> p = {0, 2, 7, 10};
+
   auto a = avl_test_type{q, o};
   std::swap(a[0], a[1]);
   CHECK(std::ranges::equal(a[0], std::vector<double>{4.0, 5.0, 6.0}));
@@ -74,6 +74,13 @@ TEST_CASE("sort_zip: swap alt_var_length_view", "[zip_view]") {
 }
 
 TEST_CASE("sort_zip: iter_swap alt_var_length_view", "[zip_view]") {
+  std::vector<double> q = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+  std::vector<double> r = {
+      21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
+
+  std::vector<size_t> o = {0, 3, 6, 10};
+  std::vector<size_t> p = {0, 2, 7, 10};
+
   auto a = avl_test_type{q, o};
   auto a0 = a.begin();
   auto a1 = a0 + 1;
