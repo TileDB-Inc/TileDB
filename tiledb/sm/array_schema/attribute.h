@@ -306,6 +306,8 @@ class Attribute {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
+  /** Called to check if a cell val num is valid */
+  void check_cell_val_num(unsigned cell_val_num) const;
 
   /** Sets the default fill value. */
   void set_default_fill_value();

@@ -33,6 +33,7 @@ commence(unit_test array_schema)
     this_target_sources(
         main.cc
         unit_array_schema.cc
+        unit_attribute.cc
         unit_dimension.cc
         unit_dimension_label.cc
         unit_domain_data.cc
