@@ -46,7 +46,8 @@ TEST_CASE("zip_view: Should not copy", "[zip_view]") {
     explicit foo(int N)
         : std::vector<int>(N) {
     }
-    foo(const foo&) {
+    foo(const foo&)
+        : std::vector<int>() {
       CHECK(false);
       CHECK(true);
     }
