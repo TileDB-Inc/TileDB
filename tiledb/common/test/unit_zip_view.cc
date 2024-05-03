@@ -41,6 +41,29 @@ TEST_CASE("zip_view: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
 }
 
+TEST_CASE("zip_view: Should not copy", "[zip_view]") {
+  struct foo : public std::vector<int> {
+    explicit foo(int N)
+        : std::vector<int>(N) {
+    }
+    foo(const foo&)
+        : std::vector<int>() {
+      CHECK(false);
+      CHECK(true);
+    }
+    foo(foo&&) = delete;
+    foo& operator=(foo&) = delete;
+    foo& operator=(foo&&) = delete;
+    foo() = delete;
+    ~foo() = default;
+  };
+
+  auto f = foo(10);
+  auto g = foo(10);
+  auto h = foo(10);
+  [[maybe_unused]] auto z = zip(f, g, h);
+}
+
 /** Test that the zip_view type satisfies the expected range concepts */
 TEST_CASE("zip_view: Range concepts", "[zip_view][concepts]") {
   using test_type = zip_view<std::vector<double>, std::vector<int>>;
@@ -230,6 +253,7 @@ TEST_CASE("zip_view: basic iterator properties", "[zip_view]") {
 
   auto z = zip(a, b, c);
   auto it = z.begin();
+  CHECK(it == begin(z));
   auto it2 = z.begin();
   CHECK(it == it2);
   CHECK(*it == *it2);
@@ -239,6 +263,7 @@ TEST_CASE("zip_view: basic iterator properties", "[zip_view]") {
   CHECK(it == it2);
   CHECK(*it == *it2);
   auto jt = z.end();
+  CHECK(jt == end(z));
   CHECK(it != jt);
   CHECK(it < jt);
   CHECK(it <= jt);

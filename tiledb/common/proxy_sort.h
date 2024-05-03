@@ -79,10 +79,12 @@
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range I>
-void proxy_sort_no_init(const R& x, I& perm) {
+void proxy_sort_no_init(const R& x, I&& perm) {
   assert(perm.size() == x.size());
   std::sort(
-      perm.begin(), perm.end(), [&](auto a, auto b) { return x[a] < x[b]; });
+      std::forward<I>(perm).begin(),
+      std::forward<I>(perm).end(),
+      [&](auto a, auto b) { return x[a] < x[b]; });
 }
 
 /**
@@ -98,10 +100,10 @@ void proxy_sort_no_init(const R& x, I& perm) {
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range I>
-void proxy_sort(const R& x, I& perm) {
+void proxy_sort(R&& x, I&& perm) {
   assert(perm.size() == x.size());
   std::iota(perm.begin(), perm.end(), 0);
-  proxy_sort_no_init(x, perm);
+  proxy_sort_no_init(std::forward<R>(x), std::forward<I>(perm));
 }
 
 /**
@@ -120,11 +122,12 @@ template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range I,
     class Compare>
-void proxy_sort_no_init(const R& x, I& perm, Compare comp) {
+void proxy_sort_no_init(const R& x, I&& perm, Compare comp) {
   assert(perm.size() == x.size());
-  std::sort(perm.begin(), perm.end(), [&](auto a, auto b) {
-    return comp(x[a], x[b]);
-  });
+  std::sort(
+      std::forward<I>(perm).begin(),
+      std::forward<I>(perm).end(),
+      [&](auto a, auto b) { return comp(x[a], x[b]); });
 }
 
 /**
@@ -143,10 +146,10 @@ template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range I,
     class Compare>
-void proxy_sort(const R& x, I& perm, Compare comp) {
+void proxy_sort(R&& x, I&& perm, Compare comp) {
   assert(perm.size() == x.size());
   std::iota(perm.begin(), perm.end(), 0);
-  proxy_sort_no_init(x, perm, comp);
+  proxy_sort_no_init(std::forward<R>(x), std::forward<I>(perm), comp);
 }
 
 /**
