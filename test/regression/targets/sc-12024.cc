@@ -31,8 +31,11 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(TILEDB_GLOBAL_ORDER);
     q.set_data_buffer("a", a);
-    coords = {139200.35, -682.75};
-    q.set_coordinates(coords);
+
+    std::vector<double> y = {139200.35};
+    std::vector<double> z = {-682.75};
+    q.set_data_buffer("Y", y);
+    q.set_data_buffer("Z", z);
     REQUIRE_THROWS_WITH(
         q.submit(),
         "[TileDB::Dimension] Error: Coordinate -682.75 is out of domain "
@@ -42,8 +45,11 @@ TEST_CASE("C++ API: Truncated values (ch12024)", "[cppapi][sparse]") {
     Query q(ctx, array, TILEDB_WRITE);
     q.set_layout(TILEDB_GLOBAL_ORDER);
     q.set_data_buffer("a", a);
-    coords = {139200.34, -682.73};
-    q.set_coordinates(coords);
+
+    std::vector<double> y = {139200.34};
+    std::vector<double> z = {-682.73};
+    q.set_data_buffer("Y", y);
+    q.set_data_buffer("Z", z);
     REQUIRE_THROWS_WITH(
         q.submit(),
         "[TileDB::Dimension] Error: Coordinate 139200.34 is out of domain "

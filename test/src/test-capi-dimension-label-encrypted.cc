@@ -82,20 +82,6 @@ TEST_CASE_METHOD(
         tiledb_array_create(ctx_encrypt, array_name.c_str(), array_schema));
     tiledb_array_schema_free(&array_schema);
   }
-  SECTION("Create array with deprecated API") {
-    tiledb_encryption_type_t encryption_type{TILEDB_AES_256_GCM};
-    std::string encryption_key{"0123456789abcdeF0123456789abcdeF"};
-    const uint32_t encryption_key_length{
-        static_cast<uint32_t>(strlen(encryption_key.c_str()))};
-    require_tiledb_ok(tiledb_array_create_with_key(
-        ctx,
-        array_name.c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key.c_str(),
-        encryption_key_length));
-    tiledb_array_schema_free(&array_schema);
-  }
 
   // Check the array schema cannot be loaded without the encryption key.
   tiledb_array_schema_t* loaded_array_schema{nullptr};
@@ -176,19 +162,6 @@ TEST_CASE_METHOD(
   SECTION("Create array with current API") {
     require_tiledb_ok(
         tiledb_array_create(ctx_encrypt, array_name.c_str(), array_schema));
-    tiledb_array_schema_free(&array_schema);
-  }
-  SECTION("Create array with deprecated API") {
-    tiledb_encryption_type_t encryption_type{TILEDB_AES_256_GCM};
-    const uint32_t encryption_key_length{
-        static_cast<uint32_t>(strlen(encryption_key.c_str()))};
-    require_tiledb_ok(tiledb_array_create_with_key(
-        ctx,
-        array_name.c_str(),
-        array_schema,
-        encryption_type,
-        encryption_key.c_str(),
-        encryption_key_length));
     tiledb_array_schema_free(&array_schema);
   }
 
