@@ -469,6 +469,19 @@ class Array {
   }
 
   /**
+   * Retrieves the encryption type.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param encryption_type Set to the encryption type.
+   * @return Status
+   */
+  static Status encryption_type(
+      ContextResources& resources,
+      const URI& uri,
+      EncryptionType* encryption_type);
+
+  /**
    * Get the enumeration for the given name.
    *
    * This function retrieves the enumeration for the given name. If the

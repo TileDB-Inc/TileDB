@@ -2934,14 +2934,14 @@ int32_t tiledb_array_encryption_type(
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type) {
   // Sanity checks
-  if (array_uri == nullptr || encryption_type == nullptr)
+  if (array_uri == nullptr || encryption_type == nullptr) {
     return TILEDB_ERR;
+  }
 
-  auto uri = tiledb::sm::URI(array_uri);
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(ctx->storage_manager()->array_get_encryption(uri, &enc));
-
+  throw_if_not_ok(sm::Array::encryption_type(
+      ctx->resources(), tiledb::sm::URI(array_uri), &enc));
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
