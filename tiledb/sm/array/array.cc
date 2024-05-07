@@ -549,7 +549,7 @@ void Array::delete_fragments(
 }
 
 void Array::delete_array(ContextResources& resources, const URI& uri) {
-  auto vfs = &(resources.vfs());
+  auto& vfs = resources.vfs();
   auto array_dir =
       ArrayDirectory(resources, uri, 0, std::numeric_limits<uint64_t>::max());
 
@@ -559,18 +559,18 @@ void Array::delete_array(ContextResources& resources, const URI& uri) {
 
   // Delete array metadata, fragment metadata and array schema files
   // Note: metadata files may not be present, try to delete anyway
-  vfs->remove_files(&resources.compute_tp(), array_dir.array_meta_uris());
-  vfs->remove_files(&resources.compute_tp(), array_dir.fragment_meta_uris());
-  vfs->remove_files(&resources.compute_tp(), array_dir.array_schema_uris());
+  vfs.remove_files(&resources.compute_tp(), array_dir.array_meta_uris());
+  vfs.remove_files(&resources.compute_tp(), array_dir.fragment_meta_uris());
+  vfs.remove_files(&resources.compute_tp(), array_dir.array_schema_uris());
 
   // Delete all tiledb child directories
-  // Note: using vfs()->ls() here could delete user data
+  // Note: using vfs.ls() here could delete user data
   std::vector<URI> dirs;
   auto parent_dir = array_dir.uri().c_str();
   for (auto array_dir_name : constants::array_dir_names) {
     dirs.emplace_back(URI(parent_dir + array_dir_name));
   }
-  vfs->remove_dirs(&resources.compute_tp(), dirs);
+  vfs.remove_dirs(&resources.compute_tp(), dirs);
 }
 
 void Array::delete_array(const URI& uri) {

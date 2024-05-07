@@ -420,7 +420,8 @@ class Array {
   Status close();
 
   /**
-   * Deletes the fragments with the given parent URI.
+   * Performs deletion of local fragments with the given parent URI,
+   * between the provided timestamps.
    *
    * @param resources The context resources.
    * @param uri The uri of the Array whose fragments are to be deleted.
@@ -436,7 +437,8 @@ class Array {
       std::optional<ArrayDirectory> array_dir = std::nullopt);
 
   /**
-   * Deletes the fragments from the Array with given URI.
+   * Handles local and remote deletion of fragments between the provided
+   * timestamps from an open array with the given URI.
    *
    * @param uri The uri of the Array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete fragments.
@@ -448,7 +450,7 @@ class Array {
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
 
   /**
-   * Deletes the Array data with given URI.
+   * Performs deletion of the local array with the given parent URI.
    *
    * @param resources The context resources.
    * @param uri The uri of the Array whose data is to be deleted.
@@ -456,7 +458,7 @@ class Array {
   static void delete_array(ContextResources& resources, const URI& uri);
 
   /**
-   * Deletes the Array data with given URI.
+   * Handles local and remote deletion of an open array with the given URI.
    *
    * @param uri The uri of the Array whose data is to be deleted.
    *
