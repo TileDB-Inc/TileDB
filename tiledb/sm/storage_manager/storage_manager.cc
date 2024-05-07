@@ -226,36 +226,6 @@ void StorageManagerCanonical::delete_fragments(
       }));
 }
 
-void StorageManagerCanonical::delete_group(const char* group_name) {
-  if (group_name == nullptr) {
-    throw Status_StorageManagerError(
-        "[delete_group] Group name cannot be null");
-  }
-
-  auto group_dir = GroupDirectory(
-      vfs(),
-      compute_tp(),
-      URI(group_name),
-      0,
-      std::numeric_limits<uint64_t>::max());
-
-  // Delete the group detail, group metadata and group files
-  vfs()->remove_files(compute_tp(), group_dir.group_detail_uris());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_uris());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_uris_to_vacuum());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_vac_uris_to_vacuum());
-  vfs()->remove_files(compute_tp(), group_dir.group_file_uris());
-
-  // Delete all tiledb child directories
-  // Note: using vfs()->ls() here could delete user data
-  std::vector<URI> dirs;
-  auto parent_dir = group_dir.uri().c_str();
-  for (auto group_dir_name : constants::group_dir_names) {
-    dirs.emplace_back(URI(parent_dir + group_dir_name));
-  }
-  vfs()->remove_dirs(compute_tp(), dirs);
-}
-
 Status StorageManagerCanonical::array_create(
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
