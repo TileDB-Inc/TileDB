@@ -733,6 +733,8 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 200};
@@ -740,8 +742,13 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -781,8 +788,13 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -821,8 +833,13 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -862,8 +879,13 @@ void ConsolidationFx::write_dense_vector_4_fragments(uint64_t timestamp) {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -908,6 +930,8 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 198};
@@ -915,8 +939,13 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -930,8 +959,13 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -945,8 +979,13 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -960,8 +999,13 @@ void ConsolidationFx::write_dense_vector_4_fragments_not_coinciding() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -1006,6 +1050,8 @@ void ConsolidationFx::
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 200};
@@ -1013,8 +1059,13 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1028,8 +1079,13 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1043,8 +1099,13 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -1058,8 +1119,13 @@ void ConsolidationFx::
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -1114,6 +1180,8 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 100};
@@ -1121,8 +1189,13 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1137,8 +1210,13 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1153,8 +1231,13 @@ void ConsolidationFx::write_dense_vector_consolidatable_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -1204,6 +1287,8 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 100};
@@ -1211,8 +1296,13 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1227,8 +1317,13 @@ void ConsolidationFx::write_dense_vector_consolidatable_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1282,6 +1377,8 @@ void ConsolidationFx::write_dense_vector_del_1() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1 - Dense
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 200};
@@ -1289,8 +1386,13 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1304,8 +1406,13 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray2);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1319,8 +1426,13 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray3);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -1335,8 +1447,13 @@ void ConsolidationFx::write_dense_vector_del_1() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -1390,6 +1507,8 @@ void ConsolidationFx::write_dense_vector_del_2() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1 - Dense
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 200};
@@ -1397,8 +1516,13 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1412,8 +1536,13 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray2);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1427,8 +1556,13 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray3);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray3);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -1443,8 +1577,13 @@ void ConsolidationFx::write_dense_vector_del_2() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -1498,6 +1637,8 @@ void ConsolidationFx::write_dense_vector_del_3() {
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Submit query #1 - Dense
   tiledb_query_t* query_1;
   uint64_t subarray[] = {1, 200};
@@ -1505,8 +1646,13 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_1, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_1, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_1, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_1, "a", a_1, &a_1_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_1);
@@ -1520,8 +1666,13 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_2, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_2, subarray2);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_2, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_2, "a", a_2, &a_2_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_2);
@@ -1536,8 +1687,13 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_3, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_3, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_3, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_3, "a", a_3, &a_3_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_3);
@@ -1551,8 +1707,13 @@ void ConsolidationFx::write_dense_vector_del_3() {
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query_4, TILEDB_ROW_MAJOR);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query_4, subarray4);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray4);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query_4, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query_4, "a", a_4, &a_4_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query_4);
@@ -1747,6 +1908,8 @@ void ConsolidationFx::write_dense_subarray(
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
+  tiledb_subarray_t* sub;
+
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
@@ -1755,8 +1918,13 @@ void ConsolidationFx::write_dense_subarray(
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
   CHECK(rc == TILEDB_OK);
@@ -2587,14 +2755,21 @@ void ConsolidationFx::read_dense_vector(uint64_t timestamp) {
   int a[410];
   uint64_t a_size = sizeof(a);
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -2659,14 +2834,21 @@ void ConsolidationFx::read_dense_vector_with_gaps() {
   int a[410];
   uint64_t a_size = sizeof(a);
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -2728,14 +2910,21 @@ void ConsolidationFx::read_dense_vector_consolidatable_1() {
   uint64_t a_size = sizeof(a);
   uint64_t subarray[] = {1, 101};
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -2800,14 +2989,21 @@ void ConsolidationFx::read_dense_vector_consolidatable_2() {
   uint64_t a_size = sizeof(a);
   uint64_t subarray[] = {1, 300};
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -2868,14 +3064,21 @@ void ConsolidationFx::read_dense_vector_del_1() {
   uint64_t a_size = sizeof(a);
   uint64_t subarray[] = {1, 400};
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -2936,14 +3139,21 @@ void ConsolidationFx::read_dense_vector_del_2() {
   uint64_t a_size = sizeof(a);
   uint64_t subarray[] = {1, 400};
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -3009,14 +3219,21 @@ void ConsolidationFx::read_dense_vector_del_3() {
   uint64_t a_size = sizeof(a);
   uint64_t subarray[] = {1, 400};
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
@@ -3101,14 +3318,21 @@ void ConsolidationFx::read_dense_full_subarray() {
   auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
+  tiledb_subarray_t* sub;
+
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -3224,14 +3448,21 @@ void ConsolidationFx::read_dense_subarray_full() {
   auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
+  tiledb_subarray_t* sub;
+
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -3354,14 +3585,21 @@ void ConsolidationFx::read_dense_four_tiles() {
   auto buffer_a2_validity = (uint8_t*)malloc(buffer_a2_validity_size);
   auto buffer_a3 = (float*)malloc(buffer_a3_size);
 
+  tiledb_subarray_t* sub;
+
   // Create query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(
       ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   CHECK(rc == TILEDB_OK);
@@ -6015,14 +6253,21 @@ TEST_CASE_METHOD(
   int a[410];
   uint64_t a_size = sizeof(a);
 
+  tiledb_subarray_t* sub;
+
   // Submit query
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
