@@ -33,25 +33,15 @@
 #ifndef TILEDB_ONDEMAND_FRAGMENT_METADATA_H
 #define TILEDB_ONDEMAND_FRAGMENT_METADATA_H
 
-#include <deque>
-#include <mutex>
-#include <unordered_map>
-#include <vector>
-
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
-#include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/rtree/rtree.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/fragment/loaded_fragment_metadata.h"
 
 namespace tiledb {
 namespace sm {
 
 /** Collection of lazily loaded fragment metadata */
-class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
+class OndemandFragmentMetadata : public LoadedFragmentMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -113,16 +103,15 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
 
  private:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /**
    * Loads the tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -130,12 +119,18 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the tile offsets for the input attribute or dimension from the
    * input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_offsets(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -143,12 +138,18 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the variable tile offsets for the input attribute or dimension from
    * the input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_var_offsets(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -156,11 +157,17 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the variable tile sizes for the input attribute or dimension from
    * the input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_var_sizes(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the validity tile offsets for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_validity_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -168,38 +175,59 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the validity tile offsets for the input attribute from the
    * input buffer.
+   *
+   * @param idx Dimension index
+   * @param buff Input buffer
    */
   void load_tile_validity_offsets(unsigned idx, ConstBuffer* buff);
 
   /**
    * Loads the min values for the input attribute from the input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_min_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the min values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_min_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the max values for the input attribute from the input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_max_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the max values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the sum values for the input attribute from the input buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_sum_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the sum values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_sum_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -207,22 +235,32 @@ class OndemandFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the null count values for the input attribute from the input
    * buffer.
+   *
+   * @param idx Dimension index
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_null_count_values(unsigned idx, Deserializer& deserializer);
 
   /**
    * Loads the null count values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_null_count_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the min max sum null count values for the fragment.
+   *
+   * @param deserializer A deserializer to read data from
    */
   void load_fragment_min_max_sum_null_count(Deserializer& deserializer);
 
   /**
    * Loads the processed conditions for the fragment.
+   *
+   * @param deserializer A deserializer to read data from
    */
   void load_processed_conditions(Deserializer& deserializer);
 };

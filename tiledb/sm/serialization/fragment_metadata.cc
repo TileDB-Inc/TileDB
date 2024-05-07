@@ -162,7 +162,7 @@ Status fragment_metadata_from_capnp(
   frag_meta->set_schema_name(array_schema->name());
   frag_meta->set_dense(array_schema->dense());
 
-  OffsetsFragmentMetadata::LoadedMetadata loaded_metadata;
+  LoadedFragmentMetadata::LoadedMetadata loaded_metadata;
 
   // num_dims_and_attrs() requires a set array schema, so it's important
   // schema is set above on the fragment metadata object.

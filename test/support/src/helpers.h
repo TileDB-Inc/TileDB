@@ -919,9 +919,14 @@ int deserialize_array_and_query(
 
 /**
  * Helper function that generates a fragment uri for an array.
+ * If the `array` arg is specified, the full URI is generated using
+ * the write version of the array schema and the timestamp
+ * the array was opened at. If unspecified, the function
+ * will generate only the fragment name using the current timestamp
+ * and the latest library format version.
  *
- * @param array a tiledb array
- * @return a test fragment uri
+ * @param array A TileDB array
+ * @return A test fragment uri
  */
 sm::URI generate_fragment_uri(sm::Array* array);
 }  // namespace tiledb::test

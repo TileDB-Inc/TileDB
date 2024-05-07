@@ -43,7 +43,7 @@
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
+#include "tiledb/sm/fragment/loaded_fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -117,7 +117,7 @@ class FragmentMetadata {
       bool has_delete_mata = false);
 
   /** Destructor. */
-  ~FragmentMetadata();
+  ~FragmentMetadata() = default;
 
   DISABLE_COPY_AND_COPY_ASSIGN(FragmentMetadata);
   DISABLE_MOVE_AND_MOVE_ASSIGN(FragmentMetadata);
@@ -819,12 +819,12 @@ class FragmentMetadata {
     resources_ = cr;
   }
 
-  inline OffsetsFragmentMetadata* offsets_metadata() {
-    return offsets_metadata_;
+  inline LoadedFragmentMetadata* offsets_metadata() {
+    return offsets_metadata_ptr_;
   }
 
-  inline const OffsetsFragmentMetadata* offsets_metadata() const {
-    return offsets_metadata_;
+  inline const LoadedFragmentMetadata* offsets_metadata() const {
+    return offsets_metadata_ptr_;
   }
 
  private:
@@ -927,7 +927,9 @@ class FragmentMetadata {
   /** The uri of the array the metadata belongs to. */
   URI array_uri_;
 
-  OffsetsFragmentMetadata* offsets_metadata_;
+  shared_ptr<LoadedFragmentMetadata> offsets_metadata_;
+
+  LoadedFragmentMetadata* offsets_metadata_ptr_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */
@@ -1443,7 +1445,7 @@ class FragmentMetadata {
    */
   void build_idx_map();
 
-  friend class OffsetsFragmentMetadata;
+  friend class LoadedFragmentMetadata;
   friend class OndemandFragmentMetadata;
   friend class V1V2PreloadedFragmentMetadata;
 };

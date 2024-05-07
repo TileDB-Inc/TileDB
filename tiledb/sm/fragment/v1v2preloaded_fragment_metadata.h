@@ -33,16 +33,9 @@
 #ifndef TILEDB_V1V2PRELOADED_FRAGMENT_METADATA_H
 #define TILEDB_V1V2PRELOADED_FRAGMENT_METADATA_H
 
-#include <deque>
-#include <mutex>
-#include <unordered_map>
-#include <vector>
-
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/filesystem/uri.h"
-#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
+#include "tiledb/sm/fragment/loaded_fragment_metadata.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -51,7 +44,7 @@ namespace tiledb {
 namespace sm {
 
 /** Collection of lazily loaded fragment metadata */
-class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
+class V1V2PreloadedFragmentMetadata : public LoadedFragmentMetadata {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -77,19 +70,31 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the tile offsets for the input attribute from the input buffer.
    * Applicable to versions 1 and 2
+   *
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_offsets(Deserializer& deserializer);
 
   /**
    * Loads the variable tile offsets from the input buffer.
    * Applicable to versions 1 and 2
+   *
+   * @param deserializer A deserializer to read data from
    */
   void load_tile_var_offsets(Deserializer& deserializer);
 
-  /** Loads the variable tile sizes from the input buffer. */
+  /**
+   * Loads the variable tile sizes from the input buffer.
+   *
+   * @param deserializer A deserializer to read data from
+   */
   void load_tile_var_sizes(Deserializer& deserializer);
 
-  /** Loads the R-tree from storage. */
+  /**
+   * Loads the R-tree from storage.
+   *
+   * @param deserializer A deserializer to read data from
+   */
   virtual void load_rtree(const EncryptionKey& encryption_key) override;
 
   /**
@@ -112,6 +117,10 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
+   *
+   * @param range The range to use
+   * @param is_default If default range should be used
+   * @param tile_overlap The resulted tile overlap
    */
   virtual void get_tile_overlap(
       const NDRange& range,
@@ -120,6 +129,10 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
+   *
+   * @param range The range to use
+   * @param d The dimension index
+   * @param tile_bitmap The resulted tile bitmap
    */
   virtual void compute_tile_bitmap(
       const Range& range,
@@ -128,16 +141,15 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
 
  private:
   /* ********************************* */
-  /*         PRIVATE ATTRIBUTES        */
-  /* ********************************* */
-
-  /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
   /**
    * Loads the tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -145,6 +157,9 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the variable tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
@@ -152,36 +167,54 @@ class V1V2PreloadedFragmentMetadata : public OffsetsFragmentMetadata {
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the validity tile offsets for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_validity_offsets(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the min values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_min_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the max values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the sum values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_sum_values(
       const EncryptionKey& encryption_key, unsigned idx) override;
 
   /**
    * Loads the null count values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_null_count_values(
       const EncryptionKey& encryption_key, unsigned idx) override;

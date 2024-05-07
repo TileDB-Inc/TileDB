@@ -1,5 +1,5 @@
 /**
- * @file   offsets_fragment_metadata.cc
+ * @file   loaded_fragment_metadata.cc
  *
  * @section LICENSE
  *
@@ -27,40 +27,16 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the OffsetsFragmentMetadata class.
+ * This file implements the LoadedFragmentMetadata class.
  */
 
 #include "tiledb/common/common.h"
 
-#include <cassert>
-#include <iostream>
-#include <numeric>
-#include <string>
-#include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/array_schema/attribute.h"
-#include "tiledb/sm/array_schema/dimension.h"
-#include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/fragment/fragment_identifier.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/fragment/offsets_fragment_metadata.h"
 #include "tiledb/sm/fragment/ondemand_fragment_metadata.h"
 #include "tiledb/sm/fragment/v1v2preloaded_fragment_metadata.h"
-#include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/parallel_functions.h"
-#include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
-#include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
-#include "tiledb/sm/tile/generic_tile_io.h"
-#include "tiledb/sm/tile/tile.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
-#include "tiledb/storage_format/serialization/serializers.h"
-#include "tiledb/type/range/range.h"
 
 using namespace tiledb::common;
 using namespace tiledb::type;
@@ -71,7 +47,7 @@ namespace tiledb::sm {
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
 
-OffsetsFragmentMetadata::OffsetsFragmentMetadata(
+LoadedFragmentMetadata::LoadedFragmentMetadata(
     FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker)
     : parent_fragment_(parent)
     , memory_tracker_(memory_tracker)
@@ -99,7 +75,7 @@ OffsetsFragmentMetadata::OffsetsFragmentMetadata(
 /*                API                */
 /* ********************************* */
 
-OffsetsFragmentMetadata* OffsetsFragmentMetadata::create(
+LoadedFragmentMetadata* LoadedFragmentMetadata::create(
     FragmentMetadata& parent,
     shared_ptr<MemoryTracker> memory_tracker,
     format_version_t version) {
@@ -110,7 +86,7 @@ OffsetsFragmentMetadata* OffsetsFragmentMetadata::create(
   return tdb_new(OndemandFragmentMetadata, parent, memory_tracker);
 }
 
-uint64_t OffsetsFragmentMetadata::persisted_tile_size(
+uint64_t LoadedFragmentMetadata::persisted_tile_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -129,19 +105,9 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_size(
   return tile_size;
 }
 
-void OffsetsFragmentMetadata::load_tile_offsets(
+void LoadedFragmentMetadata::load_tile_offsets(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
-  // Sort 'names' in ascending order of their index. The
-  // motivation is to load the offsets in order of their
-  // layout for sequential reads to the file.
-  std::sort(
-      names.begin(),
-      names.end(),
-      [&](const std::string& lhs, const std::string& rhs) {
-        assert(parent_fragment_.idx_map_.count(lhs) > 0);
-        assert(parent_fragment_.idx_map_.count(rhs) > 0);
-        return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
-      });
+  sort_names_by_index(names);
 
   // The fixed offsets are located before the
   // var offsets. Load all of the fixed offsets
@@ -166,7 +132,7 @@ void OffsetsFragmentMetadata::load_tile_offsets(
   }
 }
 
-void OffsetsFragmentMetadata::free_tile_offsets() {
+void LoadedFragmentMetadata::free_tile_offsets() {
   for (uint64_t i = 0; i < tile_offsets_.size(); i++) {
     std::lock_guard<std::mutex> lock(tile_offsets_mtx_[i]);
     if (memory_tracker_ != nullptr) {
@@ -221,7 +187,7 @@ void OffsetsFragmentMetadata::free_tile_offsets() {
   }
 }
 
-uint64_t OffsetsFragmentMetadata::file_offset(
+uint64_t LoadedFragmentMetadata::file_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -234,17 +200,17 @@ uint64_t OffsetsFragmentMetadata::file_offset(
   return tile_offsets_[idx][tile_idx];
 }
 
-void OffsetsFragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
+void LoadedFragmentMetadata::resize_tile_offsets_vectors(uint64_t size) {
   tile_offsets_mtx_.resize(size);
   tile_offsets_.resize(size);
 }
 
-void OffsetsFragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
+void LoadedFragmentMetadata::resize_tile_var_offsets_vectors(uint64_t size) {
   tile_var_offsets_mtx_.resize(size);
   tile_var_offsets_.resize(size);
 }
 
-void OffsetsFragmentMetadata::resize_offsets(uint64_t size) {
+void LoadedFragmentMetadata::resize_offsets(uint64_t size) {
   resize_tile_offsets_vectors(size);
   resize_tile_var_offsets_vectors(size);
   resize_tile_var_sizes_vectors(size);
@@ -269,7 +235,7 @@ void OffsetsFragmentMetadata::resize_offsets(uint64_t size) {
   loaded_metadata_.tile_null_count_.resize(size, false);
 }
 
-uint64_t OffsetsFragmentMetadata::file_var_offset(
+uint64_t LoadedFragmentMetadata::file_var_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -282,7 +248,7 @@ uint64_t OffsetsFragmentMetadata::file_var_offset(
   return tile_var_offsets_[idx][tile_idx];
 }
 
-uint64_t OffsetsFragmentMetadata::persisted_tile_var_size(
+uint64_t LoadedFragmentMetadata::persisted_tile_var_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -304,7 +270,7 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_var_size(
   return tile_size;
 }
 
-uint64_t OffsetsFragmentMetadata::tile_var_size(
+uint64_t LoadedFragmentMetadata::tile_var_size(
     const std::string& name, uint64_t tile_idx) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -317,7 +283,7 @@ uint64_t OffsetsFragmentMetadata::tile_var_size(
   return tile_var_sizes_[idx][tile_idx];
 }
 
-void OffsetsFragmentMetadata::load_tile_var_sizes(
+void LoadedFragmentMetadata::load_tile_var_sizes(
     const EncryptionKey& encryption_key, const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -325,12 +291,12 @@ void OffsetsFragmentMetadata::load_tile_var_sizes(
   load_tile_var_sizes(encryption_key, idx);
 }
 
-void OffsetsFragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
+void LoadedFragmentMetadata::resize_tile_var_sizes_vectors(uint64_t size) {
   tile_var_sizes_.resize(size);
 }
 
-void OffsetsFragmentMetadata::load_tile_min_values(
-    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
+void LoadedFragmentMetadata::sort_names_by_index(
+    std::vector<std::string>& names) {
   // Sort 'names' in ascending order of their index. The
   // motivation is to load the offsets in order of their
   // layout for sequential reads to the file.
@@ -342,26 +308,19 @@ void OffsetsFragmentMetadata::load_tile_min_values(
         assert(parent_fragment_.idx_map_.count(rhs) > 0);
         return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
       });
+}
 
+void LoadedFragmentMetadata::load_tile_min_values(
+    const EncryptionKey& encryption_key, std::vector<std::string>& names) {
   // Load all the min values.
   for (const auto& name : names) {
     load_tile_min_values(encryption_key, parent_fragment_.idx_map_[name]);
   }
 }
 
-void OffsetsFragmentMetadata::load_tile_max_values(
+void LoadedFragmentMetadata::load_tile_max_values(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
-  // Sort 'names' in ascending order of their index. The
-  // motivation is to load the offsets in order of their
-  // layout for sequential reads to the file.
-  std::sort(
-      names.begin(),
-      names.end(),
-      [&](const std::string& lhs, const std::string& rhs) {
-        assert(parent_fragment_.idx_map_.count(lhs) > 0);
-        assert(parent_fragment_.idx_map_.count(rhs) > 0);
-        return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
-      });
+  sort_names_by_index(names);
 
   // Load all the max values.
   for (const auto& name : names) {
@@ -369,19 +328,9 @@ void OffsetsFragmentMetadata::load_tile_max_values(
   }
 }
 
-void OffsetsFragmentMetadata::load_tile_sum_values(
+void LoadedFragmentMetadata::load_tile_sum_values(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
-  // Sort 'names' in ascending order of their index. The
-  // motivation is to load the offsets in order of their
-  // layout for sequential reads to the file.
-  std::sort(
-      names.begin(),
-      names.end(),
-      [&](const std::string& lhs, const std::string& rhs) {
-        assert(parent_fragment_.idx_map_.count(lhs) > 0);
-        assert(parent_fragment_.idx_map_.count(rhs) > 0);
-        return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
-      });
+  sort_names_by_index(names);
 
   // Load all the sum values.
   for (const auto& name : names) {
@@ -389,19 +338,9 @@ void OffsetsFragmentMetadata::load_tile_sum_values(
   }
 }
 
-void OffsetsFragmentMetadata::load_tile_null_count_values(
+void LoadedFragmentMetadata::load_tile_null_count_values(
     const EncryptionKey& encryption_key, std::vector<std::string>& names) {
-  // Sort 'names' in ascending order of their index. The
-  // motivation is to load the offsets in order of their
-  // layout for sequential reads to the file.
-  std::sort(
-      names.begin(),
-      names.end(),
-      [&](const std::string& lhs, const std::string& rhs) {
-        assert(parent_fragment_.idx_map_.count(lhs) > 0);
-        assert(parent_fragment_.idx_map_.count(rhs) > 0);
-        return parent_fragment_.idx_map_[lhs] < parent_fragment_.idx_map_[rhs];
-      });
+  sort_names_by_index(names);
 
   // Load all the null count values.
   for (const auto& name : names) {
@@ -410,7 +349,7 @@ void OffsetsFragmentMetadata::load_tile_null_count_values(
   }
 }
 
-std::vector<std::string>& OffsetsFragmentMetadata::get_processed_conditions() {
+std::vector<std::string>& LoadedFragmentMetadata::get_processed_conditions() {
   if (!loaded_metadata_.processed_conditions_) {
     throw std::logic_error(
         "Trying to access processed conditions metadata that's not present");
@@ -420,7 +359,7 @@ std::vector<std::string>& OffsetsFragmentMetadata::get_processed_conditions() {
 }
 
 std::unordered_set<std::string>&
-OffsetsFragmentMetadata::get_processed_conditions_set() {
+LoadedFragmentMetadata::get_processed_conditions_set() {
   if (!loaded_metadata_.processed_conditions_) {
     throw std::logic_error(
         "Trying to access processed condition set metadata that's not present");
@@ -429,8 +368,7 @@ OffsetsFragmentMetadata::get_processed_conditions_set() {
   return processed_conditions_set_;
 }
 
-std::vector<uint8_t>& OffsetsFragmentMetadata::get_min(
-    const std::string& name) {
+std::vector<uint8_t>& LoadedFragmentMetadata::get_min(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
@@ -452,8 +390,7 @@ std::vector<uint8_t>& OffsetsFragmentMetadata::get_min(
   return fragment_mins_[idx];
 }
 
-std::vector<uint8_t>& OffsetsFragmentMetadata::get_max(
-    const std::string& name) {
+std::vector<uint8_t>& LoadedFragmentMetadata::get_max(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
@@ -475,7 +412,7 @@ std::vector<uint8_t>& OffsetsFragmentMetadata::get_max(
   return fragment_maxs_[idx];
 }
 
-void* OffsetsFragmentMetadata::get_sum(const std::string& name) {
+void* LoadedFragmentMetadata::get_sum(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
@@ -495,7 +432,7 @@ void* OffsetsFragmentMetadata::get_sum(const std::string& name) {
   return &fragment_sums_[idx];
 }
 
-uint64_t OffsetsFragmentMetadata::get_null_count(const std::string& name) {
+uint64_t LoadedFragmentMetadata::get_null_count(const std::string& name) {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
   auto idx = it->second;
@@ -512,7 +449,7 @@ uint64_t OffsetsFragmentMetadata::get_null_count(const std::string& name) {
   return fragment_null_counts_[idx];
 }
 
-uint64_t OffsetsFragmentMetadata::get_tile_null_count(
+uint64_t LoadedFragmentMetadata::get_tile_null_count(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -530,7 +467,7 @@ uint64_t OffsetsFragmentMetadata::get_tile_null_count(
   return tile_null_counts_[idx][tile_idx];
 }
 
-const void* OffsetsFragmentMetadata::get_tile_sum(
+const void* LoadedFragmentMetadata::get_tile_sum(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -552,12 +489,12 @@ const void* OffsetsFragmentMetadata::get_tile_sum(
   return sum;
 }
 
-void OffsetsFragmentMetadata::resize_tile_validity_offsets_vectors(
+void LoadedFragmentMetadata::resize_tile_validity_offsets_vectors(
     uint64_t size) {
   tile_validity_offsets().resize(size);
 }
 
-uint64_t OffsetsFragmentMetadata::file_validity_offset(
+uint64_t LoadedFragmentMetadata::file_validity_offset(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -570,7 +507,7 @@ uint64_t OffsetsFragmentMetadata::file_validity_offset(
   return tile_validity_offsets_[idx][tile_idx];
 }
 
-uint64_t OffsetsFragmentMetadata::persisted_tile_validity_size(
+uint64_t LoadedFragmentMetadata::persisted_tile_validity_size(
     const std::string& name, uint64_t tile_idx) const {
   auto it = parent_fragment_.idx_map_.find(name);
   assert(it != parent_fragment_.idx_map_.end());
@@ -592,7 +529,7 @@ uint64_t OffsetsFragmentMetadata::persisted_tile_validity_size(
 }
 
 // TODO: maybe remove, this is unused at the moment
-void OffsetsFragmentMetadata::free_rtree() {
+void LoadedFragmentMetadata::free_rtree() {
   auto freed = rtree_.free_memory();
   if (memory_tracker_ != nullptr) {
     memory_tracker_->release_memory(freed, MemoryType::RTREE);

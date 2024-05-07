@@ -1,5 +1,5 @@
 /**
- * @file  offsets_fragment_metadata.h
+ * @file  loaded_fragment_metadata.h
  *
  * @section LICENSE
  *
@@ -27,21 +27,14 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class OffsetsFragmentMetadata.
+ * This file defines class LoadedFragmentMetadata.
  */
 
-#ifndef TILEDB_OFFSETS_FRAGMENT_METADATA_H
-#define TILEDB_OFFSETS_FRAGMENT_METADATA_H
-
-#include <deque>
-#include <mutex>
-#include <unordered_map>
-#include <vector>
+#ifndef TILEDB_LOADED_FRAGMENT_METADATA_H
+#define TILEDB_LOADED_FRAGMENT_METADATA_H
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -52,7 +45,7 @@ namespace sm {
 class FragmentMetadata;
 
 /** Collection of lazily loaded fragment metadata */
-class OffsetsFragmentMetadata {
+class LoadedFragmentMetadata {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -78,7 +71,7 @@ class OffsetsFragmentMetadata {
   /* ********************************* */
 
   /* Destructor */
-  virtual ~OffsetsFragmentMetadata() = default;
+  virtual ~LoadedFragmentMetadata() = default;
 
   /**
    * Constructor.
@@ -87,14 +80,22 @@ class OffsetsFragmentMetadata {
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    */
-  OffsetsFragmentMetadata(
+  LoadedFragmentMetadata(
       FragmentMetadata& parent, shared_ptr<MemoryTracker> memory_tracker);
 
   /* ********************************* */
   /*                API                */
   /* ********************************* */
 
-  static OffsetsFragmentMetadata* create(
+  /**
+   * Create loaded metadata objects given a format version
+   *
+   * @param parent The parent fragment
+   * @param memory_tracker The memory tracker of the array this fragment
+   *     metadata corresponds to.
+   * @param version The format version of the fragment
+   */
+  static LoadedFragmentMetadata* create(
       FragmentMetadata& parent,
       shared_ptr<MemoryTracker> memory_tracker,
       format_version_t version);
@@ -150,6 +151,8 @@ class OffsetsFragmentMetadata {
 
   /**
    * Resize tile validity offsets related vectors.
+   *
+   * @param size The new size
    */
   void resize_tile_validity_offsets_vectors(uint64_t size);
 
@@ -224,16 +227,22 @@ class OffsetsFragmentMetadata {
 
   /**
    * Resize tile offsets related vectors.
+   *
+   * @param size The new size
    */
   void resize_tile_offsets_vectors(uint64_t size);
 
   /**
    * Resize tile var offsets related vectors.
+   *
+   * @param size The new size
    */
   void resize_tile_var_offsets_vectors(uint64_t size);
 
   /**
    * Resize tile var sizes related vectors.
+   *
+   * @param size The new size
    */
   void resize_tile_var_sizes_vectors(uint64_t size);
 
@@ -464,6 +473,10 @@ class OffsetsFragmentMetadata {
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
+   *
+   * @param range The range to use
+   * @param is_default If default range should be used
+   * @param tile_overlap The resulted tile overlap
    */
   virtual void get_tile_overlap(
       const NDRange& range,
@@ -472,6 +485,10 @@ class OffsetsFragmentMetadata {
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
+   *
+   * @param range The range to use
+   * @param d The dimension index
+   * @param tile_bitmap The resulted tile bitmap
    */
   virtual void compute_tile_bitmap(
       const Range& range, unsigned d, std::vector<uint8_t>* tile_bitmap) = 0;
@@ -479,7 +496,11 @@ class OffsetsFragmentMetadata {
   /** Frees the memory associated with the rtree. */
   void free_rtree();
 
-  /** loaded_metadata_ accessor */
+  /**
+   * Sets loaded metadata, used in serialization
+   *
+   * @param tile_bitmap The resulted tile bitmap
+   */
   inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
     loaded_metadata_ = loaded_metadata;
   }
@@ -496,6 +517,8 @@ class OffsetsFragmentMetadata {
 
   /**
    * Resizes all offsets and reset their loaded flags.
+   *
+   * @param The new size
    */
   void resize_offsets(uint64_t size);
 
@@ -679,6 +702,13 @@ class OffsetsFragmentMetadata {
   /* ********************************* */
 
   /**
+   * Sorts a dims vector by index
+   *
+   * @param names the vector to sort
+   */
+  void sort_names_by_index(std::vector<std::string>& names);
+
+  /**
    * Loads the tile offsets for the input attribute or dimension idx
    * from storage.
    */
@@ -733,4 +763,4 @@ class OffsetsFragmentMetadata {
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_OFFSETS_FRAGMENT_METADATA_H
+#endif  // TILEDB_LOADED_FRAGMENT_METADATA_H
