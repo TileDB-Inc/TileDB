@@ -424,11 +424,16 @@ void SparseHeterFx::check_est_result_size_float_int64(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check error for zipped coordinates
@@ -452,6 +457,7 @@ void SparseHeterFx::check_est_result_size_float_int64(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::check_est_result_size_int64_float(
@@ -470,11 +476,16 @@ void SparseHeterFx::check_est_result_size_int64_float(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check error for zipped coordinates
@@ -498,6 +509,7 @@ void SparseHeterFx::check_est_result_size_int64_float(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::write_sparse_array_float_int64(
@@ -631,12 +643,17 @@ void SparseHeterFx::check_read_sparse_array_float_int64(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_f[0], &subarray_f[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_f[0], &subarray_f[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_i[0], &subarray_i[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_i[0], &subarray_i[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -659,6 +676,7 @@ void SparseHeterFx::check_read_sparse_array_float_int64(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseHeterFx::check_read_sparse_array_int64_float(
@@ -695,12 +713,17 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 0, &subarray_i[0], &subarray_i[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 0, &subarray_i[0], &subarray_i[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(
-      ctx_, query, 1, &subarray_f[0], &subarray_f[1], nullptr);
+  rc = tiledb_subarray_add_range(
+      ctx_, subarray, 1, &subarray_f[0], &subarray_f[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -723,6 +746,7 @@ void SparseHeterFx::check_read_sparse_array_int64_float(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
