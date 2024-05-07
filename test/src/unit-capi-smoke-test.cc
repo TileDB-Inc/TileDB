@@ -677,6 +677,7 @@ void SmokeTestFx::read(
 
   // Create the read query.
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
 
@@ -755,8 +756,13 @@ void SmokeTestFx::read(
   }
 
   // Set the subarray to read.
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Create the attribute condition objects.
   tiledb_query_condition_t* combined_query_condition = nullptr;

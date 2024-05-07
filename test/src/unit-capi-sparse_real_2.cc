@@ -263,10 +263,15 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
   float s1[] = {-90.0f, 90.0f};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
@@ -297,6 +302,7 @@ void SparseRealFx2::read_sparse_array(const std::string& path) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void SparseRealFx2::read_sparse_array_next_partition_bug(
@@ -322,10 +328,15 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
   float s1[] = {-90.0f, 90.0f};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
@@ -350,6 +361,7 @@ void SparseRealFx2::read_sparse_array_next_partition_bug(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -422,10 +434,15 @@ TEST_CASE_METHOD(
   // Create some subarray
   float s0[] = {-180.0f, std::numeric_limits<float>::quiet_NaN()};
   float s1[] = {-90.0f, std::numeric_limits<float>::infinity()};
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Clean up
   rc = tiledb_array_close(ctx_, array);
@@ -433,6 +450,7 @@ TEST_CASE_METHOD(
   tiledb_array_free(&array);
   tiledb_config_free(&config);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
@@ -473,10 +491,15 @@ TEST_CASE_METHOD(
   float s1[] = {-20.0f, -20.0f};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_set_data_buffer(ctx_, query, "a", a, &a_size);
   REQUIRE(rc == TILEDB_OK);
@@ -507,6 +530,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
