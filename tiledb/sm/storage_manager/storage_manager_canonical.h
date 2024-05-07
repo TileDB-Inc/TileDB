@@ -149,14 +149,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an group opened for reads.
-   *
-   * @param group The group to be closed.
-   * @return Status
-   */
-  Status group_close_for_reads(tiledb::sm::Group* group);
-
-  /**
    * Closes an group opened for writes.
    *
    * @param group The group to be closed.

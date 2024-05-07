@@ -108,6 +108,16 @@ class Group {
   Status open(
       QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
 
+  /**
+   * Closes a group opened for reads.
+   *
+   * @return Status
+   */
+  inline Status close_for_reads() {
+    // Closing a group opened for reads does nothing at present.
+    return Status::Ok();
+  }
+
   /** Closes the group and frees all memory. */
   Status close();
 

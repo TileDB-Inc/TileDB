@@ -133,11 +133,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::group_close_for_reads(Group*) {
-  // Closing a group does nothing at present
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   // Flush the group metadata
   RETURN_NOT_OK(store_metadata(
