@@ -63,7 +63,9 @@ void write_array(
   Array array(ctx, array_name, TILEDB_WRITE);
   Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   query.set_data_buffer("a", values);
   query.submit();
   array.close();
@@ -77,7 +79,9 @@ void read_array(
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
-  query.set_subarray(subarray);
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   std::vector<int> values(10);
   query.set_data_buffer("a", values);
   query.submit();

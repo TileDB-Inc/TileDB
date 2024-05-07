@@ -413,7 +413,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -449,7 +451,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -490,7 +494,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -536,7 +542,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -568,7 +576,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -593,7 +603,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr1", attr1)
@@ -639,7 +651,9 @@ TEST_CASE_METHOD(
 
   auto array = Array(ctx_, uri_, TILEDB_READ);
   Query query(ctx_, array);
-  query.add_range("dim", 1, 5)
+  Subarray subarray(ctx_, array);
+  subarray.add_range("dim", 1, 5);
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("dim", dim)
       .set_data_buffer("attr3", attr3)

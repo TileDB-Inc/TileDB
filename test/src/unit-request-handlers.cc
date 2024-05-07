@@ -205,12 +205,19 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_array_alloc(ctx, uri_.c_str(), &array) == TILEDB_OK);
   REQUIRE(tiledb_array_open(ctx, array, TILEDB_READ) == TILEDB_OK);
 
+  // Create subarray
+  tiledb_subarray_t* sub;
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+
   // Create query
   tiledb_query_t* query = nullptr;
   REQUIRE(tiledb_query_alloc(ctx, array, TILEDB_READ, &query) == TILEDB_OK);
   REQUIRE(tiledb_query_set_layout(ctx, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
   int32_t dom[] = {1, 2, 1, 2};
-  REQUIRE(tiledb_query_set_subarray(ctx, query, &dom) == TILEDB_OK);
+  REQUIRE(tiledb_query_set_subarray_t(ctx, query, &sub) == TILEDB_OK);
 
   uint64_t size = 1;
   std::vector<int32_t> a1(2);
@@ -240,6 +247,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_array_close(ctx, array) == TILEDB_OK);
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&sub);
   tiledb_ctx_free(&ctx);
 }
 

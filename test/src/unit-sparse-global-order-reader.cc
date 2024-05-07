@@ -365,8 +365,14 @@ int32_t CSparseGlobalOrderFx::read(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
@@ -448,8 +454,14 @@ int32_t CSparseGlobalOrderFx::read_strings(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
