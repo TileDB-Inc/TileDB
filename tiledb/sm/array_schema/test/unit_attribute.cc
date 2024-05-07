@@ -1,11 +1,11 @@
 /**
- * @file tiledb/sm/array_schema/test/unit_array_schema.cc
+ * @file tiledb/sm/array_schema/test/unit_arribute.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file contains unit tests for the array schema
+ * This file contains unit tests for the attribute class
  */
 
 #include <tdb_catch.h>
