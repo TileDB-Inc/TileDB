@@ -240,6 +240,9 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
           num += deletes_consolidation_no_purge_;
         }
 
+        // Other that the offsets themselves, there is also memory used for the
+        // initialization of the vectors that hold them. This initialization
+        // takes place in fragment_metadata.cc::3702-3713
         unsigned num_vectors = schema->attribute_num() + 1 +
                                fragment->has_timestamps() +
                                fragment->has_delete_meta() * 2;
