@@ -250,7 +250,7 @@ TEST_CASE(
   CHECK_THROWS(array.non_empty_domain<int32_t>());
   std::vector<int32_t> subarray = {1, 2, 1, 3};
 
-  // Query checks
+  // Query/subarray checks
   Query query(ctx, array, TILEDB_READ);
   Subarray sub(ctx, array);
   CHECK_THROWS(sub.set_subarray(subarray));

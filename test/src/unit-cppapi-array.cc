@@ -1360,9 +1360,9 @@ TEST_CASE(
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
+  Subarray subarray_r(ctx, array_r);
 
   SECTION("Non empty range") {
-    Subarray subarray_r(ctx, array_r);
     subarray_r.add_range(0, s1, s2);
     CHECK_THROWS(subarray_r.add_range(1, s1, s2));
     query_r.set_subarray(subarray_r);
@@ -1375,7 +1375,6 @@ TEST_CASE(
   }
 
   SECTION("Empty first range") {
-    Subarray subarray_r(ctx, array_r);
     subarray_r.add_range(0, "", s2);
     CHECK_THROWS(subarray_r.add_range(1, "", s2));
     query_r.set_subarray(subarray_r);
@@ -1388,7 +1387,6 @@ TEST_CASE(
   }
 
   SECTION("Empty second range") {
-    Subarray subarray_r(ctx, array_r);
     subarray_r.add_range(0, s1, "");
     CHECK_THROWS(subarray_r.add_range(1, s1, ""));
     query_r.set_subarray(subarray_r);
@@ -1402,7 +1400,6 @@ TEST_CASE(
   }
 
   SECTION("Empty ranges") {
-    Subarray subarray_r(ctx, array_r);
     subarray_r.add_range(0, std::string(""), std::string(""));
     CHECK_THROWS(subarray_r.add_range(1, std::string(""), std::string("")));
     query_r.set_subarray(subarray_r);

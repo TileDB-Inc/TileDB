@@ -313,10 +313,9 @@ void NullableArrayCppFx::read(
     }
   }
 
+  // Set the subarray to read.
   Subarray sub(ctx_, array);
   sub.set_subarray(subarray);
-
-  // Set the subarray to read.
   query.set_subarray(sub);
 
   // Submit the query.
