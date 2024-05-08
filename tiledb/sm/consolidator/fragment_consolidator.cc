@@ -560,7 +560,7 @@ Status FragmentConsolidator::consolidate_internal(
   // Create queries
   tdb_unique_ptr<Query> query_r = nullptr;
   tdb_unique_ptr<Query> query_w = nullptr;
-  RETURN_NOT_OK(create_queries(
+  throw_if_not_ok(create_queries(
       array_for_reads,
       array_for_writes,
       union_non_empty_domains,
@@ -585,8 +585,8 @@ Status FragmentConsolidator::consolidate_internal(
   auto st = query_w->finalize();
   if (!st.ok()) {
     bool is_dir = false;
-    auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
-    (void)st2;  // Perhaps report this once we support an error stack
+    throw_if_not_ok(
+        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
       throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
     return st;
