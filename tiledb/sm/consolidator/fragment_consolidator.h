@@ -316,8 +316,8 @@ class FragmentConsolidator : public Consolidator {
       shared_ptr<Array> array_for_reads,
       shared_ptr<Array> array_for_writes,
       const NDRange& subarray,
-      Query** query_r,
-      Query** query_w,
+      tdb_unique_ptr<Query>& query_r,
+      tdb_unique_ptr<Query>& query_w,
       URI* new_fragment_uri);
 
   /**
