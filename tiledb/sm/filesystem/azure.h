@@ -602,17 +602,6 @@ class Azure {
   Status copy_blob(const URI& old_uri, const URI& new_uri);
 
   /**
-   * Waits for a blob with `container_name` and `blob_path`
-   * to exist on Azure.
-   *
-   * @param container_name The blob's container name.
-   * @param blob_path The blob's path
-   * @return Status
-   */
-  Status wait_for_blob_to_propagate(
-      const std::string& container_name, const std::string& blob_path) const;
-
-  /**
    * Check if 'container_name' is a container on Azure.
    *
    * @param container_name The container's name.
