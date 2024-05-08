@@ -410,8 +410,14 @@ int32_t CSparseUnorderedWithDupsFx::read(
   if (set_subarray) {
     // Set subarray.
     int subarray[] = {1, 200};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
@@ -675,8 +681,14 @@ void CSparseUnorderedWithDupsVarDataFx::read_and_check_data(bool set_subarray) {
   if (set_subarray) {
     // Set subarray.
     int64_t subarray[] = {1, 4, 1, 4};
-    rc = tiledb_query_set_subarray(ctx_, query, subarray);
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   std::vector<int32_t> data(3);

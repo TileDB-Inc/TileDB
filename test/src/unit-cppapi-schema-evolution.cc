@@ -180,8 +180,9 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", data)
         .set_data_buffer("d1", d1_data)
@@ -301,8 +302,9 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data)
@@ -452,10 +454,10 @@ TEST_CASE(
 
     // Prepare the query
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, 1, 4)
-        .add_range(0, 1, 4)
-        .add_range(1, 1, 4)
-        .add_range(1, 1, 4)
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, 1, 4).add_range(0, 1, 4).add_range(1, 1, 4).add_range(
+        1, 1, 4);
+    query.set_subarray(subarray)
         .set_layout(layout)
         .set_data_buffer("a", a_data)
         .set_data_buffer("b", b_data)

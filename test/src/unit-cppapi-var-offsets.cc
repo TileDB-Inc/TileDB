@@ -226,8 +226,10 @@ struct VariableOffsetsFx {
     // Query outside unwritten coordinates of the array
     int64_t d1_start = 1, d1_end = 2;
     int64_t d2_start = 3, d2_end = 4;
-    query.add_range("d1", d1_start, d1_end);
-    query.add_range("d2", d2_start, d2_end);
+    Subarray subarray(ctx, array);
+    subarray.add_range("d1", d1_start, d1_end);
+    subarray.add_range("d2", d2_start, d2_end);
+    query.set_subarray(subarray);
 
     // Submit query
     query.submit();
@@ -1742,7 +1744,9 @@ TEST_CASE_METHOD(
 
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
-    query.add_range(0, std::string("aa"), std::string("dddd"));
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string("aa"), std::string("dddd"));
+    query.set_subarray(subarray);
     query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
     query.set_offsets_buffer(
         "dim1", (uint64_t*)offsets_back.data(), offsets_back.size());
@@ -1782,7 +1786,9 @@ TEST_CASE_METHOD(
     auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
     Query query(ctx, array, TILEDB_READ);
     // this query range should return empty result
-    query.add_range(0, std::string("xyz"), std::string("xyz"));
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string("xyz"), std::string("xyz"));
+    query.set_subarray(subarray);
     query.set_data_buffer("dim1", (char*)data_back.data(), data_back.size());
 
     // here we set the buffer at an offset of 2*uint64_t (== 4 * uint32_t)

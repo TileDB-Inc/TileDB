@@ -1,5 +1,5 @@
 /**
- * @file   unit-capi-empty-var-length.cc
+ * @file   unit-empty-var-length.cc
  *
  * @section LICENSE
  *
@@ -282,6 +282,7 @@ void StringEmptyFx::read_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
@@ -289,8 +290,13 @@ void StringEmptyFx::read_array(const std::string& array_name) {
 
   // Set subarray
   uint64_t subarray[] = {1, 5};
-  rc = tiledb_query_set_subarray(ctx, query, subarray);
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_alloc(ctx, array, &sub);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Set buffer
   uint64_t buffer_d1_size = 1024;
@@ -498,8 +504,10 @@ void StringEmptyFx2::read_array(const std::string& array_name) {
   query.set_data_buffer("", r_data);
   query.set_offsets_buffer("", r_offsets);
 
-  query.add_range(0, (uint64_t)0, (uint64_t)3);
-  query.add_range(1, (uint64_t)0, (uint64_t)3);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, (uint64_t)0, (uint64_t)3);
+  subarray.add_range(1, (uint64_t)0, (uint64_t)3);
+  query.set_subarray(subarray);
 
   query.submit();
 
@@ -576,8 +584,10 @@ TEST_CASE_METHOD(
     query.set_data_buffer("", r_data);
     query.set_offsets_buffer("", r_offsets);
 
-    query.add_range(0, (uint64_t)0, (uint64_t)3);
-    query.add_range(1, (uint64_t)0, (uint64_t)3);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (uint64_t)0, (uint64_t)3);
+    subarray.add_range(1, (uint64_t)0, (uint64_t)3);
+    query.set_subarray(subarray);
 
     query.submit();
 
@@ -601,8 +611,10 @@ TEST_CASE_METHOD(
     query.set_data_buffer("", r_data);
     query.set_offsets_buffer("", r_offsets);
 
-    query.add_range(0, (uint64_t)0, (uint64_t)1);
-    query.add_range(1, (uint64_t)1, (uint64_t)2);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (uint64_t)0, (uint64_t)1);
+    subarray.add_range(1, (uint64_t)1, (uint64_t)2);
+    query.set_subarray(subarray);
 
     query.submit();
 
