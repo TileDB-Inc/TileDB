@@ -246,7 +246,7 @@ Status Group::close() {
     // Storage manager does not own the group schema for remote groups.
   } else {
     if (query_type_ == QueryType::READ) {
-      RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
+      RETURN_NOT_OK(close_for_reads());
     } else if (
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
