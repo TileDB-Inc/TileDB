@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,25 +24,17 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
+include(object_library)
 
 list(APPEND SOURCES
   query_plan_api.cc
   )
 gather_sources(${SOURCES})
 
-#
-# Object library for other units to depend upon
-#
-add_library(capi_query_plan OBJECT ${SOURCES})
-target_link_libraries(capi_query_plan PUBLIC export)
-target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_query_plan EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_query_plan PRIVATE capi_query_plan)
-target_sources(compile_capi_query_plan PRIVATE test/compile_capi_query_plan_main.cc)
+commence(object_library capi_query_plan)
+  this_target_sources(${SOURCES})
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline query_plan)
+conclude(object_library)
 
 add_test_subdirectory()
