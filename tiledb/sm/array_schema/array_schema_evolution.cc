@@ -152,9 +152,12 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   for (auto& attr_name : attributes_to_drop_) {
     bool has_attr = false;
     throw_if_not_ok(schema->has_attribute(attr_name, &has_attr));
-    if (has_attr) {
-      throw_if_not_ok(schema->drop_attribute(attr_name));
+    if (!has_attr) {
+      throw ArraySchemaEvolutionException(
+          "Cannot drop attribute; Input attribute name refers to a dimension "
+          "or does not exist");
     }
+    throw_if_not_ok(schema->drop_attribute(attr_name));
   }
 
   // Drop enumerations
