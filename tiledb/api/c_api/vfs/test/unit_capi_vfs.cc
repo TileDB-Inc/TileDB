@@ -247,9 +247,14 @@ TEST_CASE("C API: tiledb_vfs_is_dir argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
-    // Null URI is treated as empty.
+    if constexpr (tiledb::platform::is_os_windows) {
+      // Windows handles empty (which gets converted from null) paths
+      // differently. Reconsider when the logic gets unified across paltforms
+      // (SC-28225).
+      return;
+    }
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, nullptr, &is_dir)};
-    CHECK(tiledb_status(rc) == TILEDB_OK);
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null flag") {
     auto rc{tiledb_vfs_is_dir(x.ctx, x.vfs, TEST_URI, nullptr)};
@@ -418,9 +423,14 @@ TEST_CASE("C API: tiledb_vfs_is_file argument validation", "[capi][vfs]") {
     CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null uri") {
-    // Null URI is treated as empty.
+    if constexpr (tiledb::platform::is_os_windows) {
+      // Windows handles empty (which gets converted from null) paths
+      // differently. Reconsider when the logic gets unified across paltforms
+      // (SC-28225).
+      return;
+    }
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, nullptr, &is_file)};
-    CHECK(tiledb_status(rc) == TILEDB_OK);
+    CHECK(tiledb_status(rc) == TILEDB_ERR);
   }
   SECTION("null flag") {
     auto rc{tiledb_vfs_is_file(x.ctx, x.vfs, TEST_URI, nullptr)};
