@@ -552,6 +552,36 @@ void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
   }
 }
 
+Status Array::encryption_type(
+    ContextResources& resources,
+    const URI& uri,
+    EncryptionType* encryption_type) {
+  if (uri.is_invalid()) {
+    throw ArrayException("[encryption_type] Invalid array URI");
+  }
+
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      resources,
+      uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  // Read tile header
+  auto&& header = GenericTileIO::read_generic_tile_header(
+      resources, array_dir->latest_array_schema_uri(), 0);
+  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
+
+  return Status::Ok();
+}
+
 shared_ptr<const Enumeration> Array::get_enumeration(
     const std::string& enumeration_name) {
   return get_enumerations({enumeration_name})[0];

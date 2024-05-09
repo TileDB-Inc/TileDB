@@ -235,15 +235,6 @@ class StorageManagerCanonical {
   Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
-   * Retrieves the encryption type from an array.
-   *
-   * @param uri The URI of the array.
-   * @param encryption_type Set to the encryption type of the array.
-   * @return Status
-   */
-  Status array_get_encryption(const URI& uri, EncryptionType* encryption_type);
-
-  /**
    * Pushes an async query to the queue.
    *
    * @param query The async query.

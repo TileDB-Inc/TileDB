@@ -492,37 +492,6 @@ Status StorageManagerCanonical::array_upgrade_version(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::array_get_encryption(
-    const URI& uri, EncryptionType* encryption_type) {
-  if (uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get array encryption; Invalid array URI"));
-  }
-
-  if (uri.is_tiledb()) {
-    throw std::invalid_argument(
-        "Getting the encryption type of remote arrays is not supported.");
-  }
-
-  // Load URIs from the array directory
-  optional<tiledb::sm::ArrayDirectory> array_dir;
-  array_dir.emplace(
-      resources_,
-      uri,
-      0,
-      UINT64_MAX,
-      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-
-  const URI& schema_uri = array_dir->latest_array_schema_uri();
-
-  // Read tile header
-  auto&& header =
-      GenericTileIO::read_generic_tile_header(resources_, schema_uri, 0);
-  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::async_push_query(Query* query) {
   cancelable_tasks_.execute(
       compute_tp(),
