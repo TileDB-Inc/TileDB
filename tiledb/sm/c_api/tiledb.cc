@@ -3391,6 +3391,7 @@ int32_t tiledb_deserialize_array(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t,
+    const char* array_uri,
     tiledb_array_t** array) {
   // Sanity check
 
@@ -3406,7 +3407,7 @@ int32_t tiledb_deserialize_array(
   }
 
   // Check array URI
-  auto uri = tiledb::sm::URI("deserialized_array");
+  auto uri = tiledb::sm::URI(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
@@ -6945,9 +6946,10 @@ CAPI_INTERFACE(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
+    const char* array_uri,
     tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_deserialize_array>(
-      ctx, buffer, serialize_type, client_side, array);
+      ctx, buffer, serialize_type, client_side, array_uri, array);
 }
 
 CAPI_INTERFACE(
