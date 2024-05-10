@@ -459,8 +459,7 @@ class Subarray {
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
-  void add_range(
-      unsigned dim_idx, const void* start, const void* end);
+  void add_range(unsigned dim_idx, const void* start, const void* end);
 
   /**
    * @brief Set point ranges from an array
@@ -521,9 +520,7 @@ class Subarray {
    * underlying array.
    */
   void add_range_by_name(
-      const std::string& dim_name,
-      const void* start,
-      const void* end);
+      const std::string& dim_name, const void* start, const void* end);
 
   /**
    * Adds a variable-sized range to the (read/write) query on the input

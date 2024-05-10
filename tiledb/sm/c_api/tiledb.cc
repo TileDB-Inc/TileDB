@@ -1789,9 +1789,7 @@ int32_t tiledb_subarray_set_coalesce_ranges(
 }
 
 int32_t tiledb_subarray_set_subarray(
-    tiledb_ctx_t*,
-    tiledb_subarray_t* subarray_obj,
-    const void* subarray_vals) {
+    tiledb_ctx_t*, tiledb_subarray_t* subarray_obj, const void* subarray_vals) {
   ensure_subarray_is_valid(subarray_obj);
   subarray_obj->subarray_->set_subarray(subarray_vals);
   return TILEDB_OK;
@@ -1926,8 +1924,7 @@ int32_t tiledb_subarray_get_range_from_name(
   if (stride != nullptr) {
     *stride = nullptr;
   }
-  subarray->subarray_->get_range_from_name(
-      dim_name, range_idx, start, end);
+  subarray->subarray_->get_range_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 

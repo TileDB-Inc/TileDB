@@ -375,8 +375,7 @@ void Subarray::set_subarray_unsafe(const void* subarray) {
   }
 }
 
-void Subarray::add_range(
-    unsigned dim_idx, const void* start, const void* end) {
+void Subarray::add_range(unsigned dim_idx, const void* start, const void* end) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num())
     throw SubarrayException("Cannot add range; Invalid dimension index");
 
@@ -492,9 +491,7 @@ void Subarray::add_ranges_list(
 }
 
 void Subarray::add_range_by_name(
-    const std::string& dim_name,
-    const void* start,
-    const void* end) {
+    const std::string& dim_name, const void* start, const void* end) {
   unsigned dim_idx =
       array_->array_schema_latest().domain().get_dimension_index(dim_name);
   add_range(dim_idx, start, end);
