@@ -429,13 +429,9 @@ class Subarray {
    * @param label_name The name of the dimension label to add the range to.
    * @param start The range start.
    * @param end The range end.
-   * @param stride The range stride.
    */
   void add_label_range(
-      const std::string& label_name,
-      const void* start,
-      const void* end,
-      const void* stride);
+      const std::string& label_name, const void* start, const void* end);
 
   /**
    * Adds a variable-sized range along the dimension with the given index for
@@ -459,13 +455,12 @@ class Subarray {
       uint32_t dim_idx, Range&& range, const bool read_range_oob_error = true);
 
   /**
-   * Adds a range to the subarray on the input dimension by index,
-   * in the form of (start, end, stride).
+   * Adds a range to the subarray on the input dimension by index.
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
   void add_range(
-      unsigned dim_idx, const void* start, const void* end, const void* stride);
+      unsigned dim_idx, const void* start, const void* end);
 
   /**
    * @brief Set point ranges from an array
@@ -521,16 +516,14 @@ class Subarray {
   void add_range_unsafe(uint32_t dim_idx, const Range& range);
 
   /**
-   * Adds a range to the (read/write) query on the input dimension by name,
-   * in the form of (start, end, stride).
+   * Adds a range to the (read/write) query on the input dimension by name.
    * The range components must be of the same type as the domain type of the
    * underlying array.
    */
   void add_range_by_name(
       const std::string& dim_name,
       const void* start,
-      const void* end,
-      const void* stride);
+      const void* end);
 
   /**
    * Adds a variable-sized range to the (read/write) query on the input
@@ -567,22 +560,19 @@ class Subarray {
   const std::string& get_label_name(const uint32_t dim_index) const;
 
   /**
-   * Retrieves a range from a dimension label name in the form (start, end,
-   * stride).
+   * Retrieves a range from a dimension label name.
    *
    * @param label_name The name of the dimension label to retrieve the range
    *     from.
    * @param range_idx The id of the range to retrieve.
    * @param start The range start to retrieve.
    * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
    */
   void get_label_range(
       const std::string& label_name,
       uint64_t range_idx,
       const void** start,
-      const void** end,
-      const void** stride) const;
+      const void** end) const;
 
   /**
    * Retrieves the number of ranges of the subarray for the given dimension
@@ -633,20 +623,18 @@ class Subarray {
       const std::string& dim_name, uint64_t* range_num) const;
 
   /**
-   * Retrieves a range from a dimension name in the form (start, end, stride).
+   * Retrieves a range from a dimension name.
    *
    * @param dim_name The dimension to retrieve the range from.
    * @param range_idx The id of the range to retrieve.
    * @param start The range start to retrieve.
    * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
    */
   void get_range_from_name(
       const std::string& dim_name,
       uint64_t range_idx,
       const void** start,
-      const void** end,
-      const void** stride) const;
+      const void** end) const;
 
   /**
    * Retrieves a range's sizes for a variable-length dimension name
@@ -894,22 +882,6 @@ class Subarray {
 
   /** Retrieves the number of ranges on the given dimension index. */
   void get_range_num(uint32_t dim_idx, uint64_t* range_num) const;
-
-  /**
-   * Retrieves a range from a dimension index in the form (start, end, stride).
-   *
-   * @param dim_idx The dimension to retrieve the range from.
-   * @param range_idx The id of the range to retrieve.
-   * @param start The range start to retrieve.
-   * @param end The range end to retrieve.
-   * @param stride The range stride to retrieve.
-   */
-  void get_range(
-      unsigned dim_idx,
-      uint64_t range_idx,
-      const void** start,
-      const void** end,
-      const void** stride) const;
 
   /**
    * ``True`` if the specified dimension is set by default.
