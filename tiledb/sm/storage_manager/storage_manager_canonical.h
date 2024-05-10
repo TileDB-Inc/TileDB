@@ -189,13 +189,6 @@ class StorageManagerCanonical {
       const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
-   * Cleans up the group data.
-   *
-   * @param group_name The name of the group whose data is to be deleted.
-   */
-  void delete_group(const char* group_name);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.
