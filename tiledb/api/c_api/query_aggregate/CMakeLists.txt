@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023-2024 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,22 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
-include(object_library)
 
 list(APPEND SOURCES
   query_aggregate_api.cc
   )
 gather_sources(${SOURCES})
 
-commence(object_library capi_query_aggregate)
-  this_target_sources(${SOURCES})
-  this_target_link_libraries(export)
-  this_target_object_libraries(baseline)
-conclude(object_library)
+#
+# Object library for C API query_aggregate
+#
+# Maturity:
+#   This object library does not link standalone. There's no corresponding
+#   `query_aggregate` object library to link to, since at present nothing
+#   involving query is able to link standalone.
+#
+add_library(capi_query_aggregate OBJECT ${SOURCES})
+target_link_libraries(capi_query_aggregate PUBLIC export)
+target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
 
 add_test_subdirectory()
