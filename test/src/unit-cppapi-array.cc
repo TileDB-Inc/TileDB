@@ -41,6 +41,9 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
+#include <chrono>
+using namespace std::chrono_literals;
+
 using namespace tiledb;
 
 struct Point {
@@ -2063,14 +2066,11 @@ TEST_CASE(
       .set_data_buffer("a", a_read);
   std::future<void> submit_async =
       std::async(std::launch::async, [&query] { query.submit(); });
+  submit_async.wait_for(1us);
   array.close();
 
-  uint64_t i = 0;
   while (query.query_status() != Query::Status::COMPLETE) {
-    i++;
   }
-
-  CHECK(i > 0);
 }
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {

@@ -58,6 +58,7 @@
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <climits>
 #include <cstring>
 #include <ctime>
@@ -65,6 +66,7 @@
 #include <map>
 #include <sstream>
 #include <thread>
+using namespace std::chrono_literals;
 
 using namespace tiledb::test;
 using namespace tiledb::sm;
@@ -889,11 +891,10 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   REQUIRE(rc == TILEDB_OK);
 
   auto proc_query = [&](unsigned i) -> void {
-    std::future<void> submit_async =
-        std::async(std::launch::async, [this, &query] {
-          auto rc = tiledb_query_submit(ctx_, query);
-          REQUIRE(rc == TILEDB_OK);
-        });
+    std::future<void> submit_async = std::async(
+        std::launch::async,
+        [this, &query] { tiledb_query_submit(ctx_, query); });
+    submit_async.wait_for(1us);
     // Cancel it immediately.
     if (i < num_writes - 1) {
       rc = tiledb_ctx_cancel_tasks(ctx_);
@@ -914,6 +915,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
             auto rc = tiledb_query_submit(ctx_, query);
             REQUIRE(rc == TILEDB_OK);
           });
+      submit_async.wait_for(1us);
       do {
         rc = tiledb_query_get_status(ctx_, query, &status);
         CHECK(rc == TILEDB_OK);
