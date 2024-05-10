@@ -246,10 +246,17 @@ void Subarray::add_label_range(
 }
 
 void Subarray::add_label_range(
-    const std::string& label_name, const void* start, const void* end) {
+    const std::string& label_name,
+    const void* start,
+    const void* end,
+    const void* stride) {
   // Check input range data is valid data.
   if (start == nullptr || end == nullptr) {
     throw SubarrayException("[add_label_range] Invalid range");
+  }
+  if (stride != nullptr) {
+    throw SubarrayException(
+        "[add_label_range] Setting range stride is currently unsupported");
   }
   // Get dimension label range and check the label is in fact fixed-sized.
   const auto& dim_label_ref =
@@ -376,7 +383,7 @@ void Subarray::set_subarray_unsafe(const void* subarray) {
 }
 
 void Subarray::add_range(
-    unsigned dim_idx, const void* start, const void* end) {
+    unsigned dim_idx, const void* start, const void* end, const void* stride) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num())
     throw SubarrayException("Cannot add range; Invalid dimension index");
 
@@ -388,6 +395,11 @@ void Subarray::add_range(
 
   if (start == nullptr || end == nullptr) {
     throw SubarrayException("Cannot add range; Invalid range");
+  }
+
+  if (stride != nullptr) {
+    throw SubarrayException(
+        "Cannot add range; Setting range stride is currently unsupported");
   }
 
   if (this->array_->array_schema_latest()
@@ -494,10 +506,11 @@ void Subarray::add_ranges_list(
 void Subarray::add_range_by_name(
     const std::string& dim_name,
     const void* start,
-    const void* end) {
+    const void* end,
+    const void* stride) {
   unsigned dim_idx =
       array_->array_schema_latest().domain().get_dimension_index(dim_name);
-  add_range(dim_idx, start, end);
+  add_range(dim_idx, start, end, stride);
 }
 
 void Subarray::add_range_var(
@@ -572,7 +585,8 @@ void Subarray::get_label_range(
     const std::string& label_name,
     uint64_t range_idx,
     const void** start,
-    const void** end) const {
+    const void** end,
+    const void** stride) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label(label_name)
                      .dimension_index();
@@ -585,6 +599,7 @@ void Subarray::get_label_range(
   const auto& range = label_range_subset_[dim_idx].value().ranges_[range_idx];
   *start = range.start_fixed();
   *end = range.end_fixed();
+  *stride = nullptr;
 }
 
 void Subarray::get_label_range_num(
@@ -644,7 +659,8 @@ void Subarray::get_range_var(
 
   const void* range_start;
   const void* range_end;
-  get_range(dim_idx, range_idx, &range_start, &range_end);
+  const void* stride;
+  get_range(dim_idx, range_idx, &range_start, &range_end, &stride);
 
   std::memcpy(start, range_start, start_size);
   std::memcpy(end, range_end, end_size);
@@ -657,14 +673,25 @@ void Subarray::get_range_num_from_name(
   get_range_num(dim_idx, range_num);
 }
 
+void Subarray::get_range(
+    unsigned dim_idx,
+    uint64_t range_idx,
+    const void** start,
+    const void** end,
+    const void** stride) const {
+  *stride = nullptr;
+  this->get_range(dim_idx, range_idx, start, end);
+}
+
 void Subarray::get_range_from_name(
     const std::string& dim_name,
     uint64_t range_idx,
     const void** start,
-    const void** end) const {
+    const void** end,
+    const void** stride) const {
   unsigned dim_idx =
       array_->array_schema_latest().domain().get_dimension_index(dim_name);
-  get_range(dim_idx, range_idx, start, end);
+  get_range(dim_idx, range_idx, start, end, stride);
 }
 
 void Subarray::get_range_var_size_from_name(

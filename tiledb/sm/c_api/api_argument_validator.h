@@ -69,17 +69,17 @@ inline int32_t sanity_check(tiledb_ctx_t* ctx, const tiledb_array_t* array) {
   return TILEDB_OK;
 }
 
-namespace tiledb::api {
-/**
- * Returns if a subarray handle (old style) is valid. Throws otherwise.
- */
-inline void ensure_subarray_is_valid(const tiledb_subarray_t* p) {
-  if (p == nullptr || p->subarray_ == nullptr ||
-      p->subarray_->array() == nullptr) {
-    throw CAPIException("Invalid TileDB subarray object");
+inline int32_t sanity_check(
+    tiledb_ctx_t* ctx, const tiledb_subarray_t* subarray) {
+  if (subarray == nullptr || subarray->subarray_ == nullptr ||
+      subarray->subarray_->array() == nullptr) {
+    auto st = Status_Error("Invalid TileDB subarray object");
+    LOG_STATUS_NO_RETURN_VALUE(st);
+    save_error(ctx, st);
+    return TILEDB_ERR;
   }
+  return TILEDB_OK;
 }
-}  // namespace tiledb::api
 
 inline int32_t sanity_check(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema) {
