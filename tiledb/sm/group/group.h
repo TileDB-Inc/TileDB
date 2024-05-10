@@ -117,17 +117,6 @@ class Group {
   void clear();
 
   /**
-   * Performs deletion of data and closes the local group with the given URI.
-   *
-   * @param uri The URI of the group to be deleted.
-   * @param vfs The virtual filesystem on which the local group sits.
-   * @param tp The compute thread pool.
-   *
-   */
-  static void delete_group(
-      const URI& uri, VFS* vfs, tiledb::common::ThreadPool* tp);
-
-  /**
    *
    * Handles local and remote deletion of data from a group with the given URI.
    *
