@@ -142,10 +142,10 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   if (group->group_details()->is_modified()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
     auto group_detail_uri = group->generate_detail_uri();
-    RETURN_NOT_OK(store_group_detail(
+    RETURN_NOT_OK(group->group_details()->store(
+        resources_,
         group_detail_folder_uri,
         group_detail_uri,
-        group->group_details(),
         *group->encryption_key()));
   }
   return Status::Ok();
@@ -852,38 +852,6 @@ Status StorageManagerCanonical::set_tag(
   // Tags are added to REST requests as HTTP headers.
   if (rest_client() != nullptr)
     RETURN_NOT_OK(rest_client()->set_header(key, value));
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_group_detail(
-    const URI& group_detail_folder_uri,
-    const URI& group_detail_uri,
-    tdb_shared_ptr<GroupDetails> group,
-    const EncryptionKey& encryption_key) {
-  // Serialize
-  auto members = group->members_to_serialize();
-  SizeComputationSerializer size_computation_serializer;
-  group->serialize(members, size_computation_serializer);
-
-  auto tile{WriterTile::from_generic(
-      size_computation_serializer.size(),
-      resources_.ephemeral_memory_tracker())};
-
-  Serializer serializer(tile->data(), tile->size());
-  group->serialize(members, serializer);
-
-  stats()->add_counter("write_group_size", tile->size());
-
-  // Check if the array schema directory exists
-  // If not create it, this is caused by a pre-v10 array
-  bool group_detail_dir_exists = false;
-  RETURN_NOT_OK(
-      vfs()->is_dir(group_detail_folder_uri, &group_detail_dir_exists));
-  if (!group_detail_dir_exists)
-    RETURN_NOT_OK(vfs()->create_dir(group_detail_folder_uri));
-
-  GenericTileIO::store_data(resources_, group_detail_uri, tile, encryption_key);
 
   return Status::Ok();
 }
