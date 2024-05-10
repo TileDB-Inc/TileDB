@@ -173,11 +173,7 @@ Status Array::open_without_fragments(
         }
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else {
       {
@@ -338,11 +334,7 @@ Status Array::open(
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else if (query_type == QueryType::READ) {
       {
