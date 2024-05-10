@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023-2024 TileDB, Inc.
+# Copyright (c) 2023 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,17 +24,22 @@
 # THE SOFTWARE.
 #
 include(common NO_POLICY_SCOPE)
-include(object_library)
 
 list(APPEND SOURCES
   query_plan_api.cc
   )
 gather_sources(${SOURCES})
 
-commence(object_library capi_query_plan)
-  this_target_sources(${SOURCES})
-  this_target_link_libraries(export)
-  this_target_object_libraries(baseline query_plan)
-conclude(object_library)
+#
+# Object library for C API query plan
+#
+# Maturity:
+#   This object library cannot link standalone because `query_plan` cannot link
+#   standalone.
+#
+add_library(capi_query_plan OBJECT ${SOURCES})
+target_link_libraries(capi_query_plan PUBLIC export)
+target_link_libraries(capi_query_plan PUBLIC baseline $<TARGET_OBJECTS:baseline>)
+target_link_libraries(capi_query_plan PUBLIC query_plan $<TARGET_OBJECTS:query_plan>)
 
 add_test_subdirectory()
