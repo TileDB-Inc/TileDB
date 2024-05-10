@@ -68,7 +68,8 @@ struct DeletesFx {
   const std::string group_name_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
+  std::string enc_type_str_ =
+      encryption_type_str((tiledb::sm::EncryptionType)TILEDB_AES_256_GCM);
 
   // Constructors/destructors.
   DeletesFx();
@@ -134,6 +135,8 @@ void DeletesFx::set_purge_deleted_cells() {
   config.set("sm.consolidation.purge_deleted_cells", "true");
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::set_legacy() {
@@ -143,6 +146,8 @@ void DeletesFx::set_legacy() {
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::create_dir(const std::string& path) {
@@ -169,29 +174,31 @@ void DeletesFx::create_simple_array(const std::string& path) {
 }
 
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
-  Config cfg;
+  Config config;
   if (encrypt) {
-    std::string enc_type_str =
-        encryption_type_str((tiledb::sm::EncryptionType)enc_type_);
-    cfg["sm.encryption_type"] = enc_type_str.c_str();
-    cfg["sm.encryption_key"] = key_;
+    config["sm.encryption_type"] = enc_type_str_.c_str();
+    config["sm.encryption_key"] = key_;
   }
-  Context ctx(cfg);
+
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
 
   // Create dimensions.
-  auto d1 = Dimension::create<uint64_t>(ctx, "d1", {{1, 4}}, 2);
-  auto d2 = Dimension::create<uint64_t>(ctx, "d2", {{1, 4}}, 2);
+  auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
+  auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
 
   // Create domain.
-  Domain domain(ctx);
+  Domain domain(ctx_);
   domain.add_dimension(d1);
   domain.add_dimension(d2);
 
   // Create attributes.
-  auto a1 = Attribute::create<int32_t>(ctx, "a1");
+  auto a1 = Attribute::create<int32_t>(ctx_, "a1");
 
   // Create array schema.
-  ArraySchema schema(ctx, TILEDB_SPARSE);
+  ArraySchema schema(ctx_, TILEDB_SPARSE);
   schema.set_domain(domain);
   schema.set_capacity(20);
   schema.add_attributes(a1);
@@ -201,8 +208,8 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   }
 
   // Set up filters.
-  Filter filter(ctx, TILEDB_FILTER_NONE);
-  FilterList filter_list(ctx);
+  Filter filter(ctx_, TILEDB_FILTER_NONE);
+  FilterList filter_list(ctx_);
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
