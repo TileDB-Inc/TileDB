@@ -3431,14 +3431,14 @@ int32_t tiledb_deserialize_array(
 
   auto memory_tracker = ctx->context().resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_deserialize(
-              (*array)->array_.get(),
-              (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer(),
-              ctx->storage_manager(),
-              memory_tracker))) {
+  try {
+    tiledb::sm::serialization::array_deserialize(
+        (*array)->array_.get(),
+        (tiledb::sm::SerializationType)serialize_type,
+        buffer->buffer(),
+        ctx->context().resources(),
+        memory_tracker);
+  } catch (StatusException& e) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;

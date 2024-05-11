@@ -2605,13 +2605,12 @@ TEST_CASE_METHOD(
       1,
       &buff);
   REQUIRE(rc == TILEDB_OK);
-  auto st = tiledb::sm::serialization::array_deserialize(
+  tiledb::sm::serialization::array_deserialize(
       array->array_.get(),
       tiledb::sm::SerializationType::CAPNP,
       buff->buffer(),
-      ctx_->storage_manager(),
+      ctx_->context().resources(),
       memory_tracker_);
-  REQUIRE(st.ok());
 
   // 6. Server: Close array and clean up
   rc = tiledb_array_close(ctx_, deserialized_array_server);
