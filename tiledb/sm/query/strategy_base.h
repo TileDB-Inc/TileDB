@@ -70,6 +70,7 @@ class StrategyParams {
       StorageManager* storage_manager,
       shared_ptr<OpenedArray> array,
       Config& config,
+      optional<uint64_t> memory_budget,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
@@ -82,6 +83,7 @@ class StrategyParams {
       , storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
+      , memory_budget_(memory_budget)
       , buffers_(buffers)
       , aggregate_buffers_(aggregate_buffers)
       , subarray_(subarray)
@@ -118,6 +120,11 @@ class StrategyParams {
   inline Config& config() {
     return config_;
   };
+
+  /** Return the memory budget, if set. */
+  inline optional<uint64_t> memory_budget() {
+    return memory_budget_;
+  }
 
   /** Return the buffers. */
   inline std::unordered_map<std::string, QueryBuffer>& buffers() {
@@ -173,6 +180,12 @@ class StrategyParams {
 
   /** Config for query-level parameters only. */
   Config& config_;
+
+  /**
+   * Memory budget for the query. If set to nullopt, the value will be obtained
+   * from the sm.mem.total_budget config option.
+   */
+  optional<uint64_t> memory_budget_;
 
   /** Buffers. */
   std::unordered_map<std::string, QueryBuffer>& buffers_;

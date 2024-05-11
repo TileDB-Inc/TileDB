@@ -72,7 +72,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     : ReaderBase(stats, logger, params)
     , read_state_(array_->fragment_metadata().size())
     , tmp_read_state_(array_->fragment_metadata().size())
-    , memory_budget_(config_, reader_string)
+    , memory_budget_(config_, reader_string, params.memory_budget())
     , include_coords_(include_coords)
     , memory_used_for_coords_total_(0)
     , deletes_consolidation_no_purge_(
