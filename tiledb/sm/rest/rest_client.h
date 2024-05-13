@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ArraySchema;
 class ArraySchemaEvolution;
@@ -130,11 +129,11 @@ class RestClient {
    * Post the array config and get an array from rest server
    *
    * @param uri of array being loaded
-   * @param storage_manager storage manager of array being loaded
+   * @param resources the context resources
    * @param array array to load into
    */
-  Status post_array_from_rest(
-      const URI& uri, StorageManager* storage_manager, Array* array);
+  void post_array_from_rest(
+      const URI& uri, ContextResources& resources, Array* array);
 
   /**
    * Post a data array schema to rest server
@@ -569,7 +568,6 @@ class RestClient {
   Status ensure_json_null_delimited_string(Buffer* buffer);
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_REST_CLIENT_H

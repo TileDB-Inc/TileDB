@@ -75,7 +75,9 @@ struct CPPDenseQcCoordsModeFx {
 
     Array array(ctx_, array_name, TILEDB_WRITE);
     Query query(ctx_, array, TILEDB_WRITE);
-    query.set_subarray(subarray);
+    Subarray sub(ctx_, array);
+    sub.set_subarray(subarray);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1_buff);
     query.set_layout(TILEDB_ROW_MAJOR);
     REQUIRE(query.submit() == Query::Status::COMPLETE);
@@ -167,7 +169,9 @@ TEST_CASE_METHOD(
   std::vector<int> subarray = {1, 10, 1, 10};
   std::vector<int> d1(100);
   std::vector<int> d2(100);
-  query.set_subarray(subarray);
+  Subarray sub(ctx_, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub);
   query.set_layout(read_layout);
   query.set_data_buffer("d1", d1);
   query.set_data_buffer("d2", d2);

@@ -1544,13 +1544,11 @@ int32_t tiledb_query_get_est_result_size(
   if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  if (name == nullptr) {
-    throw CAPIStatusException("Pointer to field name may not be NULL");
-  }
+  auto field_name{to_string_view<"field name">(name)};
   if (size == nullptr) {
     throw CAPIStatusException("Pointer to size may not be NULL");
   }
-  auto est_size{query->query_->get_est_result_size_fixed_nonnull(name)};
+  auto est_size{query->query_->get_est_result_size_fixed_nonnull(field_name)};
   *size = est_size.fixed_;
   return TILEDB_OK;
 }
@@ -1564,9 +1562,7 @@ int32_t tiledb_query_get_est_result_size_var(
   if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  if (name == nullptr) {
-    throw CAPIStatusException("Pointer to field name may not be NULL");
-  }
+  auto field_name{to_string_view<"field name">(name)};
   if (size_off == nullptr) {
     throw CAPIStatusException("Pointer to offset size may not be NULL");
   }
@@ -1574,7 +1570,8 @@ int32_t tiledb_query_get_est_result_size_var(
     throw CAPIStatusException("Pointer to value size may not be NULL");
   }
 
-  auto est_size{query->query_->get_est_result_size_variable_nonnull(name)};
+  auto est_size{
+      query->query_->get_est_result_size_variable_nonnull(field_name)};
   *size_off = est_size.fixed_;
   *size_val = est_size.variable_;
 
@@ -1590,9 +1587,7 @@ int32_t tiledb_query_get_est_result_size_nullable(
   if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  if (name == nullptr) {
-    throw CAPIStatusException("Pointer to field name may not be NULL");
-  }
+  auto field_name{to_string_view<"field name">(name)};
   if (size_val == nullptr) {
     throw CAPIStatusException("Pointer to value size may not be NULL");
   }
@@ -1600,7 +1595,7 @@ int32_t tiledb_query_get_est_result_size_nullable(
     throw CAPIStatusException("Pointer to validity size may not be NULL");
   }
 
-  auto est_size{query->query_->get_est_result_size_fixed_nullable(name)};
+  auto est_size{query->query_->get_est_result_size_fixed_nullable(field_name)};
   *size_val = est_size.fixed_;
   *size_validity = est_size.validity_;
   return TILEDB_OK;
@@ -1616,9 +1611,7 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
   if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
   }
-  if (name == nullptr) {
-    throw CAPIStatusException("Pointer to field name may not be NULL");
-  }
+  auto field_name{to_string_view<"field name">(name)};
   if (size_off == nullptr) {
     throw CAPIStatusException("Pointer to offset size may not be NULL");
   }
@@ -1628,7 +1621,8 @@ int32_t tiledb_query_get_est_result_size_var_nullable(
   if (size_validity == nullptr) {
     throw CAPIStatusException("Pointer to validity size may not be NULL");
   }
-  auto est_size{query->query_->get_est_result_size_variable_nullable(name)};
+  auto est_size{
+      query->query_->get_est_result_size_variable_nullable(field_name)};
   *size_off = est_size.fixed_;
   *size_val = est_size.variable_;
   *size_validity = est_size.validity_;
@@ -2807,14 +2801,13 @@ int32_t tiledb_array_get_non_empty_domain_from_index(
     uint32_t idx,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain_from_index(
-      array->array_.get(), idx, domain, &is_empty_b));
-
+  array->array_->non_empty_domain_from_index(idx, domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2826,14 +2819,14 @@ int32_t tiledb_array_get_non_empty_domain_from_name(
     const char* name,
     void* domain,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  auto field_name{to_string_view<"field name">(name)};
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b;
-
-  throw_if_not_ok(ctx->storage_manager()->array_get_non_empty_domain_from_name(
-      array->array_.get(), name, domain, &is_empty_b));
-
+  array->array_->non_empty_domain_from_name(field_name, domain, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2846,15 +2839,16 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_index(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_size_from_index(
-          array->array_.get(), idx, start_size, end_size, &is_empty_b));
-
+  array->array_->non_empty_domain_var_size_from_index(
+      idx, start_size, end_size, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2867,15 +2861,16 @@ int32_t tiledb_array_get_non_empty_domain_var_size_from_name(
     uint64_t* start_size,
     uint64_t* end_size,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start_size);
+  ensure_output_pointer_is_valid(end_size);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_size_from_name(
-          array->array_.get(), name, start_size, end_size, &is_empty_b));
-
+  array->array_->non_empty_domain_var_size_from_name(
+      name, start_size, end_size, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2888,15 +2883,15 @@ int32_t tiledb_array_get_non_empty_domain_var_from_index(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_from_index(
-          array->array_.get(), idx, start, end, &is_empty_b));
-
+  array->array_->non_empty_domain_var_from_index(idx, start, end, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2909,15 +2904,15 @@ int32_t tiledb_array_get_non_empty_domain_var_from_name(
     void* start,
     void* end,
     int32_t* is_empty) {
-  if (sanity_check(ctx, array) == TILEDB_ERR)
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
     return TILEDB_ERR;
+  }
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  ensure_output_pointer_is_valid(is_empty);
 
   bool is_empty_b = true;
-
-  throw_if_not_ok(
-      ctx->storage_manager()->array_get_non_empty_domain_var_from_name(
-          array->array_.get(), name, start, end, &is_empty_b));
-
+  array->array_->non_empty_domain_var_from_name(name, start, end, &is_empty_b);
   *is_empty = (int32_t)is_empty_b;
 
   return TILEDB_OK;
@@ -2939,14 +2934,14 @@ int32_t tiledb_array_encryption_type(
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type) {
   // Sanity checks
-  if (array_uri == nullptr || encryption_type == nullptr)
+  if (array_uri == nullptr || encryption_type == nullptr) {
     return TILEDB_ERR;
+  }
 
-  auto uri = tiledb::sm::URI(array_uri);
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(ctx->storage_manager()->array_get_encryption(uri, &enc));
-
+  throw_if_not_ok(sm::Array::encryption_type(
+      ctx->resources(), tiledb::sm::URI(array_uri), &enc));
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
@@ -3436,14 +3431,14 @@ int32_t tiledb_deserialize_array(
 
   auto memory_tracker = ctx->context().resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_deserialize(
-              (*array)->array_.get(),
-              (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer(),
-              ctx->storage_manager(),
-              memory_tracker))) {
+  try {
+    tiledb::sm::serialization::array_deserialize(
+        (*array)->array_.get(),
+        (tiledb::sm::SerializationType)serialize_type,
+        buffer->buffer(),
+        ctx->context().resources(),
+        memory_tracker);
+  } catch (StatusException& e) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;

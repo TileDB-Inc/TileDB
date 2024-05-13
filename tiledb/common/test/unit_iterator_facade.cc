@@ -1,4 +1,3 @@
-
 /**
  * @file   unit_iterator_facade.cc
  *
@@ -39,6 +38,7 @@
 
 #include <algorithm>
 #include <catch2/catch_all.hpp>
+#include <numeric>
 #include <ranges>
 #include "../iterator_facade.h"
 
@@ -364,6 +364,7 @@ enum class month : int {
   october,
   november,
   december,
+  end,
 };
 
 /*
@@ -410,50 +411,11 @@ class month_iterator : public iterator_facade<month_iterator> {
     return _cur == other._cur;
   }
 };
-
-/*
- * A second month_iterator to test writing to the iterator.
- */
-
-class month_iterator_2 : public iterator_facade<month_iterator_2> {
-  // Since we are faking an iterator over data, we can make the value mutable.
-  mutable month _cur = month::january;
-
- public:
-  month_iterator_2() = default;
-  explicit month_iterator_2(month m)
-      : _cur(m) {
-  }
-
-  month& dereference() const {
-    return _cur;
-  }
-
-  void advance(int n) {
-    _cur = month(int(_cur) + n);
-  }
-  int distance_to(month_iterator_2 o) const {
-    return int(o._cur) - int(_cur);
-  }
-
-  bool operator==(month_iterator_2 o) const {
-    return _cur == o._cur;
-  }
-};
-
 }  // namespace
 
 TEMPLATE_TEST_CASE(
-    "iterator_facade: month_iterator",
-    "[iterator_facade]",
-    month_iterator,
-    month_iterator_2) {
-  CHECK(std::input_iterator<TestType>);
-  if (std::is_same_v<TestType, month_iterator_2>) {
-    CHECK(std::output_iterator<month_iterator_2, month>);
-  } else {
-    CHECK(!std::output_iterator<month_iterator, month>);
-  }
+    "iterator_facade: month_iterator", "[iterator_facade]", month_iterator) {
+  CHECK(!std::output_iterator<month_iterator, month>);
 
   CHECK(std::forward_iterator<TestType>);
   CHECK(std::bidirectional_iterator<TestType>);
@@ -483,52 +445,12 @@ TEMPLATE_TEST_CASE(
   CHECK(*it == month::november);
   ++it;
   CHECK(*it == month::december);
+
   // We should be able to increment once more and get the sentinel value,
   // but this is not working for some reason.
   // @todo Fix this.
   // ++it;
   //  CHECK(it == month_iterator::sentinel_type());
-}
-
-TEST_CASE("iterator_facade: month_iterator_2 write") {
-  month_iterator_2 it;
-  *it = month::august;
-  CHECK(*it == month::august);
-  ++it;
-  CHECK(*it == month::september);
-
-  *it = month::may;
-  CHECK(*it == month::may);
-  it++;
-  CHECK(*it == month::june);
-  CHECK(*it++ == month::june);
-  CHECK(*it == month::july);
-
-  it.advance(3);
-  CHECK(*it == month::october);
-  *it = month::july;
-  it += 3;
-  CHECK(*it == month::october);
-
-  auto a = *(it + 0);
-  CHECK(a == month::october);
-  auto b = *(it + 1);
-  CHECK(b == month::november);
-
-  // These fail for some reason.
-  // @todo Fix this.
-  // auto c = it[0];
-  // CHECK(c == month::october);
-  // auto d = it[1];
-  // CHECK(d == month::november);
-
-  CHECK(*(it + 0) == month::october);
-  CHECK(*(it + 1) == month::november);
-
-  // These fail for some reason.
-  // @todo Fix this.
-  // CHECK(it[0] == month::october);
-  // CHECK(it[1] == month::november);
 }
 
 /*
@@ -587,7 +509,7 @@ struct foo {
     void advance(int n) {
       index_ += n;
     }
-    int distance_to(iterator o) const {
+    size_t distance_to(iterator o) const {
       return o.index_ - index_;
     }
   };
@@ -700,9 +622,10 @@ struct simple_mutable_struct {
   using iterator = simple_mutable_iterator<SValue>;
   using const_iterator = simple_mutable_iterator<const SValue>;
 
-  using value_type = std::iterator_traits<iterator>::value_type;
-  using reference = std::iterator_traits<iterator>::reference;
-  using const_reference = std::iterator_traits<const_iterator>::reference;
+  using value_type = typename std::iterator_traits<iterator>::value_type;
+  using reference = typename std::iterator_traits<iterator>::reference;
+  using const_reference =
+      typename std::iterator_traits<const_iterator>::reference;
 
   auto begin() {
     return iterator{value.begin()};
@@ -923,7 +846,8 @@ void iterator_test() {
   CHECK(std::forward_iterator<I>);
   CHECK(std::bidirectional_iterator<I>);
   CHECK(std::random_access_iterator<I>);
-  if (std::is_same_v<
+  if constexpr (
+      std::is_same_v<
           std::remove_cvref_t<I>,
           typename std::vector<
               typename std::iterator_traits<I>::value_type>::iterator> ||

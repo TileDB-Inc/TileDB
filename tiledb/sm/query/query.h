@@ -179,10 +179,10 @@ class Query {
    * - The field is fixed-sized
    *
    * @param origin The name of the operation that this validation is a part of
-   * @param name The name of a field
+   * @param field_name The name of a field
    */
   void field_require_array_fixed(
-      const std::string_view origin, const char* name);
+      const std::string_view origin, std::string_view field_name);
 
   /**
    * Require that a name be that of a variable-size field from the source array.
@@ -192,10 +192,10 @@ class Query {
    * - The field is variable-sized
    *
    * @param origin The name of the operation that this validation is a part of
-   * @param name The name of a field
+   * @param field_name The name of a field
    */
   void field_require_array_variable(
-      const std::string_view origin, const char* name);
+      const std::string_view origin, std::string_view field_name);
 
   /**
    * Require that a field be a nullable field from the source array.
@@ -205,10 +205,10 @@ class Query {
    * - The attribute is nullable
    *
    * @param origin The name of the operation that this validation is a part of
-   * @param name The name of a field
+   * @param field_name The name of a field
    */
   void field_require_array_nullable(
-      const std::string_view origin, const char* name);
+      const std::string_view origin, std::string_view field_name);
 
   /**
    * Require that a field be a nonnull field from the source array.
@@ -218,44 +218,46 @@ class Query {
    * - The field is not nullable
    *
    * @param origin The name of the operation that this validation is a part of.
-   * @param name The name of a field
+   * @param field_name The name of a field
    */
   void field_require_array_nonnull(
-      const std::string_view origin, const char* name);
+      const std::string_view origin, std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized
    * attribute/dimension.
    */
-  FieldDataSize get_est_result_size_fixed_nonnull(const char* name);
+  FieldDataSize get_est_result_size_fixed_nonnull(std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized
    * attribute/dimension.
    */
-  FieldDataSize get_est_result_size_variable_nonnull(const char* name);
+  FieldDataSize get_est_result_size_variable_nonnull(
+      std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input fixed-sized,
    * nullable attribute.
    */
-  FieldDataSize get_est_result_size_fixed_nullable(const char* name);
+  FieldDataSize get_est_result_size_fixed_nullable(std::string_view field_name);
 
   /**
    * Gets the estimated result size (in bytes) for the input var-sized,
    * nullable attribute.
    */
-  FieldDataSize get_est_result_size_variable_nullable(const char* name);
+  FieldDataSize get_est_result_size_variable_nullable(
+      std::string_view field_name);
 
  private:
   /**
    * Common part of all `est_result_size_*` functions, called after argument
    * validation.
    *
-   * @param name The name of a field
+   * @param field_name The name of a field
    * @return estimated result size
    */
-  FieldDataSize internal_est_result_size(const char* name);
+  FieldDataSize internal_est_result_size(std::string_view field_name);
 
  public:
   /** Retrieves the number of written fragments. */

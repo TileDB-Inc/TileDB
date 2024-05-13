@@ -218,8 +218,10 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray sub(ctx, array);
+    sub.add_range(0, subarray[0], subarray[1]);
+    sub.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -708,8 +710,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray sub(ctx, array);
+    sub.add_range(0, subarray[0], subarray[1]);
+    sub.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -742,8 +746,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray sub(ctx, array);
+    sub.add_range(0, subarray[0], subarray[1]);
+    sub.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -775,8 +781,10 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.add_range(0, subarray[0], subarray[1]);
-    query.add_range(1, subarray[2], subarray[3]);
+    Subarray sub(ctx, array);
+    sub.add_range(0, subarray[0], subarray[1]);
+    sub.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(sub);
 
     auto set_buffers = [&](Query& q) {
       q.set_data_buffer("a1", a1);

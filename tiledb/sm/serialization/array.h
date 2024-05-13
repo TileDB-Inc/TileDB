@@ -69,7 +69,7 @@ Status array_to_capnp(
 /**
  * Deserialize an Array from Cap'n proto
  * @param array_reader cap'n proto class
- * @param storage_manager the storage manager associated with the array
+ * @param resources the context resources associated with the array
  * @param array Array to deserialize into
  * @param client_side Allows to specify different behavior depending on who is
  * @param memory_tracker Memory tracker to use for memory allocations.
@@ -78,9 +78,9 @@ Status array_to_capnp(
  * @param memory_tracker Memory tracker to use on the deserialized object.
  * @return Status
  */
-Status array_from_capnp(
+void array_from_capnp(
     const capnp::Array::Reader& array_reader,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     Array* array,
     const bool client_side,
     shared_ptr<MemoryTracker> memory_tracker);
@@ -134,11 +134,20 @@ Status array_serialize(
     Buffer* serialized_buffer,
     const bool client_side);
 
-Status array_deserialize(
+/**
+ * Deserialize an array via Cap'n Proto.
+ *
+ * @param array array object to set the array details into
+ * @param serialize_type format the data is serialized in: Cap'n Proto of JSON
+ * @param serialized_buffer buffer to read serialized bytes from
+ * @param resources the context resources associated with the array
+ * @param memory_tracker the memory tracker to use on the deserialized object
+ */
+void array_deserialize(
     Array* array,
     SerializationType serialize_type,
     const Buffer& serialized_buffer,
-    StorageManager* storage_manager,
+    ContextResources& resources,
     shared_ptr<MemoryTracker> memory_tracker);
 
 /**

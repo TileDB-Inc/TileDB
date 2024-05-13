@@ -43,7 +43,6 @@
  */
 #include "tiledb/api/c_api/attribute/attribute_api_external_experimental.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_experimental.h"
-#include "tiledb/api/c_api/group/group_api_external_experimental.h"
 #include "tiledb/api/c_api/query_aggregate/query_aggregate_api_external_experimental.h"
 #include "tiledb/api/c_api/query_field/query_field_api_external_experimental.h"
 #include "tiledb/api/c_api/query_plan/query_plan_api_external_experimental.h"
@@ -360,43 +359,6 @@ TILEDB_EXPORT int32_t tiledb_array_schema_add_enumeration(
 /* ********************************* */
 
 /**
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
-    TILEDB_NOEXCEPT;
-
-#ifndef TILEDB_REMOVE_DEPRECATIONS
-/**
- * Note: This API is deprecated and replaced with tiledb_array_delete (above).
- *
- * Deletes all written array data.
- *
- * **Example:**
- *
- * @code{.c}
- * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array The array to delete the data from.
- * @param uri The Array's URI.
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
-    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
-#endif  // TILEDB_REMOVE_DEPRECATIONS
-
-/**
  * Evolve array schema of an array.
  *
  * **Example:**
@@ -459,27 +421,6 @@ TILEDB_EXPORT capi_return_t tiledb_array_get_enumeration(
  */
 TILEDB_EXPORT capi_return_t tiledb_array_load_all_enumerations(
     tiledb_ctx_t* ctx, const tiledb_array_t* array) TILEDB_NOEXCEPT;
-
-/**
- * Upgrades an array to the latest format version.
- *
- * **Example:**
- *
- * @code{.c}
- * const char* array_uri="test_array";
- * tiledb_array_upgrade_version(ctx, array_uri);
- * @endcode
- *
- * @param ctx The TileDB context.
- * @param array_uri The uri of the array.
- * @param config Configuration parameters for the upgrade
- *     (`nullptr` means default, which will use the config from `ctx`).
- * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
- */
-TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
-    tiledb_ctx_t* ctx,
-    const char* array_uri,
-    tiledb_config_t* config) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               QUERY               */

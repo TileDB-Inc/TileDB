@@ -272,7 +272,7 @@ int Domain::cell_order_cmp_2(const void* coord_a, const void* coord_b) {
 
 int Domain::cell_order_cmp(
     const type::DomainDataRef& left, const type::DomainDataRef& right) const {
-  if (cell_order_ == Layout::ROW_MAJOR) {
+  if (cell_order_ == Layout::ROW_MAJOR || cell_order_ == Layout::HILBERT) {
     for (unsigned d = 0; d < dim_num_; ++d) {
       auto res = cell_order_cmp_func_[d](
           dimension_ptr(d),
@@ -421,37 +421,6 @@ void Domain::get_tile_coords(const T* coords, T* tile_coords) const {
 }
 
 template <class T>
-void Domain::get_end_of_cell_slab(
-    T* subarray, T* start, Layout layout, T* end) const {
-  if (layout == Layout::GLOBAL_ORDER || layout == cell_order_) {
-    auto dim_dom = (const T*)domain(dim_num_ - 1).data();
-    auto tile_extent = *(const T*)this->tile_extent(dim_num_ - 1).data();
-
-    if (cell_order_ == Layout::ROW_MAJOR) {
-      for (unsigned d = 0; d < dim_num_; ++d)
-        end[d] = start[d];
-      auto tile_idx =
-          Dimension::tile_idx(start[dim_num_ - 1], dim_dom[0], tile_extent);
-      end[dim_num_ - 1] =
-          Dimension::tile_coord_low(tile_idx + 1, dim_dom[0], tile_extent) - 1;
-      end[dim_num_ - 1] =
-          std::min(end[dim_num_ - 1], subarray[2 * (dim_num_ - 1) + 1]);
-    } else {
-      auto dim_dom = (const T*)domain(0).data();
-      auto tile_extent = *(const T*)this->tile_extent(0).data();
-      for (unsigned d = 0; d < dim_num_; ++d)
-        end[d] = start[d];
-      auto tile_idx = Dimension::tile_idx(start[0], dim_dom[0], tile_extent);
-      end[0] = Dimension::tile_coord_high(tile_idx, dim_dom[0], tile_extent);
-      end[0] = std::min(end[0], subarray[1]);
-    }
-  } else {
-    for (unsigned d = 0; d < dim_num_; ++d)
-      end[d] = start[d];
-  }
-}
-
-template <class T>
 void Domain::get_next_tile_coords(const T* domain, T* tile_coords) const {
   // Invoke the proper function based on the tile order
   if (tile_order_ == Layout::ROW_MAJOR)
@@ -574,8 +543,13 @@ Status Domain::set_null_tile_extents_to_range() {
 template <class T>
 uint64_t Domain::stride(Layout subarray_layout) const {
   if (dim_num_ == 1 || subarray_layout == Layout::GLOBAL_ORDER ||
-      subarray_layout == cell_order_)
+      subarray_layout == cell_order_) {
     return UINT64_MAX;
+  }
+
+  if (cell_order_ == Layout::HILBERT) {
+    throw std::logic_error("Stride cannot be computed for Hilbert cell order");
+  }
 
   uint64_t ret = 1;
   if (cell_order_ == Layout::ROW_MAJOR) {
@@ -1158,23 +1132,6 @@ template void Domain::get_tile_subarray<double>(
     const double* domain,
     const double* tile_coords,
     double* tile_subarray) const;
-
-template void Domain::get_end_of_cell_slab<int8_t>(
-    int8_t* subarray, int8_t* start, Layout layout, int8_t* end) const;
-template void Domain::get_end_of_cell_slab<uint8_t>(
-    uint8_t* subarray, uint8_t* start, Layout layout, uint8_t* end) const;
-template void Domain::get_end_of_cell_slab<int16_t>(
-    int16_t* subarray, int16_t* start, Layout layout, int16_t* end) const;
-template void Domain::get_end_of_cell_slab<uint16_t>(
-    uint16_t* subarray, uint16_t* start, Layout layout, uint16_t* end) const;
-template void Domain::get_end_of_cell_slab<int>(
-    int* subarray, int* start, Layout layout, int* end) const;
-template void Domain::get_end_of_cell_slab<unsigned>(
-    unsigned* subarray, unsigned* start, Layout layout, unsigned* end) const;
-template void Domain::get_end_of_cell_slab<int64_t>(
-    int64_t* subarray, int64_t* start, Layout layout, int64_t* end) const;
-template void Domain::get_end_of_cell_slab<uint64_t>(
-    uint64_t* subarray, uint64_t* start, Layout layout, uint64_t* end) const;
 
 template void Domain::get_tile_coords<int8_t>(
     const int8_t* coords, int8_t* tile_coords) const;

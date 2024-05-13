@@ -37,6 +37,7 @@
 #define TILEDB_CAPI_SUPPORT_H
 
 #include "argument_validation.h"
+#include "tiledb/api/c_api_support/cpp_string/cpp_string.h"
 #include "tiledb/api/c_api_support/exception_wrapper/capi_definition.h"
 #include "tiledb/api/c_api_support/exception_wrapper/exception_wrapper.h"
 #if __has_include("capi_function_override.h")

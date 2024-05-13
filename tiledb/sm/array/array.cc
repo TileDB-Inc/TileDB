@@ -173,11 +173,7 @@ Status Array::open_without_fragments(
         }
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else {
       {
@@ -338,11 +334,7 @@ Status Array::open(
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else if (query_type == QueryType::READ) {
       {
@@ -550,6 +542,36 @@ void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
         resources_, array_uri_, 0, std::numeric_limits<uint64_t>::max());
     array_dir.delete_fragments_list(fragment_uris);
   }
+}
+
+Status Array::encryption_type(
+    ContextResources& resources,
+    const URI& uri,
+    EncryptionType* encryption_type) {
+  if (uri.is_invalid()) {
+    throw ArrayException("[encryption_type] Invalid array URI");
+  }
+
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      resources,
+      uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  // Read tile header
+  auto&& header = GenericTileIO::read_generic_tile_header(
+      resources, array_dir->latest_array_schema_uri(), 0);
+  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
+
+  return Status::Ok();
 }
 
 shared_ptr<const Enumeration> Array::get_enumeration(
@@ -1121,6 +1143,211 @@ void Array::non_empty_domain(void* domain, bool* is_empty) {
     std::memcpy(&domain_c[offset], dom[d].data(), dom[d].size());
     offset += dom[d].size();
   }
+}
+
+void Array::non_empty_domain_from_index(
+    unsigned idx, void* domain, bool* is_empty) {
+  if (!is_open_) {
+    throw ArrayException("[non_empty_domain_from_index] Array is not open");
+  }
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  }
+  if (array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is var-sized");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+  if (*is_empty) {
+    return;
+  }
+
+  std::memcpy(domain, dom[idx].data(), dom[idx].size());
+}
+
+void Array::non_empty_domain_var_size_from_index(
+    unsigned idx, uint64_t* start_size, uint64_t* end_size, bool* is_empty) {
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  }
+  if (!array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is fixed-sized");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+  if (*is_empty) {
+    *start_size = 0;
+    *end_size = 0;
+    return;
+  }
+
+  *start_size = dom[idx].start_size();
+  *end_size = dom[idx].end_size();
+}
+
+void Array::non_empty_domain_var_from_index(
+    unsigned idx, void* start, void* end, bool* is_empty) {
+  // For easy reference
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+
+  // Sanity checks
+  if (idx >= array_schema.dim_num()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Invalid dimension index");
+  }
+  if (!array_domain.dimension_ptr(idx)->var_size()) {
+    throw ArrayException(
+        "Cannot get non-empty domain; Dimension '" +
+        array_domain.dimension_ptr(idx)->name() + "' is fixed-sized");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+  if (*is_empty) {
+    return;
+  }
+
+  auto start_str = dom[idx].start_str();
+  std::memcpy(start, start_str.data(), start_str.size());
+  auto end_str = dom[idx].end_str();
+  std::memcpy(end, end_str.data(), end_str.size());
+}
+
+void Array::non_empty_domain_from_name(
+    std::string_view field_name, void* domain, bool* is_empty) {
+  // Sanity check
+  if (field_name.data() == nullptr) {
+    throw std::invalid_argument(
+        "[non_empty_domain_from_name] Invalid dimension name");
+  }
+
+  // Check if array is open - must be open for reads
+  if (!is_open_) {
+    throw ArrayException("[non_empty_domain_from_name] Array is not open");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+  auto dim_num = array_schema.dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& dim_name{array_schema.dimension_ptr(d)->name()};
+    if (field_name == dim_name) {
+      // Sanity check
+      if (array_domain.dimension_ptr(d)->var_size()) {
+        throw ArrayException(
+            "Cannot get non-empty domain; Dimension '" + dim_name +
+            "' is variable-sized");
+      }
+      if (!*is_empty) {
+        std::memcpy(domain, dom[d].data(), dom[d].size());
+      }
+      return;
+    }
+  }
+
+  throw ArrayException(
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
+}
+
+void Array::non_empty_domain_var_size_from_name(
+    std::string_view field_name,
+    uint64_t* start_size,
+    uint64_t* end_size,
+    bool* is_empty) {
+  // Sanity check
+  if (field_name.data() == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+  auto dim_num = array_schema.dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& dim_name{array_schema.dimension_ptr(d)->name()};
+    if (field_name == dim_name) {
+      // Sanity check
+      if (!array_domain.dimension_ptr(d)->var_size()) {
+        throw ArrayException(
+            "Cannot get non-empty domain; Dimension '" + dim_name +
+            "' is fixed-sized");
+      }
+      if (*is_empty) {
+        *start_size = 0;
+        *end_size = 0;
+      } else {
+        *start_size = dom[d].start_size();
+        *end_size = dom[d].end_size();
+      }
+      return;
+    }
+  }
+
+  throw ArrayException(
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
+}
+
+void Array::non_empty_domain_var_from_name(
+    std::string_view field_name, void* start, void* end, bool* is_empty) {
+  // Sanity check
+  if (field_name.data() == nullptr) {
+    throw std::invalid_argument("[non_empty_domain] Invalid dimension name");
+  }
+
+  NDRange dom;
+  non_empty_domain(&dom, is_empty);
+
+  const auto& array_schema = array_schema_latest();
+  auto& array_domain{array_schema.domain()};
+  auto dim_num = array_schema.dim_num();
+  for (unsigned d = 0; d < dim_num; ++d) {
+    const auto& dim_name{array_schema.dimension_ptr(d)->name()};
+    if (field_name == dim_name) {
+      // Sanity check
+      if (!array_domain.dimension_ptr(d)->var_size()) {
+        throw ArrayException(
+            "Cannot get non-empty domain; Dimension '" + dim_name +
+            "' is fixed-sized");
+      }
+      if (!*is_empty) {
+        auto start_str = dom[d].start_str();
+        std::memcpy(start, start_str.data(), start_str.size());
+        auto end_str = dom[d].end_str();
+        std::memcpy(end, end_str.data(), end_str.size());
+      }
+      return;
+    }
+  }
+
+  throw ArrayException(
+      "Cannot get non-empty domain; Dimension name '" +
+      std::string(field_name) + "' does not exist");
 }
 
 bool Array::serialize_non_empty_domain() const {

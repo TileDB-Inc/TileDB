@@ -246,7 +246,7 @@ Status Group::close() {
     // Storage manager does not own the group schema for remote groups.
   } else {
     if (query_type_ == QueryType::READ) {
-      RETURN_NOT_OK(storage_manager_->group_close_for_reads(this));
+      RETURN_NOT_OK(close_for_reads());
     } else if (
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
@@ -332,7 +332,27 @@ void Group::delete_group(const URI& uri, bool recursive) {
         }
       }
     }
-    storage_manager_->delete_group(uri.c_str());
+
+    auto& vfs = resources_.vfs();
+    auto& compute_tp = resources_.compute_tp();
+    auto group_dir = GroupDirectory(
+        &vfs, &compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
+
+    // Delete the group detail, group metadata and group files
+    vfs.remove_files(&compute_tp, group_dir.group_detail_uris());
+    vfs.remove_files(&compute_tp, group_dir.group_meta_uris());
+    vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
+    vfs.remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+    vfs.remove_files(&compute_tp, group_dir.group_file_uris());
+
+    // Delete all tiledb child directories
+    // Note: using vfs().ls() here could delete user data
+    std::vector<URI> dirs;
+    auto parent_dir = group_dir.uri().c_str();
+    for (auto group_dir_name : constants::group_dir_names) {
+      dirs.emplace_back(URI(parent_dir + group_dir_name));
+    }
+    vfs.remove_dirs(&compute_tp, dirs);
   }
   // Clear metadata and other pending changes to avoid patching a deleted group.
   metadata_.clear();

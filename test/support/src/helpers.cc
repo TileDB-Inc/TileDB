@@ -1180,15 +1180,23 @@ void read_array(
   rc = tiledb_query_set_layout(ctx, query, layout);
   CHECK(rc == TILEDB_OK);
 
+  // Create subarray
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+
   auto dim_num = (unsigned)ranges.size();
   for (unsigned i = 0; i < dim_num; ++i) {
     auto dim_range_num = ranges[i].size() / 2;
     for (size_t j = 0; j < dim_range_num; ++j) {
-      rc = tiledb_query_add_range(
-          ctx, query, i, &ranges[i][2 * j], &ranges[i][2 * j + 1], nullptr);
+      rc = tiledb_subarray_add_range(
+          ctx, subarray, i, &ranges[i][2 * j], &ranges[i][2 * j + 1], nullptr);
       CHECK(rc == TILEDB_OK);
     }
   }
+
+  // Set the subarray
+  tiledb_query_set_subarray_t(ctx, query, subarray);
 
   // Set buffers
   for (const auto& b : buffers) {
@@ -1230,6 +1238,7 @@ void read_array(
 
   // Clean up
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 int32_t num_commits(Context ctx, const std::string& array_name) {

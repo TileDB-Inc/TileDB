@@ -2758,6 +2758,64 @@ TILEDB_EXPORT int32_t tiledb_array_create(
     const tiledb_array_schema_t* array_schema) TILEDB_NOEXCEPT;
 
 /**
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete(ctx, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri)
+    TILEDB_NOEXCEPT;
+
+#ifndef TILEDB_REMOVE_DEPRECATIONS
+/**
+ * Note: This API is deprecated and replaced with tiledb_array_delete (above).
+ *
+ * Deletes all written array data.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_array_delete_array(ctx, array, "hdfs:///temp/my_array");
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array The array to delete the data from.
+ * @param uri The Array's URI.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_DEPRECATED_EXPORT int32_t tiledb_array_delete_array(
+    tiledb_ctx_t* ctx, tiledb_array_t* array, const char* uri) TILEDB_NOEXCEPT;
+#endif  // TILEDB_REMOVE_DEPRECATIONS
+
+/**
+ * Upgrades an array to the latest format version.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * const char* array_uri="test_array";
+ * tiledb_array_upgrade_version(ctx, array_uri);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_uri The uri of the array.
+ * @param config Configuration parameters for the upgrade
+ *     (`nullptr` means default, which will use the config from `ctx`).
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_upgrade_version(
+    tiledb_ctx_t* ctx,
+    const char* array_uri,
+    tiledb_config_t* config) TILEDB_NOEXCEPT;
+
+/**
  * Depending on the consoliation mode in the config, consolidates either the
  * fragment files, fragment metadata files, or array metadata files into a
  * single file.

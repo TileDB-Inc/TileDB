@@ -1988,7 +1988,7 @@ TEST_CASE_METHOD(
   int is_empty = false;
   rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, dom, &is_empty);
   REQUIRE(rc == TILEDB_ERR);
-  void* subarray = nullptr;
+  void* sub = nullptr;
 
   // Get non-empty domain per dimension
   dom = nullptr;
@@ -2007,12 +2007,17 @@ TEST_CASE_METHOD(
       ctx_, array, "d2", dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
 
+  // Subarray checks
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Query checks
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
   uint64_t size = 1024;
   rc = tiledb_query_set_data_buffer(ctx_, query, "buff", buff, &size);
@@ -2031,6 +2036,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&read_dom);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   tiledb_array_schema_free(&array_schema);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }

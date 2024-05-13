@@ -128,9 +128,11 @@ TEST_CASE("C++ API: Datetime dimension", "[cppapi][datetime]") {
   std::vector<int64_t> subarray_r = {0, 9};
   Array array_r(ctx, array_name, TILEDB_READ);
   Query query_r(ctx, array_r);
+  Subarray sub(ctx, array_r);
+  sub.set_subarray(subarray_r);
   query_r.set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data_r)
-      .set_subarray(subarray_r);
+      .set_subarray(sub);
   REQUIRE(query_r.submit() == Query::Status::COMPLETE);
 
   auto result_num = query_r.result_buffer_elements()["a"].second;

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -2950,8 +2950,8 @@ void EnumerationFx::ser_des_array(
     SerializationType stype) {
   Buffer buf;
   throw_if_not_ok(serialization::array_serialize(in, stype, &buf, client_side));
-  throw_if_not_ok(serialization::array_deserialize(
-      out, stype, buf, ctx.storage_manager(), memory_tracker_));
+  serialization::array_deserialize(
+      out, stype, buf, ctx.resources(), memory_tracker_);
 }
 
 #else  // No TILEDB_SERIALIZATION

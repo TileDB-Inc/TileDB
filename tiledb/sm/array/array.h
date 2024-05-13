@@ -469,6 +469,19 @@ class Array {
   }
 
   /**
+   * Retrieves the encryption type.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param encryption_type Set to the encryption type.
+   * @return Status
+   */
+  static Status encryption_type(
+      ContextResources& resources,
+      const URI& uri,
+      EncryptionType* encryption_type);
+
+  /**
    * Get the enumeration for the given name.
    *
    * This function retrieves the enumeration for the given name. If the
@@ -777,6 +790,82 @@ class Array {
    * @param is_empty `true` if the non-empty domain (and array) is empty.
    */
   void non_empty_domain(void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param idx The dimension index.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_from_index(unsigned idx, void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain size of the opened array on the given
+   * dimension. This is the union of the non-empty domains of the array
+   * fragments. Applicable only to var-sized dimensions.
+   *
+   * @param idx The dimension index.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_size_from_index(
+      unsigned idx, uint64_t* start_size, uint64_t* end_size, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param idx The dimension index.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_from_index(
+      unsigned idx, void* start, void* end, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   *
+   * @param field_name The dimension name.
+   * @param domain The domain to be retrieved.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_from_name(
+      std::string_view field_name, void* domain, bool* is_empty);
+
+  /**
+   * Returns the non-empty domain size of the open array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+   *
+   * @param field_name The dimension name.
+   * @param start_size The size in bytes of the range start.
+   * @param end_size The size in bytes of the range end.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_size_from_name(
+      std::string_view field_name,
+      uint64_t* start_size,
+      uint64_t* end_size,
+      bool* is_empty);
+
+  /**
+   * Returns the non-empty domain of the opened array on the given dimension.
+   * This is the union of the non-empty domains of the array fragments.
+   * Applicable only to var-sized dimensions.
+
+   * @param field_name The dimension name.
+   * @param start The domain range start to set.
+   * @param end The domain range end to set.
+   * @param is_empty `true` if the non-empty domain (and array) is empty.
+   */
+  void non_empty_domain_var_from_name(
+      std::string_view field_name, void* start, void* end, bool* is_empty);
 
   /**
    * Retrieves the array metadata object that is already loaded. If it's not yet

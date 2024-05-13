@@ -1309,8 +1309,10 @@ TEST_CASE_METHOD(
   query.set_data_buffer(tiledb_timestamps(), timestamps);
 
   // Add overlapping ranges
-  query.add_range<uint64_t>(1, 2, 3);
-  query.add_range<uint64_t>(1, 2, 3);
+  Subarray subarray(ctx_, array);
+  subarray.add_range<uint64_t>(1, 2, 3);
+  subarray.add_range<uint64_t>(1, 2, 3);
+  query.set_subarray(subarray);
 
   // Submit/finalize the query
   query.submit();
