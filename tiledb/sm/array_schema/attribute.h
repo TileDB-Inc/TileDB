@@ -84,6 +84,8 @@ class Attribute {
    * @param type The type of the attribute.
    * @param cell_val_num The cell number of the attribute.
    * @param order The ordering of the attribute.
+   *
+   * @throws if `cell_val_num` is invalid. See `set_cell_val_num`.
    */
   Attribute(
       const std::string& name,
@@ -102,6 +104,8 @@ class Attribute {
    * @param fill_value The fill value of the attribute.
    * @param fill_value_validity The validity of fill_value.
    * @param order The order of the data stored in the attribute.
+   *
+   * @throws if `cell_val_num` is invalid. See `set_cell_val_num`.
    */
   Attribute(
       const std::string& name,
@@ -237,9 +241,15 @@ class Attribute {
   void serialize(Serializer& serializer, uint32_t version) const;
 
   /**
-   * Sets the attribute number of values per cell. Note that if the attribute
-   * datatype is `ANY` this function returns an error, since `ANY` datatype
-   * must always be variable-sized.
+   * Sets the attribute number of values per cell.
+   *
+   * @throws AttributeException if `cell_val_num` is invalid
+   *
+   * A valid `cell_val_num` depends on the Attribute datatype and ordering.
+   * For `Datatype::ANY`, the only valid value is `constants::var_num`.
+   * If the attribute is unordered, then all other datatypes support any value.
+   * If the attribute is ordered, then an Attribute of `Datatype::STRING_ASCII`
+   * must have `constants::var_num`, and all other datatypes must have 1.
    */
   void set_cell_val_num(unsigned int cell_val_num);
 
@@ -306,8 +316,8 @@ class Attribute {
   /* ********************************* */
   /*          PRIVATE METHODS          */
   /* ********************************* */
-  /** Called to check if a cell val num is valid */
-  void check_cell_val_num(unsigned cell_val_num) const;
+  /** Called to validate a cell val num for this attribute */
+  void validate_cell_val_num(unsigned cell_val_num) const;
 
   /** Sets the default fill value. */
   void set_default_fill_value();

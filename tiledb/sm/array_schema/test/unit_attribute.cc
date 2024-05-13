@@ -37,166 +37,171 @@
 using namespace tiledb::common;
 using namespace tiledb::sm;
 
-/**
- * Datatype::ANY attributes are always var-sized.
- */
-TEST_CASE(
-    "Attribute - Datatype::ANY set_cell_val_num", "[array_schema][attribute]") {
-  // Any type default cell val num
-  {
-    Attribute a("a", Datatype::ANY, false);
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
-
-  // Set cell val num at construction
-  {
-    CHECK_THROWS(Attribute("a", Datatype::ANY, 1, DataOrder::UNORDERED_DATA));
-    CHECK_THROWS(Attribute("a", Datatype::ANY, 2, DataOrder::UNORDERED_DATA));
-
-    REQUIRE_NOTHROW(Attribute(
-        "a", Datatype::ANY, constants::var_num, DataOrder::UNORDERED_DATA));
-    Attribute a(
-        "a", Datatype::ANY, constants::var_num, DataOrder::UNORDERED_DATA);
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
-
-  // Set cell val num after construction
-  {
-    Attribute a("a", Datatype::ANY, false);
-    CHECK(a.cell_val_num() == constants::var_num);
-
-    CHECK_THROWS(a.set_cell_val_num(1));
-    CHECK_THROWS(a.set_cell_val_num(2));
-    CHECK_NOTHROW(a.set_cell_val_num(constants::var_num));
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
-
-  // long form constructor spot-check
-  {
-    FilterPipeline empty_pipeline;
-    ByteVecValue empty_fill;
-    CHECK_THROWS(Attribute(
-        "a",
-        Datatype::ANY,
-        true,
-        1,
-        empty_pipeline,
-        empty_fill,
-        0,
-        DataOrder::INCREASING_DATA,
-        std::optional<std::string>()));
-  }
+// Datatype::ANY attribute is var-sized by default
+TEST_CASE("ANY Attribute default cell val num", "[array_schema][attribute]") {
+  Attribute a("a", Datatype::ANY, false);
+  CHECK(a.cell_val_num() == constants::var_num);
 }
 
-/**
- * Datatype::STRING_ASCII has special rules for cell val num
- */
+// Pass non-default cell val num to constructor
 TEST_CASE(
-    "Attribute - Datatype::STRING_ASCII set_cell_val_num",
+    "ANY Attribute construct non-default cell val num",
     "[array_schema][attribute]") {
-  // default is 1, and that's fine when un-ordered
-  {
-    Attribute a("a", Datatype::STRING_ASCII, false);
-    CHECK(a.cell_val_num() == 1);
-  }
+  CHECK_THROWS(Attribute("a", Datatype::ANY, 1, DataOrder::UNORDERED_DATA));
+  CHECK_THROWS(Attribute("a", Datatype::ANY, 2, DataOrder::UNORDERED_DATA));
 
-  // set at construction, non-var is not fine when ordered
-  {
-    CHECK_THROWS(
-        Attribute("a", Datatype::STRING_ASCII, 1, DataOrder::INCREASING_DATA));
-    CHECK_THROWS(Attribute(
-        "a", Datatype::STRING_ASCII, 100, DataOrder::INCREASING_DATA));
-  }
+  REQUIRE_NOTHROW(Attribute(
+      "a", Datatype::ANY, constants::var_num, DataOrder::UNORDERED_DATA));
+  Attribute a(
+      "a", Datatype::ANY, constants::var_num, DataOrder::UNORDERED_DATA);
+  CHECK(a.cell_val_num() == constants::var_num);
+}
 
-  // set later, 1 is not fine when un-ordered
-  {
-    Attribute a(
-        "a",
-        Datatype::STRING_ASCII,
-        constants::var_num,
-        DataOrder::INCREASING_DATA);
-    CHECK_THROWS(a.set_cell_val_num(1));
-    CHECK_THROWS(a.set_cell_val_num(100));
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
+// Set cell val num after construction
+TEST_CASE("ANY Attribute set_cell_val_num", "[array_schema][attribute]") {
+  Attribute a("a", Datatype::ANY, false);
+  CHECK(a.cell_val_num() == constants::var_num);
 
-  // long form constructor spot-check
-  {
-    FilterPipeline empty_pipeline;
-    ByteVecValue empty_fill;
-    CHECK_THROWS(Attribute(
-        "a",
-        Datatype::STRING_ASCII,
-        true,
-        1,
-        empty_pipeline,
-        empty_fill,
-        0,
-        DataOrder::INCREASING_DATA,
-        std::optional<std::string>()));
-  }
+  CHECK_THROWS(a.set_cell_val_num(1));
+  CHECK_THROWS(a.set_cell_val_num(2));
+  CHECK_NOTHROW(a.set_cell_val_num(constants::var_num));
+  CHECK(a.cell_val_num() == constants::var_num);
+}
+
+// long form constructor spot-check
+TEST_CASE(
+    "ANY Attribute long form constructor invalid cell val num",
+    "[array_schema][attribute]") {
+  FilterPipeline empty_pipeline;
+  ByteVecValue empty_fill;
+  CHECK_THROWS(Attribute(
+      "a",
+      Datatype::ANY,
+      true,
+      1,
+      empty_pipeline,
+      empty_fill,
+      0,
+      DataOrder::INCREASING_DATA,
+      std::optional<std::string>()));
+}
+
+TEST_CASE(
+    "STRING_ASCII Attribute default cell val num",
+    "[array_schema][attribute]") {
+  Attribute a("a", Datatype::STRING_ASCII, false);
+  CHECK(a.cell_val_num() == 1);
+}
+
+// set at construction, non-var is not fine when ordered
+TEST_CASE(
+    "STRING_ASCII Attribute non-default cell val num ordered",
+    "[array_schema][attribute]") {
+  CHECK_THROWS(
+      Attribute("a", Datatype::STRING_ASCII, 1, DataOrder::INCREASING_DATA));
+  CHECK_THROWS(
+      Attribute("a", Datatype::STRING_ASCII, 100, DataOrder::INCREASING_DATA));
+}
+
+// set later, 1 is not fine when un-ordered
+TEST_CASE(
+    "STRING_ASCII Attribute set_cell_val_num ordered",
+    "[array_schema][attribute]") {
+  Attribute a(
+      "a",
+      Datatype::STRING_ASCII,
+      constants::var_num,
+      DataOrder::INCREASING_DATA);
+  CHECK_THROWS(a.set_cell_val_num(1));
+  CHECK_THROWS(a.set_cell_val_num(100));
+  CHECK(a.cell_val_num() == constants::var_num);
+}
+
+// long form constructor spot-check
+TEST_CASE(
+    "STRING_ASCII Attribute long-form constructor invalid cell val num",
+    "[array_schema][attribute]") {
+  FilterPipeline empty_pipeline;
+  ByteVecValue empty_fill;
+  CHECK_THROWS(Attribute(
+      "a",
+      Datatype::STRING_ASCII,
+      true,
+      1,
+      empty_pipeline,
+      empty_fill,
+      0,
+      DataOrder::INCREASING_DATA,
+      std::optional<std::string>()));
 }
 
 /**
  * Other datatypes can be any size fixed or var unless ordered
  */
+TEST_CASE("INT32 Attribute default cell val num", "[array_schema][attribute]") {
+  CHECK(Attribute("a", Datatype::INT32, false).cell_val_num() == 1);
+}
+
 TEST_CASE(
-    "Attribute - Datatype::INT32 set_cell_val_num",
+    "INT32 Attribute non-default cell val num unordered",
     "[array_schema][attribute]") {
-  // anything goes when unordered, default is 1
-  {
-    CHECK(Attribute("a", Datatype::INT32, false).cell_val_num() == 1);
-    CHECK(
-        Attribute("a", Datatype::INT32, 1, DataOrder::UNORDERED_DATA)
-            .cell_val_num() == 1);
-    CHECK(
-        Attribute("a", Datatype::INT32, 100, DataOrder::UNORDERED_DATA)
-            .cell_val_num() == 100);
-    CHECK(
-        Attribute(
-            "a", Datatype::INT32, constants::var_num, DataOrder::UNORDERED_DATA)
-            .cell_val_num() == constants::var_num);
+  CHECK(
+      Attribute("a", Datatype::INT32, 1, DataOrder::UNORDERED_DATA)
+          .cell_val_num() == 1);
+  CHECK(
+      Attribute("a", Datatype::INT32, 100, DataOrder::UNORDERED_DATA)
+          .cell_val_num() == 100);
+  CHECK(
+      Attribute(
+          "a", Datatype::INT32, constants::var_num, DataOrder::UNORDERED_DATA)
+          .cell_val_num() == constants::var_num);
+}
 
-    Attribute a("a", Datatype::INT32, false);
-    a.set_cell_val_num(1);
-    CHECK(a.cell_val_num() == 1);
-    a.set_cell_val_num(10);
-    CHECK(a.cell_val_num() == 10);
-    a.set_cell_val_num(constants::var_num);
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
+TEST_CASE(
+    "INT32 Attribute set cell val num unordered", "[array_schema][attribute]") {
+  Attribute a("a", Datatype::INT32, false);
+  a.set_cell_val_num(1);
+  CHECK(a.cell_val_num() == 1);
+  a.set_cell_val_num(10);
+  CHECK(a.cell_val_num() == 10);
+  a.set_cell_val_num(constants::var_num);
+  CHECK(a.cell_val_num() == constants::var_num);
+}
 
-  // set at construction, only 1 is allowed when ordered
-  {
-    CHECK_NOTHROW(
-        Attribute("a", Datatype::INT32, 1, DataOrder::INCREASING_DATA));
-    CHECK_THROWS(
-        Attribute("a", Datatype::INT32, 100, DataOrder::INCREASING_DATA));
-    CHECK_THROWS(Attribute(
-        "a", Datatype::INT32, constants::var_num, DataOrder::INCREASING_DATA));
-  }
+// set at construction, only 1 is allowed when ordered
+TEST_CASE(
+    "INT32 Attribute non-default cell val num ordered",
+    "[array_schema][attribute]") {
+  CHECK_NOTHROW(Attribute("a", Datatype::INT32, 1, DataOrder::INCREASING_DATA));
+  CHECK_THROWS(
+      Attribute("a", Datatype::INT32, 100, DataOrder::INCREASING_DATA));
+  CHECK_THROWS(Attribute(
+      "a", Datatype::INT32, constants::var_num, DataOrder::INCREASING_DATA));
+}
 
-  // set later, only 1 is allowed when ordered
-  {
-    Attribute a("a", Datatype::INT32, 1, DataOrder::INCREASING_DATA);
-    CHECK_THROWS(a.set_cell_val_num(10));
-    CHECK_THROWS(a.set_cell_val_num(constants::var_num));
-    CHECK(a.cell_val_num() == 1);
-  }
+// set later, only 1 is allowed when ordered
+TEST_CASE(
+    "INT32 Attribute set_cell_val_num ordered", "[array_schema][attribute]") {
+  Attribute a("a", Datatype::INT32, 1, DataOrder::INCREASING_DATA);
+  CHECK_THROWS(a.set_cell_val_num(10));
+  CHECK_THROWS(a.set_cell_val_num(constants::var_num));
+  CHECK(a.cell_val_num() == 1);
+}
 
-  // long form constructor spot-check
-  {
-    FilterPipeline empty_pipeline;
-    ByteVecValue empty_fill;
-    CHECK_THROWS(Attribute(
-        "a",
-        Datatype::INT32,
-        true,
-        100,
-        empty_pipeline,
-        empty_fill,
-        0,
-        DataOrder::INCREASING_DATA,
-        std::optional<std::string>()));
-  }
+// long form constructor spot-check
+TEST_CASE(
+    "INT32 Attribute long form constructor invalid cell val num",
+    "[array_schema][attribute]") {
+  FilterPipeline empty_pipeline;
+  ByteVecValue empty_fill;
+  CHECK_THROWS(Attribute(
+      "a",
+      Datatype::INT32,
+      true,
+      100,
+      empty_pipeline,
+      empty_fill,
+      0,
+      DataOrder::INCREASING_DATA,
+      std::optional<std::string>()));
 }

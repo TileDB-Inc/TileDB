@@ -57,6 +57,8 @@ class AttributeStatusException : public StatusException {
   }
 };
 
+using AttributeException = AttributeStatusException;
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -84,7 +86,7 @@ Attribute::Attribute(
   if (order_ != DataOrder::UNORDERED_DATA) {
     ensure_ordered_attribute_datatype_is_valid(type_);
   }
-  check_cell_val_num(cell_val_num_);
+  validate_cell_val_num(cell_val_num_);
   set_default_fill_value();
 }
 
@@ -107,7 +109,7 @@ Attribute::Attribute(
     , fill_value_validity_(fill_value_validity)
     , order_(order)
     , enumeration_name_(enumeration_name) {
-  check_cell_val_num(cell_val_num_);
+  validate_cell_val_num(cell_val_num_);
 }
 
 /* ********************************* */
@@ -290,12 +292,12 @@ void Attribute::serialize(
 }
 
 void Attribute::set_cell_val_num(unsigned int cell_val_num) {
-  check_cell_val_num(cell_val_num);
+  validate_cell_val_num(cell_val_num);
   cell_val_num_ = cell_val_num;
   set_default_fill_value();
 }
 
-void Attribute::check_cell_val_num(unsigned int cell_val_num) const {
+void Attribute::validate_cell_val_num(unsigned int cell_val_num) const {
   if (type_ == Datatype::ANY && cell_val_num != constants::var_num) {
     throw AttributeStatusException(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
@@ -306,7 +308,7 @@ void Attribute::check_cell_val_num(unsigned int cell_val_num) const {
   if (order_ != DataOrder::UNORDERED_DATA) {
     if (type_ == Datatype::STRING_ASCII) {
       if (cell_val_num != constants::var_num) {
-        throw std::invalid_argument(
+        throw AttributeException(
             "Cannot set number of values per cell; Ordered attributes with "
             "datatype '" +
             datatype_str(type_) +
@@ -314,7 +316,7 @@ void Attribute::check_cell_val_num(unsigned int cell_val_num) const {
       }
     } else {
       if (cell_val_num != 1) {
-        throw std::invalid_argument(
+        throw AttributeException(
             "Ordered attributes with datatype '" + datatype_str(type_) +
             "' must have `cell_val_num=1`.");
       }
