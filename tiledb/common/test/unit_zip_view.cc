@@ -284,8 +284,13 @@ TEST_CASE("zip_view: basic iterator properties", "[zip_view]") {
   CHECK(it == z.begin() + 1);
 
   CHECK(it[0] == *it);
+  // MSVC in debug iterators mode fails with an assert if out of range iterators
+  // are dereferenced.
+  // https://learn.microsoft.com/en-us/cpp/standard-library/debug-iterator-support
+#if !defined(_ITERATOR_DEBUG_LEVEL) || _ITERATOR_DEBUG_LEVEL != 2
   CHECK(it[1] == *(it + 1));
   CHECK(it[2] == *(it + 2));
+#endif
   CHECK(it[0] == std::tuple{2, 5, 11});
 }
 
