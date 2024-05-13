@@ -801,6 +801,10 @@ class Config {
    *    Authentication token for REST server (used instead of
    *    username/password). <br>
    *    **Default**: ""
+   * - `rest.resubmit_incomplete` <br>
+   *    If true, incomplete queries received from server are automatically
+   *    resubmitted before returning to user control. <br>
+   *    **Default**: "true"
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
