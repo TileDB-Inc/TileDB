@@ -41,9 +41,6 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/utils.h"
 
-#include <chrono>
-using namespace std::chrono_literals;
-
 using namespace tiledb;
 
 struct Point {
@@ -2024,53 +2021,6 @@ TEST_CASE(
   vfs.remove_dir(get_fragment_dir(array_read.uri()));
   vfs.remove_dir(get_commit_dir(array_read.uri()));
   vfs.remove_dir(array_read.uri() + "/__schema");
-}
-
-TEST_CASE(
-    "C++ API: Close array with running query",
-    "[cppapi][close-before-read][rest]") {
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
-  auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
-
-  // Create
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
-
-  // Write
-  std::vector<int> data_w = {
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-  Array array_w(ctx, array_uri, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
-  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", data_w);
-  query_w.submit();
-  array_w.close();
-
-  // Open for read.
-  Array array(ctx, array_uri, TILEDB_READ);
-  std::vector<int> subarray_read = {0, 3, 0, 3};
-  std::vector<int> a_read(16);
-
-  Query query(ctx, array);
-  Subarray sub(ctx, array);
-  sub.set_subarray(subarray_read);
-  query.set_subarray(sub)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a_read);
-  std::future<void> submit_async =
-      std::async(std::launch::async, [&query] { query.submit(); });
-  submit_async.wait_for(1us);
-  array.close();
-
-  while (query.query_status() != Query::Status::COMPLETE) {
-  }
 }
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {

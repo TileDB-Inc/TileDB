@@ -894,7 +894,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
     std::future<void> submit_async = std::async(
         std::launch::async,
         [this, &query] { tiledb_query_submit(ctx_, query); });
-    submit_async.wait_for(1us);
+    submit_async.wait_for(1ms);
     // Cancel it immediately.
     if (i < num_writes - 1) {
       rc = tiledb_ctx_cancel_tasks(ctx_);
@@ -915,7 +915,7 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
             auto rc = tiledb_query_submit(ctx_, query);
             REQUIRE(rc == TILEDB_OK);
           });
-      submit_async.wait_for(1us);
+      submit_async.wait_for(1ms);
       do {
         rc = tiledb_query_get_status(ctx_, query, &status);
         CHECK(rc == TILEDB_OK);
