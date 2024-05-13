@@ -306,12 +306,33 @@ TEST_CASE("var_length_view: Viewness", "[var_length_view]") {
   std::vector<double> s = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
   std::vector<size_t> o = {0, 3, 6, 10};
   std::vector<size_t> m = {0, 3, 6, 10};
+  std::vector<double> q = {
+      21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
+  std::vector<size_t> p = {0, 2, 7, 10};
   std::vector<size_t> n = {0, 3, 6, 10};
 
   auto v = var_length_view(r, o);
+  auto w = var_length_view(q, p);
+  auto u = var_length_view(q, n);
   auto x = var_length_view(r, m);
   auto y = var_length_view(s, m);
   auto z = var_length_view(s, n);
+
+  REQUIRE(v.begin() == v.begin());
+  REQUIRE(v.end() == v.end());
+
+  // MSVC in debug iterators mode fails with an assert if iterators of different
+  // collections are compared.
+  // https://learn.microsoft.com/en-us/cpp/standard-library/debug-iterator-support?view=msvc-170#incompatible-iterators
+#if !defined(_ITERATOR_DEBUG_LEVEL) || _ITERATOR_DEBUG_LEVEL != 2
+  CHECK(v.begin() != w.begin());
+  CHECK(v.begin() != u.begin());
+  CHECK(w.begin() != u.begin());
+
+  CHECK(v.end() != w.end());
+  CHECK(v.end() != u.end());
+  CHECK(w.end() != u.end());
+#endif
 
   for (size_t i = 0; i < 3; ++i) {
     CHECK(v.size() == x.size());
