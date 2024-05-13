@@ -13,6 +13,7 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
+    timeout-minutes: 90
     defaults:
       run:
         shell: bash
