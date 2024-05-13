@@ -240,9 +240,9 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
           num += deletes_consolidation_no_purge_;
         }
 
-        // Other that the offsets themselves, there is also memory used for the
+        // Other than the offsets themselves, there is also memory used for the
         // initialization of the vectors that hold them. This initialization
-        // takes place in fragment_metadata.cc::3702-3713
+        // takes place in fragment_metadata.cc::load_footer()
         unsigned num_vectors = schema->attribute_num() + 1 +
                                fragment->has_timestamps() +
                                fragment->has_delete_meta() * 2;
@@ -442,9 +442,6 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Load per fragment tile offsets memory usage.
   per_frag_tile_offsets_usage_ = tile_offset_sizes();
-
-  // todo per frag metadata usage. This needs to be calculated in our memory
-  // estimation so that we know
 
   // Set a limit to the array memory.
   if (!array_memory_tracker_->set_budget(
