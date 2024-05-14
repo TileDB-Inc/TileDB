@@ -71,7 +71,7 @@ jobs:
 
       - name: 'Run standalone unit tests'
         run: |
-          ctest --test-dir build/tiledb -R '^unit_' -R 'test_assert' -U --no-tests=error
+          ctest --test-dir build/tiledb -R '(^unit_|test_assert)' --no-tests=error
           ctest --test-dir build/tiledb -R 'test_ci_asserts'
 
       - name: "Print log files (failed build only)"
