@@ -311,7 +311,10 @@ void WriterBase::refresh_config() {
 
 shared_ptr<FragmentMetadata> WriterBase::create_fragment_metadata() {
   return make_shared<FragmentMetadata>(
-      HERE(), &storage_manager_->resources(), query_memory_tracker_);
+      HERE(),
+      &storage_manager_->resources(),
+      query_memory_tracker_,
+      array_->array_schema_latest().write_version());
 }
 
 Status WriterBase::add_written_fragment_info(const URI& uri) {

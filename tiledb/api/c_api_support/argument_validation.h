@@ -73,6 +73,21 @@ inline void ensure_output_pointer_is_valid(void* p) {
   }
 }
 
+/**
+ * Ensure that the output pointer for a stride argument is null.
+ *
+ * The C API has arguments for the "stride" of a range, but does not support
+ * such arguments at the present time. This validation ensures that the argument
+ * is null.
+ *
+ * @param p The value of a `stride` argument to a C API function
+ */
+inline void ensure_unsupported_stride_is_null(const void* p) {
+  if (p != nullptr) {
+    throw CAPIException("Stride is currently unsupported");
+  }
+}
+
 }  // namespace tiledb::api
 
 #endif  // TILEDB_CAPI_SUPPORT_ARGUMENT_VALIDATION_H

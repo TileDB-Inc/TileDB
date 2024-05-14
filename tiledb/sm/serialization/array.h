@@ -183,6 +183,7 @@ Status metadata_serialize(
 
 Status metadata_deserialize(
     Metadata* metadata,
+    const Config& config,
     SerializationType serialize_type,
     const Buffer& serialized_buffer);
 

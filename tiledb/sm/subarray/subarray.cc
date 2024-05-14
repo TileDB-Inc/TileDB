@@ -246,17 +246,10 @@ void Subarray::add_label_range(
 }
 
 void Subarray::add_label_range(
-    const std::string& label_name,
-    const void* start,
-    const void* end,
-    const void* stride) {
+    const std::string& label_name, const void* start, const void* end) {
   // Check input range data is valid data.
   if (start == nullptr || end == nullptr) {
     throw SubarrayException("[add_label_range] Invalid range");
-  }
-  if (stride != nullptr) {
-    throw SubarrayException(
-        "[add_label_range] Setting range stride is currently unsupported");
   }
   // Get dimension label range and check the label is in fact fixed-sized.
   const auto& dim_label_ref =
@@ -382,8 +375,7 @@ void Subarray::set_subarray_unsafe(const void* subarray) {
   }
 }
 
-void Subarray::add_range(
-    unsigned dim_idx, const void* start, const void* end, const void* stride) {
+void Subarray::add_range(unsigned dim_idx, const void* start, const void* end) {
   if (dim_idx >= this->array_->array_schema_latest().dim_num())
     throw SubarrayException("Cannot add range; Invalid dimension index");
 
@@ -395,11 +387,6 @@ void Subarray::add_range(
 
   if (start == nullptr || end == nullptr) {
     throw SubarrayException("Cannot add range; Invalid range");
-  }
-
-  if (stride != nullptr) {
-    throw SubarrayException(
-        "Cannot add range; Setting range stride is currently unsupported");
   }
 
   if (this->array_->array_schema_latest()
@@ -504,13 +491,10 @@ void Subarray::add_ranges_list(
 }
 
 void Subarray::add_range_by_name(
-    const std::string& dim_name,
-    const void* start,
-    const void* end,
-    const void* stride) {
+    const std::string& dim_name, const void* start, const void* end) {
   unsigned dim_idx =
       array_->array_schema_latest().domain().get_dimension_index(dim_name);
-  add_range(dim_idx, start, end, stride);
+  add_range(dim_idx, start, end);
 }
 
 void Subarray::add_range_var(
@@ -585,8 +569,7 @@ void Subarray::get_label_range(
     const std::string& label_name,
     uint64_t range_idx,
     const void** start,
-    const void** end,
-    const void** stride) const {
+    const void** end) const {
   auto dim_idx = array_->array_schema_latest()
                      .dimension_label(label_name)
                      .dimension_index();
@@ -599,7 +582,6 @@ void Subarray::get_label_range(
   const auto& range = label_range_subset_[dim_idx].value().ranges_[range_idx];
   *start = range.start_fixed();
   *end = range.end_fixed();
-  *stride = nullptr;
 }
 
 void Subarray::get_label_range_num(
@@ -659,8 +641,7 @@ void Subarray::get_range_var(
 
   const void* range_start;
   const void* range_end;
-  const void* stride;
-  get_range(dim_idx, range_idx, &range_start, &range_end, &stride);
+  get_range(dim_idx, range_idx, &range_start, &range_end);
 
   std::memcpy(start, range_start, start_size);
   std::memcpy(end, range_end, end_size);
@@ -673,25 +654,14 @@ void Subarray::get_range_num_from_name(
   get_range_num(dim_idx, range_num);
 }
 
-void Subarray::get_range(
-    unsigned dim_idx,
-    uint64_t range_idx,
-    const void** start,
-    const void** end,
-    const void** stride) const {
-  *stride = nullptr;
-  this->get_range(dim_idx, range_idx, start, end);
-}
-
 void Subarray::get_range_from_name(
     const std::string& dim_name,
     uint64_t range_idx,
     const void** start,
-    const void** end,
-    const void** stride) const {
+    const void** end) const {
   unsigned dim_idx =
       array_->array_schema_latest().domain().get_dimension_index(dim_name);
-  get_range(dim_idx, range_idx, start, end, stride);
+  get_range(dim_idx, range_idx, start, end);
 }
 
 void Subarray::get_range_var_size_from_name(
@@ -1602,7 +1572,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
             tile_size -= constants::cell_var_offset_size;
-            auto tile_var_size = meta->tile_var_size(names[i], ft.second);
+            auto tile_var_size =
+                meta->loaded_metadata()->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
@@ -1926,7 +1897,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
           } else {
             tile_size -= constants::cell_var_offset_size;
             (*result_sizes)[n].size_fixed_ += tile_size;
-            auto tile_var_size = meta->tile_var_size(name[n], tid);
+            auto tile_var_size =
+                meta->loaded_metadata()->tile_var_size(name[n], tid);
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
@@ -1966,7 +1938,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
         } else {
           tile_size -= constants::cell_var_offset_size;
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          auto tile_var_size = meta->tile_var_size(name[n], tid);
+          auto tile_var_size =
+              meta->loaded_metadata()->tile_var_size(name[n], tid);
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
@@ -2295,7 +2268,7 @@ void Subarray::precompute_all_ranges_tile_overlap(
                 const auto r_end =
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
-                  meta[f]->compute_tile_bitmap(
+                  meta[f]->loaded_metadata()->compute_tile_bitmap(
                       range_subset_[d][r], d, &tile_bitmaps[d]);
                 }
                 return Status::Ok();
@@ -2549,7 +2522,8 @@ void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
 
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+        meta[relevant_fragments_[f]]->loaded_metadata()->load_rtree(
+            *encryption_key);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -2600,7 +2574,7 @@ void Subarray::compute_relevant_fragment_tile_overlap(
             compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        meta->get_tile_overlap(
+        meta->loaded_metadata()->get_tile_overlap(
             range, is_default_, tile_overlap->at(frag_idx, r));
       }
     }
@@ -2639,7 +2613,8 @@ void Subarray::load_relevant_fragment_tile_var_sizes(
           if (!schema->is_field(var_name)) {
             return Status::Ok();
           }
-          meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+          meta[f]->loaded_metadata()->load_tile_var_sizes(
+              *encryption_key, var_name);
           return Status::Ok();
         });
     throw_if_not_ok(status);

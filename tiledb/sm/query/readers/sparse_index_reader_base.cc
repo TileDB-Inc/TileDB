@@ -287,7 +287,8 @@ uint64_t SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        tiles_size += fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
+        tiles_size += fragment_metadata_[f]->loaded_metadata()->tile_var_size(
+            dim_names_[d], t);
       }
     }
   }
@@ -776,9 +777,10 @@ void SparseIndexReaderBase::apply_query_condition(
             for (uint64_t i = 0; i < delete_and_update_conditions_.size();
                  i++) {
               if (!frag_meta->has_delete_meta() ||
-                  frag_meta->get_processed_conditions_set().count(
-                      delete_and_update_conditions_[i].condition_marker()) ==
-                      0) {
+                  frag_meta->loaded_metadata()
+                          ->get_processed_conditions_set()
+                          .count(delete_and_update_conditions_[i]
+                                     .condition_marker()) == 0) {
                 auto delete_timestamp =
                     delete_and_update_conditions_[i].condition_timestamp();
 

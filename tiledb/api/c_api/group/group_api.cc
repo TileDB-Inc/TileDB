@@ -566,6 +566,7 @@ capi_return_t tiledb_deserialize_group_metadata(
 
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
       group->group().unsafe_metadata(),
+      group->group().config(),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
       buffer->buffer()));
 

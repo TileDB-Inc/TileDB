@@ -228,7 +228,10 @@ single_fragment_info_from_capnp(
 
     auto memory_tracker = fragment_info->resources()->create_memory_tracker();
     meta = make_shared<FragmentMetadata>(
-        HERE(), fragment_info->resources(), memory_tracker);
+        HERE(),
+        fragment_info->resources(),
+        memory_tracker,
+        frag_meta_reader.getVersion());
     auto st =
         fragment_metadata_from_capnp(schema->second, frag_meta_reader, meta);
   } else {
@@ -251,7 +254,7 @@ single_fragment_info_from_capnp(
       expanded_non_empty_domain,
       meta};
   // This is needed so that we don't try to load rtee from disk
-  single_frag_info.meta()->set_rtree_loaded();
+  single_frag_info.meta()->loaded_metadata()->set_rtree_loaded();
 
   return {Status::Ok(), single_frag_info};
 }

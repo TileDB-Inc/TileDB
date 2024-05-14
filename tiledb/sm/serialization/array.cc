@@ -307,11 +307,14 @@ void array_from_capnp(
     fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
       auto meta = make_shared<FragmentMetadata>(
-          HERE(), &resources, array->memory_tracker());
+          HERE(),
+          &resources,
+          array->memory_tracker(),
+          frag_meta_reader.getVersion());
       throw_if_not_ok(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
       if (client_side) {
-        meta->set_rtree_loaded();
+        meta->loaded_metadata()->set_rtree_loaded();
       }
       fragment_metadata.emplace_back(meta);
     }
@@ -430,6 +433,7 @@ Status metadata_serialize(
 
 Status metadata_deserialize(
     Metadata* metadata,
+    const Config& config,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   if (metadata == nullptr)
@@ -453,11 +457,20 @@ Status metadata_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader msg_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = msg_reader.getRoot<capnp::ArrayMetadata>();
 
         // Deserialize
@@ -724,7 +737,8 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
   throw ArraySerializationDisabledException();
 }
 
-Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
+Status metadata_deserialize(
+    Metadata*, const Config&, SerializationType, const Buffer&) {
   throw ArraySerializationDisabledException();
 }
 
