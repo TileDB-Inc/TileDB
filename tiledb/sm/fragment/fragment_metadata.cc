@@ -79,9 +79,9 @@ FragmentMetadata::FragmentMetadata(
     : resources_(resources)
     , memory_tracker_(memory_tracker)
     , version_(version)
-    , offsets_metadata_(
+    , loaded_metadata_(
           LoadedFragmentMetadata::create(*this, memory_tracker, version_))
-    , offsets_metadata_ptr_(offsets_metadata_.get()) {
+    , loaded_metadata_ptr_(loaded_metadata_.get()) {
 }
 
 FragmentMetadata::FragmentMetadata(
@@ -110,9 +110,9 @@ FragmentMetadata::FragmentMetadata(
     , version_(FragmentID{fragment_uri}.array_format_version())
     , timestamp_range_(timestamp_range)
     , array_uri_(array_schema_->array_uri())
-    , offsets_metadata_(
+    , loaded_metadata_(
           LoadedFragmentMetadata::create(*this, memory_tracker, version_))
-    , offsets_metadata_ptr_(offsets_metadata_.get()) {
+    , loaded_metadata_ptr_(loaded_metadata_.get()) {
   build_idx_map();
   array_schema_name_ = array_schema_->name();
 }
@@ -124,7 +124,7 @@ FragmentMetadata::FragmentMetadata(
 void FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
   tile += tile_index_base_;
-  throw_if_not_ok(offsets_metadata_ptr_->rtree().set_leaf(tile, mbr));
+  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(tile, mbr));
   return expand_non_empty_domain(mbr);
 }
 
@@ -138,8 +138,8 @@ void FragmentMetadata::set_tile_offset(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < offsets_metadata_ptr_->tile_offsets()[idx].size());
-  offsets_metadata_ptr_->tile_offsets()[idx][tid] = file_sizes_[idx];
+  assert(tid < loaded_metadata_ptr_->tile_offsets()[idx].size());
+  loaded_metadata_ptr_->tile_offsets()[idx][tid] = file_sizes_[idx];
   file_sizes_[idx] += step;
 }
 
@@ -149,8 +149,8 @@ void FragmentMetadata::set_tile_var_offset(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < offsets_metadata_ptr_->tile_var_offsets()[idx].size());
-  offsets_metadata_ptr_->tile_var_offsets()[idx][tid] = file_var_sizes_[idx];
+  assert(tid < loaded_metadata_ptr_->tile_var_offsets()[idx].size());
+  loaded_metadata_ptr_->tile_var_offsets()[idx][tid] = file_var_sizes_[idx];
   file_var_sizes_[idx] += step;
 }
 
@@ -160,8 +160,8 @@ void FragmentMetadata::set_tile_var_size(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < offsets_metadata_ptr_->tile_var_sizes()[idx].size());
-  offsets_metadata_ptr_->tile_var_sizes()[idx][tid] = size;
+  assert(tid < loaded_metadata_ptr_->tile_var_sizes()[idx].size());
+  loaded_metadata_ptr_->tile_var_sizes()[idx][tid] = size;
 }
 
 void FragmentMetadata::set_tile_validity_offset(
@@ -170,8 +170,8 @@ void FragmentMetadata::set_tile_validity_offset(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < offsets_metadata_ptr_->tile_validity_offsets()[idx].size());
-  offsets_metadata_ptr_->tile_validity_offsets()[idx][tid] =
+  assert(tid < loaded_metadata_ptr_->tile_validity_offsets()[idx].size());
+  loaded_metadata_ptr_->tile_validity_offsets()[idx][tid] =
       file_validity_sizes_[idx];
   file_validity_sizes_[idx] += step;
 }
@@ -184,9 +184,9 @@ void FragmentMetadata::set_tile_min(
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
-  assert(tid < offsets_metadata_ptr_->tile_min_buffer()[idx].size() / size);
+  assert(tid < loaded_metadata_ptr_->tile_min_buffer()[idx].size() / size);
   memcpy(
-      &offsets_metadata_ptr_->tile_min_buffer()[idx][buff_offset],
+      &loaded_metadata_ptr_->tile_min_buffer()[idx][buff_offset],
       min.data(),
       size);
 }
@@ -200,10 +200,10 @@ void FragmentMetadata::set_tile_min_var_size(
   auto buff_offset = tid * sizeof(uint64_t);
   assert(
       tid <
-      offsets_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
+      loaded_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
 
   auto offset =
-      (uint64_t*)&offsets_metadata_ptr_->tile_min_buffer()[idx][buff_offset];
+      (uint64_t*)&loaded_metadata_ptr_->tile_min_buffer()[idx][buff_offset];
   *offset = size;
 }
 
@@ -216,20 +216,20 @@ void FragmentMetadata::set_tile_min_var(
   auto buff_offset = tid * sizeof(uint64_t);
   assert(
       tid <
-      offsets_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
+      loaded_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t));
 
   auto offset =
-      (uint64_t*)&offsets_metadata_ptr_->tile_min_buffer()[idx][buff_offset];
+      (uint64_t*)&loaded_metadata_ptr_->tile_min_buffer()[idx][buff_offset];
   auto size =
-      buff_offset != offsets_metadata_ptr_->tile_min_buffer()[idx].size() -
+      buff_offset != loaded_metadata_ptr_->tile_min_buffer()[idx].size() -
                          sizeof(uint64_t) ?
           offset[1] - offset[0] :
-          offsets_metadata_ptr_->tile_min_var_buffer()[idx].size() - offset[0];
+          loaded_metadata_ptr_->tile_min_var_buffer()[idx].size() - offset[0];
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
     memcpy(
-        &offsets_metadata_ptr_->tile_min_var_buffer()[idx][offset[0]],
+        &loaded_metadata_ptr_->tile_min_var_buffer()[idx][offset[0]],
         min.data(),
         size);
   }
@@ -243,9 +243,9 @@ void FragmentMetadata::set_tile_max(
   auto idx = it->second;
   tid += tile_index_base_;
   auto buff_offset = tid * size;
-  assert(tid < offsets_metadata_ptr_->tile_max_buffer()[idx].size() / size);
+  assert(tid < loaded_metadata_ptr_->tile_max_buffer()[idx].size() / size);
   memcpy(
-      &offsets_metadata_ptr_->tile_max_buffer()[idx][buff_offset],
+      &loaded_metadata_ptr_->tile_max_buffer()[idx][buff_offset],
       max.data(),
       size);
 }
@@ -259,10 +259,10 @@ void FragmentMetadata::set_tile_max_var_size(
   auto buff_offset = tid * sizeof(uint64_t);
   assert(
       tid <
-      offsets_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
+      loaded_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
 
   auto offset =
-      (uint64_t*)&offsets_metadata_ptr_->tile_max_buffer()[idx][buff_offset];
+      (uint64_t*)&loaded_metadata_ptr_->tile_max_buffer()[idx][buff_offset];
   *offset = size;
 }
 
@@ -275,20 +275,20 @@ void FragmentMetadata::set_tile_max_var(
   auto buff_offset = tid * sizeof(uint64_t);
   assert(
       tid <
-      offsets_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
+      loaded_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t));
 
   auto offset =
-      (uint64_t*)&offsets_metadata_ptr_->tile_max_buffer()[idx][buff_offset];
+      (uint64_t*)&loaded_metadata_ptr_->tile_max_buffer()[idx][buff_offset];
   auto size =
-      buff_offset != offsets_metadata_ptr_->tile_max_buffer()[idx].size() -
+      buff_offset != loaded_metadata_ptr_->tile_max_buffer()[idx].size() -
                          sizeof(uint64_t) ?
           offset[1] - offset[0] :
-          offsets_metadata_ptr_->tile_max_var_buffer()[idx].size() - offset[0];
+          loaded_metadata_ptr_->tile_max_var_buffer()[idx].size() - offset[0];
 
   // Copy var data
   if (size) {  // avoid (potentially) illegal index ref's when size is zero
     memcpy(
-        &offsets_metadata_ptr_->tile_max_var_buffer()[idx][offset[0]],
+        &loaded_metadata_ptr_->tile_max_var_buffer()[idx][offset[0]],
         max.data(),
         size);
   }
@@ -301,13 +301,13 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   auto idx = it->second;
 
   // Fix the min offsets.
-  uint64_t offset = offsets_metadata_ptr_->tile_min_var_buffer()[idx].size();
+  uint64_t offset = loaded_metadata_ptr_->tile_min_var_buffer()[idx].size();
   auto offsets =
-      (uint64_t*)offsets_metadata_ptr_->tile_min_buffer()[idx].data() +
+      (uint64_t*)loaded_metadata_ptr_->tile_min_buffer()[idx].data() +
       tile_index_base_;
   for (uint64_t i = tile_index_base_;
        i <
-       offsets_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t);
+       loaded_metadata_ptr_->tile_min_buffer()[idx].size() / sizeof(uint64_t);
        i++) {
     auto size = *offsets;
     *offsets = offset;
@@ -316,15 +316,15 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   }
 
   // Allocate min var data buffer.
-  offsets_metadata_ptr_->tile_min_var_buffer()[idx].resize(offset);
+  loaded_metadata_ptr_->tile_min_var_buffer()[idx].resize(offset);
 
   // Fix the max offsets.
-  offset = offsets_metadata_ptr_->tile_max_var_buffer()[idx].size();
-  offsets = (uint64_t*)offsets_metadata_ptr_->tile_max_buffer()[idx].data() +
+  offset = loaded_metadata_ptr_->tile_max_var_buffer()[idx].size();
+  offsets = (uint64_t*)loaded_metadata_ptr_->tile_max_buffer()[idx].data() +
             tile_index_base_;
   for (uint64_t i = tile_index_base_;
        i <
-       offsets_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t);
+       loaded_metadata_ptr_->tile_max_buffer()[idx].size() / sizeof(uint64_t);
        i++) {
     auto size = *offsets;
     *offsets = offset;
@@ -333,7 +333,7 @@ void FragmentMetadata::convert_tile_min_max_var_sizes_to_offsets(
   }
 
   // Allocate min var data buffer.
-  offsets_metadata_ptr_->tile_max_var_buffer()[idx].resize(offset);
+  loaded_metadata_ptr_->tile_max_var_buffer()[idx].resize(offset);
 }
 
 void FragmentMetadata::set_tile_sum(
@@ -343,9 +343,9 @@ void FragmentMetadata::set_tile_sum(
   auto idx = it->second;
   tid += tile_index_base_;
   assert(
-      tid * sizeof(uint64_t) < offsets_metadata_ptr_->tile_sums()[idx].size());
+      tid * sizeof(uint64_t) < loaded_metadata_ptr_->tile_sums()[idx].size());
   memcpy(
-      &offsets_metadata_ptr_->tile_sums()[idx][tid * sizeof(uint64_t)],
+      &loaded_metadata_ptr_->tile_sums()[idx][tid * sizeof(uint64_t)],
       sum.data(),
       sizeof(uint64_t));
 }
@@ -356,8 +356,8 @@ void FragmentMetadata::set_tile_null_count(
   assert(it != idx_map_.end());
   auto idx = it->second;
   tid += tile_index_base_;
-  assert(tid < offsets_metadata_ptr_->tile_null_counts()[idx].size());
-  offsets_metadata_ptr_->tile_null_counts()[idx][tid] = null_count;
+  assert(tid < loaded_metadata_ptr_->tile_null_counts()[idx].size());
+  loaded_metadata_ptr_->tile_null_counts()[idx][tid] = null_count;
 }
 
 template <>
@@ -381,9 +381,9 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
         const auto type = array_schema_->type(name);
 
         // Compute null count.
-        offsets_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
-            offsets_metadata_ptr_->tile_null_counts()[idx].begin(),
-            offsets_metadata_ptr_->tile_null_counts()[idx].end(),
+        loaded_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
+            loaded_metadata_ptr_->tile_null_counts()[idx].begin(),
+            loaded_metadata_ptr_->tile_null_counts()[idx].end(),
             0);
 
         if (var_size) {
@@ -610,7 +610,7 @@ void FragmentMetadata::add_max_buffer_sizes_dense(
       if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
         it.second.first += cell_num * constants::cell_var_offset_size;
-        it.second.second += offsets_metadata_ptr_->tile_var_size(it.first, tid);
+        it.second.second += loaded_metadata_ptr_->tile_var_size(it.first, tid);
       } else {
         it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
@@ -623,12 +623,12 @@ void FragmentMetadata::add_max_buffer_sizes_sparse(
     const NDRange& subarray,
     std::unordered_map<std::string, std::pair<uint64_t, uint64_t>>*
         buffer_sizes) {
-  offsets_metadata_ptr_->load_rtree(encryption_key);
+  loaded_metadata_ptr_->load_rtree(encryption_key);
 
   // Get tile overlap
   std::vector<bool> is_default(subarray.size(), false);
   auto tile_overlap =
-      offsets_metadata_ptr_->rtree().get_tile_overlap(subarray, is_default);
+      loaded_metadata_ptr_->rtree().get_tile_overlap(subarray, is_default);
 
   // Handle tile ranges
   for (const auto& tr : tile_overlap.tile_ranges_) {
@@ -638,7 +638,7 @@ void FragmentMetadata::add_max_buffer_sizes_sparse(
           auto cell_num = this->cell_num(tid);
           it.second.first += cell_num * constants::cell_var_offset_size;
           it.second.second +=
-              offsets_metadata_ptr_->tile_var_size(it.first, tid);
+              loaded_metadata_ptr_->tile_var_size(it.first, tid);
         } else {
           it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
         }
@@ -653,7 +653,7 @@ void FragmentMetadata::add_max_buffer_sizes_sparse(
       if (array_schema_->var_size(it.first)) {
         auto cell_num = this->cell_num(tid);
         it.second.first += cell_num * constants::cell_var_offset_size;
-        it.second.second += offsets_metadata_ptr_->tile_var_size(it.first, tid);
+        it.second.second += loaded_metadata_ptr_->tile_var_size(it.first, tid);
       } else {
         it.second.first += cell_num(tid) * array_schema_->cell_size(it.first);
       }
@@ -724,7 +724,7 @@ void FragmentMetadata::init(const NDRange& non_empty_domain) {
   last_tile_cell_num_ = 0;
 
   // Initialize tile offsets
-  offsets_metadata_ptr_->resize_offsets(num);
+  loaded_metadata_ptr_->resize_offsets(num);
 
   file_sizes_.resize(num);
   for (unsigned int i = 0; i < num; ++i)
@@ -1187,7 +1187,7 @@ void FragmentMetadata::store_v15_or_higher(
 void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   for (auto& it : idx_map_) {
     auto i = it.second;
-    assert(num_tiles >= offsets_metadata_ptr_->tile_offsets()[i].size());
+    assert(num_tiles >= loaded_metadata_ptr_->tile_offsets()[i].size());
 
     // Get the fixed cell size
     const auto is_dim = array_schema_->is_dim(it.first);
@@ -1195,10 +1195,10 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
     const auto cell_size = var_size ? constants::cell_var_offset_size :
                                       array_schema_->cell_size(it.first);
 
-    offsets_metadata_ptr_->tile_offsets()[i].resize(num_tiles, 0);
-    offsets_metadata_ptr_->tile_var_offsets()[i].resize(num_tiles, 0);
-    offsets_metadata_ptr_->tile_var_sizes()[i].resize(num_tiles, 0);
-    offsets_metadata_ptr_->tile_validity_offsets()[i].resize(num_tiles, 0);
+    loaded_metadata_ptr_->tile_offsets()[i].resize(num_tiles, 0);
+    loaded_metadata_ptr_->tile_var_offsets()[i].resize(num_tiles, 0);
+    loaded_metadata_ptr_->tile_var_sizes()[i].resize(num_tiles, 0);
+    loaded_metadata_ptr_->tile_validity_offsets()[i].resize(num_tiles, 0);
 
     // No metadata for dense coords
     if (!array_schema_->dense() || !is_dim) {
@@ -1207,26 +1207,26 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
 
       if (TileMetadataGenerator::has_min_max_metadata(
               type, is_dim, var_size, cell_val_num)) {
-        offsets_metadata_ptr_->tile_min_buffer()[i].resize(
+        loaded_metadata_ptr_->tile_min_buffer()[i].resize(
             num_tiles * cell_size, 0);
-        offsets_metadata_ptr_->tile_max_buffer()[i].resize(
+        loaded_metadata_ptr_->tile_max_buffer()[i].resize(
             num_tiles * cell_size, 0);
       }
 
       if (TileMetadataGenerator::has_sum_metadata(
               type, var_size, cell_val_num)) {
         if (!var_size)
-          offsets_metadata_ptr_->tile_sums()[i].resize(
+          loaded_metadata_ptr_->tile_sums()[i].resize(
               num_tiles * sizeof(uint64_t), 0);
       }
 
       if (array_schema_->is_nullable(it.first))
-        offsets_metadata_ptr_->tile_null_counts()[i].resize(num_tiles, 0);
+        loaded_metadata_ptr_->tile_null_counts()[i].resize(num_tiles, 0);
     }
   }
 
   if (!dense_) {
-    throw_if_not_ok(offsets_metadata_ptr_->rtree().set_leaf_num(num_tiles));
+    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles));
     sparse_tile_num_ = num_tiles;
   }
 }
@@ -1354,11 +1354,11 @@ const std::string& FragmentMetadata::array_schema_name() {
 }
 
 const NDRange& FragmentMetadata::mbr(uint64_t tile_idx) const {
-  return offsets_metadata_ptr_->rtree().leaf(tile_idx);
+  return loaded_metadata_ptr_->rtree().leaf(tile_idx);
 }
 
 const tdb::pmr::vector<NDRange>& FragmentMetadata::mbrs() const {
-  return offsets_metadata_ptr_->rtree().leaves();
+  return loaded_metadata_ptr_->rtree().leaves();
 }
 
 uint64_t FragmentMetadata::tile_size(
@@ -1381,7 +1381,7 @@ T FragmentMetadata::get_tile_min_as(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!offsets_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
+  if (!loaded_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
     throw FragmentMetadataStatusException(
         "Trying to access tile min metadata that's not loaded");
   }
@@ -1397,7 +1397,7 @@ T FragmentMetadata::get_tile_min_as(
 
   auto size = array_schema_->cell_size(name);
   const void* min =
-      &offsets_metadata_ptr_->tile_min_buffer()[idx][tile_idx * size];
+      &loaded_metadata_ptr_->tile_min_buffer()[idx][tile_idx * size];
   if constexpr (std::is_same_v<T, const void*>) {
     return min;
   } else {
@@ -1418,7 +1418,7 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!offsets_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
+  if (!loaded_metadata_ptr_->loaded_metadata().tile_min_[idx]) {
     throw FragmentMetadataStatusException(
         "Trying to access tile min metadata that's not loaded");
   }
@@ -1435,12 +1435,12 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
   if (var_size) {
     auto tile_num = this->tile_num();
     auto offsets =
-        (uint64_t*)offsets_metadata_ptr_->tile_min_buffer()[idx].data();
+        (uint64_t*)loaded_metadata_ptr_->tile_min_buffer()[idx].data();
     auto min_offset = offsets[tile_idx];
     auto size =
         tile_idx == tile_num - 1 ?
             static_cast<sv_size_cast>(
-                offsets_metadata_ptr_->tile_min_var_buffer()[idx].size() -
+                loaded_metadata_ptr_->tile_min_var_buffer()[idx].size() -
                 min_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - min_offset);
     if (size == 0) {
@@ -1448,12 +1448,12 @@ std::string_view FragmentMetadata::get_tile_min_as<std::string_view>(
     }
 
     const char* min =
-        &offsets_metadata_ptr_->tile_min_var_buffer()[idx][min_offset];
+        &loaded_metadata_ptr_->tile_min_var_buffer()[idx][min_offset];
     return {min, size};
   } else {
     auto size = static_cast<sv_size_cast>(array_schema_->cell_size(name));
     const void* min =
-        &offsets_metadata_ptr_->tile_min_buffer()[idx][tile_idx * size];
+        &loaded_metadata_ptr_->tile_min_buffer()[idx][tile_idx * size];
     return {static_cast<const char*>(min), size};
   }
 }
@@ -1470,7 +1470,7 @@ T FragmentMetadata::get_tile_max_as(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!offsets_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
+  if (!loaded_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
     throw FragmentMetadataStatusException(
         "Trying to access tile max metadata that's not loaded");
   }
@@ -1486,7 +1486,7 @@ T FragmentMetadata::get_tile_max_as(
 
   auto size = array_schema_->cell_size(name);
   const void* max =
-      &offsets_metadata_ptr_->tile_max_buffer()[idx][tile_idx * size];
+      &loaded_metadata_ptr_->tile_max_buffer()[idx][tile_idx * size];
   if constexpr (std::is_same_v<T, const void*>) {
     return max;
   } else {
@@ -1507,7 +1507,7 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
   auto it = idx_map_.find(name);
   assert(it != idx_map_.end());
   auto idx = it->second;
-  if (!offsets_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
+  if (!loaded_metadata_ptr_->loaded_metadata().tile_max_[idx]) {
     throw FragmentMetadataStatusException(
         "Trying to access tile max metadata that's not loaded");
   }
@@ -1524,12 +1524,12 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
   if (var_size) {
     auto tile_num = this->tile_num();
     auto offsets =
-        (uint64_t*)offsets_metadata_ptr_->tile_max_buffer()[idx].data();
+        (uint64_t*)loaded_metadata_ptr_->tile_max_buffer()[idx].data();
     auto max_offset = offsets[tile_idx];
     auto size =
         tile_idx == tile_num - 1 ?
             static_cast<sv_size_cast>(
-                offsets_metadata_ptr_->tile_max_var_buffer()[idx].size() -
+                loaded_metadata_ptr_->tile_max_var_buffer()[idx].size() -
                 max_offset) :
             static_cast<sv_size_cast>(offsets[tile_idx + 1] - max_offset);
     if (size == 0) {
@@ -1537,12 +1537,12 @@ std::string_view FragmentMetadata::get_tile_max_as<std::string_view>(
     }
 
     const char* max =
-        &offsets_metadata_ptr_->tile_max_var_buffer()[idx][max_offset];
+        &loaded_metadata_ptr_->tile_max_var_buffer()[idx][max_offset];
     return {max, size};
   } else {
     auto size = static_cast<sv_size_cast>(array_schema_->cell_size(name));
     const void* max =
-        &offsets_metadata_ptr_->tile_max_buffer()[idx][tile_idx * size];
+        &loaded_metadata_ptr_->tile_max_buffer()[idx][tile_idx * size];
     return {static_cast<const char*>(max), size};
   }
 }
@@ -1559,14 +1559,14 @@ TileMetadata FragmentMetadata::get_tile_metadata(
 
   uint64_t null_count = 0;
   if (array_schema_->is_nullable(name)) {
-    null_count = offsets_metadata_ptr_->get_tile_null_count(name, tile_idx);
+    null_count = loaded_metadata_ptr_->get_tile_null_count(name, tile_idx);
   }
 
   unsigned dim_idx = 0;
   const NDRange* mbr = nullptr;
   if (is_dim) {
     dim_idx = array_schema_->domain().get_dimension_index(name);
-    mbr = &offsets_metadata_ptr_->rtree().leaf(tile_idx);
+    mbr = &loaded_metadata_ptr_->rtree().leaf(tile_idx);
   }
 
   if (var_size) {
@@ -1595,7 +1595,7 @@ TileMetadata FragmentMetadata::get_tile_metadata(
     const auto cell_val_num = array_schema_->cell_val_num(name);
     const void* sum = nullptr;
     if (TileMetadataGenerator::has_sum_metadata(type, false, cell_val_num)) {
-      sum = offsets_metadata_ptr_->get_tile_sum(name, tile_idx);
+      sum = loaded_metadata_ptr_->get_tile_sum(name, tile_idx);
     }
 
     return {count, null_count, min, cell_size, max, cell_size, sum};
@@ -1604,8 +1604,8 @@ TileMetadata FragmentMetadata::get_tile_metadata(
 
 void FragmentMetadata::set_processed_conditions(
     std::vector<std::string>& processed_conditions) {
-  offsets_metadata_ptr_->processed_conditions() = processed_conditions;
-  offsets_metadata_ptr_->processed_conditions_set() =
+  loaded_metadata_ptr_->processed_conditions() = processed_conditions;
+  loaded_metadata_ptr_->processed_conditions_set() =
       std::unordered_set<std::string>(
           processed_conditions.begin(), processed_conditions.end());
 }
@@ -2053,7 +2053,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   mbr_num = deserializer.read<uint64_t>();
 
   // Set leaf level
-  throw_if_not_ok(offsets_metadata_ptr_->rtree().set_leaf_num(mbr_num));
+  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(mbr_num));
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2062,12 +2062,12 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
       uint64_t r_size{2 * domain.dimension_ptr(d)->coord_size()};
       mbr[d] = Range(deserializer.get_ptr<char>(r_size), r_size);
     }
-    throw_if_not_ok(offsets_metadata_ptr_->rtree().set_leaf(m, mbr));
+    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(m, mbr));
   }
 
   // Build R-tree bottom-up
   if (mbr_num > 0) {
-    offsets_metadata_ptr_->rtree().build_tree();
+    loaded_metadata_ptr_->rtree().build_tree();
   }
 
   sparse_tile_num_ = mbr_num;
@@ -2454,11 +2454,11 @@ void FragmentMetadata::load_v1_v2(
   load_mbrs(deserializer);
   load_bounding_coords(deserializer);
   auto v1v2_meta =
-      dynamic_cast<V1V2PreloadedFragmentMetadata*>(offsets_metadata_ptr_);
+      dynamic_cast<V1V2PreloadedFragmentMetadata*>(loaded_metadata_ptr_);
   if (v1v2_meta == nullptr) {
     throw std::logic_error(
         "FragmentMetadata::load_v1_v2 unable to dynamic_cast "
-        "offsets_metadata_ptr_");
+        "loaded_metadata_ptr_");
   }
   v1v2_meta->load_tile_offsets(deserializer);
   v1v2_meta->load_tile_var_offsets(deserializer);
@@ -2549,7 +2549,7 @@ void FragmentMetadata::load_footer(
                  has_delete_meta_ * 2;
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
-  offsets_metadata_ptr_->resize_offsets(num);
+  loaded_metadata_ptr_->resize_offsets(num);
 
   load_generic_tile_offsets(deserializer);
 
@@ -2686,15 +2686,15 @@ void FragmentMetadata::store_rtree(
 }
 
 shared_ptr<WriterTile> FragmentMetadata::write_rtree() {
-  offsets_metadata_ptr_->rtree().build_tree();
+  loaded_metadata_ptr_->rtree().build_tree();
   SizeComputationSerializer size_computation_serializer;
-  offsets_metadata_ptr_->rtree().serialize(size_computation_serializer);
+  loaded_metadata_ptr_->rtree().serialize(size_computation_serializer);
 
   auto tile{WriterTile::from_generic(
       size_computation_serializer.size(), memory_tracker_)};
 
   Serializer serializer(tile->data(), tile->size());
-  offsets_metadata_ptr_->rtree().serialize(serializer);
+  loaded_metadata_ptr_->rtree().serialize(serializer);
 
   return tile;
 }
@@ -2826,13 +2826,13 @@ void FragmentMetadata::store_tile_offsets(
 void FragmentMetadata::write_tile_offsets(
     unsigned idx, Serializer& serializer) {
   // Write number of tile offsets
-  uint64_t tile_offsets_num = offsets_metadata_ptr_->tile_offsets()[idx].size();
+  uint64_t tile_offsets_num = loaded_metadata_ptr_->tile_offsets()[idx].size();
   serializer.write<uint64_t>(tile_offsets_num);
 
   // Write tile offsets
   if (tile_offsets_num != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_offsets()[idx][0],
+        &loaded_metadata_ptr_->tile_offsets()[idx][0],
         tile_offsets_num * sizeof(uint64_t));
   }
 }
@@ -2857,13 +2857,13 @@ void FragmentMetadata::write_tile_var_offsets(
   // Write tile offsets for each attribute
   // Write number of offsets
   uint64_t tile_var_offsets_num =
-      offsets_metadata_ptr_->tile_var_offsets()[idx].size();
+      loaded_metadata_ptr_->tile_var_offsets()[idx].size();
   serializer.write<uint64_t>(tile_var_offsets_num);
 
   // Write tile offsets
   if (tile_var_offsets_num != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_var_offsets()[idx][0],
+        &loaded_metadata_ptr_->tile_var_offsets()[idx][0],
         tile_var_offsets_num * sizeof(uint64_t));
   }
 }
@@ -2887,13 +2887,13 @@ void FragmentMetadata::write_tile_var_sizes(
     unsigned idx, Serializer& serializer) {
   // Write number of sizes
   uint64_t tile_var_sizes_num =
-      offsets_metadata_ptr_->tile_var_sizes()[idx].size();
+      loaded_metadata_ptr_->tile_var_sizes()[idx].size();
   serializer.write<uint64_t>(tile_var_sizes_num);
 
   // Write tile sizes
   if (tile_var_sizes_num != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_var_sizes()[idx][0],
+        &loaded_metadata_ptr_->tile_var_sizes()[idx][0],
         tile_var_sizes_num * sizeof(uint64_t));
   }
 }
@@ -2917,13 +2917,13 @@ void FragmentMetadata::write_tile_validity_offsets(
     unsigned idx, Serializer& serializer) {
   // Write number of tile offsets
   uint64_t tile_validity_offsets_num =
-      offsets_metadata_ptr_->tile_validity_offsets()[idx].size();
+      loaded_metadata_ptr_->tile_validity_offsets()[idx].size();
   serializer.write<uint64_t>(tile_validity_offsets_num);
 
   // Write tile validity offsets
   if (tile_validity_offsets_num != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_validity_offsets()[idx][0],
+        &loaded_metadata_ptr_->tile_validity_offsets()[idx][0],
         tile_validity_offsets_num * sizeof(uint64_t));
   }
 }
@@ -2946,25 +2946,25 @@ void FragmentMetadata::store_tile_mins(
 void FragmentMetadata::write_tile_mins(unsigned idx, Serializer& serializer) {
   // Write size of buffer
   uint64_t tile_mins_buffer_size =
-      offsets_metadata_ptr_->tile_min_buffer()[idx].size();
+      loaded_metadata_ptr_->tile_min_buffer()[idx].size();
   serializer.write<uint64_t>(tile_mins_buffer_size);
 
   // Write size of buffer var
   uint64_t tile_mins_var_buffer_size =
-      offsets_metadata_ptr_->tile_min_var_buffer()[idx].size();
+      loaded_metadata_ptr_->tile_min_var_buffer()[idx].size();
   serializer.write<uint64_t>(tile_mins_var_buffer_size);
 
   // Write tile buffer
   if (tile_mins_buffer_size != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_min_buffer()[idx][0],
+        &loaded_metadata_ptr_->tile_min_buffer()[idx][0],
         tile_mins_buffer_size);
   }
 
   // Write tile var buffer
   if (tile_mins_var_buffer_size != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_min_var_buffer()[idx][0],
+        &loaded_metadata_ptr_->tile_min_var_buffer()[idx][0],
         tile_mins_var_buffer_size);
   }
 }
@@ -2987,25 +2987,25 @@ void FragmentMetadata::store_tile_maxs(
 void FragmentMetadata::write_tile_maxs(unsigned idx, Serializer& serializer) {
   // Write size of buffer
   uint64_t tile_maxs_buffer_size =
-      offsets_metadata_ptr_->tile_max_buffer()[idx].size();
+      loaded_metadata_ptr_->tile_max_buffer()[idx].size();
   serializer.write<uint64_t>(tile_maxs_buffer_size);
 
   // Write size of buffer var
   uint64_t tile_maxs_var_buffer_size =
-      offsets_metadata_ptr_->tile_max_var_buffer()[idx].size();
+      loaded_metadata_ptr_->tile_max_var_buffer()[idx].size();
   serializer.write<uint64_t>(tile_maxs_var_buffer_size);
 
   // Write tile buffer
   if (tile_maxs_buffer_size != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_max_buffer()[idx][0],
+        &loaded_metadata_ptr_->tile_max_buffer()[idx][0],
         tile_maxs_buffer_size);
   }
 
   // Write tile var buffer
   if (tile_maxs_var_buffer_size != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_max_var_buffer()[idx][0],
+        &loaded_metadata_ptr_->tile_max_var_buffer()[idx][0],
         tile_maxs_var_buffer_size);
   }
 }
@@ -3028,13 +3028,13 @@ void FragmentMetadata::store_tile_sums(
 void FragmentMetadata::write_tile_sums(unsigned idx, Serializer& serializer) {
   // Write number of tile sums
   uint64_t tile_sums_num =
-      offsets_metadata_ptr_->tile_sums()[idx].size() / sizeof(uint64_t);
+      loaded_metadata_ptr_->tile_sums()[idx].size() / sizeof(uint64_t);
   serializer.write<uint64_t>(tile_sums_num);
 
   // Write tile sums
   if (tile_sums_num != 0) {
     serializer.write(
-        offsets_metadata_ptr_->tile_sums()[idx].data(),
+        loaded_metadata_ptr_->tile_sums()[idx].data(),
         tile_sums_num * sizeof(uint64_t));
   }
 }
@@ -3058,13 +3058,13 @@ void FragmentMetadata::write_tile_null_counts(
     unsigned idx, Serializer& serializer) {
   // Write number of tile null counts
   uint64_t tile_null_counts_num =
-      offsets_metadata_ptr_->tile_null_counts()[idx].size();
+      loaded_metadata_ptr_->tile_null_counts()[idx].size();
   serializer.write<uint64_t>(tile_null_counts_num);
 
   // Write tile null counts
   if (tile_null_counts_num != 0) {
     serializer.write(
-        &offsets_metadata_ptr_->tile_null_counts()[idx][0],
+        &loaded_metadata_ptr_->tile_null_counts()[idx][0],
         tile_null_counts_num * sizeof(uint64_t));
   }
 }
@@ -3077,25 +3077,25 @@ void FragmentMetadata::store_fragment_min_max_sum_null_count(
     // Store all attributes.
     for (unsigned int i = 0; i < num; ++i) {
       // Store min.
-      uint64_t min_size = offsets_metadata_ptr_->fragment_mins()[i].size();
+      uint64_t min_size = loaded_metadata_ptr_->fragment_mins()[i].size();
       serializer.write<uint64_t>(min_size);
 
       serializer.write(
-          offsets_metadata_ptr_->fragment_mins()[i].data(), min_size);
+          loaded_metadata_ptr_->fragment_mins()[i].data(), min_size);
 
       // Store max.
-      uint64_t max_size = offsets_metadata_ptr_->fragment_maxs()[i].size();
+      uint64_t max_size = loaded_metadata_ptr_->fragment_maxs()[i].size();
       serializer.write<uint64_t>(max_size);
 
       serializer.write(
-          offsets_metadata_ptr_->fragment_maxs()[i].data(), max_size);
+          loaded_metadata_ptr_->fragment_maxs()[i].data(), max_size);
 
       // Store sum.
-      serializer.write<uint64_t>(offsets_metadata_ptr_->fragment_sums()[i]);
+      serializer.write<uint64_t>(loaded_metadata_ptr_->fragment_sums()[i]);
 
       // Store null count.
       serializer.write<uint64_t>(
-          offsets_metadata_ptr_->fragment_null_counts()[i]);
+          loaded_metadata_ptr_->fragment_null_counts()[i]);
     }
   };
 
@@ -3116,11 +3116,11 @@ void FragmentMetadata::store_processed_conditions(
     const EncryptionKey& encryption_key, uint64_t* nbytes) {
   auto serialize_processed_conditions = [this](Serializer& serializer) {
     // Store num conditions.
-    uint64_t num = offsets_metadata_ptr_->processed_conditions().size();
+    uint64_t num = loaded_metadata_ptr_->processed_conditions().size();
     serializer.write<uint64_t>(num);
 
     for (auto& processed_condition :
-         offsets_metadata_ptr_->processed_conditions()) {
+         loaded_metadata_ptr_->processed_conditions()) {
       uint64_t size = processed_condition.size();
       serializer.write<uint64_t>(size);
 
@@ -3163,10 +3163,10 @@ void FragmentMetadata::compute_fragment_min_max_sum(const std::string& name) {
 
       // Get data and tile num.
       auto min_values = static_cast<T*>(static_cast<void*>(
-          offsets_metadata_ptr_->tile_min_buffer()[idx].data()));
+          loaded_metadata_ptr_->tile_min_buffer()[idx].data()));
       auto max_values = static_cast<T*>(static_cast<void*>(
-          offsets_metadata_ptr_->tile_max_buffer()[idx].data()));
-      auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+          loaded_metadata_ptr_->tile_max_buffer()[idx].data()));
+      auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
       auto tile_num = this->tile_num();
 
       // Process tile by tile.
@@ -3179,12 +3179,12 @@ void FragmentMetadata::compute_fragment_min_max_sum(const std::string& name) {
       }
 
       // Copy min max values.
-      offsets_metadata_ptr_->fragment_mins()[idx].resize(sizeof(T));
-      offsets_metadata_ptr_->fragment_maxs()[idx].resize(sizeof(T));
+      loaded_metadata_ptr_->fragment_mins()[idx].resize(sizeof(T));
+      loaded_metadata_ptr_->fragment_maxs()[idx].resize(sizeof(T));
       memcpy(
-          offsets_metadata_ptr_->fragment_mins()[idx].data(), &min, sizeof(T));
+          loaded_metadata_ptr_->fragment_mins()[idx].data(), &min, sizeof(T));
       memcpy(
-          offsets_metadata_ptr_->fragment_maxs()[idx].data(), &max, sizeof(T));
+          loaded_metadata_ptr_->fragment_maxs()[idx].data(), &max, sizeof(T));
     }
 
     if (has_sum) {
@@ -3215,9 +3215,9 @@ void FragmentMetadata::compute_fragment_min_max_sum<char>(
   void* max = nullptr;
 
   // Get data and tile num.
-  auto min_values = offsets_metadata_ptr_->tile_min_buffer()[idx].data();
-  auto max_values = offsets_metadata_ptr_->tile_max_buffer()[idx].data();
-  auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+  auto min_values = loaded_metadata_ptr_->tile_min_buffer()[idx].data();
+  auto max_values = loaded_metadata_ptr_->tile_max_buffer()[idx].data();
+  auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
   auto tile_num = this->tile_num();
 
   // Process tile by tile.
@@ -3240,15 +3240,15 @@ void FragmentMetadata::compute_fragment_min_max_sum<char>(
 
   // Copy values.
   if (min != nullptr) {
-    offsets_metadata_ptr_->fragment_mins()[idx].resize(cell_val_num);
+    loaded_metadata_ptr_->fragment_mins()[idx].resize(cell_val_num);
     memcpy(
-        offsets_metadata_ptr_->fragment_mins()[idx].data(), min, cell_val_num);
+        loaded_metadata_ptr_->fragment_mins()[idx].data(), min, cell_val_num);
   }
 
   if (max != nullptr) {
-    offsets_metadata_ptr_->fragment_maxs()[idx].resize(cell_val_num);
+    loaded_metadata_ptr_->fragment_maxs()[idx].resize(cell_val_num);
     memcpy(
-        offsets_metadata_ptr_->fragment_maxs()[idx].data(), max, cell_val_num);
+        loaded_metadata_ptr_->fragment_maxs()[idx].data(), max, cell_val_num);
   }
 }
 
@@ -3260,8 +3260,8 @@ void FragmentMetadata::compute_fragment_sum<int64_t>(
 
   // Get data and tile num.
   auto values = static_cast<int64_t*>(
-      static_cast<void*>(offsets_metadata_ptr_->tile_sums()[idx].data()));
-  auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+      static_cast<void*>(loaded_metadata_ptr_->tile_sums()[idx].data()));
+  auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
   auto tile_num = this->tile_num();
 
   // Process tile by tile, swallowing overflow exception.
@@ -3285,7 +3285,7 @@ void FragmentMetadata::compute_fragment_sum<int64_t>(
 
   // Copy value.
   memcpy(
-      &offsets_metadata_ptr_->fragment_sums()[idx], &sum_data, sizeof(int64_t));
+      &loaded_metadata_ptr_->fragment_sums()[idx], &sum_data, sizeof(int64_t));
 }
 
 template <>
@@ -3296,8 +3296,8 @@ void FragmentMetadata::compute_fragment_sum<uint64_t>(
 
   // Get data and tile num.
   auto values = static_cast<uint64_t*>(
-      static_cast<void*>(offsets_metadata_ptr_->tile_sums()[idx].data()));
-  auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+      static_cast<void*>(loaded_metadata_ptr_->tile_sums()[idx].data()));
+  auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
   auto tile_num = this->tile_num();
 
   // Process tile by tile, swallowing overflow exception.
@@ -3314,9 +3314,7 @@ void FragmentMetadata::compute_fragment_sum<uint64_t>(
 
   // Copy value.
   memcpy(
-      &offsets_metadata_ptr_->fragment_sums()[idx],
-      &sum_data,
-      sizeof(uint64_t));
+      &loaded_metadata_ptr_->fragment_sums()[idx], &sum_data, sizeof(uint64_t));
 }
 
 template <>
@@ -3327,8 +3325,8 @@ void FragmentMetadata::compute_fragment_sum<double>(
 
   // Get data and tile num.
   auto values = static_cast<double*>(
-      static_cast<void*>(offsets_metadata_ptr_->tile_sums()[idx].data()));
-  auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+      static_cast<void*>(loaded_metadata_ptr_->tile_sums()[idx].data()));
+  auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
   auto tile_num = this->tile_num();
 
   // Process tile by tile, swallowing overflow exception.
@@ -3348,7 +3346,7 @@ void FragmentMetadata::compute_fragment_sum<double>(
 
   // Copy value.
   memcpy(
-      &offsets_metadata_ptr_->fragment_sums()[idx], &sum_data, sizeof(double));
+      &loaded_metadata_ptr_->fragment_sums()[idx], &sum_data, sizeof(double));
 }
 
 void FragmentMetadata::min_max_var(const std::string& name) {
@@ -3373,12 +3371,12 @@ void FragmentMetadata::min_max_var(const std::string& name) {
 
   // Get data and tile num.
   auto min_offsets = static_cast<uint64_t*>(
-      static_cast<void*>(offsets_metadata_ptr_->tile_min_buffer()[idx].data()));
+      static_cast<void*>(loaded_metadata_ptr_->tile_min_buffer()[idx].data()));
   auto max_offsets = static_cast<uint64_t*>(
-      static_cast<void*>(offsets_metadata_ptr_->tile_max_buffer()[idx].data()));
-  auto min_values = offsets_metadata_ptr_->tile_min_var_buffer()[idx].data();
-  auto max_values = offsets_metadata_ptr_->tile_max_var_buffer()[idx].data();
-  auto& null_count_values = offsets_metadata_ptr_->tile_null_counts()[idx];
+      static_cast<void*>(loaded_metadata_ptr_->tile_max_buffer()[idx].data()));
+  auto min_values = loaded_metadata_ptr_->tile_min_var_buffer()[idx].data();
+  auto max_values = loaded_metadata_ptr_->tile_max_var_buffer()[idx].data();
+  auto& null_count_values = loaded_metadata_ptr_->tile_null_counts()[idx];
   auto tile_num = this->tile_num();
 
   // Process tile by tile.
@@ -3387,13 +3385,13 @@ void FragmentMetadata::min_max_var(const std::string& name) {
       auto min_value = min_values + min_offsets[t];
       auto min_value_size =
           t == tile_num - 1 ?
-              offsets_metadata_ptr_->tile_min_var_buffer()[idx].size() -
+              loaded_metadata_ptr_->tile_min_var_buffer()[idx].size() -
                   min_offsets[t] :
               min_offsets[t + 1] - min_offsets[t];
       auto max_value = max_values + max_offsets[t];
       auto max_value_size =
           t == tile_num - 1 ?
-              offsets_metadata_ptr_->tile_max_var_buffer()[idx].size() -
+              loaded_metadata_ptr_->tile_max_var_buffer()[idx].size() -
                   max_offsets[t] :
               max_offsets[t + 1] - max_offsets[t];
       if (min == nullptr && max == nullptr) {
@@ -3438,13 +3436,13 @@ void FragmentMetadata::min_max_var(const std::string& name) {
 
   // Copy values.
   if (min != nullptr) {
-    offsets_metadata_ptr_->fragment_mins()[idx].resize(min_size);
-    memcpy(offsets_metadata_ptr_->fragment_mins()[idx].data(), min, min_size);
+    loaded_metadata_ptr_->fragment_mins()[idx].resize(min_size);
+    memcpy(loaded_metadata_ptr_->fragment_mins()[idx].data(), min, min_size);
   }
 
   if (max != nullptr) {
-    offsets_metadata_ptr_->fragment_maxs()[idx].resize(max_size);
-    memcpy(offsets_metadata_ptr_->fragment_maxs()[idx].data(), max, max_size);
+    loaded_metadata_ptr_->fragment_maxs()[idx].resize(max_size);
+    memcpy(loaded_metadata_ptr_->fragment_maxs()[idx].data(), max, max_size);
   }
 }
 

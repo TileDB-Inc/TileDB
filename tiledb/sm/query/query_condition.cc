@@ -647,7 +647,7 @@ void QueryCondition::apply_ast_node(
       if (field_name == constants::delete_timestamps &&
           (!fragment_metadata[f]->has_delete_meta() ||
            fragment_metadata[f]
-                   ->offsets_metadata()
+                   ->loaded_metadata()
                    ->get_processed_conditions_set()
                    .count(condition_marker_) != 0)) {
         assert(Op == QueryConditionOp::GT);

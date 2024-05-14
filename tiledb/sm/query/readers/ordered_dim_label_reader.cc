@@ -329,9 +329,9 @@ void OrderedDimLabelReader::load_label_min_max_values() {
       [&](const uint64_t i) {
         auto& fragment = fragment_metadata_[i];
         std::vector<std::string> names = {label_name_};
-        fragment->offsets_metadata()->load_tile_min_values(
+        fragment->loaded_metadata()->load_tile_min_values(
             *encryption_key, names);
-        fragment->offsets_metadata()->load_tile_max_values(
+        fragment->loaded_metadata()->load_tile_max_values(
             *encryption_key, names);
         return Status::Ok();
       }));
@@ -452,8 +452,8 @@ OrderedDimLabelReader::get_array_tile_indexes_for_range(
 uint64_t OrderedDimLabelReader::label_tile_size(unsigned f, uint64_t t) const {
   uint64_t tile_size = fragment_metadata_[f]->tile_size(label_name_, t);
   if (label_var_size_) {
-    tile_size += fragment_metadata_[f]->offsets_metadata()->tile_var_size(
-        label_name_, t);
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->tile_var_size(label_name_, t);
   }
 
   return tile_size;

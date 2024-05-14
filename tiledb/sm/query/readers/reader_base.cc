@@ -450,7 +450,7 @@ void ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        fragment->offsets_metadata()->load_tile_offsets(
+        fragment->loaded_metadata()->load_tile_offsets(
             *encryption_key, filtered_names);
         return Status::Ok();
       }));
@@ -483,7 +483,7 @@ void ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          fragment->offsets_metadata()->load_tile_var_sizes(
+          fragment->loaded_metadata()->load_tile_var_sizes(
               *encryption_key, name);
         }
 
@@ -520,13 +520,13 @@ void ReaderBase::load_tile_metadata(
           }
         }
 
-        fragment->offsets_metadata()->load_tile_max_values(
+        fragment->loaded_metadata()->load_tile_max_values(
             *encryption_key, to_load);
-        fragment->offsets_metadata()->load_tile_min_values(
+        fragment->loaded_metadata()->load_tile_min_values(
             *encryption_key, to_load);
-        fragment->offsets_metadata()->load_tile_sum_values(
+        fragment->loaded_metadata()->load_tile_sum_values(
             *encryption_key, to_load);
-        fragment->offsets_metadata()->load_tile_null_count_values(
+        fragment->loaded_metadata()->load_tile_null_count_values(
             *encryption_key, to_load);
 
         return Status::Ok();
@@ -546,7 +546,7 @@ void ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          fragment->offsets_metadata()->load_processed_conditions(
+          fragment->loaded_metadata()->load_processed_conditions(
               *encryption_key);
         }
 
@@ -1066,7 +1066,7 @@ uint64_t ReaderBase::get_attribute_tile_size(
 
   if (array_schema_.var_size(name)) {
     tile_size +=
-        fragment_metadata_[f]->offsets_metadata()->tile_var_size(name, t);
+        fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
   }
 
   if (array_schema_.is_nullable(name)) {

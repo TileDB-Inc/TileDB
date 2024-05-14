@@ -87,6 +87,10 @@ class OndemandFragmentMetadata : public LoadedFragmentMetadata {
 
   /**
    * Retrieves the overlap of all MBRs with the input ND range.
+   *
+   * @param range The range to use
+   * @param is_default If default range should be used
+   * @param tile_overlap The resulted tile overlap
    */
   virtual void get_tile_overlap(
       const NDRange& range,
@@ -95,6 +99,10 @@ class OndemandFragmentMetadata : public LoadedFragmentMetadata {
 
   /**
    * Compute tile bitmap for the curent fragment/range/dimension.
+   *
+   * @param range The range to use
+   * @param d The dimension index
+   * @param tile_bitmap The resulted tile bitmap
    */
   virtual void compute_tile_bitmap(
       const Range& range,

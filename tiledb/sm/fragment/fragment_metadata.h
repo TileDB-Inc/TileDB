@@ -819,12 +819,12 @@ class FragmentMetadata {
     resources_ = cr;
   }
 
-  inline LoadedFragmentMetadata* offsets_metadata() {
-    return offsets_metadata_ptr_;
+  inline LoadedFragmentMetadata* loaded_metadata() {
+    return loaded_metadata_ptr_;
   }
 
-  inline const LoadedFragmentMetadata* offsets_metadata() const {
-    return offsets_metadata_ptr_;
+  inline const LoadedFragmentMetadata* loaded_metadata() const {
+    return loaded_metadata_ptr_;
   }
 
  private:
@@ -927,9 +927,9 @@ class FragmentMetadata {
   /** The uri of the array the metadata belongs to. */
   URI array_uri_;
 
-  shared_ptr<LoadedFragmentMetadata> offsets_metadata_;
+  shared_ptr<LoadedFragmentMetadata> loaded_metadata_;
 
-  LoadedFragmentMetadata* offsets_metadata_ptr_;
+  LoadedFragmentMetadata* loaded_metadata_ptr_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

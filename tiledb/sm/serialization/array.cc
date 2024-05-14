@@ -314,7 +314,7 @@ void array_from_capnp(
       throw_if_not_ok(fragment_metadata_from_capnp(
           array->array_schema_latest_ptr(), frag_meta_reader, meta));
       if (client_side) {
-        meta->offsets_metadata()->set_rtree_loaded();
+        meta->loaded_metadata()->set_rtree_loaded();
       }
       fragment_metadata.emplace_back(meta);
     }

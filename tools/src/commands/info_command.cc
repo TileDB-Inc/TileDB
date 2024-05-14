@@ -142,18 +142,18 @@ void InfoCommand::print_tile_sizes() const {
       uint64_t tile_num = f->tile_num();
       std::vector<std::string> names;
       names.push_back(name);
-      f->offsets_metadata()->load_tile_offsets(enc_key, names);
-      f->offsets_metadata()->load_tile_var_sizes(enc_key, name);
+      f->loaded_metadata()->load_tile_offsets(enc_key, names);
+      f->loaded_metadata()->load_tile_var_sizes(enc_key, name);
       for (uint64_t tile_idx = 0; tile_idx < tile_num; tile_idx++) {
         persisted_tile_size +=
-            f->offsets_metadata()->persisted_tile_size(name, tile_idx);
+            f->loaded_metadata()->persisted_tile_size(name, tile_idx);
         in_memory_tile_size += f->tile_size(name, tile_idx);
         num_tiles++;
         if (var_size) {
           persisted_tile_size +=
-              f->offsets_metadata()->persisted_tile_var_size(name, tile_idx);
+              f->loaded_metadata()->persisted_tile_var_size(name, tile_idx);
           in_memory_tile_size +=
-              f->offsets_metadata()->tile_var_size(name, tile_idx);
+              f->loaded_metadata()->tile_var_size(name, tile_idx);
           num_tiles++;
         }
       }
@@ -301,7 +301,7 @@ void InfoCommand::write_text_mbrs() const {
   auto fragment_metadata = array.fragment_metadata();
   std::stringstream text;
   for (const auto& f : fragment_metadata) {
-    f->offsets_metadata()->load_rtree(*encryption_key);
+    f->loaded_metadata()->load_rtree(*encryption_key);
     const auto& mbrs = f->mbrs();
     for (const auto& mbr : mbrs) {
       auto str_mbr = mbr_to_string(mbr, schema.domain());

@@ -285,18 +285,18 @@ struct CPPFixedTileMetadataFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    frag_meta[f]->offsets_metadata()->load_fragment_min_max_sum_null_count(
+    frag_meta[f]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
     // Load the metadata and validate coords netadata.
     bool has_coords = layout != TILEDB_ROW_MAJOR;
     if (has_coords) {
       std::vector<std::string> names{"d"};
-      frag_meta[f]->offsets_metadata()->load_rtree(enc_key);
-      frag_meta[f]->offsets_metadata()->load_tile_min_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_max_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_null_count_values(
+      frag_meta[f]->loaded_metadata()->load_rtree(enc_key);
+      frag_meta[f]->loaded_metadata()->load_tile_min_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_max_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_null_count_values(
           enc_key, names);
 
       // Validation.
@@ -309,18 +309,18 @@ struct CPPFixedTileMetadataFx {
 
           // Validate no min.
           CHECK_THROWS_WITH(
-              frag_meta[f]->offsets_metadata()->get_min("d"),
+              frag_meta[f]->loaded_metadata()->get_min("d"),
               "FragmentMetadata: Trying to access fragment min metadata that's "
               "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
-              frag_meta[f]->offsets_metadata()->get_max("d"),
+              frag_meta[f]->loaded_metadata()->get_max("d"),
               "FragmentMetadata: Trying to access fragment max metadata that's "
               "not present");
 
           // Validate sum.
-          auto sum = frag_meta[f]->offsets_metadata()->get_sum("d");
+          auto sum = frag_meta[f]->loaded_metadata()->get_sum("d");
           CHECK(*(int64_t*)sum == correct_sum);
         }
 
@@ -344,7 +344,7 @@ struct CPPFixedTileMetadataFx {
 
           // Validate sum.
           auto sum =
-              frag_meta[f]->offsets_metadata()->get_tile_sum("d", tile_idx);
+              frag_meta[f]->loaded_metadata()->get_tile_sum("d", tile_idx);
           CHECK(*(int64_t*)sum == correct_sum);
 
           // Validate the tile metadata structure.
@@ -362,19 +362,19 @@ struct CPPFixedTileMetadataFx {
       if constexpr (std::is_same<TestType, std::byte>::value) {
         // Validate no min.
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_min("a"),
+            frag_meta[f]->loaded_metadata()->get_min("a"),
             "FragmentMetadata: Trying to access fragment min metadata that's "
             "not present");
 
         // Validate no max.
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_max("a"),
+            frag_meta[f]->loaded_metadata()->get_max("a"),
             "FragmentMetadata: Trying to access fragment max metadata that's "
             "not present");
 
         // Validate no sum.
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_sum("a"),
+            frag_meta[f]->loaded_metadata()->get_sum("a"),
             "FragmentMetadata: Trying to access fragment sum metadata that's "
             "not present");
       } else {
@@ -382,7 +382,7 @@ struct CPPFixedTileMetadataFx {
         if (!all_null) {
           if constexpr (std::is_same<TestType, char>::value) {
             // Validate min.
-            auto& min = frag_meta[f]->offsets_metadata()->get_min("a");
+            auto& min = frag_meta[f]->loaded_metadata()->get_min("a");
             CHECK(min.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
@@ -396,7 +396,7 @@ struct CPPFixedTileMetadataFx {
                          cell_val_num));
 
             // Validate max.
-            auto& max = frag_meta[f]->offsets_metadata()->get_max("a");
+            auto& max = frag_meta[f]->loaded_metadata()->get_max("a");
             CHECK(max.size() == cell_val_num);
 
             // For strings, the index is stored in a signed value, switch to
@@ -411,23 +411,23 @@ struct CPPFixedTileMetadataFx {
 
             // Validate no sum.
             CHECK_THROWS_WITH(
-                frag_meta[f]->offsets_metadata()->get_sum("a"),
+                frag_meta[f]->loaded_metadata()->get_sum("a"),
                 "FragmentMetadata: Trying to access fragment sum metadata "
                 "that's not present");
           } else {
             // Validate min.
-            auto& min = frag_meta[f]->offsets_metadata()->get_min("a");
+            auto& min = frag_meta[f]->loaded_metadata()->get_min("a");
             CHECK(min.size() == sizeof(TestType));
             CHECK(0 == memcmp(min.data(), &correct_mins_[f], min.size()));
 
             // Validate max.
-            auto& max = frag_meta[f]->offsets_metadata()->get_max("a");
+            auto& max = frag_meta[f]->loaded_metadata()->get_max("a");
             CHECK(max.size() == sizeof(TestType));
             CHECK(0 == memcmp(max.data(), &correct_maxs_[f], max.size()));
 
             if constexpr (!std::is_same<TestType, unsigned char>::value) {
               // Validate sum.
-              auto sum = frag_meta[f]->offsets_metadata()->get_sum("a");
+              auto sum = frag_meta[f]->loaded_metadata()->get_sum("a");
               if constexpr (std::is_integral_v<TestType>) {
                 CHECK(*(int64_t*)sum == correct_sums_int_[f]);
               } else {
@@ -440,11 +440,11 @@ struct CPPFixedTileMetadataFx {
 
       // Check null count.
       if (nullable) {
-        auto nc = frag_meta[f]->offsets_metadata()->get_null_count("a");
+        auto nc = frag_meta[f]->loaded_metadata()->get_null_count("a");
         CHECK(nc == correct_null_counts_[f]);
       } else {
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_null_count("a"),
+            frag_meta[f]->loaded_metadata()->get_null_count("a"),
             "FragmentMetadata: Trying to access fragment null count metadata "
             "that's not present");
       }
@@ -452,10 +452,10 @@ struct CPPFixedTileMetadataFx {
 
     // Load attribute metadata.
     std::vector<std::string> names{"a"};
-    frag_meta[f]->offsets_metadata()->load_tile_min_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_max_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_null_count_values(
+    frag_meta[f]->loaded_metadata()->load_tile_min_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_max_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_null_count_values(
         enc_key, names);
 
     // Validate attribute metadta.
@@ -475,7 +475,7 @@ struct CPPFixedTileMetadataFx {
 
       // Validate no sum.
       CHECK_THROWS_WITH(
-          frag_meta[f]->offsets_metadata()->get_tile_sum("a", 0),
+          frag_meta[f]->loaded_metadata()->get_tile_sum("a", 0),
           "FragmentMetadata: Trying to access tile sum metadata that's not "
           "present");
     } else {
@@ -512,7 +512,7 @@ struct CPPFixedTileMetadataFx {
 
             // Validate no sum.
             CHECK_THROWS_WITH(
-                frag_meta[f]->offsets_metadata()->get_tile_sum("a", tile_idx),
+                frag_meta[f]->loaded_metadata()->get_tile_sum("a", tile_idx),
                 "FragmentMetadata: Trying to access tile sum metadata that's "
                 "not "
                 "present");
@@ -559,7 +559,7 @@ struct CPPFixedTileMetadataFx {
             if constexpr (!std::is_same<TestType, unsigned char>::value) {
               // Validate sum.
               auto sum =
-                  frag_meta[f]->offsets_metadata()->get_tile_sum("a", tile_idx);
+                  frag_meta[f]->loaded_metadata()->get_tile_sum("a", tile_idx);
               if constexpr (std::is_integral_v<TestType>) {
                 CHECK(*(int64_t*)sum == correct_tile_sums_int_[f][tile_idx]);
                 CHECK(
@@ -580,13 +580,12 @@ struct CPPFixedTileMetadataFx {
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
       if (nullable) {
-        auto nc = frag_meta[f]->offsets_metadata()->get_tile_null_count(
-            "a", tile_idx);
+        auto nc =
+            frag_meta[f]->loaded_metadata()->get_tile_null_count("a", tile_idx);
         CHECK(nc == correct_tile_null_counts_[f][tile_idx]);
       } else {
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_tile_null_count(
-                "a", tile_idx),
+            frag_meta[f]->loaded_metadata()->get_tile_null_count("a", tile_idx),
             "FragmentMetadata: Trying to access tile null count metadata "
             "that's not present");
       }
@@ -837,18 +836,18 @@ struct CPPVarTileMetadataFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    frag_meta[f]->offsets_metadata()->load_fragment_min_max_sum_null_count(
+    frag_meta[f]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
     // Load the metadata and validate coords netadata.
     bool has_coords = layout != TILEDB_ROW_MAJOR;
     if (has_coords) {
       std::vector<std::string> names{"d"};
-      frag_meta[f]->offsets_metadata()->load_rtree(enc_key);
-      frag_meta[f]->offsets_metadata()->load_tile_min_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_max_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-      frag_meta[f]->offsets_metadata()->load_tile_null_count_values(
+      frag_meta[f]->loaded_metadata()->load_rtree(enc_key);
+      frag_meta[f]->loaded_metadata()->load_tile_min_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_max_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+      frag_meta[f]->loaded_metadata()->load_tile_null_count_values(
           enc_key, names);
 
       // Validation.
@@ -861,18 +860,18 @@ struct CPPVarTileMetadataFx {
 
           // Validate no min.
           CHECK_THROWS_WITH(
-              frag_meta[f]->offsets_metadata()->get_min("d"),
+              frag_meta[f]->loaded_metadata()->get_min("d"),
               "FragmentMetadata: Trying to access fragment min metadata that's "
               "not present");
 
           // Validate no max.
           CHECK_THROWS_WITH(
-              frag_meta[f]->offsets_metadata()->get_max("d"),
+              frag_meta[f]->loaded_metadata()->get_max("d"),
               "FragmentMetadata: Trying to access fragment max metadata that's "
               "not present");
 
           // Validate sum.
-          auto sum = frag_meta[f]->offsets_metadata()->get_sum("d");
+          auto sum = frag_meta[f]->loaded_metadata()->get_sum("d");
           CHECK(*(int64_t*)sum == correct_sum);
         }
 
@@ -896,7 +895,7 @@ struct CPPVarTileMetadataFx {
 
           // Validate sum.
           auto sum =
-              frag_meta[f]->offsets_metadata()->get_tile_sum("d", tile_idx);
+              frag_meta[f]->loaded_metadata()->get_tile_sum("d", tile_idx);
           CHECK(*(int64_t*)sum == correct_sum);
 
           // Validate the tile metadata structure.
@@ -913,7 +912,7 @@ struct CPPVarTileMetadataFx {
       // Min/max/sum for all null tile are invalid.
       if (!all_null) {
         // Validate min.
-        auto& min = frag_meta[f]->offsets_metadata()->get_min("a");
+        auto& min = frag_meta[f]->loaded_metadata()->get_min("a");
         CHECK(min.size() == strings_[correct_mins_[f]].size());
         CHECK(
             0 == strncmp(
@@ -922,7 +921,7 @@ struct CPPVarTileMetadataFx {
                      strings_[correct_mins_[f]].size()));
 
         // Validate max.
-        auto& max = frag_meta[f]->offsets_metadata()->get_max("a");
+        auto& max = frag_meta[f]->loaded_metadata()->get_max("a");
         CHECK(max.size() == strings_[correct_maxs_[f]].size());
         CHECK(
             0 == strncmp(
@@ -932,18 +931,18 @@ struct CPPVarTileMetadataFx {
 
         // Validate no sum.
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_sum("a"),
+            frag_meta[f]->loaded_metadata()->get_sum("a"),
             "FragmentMetadata: Trying to access fragment sum metadata that's "
             "not present");
       }
 
       // Check null count.
       if (nullable) {
-        auto nc = frag_meta[f]->offsets_metadata()->get_null_count("a");
+        auto nc = frag_meta[f]->loaded_metadata()->get_null_count("a");
         CHECK(nc == correct_null_counts_[f]);
       } else {
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_null_count("a"),
+            frag_meta[f]->loaded_metadata()->get_null_count("a"),
             "FragmentMetadata: Trying to access fragment null count metadata "
             "that's not present");
       }
@@ -951,10 +950,10 @@ struct CPPVarTileMetadataFx {
 
     // Load attribute metadata.
     std::vector<std::string> names{"a"};
-    frag_meta[f]->offsets_metadata()->load_tile_min_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_max_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-    frag_meta[f]->offsets_metadata()->load_tile_null_count_values(
+    frag_meta[f]->loaded_metadata()->load_tile_min_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_max_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+    frag_meta[f]->loaded_metadata()->load_tile_null_count_values(
         enc_key, names);
 
     // Validate attribute metadata.
@@ -985,7 +984,7 @@ struct CPPVarTileMetadataFx {
 
         // Validate no sum.
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_tile_sum("a", tile_idx),
+            frag_meta[f]->loaded_metadata()->get_tile_sum("a", tile_idx),
             "FragmentMetadata: Trying to access tile sum metadata that's not "
             "present");
 
@@ -999,13 +998,12 @@ struct CPPVarTileMetadataFx {
     // Check null count.
     for (uint64_t tile_idx = 0; tile_idx < num_tiles_; tile_idx++) {
       if (nullable) {
-        auto nc = frag_meta[f]->offsets_metadata()->get_tile_null_count(
-            "a", tile_idx);
+        auto nc =
+            frag_meta[f]->loaded_metadata()->get_tile_null_count("a", tile_idx);
         CHECK(nc == correct_tile_null_counts_[f][tile_idx]);
       } else {
         CHECK_THROWS_WITH(
-            frag_meta[f]->offsets_metadata()->get_tile_null_count(
-                "a", tile_idx),
+            frag_meta[f]->loaded_metadata()->get_tile_null_count("a", tile_idx),
             "FragmentMetadata: Trying to access tile null count metadata "
             "that's not present");
       }
@@ -1170,37 +1168,37 @@ struct CPPFixedTileMetadataPartialFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    frag_meta[0]->offsets_metadata()->load_fragment_min_max_sum_null_count(
+    frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
     // Do fragment metadata first for attribute.
     {
       // Validate min.
-      auto& min = frag_meta[0]->offsets_metadata()->get_min("a");
+      auto& min = frag_meta[0]->loaded_metadata()->get_min("a");
       CHECK(min.size() == sizeof(double));
 
       double correct_min = 1.1;
       CHECK(0 == memcmp(min.data(), &correct_min, min.size()));
 
       // Validate max.
-      auto& max = frag_meta[0]->offsets_metadata()->get_max("a");
+      auto& max = frag_meta[0]->loaded_metadata()->get_max("a");
       CHECK(max.size() == sizeof(double));
 
       double correct_max = 4.9;
       CHECK(0 == memcmp(max.data(), &correct_max, max.size()));
 
       // Validate sum.
-      auto sum = frag_meta[0]->offsets_metadata()->get_sum("a");
+      auto sum = frag_meta[0]->loaded_metadata()->get_sum("a");
       double correct_sum = 46.7;
       CHECK(*(double*)sum - correct_sum < 0.0001);
     }
 
     // Load attribute metadata.
     std::vector<std::string> names{"a"};
-    frag_meta[0]->offsets_metadata()->load_tile_min_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_max_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_null_count_values(
+    frag_meta[0]->loaded_metadata()->load_tile_min_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_max_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_null_count_values(
         enc_key, names);
 
     std::vector<double> correct_tile_mins{1.1, 2.1, 3.2, 4.1};
@@ -1218,7 +1216,7 @@ struct CPPFixedTileMetadataPartialFx {
       CHECK(0 == memcmp(&max, &correct_tile_maxs[tile_idx], sizeof(double)));
 
       // Validate sum.
-      auto sum = frag_meta[0]->offsets_metadata()->get_tile_sum("a", tile_idx);
+      auto sum = frag_meta[0]->loaded_metadata()->get_tile_sum("a", tile_idx);
       CHECK(*(double*)sum - correct_tile_sums[tile_idx] < 0.0001);
 
       // Validate the tile metadata structure.
@@ -1350,19 +1348,19 @@ struct CPPVarTileMetadataPartialFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    frag_meta[0]->offsets_metadata()->load_fragment_min_max_sum_null_count(
+    frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
     // Do fragment metadata first for attribute.
     {
       // Validate min.
-      auto& min = frag_meta[0]->offsets_metadata()->get_min("a");
+      auto& min = frag_meta[0]->loaded_metadata()->get_min("a");
       std::string correct_min = "1.1";
       CHECK(min.size() == correct_min.size());
       CHECK(0 == memcmp(min.data(), correct_min.data(), min.size()));
 
       // Validate max.
-      auto& max = frag_meta[0]->offsets_metadata()->get_max("a");
+      auto& max = frag_meta[0]->loaded_metadata()->get_max("a");
       std::string correct_max = "4.9";
       CHECK(max.size() == correct_max.size());
       CHECK(0 == memcmp(max.data(), correct_max.data(), max.size()));
@@ -1370,10 +1368,10 @@ struct CPPVarTileMetadataPartialFx {
 
     // Load attribute metadata.
     std::vector<std::string> names{"a"};
-    frag_meta[0]->offsets_metadata()->load_tile_min_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_max_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_null_count_values(
+    frag_meta[0]->loaded_metadata()->load_tile_min_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_max_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_null_count_values(
         enc_key, names);
 
     std::vector<std::string> correct_tile_mins{"1.1", "2.1", "3.2", "4.1"};
@@ -1518,49 +1516,49 @@ struct CPPTileMetadataStringDimFx {
     // Load fragment metadata.
     auto frag_meta = array->array_->fragment_metadata();
     auto& enc_key = array->array_->get_encryption_key();
-    frag_meta[0]->offsets_metadata()->load_fragment_min_max_sum_null_count(
+    frag_meta[0]->loaded_metadata()->load_fragment_min_max_sum_null_count(
         enc_key);
 
     // Do fragment metadata first.
     {
       // Validate mins.
-      auto& min = frag_meta[0]->offsets_metadata()->get_min("a");
+      auto& min = frag_meta[0]->loaded_metadata()->get_min("a");
       CHECK(min.size() == sizeof(double));
       CHECK(*static_cast<double*>(static_cast<void*>(min.data())) == 4);
 
       CHECK_THROWS_WITH(
-          frag_meta[0]->offsets_metadata()->get_min("d1"),
+          frag_meta[0]->loaded_metadata()->get_min("d1"),
           "FragmentMetadata: Trying to access fragment min metadata that's "
           "not present");
 
       CHECK_THROWS_WITH(
-          frag_meta[0]->offsets_metadata()->get_min("d2"),
+          frag_meta[0]->loaded_metadata()->get_min("d2"),
           "FragmentMetadata: Trying to access fragment min metadata that's "
           "not present");
 
       // Validate maxs.
-      auto& max = frag_meta[0]->offsets_metadata()->get_max("a");
+      auto& max = frag_meta[0]->loaded_metadata()->get_max("a");
       CHECK(max.size() == sizeof(double));
       CHECK(*static_cast<double*>(static_cast<void*>(max.data())) == 7);
 
       CHECK_THROWS_WITH(
-          frag_meta[0]->offsets_metadata()->get_max("d1"),
+          frag_meta[0]->loaded_metadata()->get_max("d1"),
           "FragmentMetadata: Trying to access fragment max metadata that's "
           "not present");
 
       CHECK_THROWS_WITH(
-          frag_meta[0]->offsets_metadata()->get_max("d2"),
+          frag_meta[0]->loaded_metadata()->get_max("d2"),
           "FragmentMetadata: Trying to access fragment max metadata that's "
           "not present");
     }
 
     // Load metadata.
     std::vector<std::string> names{"a", "d1", "d2"};
-    frag_meta[0]->offsets_metadata()->load_rtree(enc_key);
-    frag_meta[0]->offsets_metadata()->load_tile_min_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_max_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_sum_values(enc_key, names);
-    frag_meta[0]->offsets_metadata()->load_tile_null_count_values(
+    frag_meta[0]->loaded_metadata()->load_rtree(enc_key);
+    frag_meta[0]->loaded_metadata()->load_tile_min_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_max_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_sum_values(enc_key, names);
+    frag_meta[0]->loaded_metadata()->load_tile_null_count_values(
         enc_key, names);
 
     // Validate min.
@@ -1587,7 +1585,7 @@ struct CPPTileMetadataStringDimFx {
 
     // Validate sum.
     CHECK(
-        *(double*)frag_meta[0]->offsets_metadata()->get_tile_sum("a", 0) == 22);
+        *(double*)frag_meta[0]->loaded_metadata()->get_tile_sum("a", 0) == 22);
 
     // Validate the tile metadata structure.
     auto full_tile_data_a = frag_meta[0]->get_tile_metadata("a", 0);

@@ -474,7 +474,7 @@ Status FragmentInfo::get_mbr_num(uint32_t fid, uint64_t* mbr_num) {
   }
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  meta->offsets_metadata()->load_rtree(enc_key_);
+  meta->loaded_metadata()->load_rtree(enc_key_);
   *mbr_num = meta->mbrs().size();
 
   return Status::Ok();
@@ -496,7 +496,7 @@ Status FragmentInfo::get_mbr(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  meta->offsets_metadata()->load_rtree(enc_key_);
+  meta->loaded_metadata()->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -578,7 +578,7 @@ Status FragmentInfo::get_mbr_var_size(
         Status_FragmentInfoError("Cannot get MBR; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  meta->offsets_metadata()->load_rtree(enc_key_);
+  meta->loaded_metadata()->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -658,7 +658,7 @@ Status FragmentInfo::get_mbr_var(
         Status_FragmentInfoError("Cannot get MBR var; Fragment is not sparse"));
 
   auto meta = single_fragment_info_vec_[fid].meta();
-  meta->offsets_metadata()->load_rtree(enc_key_);
+  meta->loaded_metadata()->load_rtree(enc_key_);
   const auto& mbrs = meta->mbrs();
 
   if (mid >= mbrs.size())
@@ -881,7 +881,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         }
 
         if (preload_rtrees & !meta->dense()) {
-          meta->offsets_metadata()->load_rtree(enc_key_);
+          meta->loaded_metadata()->load_rtree(enc_key_);
         }
 
         return Status::Ok();

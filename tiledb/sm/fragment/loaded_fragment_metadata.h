@@ -499,7 +499,7 @@ class LoadedFragmentMetadata {
   /**
    * Sets loaded metadata, used in serialization
    *
-   * @param tile_bitmap The resulted tile bitmap
+   * @param loaded_metadata The metadata to set
    */
   inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
     loaded_metadata_ = loaded_metadata;
@@ -711,6 +711,9 @@ class LoadedFragmentMetadata {
   /**
    * Loads the tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_offsets(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
@@ -718,6 +721,9 @@ class LoadedFragmentMetadata {
   /**
    * Loads the variable tile offsets for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_offsets(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
@@ -725,36 +731,54 @@ class LoadedFragmentMetadata {
   /**
    * Loads the variable tile sizes for the input attribute or dimension idx
    * from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_var_sizes(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
 
   /**
    * Loads the validity tile offsets for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_validity_offsets(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
 
   /**
    * Loads the min values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_min_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
 
   /**
    * Loads the max values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_max_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
 
   /**
    * Loads the sum values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_sum_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
 
   /**
    * Loads the null count values for the input attribute idx from storage.
+   *
+   * @param encription_key The encryption key
+   * @param idx Dimension index
    */
   virtual void load_tile_null_count_values(
       const EncryptionKey& encryption_key, unsigned idx) = 0;
