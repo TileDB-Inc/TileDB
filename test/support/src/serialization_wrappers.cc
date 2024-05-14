@@ -141,7 +141,13 @@ int array_serialize_wrapper(
   REQUIRE(rc == TILEDB_OK);
 
   // Load array from the rest server
-  rc = tiledb_deserialize_array(ctx, buff, serialize_type, 0, new_array);
+  rc = tiledb_deserialize_array(
+      ctx,
+      buff,
+      serialize_type,
+      0,
+      array->array_->array_uri().c_str(),
+      new_array);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up.
