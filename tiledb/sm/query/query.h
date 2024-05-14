@@ -156,7 +156,7 @@ class Query {
    * @param fragment_base_uri Optional base name for new fragment. Only used for
    *     writes and only if fragment_uri is empty.
    * @param memory_budget Total memory budget. If set to nullopt, the value
-   * will be obtained from the sm.mem.total_budget config option.
+   *     will be obtained from the sm.mem.total_budget config option.
    */
   Query(
       StorageManager* storage_manager,
