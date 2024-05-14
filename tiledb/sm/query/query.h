@@ -922,6 +922,11 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * Resource used for operations
+   */
+  ContextResources& resources_;
+
   /** The query memory tracker. */
   shared_ptr<MemoryTracker> query_memory_tracker_;
 

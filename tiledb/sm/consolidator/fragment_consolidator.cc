@@ -914,7 +914,7 @@ void FragmentConsolidator::set_query_buffers(
 
 Status FragmentConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
   config_.amplification_ = 0.0f;

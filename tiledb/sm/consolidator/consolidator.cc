@@ -105,7 +105,8 @@ ConsolidationMode Consolidator::mode_from_config(
 /* ****************************** */
 
 Consolidator::Consolidator(StorageManager* storage_manager)
-    : storage_manager_(storage_manager)
+    : resources_(storage_manager->resources())
+    , storage_manager_(storage_manager)
     , consolidator_memory_tracker_(
           storage_manager_->resources().create_memory_tracker())
     , stats_(storage_manager_->stats()->create_child("Consolidator"))

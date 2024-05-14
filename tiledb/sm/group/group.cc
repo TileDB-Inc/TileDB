@@ -70,7 +70,7 @@ Group::Group(
     : memory_tracker_(resources.create_memory_tracker())
     , group_uri_(group_uri)
     , storage_manager_(storage_manager)
-    , config_(storage_manager_->config())
+    , config_(resources.config())
     , remote_(group_uri.is_tiledb())
     , metadata_(memory_tracker_)
     , metadata_loaded_(false)

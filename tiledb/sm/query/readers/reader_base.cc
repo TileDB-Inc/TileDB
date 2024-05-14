@@ -1001,7 +1001,7 @@ Status ReaderBase::unfilter_tile(
           t_min,
           t_max,
           concurrency_level,
-          storage_manager_->config()));
+          resources_.config()));
     }
 
     // Prevent processing past the end of chunks in case there are more
@@ -1020,7 +1020,7 @@ Status ReaderBase::unfilter_tile(
           tvar_min,
           tvar_max,
           concurrency_level,
-          storage_manager_->config()));
+          resources_.config()));
     }
   }
 
@@ -1044,7 +1044,7 @@ Status ReaderBase::unfilter_tile(
         tval_min,
         tval_max,
         concurrency_level,
-        storage_manager_->config()));
+        resources_.config()));
   }
 
   return Status::Ok();

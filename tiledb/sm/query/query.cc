@@ -76,12 +76,14 @@ Query::Query(
     shared_ptr<Array> array,
     optional<std::string> fragment_name,
     optional<uint64_t> memory_budget)
-    : query_memory_tracker_(
+    : resources_(storage_manager->resources())
+    , query_memory_tracker_(
           storage_manager->resources().create_memory_tracker())
     , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
+    , config_(resources_.config())
     , type_(array_->get_query_type())
     , layout_(
           (type_ == QueryType::READ || array_schema_->dense()) ?
@@ -129,9 +131,6 @@ Query::Query(
   callback_ = nullptr;
   callback_data_ = nullptr;
   status_ = QueryStatus::UNINITIALIZED;
-
-  if (storage_manager != nullptr)
-    config_ = storage_manager->config();
 
   // Set initial subarray configuration
   subarray_.set_config(type_, config_);

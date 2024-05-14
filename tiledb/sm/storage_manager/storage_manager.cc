@@ -122,7 +122,7 @@ StorageManagerCanonical::~StorageManagerCanonical() {
   bool found{false};
   bool use_malloc_trim{false};
   const Status& st =
-      config().get<bool>("sm.mem.malloc_trim", &use_malloc_trim, &found);
+      config_.get<bool>("sm.mem.malloc_trim", &use_malloc_trim, &found);
   if (st.ok() && found && use_malloc_trim) {
     tdb_malloc_trim();
   }
@@ -443,10 +443,6 @@ Status StorageManagerCanonical::cancel_all_tasks() {
 bool StorageManagerCanonical::cancellation_in_progress() {
   std::unique_lock<std::mutex> lck(cancellation_in_progress_mtx_);
   return cancellation_in_progress_;
-}
-
-const Config& StorageManagerCanonical::config() const {
-  return config_;
 }
 
 void StorageManagerCanonical::decrement_in_progress() {
