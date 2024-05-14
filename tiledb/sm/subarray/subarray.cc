@@ -1572,7 +1572,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
                   tile_size / cell_size * constants::cell_validity_size;
           } else {
             tile_size -= constants::cell_var_offset_size;
-            auto tile_var_size = meta->tile_var_size(names[i], ft.second);
+            auto tile_var_size =
+                meta->loaded_metadata()->tile_var_size(names[i], ft.second);
             mem_vec[i].size_fixed_ += tile_size;
             mem_vec[i].size_var_ += tile_var_size;
             if (nullable[i])
@@ -1896,7 +1897,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
           } else {
             tile_size -= constants::cell_var_offset_size;
             (*result_sizes)[n].size_fixed_ += tile_size;
-            auto tile_var_size = meta->tile_var_size(name[n], tid);
+            auto tile_var_size =
+                meta->loaded_metadata()->tile_var_size(name[n], tid);
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
@@ -1936,7 +1938,8 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
         } else {
           tile_size -= constants::cell_var_offset_size;
           (*result_sizes)[n].size_fixed_ += tile_size * ratio;
-          auto tile_var_size = meta->tile_var_size(name[n], tid);
+          auto tile_var_size =
+              meta->loaded_metadata()->tile_var_size(name[n], tid);
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
@@ -2265,7 +2268,7 @@ void Subarray::precompute_all_ranges_tile_overlap(
                 const auto r_end =
                     std::min((t + 1) * ranges_per_thread - 1, range_num - 1);
                 for (uint64_t r = r_start; r <= r_end; ++r) {
-                  meta[f]->compute_tile_bitmap(
+                  meta[f]->loaded_metadata()->compute_tile_bitmap(
                       range_subset_[d][r], d, &tile_bitmaps[d]);
                 }
                 return Status::Ok();
@@ -2519,7 +2522,8 @@ void Subarray::load_relevant_fragment_rtrees(ThreadPool* compute_tp) const {
 
   auto status =
       parallel_for(compute_tp, 0, relevant_fragments_.size(), [&](uint64_t f) {
-        meta[relevant_fragments_[f]]->load_rtree(*encryption_key);
+        meta[relevant_fragments_[f]]->loaded_metadata()->load_rtree(
+            *encryption_key);
         return Status::Ok();
       });
   throw_if_not_ok(status);
@@ -2570,7 +2574,7 @@ void Subarray::compute_relevant_fragment_tile_overlap(
             compute_tile_overlap(r + tile_overlap->range_idx_start(), frag_idx);
       } else {  // Sparse fragment
         const auto& range = this->ndrange(r + tile_overlap->range_idx_start());
-        meta->get_tile_overlap(
+        meta->loaded_metadata()->get_tile_overlap(
             range, is_default_, tile_overlap->at(frag_idx, r));
       }
     }
@@ -2609,7 +2613,8 @@ void Subarray::load_relevant_fragment_tile_var_sizes(
           if (!schema->is_field(var_name)) {
             return Status::Ok();
           }
-          meta[f]->load_tile_var_sizes(*encryption_key, var_name);
+          meta[f]->loaded_metadata()->load_tile_var_sizes(
+              *encryption_key, var_name);
           return Status::Ok();
         });
     throw_if_not_ok(status);
