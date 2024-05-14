@@ -74,7 +74,7 @@ DenseReader::DenseReader(
     bool remote_query)
     : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params)
     , memory_budget_(params.memory_budget().value_or(0))
-    , update_budget_from_config_(!params.memory_budget().has_value()) {
+    , memory_budget_from_query_(params.memory_budget()) {
   elements_mode_ = false;
 
   // Sanity checks.
@@ -123,7 +123,7 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
 void DenseReader::refresh_config() {
   // Get config values.
   bool found = false;
-  if (update_budget_from_config_) {
+  if (!memory_budget_from_query_.has_value()) {
     throw_if_not_ok(
         config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
     assert(found);
