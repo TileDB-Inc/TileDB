@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -115,6 +115,10 @@ class Context {
   /** Returns the thread pool for io-bound tasks. */
   [[nodiscard]] inline ThreadPool* io_tp() const {
     return &(resources_.io_tp());
+  }
+
+  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
+    return resources_.rest_client();
   }
 
  private:

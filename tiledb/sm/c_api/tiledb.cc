@@ -471,7 +471,7 @@ int32_t tiledb_array_schema_load(
 
   if (uri.is_tiledb()) {
     // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
+    auto rest_client = ctx->context().rest_client();
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to load array schema; remote array with no REST client.");
@@ -554,7 +554,7 @@ int32_t tiledb_array_schema_load_with_key(
 
   if (uri.is_tiledb()) {
     // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
+    auto rest_client = ctx->context().rest_client();
     if (rest_client == nullptr) {
       delete *array_schema;
       *array_schema = nullptr;
@@ -2579,7 +2579,7 @@ int32_t tiledb_array_create(
 
   if (uri.is_tiledb()) {
     // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
+    auto rest_client = ctx->context().rest_client();
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to create array; remote array with no REST client.");
@@ -2654,7 +2654,7 @@ int32_t tiledb_array_create_with_key(
     }
 
     // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
+    auto rest_client = ctx->context().rest_client();
     if (rest_client == nullptr) {
       auto st = Status_Error(
           "Failed to create array; remote array with no REST client.");
