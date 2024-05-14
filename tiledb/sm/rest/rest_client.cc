@@ -144,6 +144,10 @@ Status RestClient::init(
   if (c_str != nullptr)
     RETURN_NOT_OK(serialization_type_enum(c_str, &serialization_type_));
 
+  bool found = false;
+  RETURN_NOT_OK(config_->get<bool>(
+      "rest.resubmit_incomplete", &resubmit_incomplete_, &found));
+
   return Status::Ok();
 }
 
