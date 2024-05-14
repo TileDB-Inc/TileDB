@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -130,10 +130,11 @@ Subarray::Subarray(
     const bool coalesce_ranges,
     StorageManager* storage_manager)
     : stats_(
-          parent_stats ? parent_stats->create_child("Subarray") :
+          parent_stats ?
+              parent_stats->create_child("Subarray") :
           storage_manager ?
-                         storage_manager->stats()->create_child("subSubarray") :
-                         nullptr)
+              storage_manager->resources().stats().create_child("subSubarray") :
+              nullptr)
     , logger_(logger->clone("Subarray", ++logger_id_))
     , array_(opened_array)
     , layout_(layout)

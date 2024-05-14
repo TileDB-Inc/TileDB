@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,8 +64,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -77,8 +76,7 @@ Query::Query(
     optional<std::string> fragment_name,
     optional<uint64_t> memory_budget)
     : resources_(storage_manager->resources())
-    , query_memory_tracker_(
-          storage_manager->resources().create_memory_tracker())
+    , query_memory_tracker_(resources_.create_memory_tracker())
     , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
@@ -90,8 +88,8 @@ Query::Query(
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
     , storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Query"))
-    , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
+    , stats_(resources_.stats().create_child("Query"))
+    , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -2099,5 +2097,4 @@ RestClient* Query::rest_client() const {
   return storage_manager_->rest_client();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
