@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file declares the TileDB C API for serialization.
+ * APIs defined in this header are currently unstable and subject to breaking
+ * changes between minor releases.
  */
 
 #ifndef TILEDB_SERIALIZATION_H
