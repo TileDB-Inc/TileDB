@@ -66,6 +66,10 @@ class MemoryTracker;
 /** Stores the metadata structures of a fragment. */
 class FragmentMetadata {
  public:
+  /** Forward declarations */
+  struct GenericTileOffsets;
+  struct LoadedMetadata;
+
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
@@ -105,6 +109,44 @@ class FragmentMetadata {
       bool dense = true,
       bool has_timestamps = false,
       bool has_delete_mata = false);
+
+  /**
+   * Constructor used by serialization.
+   */
+  FragmentMetadata(
+      ContextResources* resources,
+      shared_ptr<MemoryTracker> memory_tracker,
+      shared_ptr<const ArraySchema> array_schema,
+      std::vector<uint64_t>&& file_sizes,
+      std::vector<uint64_t>&& file_var_sizes,
+      std::vector<uint64_t>&& file_validity_sizes,
+      URI&& fragment_uri,
+      bool has_timestamps,
+      bool has_delete_meta,
+      bool has_consolidated_footer,
+      uint64_t sparse_tile_num,
+      uint64_t tile_index_base,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_offsets,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_var_offsets,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_var_sizes,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_validity_offsets,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& tile_min_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<char>>&& tile_min_var_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& tile_max_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<char>>&& tile_max_var_buffer,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& tile_sums,
+      tdb::pmr::vector<tdb::pmr::vector<uint64_t>>&& tile_null_counts,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_mins,
+      tdb::pmr::vector<tdb::pmr::vector<uint8_t>>&& fragment_maxs,
+      std::vector<uint64_t>&& fragment_sums,
+      std::vector<uint64_t>&& fragment_null_counts,
+      uint32_t version,
+      std::pair<uint64_t, uint64_t> timestamp_range,
+      uint64_t last_tile_cell_num,
+      NDRange&& non_empty_domain,
+      RTree&& rtree,
+      FragmentMetadata::GenericTileOffsets&& generic_tile_offsets,
+      FragmentMetadata::LoadedMetadata&& loaded_metadata);
 
   /** Destructor. */
   ~FragmentMetadata();
@@ -156,11 +198,23 @@ class FragmentMetadata {
   /* ********************************* */
 
   /**
+   * Returns the number of dimensions and attributes of a not-yet-constructed
+   * fragment metadata.
+   */
+  static inline uint64_t num_dims_and_attrs(
+      const ArraySchema& array_schema,
+      bool has_timestamps,
+      bool has_delete_meta) {
+    return array_schema.attribute_num() + array_schema.dim_num() + 1 +
+           has_timestamps + (has_delete_meta * 2);
+  }
+
+  /**
    * Returns the number of dimensions and attributes.
    */
   inline uint64_t num_dims_and_attrs() const {
-    return array_schema_->attribute_num() + array_schema_->dim_num() + 1 +
-           has_timestamps_ + (has_delete_meta_ * 2);
+    return num_dims_and_attrs(
+        *array_schema_, has_timestamps_, has_delete_meta_);
   }
 
   /** Returns the number of cells in the fragment. */
@@ -297,7 +351,7 @@ class FragmentMetadata {
     return has_delete_meta_;
   }
 
-  inline bool has_tile_metadata() {
+  inline bool has_tile_metadata() const {
     return version_ >= constants::tile_metadata_min_version;
   }
 
@@ -386,12 +440,14 @@ class FragmentMetadata {
   }
 
   /** Returns the fragment mins. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_mins() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& fragment_mins()
+      const {
     return fragment_mins_;
   }
 
   /** Returns the fragment maxs. */
-  inline const std::vector<std::vector<uint8_t>>& fragment_maxs() const {
+  inline const tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& fragment_maxs()
+      const {
     return fragment_maxs_;
   }
 
@@ -725,12 +781,6 @@ class FragmentMetadata {
    */
   void set_array_schema(const shared_ptr<const ArraySchema>& array_schema);
 
-  /** Sets the array_schema name */
-  void set_schema_name(const std::string& name);
-
-  /** Sets the internal dense_ field*/
-  void set_dense(bool dense);
-
   /** Returns the number of tiles in the fragment. */
   uint64_t tile_num() const;
 
@@ -744,7 +794,9 @@ class FragmentMetadata {
   URI validity_uri(const std::string& name) const;
 
   /** Return the array schema name. */
-  const std::string& array_schema_name();
+  inline const std::string& array_schema_name() const {
+    return array_schema_name_;
+  }
 
   /**
    * Retrieves the starting offset of the input tile of the input attribute
@@ -841,7 +893,7 @@ class FragmentMetadata {
    * @param tile_idx The index of the tile in the metadata.
    * @return Size.
    */
-  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx);
+  uint64_t tile_var_size(const std::string& name, uint64_t tile_idx) const;
 
   /**
    * Retrieves the tile min value for a given attribute or dimension and tile
@@ -893,7 +945,8 @@ class FragmentMetadata {
    * @param name The input attribute/dimension.
    * @return Value.
    */
-  std::vector<uint8_t>& get_min(const std::string& name);
+  const tiledb::common::pmr::vector<uint8_t>& get_min(
+      const std::string& name) const;
 
   /**
    * Retrieves the max value for a given attribute or dimension.
@@ -901,7 +954,8 @@ class FragmentMetadata {
    * @param name The input attribute/dimension.
    * @return Value.
    */
-  std::vector<uint8_t>& get_max(const std::string& name);
+  const tiledb::common::pmr::vector<uint8_t>& get_max(
+      const std::string& name) const;
 
   /**
    * Retrieves the sum value for a given attribute or dimension.
@@ -909,7 +963,7 @@ class FragmentMetadata {
    * @param name The input attribute/dimension.
    * @return Sum.
    */
-  void* get_sum(const std::string& name);
+  const void* get_sum(const std::string& name) const;
 
   /**
    * Retrieves the null count value for a given attribute or dimension.
@@ -1073,161 +1127,8 @@ class FragmentMetadata {
    *
    * @return
    */
-  const shared_ptr<const ArraySchema>& array_schema() const;
-
-  /** File sizes accessor */
-  std::vector<uint64_t>& file_sizes() {
-    return file_sizes_;
-  }
-
-  /** File var sizes accessor */
-  std::vector<uint64_t>& file_var_sizes() {
-    return file_var_sizes_;
-  }
-
-  /** File validity sizes accessor */
-  std::vector<uint64_t>& file_validity_sizes() {
-    return file_validity_sizes_;
-  }
-
-  /** Fragment uri accessor */
-  URI& fragment_uri() {
-    return fragment_uri_;
-  }
-
-  /** has_timestamps accessor */
-  bool& has_timestamps() {
-    return has_timestamps_;
-  }
-
-  /** has_delete_meta accessor */
-  bool& has_delete_meta() {
-    return has_delete_meta_;
-  }
-
-  /** has_consolidated_footer accessor */
-  bool& has_consolidated_footer() {
-    return has_consolidated_footer_;
-  }
-
-  /** sparse_tile_num accessor */
-  uint64_t& sparse_tile_num() {
-    return sparse_tile_num_;
-  }
-
-  /** tile_index_base accessor */
-  uint64_t& tile_index_base() {
-    return tile_index_base_;
-  }
-
-  /** tile_offsets accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_offsets() {
-    return tile_offsets_;
-  }
-
-  /** tile_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_offsets_mtx() {
-    return tile_offsets_mtx_;
-  }
-
-  /** tile_var_offsets accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_offsets() {
-    return tile_var_offsets_;
-  }
-
-  /** tile_var_offsets_mtx accessor */
-  std::deque<std::mutex>& tile_var_offsets_mtx() {
-    return tile_var_offsets_mtx_;
-  }
-
-  /** tile_var_sizes  accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_var_sizes() {
-    return tile_var_sizes_;
-  }
-
-  /** tile_validity_offsets accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_validity_offsets() {
-    return tile_validity_offsets_;
-  }
-
-  /** tile_min_buffer accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_min_buffer() {
-    return tile_min_buffer_;
-  }
-
-  /** tile_min_var_buffer accessor */
-  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_min_var_buffer() {
-    return tile_min_var_buffer_;
-  }
-
-  /** tile_max_buffer accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_max_buffer() {
-    return tile_max_buffer_;
-  }
-
-  /** tile_max_var_buffer accessor */
-  tdb::pmr::vector<tdb::pmr::vector<char>>& tile_max_var_buffer() {
-    return tile_max_var_buffer_;
-  }
-
-  /** tile_sums accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint8_t>>& tile_sums() {
-    return tile_sums_;
-  }
-
-  /** tile_null_counts accessor */
-  tdb::pmr::vector<tdb::pmr::vector<uint64_t>>& tile_null_counts() {
-    return tile_null_counts_;
-  }
-
-  /** fragment_mins accessor */
-  std::vector<std::vector<uint8_t>>& fragment_mins() {
-    return fragment_mins_;
-  }
-
-  /** fragment_maxs accessor */
-  std::vector<std::vector<uint8_t>>& fragment_maxs() {
-    return fragment_maxs_;
-  }
-
-  /** fragment_sums accessor */
-  std::vector<uint64_t>& fragment_sums() {
-    return fragment_sums_;
-  }
-
-  /** fragment_null_counts accessor */
-  std::vector<uint64_t>& fragment_null_counts() {
-    return fragment_null_counts_;
-  }
-
-  /** version accessor */
-  uint32_t& version() {
-    return version_;
-  }
-
-  /** timestamp_range accessor */
-  std::pair<uint64_t, uint64_t>& timestamp_range() {
-    return timestamp_range_;
-  }
-
-  /** last_tile_cell_num accessor */
-  uint64_t& last_tile_cell_num() {
-    return last_tile_cell_num_;
-  }
-
-  /** non_empty_domain accessor */
-  NDRange& non_empty_domain() {
-    return non_empty_domain_;
-  }
-
-  /** rtree accessor */
-  RTree& rtree() {
-    return rtree_;
-  }
-
-  /** gt_offsets_ accessor */
-  inline GenericTileOffsets& generic_tile_offsets() {
-    return gt_offsets_;
+  inline const shared_ptr<const ArraySchema>& array_schema() const {
+    return array_schema_;
   }
 
   /** set the CR pointer during deserialization*/
@@ -1244,26 +1145,6 @@ class FragmentMetadata {
   inline void set_loaded_metadata(const LoadedMetadata& loaded_metadata) {
     loaded_metadata_ = loaded_metadata;
   }
-
-  /**
-   * Resize tile offsets related vectors.
-   */
-  void resize_tile_offsets_vectors(uint64_t size);
-
-  /**
-   * Resize tile var offsets related vectors.
-   */
-  void resize_tile_var_offsets_vectors(uint64_t size);
-
-  /**
-   * Resize tile var sizes related vectors.
-   */
-  void resize_tile_var_sizes_vectors(uint64_t size);
-
-  /**
-   * Resize tile validity offsets related vectors.
-   */
-  void resize_tile_validity_offsets_vectors(uint64_t size);
 
  private:
   /* ********************************* */
@@ -1424,12 +1305,12 @@ class FragmentMetadata {
   /**
    * Fragment min values.
    */
-  std::vector<std::vector<uint8_t>> fragment_mins_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> fragment_mins_;
 
   /**
    * Fragment max values.
    */
-  std::vector<std::vector<uint8_t>> fragment_maxs_;
+  tdb::pmr::vector<tdb::pmr::vector<uint8_t>> fragment_maxs_;
 
   /**
    * Fragment sum values, ignored for var sized attributes/dimensions.

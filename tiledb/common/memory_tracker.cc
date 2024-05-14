@@ -68,6 +68,10 @@ std::string memory_type_to_str(MemoryType type) {
       return "FilteredData";
     case MemoryType::FILTERED_DATA_BLOCK:
       return "FilteredDataBlock";
+    case MemoryType::FRAGMENT_MAXS:
+      return "FragmentMaxs";
+    case MemoryType::FRAGMENT_MINS:
+      return "FragmentMins";
     case MemoryType::FOOTER:
       return "Footer";
     case MemoryType::GENERIC_TILE_IO:

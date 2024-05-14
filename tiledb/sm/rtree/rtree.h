@@ -76,7 +76,10 @@ class RTree {
   ~RTree();
 
   DISABLE_COPY_AND_COPY_ASSIGN(RTree);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(RTree);
+
+  RTree(RTree&&) = default;
+  RTree& operator=(RTree&&) = default;
+  // DISABLE_MOVE_AND_MOVE_ASSIGN(RTree);
 
   /* ********************************* */
   /*                 API               */

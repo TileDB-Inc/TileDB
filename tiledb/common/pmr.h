@@ -221,12 +221,13 @@ class vector : public pmr_vector<Tp> {
 
   // Delete all default constructors because they don't require an allocator
   constexpr vector() noexcept(noexcept(allocator_type())) = delete;
-  constexpr vector(const vector& other) = delete;
-  constexpr vector(vector&& other) noexcept = delete;
 
-  // Delete non-allocator aware copy and move assign.
+  // Delete copy constructors
+  constexpr vector(const vector& other) = delete;
   constexpr vector& operator=(const vector& other) = delete;
-  constexpr vector& operator=(vector&& other) noexcept = delete;
+
+  constexpr vector(vector&& other) noexcept = default;
+  constexpr vector& operator=(vector&& other) noexcept = default;
 
   constexpr explicit vector(const allocator_type& alloc) noexcept
       : pmr_vector<Tp>(alloc) {

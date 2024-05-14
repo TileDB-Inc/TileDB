@@ -84,8 +84,10 @@ class UnorderedWriter : public WriterBase {
   /** Returns the name of the strategy. */
   std::string name();
 
-  /** Alloc a new fragment metadata. */
-  Status alloc_frag_meta();
+  /** Set fragment metadata. */
+  void set_frag_meta(shared_ptr<FragmentMetadata> frag_meta) {
+    frag_meta_ = frag_meta;
+  }
 
   /** Returns the cell position vector. */
   tdb::pmr::vector<uint64_t>& cell_pos() {

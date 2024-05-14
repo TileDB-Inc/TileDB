@@ -188,7 +188,7 @@ Status array_to_capnp(
           // Old fragment with zipped coordinates didn't have a format that
           // allow to dynamically load tile offsets and sizes and since they all
           // get loaded at array open, we need to serialize them here.
-          if (fragment_metadata_all[i]->version() <= 2) {
+          if (fragment_metadata_all[i]->format_version() <= 2) {
             fragment_meta_sizes_offsets_to_capnp(
                 *fragment_metadata_all[i], &fragment_metadata_builder);
           }
@@ -202,8 +202,7 @@ Status array_to_capnp(
   if (array->use_refactored_array_open()) {
     if (array->serialize_non_empty_domain()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-      RETURN_NOT_OK(
-          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+      utils::serialize_non_empty_domain(nonempty_domain_builder, array);
     }
 
     if (array->serialize_metadata()) {
@@ -217,8 +216,7 @@ Status array_to_capnp(
   } else {
     if (array->non_empty_domain_computed()) {
       auto nonempty_domain_builder = array_builder->initNonEmptyDomain();
-      RETURN_NOT_OK(
-          utils::serialize_non_empty_domain(nonempty_domain_builder, array));
+      utils::serialize_non_empty_domain(nonempty_domain_builder, array);
     }
 
     if (array->metadata_loaded()) {
@@ -306,10 +304,11 @@ void array_from_capnp(
     auto fragment_metadata_all_reader = array_reader.getFragmentMetadataAll();
     fragment_metadata.reserve(fragment_metadata_all_reader.size());
     for (auto frag_meta_reader : fragment_metadata_all_reader) {
-      auto meta = make_shared<FragmentMetadata>(
-          HERE(), &resources, array->memory_tracker());
-      throw_if_not_ok(fragment_metadata_from_capnp(
-          array->array_schema_latest_ptr(), frag_meta_reader, meta));
+      auto meta = fragment_metadata_from_capnp(
+          array->array_schema_latest_ptr(),
+          frag_meta_reader,
+          &resources,
+          array->memory_tracker());
       if (client_side) {
         meta->set_rtree_loaded();
       }
@@ -319,10 +318,9 @@ void array_from_capnp(
   }
 
   if (array_reader.hasNonEmptyDomain()) {
-    const auto& nonempty_domain_reader = array_reader.getNonEmptyDomain();
     // Deserialize
-    throw_if_not_ok(
-        utils::deserialize_non_empty_domain(nonempty_domain_reader, array));
+    utils::deserialize_non_empty_domain(
+        array_reader.getNonEmptyDomain(), array);
     array->set_non_empty_domain_computed(true);
   }
 

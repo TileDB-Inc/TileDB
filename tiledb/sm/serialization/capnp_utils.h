@@ -35,6 +35,7 @@
 
 #ifdef TILEDB_SERIALIZATION
 
+#include <capnp/compat/std-iterator.h>
 #include "tiledb-rest.capnp.h"
 
 #include "tiledb/common/heap_memory.h"
@@ -152,6 +153,88 @@ namespace utils {
 template <size_t bytes>
 inline bool is_aligned(const void* ptr) {
   return ((uintptr_t)ptr) % bytes == 0;
+}
+
+/**
+ * Converts a capnproto list of primitives to a vector.
+ *
+ * @param has_value whether the list actually contains any value.
+ * @param fGetList a factory function that returns the capnproto list.
+ */
+template <class T>
+std::vector<T> capnp_list_to_vector(bool has_value, auto fGetList) {
+  if (!has_value) {
+    return {};
+  }
+  typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>::Reader list{fGetList()};
+  return std::vector<T>(list.begin(), list.end());
+}
+
+/**
+ * Converts a capnproto list of lists of primitives to a vector of vectors.
+ *
+ * @tparam T The type of items in the capnproto list.
+ * @tparam TConverted The type of items in the resulting vector.
+ * Defaults to T.
+ * @param has_value whether the list actually contains any value.
+ * @param fGetList a factory function that returns the capnproto list.
+ * @param resource the polymorphic memory resource to use.
+ */
+template <class T, class TConverted = T>
+tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>>
+capnp_2d_list_to_vector(
+    bool has_value,
+    auto fGetList,
+    tiledb::common::pmr::memory_resource* resource) {
+  tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>> result(
+      resource);
+  if (has_value) {
+    typename ::capnp::List<
+        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader list{fGetList()};
+    result.reserve(list.size());
+    for (const auto& t : list) {
+      result.emplace_back(t.begin(), t.end());
+    }
+  }
+  return result;
+}
+
+/**
+ * Converts a capnproto list of lists of primitives to a vector of vectors with
+ * a predefined size.
+ *
+ * @tparam T The type of items in the capnproto list.
+ * @tparam TConverted The type of items in the resulting vector.
+ * Defaults to T.
+ * @param has_value whether the list actually contains any value.
+ * @param fGetList a factory function that returns the capnproto list.
+ * @param resource the polymorphic memory resource to use.
+ * @param size The size of the returned vector.
+ */
+template <class T, class TConverted = T>
+tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>>
+capnp_2d_list_to_vector(
+    bool has_value,
+    auto fGetList,
+    tiledb::common::pmr::memory_resource* resource,
+    uint64_t size) {
+  tiledb::common::pmr::vector<tiledb::common::pmr::vector<TConverted>> result(
+      size, resource);
+  if (has_value) {
+    uint64_t i = 0;
+    typename ::capnp::List<
+        typename ::capnp::List<T, ::capnp::Kind::PRIMITIVE>,
+        ::capnp::Kind::LIST>::Reader list{fGetList()};
+    if (size < list.size()) {
+      throw SerializationStatusException("List contains too few elements");
+    }
+    for (const auto& t : list) {
+      result[i++] =
+          tiledb::common::pmr::vector<TConverted>(t.begin(), t.end(), resource);
+    }
+  }
+  return result;
 }
 
 /**
@@ -443,9 +526,10 @@ Status copy_capnp_list(
   return Status::Ok();
 }
 
-template <typename CapnpT>
-Status serialize_non_empty_domain_rv(
-    CapnpT& builder, const NDRange& nonEmptyDomain, uint32_t dim_num) {
+inline void serialize_non_empty_domain_rv(
+    capnp::NonEmptyDomainList::Builder& builder,
+    const NDRange& nonEmptyDomain,
+    uint32_t dim_num) {
   if (!nonEmptyDomain.empty()) {
     auto nonEmptyDomainListBuilder = builder.initNonEmptyDomains(dim_num);
 
@@ -457,7 +541,7 @@ Status serialize_non_empty_domain_rv(
 
       if (!dimNonEmptyDomain.empty()) {
         auto subarray_builder = dim_builder.initNonEmptyDomain();
-        RETURN_NOT_OK(utils::set_capnp_array_ptr(
+        throw_if_not_ok(utils::set_capnp_array_ptr(
             subarray_builder,
             tiledb::sm::Datatype::UINT8,
             dimNonEmptyDomain.data(),
@@ -471,35 +555,26 @@ Status serialize_non_empty_domain_rv(
       }
     }
   }
-  return Status::Ok();
 }
 
 /** Serializes the given array's nonEmptyDomain into the given Capnp builder.
  *
- * @tparam CapnpT Capnp builder type
  * @param builder Builder to set subarray onto
  * @param array Array to get nonEmptyDomain from
- * @return Status
  */
-template <typename CapnpT>
-Status serialize_non_empty_domain(CapnpT& builder, tiledb::sm::Array* array) {
-  return serialize_non_empty_domain_rv(
+inline void serialize_non_empty_domain(
+    capnp::NonEmptyDomainList::Builder& builder, tiledb::sm::Array* array) {
+  serialize_non_empty_domain_rv(
       builder,
       array->non_empty_domain(),
       array->array_schema_latest().dim_num());
-
-  return Status::Ok();
 }
 
-template <typename CapnpT>
-std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
-    CapnpT& reader) {
-  capnp::NonEmptyDomainList::Reader r =
-      (capnp::NonEmptyDomainList::Reader)reader;
-
+inline NDRange deserialize_non_empty_domain_rv(
+    const capnp::NonEmptyDomainList::Reader& reader) {
   NDRange ndRange;
-  if (r.hasNonEmptyDomains() && r.getNonEmptyDomains().size() > 0) {
-    auto nonEmptyDomains = r.getNonEmptyDomains();
+  if (reader.hasNonEmptyDomains() && reader.getNonEmptyDomains().size() > 0) {
+    auto nonEmptyDomains = reader.getNonEmptyDomains();
 
     for (uint32_t i = 0; i < nonEmptyDomains.size(); i++) {
       auto nonEmptyDomainObj = nonEmptyDomains[i];
@@ -520,22 +595,17 @@ std::pair<Status, std::optional<NDRange>> deserialize_non_empty_domain_rv(
     }
   }
 
-  return {Status::Ok(), ndRange};
+  return ndRange;
 }
 
 /** Deserializes the given from Capnp build to array's nonEmptyDomain
  *
- * @tparam CapnpT Capnp builder type
  * @param builder Builder to get nonEmptyDomain from
  * @param array Array to set the nonEmptyDomain on
- * @return Status
  */
-template <typename CapnpT>
-Status deserialize_non_empty_domain(CapnpT& reader, tiledb::sm::Array* array) {
-  auto&& [status, ndrange] = deserialize_non_empty_domain_rv(reader);
-  RETURN_NOT_OK(status);
-  array->set_non_empty_domain(*ndrange);
-  return Status::Ok();
+inline void deserialize_non_empty_domain(
+    const capnp::NonEmptyDomainList::Reader& reader, tiledb::sm::Array* array) {
+  array->set_non_empty_domain(deserialize_non_empty_domain_rv(reader));
 }
 
 /**
