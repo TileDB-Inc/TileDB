@@ -430,6 +430,7 @@ Status metadata_serialize(
 
 Status metadata_deserialize(
     Metadata* metadata,
+    const Config& config,
     SerializationType serialize_type,
     const Buffer& serialized_buffer) {
   if (metadata == nullptr)
@@ -453,11 +454,20 @@ Status metadata_deserialize(
         break;
       }
       case SerializationType::CAPNP: {
+        // Set traversal limit from config
+        uint64_t limit =
+            config.get<uint64_t>("rest.capnp_traversal_limit").value();
+        ::capnp::ReaderOptions readerOptions;
+        // capnp uses the limit in words
+        readerOptions.traversalLimitInWords = limit / sizeof(::capnp::word);
+
         const auto mBytes =
             reinterpret_cast<const kj::byte*>(serialized_buffer.data());
-        ::capnp::FlatArrayMessageReader msg_reader(kj::arrayPtr(
-            reinterpret_cast<const ::capnp::word*>(mBytes),
-            serialized_buffer.size() / sizeof(::capnp::word)));
+        ::capnp::FlatArrayMessageReader msg_reader(
+            kj::arrayPtr(
+                reinterpret_cast<const ::capnp::word*>(mBytes),
+                serialized_buffer.size() / sizeof(::capnp::word)),
+            readerOptions);
         auto reader = msg_reader.getRoot<capnp::ArrayMetadata>();
 
         // Deserialize
@@ -724,7 +734,8 @@ Status metadata_serialize(Metadata*, SerializationType, Buffer*) {
   throw ArraySerializationDisabledException();
 }
 
-Status metadata_deserialize(Metadata*, SerializationType, const Buffer&) {
+Status metadata_deserialize(
+    Metadata*, const Config&, SerializationType, const Buffer&) {
   throw ArraySerializationDisabledException();
 }
 

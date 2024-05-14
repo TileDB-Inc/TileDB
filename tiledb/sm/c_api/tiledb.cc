@@ -4038,6 +4038,7 @@ int32_t tiledb_deserialize_array_metadata(
   // Deserialize
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
       array->array_->unsafe_metadata(),
+      array->array_->config(),
       (tiledb::sm::SerializationType)serialize_type,
       buffer->buffer()));
 

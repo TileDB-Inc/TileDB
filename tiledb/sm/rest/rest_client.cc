@@ -626,7 +626,10 @@ Status RestClient::get_array_metadata_from_rest(
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
-      array->unsafe_metadata(), serialization_type_, returned_data);
+      array->unsafe_metadata(),
+      array->config(),
+      serialization_type_,
+      returned_data);
 }
 
 Status RestClient::post_array_metadata_to_rest(
@@ -1404,7 +1407,10 @@ Status RestClient::post_group_metadata_from_rest(const URI& uri, Group* group) {
   // Ensure data has a null delimiter for cap'n proto if using JSON
   RETURN_NOT_OK(ensure_json_null_delimited_string(&returned_data));
   return serialization::metadata_deserialize(
-      group->unsafe_metadata(), serialization_type_, returned_data);
+      group->unsafe_metadata(),
+      group->config(),
+      serialization_type_,
+      returned_data);
 }
 
 Status RestClient::put_group_metadata_to_rest(const URI& uri, Group* group) {
