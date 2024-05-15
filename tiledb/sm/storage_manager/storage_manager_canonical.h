@@ -149,14 +149,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an group opened for reads.
-   *
-   * @param group The group to be closed.
-   * @return Status
-   */
-  Status group_close_for_reads(tiledb::sm::Group* group);
-
-  /**
    * Closes an group opened for writes.
    *
    * @param group The group to be closed.
@@ -178,30 +170,6 @@ class StorageManagerCanonical {
       const URI& group_detail_uri,
       tdb_shared_ptr<GroupDetails> group,
       const EncryptionKey& encryption_key);
-
-  /**
-   * Cleans up the array data.
-   *
-   * @param array_name The name of the array whose data is to be deleted.
-   */
-  void delete_array(const char* array_name);
-
-  /**
-   * Cleans up the array fragments.
-   *
-   * @param array_name The name of the array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete.
-   * @param timestamp_end The end timestamp at which to delete.
-   */
-  void delete_fragments(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up the group data.
-   *
-   * @param group_name The name of the group whose data is to be deleted.
-   */
-  void delete_group(const char* group_name);
 
   /**
    * Creates a TileDB array storing its schema.
@@ -241,15 +209,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status array_upgrade_version(const URI& uri, const Config& config);
-
-  /**
-   * Retrieves the encryption type from an array.
-   *
-   * @param uri The URI of the array.
-   * @param encryption_type Set to the encryption type of the array.
-   * @return Status
-   */
-  Status array_get_encryption(const URI& uri, EncryptionType* encryption_type);
 
   /**
    * Pushes an async query to the queue.

@@ -47,7 +47,7 @@ TEST_CASE("permutation_sort: Null test", "[permutation_sort][null_test]") {
 }
 
 TEST_CASE("permutation_sort: integers", "[permutation_sort]") {
-  size_t seed = Catch::rngSeed();
+  unsigned int seed = Catch::rngSeed();
   size_t N = 100'000;
   std::mt19937 g(seed);
 
@@ -140,7 +140,7 @@ TEST_CASE("permutation_sort: integers", "[permutation_sort]") {
 }
 
 TEST_CASE("permutation_sort: multiple integers", "[permutation_sort]") {
-  size_t seed = Catch::rngSeed();
+  unsigned int seed = Catch::rngSeed();
   size_t N = 100'000;
   std::mt19937 g(seed);
 
@@ -231,7 +231,7 @@ TEST_CASE("permutation_sort: multiple integers", "[permutation_sort]") {
 TEST_CASE(
     "permutation_sort: direct proxy_sort multiple integers",
     "[permutation_sort]") {
-  size_t seed = Catch::rngSeed();
+  unsigned int seed = Catch::rngSeed();
   size_t N = 100'000;
   std::mt19937 g(seed);
 

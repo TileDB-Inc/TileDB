@@ -208,7 +208,9 @@ TEST_CASE(
   std::string a2_read_data;
   a2_read_data.resize(7);
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", a1_read)
       .set_data_buffer("a2", a2_read_data)

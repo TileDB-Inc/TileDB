@@ -95,24 +95,30 @@ class ResultTile {
         const bool validity_only,
         const uint64_t tile_idx)
         : tile_size_(validity_only ? 0 : fragment->tile_size(name, tile_idx))
-        , tile_persisted_size_(fragment->persisted_tile_size(name, tile_idx))
+        , tile_persisted_size_(
+              fragment->loaded_metadata()->persisted_tile_size(name, tile_idx))
         , tile_var_size_(
               var_size && !validity_only ?
-                  std::optional(fragment->tile_var_size(name, tile_idx)) :
+                  std::optional(fragment->loaded_metadata()->tile_var_size(
+                      name, tile_idx)) :
                   std::nullopt)
         , tile_var_persisted_size_(
-              var_size ? std::optional(fragment->persisted_tile_var_size(
-                             name, tile_idx)) :
-                         std::nullopt)
+              var_size ?
+                  std::optional(
+                      fragment->loaded_metadata()->persisted_tile_var_size(
+                          name, tile_idx)) :
+                  std::nullopt)
         , tile_validity_size_(
               nullable ? std::optional(
                              fragment->cell_num(tile_idx) *
                              constants::cell_validity_size) :
                          std::nullopt)
         , tile_validity_persisted_size_(
-              nullable ? std::optional(fragment->persisted_tile_validity_size(
-                             name, tile_idx)) :
-                         std::nullopt) {
+              nullable ?
+                  std::optional(
+                      fragment->loaded_metadata()->persisted_tile_validity_size(
+                          name, tile_idx)) :
+                  std::nullopt) {
     }
 
     TileSizes(

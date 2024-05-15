@@ -111,7 +111,7 @@ URI URI::add_trailing_slash() const {
 }
 
 URI URI::remove_trailing_slash() const {
-  if (uri_.back() == '/') {
+  if (!uri_.empty() && uri_.back() == '/') {
     std::string uri_str = uri_;
     uri_str.pop_back();
     return URI(uri_str);

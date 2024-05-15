@@ -133,11 +133,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::group_close_for_reads(Group*) {
-  // Closing a group does nothing at present
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   // Flush the group metadata
   RETURN_NOT_OK(store_metadata(
@@ -154,106 +149,6 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
         *group->encryption_key()));
   }
   return Status::Ok();
-}
-
-void StorageManagerCanonical::delete_array(const char* array_name) {
-  if (array_name == nullptr) {
-    throw std::invalid_argument("[delete_array] Array name cannot be null");
-  }
-
-  // Delete fragments and commits
-  delete_fragments(array_name, 0, std::numeric_limits<uint64_t>::max());
-
-  auto array_dir = ArrayDirectory(
-      resources(), URI(array_name), 0, std::numeric_limits<uint64_t>::max());
-
-  // Delete array metadata, fragment metadata and array schema files
-  // Note: metadata files may not be present, try to delete anyway
-  vfs()->remove_files(compute_tp(), array_dir.array_meta_uris());
-  vfs()->remove_files(compute_tp(), array_dir.fragment_meta_uris());
-  vfs()->remove_files(compute_tp(), array_dir.array_schema_uris());
-
-  // Delete all tiledb child directories
-  // Note: using vfs()->ls() here could delete user data
-  std::vector<URI> dirs;
-  auto parent_dir = array_dir.uri().c_str();
-  for (auto array_dir_name : constants::array_dir_names) {
-    dirs.emplace_back(URI(parent_dir + array_dir_name));
-  }
-  vfs()->remove_dirs(compute_tp(), dirs);
-}
-
-void StorageManagerCanonical::delete_fragments(
-    const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end) {
-  if (array_name == nullptr) {
-    throw std::invalid_argument("[delete_fragments] Array name cannot be null");
-  }
-
-  auto array_dir = ArrayDirectory(
-      resources(), URI(array_name), timestamp_start, timestamp_end);
-
-  // Get the fragment URIs to be deleted
-  auto filtered_fragment_uris = array_dir.filtered_fragment_uris(true);
-  const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
-
-  // Retrieve commit uris to delete and ignore
-  std::vector<URI> commit_uris_to_delete;
-  std::vector<URI> commit_uris_to_ignore;
-  for (auto& fragment : fragment_uris) {
-    auto commit_uri = array_dir.get_commit_uri(fragment.uri_);
-    commit_uris_to_delete.emplace_back(commit_uri);
-    if (array_dir.consolidated_commit_uris_set().count(commit_uri.c_str()) !=
-        0) {
-      commit_uris_to_ignore.emplace_back(commit_uri);
-    }
-  }
-
-  // Write ignore file
-  if (commit_uris_to_ignore.size() != 0) {
-    array_dir.write_commit_ignore_file(commit_uris_to_ignore);
-  }
-
-  // Delete fragments and commits
-  throw_if_not_ok(
-      parallel_for(compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs()->remove_dir(fragment_uris[i].uri_));
-        bool is_file = false;
-        RETURN_NOT_OK(vfs()->is_file(commit_uris_to_delete[i], &is_file));
-        if (is_file) {
-          RETURN_NOT_OK(vfs()->remove_file(commit_uris_to_delete[i]));
-        }
-        return Status::Ok();
-      }));
-}
-
-void StorageManagerCanonical::delete_group(const char* group_name) {
-  if (group_name == nullptr) {
-    throw Status_StorageManagerError(
-        "[delete_group] Group name cannot be null");
-  }
-
-  auto group_dir = GroupDirectory(
-      vfs(),
-      compute_tp(),
-      URI(group_name),
-      0,
-      std::numeric_limits<uint64_t>::max());
-
-  // Delete the group detail, group metadata and group files
-  vfs()->remove_files(compute_tp(), group_dir.group_detail_uris());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_uris());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_uris_to_vacuum());
-  vfs()->remove_files(compute_tp(), group_dir.group_meta_vac_uris_to_vacuum());
-  vfs()->remove_files(compute_tp(), group_dir.group_file_uris());
-
-  // Delete all tiledb child directories
-  // Note: using vfs()->ls() here could delete user data
-  std::vector<URI> dirs;
-  auto parent_dir = group_dir.uri().c_str();
-  for (auto group_dir_name : constants::group_dir_names) {
-    dirs.emplace_back(URI(parent_dir + group_dir_name));
-  }
-  vfs()->remove_dirs(compute_tp(), dirs);
 }
 
 Status StorageManagerCanonical::array_create(
@@ -493,37 +388,6 @@ Status StorageManagerCanonical::array_upgrade_version(
     st = vfs()->create_dir(array_fragment_metadata_uri);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
   }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_get_encryption(
-    const URI& uri, EncryptionType* encryption_type) {
-  if (uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot get array encryption; Invalid array URI"));
-  }
-
-  if (uri.is_tiledb()) {
-    throw std::invalid_argument(
-        "Getting the encryption type of remote arrays is not supported.");
-  }
-
-  // Load URIs from the array directory
-  optional<tiledb::sm::ArrayDirectory> array_dir;
-  array_dir.emplace(
-      resources_,
-      uri,
-      0,
-      UINT64_MAX,
-      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
-
-  const URI& schema_uri = array_dir->latest_array_schema_uri();
-
-  // Read tile header
-  auto&& header =
-      GenericTileIO::read_generic_tile_header(resources_, schema_uri, 0);
-  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
 
   return Status::Ok();
 }

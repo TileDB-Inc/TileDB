@@ -78,9 +78,11 @@ void read_array(
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
   query.set_layout(TILEDB_ROW_MAJOR);
+  Subarray subarray(ctx, array);
   for (auto& r : ranges) {
-    query.add_range(0, r, r);
+    subarray.add_range(0, r, r);
   }
+  query.set_subarray(subarray);
   std::vector<int> d(100);
   std::vector<int> values(100);
   query.set_data_buffer("d", d);

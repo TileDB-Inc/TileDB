@@ -1583,6 +1583,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
               if (*src_buff_condition_indexes !=
                   std::numeric_limits<uint64_t>::max()) {
                 auto& condition_marker = fragment_metadata_[rt->frag_idx()]
+                                             ->loaded_metadata()
                                              ->get_processed_conditions()
                                                  [*src_buff_condition_indexes];
                 converted_index =

@@ -185,9 +185,16 @@ void QueryFx::test_get_buffer_write(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -292,9 +299,16 @@ void QueryFx::test_get_buffer_write_decoupled(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -391,9 +405,16 @@ void QueryFx::test_get_buffer_read(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers
@@ -503,9 +524,16 @@ void QueryFx::test_get_buffer_read_decoupled(const std::string& path) {
 
   // Prepare query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   CHECK(rc == TILEDB_OK);
 
   // Get unset buffers

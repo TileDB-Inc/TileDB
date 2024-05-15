@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2023 TileDB, Inc.
+# Copyright (c) 2023-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,10 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library for C API query_field
+#
+# Maturity Note: object library `capi_query_field` cannot be linked stand-alone
+#   at present.
 #
 add_library(capi_query_field OBJECT ${SOURCES})
 target_link_libraries(capi_query_field PUBLIC export)

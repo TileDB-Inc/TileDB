@@ -75,7 +75,9 @@ TEST_CASE(
     std::vector<float> a1_read(10);
     tiledb::Array array(ctx, array_name, TILEDB_READ);
     tiledb::Query query(ctx, array);
-    query.set_subarray({domain_lo, domain_hi});
+    tiledb::Subarray subarray(ctx, array);
+    subarray.add_range(0, domain_lo, domain_hi);
+    query.set_subarray(subarray);
     query.set_data_buffer("a1", a1_read);
     query.set_data_buffer("d1", d1_read);
     query.submit();

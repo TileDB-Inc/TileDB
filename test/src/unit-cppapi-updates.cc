@@ -104,7 +104,9 @@ TEST_CASE(
   std::vector<int> r_data_a1;
   r_data_a1.resize(300);
 
-  query.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", r_data_a1)
       .set_offsets_buffer("a1", r_offsets_a1);

@@ -801,6 +801,10 @@ class Config {
    *    Authentication token for REST server (used instead of
    *    username/password). <br>
    *    **Default**: ""
+   * - `rest.resubmit_incomplete` <br>
+   *    If true, incomplete queries received from server are automatically
+   *    resubmitted before returning to user control. <br>
+   *    **Default**: "true"
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
@@ -837,14 +841,14 @@ class Config {
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
    *    **Experimental** <br>
-   *    If true, the new, experimental REST routes and APIs for opening an array
+   *    If true, the new REST routes and APIs for opening an array
    *    will be used <br>
-   *    **Default**: false
+   *    **Default**: true
    * - `rest.use_refactored_array_open_and_query_submit` <br>
    *    **Experimental** <br>
-   *    If true, the new, experimental REST routes and APIs for opening an array
-   *    and submitting a query will be used <br>
-   *    **Default**: false
+   *    If true, the new REST routes and APIs for opening an array and
+   * submitting a query will be used <br>
+   *    **Default**: true
    * - `rest.curl.buffer_size` <br>
    *    Set curl buffer size for REST requests <br>
    *    **Default**: 524288 (512KB)
