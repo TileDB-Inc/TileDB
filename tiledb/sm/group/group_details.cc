@@ -219,7 +219,7 @@ Status GroupDetails::store(
 
   Serializer serializer(tile->data(), tile->size());
   serialize(members, serializer);
-  (&resources.stats())->add_counter("write_group_size", tile->size());
+  resources.stats().add_counter("write_group_size", tile->size());
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array

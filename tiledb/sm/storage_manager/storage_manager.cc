@@ -142,7 +142,7 @@ Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   if (group->group_details()->is_modified()) {
     const URI& group_detail_folder_uri = group->group_detail_uri();
     auto group_detail_uri = group->generate_detail_uri();
-    RETURN_NOT_OK(group->group_details()->store(
+    throw_if_not_ok(group->group_details()->store(
         resources_,
         group_detail_folder_uri,
         group_detail_uri,
