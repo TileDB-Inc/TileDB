@@ -552,9 +552,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #endif
       } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
+        results = azure_.ls_filtered(parent, f, d, true);
 #else
         throw filesystem::VFSException(
             "TileDB was built without Azure support");

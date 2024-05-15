@@ -57,6 +57,18 @@ using tiledb::common::filesystem::directory_entry;
 namespace tiledb {
 namespace sm {
 
+/** Converts an Azure nullable value to an STL optional. */
+template <class T>
+std::optional<T> from_azure_nullable(const ::Azure::Nullable<T>& value) {
+  return value ? std::optional(*value) : nullopt;
+}
+
+/** Converts an STL optional value to an Azure nullable. */
+template <class T>
+::Azure::Nullable<T> to_azure_nullable(const std::optional<T>& value) {
+  return value ? *value : ::Azure::Nullable<T>{};
+}
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -1085,6 +1097,69 @@ Status Azure::write_blocks(
   }
 
   return Status::Ok();
+}
+
+LsObjects Azure::list_blobs_impl(
+    const std::string& container_name,
+    const std::string& blob_path,
+    bool recursive,
+    int max_keys,
+    optional<std::string>& continuation_token) const {
+  try {
+    ::Azure::Storage::Blobs::ListBlobsOptions options{
+        .Prefix = blob_path,
+        .ContinuationToken = to_azure_nullable(continuation_token),
+        .PageSizeHint = max_keys};
+    auto container_client = client().GetBlobContainerClient(container_name);
+    auto to_directory_entry =
+        [&container_name](const ::Azure::Storage::Blobs::Models::BlobItem& item)
+        -> LsObjects::value_type {
+      return {
+          "azure://" + container_name + "/" +
+              remove_front_slash(remove_trailing_slash(item.Name)),
+          item.BlobSize >= 0 ? static_cast<uint64_t>(item.BlobSize) : 0};
+    };
+
+    LsObjects result;
+    if (recursive) {
+      auto response = container_client.ListBlobs(options);
+
+      continuation_token = from_azure_nullable(response.NextPageToken);
+
+      result.reserve(response.Blobs.size());
+      std::transform(
+          response.Blobs.begin(),
+          response.Blobs.end(),
+          std::back_inserter(result),
+          to_directory_entry);
+    } else {
+      auto response = container_client.ListBlobsByHierarchy("/", options);
+
+      continuation_token = from_azure_nullable(response.NextPageToken);
+
+      result.reserve(response.Blobs.size() + response.BlobPrefixes.size());
+      std::transform(
+          response.Blobs.begin(),
+          response.Blobs.end(),
+          std::back_inserter(result),
+          to_directory_entry);
+      std::transform(
+          response.BlobPrefixes.begin(),
+          response.BlobPrefixes.end(),
+          std::back_inserter(result),
+          [&container_name](std::string& name) -> LsObjects::value_type {
+            return {
+                "azure://" + container_name + "/" +
+                    remove_front_slash(add_trailing_slash(name)),
+                0};
+          });
+    }
+
+    return result;
+  } catch (const ::Azure::Storage::StorageException& e) {
+    throw AzureException(
+        "List blobs failed on: " + blob_path + "; " + e.Message);
+  }
 }
 
 Status Azure::upload_block(

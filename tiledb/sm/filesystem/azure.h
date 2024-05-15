@@ -34,7 +34,9 @@
 #define TILEDB_AZURE_H
 
 #ifdef HAVE_AZURE
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
+#include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/status.h"
 #include "tiledb/common/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
@@ -63,6 +65,14 @@ class directory_entry;
 }
 
 namespace sm {
+
+/** Class for Azure status exceptions. */
+class AzureException : public StatusException {
+ public:
+  explicit AzureException(const std::string& msg)
+      : StatusException("Azure", msg) {
+  }
+};
 
 /**
  * The Azure-specific configuration parameters.
@@ -121,7 +131,139 @@ struct AzureParameters {
       const std::string& blob_endpoint);
 };
 
+class Azure;
+
+/**
+ * AzureScanner wraps the Azure ListBlobs request and provides an iterator for
+ * results. If we reach the end of the current batch of results and results are
+ * truncated, we fetch the next batch of results from Azure.
+ *
+ * For each batch of results collected by fetch_results(), the begin_ and end_
+ * members are initialized to the first and last elements of the batch. The scan
+ * steps through each result in the range [begin_, end_), using next() to
+ * advance to the next object accepted by the filters for this scan.
+ *
+ * @section Known Defect
+ *      The iterators of AzureScanner are initialized by the Azure ListBlobs
+ *      results and there is no way to determine if they are different from
+ *      iterators returned by a previous request. To be able to detect this, we
+ *      can track the batch number and compare it to the batch number associated
+ *      with the iterator returned by the previous request. Batch number can be
+ *      tracked by the total number of times we submit a ListObjectsV2 request
+ *      within fetch_results().
+ *
+ * @tparam F The FilePredicate type used to filter object results.
+ * @tparam D The DirectoryPredicate type used to prune prefix results.
+ */
+template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+class AzureScanner : public LsScanner<F, D> {
+ public:
+  /** Declare LsScanIterator as a friend class for access to call next(). */
+  template <class scanner_type, class T>
+  friend class LsScanIterator;
+  using Iterator = LsScanIterator<AzureScanner<F, D>, LsObjects::value_type>;
+
+  /** Constructor. */
+  AzureScanner(
+      const Azure& client,
+      const URI& prefix,
+      F file_filter,
+      D dir_filter = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000);
+
+  /**
+   * Returns true if there are more results to fetch from Azure.
+   */
+  [[nodiscard]] inline bool more_to_fetch() const {
+    return has_fetched_ && !continuation_token_.has_value();
+  }
+
+  /**
+   * @return Iterator to the beginning of the results being iterated on.
+   *    Input iterators are single-pass, so we return a copy of this iterator at
+   *    it's current position.
+   */
+  Iterator begin() {
+    return Iterator(this);
+  }
+
+  /**
+   * @return Default constructed iterator, which marks the end of results using
+   *    nullptr.
+   */
+  Iterator end() {
+    return Iterator();
+  }
+
+ private:
+  /**
+   * Advance to the next object accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data pointer.
+   * @sa LsScanIterator::operator++()
+   */
+  void next(typename Iterator::pointer& ptr);
+
+  /**
+   * If the iterator is at the end of the current batch, this will fetch the
+   * next batch of results from Azure. This does not check if the results are
+   * accepted by the filters for this scan.
+   *
+   * @param ptr Reference to the current data iterator.
+   */
+  void advance(typename Iterator::pointer& ptr) {
+    ptr++;
+    if (ptr == end_) {
+      if (more_to_fetch()) {
+        // Fetch results and reset the iterator.
+        ptr = fetch_results();
+      } else {
+        // Set the pointer to nullptr to indicate the end of results.
+        end_ = ptr = typename Iterator::pointer();
+      }
+    }
+  }
+
+  /**
+   * Fetch the next batch of results from S3. This also handles setting the
+   * continuation token for the next request, if the results were truncated.
+   *
+   * @return A pointer to the first result in the new batch. The return value
+   *    is used to update the pointer managed by the iterator during traversal.
+   *    If the request returned no results, this will return nullptr to mark the
+   *    end of the scan.
+   * @sa LsScanIterator::operator++()
+   * @sa AzureScanner::next(typename Iterator::pointer&)
+   */
+  typename Iterator::pointer fetch_results();
+
+  /** Reference to the Azure VFS. */
+  const Azure& client_;
+  /** Name of container. */
+  std::string container_name_;
+  /** Blob path. */
+  std::string blob_path_;
+  /** Maximum number of items to request from Azure. */
+  int max_keys_;
+  /** Iterators for the current objects fetched from Azure. */
+  typename Iterator::pointer begin_, end_;
+
+  /** Whether blobs have been fetched at least once. */
+  bool has_fetched_;
+  /**
+   * Token to pass to Azure to continue iteration.
+   *
+   * If it is nullopt, and has_fetched_ is false, it means that th
+   */
+  std::optional<std::string> continuation_token_;
+  LsObjects blobs_;
+};
+
 class Azure {
+  template <FilePredicate, DirectoryPredicate>
+  friend class AzureScanner;
+
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -255,6 +397,55 @@ class Azure {
       const URI& uri,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    AzureScanner<F, D> azure_scanner(*this, parent, f, d, recursive);
+
+    LsObjects objects;
+    for (auto object : azure_scanner) {
+      objects.push_back(std::move(object));
+    }
+    return objects;
+  }
+
+  /**
+   * Constructs a scanner for listing Azure objects. The scanner can be used to
+   * retrieve an InputIterator for passing to algorithms such as `std::copy_if`
+   * or STL constructors supporting initialization via input iterators.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   * @param max_keys The maximum number of keys to retrieve per request.
+   * @return Fully constructed AzureScanner object.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  AzureScanner<F, D> scanner(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false,
+      int max_keys = 1000) const {
+    return AzureScanner<F, D>(*this, parent, f, d, recursive, max_keys);
+  }
 
   /**
    * Renames an object.
@@ -578,6 +769,33 @@ class Azure {
   Status flush_blob_direct(const URI& uri);
 
   /**
+   * Performs an Azure ListBlobs operation.
+   *
+   * @param container_name The container's name.
+   * @param blob_path The prefix of the blobs to list.
+   * @param recursive Whether to list blobs recursively.
+   * @param max_keys A hint to Azure for the maximum number of keys to return.
+   * @param continuation_token On entry, holds the token to pass to Azure to
+   * continue a listing operation, or nullopt if the operation is starting. On
+   * exit, will hold the continuation token to pass to the next listing
+   * operation, or nullopt if there are no more results.
+   *
+   * @return A vector with the blobs and directories found.
+   *
+   * @note If continuation_token is not nullopt, callers must ensure that the
+   * container_name, blob_path and recursive parameters are the same as the
+   * previous call, going back to the first call when continuation_token was
+   * nullopt. This is not enforced by the function, which is the reason it is
+   * not public.
+   */
+  LsObjects list_blobs_impl(
+      const std::string& container_name,
+      const std::string& blob_path,
+      bool recursive,
+      int max_keys,
+      optional<std::string>& continuation_token) const;
+
+  /**
    * Parses a URI into a container name and blob path. For example,
    * URI "azure://my-container/dir1/file1" will parse into
    * `*container_name == "my-container"` and `*blob_path == "dir1/file1"`.
@@ -644,6 +862,69 @@ class Azure {
   static std::string remove_trailing_slash(const std::string& path);
 };
 
+template <FilePredicate F, DirectoryPredicate D>
+AzureScanner<F, D>::AzureScanner(
+    const Azure& client,
+    const URI& prefix,
+    F file_filter,
+    D dir_filter,
+    bool recursive,
+    int max_keys)
+    : LsScanner<F, D>(prefix, file_filter, dir_filter, recursive)
+    , client_(client)
+    , max_keys_(max_keys)
+    , has_fetched_(false) {
+  if (!prefix.is_azure()) {
+    throw AzureException("URI is not an Azure URI: " + prefix.to_string());
+  }
+
+  throw_if_not_ok(
+      Azure::parse_azure_uri(prefix, &container_name_, &blob_path_));
+  fetch_results();
+  next(begin_);
+}
+
+template <FilePredicate F, DirectoryPredicate D>
+void AzureScanner<F, D>::next(typename Iterator::pointer& ptr) {
+  if (ptr == end_) {
+    ptr = fetch_results();
+  }
+
+  while (ptr != end_) {
+    auto& object = *ptr;
+
+    // TODO: Add support for directory pruning.
+    if (this->file_filter_(object.first, object.second)) {
+      // Iterator is at the next object within results accepted by the filters.
+      return;
+    } else {
+      // Object was rejected by the FilePredicate, do not include it in results.
+      advance(ptr);
+    }
+  }
+}
+
+template <FilePredicate F, DirectoryPredicate D>
+typename AzureScanner<F, D>::Iterator::pointer
+AzureScanner<F, D>::fetch_results() {
+  if (!more_to_fetch()) {
+    begin_ = end_ = typename Iterator::pointer();
+    return end_;
+  }
+
+  blobs_ = client_.list_blobs_impl(
+      container_name_,
+      blob_path_,
+      this->is_recursive_,
+      max_keys_,
+      continuation_token_);
+  has_fetched_ = true;
+  // Update pointers to the newly fetched results.
+  begin_ = blobs_.begin();
+  end_ = blobs_.end();
+
+  return begin_;
+}
 }  // namespace sm
 }  // namespace tiledb
 
