@@ -65,7 +65,8 @@ struct ordinary_vfs_fh {
   tiledb_ctx_handle_t* ctx{vfs.ctx};  // allow access to ordinary_vfs's ctx
   tiledb_vfs_fh_handle_t* vfs_fh{nullptr};
   ordinary_vfs_fh() {
-    auto rc = tiledb_vfs_open(vfs.ctx, vfs.vfs, " ", TILEDB_VFS_WRITE, &vfs_fh);
+    auto rc = tiledb_vfs_open(
+        vfs.ctx, vfs.vfs, "test.txt", TILEDB_VFS_WRITE, &vfs_fh);
     if (rc != TILEDB_OK) {
       throw std::runtime_error("error creating test vfs file handle");
     }
