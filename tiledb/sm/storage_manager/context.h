@@ -117,8 +117,14 @@ class Context {
     return &(resources_.io_tp());
   }
 
-  [[nodiscard]] inline shared_ptr<RestClient> rest_client() const {
-    return resources_.rest_client();
+  [[nodiscard]] inline RestClient& rest_client() const {
+    auto x = resources_.rest_client();
+    if (!x) {
+      throw std::runtime_error(
+          "Failed to retrieve RestClient; the underlying instance is null and "
+          "may not have been configured.");
+    }
+    return *(x.get());
   }
 
  private:
