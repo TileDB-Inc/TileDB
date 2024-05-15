@@ -587,10 +587,8 @@ class Azure {
    * @param blob_path Mutates to the blob path.
    * @return Status
    */
-  Status parse_azure_uri(
-      const URI& uri,
-      std::string* container_name,
-      std::string* blob_path) const;
+  static Status parse_azure_uri(
+      const URI& uri, std::string* container_name, std::string* blob_path);
 
   /**
    * Copies the blob at 'old_uri' to `new_uri`.
@@ -629,21 +627,21 @@ class Azure {
    *
    * @param path the string to remove the leading slash from.
    */
-  std::string remove_front_slash(const std::string& path) const;
+  static std::string remove_front_slash(const std::string& path);
 
   /**
    * Adds a trailing slash from 'path' if it doesn't already have one.
    *
    * @param path the string to add the trailing slash to.
    */
-  std::string add_trailing_slash(const std::string& path) const;
+  static std::string add_trailing_slash(const std::string& path);
 
   /**
    * Removes a trailing slash from 'path' if it exists.
    *
    * @param path the string to remove the trailing slash from.
    */
-  std::string remove_trailing_slash(const std::string& path) const;
+  static std::string remove_trailing_slash(const std::string& path);
 };
 
 }  // namespace sm

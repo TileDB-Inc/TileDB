@@ -542,7 +542,7 @@ Status Azure::is_blob(
   return Status_Ok();
 }
 
-std::string Azure::remove_front_slash(const std::string& path) const {
+std::string Azure::remove_front_slash(const std::string& path) {
   if (path.front() == '/') {
     return path.substr(1, path.length());
   }
@@ -550,7 +550,7 @@ std::string Azure::remove_front_slash(const std::string& path) const {
   return path;
 }
 
-std::string Azure::add_trailing_slash(const std::string& path) const {
+std::string Azure::add_trailing_slash(const std::string& path) {
   if (path.back() != '/') {
     return path + "/";
   }
@@ -558,7 +558,7 @@ std::string Azure::add_trailing_slash(const std::string& path) const {
   return path;
 }
 
-std::string Azure::remove_trailing_slash(const std::string& path) const {
+std::string Azure::remove_trailing_slash(const std::string& path) {
   if (path.back() == '/') {
     return path.substr(0, path.length() - 1);
   }
@@ -1111,7 +1111,7 @@ Status Azure::upload_block(
 Status Azure::parse_azure_uri(
     const URI& uri,
     std::string* const container_name,
-    std::string* const blob_path) const {
+    std::string* const blob_path) {
   assert(uri.is_azure());
   const std::string uri_str = uri.to_string();
 
