@@ -420,25 +420,77 @@ class Array {
   Status close();
 
   /**
-   * Deletes the Array data with given URI.
+   * Performs deletion of local fragments with the given parent URI,
+   * between the provided timestamps.
    *
-   * @param uri The uri of the Array whose data is to be deleted.
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose fragments are to be deleted.
+   * @param timestamp_start The start timestamp at which to delete fragments.
+   * @param timestamp_end The end timestamp at which to delete fragments.
+   * @param array_dir An optional ArrayDirectory from which to delete fragments.
    *
-   * @pre The Array must be open for exclusive writes
+   * @section Maturity Notes
+   * This is legacy code, ported from StorageManager during its removal process.
+   * Its existence supports the non-static `delete_fragments` API below,
+   * performing the actual deletion of fragments. This function is slated for
+   * removal and should be directly integrated into the function below.
    */
-  void delete_array(const URI& uri);
+  static void delete_fragments(
+      ContextResources& resources,
+      const URI& uri,
+      uint64_t timestamp_start,
+      uint64_t timstamp_end,
+      std::optional<ArrayDirectory> array_dir = std::nullopt);
 
   /**
-   * Deletes the fragments from the Array with given URI.
+   * Handles local and remote deletion of fragments between the provided
+   * timestamps from an open array with the given URI.
    *
    * @param uri The uri of the Array whose fragments are to be deleted.
    * @param timestamp_start The start timestamp at which to delete fragments.
    * @param timestamp_end The end timestamp at which to delete fragments.
    *
    * @pre The Array must be open for exclusive writes
+   *
+   * @section Maturity Notes
+   * This API is an interim version of its final product, awaiting rewrite.
+   * As is, it handles the incoming URI and invokes the remote or local function
+   * call accordingly. The local, static function above is legacy code which
+   * exists only to support this function. A rewrite should integrate the two
+   * and remove the need for any static APIs.
    */
   void delete_fragments(
       const URI& uri, uint64_t timestamp_start, uint64_t timstamp_end);
+
+  /**
+   * Performs deletion of the local array with the given parent URI.
+   *
+   * @param resources The context resources.
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @section Maturity Notes
+   * This is legacy code, ported from StorageManager during its removal process.
+   * Its existence supports the non-static `delete_array` API below,
+   * performing the actual deletion of array data. This function is slated for
+   * removal and should be directly integrated into the function below.
+   */
+  static void delete_array(ContextResources& resources, const URI& uri);
+
+  /**
+   * Handles local and remote deletion of an open array with the given URI.
+   *
+   * @param uri The uri of the Array whose data is to be deleted.
+   *
+   * @pre The Array must be open for exclusive writes
+   *
+   * @section Maturity Notes
+   * This API is an interim version of its final product, awaiting rewrite.
+   * As is, it handles the incoming URI and invokes the remote or local function
+   * call accordingly. The local, static function above is legacy code which
+   * exists only to support this function. A rewrite should integrate the two
+   * and remove the need for any static APIs.
+   */
+  void delete_array(const URI& uri);
 
   /**
    * Deletes the fragments with the given URIs from the Array with given URI.

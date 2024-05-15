@@ -35,6 +35,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/array/array.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -324,7 +325,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
         }
 
         if (member->type() == ObjectType::ARRAY) {
-          storage_manager_->delete_array(member_uri.to_string().c_str());
+          Array::delete_array(resources_, member_uri);
         } else if (member->type() == ObjectType::GROUP) {
           Group group_rec(resources_, member_uri, storage_manager_);
           throw_if_not_ok(group_rec.open(QueryType::MODIFY_EXCLUSIVE));
