@@ -1524,6 +1524,11 @@ Status ArraySchema::set_cell_order(Layout cell_order) {
         Status_ArraySchemaError("Cannot set cell order; Hilbert order is only "
                                 "applicable to sparse arrays"));
 
+  if (cell_order == Layout::UNORDERED)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Cannot set cell order; Cannot create ArraySchema "
+        "with UNORDERED cell order"));
+
   cell_order_ = cell_order;
 
   return Status::Ok();
@@ -1617,6 +1622,11 @@ Status ArraySchema::set_tile_order(Layout tile_order) {
   if (tile_order == Layout::HILBERT)
     return LOG_STATUS(Status_ArraySchemaError(
         "Cannot set tile order; Hilbert order is not applicable to tiles"));
+
+  if (tile_order == Layout::UNORDERED)
+    return LOG_STATUS(Status_ArraySchemaError(
+        "Cannot set tile order; Cannot create ArraySchema "
+        "with UNORDERED tile order"));
 
   tile_order_ = tile_order;
   return Status::Ok();
