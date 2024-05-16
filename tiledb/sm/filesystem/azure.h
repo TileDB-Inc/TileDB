@@ -176,7 +176,7 @@ class AzureScanner : public LsScanner<F, D> {
    * Returns true if there are more results to fetch from Azure.
    */
   [[nodiscard]] inline bool more_to_fetch() const {
-    return has_fetched_ && !continuation_token_.has_value();
+    return !has_fetched_ || continuation_token_.has_value();
   }
 
   /**
@@ -226,7 +226,7 @@ class AzureScanner : public LsScanner<F, D> {
   }
 
   /**
-   * Fetch the next batch of results from S3. This also handles setting the
+   * Fetch the next batch of results from Azure. This also handles setting the
    * continuation token for the next request, if the results were truncated.
    *
    * @return A pointer to the first result in the new batch. The return value

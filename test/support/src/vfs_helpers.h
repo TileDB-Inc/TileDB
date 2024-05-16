@@ -1107,6 +1107,7 @@ class AzureTest : public VFSTestBase {
  public:
   explicit AzureTest(const std::vector<size_t>& test_tree)
       : VFSTestBase(test_tree, "azure://") {
+#ifdef HAVE_AZURE
     vfs_.create_bucket(temp_dir_).ok();
     for (size_t i = 1; i <= test_tree_.size(); i++) {
       sm::URI path = temp_dir_.join_path("subdir_" + std::to_string(i));
@@ -1121,6 +1122,7 @@ class AzureTest : public VFSTestBase {
       }
     }
     std::sort(expected_results().begin(), expected_results().end());
+#endif
   }
 };
 
