@@ -64,9 +64,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
-#include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/query.h"
-#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -589,55 +587,6 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
         uri.join_path(constants::group_filename), is_group));
   }
   return Status::Ok();
-}
-
-tuple<
-    Status,
-    optional<std::vector<QueryCondition>>,
-    optional<std::vector<std::vector<UpdateValue>>>>
-StorageManagerCanonical::load_delete_and_update_conditions(
-    const OpenedArray& opened_array) {
-  auto& locations =
-      opened_array.array_directory().delete_and_update_tiles_location();
-  auto conditions = std::vector<QueryCondition>(locations.size());
-  auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
-
-  auto status = parallel_for(compute_tp(), 0, locations.size(), [&](size_t i) {
-    // Get condition marker.
-    auto& uri = locations[i].uri();
-
-    // Read the condition from storage.
-    auto tile = GenericTileIO::load(
-        resources_,
-        uri,
-        locations[i].offset(),
-        *(opened_array.encryption_key()),
-        resources_.ephemeral_memory_tracker());
-
-    if (tiledb::sm::utils::parse::ends_with(
-            locations[i].condition_marker(),
-            tiledb::sm::constants::delete_file_suffix)) {
-      conditions[i] =
-          tiledb::sm::deletes_and_updates::serialization::deserialize_condition(
-              i, locations[i].condition_marker(), tile->data(), tile->size());
-    } else if (tiledb::sm::utils::parse::ends_with(
-                   locations[i].condition_marker(),
-                   tiledb::sm::constants::update_file_suffix)) {
-      auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
-          deserialize_update_condition_and_values(
-              i, locations[i].condition_marker(), tile->data(), tile->size());
-      conditions[i] = std::move(cond);
-      update_values[i] = std::move(uvs);
-    } else {
-      throw Status_StorageManagerError("Unknown condition marker extension");
-    }
-
-    throw_if_not_ok(conditions[i].check(opened_array.array_schema_latest()));
-    return Status::Ok();
-  });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
-
-  return {Status::Ok(), conditions, update_values};
 }
 
 Status StorageManagerCanonical::object_type(

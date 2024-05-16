@@ -55,6 +55,8 @@ class ArraySchema;
 class SchemaEvolution;
 class FragmentMetadata;
 class MemoryTracker;
+class UpdateValue;
+class QueryCondition;
 enum class QueryType : uint8_t;
 
 /**
@@ -99,7 +101,8 @@ class OpenedArray {
       uint64_t timestamp_start,
       uint64_t timestamp_end_opened_at,
       bool is_remote)
-      : array_dir_(ArrayDirectory(resources, array_uri))
+      : resources_(resources)
+      , array_dir_(ArrayDirectory(resources, array_uri))
       , array_schema_latest_(nullptr)
       , metadata_(memory_tracker)
       , metadata_loaded_(false)
@@ -207,7 +210,21 @@ class OpenedArray {
     return is_remote_;
   }
 
+  /**
+   * Loads the delete and update conditions from storage.
+   *
+   * @return Status, vector of the conditions, vector of the update values.
+   */
+  tuple<
+      Status,
+      optional<std::vector<QueryCondition>>,
+      optional<std::vector<std::vector<UpdateValue>>>>
+  load_delete_and_update_conditions();
+
  private:
+  /** The context resources. */
+  ContextResources& resources_;
+
   /** The array directory object for listing URIs. */
   optional<ArrayDirectory> array_dir_;
 

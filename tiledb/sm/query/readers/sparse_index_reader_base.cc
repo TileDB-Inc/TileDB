@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,7 @@
 
 #include <numeric>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SparseIndexReaderBaseStatusException : public StatusException {
  public:
@@ -327,7 +326,7 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Load delete conditions.
   auto&& [st, conditions, update_values] =
-      storage_manager_->load_delete_and_update_conditions(*array_);
+      array_->load_delete_and_update_conditions();
   RETURN_CANCEL_OR_ERROR(st);
   delete_and_update_conditions_ = std::move(*conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
@@ -1042,5 +1041,4 @@ template void SparseIndexReaderBase::compute_tile_bitmaps<uint64_t>(
 template void SparseIndexReaderBase::compute_tile_bitmaps<uint8_t>(
     std::vector<ResultTile*>&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
