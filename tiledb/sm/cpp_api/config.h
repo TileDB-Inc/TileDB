@@ -567,7 +567,8 @@ class Config {
    *    attempts, in milliseconds.
    *    **Default**: 60000
    * - `vfs.gcs.project_id` <br>
-   *    Set the GCS project id. <br>
+   *    Set the GCS project ID to create new buckets to. Not required unless you
+   *    are going to use the VFS to create buckets. <br>
    *    **Default**: ""
    * - `vfs.gcs.service_account_key` <br>
    *    **Experimental** <br>
