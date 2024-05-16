@@ -2669,7 +2669,7 @@ int32_t tiledb_array_consolidate(
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
   return TILEDB_OK;
 }
@@ -2688,7 +2688,7 @@ int32_t tiledb_array_consolidate_with_key(
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
       key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -2715,7 +2715,7 @@ int32_t tiledb_array_consolidate_fragments(
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -2725,7 +2725,7 @@ int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   tiledb::sm::Consolidator::array_vacuum(
       array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -3068,9 +3068,7 @@ int32_t tiledb_array_upgrade_version(
 
   // Upgrade version
   throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      uri, (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }

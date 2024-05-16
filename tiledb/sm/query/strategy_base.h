@@ -37,7 +37,8 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
 namespace tiledb {
 namespace sm {
@@ -78,7 +79,8 @@ class StrategyParams {
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
-      : array_memory_tracker_(array_memory_tracker)
+      : resources_(storage_manager->resources())
+      , array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
       , storage_manager_(storage_manager)
       , array_(array)
@@ -96,6 +98,13 @@ class StrategyParams {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Accessor for the resources
+   */
+  inline ContextResources& resources() {
+    return resources_;
+  }
 
   /** Return the array memory tracker. */
   inline shared_ptr<MemoryTracker> array_memory_tracker() {
@@ -165,6 +174,11 @@ class StrategyParams {
   /* ********************************* */
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
+
+  /**
+   * Resources used to perform operations
+   */
+  ContextResources& resources_;
 
   /** Array Memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;
@@ -262,6 +276,11 @@ class StrategyBase {
   /* ********************************* */
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
+
+  /**
+   * Resources used for operations
+   */
+  ContextResources& resources_;
 
   /** The array memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;

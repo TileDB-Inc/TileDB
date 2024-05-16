@@ -165,10 +165,7 @@ Status DeletesAndUpdates::dowork() {
 
   auto uri = commit_uri.join_path(new_fragment_str);
   GenericTileIO::store_data(
-      storage_manager_->resources(),
-      uri,
-      serialized_condition,
-      *array_->encryption_key());
+      resources_, uri, serialized_condition, *array_->encryption_key());
 
   return Status::Ok();
 }

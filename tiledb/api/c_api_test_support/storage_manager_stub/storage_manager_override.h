@@ -71,9 +71,6 @@ class StorageManagerStub {
   inline stats::Stats* stats() {
     return &resources_.stats();
   }
-  const Config& config() {
-    return config_;
-  }
   inline VFS* vfs() {
     throw std::logic_error("StorageManagerStub does not instantiate a VFS");
   }

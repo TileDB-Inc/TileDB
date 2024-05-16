@@ -2310,7 +2310,8 @@ Status array_from_query_deserialize(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
         // Set traversal limit from config
-        uint64_t limit = storage_manager->config()
+        uint64_t limit = storage_manager->resources()
+                             .config()
                              .get<uint64_t>("rest.capnp_traversal_limit")
                              .value();
         ::capnp::ReaderOptions readerOptions;

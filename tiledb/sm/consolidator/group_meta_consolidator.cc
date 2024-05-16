@@ -138,7 +138,7 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
 
 Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(

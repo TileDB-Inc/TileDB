@@ -238,6 +238,11 @@ class Consolidator {
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
 
+  /**
+   * Resources used to perform the operation
+   */
+  ContextResources& resources_;
+
   /** The storage manager. */
   StorageManager* storage_manager_;
 

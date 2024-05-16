@@ -85,8 +85,7 @@ capi_return_t tiledb_ctx_get_stats(
 capi_return_t tiledb_ctx_get_config(
     tiledb_ctx_handle_t* ctx, tiledb_config_handle_t** config) {
   api::ensure_output_pointer_is_valid(config);
-  *config =
-      tiledb_config_handle_t::make_handle(ctx->storage_manager()->config());
+  *config = tiledb_config_handle_t::make_handle(ctx->config());
   return TILEDB_OK;
 }
 

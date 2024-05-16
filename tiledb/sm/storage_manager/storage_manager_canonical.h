@@ -209,9 +209,6 @@ class StorageManagerCanonical {
   /** Returns true while all tasks are being cancelled. */
   bool cancellation_in_progress();
 
-  /** Returns the configuration parameters. */
-  const Config& config() const;
-
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
 
