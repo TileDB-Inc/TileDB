@@ -274,7 +274,8 @@ void Consolidator::write_consolidated_commits_file(
     // the size variable.
     if (stdx::string::ends_with(
             uri.to_string(), constants::delete_file_suffix)) {
-      throw_if_not_ok(storage_manager->vfs()->file_size(uri, &file_sizes[i]));
+      throw_if_not_ok(
+          storage_manager->resources().vfs().file_size(uri, &file_sizes[i]));
       total_size += file_sizes[i];
       total_size += sizeof(storage_size_t);
     }
@@ -295,7 +296,7 @@ void Consolidator::write_consolidated_commits_file(
             uri.to_string(), constants::delete_file_suffix)) {
       memcpy(&data[file_index], &file_sizes[i], sizeof(storage_size_t));
       file_index += sizeof(storage_size_t);
-      throw_if_not_ok(storage_manager->vfs()->read(
+      throw_if_not_ok(storage_manager->resources().vfs().read(
           uri, 0, &data[file_index], file_sizes[i]));
       file_index += file_sizes[i];
     }
@@ -305,9 +306,10 @@ void Consolidator::write_consolidated_commits_file(
   URI consolidated_commits_uri =
       array_dir.get_commits_dir(write_version)
           .join_path(name + constants::con_commits_file_suffix);
-  throw_if_not_ok(storage_manager->vfs()->write(
+  throw_if_not_ok(storage_manager->resources().vfs().write(
       consolidated_commits_uri, data.data(), data.size()));
-  throw_if_not_ok(storage_manager->vfs()->close_file(consolidated_commits_uri));
+  throw_if_not_ok(
+      storage_manager->resources().vfs().close_file(consolidated_commits_uri));
 }
 
 void Consolidator::array_vacuum(

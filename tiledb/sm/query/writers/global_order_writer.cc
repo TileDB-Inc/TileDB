@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -246,7 +246,7 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
   for (const auto& name : buffer_names()) {
     auto uri = meta->uri(name);
 
-    auto&& [st2, state] = storage_manager_->vfs()->multipart_upload_state(uri);
+    auto&& [st2, state] = resources_.vfs().multipart_upload_state(uri);
     RETURN_NOT_OK_TUPLE(st2, {});
     // If there is no entry for this uri, probably multipart upload is disabled
     // or no write was issued so far
@@ -257,8 +257,7 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
 
     if (array_schema_.var_size(name)) {
       auto var_uri = meta->var_uri(name);
-      auto&& [st, var_state] =
-          storage_manager_->vfs()->multipart_upload_state(var_uri);
+      auto&& [st, var_state] = resources_.vfs().multipart_upload_state(var_uri);
       RETURN_NOT_OK_TUPLE(st, {});
       result[var_uri.remove_trailing_slash().last_path_part()] =
           std::move(*var_state);
@@ -266,7 +265,7 @@ GlobalOrderWriter::multipart_upload_state(bool client) {
     if (array_schema_.is_nullable(name)) {
       auto validity_uri = meta->validity_uri(name);
       auto&& [st, val_state] =
-          storage_manager_->vfs()->multipart_upload_state(validity_uri);
+          resources_.vfs().multipart_upload_state(validity_uri);
       RETURN_NOT_OK_TUPLE(st, {});
       result[validity_uri.remove_trailing_slash().last_path_part()] =
           std::move(*val_state);
@@ -288,8 +287,7 @@ Status GlobalOrderWriter::set_multipart_upload_state(
   // uri in this case holds only the buffer name
   auto absolute_uri =
       global_write_state_->frag_meta_->fragment_uri().join_path(uri);
-  return storage_manager_->vfs()->set_multipart_upload_state(
-      absolute_uri, state);
+  return resources_.vfs().set_multipart_upload_state(absolute_uri, state);
 }
 
 /* ****************************** */
@@ -509,13 +507,13 @@ void GlobalOrderWriter::clean_up() {
     // Cleanup the fragment we are currently writing. There is a chance that the
     // URI is empty if creating the first fragment had failed.
     if (!uri.empty()) {
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(uri));
     }
     global_write_state_.reset(nullptr);
 
     // Cleanup all fragments pending commit.
     for (auto& uri : frag_uris_to_commit_) {
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(uri));
     }
     frag_uris_to_commit_.clear();
   }
@@ -709,7 +707,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
   // Write either one commit file or a consolidated commit file if multiple
   // fragments were written.
   if (frag_uris_to_commit_.size() == 0) {
-    RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+    throw_if_not_ok(resources_.vfs().touch(commit_uri));
   } else {
     std::vector<URI> commit_uris;
     commit_uris.reserve(frag_uris_to_commit_.size() + 1);
@@ -861,7 +859,7 @@ Status GlobalOrderWriter::global_write_handle_last_tile() {
 void GlobalOrderWriter::nuke_global_write_state() {
   auto meta = global_write_state_->frag_meta_;
   throw_if_not_ok(close_files(meta));
-  throw_if_not_ok(storage_manager_->vfs()->remove_dir(meta->fragment_uri()));
+  throw_if_not_ok(resources_.vfs().remove_dir(meta->fragment_uri()));
   global_write_state_.reset(nullptr);
 }
 

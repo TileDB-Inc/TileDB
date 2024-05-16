@@ -163,7 +163,7 @@ Status Group::open(
     try {
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
-          storage_manager_->vfs(),
+          &resources_.vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
           timestamp_start,
@@ -177,7 +177,7 @@ Status Group::open(
     try {
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
-          storage_manager_->vfs(),
+          &resources_.vfs(),
           storage_manager_->compute_tp(),
           group_uri_,
           timestamp_start,

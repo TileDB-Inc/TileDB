@@ -174,41 +174,41 @@ Status StorageManagerCanonical::array_create(
   array_schema->check(config_);
 
   // Create array directory
-  RETURN_NOT_OK(vfs()->create_dir(array_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_uri));
 
   // Create array schema directory
   URI array_schema_dir_uri =
       array_uri.join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
 
   // Create the enumerations directory inside the array schema directory
   URI array_enumerations_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_enumerations_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_enumerations_uri));
 
   // Create commit directory
   URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_commit_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_commit_uri));
 
   // Create fragments directory
   URI array_fragments_uri =
       array_uri.join_path(constants::array_fragments_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_fragments_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_fragments_uri));
 
   // Create array metadata directory
   URI array_metadata_uri =
       array_uri.join_path(constants::array_metadata_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_metadata_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_metadata_uri));
 
   // Create fragment metadata directory
   URI array_fragment_metadata_uri =
       array_uri.join_path(constants::array_fragment_meta_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_fragment_metadata_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_fragment_metadata_uri));
 
   // Create dimension label directory
   URI array_dimension_labels_uri =
       array_uri.join_path(constants::array_dimension_labels_dir_name);
-  RETURN_NOT_OK(vfs()->create_dir(array_dimension_labels_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(array_dimension_labels_uri));
 
   // Get encryption key from config
   Status st;
@@ -241,7 +241,7 @@ Status StorageManagerCanonical::array_create(
 
   // Store array schema
   if (!st.ok()) {
-    throw_if_not_ok(vfs()->remove_dir(array_uri));
+    throw_if_not_ok(resources_.vfs().remove_dir(array_uri));
     return st;
   }
 
@@ -362,7 +362,7 @@ Status StorageManagerCanonical::array_upgrade_version(
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    auto st = vfs()->create_dir(array_schema_dir_uri);
+    auto st = resources_.vfs().create_dir(array_schema_dir_uri);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Store array schema
@@ -373,20 +373,22 @@ Status StorageManagerCanonical::array_upgrade_version(
     URI array_commit_uri =
         array_uri.join_path(constants::array_commits_dir_name);
     RETURN_NOT_OK_ELSE(
-        vfs()->create_dir(array_commit_uri),
+        resources_.vfs().create_dir(array_commit_uri),
         logger_->status_no_return_value(st));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
-    st = vfs()->create_dir(array_fragments_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    RETURN_NOT_OK_ELSE(
+        resources_.vfs().create_dir(array_fragments_uri),
+        logger_->status_no_return_value(st));
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
-    st = vfs()->create_dir(array_fragment_metadata_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    RETURN_NOT_OK_ELSE(
+        resources_.vfs().create_dir(array_fragment_metadata_uri),
+        logger_->status_no_return_value(st));
   }
 
   return Status::Ok();
@@ -427,7 +429,7 @@ Status StorageManagerCanonical::cancel_all_tasks() {
   if (handle_cancel) {
     // Cancel any queued tasks.
     cancelable_tasks_.cancel_all_tasks();
-    throw_if_not_ok(resources().vfs().cancel_all_tasks());
+    throw_if_not_ok(resources_.vfs().cancel_all_tasks());
 
     // Wait for in-progress queries to finish.
     wait_for_zero_in_progress();
@@ -464,7 +466,7 @@ Status StorageManagerCanonical::object_remove(const char* path) const {
         std::string("Cannot remove object '") + path +
         "'; Invalid TileDB object"));
 
-  return vfs()->remove_dir(uri);
+  return resources_.vfs().remove_dir(uri);
 }
 
 Status StorageManagerCanonical::object_move(
@@ -486,7 +488,7 @@ Status StorageManagerCanonical::object_move(
         std::string("Cannot move object '") + old_path +
         "'; Invalid TileDB object"));
 
-  return vfs()->move_dir(old_uri, new_uri);
+  return resources_.vfs().move_dir(old_uri, new_uri);
 }
 
 const std::unordered_map<std::string, std::string>&
@@ -518,19 +520,19 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   }
 
   // Create group directory
-  RETURN_NOT_OK(vfs()->create_dir(uri));
+  throw_if_not_ok(resources_.vfs().create_dir(uri));
 
   // Create group file
   URI group_filename = uri.join_path(constants::group_filename);
-  RETURN_NOT_OK(vfs()->touch(group_filename));
+  throw_if_not_ok(resources_.vfs().touch(group_filename));
 
   // Create metadata folder
-  RETURN_NOT_OK(
-      vfs()->create_dir(uri.join_path(constants::group_metadata_dir_name)));
+  throw_if_not_ok(resources_.vfs().create_dir(
+      uri.join_path(constants::group_metadata_dir_name)));
 
   // Create group detail folder
-  RETURN_NOT_OK(
-      vfs()->create_dir(uri.join_path(constants::group_detail_dir_name)));
+  throw_if_not_ok(resources_.vfs().create_dir(
+      uri.join_path(constants::group_detail_dir_name)));
   return Status::Ok();
 }
 
@@ -550,16 +552,16 @@ bool StorageManagerCanonical::is_array(const URI& uri) const {
   } else {
     // Check if the schema directory exists or not
     bool dir_exists = false;
-    throw_if_not_ok(vfs()->is_dir(
+    throw_if_not_ok(resources_.vfs().is_dir(
         uri.join_path(constants::array_schema_dir_name), &dir_exists));
 
     if (dir_exists) {
       return true;
     }
 
-    bool schema_exists = false;
     // If there is no schema directory, we check schema file
-    throw_if_not_ok(vfs()->is_file(
+    bool schema_exists = false;
+    throw_if_not_ok(resources_.vfs().is_file(
         uri.join_path(constants::array_schema_filename), &schema_exists));
     return schema_exists;
   }
@@ -575,7 +577,7 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
     *is_group = *exists;
   } else {
     // Check for new group details directory
-    RETURN_NOT_OK(vfs()->is_dir(
+    throw_if_not_ok(resources_.vfs().is_dir(
         uri.join_path(constants::group_detail_dir_name), is_group));
 
     if (*is_group) {
@@ -583,8 +585,8 @@ Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
     }
 
     // Fall back to older group file to check for legacy (pre-format 12) groups
-    RETURN_NOT_OK(
-        vfs()->is_file(uri.join_path(constants::group_filename), is_group));
+    throw_if_not_ok(resources_.vfs().is_file(
+        uri.join_path(constants::group_filename), is_group));
   }
   return Status::Ok();
 }
@@ -651,7 +653,7 @@ Status StorageManagerCanonical::object_type(
   } else if (!uri.is_tiledb()) {
     // For non public cloud backends, listing a non-directory is an error.
     bool is_dir = false;
-    RETURN_NOT_OK(vfs()->is_dir(uri, &is_dir));
+    throw_if_not_ok(resources_.vfs().is_dir(uri, &is_dir));
     if (!is_dir) {
       *type = ObjectType::INVALID;
       return Status::Ok();
@@ -684,7 +686,7 @@ Status StorageManagerCanonical::object_iter_begin(
 
   // Get all contents of path
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
+  throw_if_not_ok(resources_.vfs().ls(path_uri, &uris));
 
   // Create a new object iterator
   *obj_iter = tdb_new(ObjectIter);
@@ -716,7 +718,7 @@ Status StorageManagerCanonical::object_iter_begin(
 
   // Get all contents of path
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(path_uri, &uris));
+  throw_if_not_ok(resources_.vfs().ls(path_uri, &uris));
 
   // Create a new object iterator
   *obj_iter = tdb_new(ObjectIter);
@@ -768,7 +770,7 @@ Status StorageManagerCanonical::object_iter_next_postorder(
     do {
       obj_num = obj_iter->objs_.size();
       std::vector<URI> uris;
-      RETURN_NOT_OK(vfs()->ls(obj_iter->objs_.front(), &uris));
+      throw_if_not_ok(resources_.vfs().ls(obj_iter->objs_.front(), &uris));
       obj_iter->expanded_.front() = true;
 
       // Push the new TileDB objects in the front of the iterator's list
@@ -815,7 +817,7 @@ Status StorageManagerCanonical::object_iter_next_preorder(
 
   // Get all contents of the next URI
   std::vector<URI> uris;
-  RETURN_NOT_OK(vfs()->ls(front_uri, &uris));
+  throw_if_not_ok(resources_.vfs().ls(front_uri, &uris));
 
   // Push the new TileDB objects in the front of the iterator's list
   ObjectType obj_type;
@@ -870,19 +872,22 @@ Status StorageManagerCanonical::store_array_schema(
 
   // Delete file if it exists already
   bool exists;
-  RETURN_NOT_OK(vfs()->is_file(schema_uri, &exists));
-  if (exists)
-    RETURN_NOT_OK(vfs()->remove_file(schema_uri));
+  throw_if_not_ok(resources_.vfs().is_file(schema_uri, &exists));
+  if (exists) {
+    throw_if_not_ok(resources_.vfs().remove_file(schema_uri));
+  }
 
   // Check if the array schema directory exists
   // If not create it, this is caused by a pre-v10 array
   bool schema_dir_exists = false;
   URI array_schema_dir_uri =
       array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  RETURN_NOT_OK(vfs()->is_dir(array_schema_dir_uri, &schema_dir_exists));
+  throw_if_not_ok(
+      resources_.vfs().is_dir(array_schema_dir_uri, &schema_dir_exists));
 
-  if (!schema_dir_exists)
-    RETURN_NOT_OK(vfs()->create_dir(array_schema_dir_uri));
+  if (!schema_dir_exists) {
+    throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
+  }
 
   GenericTileIO::store_data(resources_, schema_uri, tile, encryption_key);
 
@@ -892,11 +897,11 @@ Status StorageManagerCanonical::store_array_schema(
   bool enumerations_dir_exists = false;
   URI array_enumerations_dir_uri =
       array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  RETURN_NOT_OK(
-      vfs()->is_dir(array_enumerations_dir_uri, &enumerations_dir_exists));
+  throw_if_not_ok(resources_.vfs().is_dir(
+      array_enumerations_dir_uri, &enumerations_dir_exists));
 
   if (!enumerations_dir_exists) {
-    RETURN_NOT_OK(vfs()->create_dir(array_enumerations_dir_uri));
+    throw_if_not_ok(resources_.vfs().create_dir(array_enumerations_dir_uri));
   }
 
   // Serialize all enumerations into the `__enumerations` directory

@@ -407,11 +407,6 @@ class StorageManagerCanonical {
     return resources_;
   }
 
-  /** Returns the virtual filesystem object. */
-  [[nodiscard]] inline VFS* vfs() const {
-    return &(resources_.vfs());
-  }
-
   /** Returns the internal logger object. */
   shared_ptr<Logger> logger() const;
 

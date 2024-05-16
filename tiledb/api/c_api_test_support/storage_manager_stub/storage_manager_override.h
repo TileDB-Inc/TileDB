@@ -68,9 +68,6 @@ class StorageManagerStub {
   inline common::ThreadPool* io_tp() {
     return &resources_.io_tp();
   }
-  inline VFS* vfs() {
-    throw std::logic_error("StorageManagerStub does not instantiate a VFS");
-  }
   inline Status cancel_all_tasks() {
     return Status{};
   };
