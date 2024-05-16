@@ -37,6 +37,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
 
 #include <iostream>
@@ -184,6 +185,34 @@ void Metadata::serialize(Serializer& serializer) const {
         serializer.write(value.value_.data(), value.value_.size());
     }
   }
+}
+
+Status Metadata::store(
+    ContextResources& resources,
+    const URI& uri,
+    const EncryptionKey& encryption_key) {
+  auto timer_se = resources.stats().start_timer("write_meta");
+
+  // Serialize array metadata
+  SizeComputationSerializer size_computation_serializer;
+  serialize(size_computation_serializer);
+
+  // Do nothing if there are no metadata to write
+  if (0 == size_computation_serializer.size()) {
+    return Status::Ok();
+  }
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources.ephemeral_memory_tracker())};
+  Serializer serializer(tile->data(), tile->size());
+  serialize(serializer);
+  resources.stats().add_counter(
+      "write_meta_size", size_computation_serializer.size());
+
+  // Create a metadata file name
+  GenericTileIO::store_data(resources, get_uri(uri), tile, encryption_key);
+
+  return Status::Ok();
 }
 
 void Metadata::del(const char* key) {

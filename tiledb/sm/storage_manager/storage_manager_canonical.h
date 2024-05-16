@@ -392,17 +392,6 @@ class StorageManagerCanonical {
       const shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
-  /**
-   * Stores the metadata into persistent storage.
-   *
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @param metadata The  metadata.
-   * @return Status
-   */
-  Status store_metadata(
-      const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }

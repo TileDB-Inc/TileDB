@@ -463,8 +463,8 @@ Status Array::close() {
     } else {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-        st = storage_manager_->store_metadata(
-            array_uri_, *encryption_key(), &opened_array_->metadata());
+        st = (&opened_array_->metadata())
+                 ->store(resources_, array_uri_, *encryption_key());
         if (!st.ok()) {
           throw StatusException(st);
         }

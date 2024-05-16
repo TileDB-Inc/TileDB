@@ -135,8 +135,8 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 
 Status StorageManagerCanonical::group_close_for_writes(Group* group) {
   // Flush the group metadata
-  RETURN_NOT_OK(store_metadata(
-      group->group_uri(), *group->encryption_key(), group->unsafe_metadata()));
+  throw_if_not_ok(group->unsafe_metadata()->store(
+      resources_, group->group_uri(), *group->encryption_key()));
 
   // Store any changes required
   if (group->group_details()->is_modified()) {
@@ -924,39 +924,6 @@ Status StorageManagerCanonical::store_array_schema(
     auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
     GenericTileIO::store_data(resources_, abs_enmr_uri, tile, encryption_key);
   }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::store_metadata(
-    const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata) {
-  auto timer_se = resources_.stats().start_timer("write_meta");
-
-  // Trivial case
-  if (metadata == nullptr) {
-    return Status::Ok();
-  }
-
-  // Serialize array metadata
-  SizeComputationSerializer size_computation_serializer;
-  metadata->serialize(size_computation_serializer);
-
-  // Do nothing if there are no metadata to write
-  if (0 == size_computation_serializer.size()) {
-    return Status::Ok();
-  }
-  auto tile{WriterTile::from_generic(
-      size_computation_serializer.size(),
-      resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile->data(), tile->size());
-  metadata->serialize(serializer);
-  resources_.stats().add_counter(
-      "write_meta_size", size_computation_serializer.size());
-
-  // Create a metadata file name
-  URI metadata_uri = metadata->get_uri(uri);
-
-  GenericTileIO::store_data(resources_, metadata_uri, tile, encryption_key);
 
   return Status::Ok();
 }
