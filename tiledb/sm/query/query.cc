@@ -74,7 +74,8 @@ namespace sm {
 Query::Query(
     StorageManager* storage_manager,
     shared_ptr<Array> array,
-    optional<std::string> fragment_name)
+    optional<std::string> fragment_name,
+    optional<uint64_t> memory_budget)
     : query_memory_tracker_(
           storage_manager->resources().create_memory_tracker())
     , array_shared_(array)
@@ -105,6 +106,7 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
+    , memory_budget_(memory_budget)
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
@@ -1756,6 +1758,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       storage_manager_,
       opened_array_,
       config_,
+      memory_budget_,
       buffers_,
       aggregate_buffers_,
       subarray_,

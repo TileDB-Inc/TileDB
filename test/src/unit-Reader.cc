@@ -175,6 +175,7 @@ TEST_CASE_METHOD(
       context.storage_manager(),
       array.opened_array(),
       config,
+      nullopt,
       buffers,
       aggregate_buffers,
       subarray,

@@ -155,11 +155,14 @@ class Query {
    * writes.
    * @param fragment_base_uri Optional base name for new fragment. Only used for
    *     writes and only if fragment_uri is empty.
+   * @param memory_budget Total memory budget. If set to nullopt, the value
+   *     will be obtained from the sm.mem.total_budget config option.
    */
   Query(
       StorageManager* storage_manager,
       shared_ptr<Array> array,
-      optional<std::string> fragment_name = nullopt);
+      optional<std::string> fragment_name = nullopt,
+      optional<uint64_t> memory_budget = nullopt);
 
   /** Destructor. */
   virtual ~Query();
@@ -1088,6 +1091,12 @@ class Query {
    * Note: This is only used for global order writes.
    */
   uint64_t fragment_size_;
+
+  /**
+   * Memory budget. If set to nullopt, the value will be obtained from the
+   * sm.mem.total_budget config option.
+   */
+  optional<uint64_t> memory_budget_;
 
   /** Already written buffers. */
   std::unordered_set<std::string> written_buffers_;

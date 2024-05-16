@@ -158,6 +158,9 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
   /** Total memory budget. */
   uint64_t memory_budget_;
 
+  /** Total memory budget if overridden by the query. */
+  optional<uint64_t> memory_budget_from_query_;
+
   /** Target upper memory limit for tiles. */
   uint64_t tile_upper_memory_limit_;
 
