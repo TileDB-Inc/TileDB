@@ -157,21 +157,6 @@ class StorageManagerCanonical {
   Status group_close_for_writes(tiledb::sm::Group* group);
 
   /**
-   * Store the group details
-   *
-   * @param group_detail_folder_uri group details folder
-   * @param group_detail_uri uri for detail file to write
-   * @param group to serialize and store
-   * @param encryption_key encryption key for at-rest encryption
-   * @return status
-   */
-  Status store_group_detail(
-      const URI& group_detail_folder_uri,
-      const URI& group_detail_uri,
-      tdb_shared_ptr<GroupDetails> group,
-      const EncryptionKey& encryption_key);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,6 +44,7 @@
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/sm/tile/generic_tile_io.h"
 
 using namespace tiledb::common;
 
@@ -200,6 +201,38 @@ const std::unordered_map<std::string, shared_ptr<GroupMember>>&
 GroupDetails::members() const {
   std::lock_guard<std::mutex> lck(mtx_);
   return members_;
+}
+
+Status GroupDetails::store(
+    ContextResources& resources,
+    const URI& group_detail_folder_uri,
+    const URI& group_detail_uri,
+    const EncryptionKey& encryption_key) {
+  // Serialize
+  auto members = members_to_serialize();
+  SizeComputationSerializer size_computation_serializer;
+  serialize(members, size_computation_serializer);
+
+  auto tile{WriterTile::from_generic(
+      size_computation_serializer.size(),
+      resources.ephemeral_memory_tracker())};
+
+  Serializer serializer(tile->data(), tile->size());
+  serialize(members, serializer);
+  resources.stats().add_counter("write_group_size", tile->size());
+
+  // Check if the array schema directory exists
+  // If not create it, this is caused by a pre-v10 array
+  bool group_detail_dir_exists = false;
+  auto& vfs = resources.vfs();
+  throw_if_not_ok(
+      vfs.is_dir(group_detail_folder_uri, &group_detail_dir_exists));
+  if (!group_detail_dir_exists) {
+    throw_if_not_ok(vfs.create_dir(group_detail_folder_uri));
+  }
+  GenericTileIO::store_data(resources, group_detail_uri, tile, encryption_key);
+
+  return Status::Ok();
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(
