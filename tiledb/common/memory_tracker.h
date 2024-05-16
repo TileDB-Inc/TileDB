@@ -255,10 +255,6 @@ class MemoryTracker {
   bool take_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
     if (memory_usage_ + size <= memory_budget_) {
-      if (mem_type == MemoryType::TILE_OFFSETS) {
-        // tile offsets are only measured in the counter_
-        return true;
-      }
       memory_usage_ += size;
       memory_usage_by_type_[mem_type] += size;
       return true;
