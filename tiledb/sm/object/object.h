@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file defines the Object class.
+ * This file defines standalone object functions.
  */
 
 #ifndef TILEDB_OBJECT_H
@@ -41,46 +41,29 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class Object {
- public:
-  /* ********************************* */
-  /*     CONSTRUCTORS & DESTRUCTORS    */
-  /* ********************************* */
+/* ********************************* */
+/*                API                */
+/* ********************************* */
 
-  /** Constructor. */
-  Object() = default;
+/**
+ * Checks if the input URI represents an array.
+ *
+ * @param resources the context resources.
+ * @param uri the URI to be checked.
+ * @return bool
+ */
+bool is_array(ContextResources& resources, const URI& uri);
 
-  /** Destructor. */
-  ~Object() = default;
-
-  DISABLE_COPY_AND_COPY_ASSIGN(Object);
-  DISABLE_MOVE_AND_MOVE_ASSIGN(Object);
-
-  /* ********************************* */
-  /*                API                */
-  /* ********************************* */
-
-  /**
-   * Checks if the input URI represents an array.
-   *
-   * @param resources the context resources.
-   * @param uri the URI to be checked.
-   * @return bool
-   */
-  static bool is_array(ContextResources& resources, const URI& uri);
-
-  /**
-   * Checks if the input URI represents a group.
-   *
-   * @param resources the context resources.
-   * @param uri the URI to be checked.
-   * @param is_group Set to `true` if the URI is a group and `false`
-   *     otherwise.
-   * @return Status
-   */
-  static Status is_group(
-      ContextResources& resources, const URI& uri, bool* is_group);
-};
+/**
+ * Checks if the input URI represents a group.
+ *
+ * @param resources the context resources.
+ * @param uri the URI to be checked.
+ * @param is_group Set to `true` if the URI is a group and `false`
+ *     otherwise.
+ * @return Status
+ */
+Status is_group(ContextResources& resources, const URI& uri, bool* is_group);
 
 }  // namespace tiledb::sm
 

@@ -161,7 +161,7 @@ Status StorageManagerCanonical::array_create(
   }
 
   // Check if array exists
-  if (Object::is_array(resources_, array_uri)) {
+  if (is_array(resources_, array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create array; Array '") + array_uri.c_str() +
         "' already exists"));
@@ -271,7 +271,7 @@ Status StorageManager::array_evolve_schema(
       tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
 
   // Check if array exists
-  if (!Object::is_array(resources_, array_uri)) {
+  if (!is_array(resources_, array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
@@ -316,7 +316,7 @@ Status StorageManager::array_evolve_schema(
 Status StorageManagerCanonical::array_upgrade_version(
     const URI& array_uri, const Config& override_config) {
   // Check if array exists
-  if (!Object::is_array(resources_, array_uri))
+  if (!is_array(resources_, array_uri))
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
         "' does not exist"));
@@ -504,7 +504,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   // Check if group exists
   bool exists;
-  RETURN_NOT_OK(Object::is_group(resources_, uri, &exists));
+  RETURN_NOT_OK(is_group(resources_, uri, &exists));
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create group; Group '") + uri.c_str() +
@@ -560,13 +560,13 @@ Status StorageManagerCanonical::object_type(
       return Status::Ok();
     }
   }
-  bool exists = Object::is_array(resources_, uri);
+  bool exists = is_array(resources_, uri);
   if (exists) {
     *type = ObjectType::ARRAY;
     return Status::Ok();
   }
 
-  RETURN_NOT_OK(Object::is_group(resources_, uri, &exists));
+  RETURN_NOT_OK(is_group(resources_, uri, &exists));
   if (exists) {
     *type = ObjectType::GROUP;
     return Status::Ok();

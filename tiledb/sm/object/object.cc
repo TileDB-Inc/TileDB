@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements the Object class.
+ * This file implements standalone object functions.
  */
 
 #include "tiledb/sm/object/object.h"
@@ -40,7 +40,7 @@ namespace tiledb::sm {
 /*                API                */
 /* ********************************* */
 
-bool Object::is_array(ContextResources& resources, const URI& uri) {
+bool is_array(ContextResources& resources, const URI& uri) {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] =
@@ -50,9 +50,9 @@ bool Object::is_array(ContextResources& resources, const URI& uri) {
     return exists.value();
   } else {
     // Check if the schema directory exists or not
-    auto vfs = &(resources.vfs());
+    auto& vfs = resources.vfs();
     bool dir_exists = false;
-    throw_if_not_ok(vfs->is_dir(
+    throw_if_not_ok(vfs.is_dir(
         uri.join_path(constants::array_schema_dir_name), &dir_exists));
 
     if (dir_exists) {
@@ -61,16 +61,13 @@ bool Object::is_array(ContextResources& resources, const URI& uri) {
 
     bool schema_exists = false;
     // If there is no schema directory, we check schema file
-    throw_if_not_ok(vfs->is_file(
+    throw_if_not_ok(vfs.is_file(
         uri.join_path(constants::array_schema_filename), &schema_exists));
     return schema_exists;
   }
-
-  // TODO: mark unreachable
 }
 
-Status Object::is_group(
-    ContextResources& resources, const URI& uri, bool* is_group) {
+Status is_group(ContextResources& resources, const URI& uri, bool* is_group) {
   // Handle remote array
   if (uri.is_tiledb()) {
     auto&& [st, exists] =
@@ -79,9 +76,9 @@ Status Object::is_group(
     *is_group = *exists;
   } else {
     // Check for new group details directory
-    auto vfs = &(resources.vfs());
+    auto& vfs = resources.vfs();
     throw_if_not_ok(
-        vfs->is_dir(uri.join_path(constants::group_detail_dir_name), is_group));
+        vfs.is_dir(uri.join_path(constants::group_detail_dir_name), is_group));
 
     if (*is_group) {
       return Status::Ok();
@@ -89,7 +86,7 @@ Status Object::is_group(
 
     // Fall back to older group file to check for legacy (pre-format 12) groups
     throw_if_not_ok(
-        vfs->is_file(uri.join_path(constants::group_filename), is_group));
+        vfs.is_file(uri.join_path(constants::group_filename), is_group));
   }
   return Status::Ok();
 }
