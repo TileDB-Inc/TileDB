@@ -97,7 +97,7 @@ Status FragmentMetaConsolidator::consolidate(
       first, last, write_version);
 
   auto frag_md_uri = array_dir.get_fragment_metadata_dir(write_version);
-  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(frag_md_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(frag_md_uri));
   uri = URI(frag_md_uri.to_string() + name + constants::meta_file_suffix);
 
   // Get the consolidated fragment metadata version
@@ -171,10 +171,10 @@ Status FragmentMetaConsolidator::consolidate(
   EncryptionKey enc_key;
   RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
 
-  GenericTileIO tile_io(storage_manager_->resources(), uri);
+  GenericTileIO tile_io(resources_, uri);
   [[maybe_unused]] uint64_t nbytes = 0;
   tile_io.write_generic(tile, enc_key, &nbytes);
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(uri));
+  throw_if_not_ok(resources_.vfs().close_file(uri));
 
   return Status::Ok();
 }
@@ -202,7 +202,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
     }
   }
 
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_.vfs();
   auto compute_tp = storage_manager_->compute_tp();
 
   // Vacuum
@@ -211,8 +211,9 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
         auto& uri = fragment_meta_uris[i];
         FragmentID fragment_id{uri};
         auto timestamp_range{fragment_id.timestamp_range()};
-        if (timestamp_range.second != t_latest)
-          RETURN_NOT_OK(vfs->remove_file(uri));
+        if (timestamp_range.second != t_latest) {
+          throw_if_not_ok(vfs.remove_file(uri));
+        }
         return Status::Ok();
       }));
 }

@@ -446,7 +446,7 @@ void FragmentConsolidator::vacuum(const char* array_name) {
     array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_.vfs();
   auto compute_tp = storage_manager_->compute_tp();
 
   // Delete fragment directories
@@ -455,22 +455,22 @@ void FragmentConsolidator::vacuum(const char* array_name) {
         // Remove the commit file, if present.
         auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
         bool is_file = false;
-        RETURN_NOT_OK(vfs->is_file(commit_uri, &is_file));
+        throw_if_not_ok(vfs.is_file(commit_uri, &is_file));
         if (is_file) {
-          RETURN_NOT_OK(vfs->remove_file(commit_uri));
+          throw_if_not_ok(vfs.remove_file(commit_uri));
         }
 
         bool is_dir = false;
-        RETURN_NOT_OK(vfs->is_dir(fragment_uris_to_vacuum[i], &is_dir));
+        throw_if_not_ok(vfs.is_dir(fragment_uris_to_vacuum[i], &is_dir));
         if (is_dir) {
-          RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
+          throw_if_not_ok(vfs.remove_dir(fragment_uris_to_vacuum[i]));
         }
 
         return Status::Ok();
       }));
 
   // Delete the vacuum files.
-  vfs->remove_files(
+  vfs.remove_files(
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 }
 
@@ -585,10 +585,9 @@ Status FragmentConsolidator::consolidate_internal(
   auto st = query_w->finalize();
   if (!st.ok()) {
     bool is_dir = false;
-    throw_if_not_ok(
-        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
+    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
     return st;
   }
 
@@ -600,10 +599,9 @@ Status FragmentConsolidator::consolidate_internal(
       to_consolidate);
   if (!st.ok()) {
     bool is_dir = false;
-    throw_if_not_ok(
-        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
+    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
     return st;
   }
 
@@ -1016,9 +1014,8 @@ Status FragmentConsolidator::write_vacuum_file(
   }
 
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
 }

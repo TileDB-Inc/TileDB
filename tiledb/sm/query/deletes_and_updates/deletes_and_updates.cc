@@ -147,7 +147,7 @@ Status DeletesAndUpdates::dowork() {
   // Create the commit URI if needed.
   auto& array_dir = array_->array_directory();
   auto commit_uri = array_dir.get_commits_dir(write_version);
-  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(commit_uri));
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.

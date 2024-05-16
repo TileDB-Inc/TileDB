@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,8 +40,7 @@
 #include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class OpenedArray;
 class ArraySchema;
@@ -100,7 +99,7 @@ class StrategyParams {
   /* ********************************* */
 
   /**
-   * Accessor for the resources
+   * Accessor for the resources.
    */
   inline ContextResources& resources() {
     return resources_;
@@ -175,9 +174,7 @@ class StrategyParams {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
-  /**
-   * Resources used to perform operations
-   */
+  /** Resources used to perform operations. */
   ContextResources& resources_;
 
   /** Array Memory tracker. */
@@ -277,9 +274,7 @@ class StrategyBase {
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
-  /**
-   * Resources used for operations
-   */
+  /** Resources used for operations. */
   ContextResources& resources_;
 
   /** The array memory tracker. */
@@ -345,7 +340,6 @@ class StrategyBase {
   void get_dim_attr_stats() const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_STRATEGY_BASE_H

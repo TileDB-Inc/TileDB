@@ -189,7 +189,8 @@ class FilteredData {
       StorageManager* storage_manager,
       std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
-      : memory_tracker_(memory_tracker)
+      : resources_(storage_manager->resources())
+      , memory_tracker_(memory_tracker)
       , fixed_data_blocks_(
             memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
       , var_data_blocks_(
@@ -396,8 +397,8 @@ class FilteredData {
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     auto task =
         storage_manager_->io_tp()->execute([this, offset, data, size, uri]() {
-          RETURN_NOT_OK(
-              storage_manager_->vfs()->read(uri, offset, data, size, false));
+          throw_if_not_ok(
+              resources_.vfs().read(uri, offset, data, size, false));
           return Status::Ok();
         });
     read_tasks_.push_back(std::move(task));
@@ -600,6 +601,9 @@ class FilteredData {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Resources used to perform operations. */
+  ContextResources& resources_;
 
   /** Memory tracker for the filtered data. */
   shared_ptr<MemoryTracker> memory_tracker_;

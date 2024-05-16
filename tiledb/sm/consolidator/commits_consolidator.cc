@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -82,7 +82,7 @@ Status CommitsConsolidator::consolidate(
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -96,7 +96,7 @@ Status CommitsConsolidator::consolidate(
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
   Consolidator::write_consolidated_commits_file(
-      write_version, array_dir, to_consolidate, storage_manager_);
+      write_version, array_dir, to_consolidate, resources_);
 
   return Status::Ok();
 }
@@ -109,18 +109,17 @@ void CommitsConsolidator::vacuum(const char* array_name) {
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   ArrayDirectory array_dir(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
       ArrayDirectoryMode::COMMITS);
 
   // Delete the commits and vacuum files
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_.vfs();
   auto compute_tp = storage_manager_->compute_tp();
-  vfs->remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
-  vfs->remove_files(
-      compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
+  vfs.remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs.remove_files(compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
 }  // namespace tiledb::sm

@@ -312,7 +312,7 @@ void WriterBase::refresh_config() {
 shared_ptr<FragmentMetadata> WriterBase::create_fragment_metadata() {
   return make_shared<FragmentMetadata>(
       HERE(),
-      &storage_manager_->resources(),
+      &resources_,
       query_memory_tracker_,
       array_->array_schema_latest().write_version());
 }
@@ -613,14 +613,14 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
       storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
-          storage_manager_->vfs()->finalize_and_close_file(file_uri);
+          resources_.vfs().finalize_and_close_file(file_uri);
         } else {
-          RETURN_NOT_OK(storage_manager_->vfs()->close_file(file_uri));
+          throw_if_not_ok(resources_.vfs().close_file(file_uri));
         }
         return Status::Ok();
       });
 
-  RETURN_NOT_OK(status);
+  throw_if_not_ok(status);
 
   return Status::Ok();
 }
@@ -782,11 +782,11 @@ Status WriterBase::create_fragment(
   // Create the directories.
   // Create the fragment directory, the directory for the new fragment
   // URI, and the commit directory.
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(
-      array_dir.get_fragments_dir(write_version)));
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(fragment_uri_));
-  throw_if_not_ok(storage_manager_->vfs()->create_dir(
-      array_dir.get_commits_dir(write_version)));
+  throw_if_not_ok(
+      resources_.vfs().create_dir(array_dir.get_fragments_dir(write_version)));
+  throw_if_not_ok(resources_.vfs().create_dir(fragment_uri_));
+  throw_if_not_ok(
+      resources_.vfs().create_dir(array_dir.get_commits_dir(write_version)));
 
   // Create fragment metadata.
   auto timestamp_range = std::pair<uint64_t, uint64_t>(timestamp, timestamp);
@@ -795,7 +795,7 @@ Status WriterBase::create_fragment(
       buffers_.count(constants::delete_timestamps) != 0;
   frag_meta = make_shared<FragmentMetadata>(
       HERE(),
-      &storage_manager_->resources(),
+      &resources_,
       array_->array_schema_latest_ptr(),
       fragment_uri_,
       timestamp_range,
@@ -1125,7 +1125,7 @@ Status WriterBase::write_tiles(
        ++i, ++tile_id) {
     auto& tile = (*tiles)[i];
     auto& t = var_size ? tile.offset_tile() : tile.fixed_tile();
-    RETURN_NOT_OK(storage_manager_->vfs()->write(
+    throw_if_not_ok(resources_.vfs().write(
         uri,
         t.filtered_buffer().data(),
         t.filtered_buffer().size(),
@@ -1135,7 +1135,7 @@ Status WriterBase::write_tiles(
 
     if (var_size) {
       auto& t_var = tile.var_tile();
-      RETURN_NOT_OK(storage_manager_->vfs()->write(
+      throw_if_not_ok(resources_.vfs().write(
           var_uri,
           t_var.filtered_buffer().data(),
           t_var.filtered_buffer().size(),
@@ -1160,7 +1160,7 @@ Status WriterBase::write_tiles(
 
     if (nullable) {
       auto& t_val = tile.validity_tile();
-      RETURN_NOT_OK(storage_manager_->vfs()->write(
+      throw_if_not_ok(resources_.vfs().write(
           validity_uri,
           t_val.filtered_buffer().data(),
           t_val.filtered_buffer().size(),
@@ -1189,11 +1189,10 @@ Status WriterBase::write_tiles(
         // requirement of remote global order writes, it should only be
         // done if this code is executed as a result of a remote query
         if (remote_query()) {
-          RETURN_NOT_OK(
-              storage_manager_->vfs()->flush_multipart_file_buffer(u));
+          throw_if_not_ok(resources_.vfs().flush_multipart_file_buffer(u));
         }
       } else {
-        RETURN_NOT_OK(storage_manager_->vfs()->close_file(u));
+        throw_if_not_ok(resources_.vfs().close_file(u));
       }
     }
   }
