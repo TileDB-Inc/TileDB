@@ -189,8 +189,8 @@ class FilteredData {
       StorageManager* storage_manager,
       std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
-      : memory_tracker_(memory_tracker)
-      , resources_(storage_manager->resources())
+      : resources_(storage_manager->resources())
+      , memory_tracker_(memory_tracker)
       , fixed_data_blocks_(
             memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
       , var_data_blocks_(
@@ -602,11 +602,11 @@ class FilteredData {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Memory tracker for the filtered data. */
-  shared_ptr<MemoryTracker> memory_tracker_;
-
   /** Resources used to perform operations. */
   ContextResources& resources_;
+
+  /** Memory tracker for the filtered data. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** Fixed data blocks. */
   tdb::pmr::list<FilteredDataBlock> fixed_data_blocks_;

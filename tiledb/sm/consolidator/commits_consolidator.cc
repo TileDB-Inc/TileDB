@@ -82,7 +82,7 @@ Status CommitsConsolidator::consolidate(
 
   // Get the array uri to consolidate from the array directory.
   auto array_dir = ArrayDirectory(
-      storage_manager_->resources(),
+      resources_,
       URI(array_name),
       0,
       utils::time::timestamp_now_ms(),
@@ -96,7 +96,7 @@ Status CommitsConsolidator::consolidate(
   // Get the file name.
   auto& to_consolidate = array_dir.commit_uris_to_consolidate();
   Consolidator::write_consolidated_commits_file(
-      write_version, array_dir, to_consolidate, storage_manager_);
+      write_version, array_dir, to_consolidate, resources_);
 
   return Status::Ok();
 }

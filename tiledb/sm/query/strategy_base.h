@@ -98,7 +98,9 @@ class StrategyParams {
   /*                 API               */
   /* ********************************* */
 
-  /** Accessor for the resources. */
+  /**
+   * Accessor for the resources.
+   */
   inline ContextResources& resources() {
     return resources_;
   }

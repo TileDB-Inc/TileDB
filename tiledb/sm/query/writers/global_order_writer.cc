@@ -718,10 +718,7 @@ Status GlobalOrderWriter::finalize_global_write_state() {
 
     auto write_version = array_->array_schema_latest().write_version();
     Consolidator::write_consolidated_commits_file(
-        write_version,
-        array_->array_directory(),
-        commit_uris,
-        storage_manager_);
+        write_version, array_->array_directory(), commit_uris, resources_);
   }
 
   // Delete global write state
