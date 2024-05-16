@@ -878,8 +878,8 @@ AzureScanner<F, D>::AzureScanner(
     throw AzureException("URI is not an Azure URI: " + prefix.to_string());
   }
 
-  throw_if_not_ok(
-      Azure::parse_azure_uri(prefix, &container_name_, &blob_path_));
+  throw_if_not_ok(Azure::parse_azure_uri(
+      prefix.add_trailing_slash(), &container_name_, &blob_path_));
   fetch_results();
   next(begin_);
 }
