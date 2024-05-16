@@ -866,8 +866,7 @@ Status StorageManagerCanonical::store_array_schema(
       resources_.ephemeral_memory_tracker())};
   Serializer serializer(tile->data(), tile->size());
   array_schema->serialize(serializer);
-
-  stats()->add_counter("write_array_schema_size", tile->size());
+  resources_.stats().add_counter("write_array_schema_size", tile->size());
 
   // Delete file if it exists already
   bool exists;
@@ -926,14 +925,14 @@ Status StorageManagerCanonical::store_array_schema(
 
 Status StorageManagerCanonical::store_metadata(
     const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata) {
-  auto timer_se = stats()->start_timer("write_meta");
+  auto timer_se = resources_.stats().start_timer("write_meta");
 
   // Trivial case
-  if (metadata == nullptr)
+  if (metadata == nullptr) {
     return Status::Ok();
+  }
 
   // Serialize array metadata
-
   SizeComputationSerializer size_computation_serializer;
   metadata->serialize(size_computation_serializer);
 
@@ -946,8 +945,8 @@ Status StorageManagerCanonical::store_metadata(
       resources_.ephemeral_memory_tracker())};
   Serializer serializer(tile->data(), tile->size());
   metadata->serialize(serializer);
-
-  stats()->add_counter("write_meta_size", size_computation_serializer.size());
+  resources_.stats().add_counter(
+      "write_meta_size", size_computation_serializer.size());
 
   // Create a metadata file name
   URI metadata_uri = metadata->get_uri(uri);

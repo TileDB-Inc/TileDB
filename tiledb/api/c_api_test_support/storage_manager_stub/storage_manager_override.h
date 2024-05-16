@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -67,9 +67,6 @@ class StorageManagerStub {
   }
   inline common::ThreadPool* io_tp() {
     return &resources_.io_tp();
-  }
-  inline stats::Stats* stats() {
-    return &resources_.stats();
   }
   inline VFS* vfs() {
     throw std::logic_error("StorageManagerStub does not instantiate a VFS");

@@ -412,11 +412,6 @@ class StorageManagerCanonical {
     return &(resources_.vfs());
   }
 
-  /** Returns `stats_`. */
-  [[nodiscard]] inline stats::Stats* stats() {
-    return &(resources_.stats());
-  }
-
   /** Returns the internal logger object. */
   shared_ptr<Logger> logger() const;
 

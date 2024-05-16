@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -107,10 +107,9 @@ ConsolidationMode Consolidator::mode_from_config(
 Consolidator::Consolidator(StorageManager* storage_manager)
     : resources_(storage_manager->resources())
     , storage_manager_(storage_manager)
-    , consolidator_memory_tracker_(
-          storage_manager_->resources().create_memory_tracker())
-    , stats_(storage_manager_->stats()->create_child("Consolidator"))
-    , logger_(storage_manager_->logger()->clone("Consolidator", ++logger_id_)) {
+    , consolidator_memory_tracker_(resources_.create_memory_tracker())
+    , stats_(resources_.stats().create_child("Consolidator"))
+    , logger_(resources_.logger()->clone("Consolidator", ++logger_id_)) {
   consolidator_memory_tracker_->set_type(MemoryTrackerType::CONSOLIDATOR);
 }
 

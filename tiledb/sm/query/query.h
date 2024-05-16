@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -59,8 +59,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for query status exceptions. */
 class QueryException : public StatusException {
@@ -922,9 +921,7 @@ class Query {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * Resource used for operations
-   */
+  /** Resource used for operations. */
   ContextResources& resources_;
 
   /** The query memory tracker. */
@@ -1183,7 +1180,6 @@ class Query {
   void copy_aggregates_data_to_user_buffer();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_QUERY_H
