@@ -196,7 +196,7 @@ Status OrderedWriter::ordered_write() {
 
   // Prepare, filter and write tiles for all attributes
   auto attr_num = buffers_.size();
-  auto compute_tp = storage_manager_->compute_tp();
+  auto* compute_tp = &resources_.compute_tp();
   auto thread_num = compute_tp->concurrency_level();
   std::unordered_map<std::string, IndexedList<WriterTileTupleVector>> tiles;
   for (const auto& buff : buffers_) {
@@ -334,7 +334,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
     {
       auto timer_se = stats_->start_timer("prepare_and_filter_tiles");
       auto st = parallel_for(
-          storage_manager_->compute_tp(), 0, batch_size, [&](uint64_t i) {
+          &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
             // Prepare and filter tiles
             auto& writer_tile = tile_batches[b][i];
             RETURN_NOT_OK(

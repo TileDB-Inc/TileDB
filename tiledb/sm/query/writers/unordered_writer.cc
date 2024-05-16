@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -217,10 +217,7 @@ Status UnorderedWriter::check_coord_dups() const {
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -310,10 +307,7 @@ Status UnorderedWriter::compute_coord_dups() {
 
   std::mutex mtx;
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -389,8 +383,8 @@ Status UnorderedWriter::prepare_tiles(
   }
 
   // Prepare tiles for all attributes and coordinates
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
         RETURN_CANCEL_OR_ERROR(
@@ -621,7 +615,7 @@ Status UnorderedWriter::sort_coords() {
   DomainBuffersView domain_buffs{array_schema_, buffers_};
   if (cell_order != Layout::HILBERT) {  // Row- or col-major
     parallel_sort(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         cell_pos_.begin(),
         cell_pos_.end(),
         GlobalCmpQB(domain, domain_buffs));
@@ -629,7 +623,7 @@ Status UnorderedWriter::sort_coords() {
     std::vector<uint64_t> hilbert_values(coords_info_.coords_num_);
     RETURN_NOT_OK(calculate_hilbert_values(domain_buffs, hilbert_values));
     parallel_sort(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         cell_pos_.begin(),
         cell_pos_.end(),
         HilbertCmpQB(domain, domain_buffs, hilbert_values));

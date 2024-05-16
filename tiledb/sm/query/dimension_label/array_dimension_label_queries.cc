@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,8 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
-    : storage_manager_(storage_manager)
+    : resources_(storage_manager->resources())
+    , storage_manager_(storage_manager)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
@@ -150,7 +151,7 @@ std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
 
 void ArrayDimensionLabelQueries::process_data_queries() {
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       data_queries_.size(),
       [&](const size_t query_idx) {
@@ -170,7 +171,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
 void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
   // Process queries and update the subarray.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       label_range_queries_by_dim_idx_.size(),
       [&](const uint32_t dim_idx) {

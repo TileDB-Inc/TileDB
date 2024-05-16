@@ -117,9 +117,10 @@ void CommitsConsolidator::vacuum(const char* array_name) {
 
   // Delete the commits and vacuum files
   auto& vfs = resources_.vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-  vfs.remove_files(compute_tp, array_dir.commit_uris_to_vacuum());
-  vfs.remove_files(compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
+  auto& compute_tp = resources_.compute_tp();
+  vfs.remove_files(&compute_tp, array_dir.commit_uris_to_vacuum());
+  vfs.remove_files(
+      &compute_tp, array_dir.consolidated_commits_uris_to_vacuum());
 }
 
 }  // namespace tiledb::sm

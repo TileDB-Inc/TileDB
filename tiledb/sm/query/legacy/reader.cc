@@ -518,8 +518,8 @@ Status Reader::compute_range_result_coords(
     }
   }
 
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, range_num, [&](uint64_t r) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, range_num, [&](uint64_t r) {
         // Compute overlapping coordinates per range
         RETURN_NOT_OK(compute_range_result_coords(
             subarray,
@@ -616,8 +616,8 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint32_t f) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint32_t f) {
         return compute_range_result_coords(
             subarray,
             range_idx,
@@ -913,7 +913,7 @@ Status Reader::copy_fixed_cells(
       &cs_offsets,
       fixed_cs_partitions);
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fixed_cs_partitions->size(),
       std::move(copy_fn));
@@ -937,10 +937,8 @@ void Reader::compute_fixed_cs_partitions(
     return;
   }
 
-  const auto num_copy_threads =
-      storage_manager_->compute_tp()->concurrency_level();
-
   // Calculate the partition sizes.
+  const auto num_copy_threads = resources_.compute_tp().concurrency_level();
   auto num_cs = result_cell_slabs.size();
   const uint64_t num_cs_partitions =
       std::min<uint64_t>(num_copy_threads, num_cs);
@@ -1105,7 +1103,7 @@ Status Reader::copy_var_cells(
       &var_offsets_per_cs,
       var_cs_partitions);
   auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, var_cs_partitions->size(), copy_fn);
+      &resources_.compute_tp(), 0, var_cs_partitions->size(), copy_fn);
 
   RETURN_NOT_OK(status);
 
@@ -1126,10 +1124,8 @@ void Reader::compute_var_cs_partitions(
     return;
   }
 
-  const auto num_copy_threads =
-      storage_manager_->compute_tp()->concurrency_level();
-
   // Calculate the partition range.
+  const auto num_copy_threads = resources_.compute_tp().concurrency_level();
   const uint64_t num_cs = result_cell_slabs.size();
   const uint64_t num_cs_partitions =
       std::min<uint64_t>(num_copy_threads, num_cs);
@@ -1888,7 +1884,7 @@ void Reader::init_read_state() {
       memory_budget,
       memory_budget_var,
       memory_budget_validity,
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       stats_,
       logger_);
   read_state_.overflowed_ = false;
@@ -1952,26 +1948,23 @@ Status Reader::sort_result_coords(
 
   if (layout == Layout::ROW_MAJOR) {
     parallel_sort(
-        storage_manager_->compute_tp(), iter_begin, iter_end, RowCmp(domain));
+        &resources_.compute_tp(), iter_begin, iter_end, RowCmp(domain));
   } else if (layout == Layout::COL_MAJOR) {
     parallel_sort(
-        storage_manager_->compute_tp(), iter_begin, iter_end, ColCmp(domain));
+        &resources_.compute_tp(), iter_begin, iter_end, ColCmp(domain));
   } else if (layout == Layout::GLOBAL_ORDER) {
     if (array_schema_.cell_order() == Layout::HILBERT) {
       std::vector<std::pair<uint64_t, uint64_t>> hilbert_values(coords_num);
       RETURN_NOT_OK(calculate_hilbert_values(iter_begin, &hilbert_values));
       parallel_sort(
-          storage_manager_->compute_tp(),
+          &resources_.compute_tp(),
           hilbert_values.begin(),
           hilbert_values.end(),
           HilbertCmpRCI(domain, iter_begin));
       RETURN_NOT_OK(reorganize_result_coords(iter_begin, &hilbert_values));
     } else {
       parallel_sort(
-          storage_manager_->compute_tp(),
-          iter_begin,
-          iter_end,
-          GlobalCmp(domain));
+          &resources_.compute_tp(), iter_begin, iter_end, GlobalCmp(domain));
     }
   } else {
     assert(false);
@@ -2112,8 +2105,8 @@ Status Reader::calculate_hilbert_values(
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, coords_num, [&](uint64_t c) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, coords_num, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};
