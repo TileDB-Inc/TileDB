@@ -74,10 +74,4 @@ commence(object_library array_schema)
         attribute domain enumeration fragment time uri_format vfs)
 conclude(object_library)
 
-# This is linked outside the object_library scope as an active subversion of
-# the principle that object libraries must compile as standalone modules. As
-# long as this directive is necessary to have to the compile test pass, we
-# cannot consider `array_schema` as a properly-constructed object library.
-target_link_libraries(compile_array_schema PRIVATE generic_tile_io)
-
 add_test_subdirectory()
