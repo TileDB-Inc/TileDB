@@ -28,7 +28,10 @@
 
 #include "mgc_dict.h"
 
-#include "tiledb/sm/compressors/util/gzip_wrappers.h"
+#include "magic_mgc_gzipped.h_"
+#include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/compressors/gzip_compressor.h"
+#include "zlib.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -37,45 +40,30 @@
 namespace tiledb {
 namespace sm {
 
-static const char magic_mgc_compressed_bytes[] = {
-#include "magic_mgc_gzipped.bin"
-};
+const tiledb::sm::ByteVecValue prepare_data() {
+  tiledb::sm::ByteVecValue expanded_buffer(magic_mgc_decompressed_size);
 
-shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer_;
+  ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
+  PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
+  // window_bits values > 15 are used to indicate GZip format.
+  GZip::decompress(&input, &output, 16 + MAX_WBITS);
 
-void* magic_dict::uncompressed_magic_dict_ = nullptr;
-
-static magic_dict magic_dict_object;
-
-magic_dict::magic_dict() {
-}
-
-void magic_dict::prepare_data() {
-  if (uncompressed_magic_dict_)
-    return;
-
-  expanded_buffer_ = make_shared<tiledb::sm::ByteVecValue>(HERE());
-  gzip_decompress(
-      expanded_buffer_,
-      reinterpret_cast<const uint8_t*>(&magic_mgc_compressed_bytes[0]));
-
-  uncompressed_magic_dict_ = expanded_buffer_.get()->data();
+  return expanded_buffer;
 }
 
 int magic_dict::magic_mgc_embedded_load(magic_t magic) {
-  if (!uncompressed_magic_dict_)
-    prepare_data();
+  auto& buffer = expanded_buffer();
 
-  void* data[1] = {uncompressed_magic_dict_};
-  size_t sizes[1] = {expanded_buffer_->size()};
+  void* data = const_cast<unsigned char*>(buffer.data());
+  size_t size = buffer.size();
   // zero ok, non-zero error
-  return magic_load_buffers(magic, &data[0], &sizes[0], 1);
+  return magic_load_buffers(magic, &data, &size, 1);
 }
 
-const shared_ptr<tiledb::sm::ByteVecValue> magic_dict::expanded_buffer() {
-  if (!uncompressed_magic_dict_)
-    prepare_data();
-  return expanded_buffer_;
+const tiledb::sm::ByteVecValue& magic_dict::expanded_buffer() {
+  // Thread-safe initialization of the expanded data.
+  static auto expanded_buffer = prepare_data();
+  return expanded_buffer;
 }
 
 }  // namespace sm

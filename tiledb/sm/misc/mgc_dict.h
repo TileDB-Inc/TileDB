@@ -38,8 +38,8 @@ using tiledb::common::Status;
 
 class magic_dict {
  public:
-  /** Default constructor */
-  magic_dict();
+  /** Default constructor is deleted. */
+  magic_dict() = delete;
 
   /**
    * Have libmagic load data from our embedded version.
@@ -52,25 +52,9 @@ class magic_dict {
   /**
    * Provides access to the internally expanded data.
    *
-   * @return a shared pointer to the internal ByteVecValue holding
-   * the expanded data.
+   * @return a reference to the internal ByteVecValue holding the expanded data.
    */
-  static const shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer();
-
- private:
-  /**
-   * decompress and init data items
-   */
-  static void prepare_data();
-
-  /**
-   * raw pointer to expanded bytes for use with magic_load_buffers(),
-   * points to the data held within expanded_buffer_
-   */
-  static void* uncompressed_magic_dict_;
-
-  /** holds the expanded data until application exits. */
-  static shared_ptr<tiledb::sm::ByteVecValue> expanded_buffer_;
+  static const tiledb::sm::ByteVecValue& expanded_buffer();
 };
 
 }  // namespace sm

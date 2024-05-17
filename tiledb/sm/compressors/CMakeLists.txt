@@ -34,7 +34,7 @@ commence(object_library compressors)
     this_target_sources(
         bzip_compressor.cc dd_compressor.cc delta_compressor.cc
         dict_compressor.cc gzip_compressor.cc lz4_compressor.cc
-        rle_compressor.cc zstd_compressor.cc util/gzip_wrappers.cc)
+        rle_compressor.cc zstd_compressor.cc)
     this_target_object_libraries(baseline buffer)
     find_package(Bzip2_EP REQUIRED)
     find_package(LZ4_EP REQUIRED)

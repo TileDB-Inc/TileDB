@@ -75,18 +75,18 @@ int check_embedded_data_validity() {
   }
   fclose(infile);
 
-  auto magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
-  if (magic_mgc_embedded_data->size() != magic_mgc_len) {
+  auto& magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
+  if (magic_mgc_embedded_data.size() != magic_mgc_len) {
     fprintf(
         stderr,
         "ERROR magic.mgc data len (%" PRIu64
         ") does not match embedded data length (%" PRIu64 ")\n",
         magic_mgc_len,
-        static_cast<uint64_t>(magic_mgc_embedded_data->size()));
+        static_cast<uint64_t>(magic_mgc_embedded_data.size()));
     return 7;
   }
 
-  if (memcmp(magic_mgc_data, magic_mgc_embedded_data->data(), magic_mgc_len)) {
+  if (memcmp(magic_mgc_data, magic_mgc_embedded_data.data(), magic_mgc_len)) {
     fprintf(stderr, "ERROR magic.mgc data different from embedded data\n");
     return 10;
   }
