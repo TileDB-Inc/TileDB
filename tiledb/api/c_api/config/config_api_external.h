@@ -102,13 +102,16 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.dedup_coords` <br>
  *    If `true`, cells with duplicate coordinates will be removed during sparse
  *    fragment writes. Note that ties during deduplication are broken
- *    arbitrarily. <br>
+ *    arbitrarily. Also note that this check means that it will take longer to
+ *    perform the write operation. <br>
  *    **Default**: false
  * - `sm.check_coord_dups` <br>
  *    This is applicable only if `sm.dedup_coords` is `false`.
  *    If `true`, an error will be thrown if there are cells with duplicate
  *    coordinates during sparse fragmnet writes. If `false` and there are
- *    duplicates, the duplicates will be written without errors. <br>
+ *    duplicates, the duplicates will be written without errors. Note that this
+ *    check is much ligher weight than the coordinate deduplication check
+ *    enabled by `sm.dedup_coords`. <br>
  *    **Default**: true
  * - `sm.check_coord_oob` <br>
  *    If `true`, an error will be thrown if there are cells with coordinates
