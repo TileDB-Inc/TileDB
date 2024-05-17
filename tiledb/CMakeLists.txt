@@ -438,32 +438,21 @@ target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 ############################################################
 # provide actions/target for preparation of magic.mgc data for embedding/build
 
+find_package(Magic_EP REQUIRED)
+
 set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
-set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.bin")
-set(MGC_GZIPPED_BIN_INPUT_DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/sm/misc")
-set(MGC_GZIPPED_BIN_INPUT_FILE "${MGC_GZIPPED_BIN_INPUT_DIRECTORY}/magic_mgc_gzipped.bin.tar.bz2")
+# The file is used as a header but we don't name it .h to avoid it being picked up by IDEs
+set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.h_")
 
 add_custom_command(
   OUTPUT "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
-  DEPENDS "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  COMMAND ${CMAKE_COMMAND} -E tar x "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
+  DEPENDS "${libmagic_DICTIONARY}" "${PROJECT_SOURCE_DIR}/scripts/tdb_gzip_embedded_data.cmake"
+  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_BIN_OUTPUT_FILE}" -P "${PROJECT_SOURCE_DIR}/scripts/tdb_gzip_embedded_data.cmake"
 )
-add_custom_target(gen_mgc_unarch ALL
+add_custom_target(gen_mgc_unarch
   DEPENDS ${MGC_GZIPPED_BIN_OUTPUT_FILE}
 )
 add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
-
-add_custom_target(
-  update-embedded-magic-data
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
-  # need to work in 'local' directory with no prefix paths so no paths are included in archive
-  WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
-  COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
-  COMMAND ${CMAKE_COMMAND} -E copy "magic_mgc_gzipped.bin.tar.bz2" "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}"
-  COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
-)
 
 target_include_directories(TILEDB_CORE_OBJECTS
   PRIVATE
@@ -606,7 +595,6 @@ find_package(LZ4_EP REQUIRED)
 find_package(Spdlog_EP REQUIRED)
 find_package(Zlib_EP REQUIRED)
 find_package(Zstd_EP REQUIRED)
-find_package(Magic_EP REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2

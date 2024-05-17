@@ -76,8 +76,7 @@ add_test_subdirectory()
 #
 # `mgc_dict.*` tests are declared in this directory for the moment.
 #
-# See also `/tiledb/CMakeLists.txt` for related targets `gen_mgc_unarch` and
-# `update-embedded-magic-data`
+# See also `/tiledb/CMakeLists.txt` for related target `gen_mgc_unarch`
 #
 if (TILEDB_TESTS)
   # simple unit test of magic.mgc embedded data vs external data
