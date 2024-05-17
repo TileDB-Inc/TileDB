@@ -240,17 +240,31 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
           num += deletes_consolidation_no_purge_;
         }
 
+        // Finally set the size of the loaded data.
+
+        // The expected size of the tile offsets
+        unsigned offsets_size = num * tile_num * sizeof(uint64_t);
+
         // Other than the offsets themselves, there is also memory used for the
         // initialization of the vectors that hold them. This initialization
-        // takes place in fragment_metadata.cc::load_footer()
-        unsigned num_vectors = schema->attribute_num() + 1 +
-                               fragment->has_timestamps() +
-                               fragment->has_delete_meta() * 2;
-        num_vectors += (fragment->version() >= 5) ? schema->dim_num() : 0;
+        // takes place in LoadedFragmentMetadata::resize_offsets()
 
-        // Finally set the size of the loaded data.
-        ret[frag_idx] =
-            num * tile_num * sizeof(uint64_t) + (num_vectors * 4 * 32);
+        // Calculate the number of fields
+        unsigned num_fields = schema->attribute_num() + 1 +
+                              fragment->has_timestamps() +
+                              fragment->has_delete_meta() * 2;
+
+        // If version < 5 we use zipped coordinates, otherwise separate
+        num_fields += (fragment->version() >= 5) ? schema->dim_num() : 0;
+
+        // The additional memory required for the vectors to
+        // store the tile offsets. The number of fields is calculated above.
+        // Each vector requires 32 bytes. Each field requires 4 vectors. These
+        // are: tile_offsets_, tile_var_offsets_, tile_var_sizes_,
+        // tile_validity_offsets_ and are located in loaded_fragment_metadata.h
+        unsigned offsets_init_size = num_fields * 4 * 32;
+
+        ret[frag_idx] = offsets_size + offsets_init_size;
         return Status::Ok();
       }));
 
