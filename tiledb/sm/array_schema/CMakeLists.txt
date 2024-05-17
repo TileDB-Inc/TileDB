@@ -78,6 +78,6 @@ conclude(object_library)
 # the principle that object libraries must compile as standalone modules. As
 # long as this directive is necessary to have to the compile test pass, we
 # cannot consider `array_schema` as a properly-constructed object library.
-target_link_libraries(compile_array_schema PRIVATE generic_tile_io)
+#target_link_libraries(compile_array_schema PRIVATE generic_tile_io)
 
 add_test_subdirectory()
