@@ -41,7 +41,9 @@ string(MAKE_C_IDENTIFIER ${INPUT_FILENAME} INPUT_VARIABLE)
 
 message(DEBUG "Compressing ${INPUT_FILE} to ${compressed_file}")
 file(ARCHIVE_CREATE OUTPUT "${compressed_file}" PATHS ${INPUT_FILE} FORMAT raw COMPRESSION Zstd
-    COMPRESSION_LEVEL 12 # Level chosen for best balance between compression ratio and speed
+    # Level 12 was found to have the best balance between compression ratio and speed
+    # but is available in CMake 3.26+.
+    COMPRESSION_LEVEL 9
 )
 file(SIZE ${compressed_file} COMPRESSED_SIZE)
 message(DEBUG "Compressed size: ${COMPRESSED_SIZE} bytes")
