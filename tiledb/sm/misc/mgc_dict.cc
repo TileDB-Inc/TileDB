@@ -28,10 +28,9 @@
 
 #include "mgc_dict.h"
 
-#include "magic_mgc_gzipped.h_"
+#include "magic_mgc.zst.h_"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/compressors/gzip_compressor.h"
-#include "zlib.h"
+#include "tiledb/sm/compressors/zstd_compressor.h"
 
 #include <iostream>
 #include <stdexcept>
@@ -45,8 +44,10 @@ const tiledb::sm::ByteVecValue prepare_data() {
 
   ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
   PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
-  // window_bits values > 15 are used to indicate GZip format.
-  GZip::decompress(&input, &output, 16 + MAX_WBITS);
+  auto zstd_pool =
+      make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
+          HERE(), 1);
+  ZStd::decompress(zstd_pool, &input, &output);
 
   return expanded_buffer;
 }

@@ -102,9 +102,7 @@ void GZip::compress(ConstBuffer* input_buffer, Buffer* output_buffer) {
 }
 
 void GZip::decompress(
-    ConstBuffer* input_buffer,
-    PreallocatedBuffer* output_buffer,
-    optional<int> window_bits) {
+    ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer) {
   // Sanity check
   if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
     throw GZipException(
@@ -119,7 +117,7 @@ void GZip::decompress(
   strm.opaque = Z_NULL;
   strm.avail_in = 0;
   strm.next_in = Z_NULL;
-  ret = window_bits ? inflateInit2(&strm, *window_bits) : inflateInit(&strm);
+  ret = inflateInit(&strm);
 
   if (ret != Z_OK) {
     throw GZipException("Cannot decompress with GZIP");

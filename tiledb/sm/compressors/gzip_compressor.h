@@ -72,14 +72,9 @@ class GZip {
    *
    * @param input_buffer Input buffer to read from.
    * @param output_buffer Output buffer to write the decompressed data to.
-   * @param windowBits The windowBits parameter to pass to inflateInit2, if
-   * specified. Some values have special meanings. Please consult the zlib
-   * documentation for more information.
    */
   static void decompress(
-      ConstBuffer* input_buffer,
-      PreallocatedBuffer* output_buffer,
-      optional<int> windowBits = nullopt);
+      ConstBuffer* input_buffer, PreallocatedBuffer* output_buffer);
 
   /** Returns the compression overhead for the given input. */
   static uint64_t overhead(uint64_t buffer_size);

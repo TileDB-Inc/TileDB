@@ -1,5 +1,5 @@
 #
-# scripts/tdb_gzip_embedded_data.cmake
+# scripts/generate_embedded_data_header.cmake
 #
 #
 # The MIT License
@@ -26,20 +26,25 @@
 #
 
 if (NOT INPUT_FILE)
-    message(FATAL_ERROR "Must specify an input file")
+    message(FATAL_ERROR "Must specify INPUT_FILE")
 endif()
 
 if (NOT OUTPUT_FILE)
-    message(FATAL_ERROR "Must specify an output file")
+    message(FATAL_ERROR "Must specify OUTPUT_FILE")
 endif()
 
-set(compressed_file "${OUTPUT_FILE}.tdbgzip")
+cmake_path(GET INPUT_FILE FILENAME INPUT_FILENAME)
+cmake_path(REPLACE_FILENAME OUTPUT_FILE "${INPUT_FILENAME}" OUTPUT_VARIABLE compressed_file)
+set(compressed_file "${compressed_file}.zst")
 
-get_filename_component(INPUT_FILE_NAME ${INPUT_FILE} NAME)
-string(MAKE_C_IDENTIFIER ${INPUT_FILE_NAME} INPUT_VARIABLE)
+string(MAKE_C_IDENTIFIER ${INPUT_FILENAME} INPUT_VARIABLE)
 
 message(DEBUG "Compressing ${INPUT_FILE} to ${compressed_file}")
-file(ARCHIVE_CREATE OUTPUT "${compressed_file}" PATHS ${INPUT_FILE} FORMAT raw COMPRESSION GZip COMPRESSION_LEVEL 9)
+file(ARCHIVE_CREATE OUTPUT "${compressed_file}" PATHS ${INPUT_FILE} FORMAT raw COMPRESSION Zstd
+    COMPRESSION_LEVEL 12 # Level chosen for best balance between compression ratio and speed
+)
+file(SIZE ${compressed_file} COMPRESSED_SIZE)
+message(DEBUG "Compressed size: ${COMPRESSED_SIZE} bytes")
 
 message(DEBUG "Reading compressed data from ${compressed_file}")
 file(READ "${compressed_file}" compressed_data HEX)
@@ -47,8 +52,7 @@ file(REMOVE "${compressed_file}")
 
 message(DEBUG "Writing embedded data to ${OUTPUT_FILE}")
 
-# Having all characters in a single line slows down compilation.
-# We split the data into lines of 128 characters.
+# Split the data into lines of 128 byte literals.
 set(MAX_CHARACTERS_PER_LINE 128)
 string(REPEAT "[0-9a-f][0-9a-f]" ${MAX_CHARACTERS_PER_LINE} characters_per_line)
 string(REGEX REPLACE "(${characters_per_line})" "\\1\n" compressed_data "${compressed_data}")
