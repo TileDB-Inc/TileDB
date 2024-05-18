@@ -439,18 +439,6 @@ target_link_libraries(TILEDB_CORE_OBJECTS INTERFACE object_store_definitions)
 
 find_package(Magic_EP REQUIRED)
 
-set(MGC_GZIPPED_BIN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/..")
-# The file is used as a header but we don't name it .h to avoid it being picked up by IDEs
-set(MGC_GZIPPED_BIN_OUTPUT_FILE "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}/magic_mgc_gzipped.h_")
-
-add_custom_command(
-  OUTPUT "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}" "${PROJECT_SOURCE_DIR}/scripts/tdb_gzip_embedded_data.cmake"
-  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_BIN_OUTPUT_FILE}" -P "${PROJECT_SOURCE_DIR}/scripts/tdb_gzip_embedded_data.cmake"
-)
-add_custom_target(gen_mgc_unarch
-  DEPENDS ${MGC_GZIPPED_BIN_OUTPUT_FILE}
-)
 add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 target_include_directories(TILEDB_CORE_OBJECTS
