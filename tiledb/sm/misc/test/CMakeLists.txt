@@ -46,5 +46,3 @@ commence(unit_test mgc_dict)
         unit_mgc_dict.cc
     )
 conclude(unit_test)
-
-set_property(TEST unit_mgc_dict PROPERTY ENVIRONMENT_MODIFICATION "TILEDB_PATH_TO_MAGIC_MGC=set:${libmagic_DICTIONARY}")
