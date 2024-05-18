@@ -98,33 +98,3 @@ commence(object_library time)
 conclude(object_library)
 
 add_test_subdirectory()
-
-#
-# `mgc_dict.*` tests are declared in this directory for the moment.
-#
-# See also `/tiledb/CMakeLists.txt` for related target `gen_mgc_unarch`
-#
-if (TILEDB_TESTS)
-  # simple unit test of magic.mgc embedded data vs external data
-  find_package(Magic_EP REQUIRED)
-  if(NOT EXISTS ${libmagic_DICTIONARY})
-    message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
-  endif()
-  add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
-  target_sources(unit_mgc_dict PRIVATE
-          test/unit_mgc_dict.cc
-          mgc_dict.cc
-  )
-  target_link_libraries(unit_mgc_dict PRIVATE
-    compressors
-    filter
-    libmagic
-    )
-
-  target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
-  target_include_directories(unit_mgc_dict
-    PRIVATE
-      ${CMAKE_CURRENT_BINARY_DIR}
-     "${libmagic_INCLUDE_DIR}"
-  )
-endif()

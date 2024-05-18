@@ -32,10 +32,9 @@
  * magic checks return same values using both embedded and external data.
  */
 
+#include <test/support/tdb_catch.h>
 #include "tiledb/common/common.h"
 #include "tiledb/sm/buffer/buffer.h"
-#include "tiledb/sm/filter/filter_buffer.h"
-#include "tiledb/sm/filter/filter_storage.h"
 #include "tiledb/sm/misc/mgc_dict.h"
 #include "tiledb/sm/misc/types.h"
 
@@ -56,42 +55,25 @@
 
 using tiledb::sm::magic_dict;
 
-int check_embedded_data_validity() {
+TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_validity]") {
   FILE* infile = nullptr;
   infile = fopen(TILEDB_PATH_TO_MAGIC_MGC, "rb");
-  if (!infile) {
-    fprintf(stderr, "ERROR: Unable to open %s\n", TILEDB_PATH_TO_MAGIC_MGC);
-    return 1;
-  }
+  REQUIRE(infile);
 
   fseek(infile, 0L, SEEK_END);
   uint64_t magic_mgc_len = ftell(infile);
   fseek(infile, 0L, SEEK_SET);
 
   char* magic_mgc_data = tdb_new_array(char, magic_mgc_len);
-  if (fread(magic_mgc_data, 1, magic_mgc_len, infile) != magic_mgc_len) {
-    fprintf(stderr, "ERROR reading data from %s\n", TILEDB_PATH_TO_MAGIC_MGC);
-    return 4;
-  }
+  REQUIRE(fread(magic_mgc_data, 1, magic_mgc_len, infile) == magic_mgc_len);
   fclose(infile);
 
   auto& magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
-  if (magic_mgc_embedded_data.size() != magic_mgc_len) {
-    fprintf(
-        stderr,
-        "ERROR magic.mgc data len (%" PRIu64
-        ") does not match embedded data length (%" PRIu64 ")\n",
-        magic_mgc_len,
-        static_cast<uint64_t>(magic_mgc_embedded_data.size()));
-    return 7;
-  }
+  REQUIRE(magic_mgc_embedded_data.size() == magic_mgc_len);
 
-  if (memcmp(magic_mgc_data, magic_mgc_embedded_data.data(), magic_mgc_len)) {
-    fprintf(stderr, "ERROR magic.mgc data different from embedded data\n");
-    return 10;
-  }
-
-  return 0;
+  REQUIRE(
+      memcmp(magic_mgc_data, magic_mgc_embedded_data.data(), magic_mgc_len) ==
+      0);
 }
 
 char empty_txt[] = {""};  // further below, treated differently from others here
@@ -271,7 +253,7 @@ struct file_data_sizes_s {
 
       {0, 0, 0}};
 
-int embedded_vs_external_identifications() {
+TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
   int errcnt = 0;
 
   magic_t magic_mimeenc_embedded;
@@ -471,35 +453,10 @@ int embedded_vs_external_identifications() {
     return 0;
   };
 
-  if (auto rval = proc_list(file_data_sizes1, true); rval != 0)
-    return rval;
-  if (auto rval = proc_list(file_data_sizes2, true); rval != 0)
-    return rval;
+  REQUIRE(proc_list(file_data_sizes1, true) == 0);
+  REQUIRE(proc_list(file_data_sizes2, true) == 0);
+  REQUIRE(proc_list(file_data_sizes1, false) == 0);
+  REQUIRE(proc_list(file_data_sizes2, false) == 0);
 
-  if (auto rval = proc_list(file_data_sizes1, false); rval != 0)
-    return rval;
-  if (auto rval = proc_list(file_data_sizes2, false); rval != 0)
-    return rval;
-
-  if (errcnt) {
-    fprintf(
-        stderr, "%d mismatch errors magic embedded vs external data\n", errcnt);
-  }
-
-  return errcnt ? 99 : 0;
-}
-
-int main() {
-  int failures = 0;
-
-  failures |= check_embedded_data_validity();
-  failures |= embedded_vs_external_identifications();
-
-  if (failures) {
-    fprintf(stderr, "\nERRORS mgc_dict validation\n");
-    return 1;
-  } else {
-    fprintf(stderr, "NO errors encountered in mgc_dict validation\n");
-    return 0;
-  }
+  REQUIRE(errcnt == 0);
 }
