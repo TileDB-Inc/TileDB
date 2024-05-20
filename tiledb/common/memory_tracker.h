@@ -254,9 +254,9 @@ class MemoryTracker {
    */
   bool take_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + size <= memory_budget_) {
-      memory_usage_ += size;
-      memory_usage_by_type_[mem_type] += size;
+    if (legacy_memory_usage_ + size <= legacy_memory_budget_) {
+      legacy_memory_usage_ += size;
+      legacy_memory_usage_by_type_[mem_type] += size;
       return true;
     }
 
@@ -270,8 +270,8 @@ class MemoryTracker {
    */
   void release_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    memory_usage_ -= size;
-    memory_usage_by_type_[mem_type] -= size;
+    legacy_memory_usage_ -= size;
+    legacy_memory_usage_by_type_[mem_type] -= size;
   }
 
   /**
@@ -282,11 +282,11 @@ class MemoryTracker {
    */
   bool set_budget(uint64_t size) {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ > size) {
+    if (legacy_memory_usage_ > size) {
       return false;
     }
 
-    memory_budget_ = size;
+    legacy_memory_budget_ = size;
     return true;
   }
 
@@ -295,7 +295,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_usage() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_;
+    return legacy_memory_usage_;
   }
 
   /**
@@ -303,7 +303,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_usage(MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_by_type_[mem_type];
+    return legacy_memory_usage_by_type_[mem_type];
   }
 
   /**
@@ -324,7 +324,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_budget() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_;
+    return legacy_memory_budget_;
   }
 
  protected:
@@ -343,8 +343,8 @@ class MemoryTracker {
    * a `create_test_memory_tracker()` API available in the test support library.
    */
   MemoryTracker()
-      : memory_usage_(0)
-      , memory_budget_(std::numeric_limits<uint64_t>::max())
+      : legacy_memory_usage_(0)
+      , legacy_memory_budget_(std::numeric_limits<uint64_t>::max())
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
@@ -354,14 +354,18 @@ class MemoryTracker {
   /** Protects all non-atomic member variables. */
   std::mutex mutex_;
 
+  /* Legacy memory tracker infrastructure */
+
   /** Memory usage for tracked structures. */
-  uint64_t memory_usage_;
+  uint64_t legacy_memory_usage_;
 
   /** Memory budget. */
-  uint64_t memory_budget_;
+  uint64_t legacy_memory_budget_;
 
   /** Memory usage by type. */
-  std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+  std::unordered_map<MemoryType, uint64_t> legacy_memory_usage_by_type_;
+
+  /* Modern memory tracker infrastructure */
 
   /** The id of this MemoryTracker. */
   uint64_t id_;
