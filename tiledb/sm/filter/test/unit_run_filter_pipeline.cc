@@ -1054,8 +1054,8 @@ TEST_CASE(
       0) {
     /* there is an integral number of units of `reinterpret_datatype`,
      * should always work */
-    auto compressor =
-        CompressionFilter(Compressor::DELTA, 1, reinterpret_datatype);
+    auto compressor = CompressionFilter(
+        Compressor::DELTA, 1, input_datatype, reinterpret_datatype);
 
     FilterPipeline pipeline;
     pipeline.add_filter(compressor);
@@ -1069,37 +1069,14 @@ TEST_CASE(
         tracker);
   } else {
     /* there may be a partial instance of `reinterpret_datatype` */
-    /* TODO: this should be disallowed whether or not it happens to work out
-     * right now it probably works */
-    if (tile->size() % datatype_size(reinterpret_datatype) == 0) {
-      /* integral number of instances, it happens to work out */
-      auto compressor =
-          CompressionFilter(Compressor::DELTA, 1, reinterpret_datatype);
-      FilterPipeline pipeline;
-      pipeline.add_filter(compressor);
-      check_run_pipeline_roundtrip(
-          config,
-          tp,
-          tile,
-          offsets_tile,
-          pipeline,
-          &tile_data_generator,
-          tracker);
-    } else {
-      /* today, there are no safeguards against this, it is expected to work */
-      auto compressor =
-          CompressionFilter(Compressor::DELTA, 1, reinterpret_datatype);
-      FilterPipeline pipeline;
-      pipeline.add_filter(compressor);
-      check_run_pipeline_roundtrip(
-          config,
-          tp,
-          tile,
-          offsets_tile,
-          pipeline,
-          &tile_data_generator,
-          tracker);
-    }
+    auto compressor = CompressionFilter(
+        Compressor::DELTA, 1, input_datatype, reinterpret_datatype);
+    FilterPipeline pipeline;
+    pipeline.add_filter(compressor);
+    CHECK_THROWS(
+        FilterPipeline::check_filter_types(pipeline, input_datatype, false));
+    CHECK_THROWS(
+        FilterPipeline::check_filter_types(pipeline, input_datatype, true));
   }
 }
 
@@ -1127,8 +1104,8 @@ TEST_CASE(
       0) {
     /* there is an integral number of units of `reinterpret_datatype`,
      * should always work */
-    auto compressor =
-        CompressionFilter(Compressor::DOUBLE_DELTA, 1, reinterpret_datatype);
+    auto compressor = CompressionFilter(
+        Compressor::DOUBLE_DELTA, 1, input_datatype, reinterpret_datatype);
 
     FilterPipeline pipeline;
     pipeline.add_filter(compressor);
@@ -1142,36 +1119,13 @@ TEST_CASE(
         tracker);
   } else {
     /* there may be a partial instance of `reinterpret_datatype` */
-    /* TODO: this should be disallowed whether or not it happens to work out
-     * right now it probably works */
-    if (tile->size() % datatype_size(reinterpret_datatype) == 0) {
-      /* integral number of instances, it happens to work out */
-      auto compressor =
-          CompressionFilter(Compressor::DOUBLE_DELTA, 1, reinterpret_datatype);
-      FilterPipeline pipeline;
-      pipeline.add_filter(compressor);
-      check_run_pipeline_roundtrip(
-          config,
-          tp,
-          tile,
-          offsets_tile,
-          pipeline,
-          &tile_data_generator,
-          tracker);
-    } else {
-      /* today, there are no safeguards against this, it is expected to work */
-      auto compressor =
-          CompressionFilter(Compressor::DOUBLE_DELTA, 1, reinterpret_datatype);
-      FilterPipeline pipeline;
-      pipeline.add_filter(compressor);
-      check_run_pipeline_roundtrip(
-          config,
-          tp,
-          tile,
-          offsets_tile,
-          pipeline,
-          &tile_data_generator,
-          tracker);
-    }
+    auto compressor = CompressionFilter(
+        Compressor::DOUBLE_DELTA, 1, input_datatype, reinterpret_datatype);
+    FilterPipeline pipeline;
+    pipeline.add_filter(compressor);
+    CHECK_THROWS(
+        FilterPipeline::check_filter_types(pipeline, input_datatype, false));
+    CHECK_THROWS(
+        FilterPipeline::check_filter_types(pipeline, input_datatype, true));
   }
 }
