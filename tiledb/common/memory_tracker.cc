@@ -150,7 +150,7 @@ void* MemoryTrackerResource::do_allocate(size_t bytes, size_t alignment) {
   auto previous_total =
       total_counter_.fetch_add(bytes, std::memory_order_relaxed);
   type_counter_.fetch_add(bytes, std::memory_order_relaxed);
-  if (previous_total + bytes > memory_budget_) {
+  if (previous_total + bytes > memory_budget_ && on_budget_exceeded_) {
     on_budget_exceeded_();
   }
   return upstream_->allocate(bytes, alignment);
@@ -193,7 +193,12 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
 
   // Create and track a shared_ptr to the new memory resource.
   auto ret = make_shared<MemoryTrackerResource>(
-      HERE(), upstream_, total_counter_, counters_[type], memory_budget_);
+      HERE(),
+      upstream_,
+      total_counter_,
+      counters_[type],
+      memory_budget_,
+      on_budget_exceeded_);
   resources_.emplace(type, ret);
 
   // Return the raw memory resource pointer for use by pmr containers.

@@ -92,7 +92,7 @@ Query::Query(
     , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
           get_effective_memory_budget(resources_.config(), memory_budget),
           [stats = stats_]() {
-            stats->add_counter("memory_budget_exhausted", 1);
+            stats->add_counter("memory_budget_exceeded", 1);
           }))
     , array_shared_(array)
     , array_(array_shared_.get())

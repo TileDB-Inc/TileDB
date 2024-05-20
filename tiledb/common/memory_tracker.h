@@ -181,7 +181,7 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
       tdb::pmr::memory_resource* upstream,
       std::atomic<uint64_t>& total_counter,
       std::atomic<uint64_t>& type_counter,
-      uint64_t memory_budget,
+      const std::atomic<uint64_t>& memory_budget,
       std::function<void()> on_budget_exceeded)
       : upstream_(upstream)
       , total_counter_(total_counter)
@@ -215,7 +215,7 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
   std::atomic<uint64_t>& type_counter_;
 
   /** The memory budget for this resource. */
-  const uint64_t memory_budget_;
+  const std::atomic<uint64_t>& memory_budget_;
 
   /** A function to call when the budget is exceeded. */
   std::function<void()> on_budget_exceeded_;
@@ -323,10 +323,11 @@ class MemoryTracker {
    */
   uint64_t get_memory_available() {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + counters_[MemoryType::TILE_OFFSETS] > memory_budget_) {
+    if (total_counter_ + counters_[MemoryType::TILE_OFFSETS] > memory_budget_) {
       return 0;
     }
-    return memory_budget_ - memory_usage_ - counters_[MemoryType::TILE_OFFSETS];
+    return memory_budget_ - total_counter_ -
+           counters_[MemoryType::TILE_OFFSETS];
   }
 
   /**
@@ -365,9 +366,12 @@ class MemoryTracker {
    * a `create_test_memory_tracker()` API available in the test support library.
    *
    * @param memory_budget The memory budget for this MemoryTracker.
+   * @param on_budget_exceeded The function to call when the budget is exceeded.
+   * Defaults to a function that does nothing.
    */
   MemoryTracker(
-      uint64_t memory_budget, std::function<void()> on_budget_exceeded)
+      uint64_t memory_budget = std::numeric_limits<uint64_t>::max(),
+      std::function<void()> on_budget_exceeded = []() {})
       : legacy_memory_usage_(0)
       , legacy_memory_budget_(std::numeric_limits<uint64_t>::max())
       , id_(generate_id())
@@ -436,6 +440,9 @@ class MemoryTrackerManager {
    *
    * @param memory_budget The memory budget for the new MemoryTracker. Defaults
    * to unlimited.
+   *
+   * @param on_budget_exceeded The function to call when the budget is exceeded.
+   * Defaults to a function that does nothing.
    *
    * @return The created MemoryTracker.
    */
