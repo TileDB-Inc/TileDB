@@ -97,6 +97,7 @@
 #define TILEDB_MEMORY_TRACKER_H
 
 #include <condition_variable>
+#include <functional>
 #include <thread>
 
 #include "tiledb/common/pmr.h"
@@ -180,11 +181,13 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
       tdb::pmr::memory_resource* upstream,
       std::atomic<uint64_t>& total_counter,
       std::atomic<uint64_t>& type_counter,
-      uint64_t memory_budget)
+      uint64_t memory_budget,
+      std::function<void()> on_budget_exceeded)
       : upstream_(upstream)
       , total_counter_(total_counter)
       , type_counter_(type_counter)
-      , memory_budget_(memory_budget) {
+      , memory_budget_(memory_budget)
+      , on_budget_exceeded_(on_budget_exceeded) {
   }
 
   /** The number of bytes tracked by this resource. */
@@ -213,6 +216,9 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
 
   /** The memory budget for this resource. */
   const uint64_t memory_budget_;
+
+  /** A function to call when the budget is exceeded. */
+  std::function<void()> on_budget_exceeded_;
 };
 
 class MemoryTracker {
@@ -349,14 +355,16 @@ class MemoryTracker {
    *
    * @param memory_budget The memory budget for this MemoryTracker.
    */
-  MemoryTracker(uint64_t memory_budget)
+  MemoryTracker(
+      uint64_t memory_budget, std::function<void()> on_budget_exceeded)
       : legacy_memory_usage_(0)
       , legacy_memory_budget_(std::numeric_limits<uint64_t>::max())
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
       , total_counter_(0)
-      , memory_budget_(memory_budget){};
+      , memory_budget_(memory_budget)
+      , on_budget_exceeded_(on_budget_exceeded){};
 
  private:
   /** Protects all non-atomic member variables. */
@@ -397,6 +405,9 @@ class MemoryTracker {
   /** Memory budget. */
   const uint64_t memory_budget_;
 
+  /** A function to call when the budget is exceeded. */
+  std::function<void()> on_budget_exceeded_;
+
   /** Generate a unique id for this MemoryTracker. */
   static uint64_t generate_id();
 };
@@ -418,7 +429,8 @@ class MemoryTrackerManager {
    * @return The created MemoryTracker.
    */
   shared_ptr<MemoryTracker> create_tracker(
-      uint64_t memory_budget = std::numeric_limits<uint64_t>::max());
+      uint64_t memory_budget = std::numeric_limits<uint64_t>::max(),
+      std::function<void()> on_budget_exceeded = []() {});
 
   /**
    * Generate a JSON string representing the current state of tracked memory.
