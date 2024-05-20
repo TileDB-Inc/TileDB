@@ -622,8 +622,8 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   require_tiledb_ok(vfs_ls.remove_dir(URI(path)));
 }
 
-// Currently only S3 and Azure is supported for VFS::ls_recursive.
-using TestBackends = std::tuple<S3Test, AzureTest>;
+// Currently only local, S3 and Azure is supported for VFS::ls_recursive.
+using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: Test internal ls_filtered recursion argument",
     "[vfs][ls_filtered][recursion]",

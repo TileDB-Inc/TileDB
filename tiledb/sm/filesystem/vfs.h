@@ -582,9 +582,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
   }
 
   /**
-   * Lists objects and object information that start with `prefix`, invoking
-   * the FilePredicate on each entry collected and the DirectoryPredicate on
-   * common prefixes for pruning.
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilePredicate on each entry collected and the
+   * DirectoryPredicate on common prefixes for pruning.
    *
    * Currently this API is only supported for local files, S3 and Azure.
    *

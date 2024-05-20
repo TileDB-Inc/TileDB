@@ -149,7 +149,7 @@ class Azure;
  *      iterators returned by a previous request. To be able to detect this, we
  *      can track the batch number and compare it to the batch number associated
  *      with the iterator returned by the previous request. Batch number can be
- *      tracked by the total number of times we submit a ListObjectsV2 request
+ *      tracked by the total number of times we submit a ListBlobs request
  *      within fetch_results().
  *
  * @tparam F The FilePredicate type used to filter object results.
@@ -780,7 +780,8 @@ class Azure {
    * exit, will hold the continuation token to pass to the next listing
    * operation, or nullopt if there are no more results.
    *
-   * @return A vector with the blobs and directories found.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
    *
    * @note If continuation_token is not nullopt, callers must ensure that the
    * container_name, blob_path and recursive parameters are the same as the

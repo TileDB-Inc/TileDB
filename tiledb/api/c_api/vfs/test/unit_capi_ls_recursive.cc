@@ -38,13 +38,17 @@
 
 using namespace tiledb::test;
 
-TEST_CASE("C API: ls_recursive callback", "[vfs][ls-recursive]") {
+// Currently only local, S3 and Azure is supported for VFS::ls_recursive.
+using TestBackends = std::tuple<LocalFsTest, S3Test, AzureTest>;
+
+TEMPLATE_LIST_TEST_CASE(
+    "C API: ls_recursive callback", "[vfs][ls-recursive]", TestBackends) {
   using tiledb::sm::LsObjects;
-  S3Test s3_test({10, 50});
-  if (!s3_test.is_supported()) {
+  TestType test({10, 50});
+  if (!test.is_supported()) {
     return;
   }
-  auto expected = s3_test.expected_results();
+  auto expected = test.expected_results();
 
   vfs_config vfs_config;
   tiledb_ctx_t* ctx;
@@ -80,19 +84,22 @@ TEST_CASE("C API: ls_recursive callback", "[vfs][ls-recursive]") {
   }
 
   CHECK(
-      tiledb_vfs_ls_recursive(ctx, vfs, s3_test.temp_dir_.c_str(), cb, &data) ==
+      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
       TILEDB_OK);
   CHECK(data.size() == expected.size());
   CHECK(data == expected);
 }
 
-TEST_CASE("C API: ls_recursive throwing callback", "[vfs][ls-recursive]") {
+TEMPLATE_LIST_TEST_CASE(
+    "C API: ls_recursive throwing callback",
+    "[vfs][ls-recursive]",
+    TestBackends) {
   using tiledb::sm::LsObjects;
-  S3Test s3_test({10, 50});
-  if (!s3_test.is_supported()) {
+  TestType test({10, 50});
+  if (!test.is_supported()) {
     return;
   }
-  auto expected = s3_test.expected_results();
+  auto expected = test.expected_results();
 
   vfs_config vfs_config;
   tiledb_ctx_t* ctx;
@@ -107,7 +114,7 @@ TEST_CASE("C API: ls_recursive throwing callback", "[vfs][ls-recursive]") {
   };
 
   CHECK(
-      tiledb_vfs_ls_recursive(ctx, vfs, s3_test.temp_dir_.c_str(), cb, &data) ==
+      tiledb_vfs_ls_recursive(ctx, vfs, test.temp_dir_.c_str(), cb, &data) ==
       TILEDB_ERR);
   CHECK(data.empty());
 }
