@@ -90,7 +90,10 @@ Query::Query(
     , stats_(resources_.stats().create_child("Query"))
     , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
-          get_effective_memory_budget(resources_.config(), memory_budget)))
+          get_effective_memory_budget(resources_.config(), memory_budget),
+          [stats = stats_]() {
+            stats->add_counter("memory_budget_exhausted", 1);
+          }))
     , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
