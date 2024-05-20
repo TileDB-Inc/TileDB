@@ -66,6 +66,17 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
+/**
+ * Gets the effective memory budget for a query. This will be memory_budget if
+ * set, otherwise the value "sm.mem.total_budget" from config.
+ */
+static uint64_t get_effective_memory_budget(
+    const Config& config, optional<uint64_t> memory_budget) {
+  return memory_budget ?
+             *memory_budget :
+             config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+}
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -76,7 +87,10 @@ Query::Query(
     optional<std::string> fragment_name,
     optional<uint64_t> memory_budget)
     : resources_(storage_manager->resources())
-    , query_memory_tracker_(resources_.create_memory_tracker())
+    , stats_(resources_.stats().create_child("Query"))
+    , logger_(resources_.logger()->clone("Query", ++logger_id_))
+    , query_memory_tracker_(resources_.memory_tracker_manager().create_tracker(
+          get_effective_memory_budget(resources_.config(), memory_budget)))
     , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
@@ -88,8 +102,6 @@ Query::Query(
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
     , storage_manager_(storage_manager)
-    , stats_(resources_.stats().create_child("Query"))
-    , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -925,6 +937,9 @@ void Query::set_config(const Config& config) {
         "[set_config] Cannot set config after initialization.");
   }
   config_.inherit(config);
+
+  query_memory_tracker_->refresh_memory_budget(
+      get_effective_memory_budget(config_, memory_budget_));
 
   // Refresh memory budget configuration.
   if (strategy_ != nullptr) {
