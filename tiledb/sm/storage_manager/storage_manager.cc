@@ -131,24 +131,6 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::group_close_for_writes(Group* group) {
-  // Flush the group metadata
-  throw_if_not_ok(group->unsafe_metadata()->store(
-      resources_, group->group_uri(), *group->encryption_key()));
-
-  // Store any changes required
-  if (group->group_details()->is_modified()) {
-    const URI& group_detail_folder_uri = group->group_detail_uri();
-    auto group_detail_uri = group->generate_detail_uri();
-    throw_if_not_ok(group->group_details()->store(
-        resources_,
-        group_detail_folder_uri,
-        group_detail_uri,
-        *group->encryption_key()));
-  }
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::array_create(
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
