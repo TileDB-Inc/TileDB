@@ -189,7 +189,7 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
 
   // Create and track a shared_ptr to the new memory resource.
   auto ret = make_shared<MemoryTrackerResource>(
-      HERE(), upstream_, total_counter_, counters_[type]);
+      HERE(), upstream_, total_counter_, counters_[type], memory_budget_);
   resources_.emplace(type, ret);
 
   // Return the raw memory resource pointer for use by pmr containers.
@@ -215,7 +215,8 @@ uint64_t MemoryTracker::generate_id() {
   return curr_id.fetch_add(1);
 }
 
-shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
+shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker(
+    uint64_t memory_budget) {
   /*
    * The MemoryTracker class has a protected constructor to hopefully help
    * self-document that instances should almost never be created directly
@@ -232,8 +233,8 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
      * Pass through to the protected MemoryTracker constructor for
      * make_shared.
      */
-    MemoryTrackerCreator()
-        : MemoryTracker() {
+    MemoryTrackerCreator(uint64_t memory_budget)
+        : MemoryTracker(memory_budget) {
     }
   };
 
@@ -250,7 +251,7 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
   }
 
   // Create a new tracker
-  auto ret = make_shared<MemoryTrackerCreator>(HERE());
+  auto ret = make_shared<MemoryTrackerCreator>(HERE(), memory_budget);
   trackers_.emplace(trackers_.begin(), ret);
 
   return ret;

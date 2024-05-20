@@ -179,10 +179,12 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
   explicit MemoryTrackerResource(
       tdb::pmr::memory_resource* upstream,
       std::atomic<uint64_t>& total_counter,
-      std::atomic<uint64_t>& type_counter)
+      std::atomic<uint64_t>& type_counter,
+      uint64_t memory_budget)
       : upstream_(upstream)
       , total_counter_(total_counter)
-      , type_counter_(type_counter) {
+      , type_counter_(type_counter)
+      , memory_budget_(memory_budget) {
   }
 
   /** The number of bytes tracked by this resource. */
@@ -208,6 +210,9 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
 
   /** A reference to the memory type counter this resource is tracking. */
   std::atomic<uint64_t>& type_counter_;
+
+  /** The memory budget for this resource. */
+  const uint64_t memory_budget_;
 };
 
 class MemoryTracker {
@@ -341,14 +346,17 @@ class MemoryTracker {
    *
    * For tests that need to have a temporary MemoryTracker instance, there is
    * a `create_test_memory_tracker()` API available in the test support library.
+   *
+   * @param memory_budget The memory budget for this MemoryTracker.
    */
-  MemoryTracker()
+  MemoryTracker(uint64_t memory_budget)
       : legacy_memory_usage_(0)
       , legacy_memory_budget_(std::numeric_limits<uint64_t>::max())
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
-      , total_counter_(0){};
+      , total_counter_(0)
+      , memory_budget_(memory_budget){};
 
  private:
   /** Protects all non-atomic member variables. */
@@ -386,6 +394,9 @@ class MemoryTracker {
   /** The total memory usage of this MemoryTracker. */
   std::atomic<uint64_t> total_counter_;
 
+  /** Memory budget. */
+  const uint64_t memory_budget_;
+
   /** Generate a unique id for this MemoryTracker. */
   static uint64_t generate_id();
 };
@@ -401,9 +412,13 @@ class MemoryTrackerManager {
   /**
    * Create a new memory tracker.
    *
+   * @param memory_budget The memory budget for the new MemoryTracker. Defaults
+   * to unlimited.
+   *
    * @return The created MemoryTracker.
    */
-  shared_ptr<MemoryTracker> create_tracker();
+  shared_ptr<MemoryTracker> create_tracker(
+      uint64_t memory_budget = std::numeric_limits<uint64_t>::max());
 
   /**
    * Generate a JSON string representing the current state of tracked memory.
