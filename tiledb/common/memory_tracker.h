@@ -338,6 +338,17 @@ class MemoryTracker {
     return legacy_memory_budget_;
   }
 
+  /**
+   * Refresh the memory budget used by the new system.
+   *
+   * @param new_budget The new memory budget.
+   */
+  void refresh_memory_budget(uint64_t new_budget) {
+    memory_budget_.store(new_budget, std::memory_order_relaxed);
+    // Should we call on_budget_exceeded_ if the new budget has exceeded the
+    // current total counter?
+  }
+
  protected:
   /**
    * Constructor.
@@ -403,7 +414,7 @@ class MemoryTracker {
   std::atomic<uint64_t> total_counter_;
 
   /** Memory budget. */
-  const uint64_t memory_budget_;
+  std::atomic<uint64_t> memory_budget_;
 
   /** A function to call when the budget is exceeded. */
   std::function<void()> on_budget_exceeded_;
