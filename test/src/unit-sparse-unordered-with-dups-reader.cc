@@ -932,7 +932,7 @@ TEST_CASE_METHOD(
   uint64_t data2_size = data.size() * sizeof(int);
   write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
 
-  total_budget_ = "1000000";
+  total_budget_ = "1500000";
   ratio_array_data_ = set_subarray ? "0.003" : "0.002";
   partial_tile_offsets_loading_ = "true";
   update_config();
@@ -1020,8 +1020,8 @@ TEST_CASE_METHOD(
   }
 
   // Two result tile (2 * ~1208) will be bigger than the budget (1500).
-  total_budget_ = "10000";
-  ratio_coords_ = "0.15";
+  total_budget_ = "25500";
+  ratio_coords_ = "0.06";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1099,7 +1099,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (~505) will be larger than leftover memory.
-  total_budget_ = "800";
+  total_budget_ = "1500";
   ratio_array_data_ = "0.99";
   ratio_coords_ = "0.0005";
   update_config();
