@@ -790,8 +790,8 @@ TEST_CASE_METHOD(
 
   // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "30000";
-  ratio_coords_ = "0.12";
+  total_budget_ = "35000";
+  ratio_coords_ = "0.11";
   update_config();
 
   tiledb_array_t* array = nullptr;
