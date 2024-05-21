@@ -1082,7 +1082,7 @@ TEST_CASE(
 
 TEST_CASE(
     "Filter: Test double delta filter reinterpret_datatype validity",
-    "[filter][delta]") {
+    "[filter][double-delta]") {
   // Create TileDB needed for running pipeline.
   Config config;
   ThreadPool tp(4);
