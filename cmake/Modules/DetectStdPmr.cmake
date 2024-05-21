@@ -31,8 +31,7 @@
 # binary dies with a dyld missing symbol error.
 
 if (ENV{MACOSX_DEPLOYMENT_TARGET})
-  string(COMPARE LESS "$ENV{MACOSX_DEPLOYMENT_TARGET}" "14" MACOS_BAD_PMR_SUPPORT)
-  if (MACOS_BAD_PMR_SUPPORT)
+  if (ENV{MACOSX_DEPLOYMENT_TARGET} STRLESS "14")
     set(TILEDB_USE_CPP17_PMR ON)
     message(STATUS "Using vendored cpp17::pmr for polymorphic allocators")
     return()
@@ -41,27 +40,22 @@ endif()
 
 # Otherwise, if we're not building a targeted macOS version, we just detect
 # whether std::pmr is available.
-#
-# However CMake makes this extra awesome because try_run appears to have
-# changed in a backwards compatible manner. We'll just version check for
-# selecting which to run.
 
 if (CMAKE_VERSION VERSION_LESS "3.25")
-  try_run(
-    TILEDB_CAN_RUN_STD_PMR
-    TILEDB_CAN_COMPILE_STD_PMR
-    "${CMAKE_CURRENT_BINARY_DIR}"
-    "${CMAKE_SOURCE_DIR}/cmake/inputs/detect_std_pmr.cc"
-    )
-else()
-  try_run(
-    TILEDB_CAN_RUN_STD_PMR
-    TILEDB_CAN_COMPILE_STD_PMR
-    SOURCES "${CMAKE_SOURCE_DIR}/cmake/inputs/detect_std_pmr.cc"
+try_compile(
+  TILEDB_CAN_COMPILE_STD_PMR
+  "${CMAKE_CURRENT_BINARY_DIR}"
+  "${CMAKE_SOURCE_DIR}/cmake/inputs/detect_std_pmr.cc"
   )
+else()
+# CMake 3.25+ has a better signature for try_compile.
+try_compile(
+  TILEDB_CAN_COMPILE_STD_PMR
+  SOURCES "${CMAKE_SOURCE_DIR}/cmake/inputs/detect_std_pmr.cc"
+)
 endif()
 
-if ("${TILEDB_CAN_COMPILE_STD_PMR}" AND "${TILEDB_CAN_RUN_STD_PMR}" EQUAL 0)
+if (TILEDB_CAN_COMPILE_STD_PMR)
   message(STATUS "Using std::pmr for polymorphic allocators")
 else()
   set(TILEDB_USE_CPP17_PMR ON)
