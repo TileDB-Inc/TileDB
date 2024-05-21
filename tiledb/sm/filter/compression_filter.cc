@@ -105,7 +105,7 @@ bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
                                                      input_type)) {
       return false;
     }
-    // we must receive an integral number of units of the reinterpret datatype
+    // We must receive an integral number of units of the reinterpret datatype
     else if (
         reinterpret_datatype_ != Datatype::ANY &&
         datatype_size(input_type) % datatype_size(reinterpret_datatype_) != 0) {
