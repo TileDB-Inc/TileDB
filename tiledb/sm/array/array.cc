@@ -34,6 +34,7 @@
 
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
+#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
@@ -50,6 +51,8 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/query/deletes_and_updates/serialization.h"
+#include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
@@ -104,6 +107,60 @@ Array::Array(
 /* ********************************* */
 /*                API                */
 /* ********************************* */
+
+tuple<
+    Status,
+    optional<std::vector<QueryCondition>>,
+    optional<std::vector<std::vector<UpdateValue>>>>
+OpenedArray::load_delete_and_update_conditions() {
+  auto& locations = array_directory().delete_and_update_tiles_location();
+  auto conditions = std::vector<QueryCondition>(locations.size());
+  auto update_values = std::vector<std::vector<UpdateValue>>(locations.size());
+
+  auto status = parallel_for(
+      &resources_.compute_tp(), 0, locations.size(), [&](size_t i) {
+        // Get condition marker.
+        auto& uri = locations[i].uri();
+
+        // Read the condition from storage.
+        auto tile = GenericTileIO::load(
+            resources_,
+            uri,
+            locations[i].offset(),
+            *(encryption_key()),
+            resources_.ephemeral_memory_tracker());
+
+        if (tiledb::sm::utils::parse::ends_with(
+                locations[i].condition_marker(),
+                tiledb::sm::constants::delete_file_suffix)) {
+          conditions[i] = tiledb::sm::deletes_and_updates::serialization::
+              deserialize_condition(
+                  i,
+                  locations[i].condition_marker(),
+                  tile->data(),
+                  tile->size());
+        } else if (tiledb::sm::utils::parse::ends_with(
+                       locations[i].condition_marker(),
+                       tiledb::sm::constants::update_file_suffix)) {
+          auto&& [cond, uvs] = tiledb::sm::deletes_and_updates::serialization::
+              deserialize_update_condition_and_values(
+                  i,
+                  locations[i].condition_marker(),
+                  tile->data(),
+                  tile->size());
+          conditions[i] = std::move(cond);
+          update_values[i] = std::move(uvs);
+        } else {
+          throw ArrayException("Unknown condition marker extension");
+        }
+
+        throw_if_not_ok(conditions[i].check(array_schema_latest()));
+        return Status::Ok();
+      });
+  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
+
+  return {Status::Ok(), conditions, update_values};
+}
 
 const URI& Array::array_uri() const {
   return array_uri_;
@@ -173,11 +230,7 @@ Status Array::open_without_fragments(
         }
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else {
       {
@@ -338,11 +391,7 @@ Status Array::open(
         throw_if_not_ok(st);
         set_array_schema_latest(array_schema_latest.value());
       } else {
-        auto st = rest_client->post_array_from_rest(
-            array_uri_, storage_manager_, this);
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
+        rest_client->post_array_from_rest(array_uri_, resources_, this);
       }
     } else if (query_type == QueryType::READ) {
       {
@@ -471,8 +520,8 @@ Status Array::close() {
     } else {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-        st = storage_manager_->store_metadata(
-            array_uri_, *encryption_key(), &opened_array_->metadata());
+        st = opened_array_->metadata().store(
+            resources_, array_uri_, *encryption_key());
         if (!st.ok()) {
           throw StatusException(st);
         }
@@ -493,23 +542,48 @@ Status Array::close() {
   return Status::Ok();
 }
 
-void Array::delete_array(const URI& uri) {
-  // Check that data deletion is allowed
-  ensure_array_is_valid_for_delete(uri);
+void Array::delete_fragments(
+    ContextResources& resources,
+    const URI& uri,
+    uint64_t timestamp_start,
+    uint64_t timestamp_end,
+    std::optional<ArrayDirectory> array_dir) {
+  // Get the fragment URIs to be deleted
+  if (array_dir == std::nullopt) {
+    array_dir = ArrayDirectory(resources, uri, timestamp_start, timestamp_end);
+  }
+  auto filtered_fragment_uris = array_dir->filtered_fragment_uris(true);
+  const auto& fragment_uris = filtered_fragment_uris.fragment_uris();
 
-  // Delete array data
-  if (remote_) {
-    auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr) {
-      throw ArrayException("[delete_array] Remote array with no REST client.");
+  // Retrieve commit uris to delete and ignore
+  std::vector<URI> commit_uris_to_delete;
+  std::vector<URI> commit_uris_to_ignore;
+  for (auto& fragment : fragment_uris) {
+    auto commit_uri = array_dir->get_commit_uri(fragment.uri_);
+    commit_uris_to_delete.emplace_back(commit_uri);
+    if (array_dir->consolidated_commit_uris_set().count(commit_uri.c_str()) !=
+        0) {
+      commit_uris_to_ignore.emplace_back(commit_uri);
     }
-    rest_client->delete_array_from_rest(uri);
-  } else {
-    storage_manager_->delete_array(uri.c_str());
   }
 
-  // Close the array
-  throw_if_not_ok(this->close());
+  // Write ignore file
+  if (commit_uris_to_ignore.size() != 0) {
+    array_dir->write_commit_ignore_file(commit_uris_to_ignore);
+  }
+
+  // Delete fragments and commits
+  auto vfs = &(resources.vfs());
+  throw_if_not_ok(parallel_for(
+      &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
+        RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
+        bool is_file = false;
+        RETURN_NOT_OK(vfs->is_file(commit_uris_to_delete[i], &is_file));
+        if (is_file) {
+          RETURN_NOT_OK(vfs->remove_file(commit_uris_to_delete[i]));
+        }
+        return Status::Ok();
+      }));
 }
 
 void Array::delete_fragments(
@@ -527,9 +601,52 @@ void Array::delete_fragments(
     rest_client->post_delete_fragments_to_rest(
         uri, this, timestamp_start, timestamp_end);
   } else {
-    storage_manager_->delete_fragments(
-        uri.c_str(), timestamp_start, timestamp_end);
+    Array::delete_fragments(resources_, uri, timestamp_start, timestamp_end);
   }
+}
+
+void Array::delete_array(ContextResources& resources, const URI& uri) {
+  auto& vfs = resources.vfs();
+  auto array_dir =
+      ArrayDirectory(resources, uri, 0, std::numeric_limits<uint64_t>::max());
+
+  // Delete fragments and commits
+  Array::delete_fragments(
+      resources, uri, 0, std::numeric_limits<uint64_t>::max(), array_dir);
+
+  // Delete array metadata, fragment metadata and array schema files
+  // Note: metadata files may not be present, try to delete anyway
+  vfs.remove_files(&resources.compute_tp(), array_dir.array_meta_uris());
+  vfs.remove_files(&resources.compute_tp(), array_dir.fragment_meta_uris());
+  vfs.remove_files(&resources.compute_tp(), array_dir.array_schema_uris());
+
+  // Delete all tiledb child directories
+  // Note: using vfs.ls() here could delete user data
+  std::vector<URI> dirs;
+  auto parent_dir = array_dir.uri().c_str();
+  for (auto array_dir_name : constants::array_dir_names) {
+    dirs.emplace_back(URI(parent_dir + array_dir_name));
+  }
+  vfs.remove_dirs(&resources.compute_tp(), dirs);
+}
+
+void Array::delete_array(const URI& uri) {
+  // Check that data deletion is allowed
+  ensure_array_is_valid_for_delete(uri);
+
+  // Delete array data
+  if (uri.is_tiledb()) {
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw ArrayException("[delete_array] Remote array with no REST client.");
+    }
+    rest_client->delete_array_from_rest(uri);
+  } else {
+    Array::delete_array(resources_, uri);
+  }
+
+  // Close the array
+  throw_if_not_ok(this->close());
 }
 
 void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
@@ -550,6 +667,36 @@ void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
         resources_, array_uri_, 0, std::numeric_limits<uint64_t>::max());
     array_dir.delete_fragments_list(fragment_uris);
   }
+}
+
+Status Array::encryption_type(
+    ContextResources& resources,
+    const URI& uri,
+    EncryptionType* encryption_type) {
+  if (uri.is_invalid()) {
+    throw ArrayException("[encryption_type] Invalid array URI");
+  }
+
+  if (uri.is_tiledb()) {
+    throw std::invalid_argument(
+        "Getting the encryption type of remote arrays is not supported.");
+  }
+
+  // Load URIs from the array directory
+  optional<tiledb::sm::ArrayDirectory> array_dir;
+  array_dir.emplace(
+      resources,
+      uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY);
+
+  // Read tile header
+  auto&& header = GenericTileIO::read_generic_tile_header(
+      resources, array_dir->latest_array_schema_uri(), 0);
+  *encryption_type = static_cast<EncryptionType>(header.encryption_type);
+
+  return Status::Ok();
 }
 
 shared_ptr<const Enumeration> Array::get_enumeration(
@@ -1456,7 +1603,7 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
             return Status::Ok();
           }
 
-          fragment_metadata[f]->load_tile_var_sizes(
+          fragment_metadata[f]->loaded_metadata()->load_tile_var_sizes(
               *encryption_key(), var_name);
           return Status::Ok();
         }));
@@ -1480,7 +1627,9 @@ std::unordered_map<std::string, uint64_t> Array::get_average_var_cell_sizes()
 
           // Go through all tiles.
           for (uint64_t t = 0; t < fragment_metadata[f]->tile_num(); t++) {
-            total_size += fragment_metadata[f]->tile_var_size(var_name, t);
+            total_size +=
+                fragment_metadata[f]->loaded_metadata()->tile_var_size(
+                    var_name, t);
             cell_num += fragment_metadata[f]->cell_num(t);
           }
         }

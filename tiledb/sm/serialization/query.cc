@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -80,9 +80,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
-namespace serialization {
+namespace tiledb::sm::serialization {
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -2297,12 +2295,12 @@ Status array_from_query_deserialize(
             query_builder);
         capnp::Query::Reader query_reader = query_builder.asReader();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(
+        array_from_capnp(
             query_reader.getArray(),
-            storage_manager,
+            storage_manager->resources(),
             &array,
             false,
-            memory_tracker));
+            memory_tracker);
         break;
       }
       case SerializationType::CAPNP: {
@@ -2312,7 +2310,8 @@ Status array_from_query_deserialize(
               "Could not deserialize query; buffer is not 8-byte aligned."));
 
         // Set traversal limit from config
-        uint64_t limit = storage_manager->config()
+        uint64_t limit = storage_manager->resources()
+                             .config()
                              .get<uint64_t>("rest.capnp_traversal_limit")
                              .value();
         ::capnp::ReaderOptions readerOptions;
@@ -2329,12 +2328,12 @@ Status array_from_query_deserialize(
 
         capnp::Query::Reader query_reader = reader.getRoot<capnp::Query>();
         // Deserialize array instance.
-        RETURN_NOT_OK(array_from_capnp(
+        array_from_capnp(
             query_reader.getArray(),
-            storage_manager,
+            storage_manager->resources(),
             &array,
             false,
-            memory_tracker));
+            memory_tracker);
         break;
       }
       default:
@@ -3219,6 +3218,4 @@ Status query_est_result_size_deserialize(
 
 #endif  // TILEDB_SERIALIZATION
 
-}  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::serialization

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -49,8 +49,7 @@
 
 #include <numeric>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SparseIndexReaderBaseStatusException : public StatusException {
  public:
@@ -72,7 +71,7 @@ SparseIndexReaderBase::SparseIndexReaderBase(
     : ReaderBase(stats, logger, params)
     , read_state_(array_->fragment_metadata().size())
     , tmp_read_state_(array_->fragment_metadata().size())
-    , memory_budget_(config_, reader_string)
+    , memory_budget_(config_, reader_string, params.memory_budget())
     , include_coords_(include_coords)
     , memory_used_for_coords_total_(0)
     , deletes_consolidation_no_purge_(
@@ -241,7 +240,30 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
         }
 
         // Finally set the size of the loaded data.
-        ret[frag_idx] = num * tile_num * sizeof(uint64_t);
+
+        // The expected size of the tile offsets
+        unsigned offsets_size = num * tile_num * sizeof(uint64_t);
+
+        // Other than the offsets themselves, there is also memory used for the
+        // initialization of the vectors that hold them. This initialization
+        // takes place in LoadedFragmentMetadata::resize_offsets()
+
+        // Calculate the number of fields
+        unsigned num_fields = schema->attribute_num() + 1 +
+                              fragment->has_timestamps() +
+                              fragment->has_delete_meta() * 2;
+
+        // If version < 5 we use zipped coordinates, otherwise separate
+        num_fields += (fragment->version() >= 5) ? schema->dim_num() : 0;
+
+        // The additional memory required for the vectors to
+        // store the tile offsets. The number of fields is calculated above.
+        // Each vector requires 32 bytes. Each field requires 4 vectors. These
+        // are: tile_offsets_, tile_var_offsets_, tile_var_sizes_,
+        // tile_validity_offsets_ and are located in loaded_fragment_metadata.h
+        unsigned offsets_init_size = num_fields * 4 * 32;
+
+        ret[frag_idx] = offsets_size + offsets_init_size;
         return Status::Ok();
       }));
 
@@ -287,7 +309,8 @@ uint64_t SparseIndexReaderBase::get_coord_tiles_size(
       tiles_size += fragment_metadata_[f]->tile_size(dim_names_[d], t);
 
       if (is_dim_var_size_[d]) {
-        tiles_size += fragment_metadata_[f]->tile_var_size(dim_names_[d], t);
+        tiles_size += fragment_metadata_[f]->loaded_metadata()->tile_var_size(
+            dim_names_[d], t);
       }
     }
   }
@@ -326,7 +349,7 @@ Status SparseIndexReaderBase::load_initial_data() {
 
   // Load delete conditions.
   auto&& [st, conditions, update_values] =
-      storage_manager_->load_delete_and_update_conditions(*array_);
+      array_->load_delete_and_update_conditions();
   RETURN_CANCEL_OR_ERROR(st);
   delete_and_update_conditions_ = std::move(*conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
@@ -776,9 +799,10 @@ void SparseIndexReaderBase::apply_query_condition(
             for (uint64_t i = 0; i < delete_and_update_conditions_.size();
                  i++) {
               if (!frag_meta->has_delete_meta() ||
-                  frag_meta->get_processed_conditions_set().count(
-                      delete_and_update_conditions_[i].condition_marker()) ==
-                      0) {
+                  frag_meta->loaded_metadata()
+                          ->get_processed_conditions_set()
+                          .count(delete_and_update_conditions_[i]
+                                     .condition_marker()) == 0) {
                 auto delete_timestamp =
                     delete_and_update_conditions_[i].condition_timestamp();
 
@@ -1040,5 +1064,4 @@ template void SparseIndexReaderBase::compute_tile_bitmaps<uint64_t>(
 template void SparseIndexReaderBase::compute_tile_bitmaps<uint8_t>(
     std::vector<ResultTile*>&);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

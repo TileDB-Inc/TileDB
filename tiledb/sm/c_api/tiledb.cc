@@ -470,18 +470,9 @@ int32_t tiledb_array_schema_load(
   }
 
   if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to load array schema; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
+    auto& rest_client = ctx->context().rest_client();
     auto&& [st, array_schema_rest] =
-        rest_client->get_array_schema_from_rest(uri);
+        rest_client.get_array_schema_from_rest(uri);
     if (!st.ok()) {
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
@@ -553,20 +544,9 @@ int32_t tiledb_array_schema_load_with_key(
   }
 
   if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      delete *array_schema;
-      *array_schema = nullptr;
-      auto st = Status_Error(
-          "Failed to load array schema; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
+    auto& rest_client = ctx->context().rest_client();
     auto&& [st, array_schema_rest] =
-        rest_client->get_array_schema_from_rest(uri);
+        rest_client.get_array_schema_from_rest(uri);
     if (!st.ok()) {
       LOG_STATUS_NO_RETURN_VALUE(st);
       save_error(ctx, st);
@@ -1072,12 +1052,11 @@ int32_t tiledb_query_set_subarray_t(
     tiledb_query_t* query,
     const tiledb_subarray_t* subarray) {
   // Sanity check
-  if (sanity_check(ctx, query) == TILEDB_ERR ||
-      sanity_check(ctx, subarray) == TILEDB_ERR)
+  if (sanity_check(ctx, query) == TILEDB_ERR) {
     return TILEDB_ERR;
-
+  }
+  ensure_subarray_is_valid(subarray);
   query->query_->set_subarray(*subarray->subarray_);
-
   return TILEDB_OK;
 }
 
@@ -1762,9 +1741,8 @@ capi_return_t tiledb_subarray_alloc(
 }
 
 int32_t tiledb_subarray_set_config(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, tiledb_config_t* config) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+    tiledb_ctx_t*, tiledb_subarray_t* subarray, tiledb_config_t* config) {
+  ensure_subarray_is_valid(subarray);
   api::ensure_config_is_valid(config);
   subarray->subarray_->set_config(
       tiledb::sm::QueryType::READ, config->config());
@@ -1784,196 +1762,185 @@ void tiledb_subarray_free(tiledb_subarray_t** subarray) {
 }
 
 int32_t tiledb_subarray_set_coalesce_ranges(
-    tiledb_ctx_t* ctx, tiledb_subarray_t* subarray, int coalesce_ranges) {
-  // Sanity check
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+    tiledb_ctx_t*, tiledb_subarray_t* subarray, int coalesce_ranges) {
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->set_coalesce_ranges(coalesce_ranges != 0);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_set_subarray(
-    tiledb_ctx_t* ctx,
-    tiledb_subarray_t* subarray_obj,
-    const void* subarray_vals) {
-  if (sanity_check(ctx, subarray_obj) == TILEDB_ERR)
-    return TILEDB_ERR;
-
+    tiledb_ctx_t*, tiledb_subarray_t* subarray_obj, const void* subarray_vals) {
+  ensure_subarray_is_valid(subarray_obj);
   subarray_obj->subarray_->set_subarray(subarray_vals);
-
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_range(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-
-  subarray->subarray_->add_range(dim_idx, start, end, stride);
-
+  ensure_subarray_is_valid(subarray);
+  ensure_unsupported_stride_is_null(stride);
+  subarray->subarray_->add_range(dim_idx, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_point_ranges(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     uint64_t count) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->add_point_ranges(dim_idx, start, count);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_range_by_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_subarray_t* subarray,
     const char* dim_name,
     const void* start,
     const void* end,
     const void* stride) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  subarray->subarray_->add_range_by_name(dim_name, start, end, stride);
+  ensure_subarray_is_valid(subarray);
+  ensure_unsupported_stride_is_null(stride);
+  subarray->subarray_->add_range_by_name(dim_name, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_range_var(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     const void* start,
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->add_range_var(dim_idx, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_add_range_var_by_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     tiledb_subarray_t* subarray,
     const char* dim_name,
     const void* start,
     uint64_t start_size,
     const void* end,
     uint64_t end_size) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->add_range_var_by_name(
       dim_name, start, start_size, end, end_size);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_num(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t* range_num) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_num(dim_idx, range_num);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_num_from_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t* range_num) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_num_from_name(dim_name, range_num);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  subarray->subarray_->get_range(dim_idx, range_idx, start, end, stride);
+  ensure_subarray_is_valid(subarray);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  if (stride != nullptr) {
+    *stride = nullptr;
+  }
+  subarray->subarray_->get_range(dim_idx, range_idx, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_var_size(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_var_size(
       dim_idx, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_from_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     const void** start,
     const void** end,
     const void** stride) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
-  subarray->subarray_->get_range_from_name(
-      dim_name, range_idx, start, end, stride);
+  ensure_subarray_is_valid(subarray);
+  ensure_output_pointer_is_valid(start);
+  ensure_output_pointer_is_valid(end);
+  if (stride != nullptr) {
+    *stride = nullptr;
+  }
+  subarray->subarray_->get_range_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_var_size_from_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     uint64_t* start_size,
     uint64_t* end_size) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_var_size_from_name(
       dim_name, range_idx, start_size, end_size);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_var(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     uint32_t dim_idx,
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_var(dim_idx, range_idx, start, end);
   return TILEDB_OK;
 }
 
 int32_t tiledb_subarray_get_range_var_from_name(
-    tiledb_ctx_t* ctx,
+    tiledb_ctx_t*,
     const tiledb_subarray_t* subarray,
     const char* dim_name,
     uint64_t range_idx,
     void* start,
     void* end) {
-  if (sanity_check(ctx, subarray) == TILEDB_ERR)
-    return TILEDB_ERR;
+  ensure_subarray_is_valid(subarray);
   subarray->subarray_->get_range_var_from_name(dim_name, range_idx, start, end);
   return TILEDB_OK;
 }
@@ -2591,17 +2558,8 @@ int32_t tiledb_array_create(
   }
 
   if (uri.is_tiledb()) {
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to create array; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    throw_if_not_ok(rest_client->post_array_schema_to_rest(
+    auto& rest_client = ctx->context().rest_client();
+    throw_if_not_ok(rest_client.post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
     // Create key
@@ -2665,18 +2623,8 @@ int32_t tiledb_array_create_with_key(
       save_error(ctx, st);
       return TILEDB_ERR;
     }
-
-    // Check REST client
-    auto rest_client = ctx->storage_manager()->rest_client();
-    if (rest_client == nullptr) {
-      auto st = Status_Error(
-          "Failed to create array; remote array with no REST client.");
-      LOG_STATUS_NO_RETURN_VALUE(st);
-      save_error(ctx, st);
-      return TILEDB_ERR;
-    }
-
-    throw_if_not_ok(rest_client->post_array_schema_to_rest(
+    auto& rest_client = ctx->context().rest_client();
+    throw_if_not_ok(rest_client.post_array_schema_to_rest(
         uri, *(array_schema->array_schema_.get())));
   } else {
     // Create key
@@ -2721,7 +2669,7 @@ int32_t tiledb_array_consolidate(
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
   return TILEDB_OK;
 }
@@ -2740,7 +2688,7 @@ int32_t tiledb_array_consolidate_with_key(
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
       key_length,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -2767,7 +2715,7 @@ int32_t tiledb_array_consolidate_fragments(
       nullptr,
       0,
       uris,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -2777,7 +2725,7 @@ int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   tiledb::sm::Consolidator::array_vacuum(
       array_uri,
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config(),
+      (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());
 
   return TILEDB_OK;
@@ -2934,14 +2882,14 @@ int32_t tiledb_array_encryption_type(
     const char* array_uri,
     tiledb_encryption_type_t* encryption_type) {
   // Sanity checks
-  if (array_uri == nullptr || encryption_type == nullptr)
+  if (array_uri == nullptr || encryption_type == nullptr) {
     return TILEDB_ERR;
+  }
 
-  auto uri = tiledb::sm::URI(array_uri);
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(ctx->storage_manager()->array_get_encryption(uri, &enc));
-
+  throw_if_not_ok(sm::Array::encryption_type(
+      ctx->resources(), tiledb::sm::URI(array_uri), &enc));
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
@@ -3120,9 +3068,7 @@ int32_t tiledb_array_upgrade_version(
 
   // Upgrade version
   throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri,
-      (config == nullptr) ? ctx->storage_manager()->config() :
-                            config->config()));
+      uri, (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }
@@ -3391,6 +3337,7 @@ int32_t tiledb_deserialize_array(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t,
+    const char* array_uri,
     tiledb_array_t** array) {
   // Sanity check
 
@@ -3406,7 +3353,7 @@ int32_t tiledb_deserialize_array(
   }
 
   // Check array URI
-  auto uri = tiledb::sm::URI("deserialized_array");
+  auto uri = tiledb::sm::URI(array_uri);
   if (uri.is_invalid()) {
     auto st = Status_Error("Failed to create TileDB array object; Invalid URI");
     delete *array;
@@ -3431,14 +3378,14 @@ int32_t tiledb_deserialize_array(
 
   auto memory_tracker = ctx->context().resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
-  if (SAVE_ERROR_CATCH(
-          ctx,
-          tiledb::sm::serialization::array_deserialize(
-              (*array)->array_.get(),
-              (tiledb::sm::SerializationType)serialize_type,
-              buffer->buffer(),
-              ctx->storage_manager(),
-              memory_tracker))) {
+  try {
+    tiledb::sm::serialization::array_deserialize(
+        (*array)->array_.get(),
+        (tiledb::sm::SerializationType)serialize_type,
+        buffer->buffer(),
+        ctx->context().resources(),
+        memory_tracker);
+  } catch (StatusException& e) {
     delete *array;
     *array = nullptr;
     return TILEDB_ERR;
@@ -4050,6 +3997,7 @@ int32_t tiledb_deserialize_array_metadata(
   // Deserialize
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
       array->array_->unsafe_metadata(),
+      array->array_->config(),
       (tiledb::sm::SerializationType)serialize_type,
       buffer->buffer()));
 
@@ -6945,9 +6893,10 @@ CAPI_INTERFACE(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
+    const char* array_uri,
     tiledb_array_t** array) {
   return api_entry<tiledb::api::tiledb_deserialize_array>(
-      ctx, buffer, serialize_type, client_side, array);
+      ctx, buffer, serialize_type, client_side, array_uri, array);
 }
 
 CAPI_INTERFACE(

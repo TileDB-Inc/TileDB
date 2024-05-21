@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -64,8 +64,7 @@
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -74,21 +73,23 @@ namespace sm {
 Query::Query(
     StorageManager* storage_manager,
     shared_ptr<Array> array,
-    optional<std::string> fragment_name)
-    : query_memory_tracker_(
-          storage_manager->resources().create_memory_tracker())
+    optional<std::string> fragment_name,
+    optional<uint64_t> memory_budget)
+    : resources_(storage_manager->resources())
+    , query_memory_tracker_(resources_.create_memory_tracker())
     , array_shared_(array)
     , array_(array_shared_.get())
     , opened_array_(array->opened_array())
     , array_schema_(array->array_schema_latest_ptr())
+    , config_(resources_.config())
     , type_(array_->get_query_type())
     , layout_(
           (type_ == QueryType::READ || array_schema_->dense()) ?
               Layout::ROW_MAJOR :
               Layout::UNORDERED)
     , storage_manager_(storage_manager)
-    , stats_(storage_manager_->stats()->create_child("Query"))
-    , logger_(storage_manager->logger()->clone("Query", ++logger_id_))
+    , stats_(resources_.stats().create_child("Query"))
+    , logger_(resources_.logger()->clone("Query", ++logger_id_))
     , dim_label_queries_(nullptr)
     , has_coords_buffer_(false)
     , has_zipped_coords_buffer_(false)
@@ -105,6 +106,7 @@ Query::Query(
     , is_dimension_label_ordered_read_(false)
     , dimension_label_increasing_(true)
     , fragment_size_(std::numeric_limits<uint64_t>::max())
+    , memory_budget_(memory_budget)
     , query_remote_buffer_storage_(std::nullopt)
     , default_channel_{make_shared<QueryChannel>(HERE(), *this, 0)} {
   assert(array->is_open());
@@ -127,9 +129,6 @@ Query::Query(
   callback_ = nullptr;
   callback_data_ = nullptr;
   status_ = QueryStatus::UNINITIALIZED;
-
-  if (storage_manager != nullptr)
-    config_ = storage_manager->config();
 
   // Set initial subarray configuration
   subarray_.set_config(type_, config_);
@@ -1756,6 +1755,7 @@ Status Query::create_strategy(bool skip_checks_serialization) {
       storage_manager_,
       opened_array_,
       config_,
+      memory_budget_,
       buffers_,
       aggregate_buffers_,
       subarray_,
@@ -2097,5 +2097,4 @@ RestClient* Query::rest_client() const {
   return storage_manager_->rest_client();
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

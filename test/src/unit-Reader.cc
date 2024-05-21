@@ -175,6 +175,7 @@ TEST_CASE_METHOD(
       context.storage_manager(),
       array.opened_array(),
       config,
+      nullopt,
       buffers,
       aggregate_buffers,
       subarray,
@@ -261,7 +262,7 @@ TEST_CASE_METHOD(
         HERE(),
         nullptr,
         schema,
-        URI(),
+        generate_fragment_uri(&array),
         std::make_pair<uint64_t, uint64_t>(0, 0),
         tracker_,
         true);

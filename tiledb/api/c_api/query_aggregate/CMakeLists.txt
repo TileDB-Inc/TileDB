@@ -31,17 +31,15 @@ list(APPEND SOURCES
 gather_sources(${SOURCES})
 
 #
-# Object library for other units to depend upon
+# Object library for C API query_aggregate
+#
+# Maturity:
+#   This object library does not link standalone. There's no corresponding
+#   `query_aggregate` object library to link to, since at present nothing
+#   involving query is able to link standalone.
 #
 add_library(capi_query_aggregate OBJECT ${SOURCES})
 target_link_libraries(capi_query_aggregate PUBLIC export)
 target_link_libraries(capi_query_aggregate PUBLIC baseline $<TARGET_OBJECTS:baseline>)
-
-#
-# Test-compile of object library ensures link-completeness
-#
-add_executable(compile_capi_query_aggregate EXCLUDE_FROM_ALL)
-target_link_libraries(compile_capi_query_aggregate PRIVATE capi_query_aggregate)
-target_sources(compile_capi_query_aggregate PRIVATE test/compile_capi_query_aggregate_main.cc)
 
 add_test_subdirectory()

@@ -189,7 +189,8 @@ class FilteredData {
       StorageManager* storage_manager,
       std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
-      : memory_tracker_(memory_tracker)
+      : resources_(storage_manager->resources())
+      , memory_tracker_(memory_tracker)
       , fixed_data_blocks_(
             memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
       , var_data_blocks_(
@@ -327,7 +328,8 @@ class FilteredData {
    */
   inline void* fixed_filtered_data(
       const FragmentMetadata* fragment, const ResultTile* rt) {
-    auto offset{fragment->file_offset(name_, rt->tile_idx())};
+    auto offset{
+        fragment->loaded_metadata()->file_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::FIXED, fragment, rt, offset);
     return current_data_block(TileType::FIXED)->data_at(offset);
   }
@@ -345,7 +347,8 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset{fragment->file_var_offset(name_, rt->tile_idx())};
+    auto offset{
+        fragment->loaded_metadata()->file_var_offset(name_, rt->tile_idx())};
     ensure_data_block_current(TileType::VAR, fragment, rt, offset);
     return current_data_block(TileType::VAR)->data_at(offset);
   }
@@ -363,7 +366,8 @@ class FilteredData {
       return nullptr;
     }
 
-    auto offset{fragment->file_validity_offset(name_, rt->tile_idx())};
+    auto offset{fragment->loaded_metadata()->file_validity_offset(
+        name_, rt->tile_idx())};
     ensure_data_block_current(TileType::NULLABLE, fragment, rt, offset);
     return current_data_block(TileType::NULLABLE)->data_at(offset);
   }
@@ -393,8 +397,8 @@ class FilteredData {
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
     auto task =
         storage_manager_->io_tp()->execute([this, offset, data, size, uri]() {
-          RETURN_NOT_OK(
-              storage_manager_->vfs()->read(uri, offset, data, size, false));
+          throw_if_not_ok(
+              resources_.vfs().read(uri, offset, data, size, false));
           return Status::Ok();
         });
     read_tasks_.push_back(std::move(task));
@@ -443,11 +447,12 @@ class FilteredData {
       const uint64_t tile_idx) {
     switch (type) {
       case TileType::FIXED:
-        return fragment->file_offset(name_, tile_idx);
+        return fragment->loaded_metadata()->file_offset(name_, tile_idx);
       case TileType::VAR:
-        return fragment->file_var_offset(name_, tile_idx);
+        return fragment->loaded_metadata()->file_var_offset(name_, tile_idx);
       case TileType::NULLABLE:
-        return fragment->file_validity_offset(name_, tile_idx);
+        return fragment->loaded_metadata()->file_validity_offset(
+            name_, tile_idx);
       default:
         throw std::logic_error("Unexpected");
     }
@@ -467,11 +472,14 @@ class FilteredData {
       const uint64_t tile_idx) {
     switch (type) {
       case TileType::FIXED:
-        return fragment->persisted_tile_size(name_, tile_idx);
+        return fragment->loaded_metadata()->persisted_tile_size(
+            name_, tile_idx);
       case TileType::VAR:
-        return fragment->persisted_tile_var_size(name_, tile_idx);
+        return fragment->loaded_metadata()->persisted_tile_var_size(
+            name_, tile_idx);
       case TileType::NULLABLE:
-        return fragment->persisted_tile_validity_size(name_, tile_idx);
+        return fragment->loaded_metadata()->persisted_tile_validity_size(
+            name_, tile_idx);
       default:
         throw std::logic_error("Unexpected");
     }
@@ -593,6 +601,9 @@ class FilteredData {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Resources used to perform operations. */
+  ContextResources& resources_;
 
   /** Memory tracker for the filtered data. */
   shared_ptr<MemoryTracker> memory_tracker_;

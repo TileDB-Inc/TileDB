@@ -42,6 +42,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/pmr.h"
 #include "tiledb/sm/filesystem/uri.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/tile/tile.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -135,6 +136,19 @@ class Metadata {
 
   /** Serializes all key-value metadata items into the input buffer. */
   void serialize(Serializer& serializer) const;
+
+  /**
+   * Stores the metadata into persistent storage.
+   *
+   * @param resources The context resources.
+   * @param uri The object URI.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store(
+      ContextResources& resources,
+      const URI& uri,
+      const EncryptionKey& encryption_key);
 
   /**
    * Deletes a metadata item.

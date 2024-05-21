@@ -1699,7 +1699,12 @@ TEST_CASE_METHOD(
     DenseArrayRESTFx,
     "C API: REST Test dense array, incomplete reads",
     "[capi][rest][dense][incomplete]") {
-  // TODO: refactor for each supported FS.
+  tiledb_error_t* error;
+  tiledb_config_t* config;
+  tiledb_config_alloc(&config, &error);
+  REQUIRE(
+      tiledb_config_set(config, "rest.resubmit_incomplete", "false", &error) ==
+      TILEDB_OK);
   check_incomplete_reads();
 }
 

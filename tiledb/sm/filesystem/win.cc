@@ -326,7 +326,7 @@ Status Win::init(const Config& config) {
 }
 
 bool Win::is_dir(const std::string& path) const {
-  return PathIsDirectory(path.c_str());
+  return PathFileExists(path.c_str()) && PathIsDirectory(path.c_str());
 }
 
 bool Win::is_file(const std::string& path) const {

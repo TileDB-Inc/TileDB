@@ -99,9 +99,8 @@ Status GroupMetaConsolidator::consolidate(
   throw_if_not_ok(group_for_writes.close());
 
   // Write vacuum file
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
 }
@@ -113,12 +112,12 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   }
 
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_.vfs();
   auto compute_tp = storage_manager_->compute_tp();
   GroupDirectory group_dir;
   try {
     group_dir = GroupDirectory(
-        vfs,
+        &vfs,
         compute_tp,
         URI(group_name),
         0,
@@ -128,8 +127,8 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   }
 
   // Delete the group metadata and vacuum files
-  vfs->remove_files(compute_tp, group_dir.group_meta_uris_to_vacuum());
-  vfs->remove_files(compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs.remove_files(compute_tp, group_dir.group_meta_uris_to_vacuum());
+  vfs.remove_files(compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */
@@ -138,7 +137,7 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
 
 Status GroupMetaConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
   RETURN_NOT_OK(merged_config.get<uint64_t>(

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -85,8 +85,7 @@ capi_return_t tiledb_ctx_get_stats(
 capi_return_t tiledb_ctx_get_config(
     tiledb_ctx_handle_t* ctx, tiledb_config_handle_t** config) {
   api::ensure_output_pointer_is_valid(config);
-  *config =
-      tiledb_config_handle_t::make_handle(ctx->storage_manager()->config());
+  *config = tiledb_config_handle_t::make_handle(ctx->config());
   return TILEDB_OK;
 }
 
@@ -109,7 +108,8 @@ capi_return_t tiledb_ctx_get_last_error(
 capi_return_t tiledb_ctx_is_supported_fs(
     tiledb_ctx_t* ctx, tiledb_filesystem_t fs, int32_t* is_supported) {
   ensure_output_pointer_is_valid(is_supported);
-  *is_supported = (int32_t)ctx->storage_manager()->vfs()->supports_fs(
+
+  *is_supported = (int32_t)ctx->context().resources().vfs().supports_fs(
       static_cast<tiledb::sm::Filesystem>(fs));
   return TILEDB_OK;
 }

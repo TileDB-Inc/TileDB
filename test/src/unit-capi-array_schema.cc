@@ -1083,6 +1083,26 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
+    "C API: Test array schema with invalid cell/tile order",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that UNORDERED order fails
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
     "C API: Test array schema with invalid dimension domain and tile extent",
     "[capi][array-schema]") {
   // Domain range exceeds type range - error

@@ -74,6 +74,8 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a2);
     schema.add_attribute(a3);
     schema.add_attribute(a4);
+    CHECK_THROWS(schema.set_cell_order(TILEDB_UNORDERED));
+    CHECK_THROWS(schema.set_tile_order(TILEDB_UNORDERED));
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     CHECK_THROWS(schema.set_allows_dups(1));
@@ -152,6 +154,8 @@ TEST_CASE("C++ API: Schema", "[cppapi][schema]") {
     schema.add_attribute(a2);
     schema.add_attribute(a3);
     schema.add_attribute(a4);
+    CHECK_THROWS(schema.set_cell_order(TILEDB_UNORDERED));
+    CHECK_THROWS(schema.set_tile_order(TILEDB_UNORDERED));
     schema.set_cell_order(TILEDB_ROW_MAJOR);
     schema.set_tile_order(TILEDB_COL_MAJOR);
     schema.set_allows_dups(true);

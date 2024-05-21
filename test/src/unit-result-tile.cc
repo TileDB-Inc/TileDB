@@ -118,7 +118,7 @@ CResultTileFx::CResultTileFx()
       HERE(),
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       false);
@@ -198,7 +198,7 @@ TEST_CASE_METHOD(
   FragmentMetadata frag_md(
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       true);
@@ -311,7 +311,7 @@ TEST_CASE_METHOD(
   FragmentMetadata frag_md(
       nullptr,
       array_->array_->array_schema_latest_ptr(),
-      URI(),
+      generate_fragment_uri(array_->array_.get()),
       std::make_pair<uint64_t, uint64_t>(0, 0),
       memory_tracker_,
       true);

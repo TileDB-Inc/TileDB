@@ -110,7 +110,7 @@ FragmentID::FragmentID(const URI& uri)
 }
 
 FragmentID::FragmentID(const std::string_view& path)
-    : FragmentID(URI(path.data())) {
+    : FragmentID(URI(path)) {
 }
 
 }  // namespace tiledb::sm

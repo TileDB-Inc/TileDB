@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -437,7 +437,7 @@ void DeletesFx::check_delete_conditions(
 
   // Load delete conditions.
   auto&& [st, delete_conditions, update_values] =
-      sm_->load_delete_and_update_conditions(*(array_ptr->opened_array()));
+      array_ptr->opened_array()->load_delete_and_update_conditions();
   REQUIRE(st.ok());
   REQUIRE(delete_conditions->size() == qcs.size());
 

@@ -77,9 +77,7 @@ class GroupDetails;
 class Metadata;
 class MemoryTracker;
 class Query;
-class QueryCondition;
 class RestClient;
-class UpdateValue;
 class VFS;
 
 enum class EncryptionType : uint8_t;
@@ -149,59 +147,12 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an group opened for reads.
-   *
-   * @param group The group to be closed.
-   * @return Status
-   */
-  Status group_close_for_reads(tiledb::sm::Group* group);
-
-  /**
    * Closes an group opened for writes.
    *
    * @param group The group to be closed.
    * @return Status
    */
   Status group_close_for_writes(tiledb::sm::Group* group);
-
-  /**
-   * Store the group details
-   *
-   * @param group_detail_folder_uri group details folder
-   * @param group_detail_uri uri for detail file to write
-   * @param group to serialize and store
-   * @param encryption_key encryption key for at-rest encryption
-   * @return status
-   */
-  Status store_group_detail(
-      const URI& group_detail_folder_uri,
-      const URI& group_detail_uri,
-      tdb_shared_ptr<GroupDetails> group,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Cleans up the array data.
-   *
-   * @param array_name The name of the array whose data is to be deleted.
-   */
-  void delete_array(const char* array_name);
-
-  /**
-   * Cleans up the array fragments.
-   *
-   * @param array_name The name of the array whose fragments are to be deleted.
-   * @param timestamp_start The start timestamp at which to delete.
-   * @param timestamp_end The end timestamp at which to delete.
-   */
-  void delete_fragments(
-      const char* array_name, uint64_t timestamp_start, uint64_t timestamp_end);
-
-  /**
-   * Cleans up the group data.
-   *
-   * @param group_name The name of the group whose data is to be deleted.
-   */
-  void delete_group(const char* group_name);
 
   /**
    * Creates a TileDB array storing its schema.
@@ -243,15 +194,6 @@ class StorageManagerCanonical {
   Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
-   * Retrieves the encryption type from an array.
-   *
-   * @param uri The URI of the array.
-   * @param encryption_type Set to the encryption type of the array.
-   * @return Status
-   */
-  Status array_get_encryption(const URI& uri, EncryptionType* encryption_type);
-
-  /**
    * Pushes an async query to the queue.
    *
    * @param query The async query.
@@ -264,9 +206,6 @@ class StorageManagerCanonical {
 
   /** Returns true while all tasks are being cancelled. */
   bool cancellation_in_progress();
-
-  /** Returns the configuration parameters. */
-  const Config& config() const;
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
@@ -314,18 +253,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status is_group(const URI& uri, bool* is_group) const;
-
-  /**
-   * Loads the delete and update conditions from storage.
-   *
-   * @param opened_array The opened array.
-   * @return Status, vector of the conditions, vector of the update values.
-   */
-  tuple<
-      Status,
-      optional<std::vector<QueryCondition>>,
-      optional<std::vector<std::vector<UpdateValue>>>>
-  load_delete_and_update_conditions(const OpenedArray& opened_array);
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
@@ -451,29 +378,8 @@ class StorageManagerCanonical {
       const shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
 
-  /**
-   * Stores the metadata into persistent storage.
-   *
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @param metadata The  metadata.
-   * @return Status
-   */
-  Status store_metadata(
-      const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
-  }
-
-  /** Returns the virtual filesystem object. */
-  [[nodiscard]] inline VFS* vfs() const {
-    return &(resources_.vfs());
-  }
-
-  /** Returns `stats_`. */
-  [[nodiscard]] inline stats::Stats* stats() {
-    return &(resources_.stats());
   }
 
   /** Returns the internal logger object. */

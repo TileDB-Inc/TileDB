@@ -248,9 +248,7 @@ void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
     // Make sure we have enough space for tile offsets data.
     uint64_t total_tile_offset_usage =
         tile_offsets_size(subarray_.relevant_fragments());
-    uint64_t available_memory =
-        array_memory_tracker_->get_memory_available() -
-        array_memory_tracker_->get_memory_usage(MemoryType::TILE_OFFSETS);
+    uint64_t available_memory = array_memory_tracker_->get_memory_available();
     if (total_tile_offset_usage > available_memory) {
       throw SparseGlobalOrderReaderStatusException(
           "Cannot load tile offsets, computed size (" +
@@ -1583,6 +1581,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
               if (*src_buff_condition_indexes !=
                   std::numeric_limits<uint64_t>::max()) {
                 auto& condition_marker = fragment_metadata_[rt->frag_idx()]
+                                             ->loaded_metadata()
                                              ->get_processed_conditions()
                                                  [*src_buff_condition_indexes];
                 converted_index =
