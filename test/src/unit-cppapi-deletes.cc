@@ -40,6 +40,7 @@
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
 #include "tiledb/sm/cpp_api/group.h"
 #include "tiledb/sm/cpp_api/tiledb"
+#include "tiledb/sm/enums/encryption_type.h"
 
 #ifdef _WIN32
 #include "tiledb/sm/filesystem/win.h"
@@ -67,7 +68,8 @@ struct DeletesFx {
   const std::string group_name_;
 
   std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
+  std::string enc_type_str_ =
+      encryption_type_str((tiledb::sm::EncryptionType)TILEDB_AES_256_GCM);
 
   // Constructors/destructors.
   DeletesFx();
@@ -133,6 +135,8 @@ void DeletesFx::set_purge_deleted_cells() {
   config.set("sm.consolidation.purge_deleted_cells", "true");
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::set_legacy() {
@@ -142,6 +146,8 @@ void DeletesFx::set_legacy() {
   config.set("sm.query.sparse_unordered_with_dups.reader", "legacy");
   vfs_test_setup_.update_config(config.ptr().get());
   ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
 }
 
 void DeletesFx::create_dir(const std::string& path) {
@@ -168,6 +174,17 @@ void DeletesFx::create_simple_array(const std::string& path) {
 }
 
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
+  Config config;
+  if (encrypt) {
+    config["sm.encryption_type"] = enc_type_str_.c_str();
+    config["sm.encryption_key"] = key_;
+  }
+
+  vfs_test_setup_.update_config(config.ptr().get());
+  ctx_ = vfs_test_setup_.ctx();
+  vfs_ = VFS(ctx_);
+  sm_ = ctx_.ptr().get()->storage_manager();
+
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 4}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 4}}, 2);
@@ -196,11 +213,7 @@ void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(array_name_.c_str(), schema, enc_type_, key_);
-  } else {
-    Array::create(array_name_.c_str(), schema);
-  }
+  Array::create(array_name_.c_str(), schema);
 }
 
 void DeletesFx::write_sparse(
