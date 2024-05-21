@@ -175,6 +175,7 @@ void DeletesFx::create_simple_array(const std::string& path) {
 
 void DeletesFx::create_sparse_array(bool allows_dups, bool encrypt) {
   Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
   if (encrypt) {
     config["sm.encryption_type"] = enc_type_str_.c_str();
     config["sm.encryption_key"] = key_;
