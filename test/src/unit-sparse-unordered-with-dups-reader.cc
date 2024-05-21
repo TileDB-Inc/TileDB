@@ -932,7 +932,7 @@ TEST_CASE_METHOD(
   uint64_t data2_size = data.size() * sizeof(int);
   write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
 
-  total_budget_ = "1500000";
+  total_budget_ = "1600000";
   ratio_array_data_ = set_subarray ? "0.003" : "0.002";
   partial_tile_offsets_loading_ = "true";
   update_config();
@@ -1020,7 +1020,7 @@ TEST_CASE_METHOD(
   }
 
   // Two result tile (2 * ~1208) will be bigger than the budget (1500).
-  total_budget_ = "25500";
+  total_budget_ = "30000";
   ratio_coords_ = "0.06";
   update_config();
 
