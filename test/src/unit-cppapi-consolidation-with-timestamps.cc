@@ -672,8 +672,8 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "11000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
+  cfg.set("sm.mem.total_budget", "20000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.22");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -722,8 +722,8 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "11000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.4");
+  cfg.set("sm.mem.total_budget", "20000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.22");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -1309,8 +1309,10 @@ TEST_CASE_METHOD(
   query.set_data_buffer(tiledb_timestamps(), timestamps);
 
   // Add overlapping ranges
-  query.add_range<uint64_t>(1, 2, 3);
-  query.add_range<uint64_t>(1, 2, 3);
+  Subarray subarray(ctx_, array);
+  subarray.add_range<uint64_t>(1, 2, 3);
+  subarray.add_range<uint64_t>(1, 2, 3);
+  query.set_subarray(subarray);
 
   // Submit/finalize the query
   query.submit();

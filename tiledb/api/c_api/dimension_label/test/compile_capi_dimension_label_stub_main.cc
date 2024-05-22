@@ -1,11 +1,12 @@
 /**
- * @file tiledb/api/c_api/filter/test/compile_capi_filter_main.cc
+ * @file
+ * tiledb/api/c_api/dimension_label/test/compile_capi_dimension_label_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,9 +27,10 @@
  * THE SOFTWARE.
  */
 
-#include "../filter_api_internal.h"
+#include "../dimension_label_api_internal.h"
 
 int main() {
-  (void)sizeof(tiledb_filter_handle_t);
+  // any function will drag in the whole library
+  tiledb::api::ensure_dimension_label_is_valid(nullptr);
   return 0;
 }

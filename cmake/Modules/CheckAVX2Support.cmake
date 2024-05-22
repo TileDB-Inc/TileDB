@@ -53,7 +53,7 @@ function (CheckAVX2Support)
   endif()
 
   cmake_push_check_state()
-  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${FLAG}")
+  set(CMAKE_REQUIRED_FLAGS "${CMAKE_REQUIRED_FLAGS} ${COMPILER_AVX2_FLAG}")
   check_cxx_source_runs("
     #include <immintrin.h>
     int main() {
@@ -64,4 +64,9 @@ function (CheckAVX2Support)
     COMPILER_SUPPORTS_AVX2
   )
   cmake_pop_check_state()
+  if (COMPILER_SUPPORTS_AVX2)
+    message(STATUS "AVX2 support detected.")
+  else()
+    message(STATUS "AVX2 support not detected.")
+  endif()
 endfunction()

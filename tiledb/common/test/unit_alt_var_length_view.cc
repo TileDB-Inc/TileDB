@@ -475,14 +475,20 @@ TEST_CASE("alt_var_length_view: Viewness", "[alt_var_length_view]") {
   }
 
   REQUIRE(v.begin() == v.begin());
+  REQUIRE(v.end() == v.end());
+
+  // MSVC in debug iterators mode fails with an assert if iterators of different
+  // collections are compared.
+  // https://learn.microsoft.com/en-us/cpp/standard-library/debug-iterator-support?view=msvc-170#incompatible-iterators
+#if !defined(_ITERATOR_DEBUG_LEVEL) || _ITERATOR_DEBUG_LEVEL != 2
   CHECK(v.begin() != w.begin());
   CHECK(v.begin() != u.begin());
   CHECK(w.begin() != u.begin());
 
-  REQUIRE(v.end() == v.end());
   CHECK(v.end() != w.end());
   CHECK(v.end() != u.end());
   CHECK(w.end() != u.end());
+#endif
 
   for (size_t i = 0; i < 3; ++i) {
     CHECK(v.size() == x.size());

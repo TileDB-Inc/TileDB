@@ -110,7 +110,12 @@ class MemoryBudget {
 
   MemoryBudget() = delete;
 
-  MemoryBudget(Config& config, std::string reader_string) {
+  MemoryBudget(
+      Config& config,
+      std::string reader_string,
+      optional<uint64_t> total_budget)
+      : total_budget_(total_budget.value_or(0))
+      , memory_budget_from_query_(total_budget) {
     refresh_config(config, reader_string);
   }
 
@@ -128,8 +133,10 @@ class MemoryBudget {
    * @param reader_string String to identify the reader settings to load.
    */
   void refresh_config(Config& config, std::string reader_string) {
-    total_budget_ =
-        config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+    if (!memory_budget_from_query_.has_value()) {
+      total_budget_ =
+          config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+    }
 
     ratio_coords_ = config.get<double>(
         "sm.mem.reader." + reader_string + ".ratio_coords", Config::must_find);
@@ -191,6 +198,9 @@ class MemoryBudget {
 
   /** Total memory budget. */
   uint64_t total_budget_;
+
+  /** Total memory budget if overridden by the query. */
+  optional<uint64_t> memory_budget_from_query_;
 
   /** How much of the memory budget is reserved for coords. */
   double ratio_coords_;

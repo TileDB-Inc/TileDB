@@ -255,7 +255,9 @@ void test_for_column_size(size_t col_size) {
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
     int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
-    query.add_range(0, (int32_t)0, (int32_t)range_max);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, (int32_t)0, (int32_t)range_max);
+    query.set_subarray(subarray);
 
     std::vector<ArrowArray*> vec_array;
     std::vector<ArrowSchema*> vec_schema;
@@ -315,7 +317,9 @@ void test_for_column_size(size_t col_size) {
     Query query(ctx, array);
     query.set_layout(TILEDB_COL_MAJOR);
     int32_t range_max = static_cast<int32_t>(col_size > 0 ? col_size - 1 : 0);
-    query.add_range(0, static_cast<int32_t>(0), range_max);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, static_cast<int32_t>(0), range_max);
+    query.set_subarray(subarray);
 
     allocate_query_buffers(&query);
     query.submit();

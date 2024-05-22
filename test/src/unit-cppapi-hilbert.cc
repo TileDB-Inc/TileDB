@@ -384,9 +384,11 @@ TEST_CASE(
     query_r.set_data_buffer("d1", r_buff_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
 
-    query_r.add_range("d1", (int32_t)1, (int32_t)5);
-    query_r.add_range("d2", (int32_t)1, (int32_t)3);
-    query_r.add_range("d2", (int32_t)2, (int32_t)4);
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range("d1", (int32_t)1, (int32_t)5);
+    subarray_r.add_range("d2", (int32_t)1, (int32_t)3);
+    subarray_r.add_range("d2", (int32_t)2, (int32_t)4);
+    query_r.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_UNORDERED);
     // Submit query
     query_r.submit();
@@ -1874,8 +1876,10 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_ROW_MAJOR);
-    query_r.add_range(0, std::string("3"), std::string("z"));
-    query_r.add_range(1, std::string("a"), std::string("vase"));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("3"), std::string("z"));
+    subarray_r.add_range(1, std::string("a"), std::string("vase"));
+    query_r.set_subarray(subarray_r);
     CHECK_NOTHROW(query_r.submit());
 
     // Check results
@@ -1915,8 +1919,10 @@ TEST_CASE(
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
-    query_r.add_range(0, std::string("3"), std::string("z"));
-    query_r.add_range(1, std::string("a"), std::string("vase"));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("3"), std::string("z"));
+    subarray_r.add_range(1, std::string("a"), std::string("vase"));
+    query_r.set_subarray(subarray_r);
     CHECK_NOTHROW(query_r.submit());
 
     // Check results. Hilbert values:
@@ -2087,8 +2093,10 @@ TEST_CASE(
     query_r.set_offsets_buffer("d1", r_off_d1);
     query_r.set_data_buffer("d2", r_buff_d2);
     query_r.set_offsets_buffer("d2", r_off_d2);
-    query_r.add_range(0, std::string("1a", 2), std::string("w", 1));
-    query_r.add_range(1, std::string("ca", 2), std::string("t1", 2));
+    Subarray subarray_r(ctx, array_r);
+    subarray_r.add_range(0, std::string("1a", 2), std::string("w", 1));
+    subarray_r.add_range(1, std::string("ca", 2), std::string("t1", 2));
+    query_r.set_subarray(subarray_r);
     query_r.set_layout(TILEDB_GLOBAL_ORDER);
     CHECK_NOTHROW(query_r.submit());
 

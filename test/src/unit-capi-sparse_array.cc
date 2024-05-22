@@ -399,10 +399,15 @@ int* SparseArrayFx::read_sparse_array_2D(
   int64_t s1[] = {domain_1_lo, domain_1_hi};
   rc = tiledb_query_set_layout(ctx_, query, query_layout);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -424,6 +429,7 @@ int* SparseArrayFx::read_sparse_array_2D(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
   // Success - return the created buffer
   return buffer;
@@ -2193,10 +2199,15 @@ void SparseArrayFx::check_sparse_array_no_results(
   uint64_t s1[] = {1, 2};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Check that it has no results before submission
   int has_results;
@@ -2229,6 +2240,7 @@ void SparseArrayFx::check_sparse_array_no_results(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   delete[] buffer;
 }
 
@@ -2539,8 +2551,13 @@ TEST_CASE_METHOD(
   uint64_t s0[] = {1, 1};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_ERR);
 
   // Submit
   rc = tiledb_query_submit(ctx_, query);
@@ -2552,6 +2569,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -2734,10 +2752,15 @@ TEST_CASE_METHOD(
   uint64_t s1[] = {3, 3};
   rc = tiledb_query_set_layout(ctx_, empty_query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, empty_query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, empty_query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, empty_query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   CHECK(tiledb_query_submit(ctx_, empty_query) == TILEDB_OK);
@@ -2756,6 +2779,7 @@ TEST_CASE_METHOD(
   free(coords_dim1);
   free(coords_dim2);
   tiledb_query_free(&empty_query);
+  tiledb_subarray_free(&subarray);
 
   // ---- Second READ query (non-empty)
   tiledb_query_t* query;
@@ -2798,10 +2822,14 @@ TEST_CASE_METHOD(
   s1[1] = 2;
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   CHECK(tiledb_query_submit(ctx_, query) == TILEDB_OK);
@@ -2831,6 +2859,7 @@ TEST_CASE_METHOD(
   free(coords_dim1);
   free(coords_dim2);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
   // Clean up
   CHECK(tiledb_array_close(ctx_, array) == TILEDB_OK);
@@ -2894,10 +2923,15 @@ TEST_CASE_METHOD(
   uint64_t s1[] = {1, 2};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2923,6 +2957,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -2966,10 +3001,15 @@ TEST_CASE_METHOD(
   uint64_t s1[] = {1, 1};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -2991,6 +3031,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3035,10 +3076,15 @@ TEST_CASE_METHOD(
   uint64_t s1[] = {1, UINT64_MAX - 1};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -3064,6 +3110,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3107,14 +3154,19 @@ TEST_CASE_METHOD(
   uint64_t s11[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s00[0], &s00[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s00[0], &s00[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s01[0], &s01[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s01[0], &s01[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s10[0], &s10[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s10[0], &s10[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -3147,6 +3199,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3210,16 +3263,21 @@ TEST_CASE_METHOD(
   uint64_t s11[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s00[0], &s00[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s00[0], &s00[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s01[0], &s01[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s01[0], &s01[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s00[0], &s00[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s00[0], &s00[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s10[0], &s10[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s10[0], &s10[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -3240,6 +3298,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3283,14 +3342,19 @@ TEST_CASE_METHOD(
   uint64_t s11[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s00[0], &s00[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s00[0], &s00[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s01[0], &s01[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s01[0], &s01[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s10[0], &s10[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s10[0], &s10[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -3348,6 +3412,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3391,14 +3456,19 @@ TEST_CASE_METHOD(
   uint64_t s11[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s00[0], &s00[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s00[0], &s00[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s01[0], &s01[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s01[0], &s01[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s10[0], &s10[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s10[0], &s10[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s11[0], &s11[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s11[0], &s11[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   rc = tiledb_query_submit(ctx_, query);
   CHECK(rc == TILEDB_OK);
@@ -3419,6 +3489,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_query_free(&query);
   tiledb_array_free(&array);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3480,14 +3551,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -3585,6 +3661,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3646,14 +3723,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -3751,6 +3833,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3812,14 +3895,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -3937,6 +4025,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -3998,14 +4087,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -4123,6 +4217,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -4184,14 +4279,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -4349,6 +4449,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -4410,14 +4511,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -4575,6 +4681,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -4636,14 +4743,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -4841,6 +4953,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -4902,14 +5015,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -5147,6 +5265,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -5208,14 +5327,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -5453,6 +5577,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -5513,14 +5638,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -5577,6 +5707,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -5638,14 +5769,19 @@ TEST_CASE_METHOD(
   int64_t s1[] = {3, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_COL_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s0[0], &s0[1], nullptr);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 0, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s0[0], &s0[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s0[0], &s0[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx_, query, 1, &s1[0], &s1[1], nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 1, &s1[0], &s1[1], nullptr);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -5702,6 +5838,7 @@ TEST_CASE_METHOD(
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 TEST_CASE_METHOD(
@@ -5809,6 +5946,7 @@ TEST_CASE_METHOD(
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -5895,8 +6033,13 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {1, 4, 1, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -6002,6 +6145,7 @@ TEST_CASE_METHOD(
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -6084,8 +6228,13 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {1, 4, 1, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -6372,6 +6521,7 @@ TEST_CASE_METHOD(
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -6457,8 +6607,13 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {1, 4, 1, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);
@@ -6566,6 +6721,7 @@ TEST_CASE_METHOD(
 
   // Create query
   tiledb_query_t* query;
+  tiledb_subarray_t* sub;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_UNORDERED);
@@ -6647,8 +6803,13 @@ TEST_CASE_METHOD(
   uint64_t subarray[] = {1, 4, 1, 4};
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
   rc = tiledb_query_submit(ctx_, query);

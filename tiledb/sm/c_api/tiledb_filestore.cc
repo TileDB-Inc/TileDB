@@ -89,7 +89,7 @@ int32_t tiledb_filestore_schema_create(
         &context.resources().stats(),
         context.compute_tp(),
         context.io_tp(),
-        context.storage_manager()->config());
+        context.resources().config());
     uint64_t file_size;
     throw_if_not_ok(vfs.file_size(tiledb::sm::URI(uri), &file_size));
     if (file_size) {
@@ -202,7 +202,7 @@ int32_t tiledb_filestore_uri_import(
       &context.resources().stats(),
       context.compute_tp(),
       context.io_tp(),
-      context.storage_manager()->config());
+      context.resources().config());
   uint64_t file_size;
   throw_if_not_ok(vfs.file_size(tiledb::sm::URI(file_uri), &file_size));
   if (!file_size) {
@@ -271,8 +271,8 @@ int32_t tiledb_filestore_uri_import(
   // timestamped fragments in row-major order.
   bool is_tiledb_uri = array->is_remote();
   uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
-  auto buffer_size = get_buffer_size_from_config(
-      context.storage_manager()->config(), tile_extent);
+  auto buffer_size =
+      get_buffer_size_from_config(context.resources().config(), tile_extent);
 
   tiledb::sm::Query query(context.storage_manager(), array);
   throw_if_not_ok(query.set_layout(tiledb::sm::Layout::GLOBAL_ORDER));
@@ -390,7 +390,7 @@ int32_t tiledb_filestore_uri_export(
       &context.resources().stats(),
       context.compute_tp(),
       context.io_tp(),
-      context.storage_manager()->config());
+      context.resources().config());
   if (!vfs.open_file(tiledb::sm::URI(file_uri), tiledb::sm::VFSMode::VFS_WRITE)
            .ok()) {
     throw api::CAPIException(
@@ -422,8 +422,8 @@ int32_t tiledb_filestore_uri_export(
 
   uint64_t file_size = *static_cast<const uint64_t*>(file_size_ptr);
   uint64_t tile_extent = compute_tile_extent_based_on_file_size(file_size);
-  auto buffer_size = get_buffer_size_from_config(
-      context.storage_manager()->config(), tile_extent);
+  auto buffer_size =
+      get_buffer_size_from_config(context.resources().config(), tile_extent);
 
   std::vector<std::byte> data(buffer_size);
   uint64_t start_range = 0;

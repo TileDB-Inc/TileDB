@@ -636,13 +636,25 @@ void StringDimsFx::get_est_result_size_var(
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(
-      ctx_, query, dim_idx, start.data(), start.size(), end.data(), end.size());
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range_var(
+      ctx_,
+      subarray,
+      dim_idx,
+      start.data(),
+      start.size(),
+      end.data(),
+      end.size());
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_query_get_est_result_size_var(
       ctx_, query, dim_name.c_str(), size_off, size_val);
   CHECK(rc == TILEDB_OK);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void StringDimsFx::read_array_1d(
@@ -660,35 +672,40 @@ void StringDimsFx::read_array_1d(
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(
-      ctx, query, 0, start.data(), start.size(), end.data(), end.size());
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range_var(
+      ctx, subarray, 0, start.data(), start.size(), end.data(), end.size());
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check range num
   uint64_t range_num;
-  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
 
   // Check getting range from an invalid range index
   uint64_t start_size = 0, end_size = 0;
-  rc = tiledb_query_get_range_var_size(
-      ctx_, query, 0, 2, &start_size, &end_size);
+  rc = tiledb_subarray_get_range_var_size(
+      ctx_, subarray, 0, 2, &start_size, &end_size);
   CHECK(rc == TILEDB_ERR);
   std::vector<char> start_data(start_size);
   std::vector<char> end_data(end_size);
-  rc = tiledb_query_get_range_var(
-      ctx_, query, 0, 2, start_data.data(), end_data.data());
+  rc = tiledb_subarray_get_range_var(
+      ctx_, subarray, 0, 2, start_data.data(), end_data.data());
   CHECK(rc == TILEDB_ERR);
 
   // Check ranges
-  rc = tiledb_query_get_range_var_size(
-      ctx_, query, 0, 0, &start_size, &end_size);
+  rc = tiledb_subarray_get_range_var_size(
+      ctx_, subarray, 0, 0, &start_size, &end_size);
   CHECK(rc == TILEDB_OK);
   start_data.resize(start_size);
   end_data.resize(end_size);
-  rc = tiledb_query_get_range_var(
-      ctx_, query, 0, 0, start_data.data(), end_data.data());
+  rc = tiledb_subarray_get_range_var(
+      ctx_, subarray, 0, 0, start_data.data(), end_data.data());
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(start_data.data(), start_data.size()) == start);
   CHECK(std::string(end_data.data(), end_data.size()) == end);
@@ -733,6 +750,7 @@ void StringDimsFx::read_array_1d(
 
   // Clean up
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void StringDimsFx::read_array_2d(
@@ -752,54 +770,59 @@ void StringDimsFx::read_array_2d(
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_add_range_var(
       ctx,
-      query,
+      subarray,
       0,
       d1_start.data(),
       d1_start.size(),
       d1_end.data(),
       d1_end.size());
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range(ctx, query, 1, &d2_start, &d2_end, nullptr);
+  rc = tiledb_subarray_add_range(ctx, subarray, 1, &d2_start, &d2_end, nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check range num d1
   uint64_t range_num;
-  rc = tiledb_query_get_range_num(ctx_, query, 0, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 0, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
   // Check range num d2
-  rc = tiledb_query_get_range_num(ctx_, query, 1, &range_num);
+  rc = tiledb_subarray_get_range_num(ctx_, subarray, 1, &range_num);
   CHECK(rc == TILEDB_OK);
   CHECK(range_num == 1);
 
   // Check getting range from an invalid range index
   uint64_t d1_start_size = 0, d1_end_size = 0;
-  rc = tiledb_query_get_range_var_size(
-      ctx_, query, 0, 2, &d1_start_size, &d1_end_size);
+  rc = tiledb_subarray_get_range_var_size(
+      ctx_, subarray, 0, 2, &d1_start_size, &d1_end_size);
   CHECK(rc == TILEDB_ERR);
   std::vector<char> d1_start_data(d1_start_size);
   std::vector<char> d1_end_data(d1_end_size);
-  rc = tiledb_query_get_range_var(
-      ctx_, query, 0, 2, d1_start_data.data(), d1_end_data.data());
+  rc = tiledb_subarray_get_range_var(
+      ctx_, subarray, 0, 2, d1_start_data.data(), d1_end_data.data());
   CHECK(rc == TILEDB_ERR);
 
   // Check ranges
-  rc = tiledb_query_get_range_var_size(
-      ctx_, query, 0, 0, &d1_start_size, &d1_end_size);
+  rc = tiledb_subarray_get_range_var_size(
+      ctx_, subarray, 0, 0, &d1_start_size, &d1_end_size);
   CHECK(rc == TILEDB_OK);
   d1_start_data.resize(d1_start_size);
   d1_end_data.resize(d1_end_size);
-  rc = tiledb_query_get_range_var(
-      ctx_, query, 0, 0, d1_start_data.data(), d1_end_data.data());
+  rc = tiledb_subarray_get_range_var(
+      ctx_, subarray, 0, 0, d1_start_data.data(), d1_end_data.data());
   CHECK(rc == TILEDB_OK);
   CHECK(std::string(d1_start_data.data(), d1_start_data.size()) == d1_start);
   CHECK(std::string(d1_end_data.data(), d1_end_data.size()) == d1_end);
 
   const void *d2_start_data, *d2_end_data, *stride;
-  rc = tiledb_query_get_range(
-      ctx_, query, 1, 0, &d2_start_data, &d2_end_data, &stride);
+  rc = tiledb_subarray_get_range(
+      ctx_, subarray, 1, 0, &d2_start_data, &d2_end_data, &stride);
   CHECK(rc == TILEDB_OK);
   CHECK(*(int32_t*)d2_start_data == d2_start);
   CHECK(*(int32_t*)d2_end_data == d2_end);
@@ -844,6 +867,7 @@ void StringDimsFx::read_array_2d(
 
   // Clean up
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 }
 
 void StringDimsFx::read_array_2d_default_string_range(
@@ -861,9 +885,14 @@ void StringDimsFx::read_array_2d_default_string_range(
   tiledb_query_t* query;
   int rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
 
   // Add range for int dimension
-  rc = tiledb_query_add_range(ctx, query, 1, &d2_start, &d2_end, nullptr);
+  rc = tiledb_subarray_add_range(ctx, subarray, 1, &d2_start, &d2_end, nullptr);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Set query buffers
@@ -1271,8 +1300,14 @@ TEST_CASE_METHOD(
   // Set subarray and buffer
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, dom);
+  tiledb_subarray_t* sub;
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, dom);
   REQUIRE(rc == TILEDB_ERR);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  CHECK(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
   int32_t buff[10];
   uint64_t buff_size = sizeof(buff);
   rc = tiledb_query_set_data_buffer(
@@ -1365,36 +1400,46 @@ TEST_CASE_METHOD(
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   CHECK(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray = nullptr;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
   char s1[] = "a";
   char s2[] = "ee";
 
   // Check we can add empty ranges
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 0, s2, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, s1, 0, s2, 2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, s2, 0);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, s1, 1, s2, 0);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, nullptr, 0, s2, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, nullptr, 0, s2, 2);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, nullptr, 0);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, s1, 1, nullptr, 0);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Clean query and re-alloc
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check errors when adding range
-  rc = tiledb_query_add_range(ctx_, query, 0, s1, s2, nullptr);
+  rc = tiledb_subarray_add_range(ctx_, subarray, 0, s1, s2, nullptr);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range_var(ctx_, query, 1, s1, 1, s2, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 1, s1, 1, s2, 2);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, nullptr, 1, s2, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, nullptr, 1, s2, 2);
   CHECK(rc == TILEDB_ERR);
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, nullptr, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, s1, 1, nullptr, 2);
   CHECK(rc == TILEDB_ERR);
 
   // Add string range
-  rc = tiledb_query_add_range_var(ctx_, query, 0, s1, 1, s2, 2);
+  rc = tiledb_subarray_add_range_var(ctx_, subarray, 0, s1, 1, s2, 2);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, subarray);
   CHECK(rc == TILEDB_OK);
 
   // Check error on getting estimated result size
@@ -1411,6 +1456,7 @@ TEST_CASE_METHOD(
 
   // Clean query
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
 
   // Set layout
   tiledb_layout_t layout = TILEDB_ROW_MAJOR;

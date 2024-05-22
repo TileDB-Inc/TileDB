@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,10 +37,10 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
+#include "tiledb/sm/storage_manager/storage_manager.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class OpenedArray;
 class ArraySchema;
@@ -70,6 +70,7 @@ class StrategyParams {
       StorageManager* storage_manager,
       shared_ptr<OpenedArray> array,
       Config& config,
+      optional<uint64_t> memory_budget,
       std::unordered_map<std::string, QueryBuffer>& buffers,
       std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
       Subarray& subarray,
@@ -77,11 +78,13 @@ class StrategyParams {
       std::optional<QueryCondition>& condition,
       DefaultChannelAggregates& default_channel_aggregates,
       bool skip_checks_serialization)
-      : array_memory_tracker_(array_memory_tracker)
+      : resources_(storage_manager->resources())
+      , array_memory_tracker_(array_memory_tracker)
       , query_memory_tracker_(query_memory_tracker)
       , storage_manager_(storage_manager)
       , array_(array)
       , config_(config)
+      , memory_budget_(memory_budget)
       , buffers_(buffers)
       , aggregate_buffers_(aggregate_buffers)
       , subarray_(subarray)
@@ -94,6 +97,13 @@ class StrategyParams {
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
+
+  /**
+   * Accessor for the resources.
+   */
+  inline ContextResources& resources() {
+    return resources_;
+  }
 
   /** Return the array memory tracker. */
   inline shared_ptr<MemoryTracker> array_memory_tracker() {
@@ -118,6 +128,11 @@ class StrategyParams {
   inline Config& config() {
     return config_;
   };
+
+  /** Return the memory budget, if set. */
+  inline optional<uint64_t> memory_budget() {
+    return memory_budget_;
+  }
 
   /** Return the buffers. */
   inline std::unordered_map<std::string, QueryBuffer>& buffers() {
@@ -159,6 +174,9 @@ class StrategyParams {
   /*        PRIVATE ATTRIBUTES         */
   /* ********************************* */
 
+  /** Resources used to perform operations. */
+  ContextResources& resources_;
+
   /** Array Memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;
 
@@ -173,6 +191,12 @@ class StrategyParams {
 
   /** Config for query-level parameters only. */
   Config& config_;
+
+  /**
+   * Memory budget for the query. If set to nullopt, the value will be obtained
+   * from the sm.mem.total_budget config option.
+   */
+  optional<uint64_t> memory_budget_;
 
   /** Buffers. */
   std::unordered_map<std::string, QueryBuffer>& buffers_;
@@ -250,6 +274,9 @@ class StrategyBase {
   /*        PROTECTED ATTRIBUTES       */
   /* ********************************* */
 
+  /** Resources used for operations. */
+  ContextResources& resources_;
+
   /** The array memory tracker. */
   shared_ptr<MemoryTracker> array_memory_tracker_;
 
@@ -313,7 +340,6 @@ class StrategyBase {
   void get_dim_attr_stats() const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_STRATEGY_BASE_H

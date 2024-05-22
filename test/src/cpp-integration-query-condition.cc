@@ -224,10 +224,12 @@ void create_array(
       .set_data_buffer("a", a_data_read)
       .set_data_buffer("b", b_data_read);
 
+  Subarray subarray1(ctx, array1);
   if (array_type == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query1.add_range("rows", range[0], range[1])
+    subarray1.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query1.set_subarray(subarray1);
   }
   query1.submit();
 
@@ -366,10 +368,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -430,10 +434,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -559,10 +565,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -686,8 +694,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {2, 3};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -816,8 +826,10 @@ TEST_CASE(
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
-  query.add_range("rows", range1[0], range1[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range1[0], range1[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -955,8 +967,10 @@ TEST_CASE(
   // Define range.
   int range[] = {2, 3};
   int range1[] = {7, 10};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range1[0], range1[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1079,8 +1093,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1241,8 +1257,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(a_data_read_2, b_data_read_2, qc, params.layout_, query);
@@ -1413,8 +1431,10 @@ TEST_CASE(
 
   // Define range.
   int range[] = {7, 14};
-  query.add_range("rows", range[0], range[1])
+  Subarray subarray(ctx2, array);
+  subarray.add_range("rows", range[0], range[1])
       .add_range("cols", range[0], range[1]);
+  query.set_subarray(subarray);
 
   // Perform query and validate.
   perform_query(
@@ -1542,7 +1562,9 @@ TEST_CASE(
   std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
   Query query_w(ctx, array, TILEDB_WRITE);
   int range[] = {1, 10};
-  query_w.add_range("d", range[0], range[1]);
+  Subarray subarray_w(ctx, array);
+  subarray_w.add_range("d", range[0], range[1]);
+  query_w.set_subarray(subarray_w);
   query_w.set_layout(TILEDB_ROW_MAJOR);
   query_w.set_buffer("a", vals);
   REQUIRE(query_w.submit() == Query::Status::COMPLETE);
@@ -1551,7 +1573,9 @@ TEST_CASE(
   std::vector<int> vals2 = {7, 7, 7, 7};
   Query query_w2(ctx, array, TILEDB_WRITE);
   int range2[] = {3, 6};
-  query_w2.add_range("d", range2[0], range2[1]);
+  Subarray subarray_w2(ctx, array);
+  subarray_w2.add_range("d", range2[0], range2[1]);
+  query_w2.set_subarray(subarray_w2);
   query_w2.set_layout(TILEDB_ROW_MAJOR);
   query_w2.set_buffer("a", vals2);
   REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
@@ -1568,7 +1592,9 @@ TEST_CASE(
 
   std::vector<int> vals_read(10);
   Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range("d", range[0], range[1]);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range("d", range[0], range[1]);
+  query_r.set_subarray(subarray_r);
   query_r.set_layout(TILEDB_ROW_MAJOR);
   query_r.set_buffer("a", vals_read);
   query_r.set_condition(qc);
@@ -1657,10 +1683,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -1801,10 +1829,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -1959,10 +1989,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2101,10 +2133,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2281,10 +2315,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2505,10 +2541,12 @@ TEST_CASE(
   Query query(ctx2, array);
 
   // Set a subarray for dense.
+  Subarray subarray(ctx2, array);
   if (params.array_type_ == TILEDB_DENSE) {
     int range[] = {1, num_rows};
-    query.add_range("rows", range[0], range[1])
+    subarray.add_range("rows", range[0], range[1])
         .add_range("cols", range[0], range[1]);
+    query.set_subarray(subarray);
   }
 
   // Perform query and validate.
@@ -2611,7 +2649,9 @@ TEST_CASE(
   std::vector<uint8_t> rlabs(10);
 
   Query rquery(ctx, rarray, TILEDB_READ);
-  rquery.set_subarray(subarray)
+  Subarray sub(ctx, rarray);
+  sub.set_subarray(subarray);
+  rquery.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("rows", rrows)
       .set_data_buffer("labs", rlabs);

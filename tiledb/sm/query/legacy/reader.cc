@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,8 +57,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class ReaderStatusException : public StatusException {
  public:
@@ -278,7 +277,7 @@ Status Reader::load_initial_data() {
 
   // Load delete conditions.
   auto&& [st, conditions, update_values] =
-      storage_manager_->load_delete_and_update_conditions(*array_);
+      array_->load_delete_and_update_conditions();
   RETURN_CANCEL_OR_ERROR(st);
   delete_and_update_conditions_ = std::move(*conditions);
 
@@ -2399,5 +2398,4 @@ void Reader::fill_dense_coords_col_slab(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

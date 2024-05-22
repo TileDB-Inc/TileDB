@@ -450,7 +450,8 @@ void ReaderBase::load_tile_offsets(
           filtered_names.emplace_back(name);
         }
 
-        fragment->load_tile_offsets(*encryption_key, filtered_names);
+        fragment->loaded_metadata()->load_tile_offsets(
+            *encryption_key, filtered_names);
         return Status::Ok();
       }));
 }
@@ -482,7 +483,8 @@ void ReaderBase::load_tile_var_sizes(
             continue;
           }
 
-          fragment->load_tile_var_sizes(*encryption_key, name);
+          fragment->loaded_metadata()->load_tile_var_sizes(
+              *encryption_key, name);
         }
 
         return Status::Ok();
@@ -518,10 +520,14 @@ void ReaderBase::load_tile_metadata(
           }
         }
 
-        fragment->load_tile_max_values(*encryption_key, to_load);
-        fragment->load_tile_min_values(*encryption_key, to_load);
-        fragment->load_tile_sum_values(*encryption_key, to_load);
-        fragment->load_tile_null_count_values(*encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_max_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_min_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_sum_values(
+            *encryption_key, to_load);
+        fragment->loaded_metadata()->load_tile_null_count_values(
+            *encryption_key, to_load);
 
         return Status::Ok();
       }));
@@ -540,7 +546,8 @@ void ReaderBase::load_processed_conditions() {
         auto& fragment = fragment_metadata_[i];
 
         if (fragment->has_delete_meta()) {
-          fragment->load_processed_conditions(*encryption_key);
+          fragment->loaded_metadata()->load_processed_conditions(
+              *encryption_key);
         }
 
         return Status::Ok();
@@ -994,7 +1001,7 @@ Status ReaderBase::unfilter_tile(
           t_min,
           t_max,
           concurrency_level,
-          storage_manager_->config()));
+          resources_.config()));
     }
 
     // Prevent processing past the end of chunks in case there are more
@@ -1013,7 +1020,7 @@ Status ReaderBase::unfilter_tile(
           tvar_min,
           tvar_max,
           concurrency_level,
-          storage_manager_->config()));
+          resources_.config()));
     }
   }
 
@@ -1037,7 +1044,7 @@ Status ReaderBase::unfilter_tile(
         tval_min,
         tval_max,
         concurrency_level,
-        storage_manager_->config()));
+        resources_.config()));
   }
 
   return Status::Ok();
@@ -1058,7 +1065,8 @@ uint64_t ReaderBase::get_attribute_tile_size(
   tile_size += fragment_metadata_[f]->tile_size(name, t);
 
   if (array_schema_.var_size(name)) {
-    tile_size += fragment_metadata_[f]->tile_var_size(name, t);
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->tile_var_size(name, t);
   }
 
   if (array_schema_.is_nullable(name)) {

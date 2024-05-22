@@ -147,7 +147,7 @@ Status DeletesAndUpdates::dowork() {
   // Create the commit URI if needed.
   auto& array_dir = array_->array_directory();
   auto commit_uri = array_dir.get_commits_dir(write_version);
-  RETURN_NOT_OK(storage_manager_->vfs()->create_dir(commit_uri));
+  throw_if_not_ok(resources_.vfs().create_dir(commit_uri));
 
   // Serialize the negated condition (aud update values if they are not empty)
   // and write to disk.
@@ -165,10 +165,7 @@ Status DeletesAndUpdates::dowork() {
 
   auto uri = commit_uri.join_path(new_fragment_str);
   GenericTileIO::store_data(
-      storage_manager_->resources(),
-      uri,
-      serialized_condition,
-      *array_->encryption_key());
+      resources_, uri, serialized_condition, *array_->encryption_key());
 
   return Status::Ok();
 }

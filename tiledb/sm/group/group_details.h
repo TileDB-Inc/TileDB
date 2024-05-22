@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,12 +41,12 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class GroupDetails {
  public:
@@ -130,6 +130,21 @@ class GroupDetails {
    * @param group_member
    */
   void delete_member(const shared_ptr<GroupMember> group_member);
+
+  /**
+   * Store the group details
+   *
+   * @param resources the context resources
+   * @param group_detail_folder_uri group details folder
+   * @param group_detail_uri uri for detail file to write
+   * @param encryption_key encryption key for at-rest encryption
+   * @return status
+   */
+  Status store(
+      ContextResources& resources,
+      const URI& group_detail_folder_uri,
+      const URI& group_detail_uri,
+      const EncryptionKey& encryption_key);
 
   /**
    * Serializes the object members into a binary buffer.
@@ -264,7 +279,7 @@ class GroupDetails {
   /** Invalidate the built lookup tables. */
   void invalidate_lookups();
 };
-}  // namespace sm
-}  // namespace tiledb
+
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_GROUP_DETAILS_H

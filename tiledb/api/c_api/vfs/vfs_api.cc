@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,14 +57,15 @@ capi_return_t tiledb_vfs_alloc(
   ensure_output_pointer_is_valid(vfs);
 
   // Create VFS object
-  auto stats = ctx->storage_manager()->stats();
-  auto compute_tp = ctx->storage_manager()->compute_tp();
-  auto io_tp = ctx->storage_manager()->io_tp();
-  auto ctx_config = ctx->storage_manager()->config();
+  auto& resources{ctx->resources()};
+  auto& stats{resources.stats()};
+  auto& compute_tp{resources.compute_tp()};
+  auto& io_tp{resources.io_tp()};
+  auto& ctx_config{resources.config()};
   if (config) {
     ctx_config.inherit((config->config()));
   }
-  *vfs = tiledb_vfs_t::make_handle(stats, compute_tp, io_tp, ctx_config);
+  *vfs = tiledb_vfs_t::make_handle(&stats, &compute_tp, &io_tp, ctx_config);
 
   return TILEDB_OK;
 }

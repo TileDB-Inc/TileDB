@@ -72,7 +72,11 @@ TEST_CASE_METHOD(
   CHECK(tiledb_query_set_layout(ctx_c_, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
 
   int64_t dom[] = {1, 2, 1, 2};
-  CHECK(tiledb_query_set_subarray(ctx_c_, query, &dom) == TILEDB_OK);
+  tiledb_subarray_t* sub;
+  CHECK(tiledb_subarray_alloc(ctx_c_, array, &sub) == TILEDB_OK);
+  CHECK(tiledb_subarray_set_subarray(ctx_c_, sub, &dom) == TILEDB_OK);
+  CHECK(tiledb_query_set_subarray_t(ctx_c_, query, sub) == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   std::vector<int32_t> d(4);
   uint64_t size = 1;
@@ -86,7 +90,10 @@ TEST_CASE_METHOD(
   // API lifecycle checks
   // It's not possible to set subarrays, layout, query condition or new buffers
   // once the query plan got generated.
-  CHECK(tiledb_query_set_subarray(ctx_c_, query, &dom) == TILEDB_ERR);
+  CHECK(tiledb_subarray_alloc(ctx_c_, array, &sub) == TILEDB_OK);
+  CHECK(tiledb_subarray_set_subarray(ctx_c_, sub, &dom) == TILEDB_OK);
+  CHECK(tiledb_query_set_subarray_t(ctx_c_, query, sub) == TILEDB_ERR);
+  tiledb_subarray_free(&sub);
   CHECK(tiledb_query_set_layout(ctx_c_, query, TILEDB_COL_MAJOR) == TILEDB_ERR);
   tiledb_query_condition_t* qc;
   CHECK(tiledb_query_condition_alloc(ctx_c_, &qc) == TILEDB_OK);
@@ -127,7 +134,11 @@ TEST_CASE_METHOD(
   CHECK(tiledb_query_set_layout(ctx_c_, query, TILEDB_ROW_MAJOR) == TILEDB_OK);
 
   int64_t dom[] = {1, 2, 1, 2};
-  CHECK(tiledb_query_set_subarray(ctx_c_, query, &dom) == TILEDB_OK);
+  tiledb_subarray_t* sub;
+  CHECK(tiledb_subarray_alloc(ctx_c_, array, &sub) == TILEDB_OK);
+  CHECK(tiledb_subarray_set_subarray(ctx_c_, sub, &dom) == TILEDB_OK);
+  CHECK(tiledb_query_set_subarray_t(ctx_c_, query, sub) == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   std::vector<int32_t> d(4);
   uint64_t size = 1;

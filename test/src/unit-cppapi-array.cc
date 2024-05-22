@@ -197,7 +197,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
 
     Query query(ctx, array, TILEDB_WRITE);
     CHECK(query.query_type() == TILEDB_WRITE);
-    query.set_subarray(subarray);
+    Subarray sub(ctx, array);
+    sub.set_subarray(subarray);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2buf.second);
     query.set_offsets_buffer("a2", a2buf.first);
@@ -254,6 +256,8 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
       a1.resize(48);
 
       Query query(ctx, array);
+      Subarray sub(ctx, array);
+      sub.set_subarray(subarray);
 
       CHECK(!query.has_results());
 
@@ -265,7 +269,7 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
       query.set_offsets_buffer("a4", a4buf.first);
       query.set_data_buffer("a5", a5);
       query.set_layout(TILEDB_ROW_MAJOR);
-      query.set_subarray(subarray);
+      query.set_subarray(sub);
 
       // Make sure no segfault when called before submit
       query.result_buffer_elements();
@@ -346,7 +350,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
 
     Array array(ctx, array_uri_, TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
-    query.set_subarray(subarray);
+    Subarray sub(ctx, array);
+    sub.set_subarray(subarray);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2buf.second);
     query.set_offsets_buffer("a2", a2buf.first);
@@ -405,7 +411,9 @@ TEST_CASE_METHOD(CPPArrayFx, "C++ API: Arrays", "[cppapi][basic][rest]") {
     std::vector<int> subarray = {0, 1, 0, 0};
     Array array(ctx, array_uri_, TILEDB_WRITE);
     Query query(ctx, array, TILEDB_WRITE);
-    query.set_subarray(subarray);
+    Subarray sub(ctx, array);
+    sub.set_subarray(subarray);
+    query.set_subarray(sub);
     query.set_data_buffer("a1", a1);
     query.set_layout(TILEDB_GLOBAL_ORDER);
     // Incorrect subarray for global order
@@ -509,8 +517,10 @@ TEST_CASE(
     a = {};
     const std::vector<int> subarray = {0, 2};
     Query q(ctx, array, TILEDB_READ);
+    Subarray s(ctx, array);
+    s.set_subarray(subarray);
     q.set_layout(TILEDB_GLOBAL_ORDER);
-    q.set_subarray(subarray);
+    q.set_subarray(s);
     q.set_data_buffer("a", a);
     q.set_offsets_buffer("a", a_offset);
     q.set_data_buffer("b", b);
@@ -603,7 +613,9 @@ TEST_CASE(
         Query query(ctx, array);
         const std::vector<int> subarray = {0, 3, 0, 3};
         std::vector<int> data(16);
-        query.set_subarray(subarray)
+        Subarray sub(ctx, array);
+        sub.set_subarray(subarray);
+        query.set_subarray(sub)
             .set_layout(TILEDB_ROW_MAJOR)
             .set_data_buffer("a", data);
         query.submit();
@@ -757,7 +769,9 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption][non-rest]") {
   std::vector<int> subarray = {0, 3};
   std::vector<int> a_read(4);
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read);
   query_r.submit();
@@ -769,7 +783,9 @@ TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption][non-rest]") {
   Array array_3(ctx, array_name, TILEDB_READ);
   a_read = std::vector<int>(4, 0);
   Query query_r2(ctx, array_3);
-  query_r2.set_subarray(subarray)
+  Subarray sub2(ctx, array_3);
+  sub2.set_subarray(subarray);
+  query_r2.set_subarray(sub2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read);
   query_r2.submit();
@@ -843,7 +859,9 @@ TEST_CASE(
   std::vector<int> subarray = {0, 3};
   std::vector<int> a_read(4);
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read);
   query_r.submit();
@@ -909,7 +927,9 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
   std::vector<int> subarray = {1, 4};
   std::vector<int> a_r(4);
   Query query_r(ctx, array_r);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array_r);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r);
   query_r.submit();
@@ -928,7 +948,9 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
 
   std::vector<int> a_r_at_0(4);
   Query query_r_at_0(ctx, array_r_at_0);
-  query_r_at_0.set_subarray(subarray)
+  Subarray sub2(ctx, array_r_at_0);
+  sub2.set_subarray(subarray);
+  query_r_at_0.set_subarray(sub2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_at_0);
   query_r_at_0.submit();
@@ -950,7 +972,9 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
 
   std::vector<int> a_r_at(4);
   Query query_r_at(ctx, array_r_at);
-  query_r_at.set_subarray(subarray)
+  Subarray sub3(ctx, array_r_at);
+  sub3.set_subarray(subarray);
+  query_r_at.set_subarray(sub3)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_at_0);
   query_r_at.submit();
@@ -964,7 +988,9 @@ TEST_CASE("C++ API: Open array at", "[cppapi][open-array-at][rest]") {
   CHECK(array_reopen_at.open_timestamp_end() == first_timestamp);
   std::vector<int> a_r_reopen_at(4);
   Query query_r_reopen_at(ctx, array_reopen_at);
-  query_r_reopen_at.set_subarray(subarray)
+  Subarray sub4(ctx, array_reopen_at);
+  sub4.set_subarray(subarray);
+  query_r_reopen_at.set_subarray(sub4)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_reopen_at);
   query_r_reopen_at.submit();
@@ -1007,7 +1033,9 @@ TEST_CASE(
   std::vector<int> subarray = {1, 4};
   std::vector<int> a_r(4);
   Query query_r(ctx, array_r);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array_r);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r);
   query_r.submit();
@@ -1031,7 +1059,9 @@ TEST_CASE(
 
   std::vector<int> a_r_at_0(4);
   Query query_r_at_0(ctx, array_r_at_0);
-  query_r_at_0.set_subarray(subarray)
+  Subarray sub2(ctx, array_r_at_0);
+  sub2.set_subarray(subarray);
+  query_r_at_0.set_subarray(sub2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_at_0);
   query_r_at_0.submit();
@@ -1058,7 +1088,9 @@ TEST_CASE(
 
   std::vector<int> a_r_at(4);
   Query query_r_at(ctx, array_r_at);
-  query_r_at.set_subarray(subarray)
+  Subarray sub3(ctx, array_r_at);
+  sub3.set_subarray(subarray);
+  query_r_at.set_subarray(sub3)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_r_at_0);
   query_r_at.submit();
@@ -1105,7 +1137,9 @@ TEST_CASE(
   Query query(ctx, array);
   const std::vector<int> subarray = {0, 0, 0, 0};
   std::vector<int> data(1);
-  query.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data);
   query.submit();
@@ -1256,8 +1290,10 @@ TEST_CASE(
   query_r.set_data_buffer("d2", buff_d2_r);
   query_r.set_data_buffer("a", buff_a_r);
   query_r.set_layout(TILEDB_UNORDERED);
-  query_r.add_range(0, 1.0f, 20.0f);
-  query_r.add_range(1, (int64_t)1, (int64_t)30);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range(0, 1.0f, 20.0f);
+  subarray_r.add_range(1, (int64_t)1, (int64_t)30);
+  query_r.set_subarray(subarray_r);
   query_r.submit();
 
   auto ret = query.result_buffer_elements();
@@ -1324,48 +1360,53 @@ TEST_CASE(
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
+  Subarray subarray_r(ctx, array_r);
 
   SECTION("Non empty range") {
-    query_r.add_range(0, s1, s2);
-    CHECK_THROWS(query_r.add_range(1, s1, s2));
+    subarray_r.add_range(0, s1, s2);
+    CHECK_THROWS(subarray_r.add_range(1, s1, s2));
+    query_r.set_subarray(subarray_r);
 
     // Check range
-    CHECK_THROWS(query_r.range(1, 1));
-    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK_THROWS(subarray_r.range(1, 1));
+    std::array<std::string, 2> range = subarray_r.range(0, 0);
     CHECK(range[0] == s1);
     CHECK(range[1] == s2);
   }
 
   SECTION("Empty first range") {
-    query_r.add_range(0, "", s2);
-    CHECK_THROWS(query_r.add_range(1, "", s2));
+    subarray_r.add_range(0, "", s2);
+    CHECK_THROWS(subarray_r.add_range(1, "", s2));
+    query_r.set_subarray(subarray_r);
 
     // Check range
-    CHECK_THROWS(query_r.range(1, 1));
-    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK_THROWS(subarray_r.range(1, 1));
+    std::array<std::string, 2> range = subarray_r.range(0, 0);
     CHECK(range[0] == "");
     CHECK(range[1] == s2);
   }
 
   SECTION("Empty second range") {
-    query_r.add_range(0, s1, "");
-    CHECK_THROWS(query_r.add_range(1, s1, ""));
+    subarray_r.add_range(0, s1, "");
+    CHECK_THROWS(subarray_r.add_range(1, s1, ""));
+    query_r.set_subarray(subarray_r);
 
     // Check range
-    CHECK_THROWS(query_r.range(1, 1));
-    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK_THROWS(subarray_r.range(1, 1));
+    std::array<std::string, 2> range = subarray_r.range(0, 0);
     CHECK(range[0] == s1);
     CHECK(range[1] == "");
     empty_results = true;
   }
 
   SECTION("Empty ranges") {
-    query_r.add_range(0, std::string(""), std::string(""));
-    CHECK_THROWS(query_r.add_range(1, std::string(""), std::string("")));
+    subarray_r.add_range(0, std::string(""), std::string(""));
+    CHECK_THROWS(subarray_r.add_range(1, std::string(""), std::string("")));
+    query_r.set_subarray(subarray_r);
 
     // Check range
-    CHECK_THROWS(query_r.range(1, 1));
-    std::array<std::string, 2> range = query_r.range(0, 0);
+    CHECK_THROWS(subarray_r.range(1, 1));
+    std::array<std::string, 2> range = subarray_r.range(0, 0);
     CHECK(range[0] == "");
     CHECK(range[1] == "");
     empty_results = true;
@@ -1448,7 +1489,9 @@ TEST_CASE(
   std::string s1("a", 1);
   std::string s2("ee", 2);
   Query query_r(ctx, array_r, TILEDB_READ);
-  query_r.add_range(0, s1, s2);
+  Subarray subarray_r(ctx, array_r);
+  subarray_r.add_range(0, s1, s2);
+  query_r.set_subarray(subarray_r);
   std::string data;
   data.resize(10);
   std::vector<uint64_t> offsets(4);
@@ -1498,7 +1541,9 @@ TEST_CASE(
   Query query(ctx, array);
   const std::vector<int> subarray = {0, 0, 0, 0};
   std::vector<int> rows(1);
-  query.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub)
       .set_layout(TILEDB_GLOBAL_ORDER)
       .set_data_buffer("rows", rows);
   query.submit();
@@ -1543,7 +1588,9 @@ TEST_CASE(
   Query query(ctx, array);
   const std::vector<int> subarray = {0, 0, 0, 0};
   std::vector<int> rows(1);
-  query.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub)
       .set_layout(TILEDB_UNORDERED)
       .set_data_buffer("rows", rows);
   query.submit();
@@ -1582,10 +1629,10 @@ TEST_CASE(
   // Read
   Array array(ctx, array_uri, TILEDB_READ);
   Query query(ctx, array);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 0, 1).add_range(0, 3, 3).add_range(1, 0, 3);
   std::vector<int> data(12);
-  query.add_range(0, 0, 1)
-      .add_range(0, 3, 3)
-      .add_range(1, 0, 3)
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data);
   query.submit();
@@ -1747,9 +1794,10 @@ TEST_CASE(
   // Read
   Array array(ctx, array_name, TILEDB_READ);
   Query query(ctx, array, TILEDB_READ);
+  Subarray subarray(ctx, array);
+  subarray.add_range(0, 1, 2).add_range(1, 2, 4);
   std::vector<int> data(6);
-  query.add_range(0, 1, 2)
-      .add_range(1, 2, 4)
+  query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data);
   query.submit();
@@ -1973,54 +2021,6 @@ TEST_CASE(
   vfs.remove_dir(get_fragment_dir(array_read.uri()));
   vfs.remove_dir(get_commit_dir(array_read.uri()));
   vfs.remove_dir(array_read.uri() + "/__schema");
-}
-
-TEST_CASE(
-    "C++ API: Close array with running query",
-    "[cppapi][close-before-read][non-rest]") {
-  // async queries not supported on remote arrays (REST)
-  tiledb::test::VFSTestSetup vfs_test_setup{};
-  Context ctx{vfs_test_setup.ctx()};
-  auto array_uri{vfs_test_setup.array_uri("cpp_unit_array")};
-
-  // Create
-  Domain domain(ctx);
-  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{0, 3}}, 4))
-      .add_dimension(Dimension::create<int>(ctx, "cols", {{0, 3}}, 4));
-  ArraySchema schema(ctx, TILEDB_DENSE);
-  schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
-  schema.add_attribute(Attribute::create<int>(ctx, "a"));
-  Array::create(array_uri, schema);
-
-  // Write
-  std::vector<int> data_w = {
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
-  Array array_w(ctx, array_uri, TILEDB_WRITE);
-  Query query_w(ctx, array_w);
-  query_w.set_subarray(Subarray(ctx, array_w).set_subarray({0, 3, 0, 3}))
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", data_w);
-  query_w.submit();
-  array_w.close();
-
-  // Open for read.
-  Array array(ctx, array_uri, TILEDB_READ);
-  std::vector<int> subarray_read = {0, 3, 0, 3};
-  std::vector<int> a_read(16);
-
-  Query query(ctx, array);
-  query.set_subarray(subarray_read)
-      .set_layout(TILEDB_ROW_MAJOR)
-      .set_data_buffer("a", a_read);
-  query.submit_async();
-  array.close();
-
-  uint64_t i = 0;
-  while (query.query_status() != Query::Status::COMPLETE) {
-    i++;
-  }
-
-  CHECK(i > 0);
 }
 
 TEST_CASE("C++ API: Read empty array", "[cppapi][read-empty-array]") {

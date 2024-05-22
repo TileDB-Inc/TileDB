@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -181,13 +181,13 @@ class Consolidator {
    * @param write_version Write version.
    * @param array_dir ArrayDirectory where the data is stored.
    * @param commit_uris Commit files to include.
-   * @param storage_manager The storage manager.
+   * @param resources The context resources.
    */
   static void write_consolidated_commits_file(
       format_version_t write_version,
       ArrayDirectory array_dir,
       const std::vector<URI>& commit_uris,
-      StorageManager* storage_manager);
+      ContextResources& resources);
 
   /**
    * Cleans up the array, such as its consolidated fragments and array
@@ -237,6 +237,9 @@ class Consolidator {
   /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
+
+  /** Resources used to perform the operation. */
+  ContextResources& resources_;
 
   /** The storage manager. */
   StorageManager* storage_manager_;

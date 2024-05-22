@@ -60,6 +60,8 @@ static const std::string groups_dir =
 
 template <typename T>
 void set_query_coords(
+    Context& ctx,
+    Array* array,
     const Domain& domain,
     Query* query,
     void** coordinates,
@@ -78,8 +80,11 @@ void set_query_coords(
     static_cast<T*>(*expected_coordinates)[i] = 1;
   }
 
+  Subarray sub(ctx, *array);
+  sub.set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
+
   query->set_coordinates<T>(static_cast<T*>(*coordinates), ndim);
-  query->set_subarray<T>(static_cast<T*>(subarray), 2 * ndim);
+  query->set_subarray(sub);
 
   std::free(subarray);
 }
@@ -89,6 +94,7 @@ void set_query_dimension_buffer(
     const Domain& domain,
     const uint64_t dim_idx,
     Query* query,
+    Subarray* subarray,
     void** buffer,
     void** expected_buffer) {
   Dimension dimension = domain.dimension(dim_idx);
@@ -101,8 +107,9 @@ void set_query_dimension_buffer(
   static_cast<T*>(*expected_buffer)[0] = 1;
 
   auto dom = dimension.domain<T>();
-  query->set_buffer<T>(dimension.name(), static_cast<T*>(*buffer), buffer_size);
-  query->add_range(dim_idx, dom.first, dom.second);
+  query->set_data_buffer<T>(
+      dimension.name(), static_cast<T*>(*buffer), buffer_size);
+  subarray->add_range(dim_idx, dom.first, dom.second);
 }
 
 template <typename T>
@@ -110,6 +117,7 @@ void set_query_var_dimension_buffer(
     const Domain& domain,
     const uint64_t dim_idx,
     Query* query,
+    Subarray* subarray,
     uint64_t** offsets,
     void** buffer,
     uint64_t** expected_offsets,
@@ -130,7 +138,7 @@ void set_query_var_dimension_buffer(
   memset(*buffer, 0, buffer_size);
   query->set_buffer<T>(
       dimension.name(), *offsets, 1, static_cast<T*>(*buffer), buffer_size);
-  query->add_range(dim_idx, std::string("1"), std::string("1"));
+  subarray->add_range(dim_idx, std::string("1"), std::string("1"));
 }
 
 }  // namespace
@@ -195,7 +203,9 @@ TEST_CASE(
   std::vector<int> coords_read(8);
 
   Query query_r(ctx, array);
-  query_r.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query_r.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read)
       .set_coordinates(coords_read);
@@ -501,43 +511,43 @@ TEST_CASE(
       switch (domain.type()) {
         case TILEDB_INT8:
           set_query_coords<int8_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT8:
           set_query_coords<uint8_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT16:
           set_query_coords<int16_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT16:
           set_query_coords<uint16_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT32:
           set_query_coords<int32_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT32:
           set_query_coords<uint32_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_INT64:
           set_query_coords<int64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_UINT64:
           set_query_coords<uint64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT32:
           set_query_coords<float>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_FLOAT64:
           set_query_coords<double>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         case TILEDB_DATETIME_YEAR:
         case TILEDB_DATETIME_MONTH:
@@ -562,7 +572,7 @@ TEST_CASE(
         case TILEDB_TIME_FS:
         case TILEDB_TIME_AS:
           set_query_coords<int64_t>(
-              domain, query, &coordinates, &expected_coordinates);
+              ctx, array, domain, query, &coordinates, &expected_coordinates);
           break;
         default:
           REQUIRE(false);
@@ -721,7 +731,9 @@ TEST_CASE(
 
     Array array(ctx, old_array_name, TILEDB_READ);
     Query query_r(ctx, array);
-    query_r.set_subarray(subarray)
+    Subarray subarray_r(ctx, array);
+    subarray_r.set_subarray(subarray);
+    query_r.set_subarray(subarray_r)
         .set_layout(TILEDB_ROW_MAJOR)
         .set_data_buffer("a", a_read)
         .set_coordinates(coords_read);
@@ -780,6 +792,8 @@ TEST_CASE(
       }
 
       auto query = new Query(encrypted ? ctx_encrypt : ctx, *array);
+
+      auto subarray = new Subarray(ctx, *array);
 
       std::unordered_map<std::string, tuple<uint64_t*, void*, uint8_t*>>
           buffers;
@@ -1020,43 +1034,43 @@ TEST_CASE(
         switch (dim.type()) {
           case TILEDB_INT8:
             set_query_dimension_buffer<int8_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT8:
             set_query_dimension_buffer<uint8_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT16:
             set_query_dimension_buffer<int16_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT16:
             set_query_dimension_buffer<uint16_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT32:
             set_query_dimension_buffer<int32_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT32:
             set_query_dimension_buffer<uint32_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_INT64:
             set_query_dimension_buffer<int64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_UINT64:
             set_query_dimension_buffer<uint64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT32:
             set_query_dimension_buffer<float>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_FLOAT64:
             set_query_dimension_buffer<double>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_DATETIME_YEAR:
           case TILEDB_DATETIME_MONTH:
@@ -1081,13 +1095,14 @@ TEST_CASE(
           case TILEDB_TIME_FS:
           case TILEDB_TIME_AS:
             set_query_dimension_buffer<int64_t>(
-                domain, i, query, &buffer, &expected_results);
+                domain, i, query, subarray, &buffer, &expected_results);
             break;
           case TILEDB_STRING_ASCII: {
             set_query_var_dimension_buffer<char>(
                 domain,
                 i,
                 query,
+                subarray,
                 &offsets,
                 &buffer,
                 &expected_offsets,
@@ -1104,6 +1119,7 @@ TEST_CASE(
       }
 
       // Submit query
+      query->set_subarray(*subarray);
       query->submit();
       delete query;
 
@@ -1263,7 +1279,9 @@ TEST_CASE(
   std::vector<int> d2_read1(4);
 
   Query query_read1(ctx, array_read1);
-  query_read1.set_subarray(subarray_read1)
+  Subarray subarray_r(ctx, array_read1);
+  subarray_r.set_subarray(subarray_read1);
+  query_read1.set_subarray(subarray_r)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read1)
       .set_data_buffer("d1", d1_read1)
@@ -1312,7 +1330,9 @@ TEST_CASE(
   std::vector<int> d2_read2(4);
 
   Query query_read2(ctx, array_read2);
-  query_read2.set_subarray(subarray_read2)
+  Subarray subarray_r2(ctx, array_read2);
+  subarray_r2.set_subarray(subarray_read2);
+  query_read2.set_subarray(subarray_r2)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", a_read2)
       .set_data_buffer("d1", d1_read2)

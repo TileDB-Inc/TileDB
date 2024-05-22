@@ -72,7 +72,9 @@ DenseReader::DenseReader(
     shared_ptr<Logger> logger,
     StrategyParams& params,
     bool remote_query)
-    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params) {
+    : ReaderBase(stats, logger->clone("DenseReader", ++logger_id_), params)
+    , memory_budget_(params.memory_budget().value_or(0))
+    , memory_budget_from_query_(params.memory_budget()) {
   elements_mode_ = false;
 
   // Sanity checks.
@@ -121,9 +123,11 @@ QueryStatusDetailsReason DenseReader::status_incomplete_reason() const {
 void DenseReader::refresh_config() {
   // Get config values.
   bool found = false;
-  throw_if_not_ok(
-      config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
-  assert(found);
+  if (!memory_budget_from_query_.has_value()) {
+    throw_if_not_ok(
+        config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found));
+    assert(found);
+  }
   throw_if_not_ok(config_.get<uint64_t>(
       "sm.mem.tile_upper_memory_limit", &tile_upper_memory_limit_, &found));
   assert(found);
@@ -726,8 +730,7 @@ uint64_t DenseReader::compute_space_tiles_end(
     ThreadPool::Task& compute_task) {
   // For easy reference.
   const auto& tile_coords = subarray.tile_coords();
-  uint64_t available_memory =
-      memory_budget_ - array_memory_tracker_->get_memory_usage();
+  uint64_t available_memory = array_memory_tracker_->get_memory_available();
 
   // If the available memory is less than the tile upper memory limit, we cannot
   // load two batches at once. Wait for the first compute task to complete
@@ -819,8 +822,7 @@ uint64_t DenseReader::compute_space_tiles_end(
 
   // If we only include one tile, make sure we don't exceed the memory budget.
   if (t_end == t_start + 1) {
-    const auto available_memory =
-        memory_budget_ - array_memory_tracker_->get_memory_usage();
+    const auto available_memory = array_memory_tracker_->get_memory_available();
     for (auto mem : required_memory) {
       if (mem > available_memory) {
         throw DenseReaderStatusException(

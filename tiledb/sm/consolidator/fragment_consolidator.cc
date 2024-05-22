@@ -446,7 +446,7 @@ void FragmentConsolidator::vacuum(const char* array_name) {
     array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
-  auto vfs = storage_manager_->vfs();
+  auto& vfs = resources_.vfs();
   auto compute_tp = storage_manager_->compute_tp();
 
   // Delete fragment directories
@@ -455,22 +455,22 @@ void FragmentConsolidator::vacuum(const char* array_name) {
         // Remove the commit file, if present.
         auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
         bool is_file = false;
-        RETURN_NOT_OK(vfs->is_file(commit_uri, &is_file));
+        throw_if_not_ok(vfs.is_file(commit_uri, &is_file));
         if (is_file) {
-          RETURN_NOT_OK(vfs->remove_file(commit_uri));
+          throw_if_not_ok(vfs.remove_file(commit_uri));
         }
 
         bool is_dir = false;
-        RETURN_NOT_OK(vfs->is_dir(fragment_uris_to_vacuum[i], &is_dir));
+        throw_if_not_ok(vfs.is_dir(fragment_uris_to_vacuum[i], &is_dir));
         if (is_dir) {
-          RETURN_NOT_OK(vfs->remove_dir(fragment_uris_to_vacuum[i]));
+          throw_if_not_ok(vfs.remove_dir(fragment_uris_to_vacuum[i]));
         }
 
         return Status::Ok();
       }));
 
   // Delete the vacuum files.
-  vfs->remove_files(
+  vfs.remove_files(
       compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 }
 
@@ -558,20 +558,15 @@ Status FragmentConsolidator::consolidate_internal(
   cw.resize_buffers(stats_, config_, array_schema, average_var_cell_sizes);
 
   // Create queries
-  auto query_r = (Query*)nullptr;
-  auto query_w = (Query*)nullptr;
-  auto st = create_queries(
+  tdb_unique_ptr<Query> query_r = nullptr;
+  tdb_unique_ptr<Query> query_w = nullptr;
+  throw_if_not_ok(create_queries(
       array_for_reads,
       array_for_writes,
       union_non_empty_domains,
-      &query_r,
-      &query_w,
-      new_fragment_uri);
-  if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    return st;
-  }
+      query_r,
+      query_w,
+      new_fragment_uri));
 
   // Get the vacuum URI
   URI vac_uri;
@@ -579,31 +574,20 @@ Status FragmentConsolidator::consolidate_internal(
     vac_uri =
         array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   } catch (std::exception& e) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     std::throw_with_nested(
         std::logic_error("[FragmentConsolidator::consolidate_internal] "));
   }
 
   // Read from one array and write to the other
-  try {
-    copy_array(query_r, query_w, cw);
-  } catch (...) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
-    throw;
-  };
+  copy_array(query_r.get(), query_w.get(), cw);
 
   // Finalize write query
-  st = query_w->finalize();
+  auto st = query_w->finalize();
   if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     bool is_dir = false;
-    auto st2 = storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir);
-    (void)st2;  // Perhaps report this once we support an error stack
+    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
     return st;
   }
 
@@ -614,19 +598,12 @@ Status FragmentConsolidator::consolidate_internal(
       vac_uri,
       to_consolidate);
   if (!st.ok()) {
-    tdb_delete(query_r);
-    tdb_delete(query_w);
     bool is_dir = false;
-    throw_if_not_ok(
-        storage_manager_->vfs()->is_dir(*new_fragment_uri, &is_dir));
+    throw_if_not_ok(resources_.vfs().is_dir(*new_fragment_uri, &is_dir));
     if (is_dir)
-      throw_if_not_ok(storage_manager_->vfs()->remove_dir(*new_fragment_uri));
+      throw_if_not_ok(resources_.vfs().remove_dir(*new_fragment_uri));
     return st;
   }
-
-  // Clean up
-  tdb_delete(query_r);
-  tdb_delete(query_w);
 
   return st;
 }
@@ -667,8 +644,8 @@ Status FragmentConsolidator::create_queries(
     shared_ptr<Array> array_for_reads,
     shared_ptr<Array> array_for_writes,
     const NDRange& subarray,
-    Query** query_r,
-    Query** query_w,
+    tdb_unique_ptr<Query>& query_r,
+    tdb_unique_ptr<Query>& query_w,
     URI* new_fragment_uri) {
   auto timer_se = stats_->start_timer("consolidate_create_queries");
 
@@ -679,48 +656,50 @@ Status FragmentConsolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  *query_r = tdb_new(Query, storage_manager_, array_for_reads);
-  RETURN_NOT_OK((*query_r)->set_layout(Layout::GLOBAL_ORDER));
+  query_r =
+      tdb_unique_ptr<Query>(tdb_new(Query, storage_manager_, array_for_reads));
+  RETURN_NOT_OK(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {
     NDRange read_subarray = subarray;
     auto& domain{array_for_reads->array_schema_latest().domain()};
     domain.expand_to_tiles(&read_subarray);
-    RETURN_NOT_OK((*query_r)->set_subarray_unsafe(read_subarray));
+    RETURN_NOT_OK(query_r->set_subarray_unsafe(read_subarray));
   }
 
   // Enable consolidation with timestamps on the reader, if applicable.
   if (config_.with_timestamps_ && !dense) {
-    throw_if_not_ok((*query_r)->set_consolidation_with_timestamps());
+    throw_if_not_ok(query_r->set_consolidation_with_timestamps());
   }
 
   // Get last fragment URI, which will be the URI of the consolidated fragment
-  auto first = (*query_r)->first_fragment_uri();
-  auto last = (*query_r)->last_fragment_uri();
+  auto first = query_r->first_fragment_uri();
+  auto last = query_r->last_fragment_uri();
 
   auto write_version = array_for_reads->array_schema_latest().write_version();
   auto fragment_name = storage_format::generate_consolidated_fragment_name(
       first, last, write_version);
 
   // Create write query
-  *query_w = tdb_new(Query, storage_manager_, array_for_writes, fragment_name);
-  RETURN_NOT_OK((*query_w)->set_layout(Layout::GLOBAL_ORDER));
-  RETURN_NOT_OK((*query_w)->disable_checks_consolidation());
-  (*query_w)->set_fragment_size(config_.max_fragment_size_);
+  query_w = tdb_unique_ptr<Query>(
+      tdb_new(Query, storage_manager_, array_for_writes, fragment_name));
+  RETURN_NOT_OK(query_w->set_layout(Layout::GLOBAL_ORDER));
+  RETURN_NOT_OK(query_w->disable_checks_consolidation());
+  query_w->set_fragment_size(config_.max_fragment_size_);
   if (array_for_reads->array_schema_latest().dense()) {
-    RETURN_NOT_OK((*query_w)->set_subarray_unsafe(subarray));
+    RETURN_NOT_OK(query_w->set_subarray_unsafe(subarray));
   }
 
   // Set the processed conditions on new fragment.
   const auto& delete_and_update_tiles_location =
-      (*query_r)->array()->array_directory().delete_and_update_tiles_location();
+      query_r->array()->array_directory().delete_and_update_tiles_location();
   std::vector<std::string> processed_conditions;
   processed_conditions.reserve(delete_and_update_tiles_location.size());
   for (auto& location : delete_and_update_tiles_location) {
     processed_conditions.emplace_back(location.condition_marker());
   }
-  (*query_w)->set_processed_conditions(processed_conditions);
+  query_w->set_processed_conditions(processed_conditions);
 
   // Set the URI for the new fragment.
   auto frag_uri =
@@ -933,7 +912,7 @@ void FragmentConsolidator::set_query_buffers(
 
 Status FragmentConsolidator::set_config(const Config& config) {
   // Set the consolidation config for ease of use
-  Config merged_config = storage_manager_->config();
+  Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
   config_.amplification_ = 0.0f;
@@ -1035,9 +1014,8 @@ Status FragmentConsolidator::write_vacuum_file(
   }
 
   auto data = ss.str();
-  RETURN_NOT_OK(
-      storage_manager_->vfs()->write(vac_uri, data.c_str(), data.size()));
-  RETURN_NOT_OK(storage_manager_->vfs()->close_file(vac_uri));
+  throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
+  throw_if_not_ok(resources_.vfs().close_file(vac_uri));
 
   return Status::Ok();
 }

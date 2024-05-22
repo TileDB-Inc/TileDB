@@ -108,6 +108,16 @@ class Group {
   Status open(
       QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
 
+  /**
+   * Closes a group opened for reads.
+   *
+   * @return Status
+   */
+  inline Status close_for_reads() {
+    // Closing a group opened for reads does nothing at present.
+    return Status::Ok();
+  }
+
   /** Closes the group and frees all memory. */
   Status close();
 
@@ -117,11 +127,13 @@ class Group {
   void clear();
 
   /**
-   * Deletes data from and closes a group opened in MODIFY_EXCLUSIVE mode.
    *
-   * Note: if recursive == false, data added to the group will be left as-is.
+   * Handles local and remote deletion of data from a group with the given URI.
    *
-   * @param uri The address of the group to be deleted.
+   * @pre The group must be opened in MODIFY_EXCLUSIVE mode.
+   * @note If recursive == false, data added to the group will be left as-is.
+   *
+   * @param uri The URI of the group to be deleted.
    * @param recursive True if all data inside the group is to be deleted.
    */
   void delete_group(const URI& uri, bool recursive = false);

@@ -566,6 +566,7 @@ capi_return_t tiledb_deserialize_group_metadata(
 
   throw_if_not_ok(tiledb::sm::serialization::metadata_deserialize(
       group->group().unsafe_metadata(),
+      group->group().config(),
       static_cast<tiledb::sm::SerializationType>(serialize_type),
       buffer->buffer()));
 
@@ -576,8 +577,7 @@ capi_return_t tiledb_group_consolidate_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
 
-  auto cfg =
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config();
+  auto cfg = (config == nullptr) ? ctx->config() : config->config();
   throw_if_not_ok(
       ctx->storage_manager()->group_metadata_consolidate(group_uri, cfg));
 
@@ -588,8 +588,7 @@ capi_return_t tiledb_group_vacuum_metadata(
     tiledb_ctx_handle_t* ctx, const char* group_uri, tiledb_config_t* config) {
   ensure_group_uri_argument_is_valid(group_uri);
 
-  auto cfg =
-      (config == nullptr) ? ctx->storage_manager()->config() : config->config();
+  auto cfg = (config == nullptr) ? ctx->config() : config->config();
   ctx->storage_manager()->group_metadata_vacuum(group_uri, cfg);
 
   return TILEDB_OK;

@@ -181,7 +181,7 @@ Status UnorderedWriter::alloc_frag_meta() {
 
 void UnorderedWriter::clean_up() {
   if (frag_uri_.has_value()) {
-    throw_if_not_ok(storage_manager_->vfs()->remove_dir(frag_uri_.value()));
+    throw_if_not_ok(resources_.vfs().remove_dir(frag_uri_.value()));
   }
 }
 
@@ -732,8 +732,7 @@ Status UnorderedWriter::unordered_write() {
     // The following will make the fragment visible
     URI commit_uri =
         array_->array_directory().get_commit_uri(frag_uri_.value());
-
-    RETURN_NOT_OK(storage_manager_->vfs()->touch(commit_uri));
+    throw_if_not_ok(resources_.vfs().touch(commit_uri));
 
     // Clear some data to prevent it from being serialized.
     cell_pos_.clear();

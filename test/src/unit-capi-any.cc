@@ -192,7 +192,7 @@ void AnyFx::read_array(const std::string& array_name) {
   // Get maximum buffer sizes
   uint64_t size_off = 32;
   uint64_t size_val = 32;
-  uint64_t subarray[] = {1, 4};
+  uint64_t sub[] = {1, 4};
 
   // Prepare cell buffers
   auto buffer_a1_off = new uint64_t[size_off / sizeof(uint64_t)];
@@ -202,6 +202,9 @@ void AnyFx::read_array(const std::string& array_name) {
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx, array, &subarray);
+  CHECK(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(ctx, query, "a1", buffer_a1_val, &size_val);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
@@ -209,7 +212,9 @@ void AnyFx::read_array(const std::string& array_name) {
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx, query, subarray);
+  rc = tiledb_subarray_set_subarray(ctx, subarray, sub);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx, query, subarray);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
@@ -243,6 +248,7 @@ void AnyFx::read_array(const std::string& array_name) {
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   delete[] buffer_a1_off;
   delete[] buffer_a1_val;
 }

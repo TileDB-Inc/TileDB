@@ -252,9 +252,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
   bool initial_load =
       tile_offsets_min_frag_idx_ == std::numeric_limits<unsigned>::max() &&
       tile_offsets_max_frag_idx_ == 0;
-  uint64_t available_memory =
-      array_memory_tracker_->get_memory_available() -
-      array_memory_tracker_->get_memory_usage(MemoryType::TILE_OFFSETS);
+  uint64_t available_memory = array_memory_tracker_->get_memory_available();
   auto& relevant_fragments = subarray_.relevant_fragments();
 
   if (!partial_tile_offsets_loading_) {
@@ -292,7 +290,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::load_tile_offsets_data() {
         for (unsigned f = tile_offsets_min_frag_idx_;
              f < tile_offsets_max_frag_idx_;
              f++) {
-          fragment_metadata_[f]->free_tile_offsets();
+          fragment_metadata_[f]->loaded_metadata()->free_tile_offsets();
         }
 
         tile_offsets_min_frag_idx_ = tile_offsets_max_frag_idx_;

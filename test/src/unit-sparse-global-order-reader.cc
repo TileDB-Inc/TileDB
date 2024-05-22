@@ -365,8 +365,14 @@ int32_t CSparseGlobalOrderFx::read(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   if (qc_idx != 0) {
@@ -448,8 +454,14 @@ int32_t CSparseGlobalOrderFx::read_strings(
 
   if (set_subarray) {
     // Set subarray.
-    rc = tiledb_query_set_subarray(ctx_, query, subarray.data());
+    tiledb_subarray_t* sub;
+    rc = tiledb_subarray_alloc(ctx_, array, &sub);
     CHECK(rc == TILEDB_OK);
+    rc = tiledb_subarray_set_subarray(ctx_, sub, subarray.data());
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+    CHECK(rc == TILEDB_OK);
+    tiledb_subarray_free(&sub);
   }
 
   rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
@@ -776,10 +788,10 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // Two result tile (2 * (~3000 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "12000";
-  ratio_coords_ = "0.30";
+  total_budget_ = "30000";
+  ratio_coords_ = "0.12";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -858,7 +870,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (8 + ~440) will be bigger than the budget (400).
-  total_budget_ = "10000";
+  total_budget_ = "13000";
   ratio_coords_ = "0.04";
   update_config();
 
@@ -1195,7 +1207,7 @@ TEST_CASE(
     "Sparse global order reader: attribute copy memory limit",
     "[sparse-global-order][attribute-copy][memory-limit][rest]") {
   Config config;
-  config["sm.mem.total_budget"] = "10000";
+  config["sm.mem.total_budget"] = "15000";
   VFSTestSetup vfs_test_setup(config.ptr().get());
   std::string array_name = vfs_test_setup.array_uri("test_sparse_global_order");
   auto ctx = vfs_test_setup.ctx();
@@ -1300,9 +1312,9 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords, &coords_size, data, &data_size);
   }
 
-  // Two result tile (2 * (~1200 + 8) will be bigger than the per fragment
+  // Two result tile (2 * (~2600 + 8) will be bigger than the per fragment
   // budget (1000).
-  total_budget_ = "12000";
+  total_budget_ = "26000";
   ratio_coords_ = "0.30";
   update_config();
 

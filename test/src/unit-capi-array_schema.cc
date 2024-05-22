@@ -1083,6 +1083,26 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ArraySchemaFx,
+    "C API: Test array schema with invalid cell/tile order",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that UNORDERED order fails
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
     "C API: Test array schema with invalid dimension domain and tile extent",
     "[capi][array-schema]") {
   // Domain range exceeds type range - error
@@ -1988,7 +2008,7 @@ TEST_CASE_METHOD(
   int is_empty = false;
   rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, dom, &is_empty);
   REQUIRE(rc == TILEDB_ERR);
-  void* subarray = nullptr;
+  void* sub = nullptr;
 
   // Get non-empty domain per dimension
   dom = nullptr;
@@ -2007,12 +2027,17 @@ TEST_CASE_METHOD(
       ctx_, array, "d2", dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
 
+  // Subarray checks
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Query checks
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
   uint64_t size = 1024;
   rc = tiledb_query_set_data_buffer(ctx_, query, "buff", buff, &size);
@@ -2031,6 +2056,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&read_dom);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   tiledb_array_schema_free(&array_schema);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
