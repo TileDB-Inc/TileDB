@@ -1126,7 +1126,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one as the budget is split across two potential reads. Fixed tiles are
   // both 40 so they both fit in the budget.
-  total_budget_ = "1205";
+  total_budget_ = "1209";
   update_config();
 
   // Try to read.

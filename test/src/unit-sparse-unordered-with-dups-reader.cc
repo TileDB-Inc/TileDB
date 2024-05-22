@@ -1020,8 +1020,8 @@ TEST_CASE_METHOD(
   }
 
   // Two result tile (2 * ~1208) will be bigger than the budget (1500).
-  total_budget_ = "30000";
-  ratio_coords_ = "0.06";
+  total_budget_ = "40000";
+  ratio_coords_ = "0.04";
   update_config();
 
   tiledb_array_t* array = nullptr;
@@ -1099,7 +1099,7 @@ TEST_CASE_METHOD(
   write_1d_fragment(coords, &coords_size, data, &data_size);
 
   // One result tile (~505) will be larger than leftover memory.
-  total_budget_ = "1500";
+  total_budget_ = "1800";
   ratio_array_data_ = "0.99";
   ratio_coords_ = "0.0005";
   update_config();
