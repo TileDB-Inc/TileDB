@@ -514,31 +514,33 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * the FilePredicate on each entry collected and the DirectoryPredicate on
    * common prefixes for pruning.
    *
-   * Currently this API is only supported for Posix and S3.
+   * Currently this API is only supported for local files, S3 and Azure.
    *
    * @param parent The parent prefix to list sub-paths.
    * @param f The FilePredicate to invoke on each object for filtering.
    * @param d The DirectoryPredicate to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to list the objects recursively.
    * @return Vector of results with each entry being a pair of the string URI
    *    and object size.
    */
   template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
-  LsObjects ls_recursive(
+  LsObjects ls_filtered(
       const URI& parent,
       [[maybe_unused]] F f,
-      [[maybe_unused]] D d = accept_all_dirs) const {
+      [[maybe_unused]] D d,
+      bool recursive) const {
     LsObjects results;
     try {
       if (parent.is_file()) {
 #ifdef _WIN32
-        results = win_.ls_filtered(parent, f, d, true);
+        results = win_.ls_filtered(parent, f, d, recursive);
 #else
-        results = posix_.ls_filtered(parent, f, d, true);
+        results = posix_.ls_filtered(parent, f, d, recursive);
 #endif
       } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-        results = s3().ls_filtered(parent, f, d, true);
+        results = s3().ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException("TileDB was built without S3 support");
 #endif
@@ -552,9 +554,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #endif
       } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
+        results = azure_.ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException(
             "TileDB was built without Azure support");
@@ -579,6 +579,28 @@ class VFS : private VFSBase, protected S3_within_VFS {
       throw;
     }
     return results;
+  }
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilePredicate on each entry collected and the
+   * DirectoryPredicate on common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
+    return ls_filtered(parent, f, d, true);
   }
 
   /**
