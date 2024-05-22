@@ -546,9 +546,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #endif
       } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
+        results = gcs_.ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException("TileDB was built without GCS support");
 #endif
@@ -586,7 +584,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * invoking the FilePredicate on each entry collected and the
    * DirectoryPredicate on common prefixes for pruning.
    *
-   * Currently this API is only supported for local files, S3 and Azure.
+   * Currently this API is only supported for local files, S3, Azure and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
    * @param f The FilePredicate to invoke on each object for filtering.

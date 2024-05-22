@@ -43,6 +43,7 @@
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
 #include "tiledb/sm/misc/constants.h"
 #include "uri.h"
@@ -223,6 +224,26 @@ class GCS {
       std::vector<std::string>* paths,
       const std::string& delimiter = "/",
       int max_paths = -1) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& uri,
+      F file_filter,
+      [[maybe_unused]] D directory_filter = accept_all_dirs,
+      bool recursive = false) const {
+    return ls_filtered_impl(uri, std::move(file_filter), recursive);
+  }
 
   /**
    *
@@ -598,6 +619,18 @@ class GCS {
    * @return Status
    */
   Status is_bucket(const std::string& bucket_name, bool* const is_bucket) const;
+
+  /**
+   * Contains the implementation of ls_filtered.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param recursive Whether to recursively list subdirectories.
+   */
+  LsObjects ls_filtered_impl(
+      const URI& uri,
+      std::function<bool(const std::string_view, uint64_t)> file_filter,
+      bool recursive) const;
 
   /**
    * Thread-safe fetch of the write cache buffer in `write_cache_map_`.
