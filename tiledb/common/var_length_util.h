@@ -60,7 +60,6 @@
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range S>
-  requires std::ranges::viewable_range<R> && std::ranges::viewable_range<S>
 void lengths_to_offsets(const R& lengths, S& offsets) {
   if (std::size(offsets) == std::size(lengths) + 1) {
     std::inclusive_scan(
@@ -87,7 +86,6 @@ void lengths_to_offsets(const R& lengths, S& offsets) {
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range S>
-  requires std::ranges::viewable_range<R> && std::ranges::viewable_range<S>
 void offsets_to_lengths(const R& offsets, S& lengths) {
   assert(std::size(offsets) == std::size(lengths) + 1);
   std::adjacent_difference(
@@ -109,7 +107,6 @@ void offsets_to_lengths(const R& offsets, S& lengths) {
 template <
     std::ranges::random_access_range R,
     std::ranges::random_access_range S>
-  requires std::ranges::viewable_range<R> && std::ranges::viewable_range<S>
 void offsets_to_lengths(const R& offsets, S& lengths, size_t total_length) {
   assert(std::size(offsets) == std::size(lengths));
   std::adjacent_difference(
