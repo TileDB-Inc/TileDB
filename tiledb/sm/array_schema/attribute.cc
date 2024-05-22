@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -299,7 +299,7 @@ void Attribute::set_cell_val_num(unsigned int cell_val_num) {
 
 void Attribute::validate_cell_val_num(unsigned int cell_val_num) const {
   if (type_ == Datatype::ANY && cell_val_num != constants::var_num) {
-    throw AttributeStatusException(
+    throw AttributeException(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized");
   }
@@ -321,6 +321,11 @@ void Attribute::validate_cell_val_num(unsigned int cell_val_num) const {
             "' must have `cell_val_num=1`.");
       }
     }
+  }
+
+  // check zero last so we get the more informative error first
+  if (cell_val_num == 0) {
+    throw AttributeException("Cannot set zero values per cell");
   }
 }
 

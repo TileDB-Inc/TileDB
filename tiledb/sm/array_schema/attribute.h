@@ -56,7 +56,17 @@ class Enumeration;
 enum class Compressor : uint8_t;
 enum class Datatype : uint8_t;
 
-/** Manipulates a TileDB attribute. */
+/**
+ * Manipulates a TileDB attribute.
+ *
+ * Notes:
+ *
+ * A valid `cell_val_num` depends on the Attribute datatype and ordering.
+ * For `Datatype::ANY`, the only valid value is `constants::var_num`.
+ * If the attribute is unordered, then all other datatypes support any value.
+ * If the attribute is ordered, then an Attribute of `Datatype::STRING_ASCII`
+ * must have `constants::var_num`, and all other datatypes must have 1.
+ */
 class Attribute {
  public:
   /* ********************************* */
@@ -243,13 +253,11 @@ class Attribute {
   /**
    * Sets the attribute number of values per cell.
    *
-   * @throws AttributeException if `cell_val_num` is invalid
+   * @throws AttributeException if `cell_val_num` is invalid. See class
+   * documentation.
    *
-   * A valid `cell_val_num` depends on the Attribute datatype and ordering.
-   * For `Datatype::ANY`, the only valid value is `constants::var_num`.
-   * If the attribute is unordered, then all other datatypes support any value.
-   * If the attribute is ordered, then an Attribute of `Datatype::STRING_ASCII`
-   * must have `constants::var_num`, and all other datatypes must have 1.
+   * Postcondition: `this->cell_val_num() == cell_val_num` if `cell_val_num` is
+   * valid, and `this->cell_val_num()` is unchanged otherwise.
    */
   void set_cell_val_num(unsigned int cell_val_num);
 
