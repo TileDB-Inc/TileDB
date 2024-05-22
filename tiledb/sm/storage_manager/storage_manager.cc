@@ -395,7 +395,7 @@ Status StorageManagerCanonical::array_upgrade_version(
 
 Status StorageManagerCanonical::async_push_query(Query* query) {
   cancelable_tasks_.execute(
-      compute_tp(),
+      &resources_.compute_tp(),
       [this, query]() {
         // Process query.
         Status st = query_submit(query);

@@ -164,7 +164,7 @@ Status Group::open(
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
           &resources_.vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.compute_tp(),
           group_uri_,
           timestamp_start,
           timestamp_end);
@@ -178,7 +178,7 @@ Status Group::open(
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
           &resources_.vfs(),
-          storage_manager_->compute_tp(),
+          &resources_.compute_tp(),
           group_uri_,
           timestamp_start,
           (timestamp_end != 0) ? timestamp_end :
@@ -758,7 +758,7 @@ void Group::load_metadata_from_storage(
             uri,
             0,
             encryption_key,
-            storage_manager_->resources().ephemeral_memory_tracker());
+            resources_.ephemeral_memory_tracker());
 
         return Status::Ok();
       }));

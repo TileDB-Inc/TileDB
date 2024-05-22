@@ -446,12 +446,11 @@ void FragmentConsolidator::vacuum(const char* array_name) {
     array_dir.write_commit_ignore_file(commit_uris_to_ignore);
   }
 
-  auto& vfs = resources_.vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
   // Delete fragment directories
+  auto& vfs = resources_.vfs();
+  auto& compute_tp = resources_.compute_tp();
   throw_if_not_ok(parallel_for(
-      compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
+      &compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
         // Remove the commit file, if present.
         auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
         bool is_file = false;
@@ -471,7 +470,7 @@ void FragmentConsolidator::vacuum(const char* array_name) {
 
   // Delete the vacuum files.
   vfs.remove_files(
-      compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
+      &compute_tp, filtered_fragment_uris.fragment_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

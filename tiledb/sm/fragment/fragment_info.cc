@@ -867,7 +867,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
-  RETURN_NOT_OK(parallel_for(
+  throw_if_not_ok(parallel_for(
       &resources_->compute_tp(),
       0,
       fragment_num,

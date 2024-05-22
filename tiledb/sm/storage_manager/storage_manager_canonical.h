@@ -78,7 +78,6 @@ class Metadata;
 class MemoryTracker;
 class Query;
 class RestClient;
-class VFS;
 
 enum class EncryptionType : uint8_t;
 enum class ObjectType : uint8_t;
@@ -217,11 +216,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status group_create(const std::string& group);
-
-  /** Returns the thread pool for compute-bound tasks. */
-  [[nodiscard]] inline ThreadPool* compute_tp() const {
-    return &(resources_.compute_tp());
-  }
 
   /** Returns the thread pool for io-bound tasks. */
   [[nodiscard]] inline ThreadPool* io_tp() const {
