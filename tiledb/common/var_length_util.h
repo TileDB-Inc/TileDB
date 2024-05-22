@@ -111,7 +111,8 @@ void offsets_to_lengths(const R& offsets, S& lengths, size_t total_length) {
   assert(std::size(offsets) == std::size(lengths));
   std::adjacent_difference(
       std::begin(offsets) + 1, std::end(offsets), std::begin(lengths));
-  lengths.back() = total_length - offsets.back();
+  lengths.back() =
+      static_cast<decltype(offsets.back())>(total_length) - offsets.back();
 }
 
 #endif  // TILEDB_VAR_LENGTH_UTIL_H
