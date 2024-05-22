@@ -114,11 +114,12 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
   auto& vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
-  GroupDirectory group_dir;
+  shared_ptr<GroupDirectory> group_dir;
   try {
-    group_dir = GroupDirectory(
-        &vfs,
-        &compute_tp,
+    group_dir = make_shared<GroupDirectory>(
+        HERE(),
+        vfs,
+        compute_tp,
         URI(group_name),
         0,
         std::numeric_limits<uint64_t>::max());
@@ -127,8 +128,8 @@ void GroupMetaConsolidator::vacuum(const char* group_name) {
   }
 
   // Delete the group metadata and vacuum files
-  vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());
-  vfs.remove_files(&compute_tp, group_dir.group_meta_vac_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, group_dir->group_meta_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, group_dir->group_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

@@ -163,8 +163,8 @@ Status Group::open(
     try {
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+          resources_.vfs(),
+          resources_.compute_tp(),
           group_uri_,
           timestamp_start,
           timestamp_end);
@@ -177,8 +177,8 @@ Status Group::open(
     try {
       group_dir_ = make_shared<GroupDirectory>(
           HERE(),
-          &resources_.vfs(),
-          &resources_.compute_tp(),
+          resources_.vfs(),
+          resources_.compute_tp(),
           group_uri_,
           timestamp_start,
           (timestamp_end != 0) ? timestamp_end :
@@ -355,7 +355,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     auto& vfs = resources_.vfs();
     auto& compute_tp = resources_.compute_tp();
     auto group_dir = GroupDirectory(
-        &vfs, &compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
+        vfs, compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
 
     // Delete the group detail, group metadata and group files
     vfs.remove_files(&compute_tp, group_dir.group_detail_uris());
