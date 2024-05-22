@@ -49,25 +49,20 @@ class Config;
 class VFS;
 
 class StorageManagerStub {
-  ContextResources& resources_;
   Config config_;
 
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      ContextResources& resources,
+      ContextResources&,
       std::shared_ptr<common::Logger>,
       const Config& config)
-      : resources_(resources)
-      , config_(config) {
+      : config_(config) {
   }
 
-  inline common::ThreadPool* io_tp() {
-    return &resources_.io_tp();
-  }
   inline Status cancel_all_tasks() {
     return Status{};
-  };
+  }
   inline Status group_create(const std::string&) {
     throw std::logic_error(
         "StorageManagerStub does not support group creation");
