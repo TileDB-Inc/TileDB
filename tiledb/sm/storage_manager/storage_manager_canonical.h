@@ -236,24 +236,6 @@ class StorageManagerCanonical {
     return resources_.rest_client().get();
   }
 
-  /**
-   * Checks if the input URI represents an array.
-   *
-   * @param The URI to be checked.
-   * @return bool
-   */
-  bool is_array(const URI& uri) const;
-
-  /**
-   * Checks if the input URI represents a group.
-   *
-   * @param The URI to be checked.
-   * @param is_group Set to `true` if the URI is a group and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_group(const URI& uri, bool* is_group) const;
-
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
 

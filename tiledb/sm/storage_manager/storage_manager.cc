@@ -64,6 +64,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
@@ -160,11 +161,11 @@ Status StorageManagerCanonical::array_create(
   }
 
   // Check if array exists
-  bool exists = is_array(array_uri);
-  if (exists)
+  if (is_array(resources_, array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create array; Array '") + array_uri.c_str() +
         "' already exists"));
+  }
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
   array_schema->set_array_uri(array_uri);
@@ -270,7 +271,7 @@ Status StorageManager::array_evolve_schema(
       tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
 
   // Check if array exists
-  if (!is_array(array_uri)) {
+  if (!is_array(resources_, array_uri)) {
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot evolve array; Array '") + array_uri.c_str() +
         "' not exists"));
@@ -315,7 +316,7 @@ Status StorageManager::array_evolve_schema(
 Status StorageManagerCanonical::array_upgrade_version(
     const URI& array_uri, const Config& override_config) {
   // Check if array exists
-  if (!is_array(array_uri))
+  if (!is_array(resources_, array_uri))
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
         "' does not exist"));
@@ -503,7 +504,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   // Check if group exists
   bool exists;
-  RETURN_NOT_OK(is_group(uri, &exists));
+  RETURN_NOT_OK(is_group(resources_, uri, &exists));
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create group; Group '") + uri.c_str() +
@@ -540,55 +541,6 @@ void StorageManagerCanonical::increment_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-bool StorageManagerCanonical::is_array(const URI& uri) const {
-  // Handle remote array
-  if (uri.is_tiledb()) {
-    auto&& [st, exists] = rest_client()->check_array_exists_from_rest(uri);
-    throw_if_not_ok(st);
-    assert(exists.has_value());
-    return exists.value();
-  } else {
-    // Check if the schema directory exists or not
-    bool dir_exists = false;
-    throw_if_not_ok(resources_.vfs().is_dir(
-        uri.join_path(constants::array_schema_dir_name), &dir_exists));
-
-    if (dir_exists) {
-      return true;
-    }
-
-    // If there is no schema directory, we check schema file
-    bool schema_exists = false;
-    throw_if_not_ok(resources_.vfs().is_file(
-        uri.join_path(constants::array_schema_filename), &schema_exists));
-    return schema_exists;
-  }
-
-  // TODO: mark unreachable
-}
-
-Status StorageManagerCanonical::is_group(const URI& uri, bool* is_group) const {
-  // Handle remote array
-  if (uri.is_tiledb()) {
-    auto&& [st, exists] = rest_client()->check_group_exists_from_rest(uri);
-    RETURN_NOT_OK(st);
-    *is_group = *exists;
-  } else {
-    // Check for new group details directory
-    throw_if_not_ok(resources_.vfs().is_dir(
-        uri.join_path(constants::group_detail_dir_name), is_group));
-
-    if (*is_group) {
-      return Status::Ok();
-    }
-
-    // Fall back to older group file to check for legacy (pre-format 12) groups
-    throw_if_not_ok(resources_.vfs().is_file(
-        uri.join_path(constants::group_filename), is_group));
-  }
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::object_type(
     const URI& uri, ObjectType* type) const {
   URI dir_uri = uri;
@@ -608,13 +560,13 @@ Status StorageManagerCanonical::object_type(
       return Status::Ok();
     }
   }
-  bool exists = is_array(uri);
+  bool exists = is_array(resources_, uri);
   if (exists) {
     *type = ObjectType::ARRAY;
     return Status::Ok();
   }
 
-  RETURN_NOT_OK(is_group(uri, &exists));
+  RETURN_NOT_OK(is_group(resources_, uri, &exists));
   if (exists) {
     *type = ObjectType::GROUP;
     return Status::Ok();
