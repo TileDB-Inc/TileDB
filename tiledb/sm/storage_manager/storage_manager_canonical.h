@@ -209,14 +209,6 @@ class StorageManagerCanonical {
    */
   Status group_create(const std::string& group);
 
-  /**
-   * If the storage manager was configured with a REST server, return the
-   * client instance. Else, return nullptr.
-   */
-  inline RestClient* rest_client() const {
-    return resources_.rest_client().get();
-  }
-
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
 
