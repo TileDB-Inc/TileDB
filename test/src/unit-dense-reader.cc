@@ -1126,7 +1126,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one as the budget is split across two potential reads. Fixed tiles are
   // both 40 so they both fit in the budget.
-  total_budget_ = "1209";
+  total_budget_ = "2500";
   tile_upper_memory_limit_ = "200";
   update_config();
 
@@ -1193,6 +1193,9 @@ TEST_CASE_METHOD(
   CHECK(!std::memcmp(a2_data.data(), a2_data_r, a2_data_size));
   CHECK(a2_offsets_r_size == a2_offsets_size);
   CHECK(!std::memcmp(a2_offsets.data(), a2_offsets_r, a2_offsets_size));
+
+  total_budget_ = "1100";
+  update_config();
 
   // Now read with QC set for a1 and a2, should fail.
   read_fixed_strings(

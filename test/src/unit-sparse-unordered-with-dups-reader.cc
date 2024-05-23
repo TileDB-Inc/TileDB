@@ -61,6 +61,7 @@ struct CSparseUnorderedWithDupsFx {
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups";
   std::string total_budget_;
+  std::string tile_upper_memory_limit_;
   std::string ratio_tile_ranges_;
   std::string ratio_array_data_;
   std::string ratio_coords_;
@@ -165,6 +166,16 @@ void CSparseUnorderedWithDupsFx::update_config() {
           config, "sm.mem.total_budget", total_budget_.c_str(), &error) ==
       TILEDB_OK);
   REQUIRE(error == nullptr);
+
+  if (tile_upper_memory_limit_ != "") {
+    REQUIRE(
+      tiledb_config_set(
+          config,
+          "sm.mem.tile_upper_memory_limit",
+          tile_upper_memory_limit_.c_str(),
+          &error) == TILEDB_OK);
+    REQUIRE(error == nullptr);
+  }
 
   REQUIRE(
       tiledb_config_set(
@@ -932,7 +943,8 @@ TEST_CASE_METHOD(
   uint64_t data2_size = data.size() * sizeof(int);
   write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
 
-  total_budget_ = "1625000";
+  total_budget_ = "1900000";
+  tile_upper_memory_limit_ = "100000";
   ratio_array_data_ = set_subarray ? "0.003" : "0.002";
   partial_tile_offsets_loading_ = "true";
   update_config();
