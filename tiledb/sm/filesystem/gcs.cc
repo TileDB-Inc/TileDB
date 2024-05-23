@@ -565,18 +565,18 @@ LsObjects GCS::ls_filtered_impl(
         std::string("URI is not a GCS URI: " + uri_dir.to_string())));
   }
 
+  std::string prefix = uri_dir.backend_name() + "://";
   std::string bucket_name;
   std::string object_path;
-  bool is_gcs = stdx::string::starts_with(uri_dir.to_string(), "gcs://");
   throw_if_not_ok(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
 
   LsObjects result;
 
   auto to_directory_entry =
-      [&bucket_name, is_gcs](const google::cloud::storage::ObjectMetadata& obj)
+      [&bucket_name, &prefix](const google::cloud::storage::ObjectMetadata& obj)
       -> LsObjects::value_type {
     return {
-        (is_gcs ? "gcs://" : "gs://") + bucket_name + "/" +
+        prefix + bucket_name + "/" +
             remove_front_slash(remove_trailing_slash(obj.name())),
         obj.size()};
   };
@@ -586,9 +586,9 @@ LsObjects GCS::ls_filtered_impl(
         bucket_name, google::cloud::storage::Prefix(std::move(object_path)));
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
-        throw StatusException(Status_GCSError(std::string(
+        throw GCSException(std::string(
             "List objects failed on: " + uri.to_string() + " (" +
-            object_metadata.status().message() + ")")));
+            object_metadata.status().message() + ")"));
       }
 
       auto entry = to_directory_entry(*object_metadata);
@@ -616,7 +616,7 @@ LsObjects GCS::ls_filtered_impl(
                 *object_metadata));
       } else {
         entry = {
-            (is_gcs ? "gcs://" : "gs://") + bucket_name + "/" +
+            prefix + bucket_name + "/" +
                 absl::get<std::string>(*object_metadata),
             0};
       }

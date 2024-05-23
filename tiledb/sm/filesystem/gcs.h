@@ -70,6 +70,14 @@ class directory_entry;
 
 namespace sm {
 
+/** Class for GCS status exceptions. */
+class GCSException : public StatusException {
+ public:
+  explicit GCSException(const std::string& msg)
+      : StatusException("GCS", msg) {
+  }
+};
+
 class GCS {
  public:
   /* ********************************* */
@@ -235,6 +243,8 @@ class GCS {
    * @param d The DirectoryPredicate to invoke on each common prefix for
    *    pruning. This is currently unused, but is kept here for future support.
    * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
    */
   template <FilePredicate F, DirectoryPredicate D>
   LsObjects ls_filtered(
@@ -626,6 +636,8 @@ class GCS {
    * @param uri The parent path to list sub-paths.
    * @param f The FilePredicate to invoke on each object for filtering.
    * @param recursive Whether to recursively list subdirectories.
+   * @return Vector of results with each entry being a pair of the string URI
+   * and object size.
    */
   LsObjects ls_filtered_impl(
       const URI& uri,
