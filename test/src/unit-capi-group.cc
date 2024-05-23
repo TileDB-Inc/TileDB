@@ -1464,16 +1464,15 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 
-TEST_CASE_METHOD(GroupFx, "C API: Group, dump", "[capi][group][dump]") {
+TEST_CASE_METHOD(GroupFx, "C API: Group, dump", "[capi][group][dump][rest]") {
   // Create and open group in write mode
-  // TODO: refactor for each supported FS.
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
 
-  tiledb::sm::URI group1_uri(temp_dir + "group1");
+  std::string group1_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group1");
   REQUIRE(tiledb_group_create(ctx_, group1_uri.c_str()) == TILEDB_OK);
 
-  tiledb::sm::URI group2_uri(temp_dir + "group2");
+  std::string group2_uri = vfs_array_uri(fs_vec_[0], temp_dir + "group2");
   REQUIRE(tiledb_group_create(ctx_, group2_uri.c_str()) == TILEDB_OK);
 
   tiledb_group_t* group1;

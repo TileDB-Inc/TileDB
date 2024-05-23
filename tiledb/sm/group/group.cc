@@ -687,31 +687,26 @@ std::string Group::dump(
 
   for (const auto& member_entry : members()) {
     const auto& it = member_entry.second;
-    URI member_uri = it->uri();
-    if (it->relative()) {
-      member_uri = group_uri_.join_path(it->uri().to_string());
-    }
-
     ss << "|" << indent << l_indent << " " << *it;
-    bool do_recurse = false;
     if (it->type() == ObjectType::GROUP && recursive) {
-      // Before listing the group's members, check if the group exists in
-      // storage. If it does not, leave a message in the string.
-      ObjectType member_type = ObjectType::INVALID;
-      throw_if_not_ok(storage_manager_->object_type(member_uri, &member_type));
-      if (member_type == ObjectType::GROUP) {
-        do_recurse = true;
-      } else {
-        ss << " (does not exist)";
+      URI member_uri = it->uri();
+      if (it->relative()) {
+        member_uri = group_uri_.join_path(it->uri().to_string());
       }
-    }
-    ss << std::endl;
 
-    if (do_recurse) {
       Group group_rec(resources_, member_uri, storage_manager_);
-      throw_if_not_ok(group_rec.open(QueryType::READ));
-      ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
-      throw_if_not_ok(group_rec.close());
+      auto st = group_rec.open(QueryType::READ);
+      if (st.ok()) {
+        ss << std::endl;
+        ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
+        throw_if_not_ok(group_rec.close());
+      } else {
+        // If the group no longer exists in storage it will be listed but we
+        // won't be able to dump its members
+        ss << " (does not exist)" << std::endl;
+      }
+    } else {
+      ss << std::endl;
     }
   }
 
