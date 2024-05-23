@@ -41,16 +41,18 @@
 #include <functional>
 #include <stdexcept>
 
-/** Inclusion predicate for objects collected by ls */
+/** Inclusion predicate for objects collected by ls. */
 template <class F>
-concept FilePredicate = true;
+concept FilePredicate = std::predicate<F, const std::string_view, uint64_t>;
 
 /**
- * DirectoryPredicate is currently unused, but is kept here for adding directory
- * pruning support in the future.
+ * Recursion predicate for directories collected by ls.
+ *
+ * Directory pruning is currently supported only in local filesystem, and not
+ * exposed in the user-facing C API.
  */
-template <class F>
-concept DirectoryPredicate = true;
+template <class D>
+concept DirectoryPredicate = std::predicate<D, const std::string_view>;
 
 namespace tiledb::sm {
 class LsScanException : public StatusException {
