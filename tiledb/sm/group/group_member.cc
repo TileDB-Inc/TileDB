@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,8 +36,15 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+class GroupMemberException : public StatusException {
+ public:
+  explicit GroupMemberException(const std::string& message)
+      : StatusException("GroupMember", message) {
+  }
+};
+
 GroupMember::GroupMember(
     const URI& uri,
     const ObjectType& type,
@@ -78,8 +85,7 @@ format_version_t GroupMember::version() const {
 }
 
 void GroupMember::serialize(Serializer&) {
-  throw StatusException(
-      Status_GroupMemberError("Invalid call to GroupMember::serialize"));
+  throw GroupMemberException("Invalid call to GroupMember::serialize");
 }
 
 shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
@@ -90,11 +96,10 @@ shared_ptr<GroupMember> GroupMember::deserialize(Deserializer& deserializer) {
   } else if (version == 2) {
     return GroupMemberV2::deserialize(deserializer);
   }
-  throw StatusException(Status_GroupError(
-      "Unsupported group member version " + std::to_string(version)));
+  throw GroupMemberException(
+      "Unsupported group member version " + std::to_string(version));
 }
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::GroupMember& group_member) {

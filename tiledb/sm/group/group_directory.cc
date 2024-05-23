@@ -43,6 +43,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class GroupDirectoryException : public StatusException {
+ public:
+  explicit GroupDirectoryException(const std::string& message)
+      : StatusException("GroupDirectory", message) {
+  }
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -66,7 +73,7 @@ GroupDirectory::GroupDirectory(
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
-    throw std::logic_error(st.message());
+    throw GroupDirectoryException(st.message());
   }
 }
 
@@ -156,8 +163,7 @@ Status GroupDirectory::load() {
   }
 
   if (!is_group) {
-    return LOG_STATUS(
-        Status_GroupDirectoryError("Cannot open group; Group does not exist."));
+    throw GroupDirectoryException("Cannot open group; Group does not exist.");
   }
 
   // The URI manager has been loaded successfully

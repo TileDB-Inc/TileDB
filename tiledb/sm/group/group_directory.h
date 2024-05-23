@@ -61,6 +61,9 @@ class GroupDirectory {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
+  /** Constructor. */
+  GroupDirectory() = delete;
+
   /**
    * Constructor.
    *
