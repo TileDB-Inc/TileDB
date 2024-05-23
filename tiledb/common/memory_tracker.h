@@ -323,10 +323,11 @@ class MemoryTracker {
    */
   uint64_t get_memory_available() {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (total_counter_ + counters_[MemoryType::TILE_OFFSETS] > memory_budget_) {
+    if (legacy_memory_usage_ + counters_[MemoryType::TILE_OFFSETS] >
+        legacy_memory_budget_) {
       return 0;
     }
-    return memory_budget_ - total_counter_ -
+    return legacy_memory_budget_ - legacy_memory_usage_ -
            counters_[MemoryType::TILE_OFFSETS];
   }
 
