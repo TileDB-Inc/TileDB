@@ -169,11 +169,11 @@ void CSparseUnorderedWithDupsFx::update_config() {
 
   if (tile_upper_memory_limit_ != "") {
     REQUIRE(
-      tiledb_config_set(
-          config,
-          "sm.mem.tile_upper_memory_limit",
-          tile_upper_memory_limit_.c_str(),
-          &error) == TILEDB_OK);
+        tiledb_config_set(
+            config,
+            "sm.mem.tile_upper_memory_limit",
+            tile_upper_memory_limit_.c_str(),
+            &error) == TILEDB_OK);
     REQUIRE(error == nullptr);
   }
 
