@@ -55,7 +55,7 @@ on:
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
-  TILEDB_CI_OS: runner.os
+  TILEDB_CI_OS: ${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'Linux' || 'macOS' }}
   # Installing Python does not work on manylinux.
   TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
