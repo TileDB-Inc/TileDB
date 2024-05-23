@@ -1263,4 +1263,3 @@ TEST_CASE(
 
   do_invalid_pipeline_check(pipeline);
 }
- 
