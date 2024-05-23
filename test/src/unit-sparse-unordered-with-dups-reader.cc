@@ -914,10 +914,9 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
-    "Sparse unordered with dups reader: tile offsets forcing multiple "
-    "iterations",
+    "Sparse unordered with dups reader: tile offsets partial loading",
     "[sparse-unordered-with-dups][tile-offsets][multiple-iterations]") {
-  bool set_subarray = GENERATE(true, false);
+  bool enable_partial_tile_offsets_loading = GENERATE(true, false);
 
   // Create default array.
   reset_config();
@@ -945,45 +944,74 @@ TEST_CASE_METHOD(
 
   total_budget_ = "1900000";
   tile_upper_memory_limit_ = "100000";
-  ratio_array_data_ = set_subarray ? "0.003" : "0.002";
-  partial_tile_offsets_loading_ = "true";
+  ratio_array_data_ = "0.002";
+  partial_tile_offsets_loading_ =
+      enable_partial_tile_offsets_loading ? "true" : "false";
   update_config();
 
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  // Try to read.
   int coords_r[200];
   int data_r[200];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
-  auto rc = read(
-      set_subarray,
-      0,
-      coords_r,
-      &coords_r_size,
-      data_r,
-      &data_r_size,
-      &query,
-      &array);
-  CHECK(rc == TILEDB_OK);
+  auto rc = 0;
 
-  // Validate the results.
-  for (int i = 0; i < 200; i++) {
-    CHECK(coords_r[i] == i + 1);
-    CHECK(data_r[i] == i + 1);
+  // Try to read without partial tile offset reading. Should fail
+  if (!enable_partial_tile_offsets_loading) {
+    rc = read(
+        false,
+        0,
+        coords_r,
+        &coords_r_size,
+        data_r,
+        &data_r_size,
+        &query,
+        &array);
+    CHECK(rc == TILEDB_ERR);
+
+    tiledb_error_t* error = NULL;
+    rc = tiledb_ctx_get_last_error(ctx_, &error);
+    CHECK(rc == TILEDB_OK);
+
+    const char* msg;
+    rc = tiledb_error_message(error, &msg);
+    CHECK(rc == TILEDB_OK);
+
+    std::string error_str(msg);
+    CHECK(
+        error_str.find("Cannot load tile offsets, computed size") !=
+        std::string::npos);
+  } else {  // Try to read with partial tile offset reading. Should be ok
+    rc = read(
+        false,
+        0,
+        coords_r,
+        &coords_r_size,
+        data_r,
+        &data_r_size,
+        &query,
+        &array);
+    CHECK(rc == TILEDB_OK);
+
+    // Validate the results.
+    for (int i = 0; i < 200; i++) {
+      CHECK(coords_r[i] == i + 1);
+      CHECK(data_r[i] == i + 1);
+    }
+
+    // Check the internal loop count against expected value.
+    auto stats =
+        ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
+            ->stats();
+    REQUIRE(stats != nullptr);
+    auto counters = stats->counters();
+    REQUIRE(counters != nullptr);
+    auto loop_num =
+        counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
+    CHECK(2 == loop_num->second);
   }
-
-  // Check the internal loop count against expected value.
-  auto stats =
-      ((SparseUnorderedWithDupsReader<uint8_t>*)query->query_->strategy())
-          ->stats();
-  REQUIRE(stats != nullptr);
-  auto counters = stats->counters();
-  REQUIRE(counters != nullptr);
-  auto loop_num =
-      counters->find("Context.StorageManager.Query.Reader.internal_loop_num");
-  CHECK(2 == loop_num->second);
 
   // Clean up.
   rc = tiledb_array_close(ctx_, array);
