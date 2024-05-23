@@ -44,10 +44,8 @@ const tiledb::sm::ByteVecValue prepare_data() {
 
   ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
   PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
-  auto zstd_pool =
-      make_shared<BlockingResourcePool<ZStd::ZSTD_Decompress_Context>>(
-          HERE(), 1);
-  ZStd::decompress(zstd_pool, &input, &output);
+  ZStd::ZSTD_Decompress_Context ctx;
+  ZStd::decompress(ctx, &input, &output);
 
   return expanded_buffer;
 }

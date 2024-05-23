@@ -119,6 +119,18 @@ class ZStd {
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
 
+  /**
+   * Decompression function.
+   *
+   * @param decompress_ctx_pool decompression context
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write the decompressed data to.
+   */
+  static void decompress(
+      ZSTD_Decompress_Context& decompress_ctx,
+      ConstBuffer* input_buffer,
+      PreallocatedBuffer* output_buffer);
+
   /** Returns the default compression level. */
   static int default_level() {
     return default_level_;
