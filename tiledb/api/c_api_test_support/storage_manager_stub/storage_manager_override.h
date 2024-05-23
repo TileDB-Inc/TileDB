@@ -54,9 +54,7 @@ class StorageManagerStub {
  public:
   static constexpr bool is_overriding_class = true;
   StorageManagerStub(
-      ContextResources&,
-      std::shared_ptr<common::Logger>,
-      const Config& config)
+      ContextResources&, std::shared_ptr<common::Logger>, const Config& config)
       : config_(config) {
   }
 
