@@ -1229,6 +1229,9 @@ struct ArrayDeleteFragmentsTimestampsRequest {
 struct ArrayConsolidationRequest {
   config @0 :Config;
   # Config
+
+  fragments @1 :List(Text);
+  # Fragment list to consolidate
 }
 
 struct ArrayVacuumRequest {
