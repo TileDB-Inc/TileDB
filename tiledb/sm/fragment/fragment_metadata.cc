@@ -2547,6 +2547,8 @@ void FragmentMetadata::load_footer(
 
   unsigned num = array_schema_->attribute_num() + 1 + has_timestamps_ +
                  has_delete_meta_ * 2;
+
+  // If version < 5 we use zipped coordinates, otherwise separate
   num += (version_ >= 5) ? array_schema_->dim_num() : 0;
 
   loaded_metadata_ptr_->resize_offsets(num);

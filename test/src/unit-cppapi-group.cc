@@ -71,11 +71,6 @@ struct GroupCPPFx {
    */
   bool serialize_ = false;
 
-  const char* key_ = "0123456789abcdeF0123456789abcdeF";
-  const uint32_t key_len_ =
-      (uint32_t)strlen("0123456789abcdeF0123456789abcdeF");
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
-
   // Functions
   GroupCPPFx();
   ~GroupCPPFx();

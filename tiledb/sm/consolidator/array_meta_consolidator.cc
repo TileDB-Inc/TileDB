@@ -126,14 +126,13 @@ void ArrayMetaConsolidator::vacuum(const char* array_name) {
 
   // Get the array metadata URIs and vacuum file URIs to be vacuum
   auto& vfs = resources_.vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
+  auto& compute_tp = resources_.compute_tp();
   auto array_dir = ArrayDirectory(
       resources_, URI(array_name), 0, std::numeric_limits<uint64_t>::max());
 
   // Delete the array metadata and vacuum files
-  vfs.remove_files(compute_tp, array_dir.array_meta_uris_to_vacuum());
-  vfs.remove_files(compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, array_dir.array_meta_uris_to_vacuum());
+  vfs.remove_files(&compute_tp, array_dir.array_meta_vac_uris_to_vacuum());
 }
 
 /* ****************************** */

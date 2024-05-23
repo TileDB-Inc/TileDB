@@ -69,9 +69,6 @@ struct CppAggregatesFx {
   std::vector<std::string> dim_name_values_;
   std::vector<tiledb_layout_t> layout_values_;
 
-  std::string key_ = "0123456789abcdeF0123456789abcdeF";
-  const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
-
   // Constructors/destructors.
   CppAggregatesFx();
   ~CppAggregatesFx();
@@ -79,22 +76,20 @@ struct CppAggregatesFx {
   // Functions.
   void generate_test_params();
   void run_all_combinations(std::function<void()> fn);
-  void create_dense_array(bool var = false, bool encrypt = false);
-  void create_sparse_array(bool var = false, bool encrypt = false);
+  void create_dense_array(bool var = false);
+  void create_sparse_array(bool var = false);
   void write_sparse(
       std::vector<int> a,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a_validity = nullopt,
-      bool encrypt = false);
+      optional<std::vector<uint8_t>> a_validity = nullopt);
   void write_sparse(
       std::vector<std::string> a,
       std::vector<uint64_t> dim1,
       std::vector<uint64_t> dim2,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a_validity = nullopt,
-      bool encrypt = false);
+      optional<std::vector<uint8_t>> a_validity = nullopt);
   void write_dense(
       std::vector<int> a,
       uint64_t dim1_min,
@@ -102,8 +97,7 @@ struct CppAggregatesFx {
       uint64_t dim2_min,
       uint64_t dim2_max,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a_validity = nullopt,
-      bool encrypt = false);
+      optional<std::vector<uint8_t>> a_validity = nullopt);
   void write_dense_string(
       std::vector<std::string> a,
       uint64_t dim1_min,
@@ -111,8 +105,7 @@ struct CppAggregatesFx {
       uint64_t dim2_min,
       uint64_t dim2_max,
       uint64_t timestamp,
-      optional<std::vector<uint8_t>> a_validity = nullopt,
-      bool encrypt = false);
+      optional<std::vector<uint8_t>> a_validity = nullopt);
   std::vector<uint8_t> make_data_buff(
       std::vector<int> values,
       optional<std::vector<uint8_t>> validity = nullopt);
@@ -213,7 +206,7 @@ void CppAggregatesFx<T>::run_all_combinations(std::function<void()> fn) {
 }
 
 template <class T>
-void CppAggregatesFx<T>::create_dense_array(bool var, bool encrypt) {
+void CppAggregatesFx<T>::create_dense_array(bool var) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 12}}, 3);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 12}}, 3);
@@ -250,15 +243,11 @@ void CppAggregatesFx<T>::create_dense_array(bool var, bool encrypt) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(ARRAY_NAME, schema, enc_type_, key_);
-  } else {
-    Array::create(ARRAY_NAME, schema);
-  }
+  Array::create(ARRAY_NAME, schema);
 }
 
 template <class T>
-void CppAggregatesFx<T>::create_sparse_array(bool var, bool encrypt) {
+void CppAggregatesFx<T>::create_sparse_array(bool var) {
   // Create dimensions.
   auto d1 = Dimension::create<uint64_t>(ctx_, "d1", {{1, 999}}, 2);
   auto d2 = Dimension::create<uint64_t>(ctx_, "d2", {{1, 999}}, 2);
@@ -300,11 +289,7 @@ void CppAggregatesFx<T>::create_sparse_array(bool var, bool encrypt) {
   filter_list.add_filter(filter);
   schema.set_coords_filter_list(filter_list);
 
-  if (encrypt) {
-    Array::create(ARRAY_NAME, schema, enc_type_, key_);
-  } else {
-    Array::create(ARRAY_NAME, schema);
-  }
+  Array::create(ARRAY_NAME, schema);
 }
 
 template <class T>
@@ -313,24 +298,13 @@ void CppAggregatesFx<T>::write_sparse(
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a_validity,
-    bool encrypt) {
+    optional<std::vector<uint8_t>> a_validity) {
   // Open array.
-  std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimestampStartEnd, 0, timestamp));
-  }
+  Array array(
+      ctx_,
+      ARRAY_NAME,
+      TILEDB_WRITE,
+      TemporalPolicy(TimestampStartEnd, 0, timestamp));
 
   std::vector<uint8_t> a_buff = make_data_buff(a);
   uint64_t cell_val_num = std::is_same<T, std::string>::value ?
@@ -338,7 +312,7 @@ void CppAggregatesFx<T>::write_sparse(
                               1;
 
   // Create query.
-  Query query(ctx_, *array, TILEDB_WRITE);
+  Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_data_buffer(
       "a1", static_cast<void*>(a_buff.data()), a.size() * cell_val_num);
@@ -356,7 +330,7 @@ void CppAggregatesFx<T>::write_sparse(
   query.finalize();
 
   // Close array.
-  array->close();
+  array.close();
 }
 
 template <class T>
@@ -365,24 +339,13 @@ void CppAggregatesFx<T>::write_sparse(
     std::vector<uint64_t> dim1,
     std::vector<uint64_t> dim2,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a_validity,
-    bool encrypt) {
+    optional<std::vector<uint8_t>> a_validity) {
   // Open array.
-  std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimestampStartEnd, 0, timestamp));
-  }
+  Array array(
+      ctx_,
+      ARRAY_NAME,
+      TILEDB_WRITE,
+      TemporalPolicy(TimestampStartEnd, 0, timestamp));
 
   std::string a_data;
   std::vector<uint64_t> a_offsets;
@@ -394,7 +357,7 @@ void CppAggregatesFx<T>::write_sparse(
   }
 
   // Create query.
-  Query query(ctx_, *array, TILEDB_WRITE);
+  Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_GLOBAL_ORDER);
   query.set_offsets_buffer("a1", a_offsets);
   query.set_data_buffer("a1", a_data);
@@ -412,7 +375,7 @@ void CppAggregatesFx<T>::write_sparse(
   query.finalize();
 
   // Close array.
-  array->close();
+  array.close();
 }
 
 template <class T>
@@ -423,24 +386,13 @@ void CppAggregatesFx<T>::write_dense(
     uint64_t dim2_min,
     uint64_t dim2_max,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a_validity,
-    bool encrypt) {
+    optional<std::vector<uint8_t>> a_validity) {
   // Open array.
-  std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimestampStartEnd, 0, timestamp));
-  }
+  Array array(
+      ctx_,
+      ARRAY_NAME,
+      TILEDB_WRITE,
+      TemporalPolicy(TimestampStartEnd, 0, timestamp));
 
   std::vector<uint8_t> a_buff = make_data_buff(a);
   uint64_t cell_val_num = std::is_same<T, std::string>::value ?
@@ -448,11 +400,11 @@ void CppAggregatesFx<T>::write_dense(
                               1;
 
   // Create the subarray.
-  Subarray subarray(ctx_, *array);
+  Subarray subarray(ctx_, array);
   subarray.add_range(0, dim1_min, dim1_max).add_range(1, dim2_min, dim2_max);
 
   // Create query.
-  Query query(ctx_, *array, TILEDB_WRITE);
+  Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
   query.set_data_buffer(
@@ -469,7 +421,7 @@ void CppAggregatesFx<T>::write_dense(
   query.finalize();
 
   // Close array.
-  array->close();
+  array.close();
 }
 
 template <class T>
@@ -480,24 +432,13 @@ void CppAggregatesFx<T>::write_dense_string(
     uint64_t dim2_min,
     uint64_t dim2_max,
     uint64_t timestamp,
-    optional<std::vector<uint8_t>> a_validity,
-    bool encrypt) {
+    optional<std::vector<uint8_t>> a_validity) {
   // Open array.
-  std::unique_ptr<Array> array;
-  if (encrypt) {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimeTravel, timestamp),
-        EncryptionAlgorithm(AESGCM, key_.c_str()));
-  } else {
-    array = std::make_unique<Array>(
-        ctx_,
-        ARRAY_NAME,
-        TILEDB_WRITE,
-        TemporalPolicy(TimestampStartEnd, 0, timestamp));
-  }
+  Array array(
+      ctx_,
+      ARRAY_NAME,
+      TILEDB_WRITE,
+      TemporalPolicy(TimestampStartEnd, 0, timestamp));
 
   std::string a_data;
   std::vector<uint64_t> a_offsets;
@@ -509,11 +450,11 @@ void CppAggregatesFx<T>::write_dense_string(
   }
 
   // Create the subarray.
-  Subarray subarray(ctx_, *array);
+  Subarray subarray(ctx_, array);
   subarray.add_range(0, dim1_min, dim1_max).add_range(1, dim2_min, dim2_max);
 
   // Create query.
-  Query query(ctx_, *array, TILEDB_WRITE);
+  Query query(ctx_, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR);
   query.set_subarray(subarray);
   query.set_offsets_buffer("a1", a_offsets);
@@ -532,7 +473,7 @@ void CppAggregatesFx<T>::write_dense_string(
   query.finalize();
 
   // Close array.
-  array->close();
+  array.close();
 }
 
 template <class T>

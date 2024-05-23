@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,8 +53,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class OrderedDimLabelReaderStatusException : public StatusException {
  public:
@@ -253,8 +252,8 @@ void OrderedDimLabelReader::label_read() {
         read_and_unfilter_attribute_tiles({label_name_}, result_tiles));
 
     // Compute/copy results.
-    throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, max_range, [&](uint64_t r) {
+    throw_if_not_ok(
+        parallel_for(&resources_.compute_tp(), 0, max_range, [&](uint64_t r) {
           compute_and_copy_range_indexes<IndexType>(buffer_offset, r);
           return Status::Ok();
         }));
@@ -295,7 +294,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
     per_range_array_tile_indexes[r].resize(fragment_metadata_.size());
   }
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       0,
@@ -310,7 +309,7 @@ void OrderedDimLabelReader::compute_array_tile_indexes_for_ranges() {
   // value for each range start/end.
   per_range_array_tile_indexes_.resize(ranges_.size());
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
+      &resources_.compute_tp(), 0, ranges_.size(), [&](uint64_t r) {
         per_range_array_tile_indexes_[r] = RangeTileIndexes(
             tile_idx_min, tile_idx_max, per_range_array_tile_indexes[r]);
         return Status::Ok();
@@ -323,7 +322,7 @@ void OrderedDimLabelReader::load_label_min_max_values() {
 
   // Load min/max data for all fragments.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
@@ -736,5 +735,4 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
   apply_with_type(g, label_type_);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

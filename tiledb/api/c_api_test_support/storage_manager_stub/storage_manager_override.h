@@ -62,9 +62,6 @@ class StorageManagerStub {
       , config_(config) {
   }
 
-  inline common::ThreadPool* compute_tp() {
-    return &resources_.compute_tp();
-  }
   inline common::ThreadPool* io_tp() {
     return &resources_.io_tp();
   }

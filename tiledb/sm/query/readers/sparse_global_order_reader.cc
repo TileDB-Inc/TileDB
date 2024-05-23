@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,8 +53,7 @@ using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class SparseGlobalOrderReaderStatusException : public StatusException {
  public:
@@ -248,9 +247,7 @@ void SparseGlobalOrderReader<BitmapType>::load_all_tile_offsets() {
     // Make sure we have enough space for tile offsets data.
     uint64_t total_tile_offset_usage =
         tile_offsets_size(subarray_.relevant_fragments());
-    uint64_t available_memory =
-        array_memory_tracker_->get_memory_available() -
-        array_memory_tracker_->get_memory_usage(MemoryType::TILE_OFFSETS);
+    uint64_t available_memory = array_memory_tracker_->get_memory_available();
     if (total_tile_offset_usage > available_memory) {
       throw SparseGlobalOrderReaderStatusException(
           "Cannot load tile offsets, computed size (" +
@@ -365,7 +362,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   if (subarray_.is_set()) {
     // Load as many tiles as the memory budget allows.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+        &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
           uint64_t t = 0;
           auto& tile_ranges = tmp_read_state_.tile_ranges(f);
           while (!tile_ranges.empty()) {
@@ -414,7 +411,7 @@ SparseGlobalOrderReader<BitmapType>::create_result_tiles(
   } else {
     // Load as many tiles as the memory budget allows.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+        &resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
           uint64_t t = 0;
           auto tile_num = fragment_metadata_[f]->tile_num();
 
@@ -493,8 +490,8 @@ void SparseGlobalOrderReader<BitmapType>::clean_tile_list(
     std::vector<ResultTilesList>& result_tiles) {
   // Clear result tiles that are not necessary anymore.
   auto fragment_num = fragment_metadata_.size();
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
         auto it = result_tiles[f].begin();
         while (it != result_tiles[f].end()) {
           if (it->result_num() == 0) {
@@ -522,7 +519,7 @@ void SparseGlobalOrderReader<BitmapType>::dedup_tiles_with_timestamps(
 
   // Process all tiles in parallel.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
+      &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
         const auto f = result_tiles[t]->frag_idx();
         if (fragment_metadata_[f]->has_timestamps()) {
           // For easy reference.
@@ -597,8 +594,8 @@ void SparseGlobalOrderReader<BitmapType>::dedup_fragments_with_timestamps(
 
   // Run all fragments in parallel.
   auto fragment_num = fragment_metadata_.size();
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
         // Run only for fragments with timestamps.
         if (fragment_metadata_[f]->has_timestamps()) {
           // Process all tiles.
@@ -848,7 +845,7 @@ void SparseGlobalOrderReader<BitmapType>::compute_hilbert_values(
 
   // Parallelize on tiles.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
+      &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
         auto tile =
             static_cast<GlobalOrderResultTile<BitmapType>*>(result_tiles[t]);
         auto cell_num =
@@ -928,7 +925,7 @@ SparseGlobalOrderReader<BitmapType>::merge_result_cell_slabs(
   // For all fragments, get the first tile in the sorting queue.
   std::vector<TileListIt> to_delete;
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, result_tiles.size(), [&](uint64_t f) {
+      &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t f) {
         if (result_tiles[f].size() > 0) {
           // Initialize the iterator for this fragment.
           rt_it[f] = result_tiles[f].begin();
@@ -1175,7 +1172,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_offsets_tiles(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -1281,7 +1278,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_var_data_tiles(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -1352,7 +1349,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_fixed_data_tiles(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -1452,7 +1449,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_timestamps_tiles(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -1519,7 +1516,7 @@ void SparseGlobalOrderReader<BitmapType>::copy_delete_meta_tiles(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -1628,8 +1625,8 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
   uint64_t max_cs_idx = result_cell_slabs.size();
   std::mutex max_cs_idx_mtx;
   std::vector<uint64_t> total_mem_usage_per_attr(names.size());
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, names.size(), [&](uint64_t i) {
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, names.size(), [&](uint64_t i) {
         // For easy reference.
         const auto& name = names[i];
         const bool agg_only = aggregate_only(name);
@@ -1839,7 +1836,7 @@ void SparseGlobalOrderReader<BitmapType>::process_slabs(
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;
-  const auto num_threads = storage_manager_->compute_tp()->concurrency_level();
+  const auto num_threads = resources_.compute_tp().concurrency_level();
   if (result_cell_slabs.size() < num_threads) {
     // Ceil the division between thread_num and tile_num.
     num_range_threads = 1 + ((num_threads - 1) / result_cell_slabs.size());
@@ -2121,7 +2118,7 @@ void SparseGlobalOrderReader<BitmapType>::process_aggregates(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_cell_slabs.size(),
       0,
@@ -2196,8 +2193,8 @@ void SparseGlobalOrderReader<BitmapType>::end_iteration(
   auto fragment_num = fragment_metadata_.size();
 
   // Clear fully processed tiles in each fragments.
-  throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(), 0, fragment_num, [&](uint64_t f) {
+  throw_if_not_ok(
+      parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint64_t f) {
         while (!result_tiles[f].empty() &&
                result_tiles[f].front().tile_idx() <
                    read_state_.frag_idx()[f].tile_idx_) {
@@ -2228,5 +2225,4 @@ template SparseGlobalOrderReader<uint8_t>::SparseGlobalOrderReader(
 template SparseGlobalOrderReader<uint64_t>::SparseGlobalOrderReader(
     stats::Stats*, shared_ptr<Logger>, StrategyParams&, bool);
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

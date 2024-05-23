@@ -326,10 +326,7 @@ Status GlobalOrderWriter::check_coord_dups() const {
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -426,7 +423,7 @@ Status GlobalOrderWriter::check_global_order() const {
 
   // Check if all coordinates are in global order in parallel
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
@@ -477,7 +474,7 @@ Status GlobalOrderWriter::check_global_order_hilbert() const {
 
   // Check if all coordinates are in hilbert order in parallel
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_ - 1,
       [&](uint64_t i) {
@@ -575,10 +572,7 @@ Status GlobalOrderWriter::compute_coord_dups(
 
   std::mutex mtx;
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      1,
-      coords_info_.coords_num_,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -874,15 +868,14 @@ Status GlobalOrderWriter::prepare_full_tiles(
   }
 
   auto num = buffers_.size();
-  auto status =
-      parallel_for(storage_manager_->compute_tp(), 0, num, [&](uint64_t i) {
-        auto buff_it = buffers_.begin();
-        std::advance(buff_it, i);
-        const auto& name = buff_it->first;
-        RETURN_CANCEL_OR_ERROR(
-            prepare_full_tiles(name, coord_dups, &tiles->at(name)));
-        return Status::Ok();
-      });
+  auto status = parallel_for(&resources_.compute_tp(), 0, num, [&](uint64_t i) {
+    auto buff_it = buffers_.begin();
+    std::advance(buff_it, i);
+    const auto& name = buff_it->first;
+    RETURN_CANCEL_OR_ERROR(
+        prepare_full_tiles(name, coord_dups, &tiles->at(name)));
+    return Status::Ok();
+  });
 
   RETURN_NOT_OK(status);
 

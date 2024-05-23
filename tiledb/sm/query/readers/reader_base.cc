@@ -432,7 +432,7 @@ void ReaderBase::load_tile_offsets(
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
@@ -463,7 +463,7 @@ void ReaderBase::load_tile_var_sizes(
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
@@ -498,7 +498,7 @@ void ReaderBase::load_tile_metadata(
   const auto encryption_key = array_->encryption_key();
 
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
       [&](const uint64_t i) {
@@ -539,7 +539,7 @@ void ReaderBase::load_processed_conditions() {
 
   // Load all fragments in parallel.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
       [&](const uint64_t i) {
@@ -849,7 +849,7 @@ Status ReaderBase::unfilter_tiles(
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;
-  const auto num_threads = storage_manager_->compute_tp()->concurrency_level();
+  const auto num_threads = resources_.compute_tp().concurrency_level();
   if (chunking && num_tiles < num_threads) {
     // Ceil the division between thread_num and num_tiles.
     num_range_threads = 1 + ((num_threads - 1) / num_tiles);
@@ -866,7 +866,7 @@ Status ReaderBase::unfilter_tiles(
 
   // Pre-compute chunk offsets.
   auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
+      &resources_.compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
         auto&& [st, tile_size, tile_var_size, tile_validity_size] =
             load_tile_chunk_data(
                 name,
@@ -890,7 +890,7 @@ Status ReaderBase::unfilter_tiles(
 
   // Unfilter all tiles/chunks in parallel using the precomputed offsets.
   status = parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       num_tiles,
       0,
@@ -981,7 +981,7 @@ Status ReaderBase::unfilter_tile(
         t_var->type(), array_schema_.version());
   }
 
-  auto concurrency_level = storage_manager_->compute_tp()->concurrency_level();
+  auto concurrency_level = resources_.compute_tp().concurrency_level();
 
   if (!validity_only) {
     // Unfiltered fixed data
@@ -1138,10 +1138,7 @@ ReaderBase::cache_dimension_label_data() {
   std::vector<const void*> non_empty_domains(fragment_metadata_.size());
   std::vector<uint64_t> frag_first_array_tile_idx(fragment_metadata_.size());
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](unsigned f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](unsigned f) {
         non_empty_domains[f] =
             fragment_metadata_[f]->non_empty_domain()[0].data();
         auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
@@ -1188,10 +1185,7 @@ void ReaderBase::validate_attribute_order(
   AttributeOrderValidator validator(
       attribute_name, fragment_metadata_.size(), query_memory_tracker_);
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](uint64_t f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](uint64_t f) {
         validator.find_fragments_to_check(
             array_min_idx, array_max_idx, f, non_empty_domains);
 
@@ -1199,10 +1193,7 @@ void ReaderBase::validate_attribute_order(
       }));
 
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      fragment_metadata_.size(),
-      [&](int64_t f) {
+      &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
             index_dim,
             increasing_data,
@@ -1223,7 +1214,7 @@ void ReaderBase::validate_attribute_order(
 
     // Validate bounds not validated using tile data.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
+        &resources_.compute_tp(),
         0,
         fragment_metadata_.size(),
         [&](unsigned f) {

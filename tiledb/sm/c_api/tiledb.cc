@@ -258,7 +258,7 @@ int32_t tiledb_array_schema_alloc(
   }
 
   // Create a new ArraySchema object
-  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_CREATE);
   (*array_schema)->array_schema_ = make_shared<tiledb::sm::ArraySchema>(
       HERE(), static_cast<tiledb::sm::ArrayType>(array_type), memory_tracker);
@@ -486,14 +486,11 @@ int32_t tiledb_array_schema_load(
     throw_if_not_ok(
         key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
-    // For easy reference
-    auto storage_manager{ctx->storage_manager()};
-
     // Load URIs from the array directory
     optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
       array_dir.emplace(
-          storage_manager->resources(),
+          ctx->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -506,7 +503,7 @@ int32_t tiledb_array_schema_load(
       return TILEDB_ERR;
     }
 
-    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+    auto tracker = ctx->resources().ephemeral_memory_tracker();
 
     // Load latest array schema
     auto&& array_schema_latest =
@@ -569,14 +566,11 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    // For easy reference
-    auto storage_manager{ctx->storage_manager()};
-
     // Load URIs from the array directory
     optional<tiledb::sm::ArrayDirectory> array_dir;
     try {
       array_dir.emplace(
-          storage_manager->resources(),
+          ctx->resources(),
           uri,
           0,
           UINT64_MAX,
@@ -589,7 +583,7 @@ int32_t tiledb_array_schema_load_with_key(
       return TILEDB_ERR;
     }
 
-    auto tracker = storage_manager->resources().ephemeral_memory_tracker();
+    auto tracker = ctx->resources().ephemeral_memory_tracker();
 
     // Load latest array schema
     auto&& array_schema_latest =
@@ -809,7 +803,7 @@ int32_t tiledb_array_schema_evolution_alloc(
   }
 
   // Create a new SchemaEvolution object
-  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   (*array_schema_evolution)->array_schema_evolution_ =
       new (std::nothrow) tiledb::sm::ArraySchemaEvolution(memory_tracker);
@@ -3376,14 +3370,14 @@ int32_t tiledb_deserialize_array(
     return TILEDB_OOM;
   }
 
-  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
   try {
     tiledb::sm::serialization::array_deserialize(
         (*array)->array_.get(),
         (tiledb::sm::SerializationType)serialize_type,
         buffer->buffer(),
-        ctx->context().resources(),
+        ctx->resources(),
         memory_tracker);
   } catch (StatusException& e) {
     delete *array;
@@ -3441,7 +3435,7 @@ int32_t tiledb_deserialize_array_schema(
   }
 
   try {
-    auto memory_tracker = ctx->context().resources().create_memory_tracker();
+    auto memory_tracker = ctx->resources().create_memory_tracker();
     memory_tracker->set_type(sm::MemoryTrackerType::ARRAY_LOAD);
     (*array_schema)->array_schema_ =
         tiledb::sm::serialization::array_schema_deserialize(
@@ -3594,7 +3588,7 @@ int32_t tiledb_deserialize_array_schema_evolution(
     return TILEDB_OOM;
   }
 
-  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::SCHEMA_EVOLUTION);
   if (SAVE_ERROR_CATCH(
           ctx,
@@ -3657,7 +3651,7 @@ int32_t tiledb_deserialize_query(
       client_side == 1,
       nullptr,
       query->query_,
-      ctx->storage_manager()->compute_tp()));
+      &ctx->resources().compute_tp()));
 
   return TILEDB_OK;
 }
@@ -3751,7 +3745,7 @@ int32_t tiledb_deserialize_query_and_array(
       client_side == 1,
       nullptr,
       (*query)->query_,
-      ctx->storage_manager()->compute_tp()));
+      &ctx->resources().compute_tp()));
 
   return TILEDB_OK;
 }
@@ -4226,7 +4220,7 @@ int32_t tiledb_deserialize_fragment_info(
     return TILEDB_ERR;
   }
 
-  auto memory_tracker = ctx->context().resources().create_memory_tracker();
+  auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(sm::MemoryTrackerType::FRAGMENT_INFO_LOAD);
   if (SAVE_ERROR_CATCH(
           ctx,

@@ -155,10 +155,7 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
   // Compute the size of tile offsets per fragments.
   const auto relevant_fragments = subarray_.relevant_fragments();
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      relevant_fragments.size(),
-      [&](uint64_t i) {
+      &resources_.compute_tp(), 0, relevant_fragments.size(), [&](uint64_t i) {
         // For easy reference.
         auto frag_idx = relevant_fragments[i];
         auto& fragment = fragment_metadata_[frag_idx];
@@ -240,7 +237,30 @@ std::vector<uint64_t> SparseIndexReaderBase::tile_offset_sizes() {
         }
 
         // Finally set the size of the loaded data.
-        ret[frag_idx] = num * tile_num * sizeof(uint64_t);
+
+        // The expected size of the tile offsets
+        unsigned offsets_size = num * tile_num * sizeof(uint64_t);
+
+        // Other than the offsets themselves, there is also memory used for the
+        // initialization of the vectors that hold them. This initialization
+        // takes place in LoadedFragmentMetadata::resize_offsets()
+
+        // Calculate the number of fields
+        unsigned num_fields = schema->attribute_num() + 1 +
+                              fragment->has_timestamps() +
+                              fragment->has_delete_meta() * 2;
+
+        // If version < 5 we use zipped coordinates, otherwise separate
+        num_fields += (fragment->version() >= 5) ? schema->dim_num() : 0;
+
+        // The additional memory required for the vectors to
+        // store the tile offsets. The number of fields is calculated above.
+        // Each vector requires 32 bytes. Each field requires 4 vectors. These
+        // are: tile_offsets_, tile_var_offsets_, tile_var_sizes_,
+        // tile_validity_offsets_ and are located in loaded_fragment_metadata.h
+        unsigned offsets_init_size = num_fields * 4 * 32;
+
+        ret[frag_idx] = offsets_size + offsets_init_size;
         return Status::Ok();
       }));
 
@@ -380,9 +400,7 @@ Status SparseIndexReaderBase::load_initial_data() {
     // This is ok as it is a soft limit and will be taken into consideration
     // below.
     subarray_.precompute_all_ranges_tile_overlap(
-        storage_manager_->compute_tp(),
-        read_state_.frag_idx(),
-        &tmp_read_state_);
+        &resources_.compute_tp(), read_state_.frag_idx(), &tmp_read_state_);
 
     if (tmp_read_state_.memory_used_tile_ranges() >
         memory_budget_.ratio_tile_ranges() * memory_budget_.total_budget())
@@ -391,7 +409,7 @@ Status SparseIndexReaderBase::load_initial_data() {
   } else {
     for (const auto& [name, _] : aggregates_) {
       if (array_schema_.is_dim(name)) {
-        subarray_.load_relevant_fragment_rtrees(storage_manager_->compute_tp());
+        subarray_.load_relevant_fragment_rtrees(&resources_.compute_tp());
         break;
       }
     }
@@ -566,7 +584,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 
   // Compute parallelization parameters.
   uint64_t num_range_threads = 1;
-  const auto num_threads = storage_manager_->compute_tp()->concurrency_level();
+  const auto num_threads = resources_.compute_tp().concurrency_level();
   if (result_tiles.size() < num_threads) {
     // Ceil the division between thread_num and tile_num.
     num_range_threads = 1 + ((num_threads - 1) / result_tiles.size());
@@ -578,10 +596,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
   if (num_range_threads != 1) {
     // Resize bitmaps to process for each tiles in parallel.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        result_tiles.size(),
-        [&](uint64_t t) {
+        &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           static_cast<ResultTileWithBitmap<BitmapType>*>(result_tiles[t])
               ->alloc_bitmap();
           return Status::Ok();
@@ -590,7 +605,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
 
   // Process all tiles/cells in parallel.
   throw_if_not_ok(parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       result_tiles.size(),
       0,
@@ -688,10 +703,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
   if (num_range_threads != 1) {
     // Compute number of cells in each bitmaps in parallel.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        result_tiles.size(),
-        [&](uint64_t t) {
+        &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           static_cast<ResultTileWithBitmap<BitmapType>*>(result_tiles[t])
               ->count_cells();
           return Status::Ok();
@@ -710,10 +722,7 @@ void SparseIndexReaderBase::apply_query_condition(
       use_timestamps_) {
     // Process all tiles in parallel.
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        result_tiles.size(),
-        [&](uint64_t t) {
+        &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           // For easy reference.
           auto rt = static_cast<ResultTileType*>(result_tiles[t]);
           const auto frag_meta = fragment_metadata_[rt->frag_idx()];

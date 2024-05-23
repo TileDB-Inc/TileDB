@@ -143,14 +143,6 @@ void ResultTile::init_attr_tile(
     const std::string& name,
     const TileSizes tile_sizes,
     const TileData tile_data) {
-  auto tuple = TileTuple(
-      format_version,
-      array_schema,
-      name,
-      tile_sizes,
-      tile_data,
-      memory_tracker_);
-
   if (name == constants::coords) {
     coords_tile_.emplace(
         format_version,

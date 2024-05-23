@@ -58,6 +58,7 @@
 
 #include <array>
 #include <cassert>
+#include <chrono>
 #include <climits>
 #include <cstring>
 #include <ctime>
@@ -65,6 +66,7 @@
 #include <map>
 #include <sstream>
 #include <thread>
+using namespace std::chrono_literals;
 
 using namespace tiledb::test;
 using namespace tiledb::sm;
@@ -889,8 +891,10 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
   REQUIRE(rc == TILEDB_OK);
 
   auto proc_query = [&](unsigned i) -> void {
-    rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-    REQUIRE(rc == TILEDB_OK);
+    std::future<void> submit_async = std::async(
+        std::launch::async,
+        [this, &query] { tiledb_query_submit(ctx_, query); });
+    submit_async.wait_for(1ms);
     // Cancel it immediately.
     if (i < num_writes - 1) {
       rc = tiledb_ctx_cancel_tasks(ctx_);
@@ -906,8 +910,12 @@ void DenseArrayFx::write_dense_subarray_2D_with_cancel(
 
     // If it failed, run it again.
     if (status == TILEDB_FAILED) {
-      rc = tiledb_query_submit_async(ctx_, query, NULL, NULL);
-      CHECK(rc == TILEDB_OK);
+      std::future<void> submit_async =
+          std::async(std::launch::async, [this, &query] {
+            auto rc = tiledb_query_submit(ctx_, query);
+            REQUIRE(rc == TILEDB_OK);
+          });
+      submit_async.wait_for(1ms);
       do {
         rc = tiledb_query_get_status(ctx_, query, &status);
         CHECK(rc == TILEDB_OK);

@@ -333,10 +333,7 @@ Status WriterBase::calculate_hilbert_values(
   // Calculate Hilbert values in parallel
   assert(hilbert_values.size() >= coords_info_.coords_num_);
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      0,
-      coords_info_.coords_num_,
-      [&](uint64_t c) {
+      &resources_.compute_tp(), 0, coords_info_.coords_num_, [&](uint64_t c) {
         std::vector<uint64_t> coords(dim_num);
         for (uint32_t d = 0; d < dim_num; ++d) {
           auto dim{array_schema_.dimension_ptr(d)};
@@ -427,7 +424,7 @@ Status WriterBase::check_coord_oob() const {
 
   // Check if all coordinates fall in the domain in parallel
   auto status = parallel_for_2d(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       coords_info_.coords_num_,
       0,
@@ -647,8 +644,8 @@ std::vector<NDRange> WriterBase::compute_mbrs(
 
   // Compute MBRs
   std::vector<NDRange> mbrs(tile_num);
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tile_num, [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tile_num, [&](uint64_t i) {
         mbrs[i].resize(dim_num);
         std::vector<const void*> data(dim_num);
         for (unsigned d = 0; d < dim_num; ++d) {
@@ -687,10 +684,7 @@ void WriterBase::set_coords_metadata(
   }
 
   auto status = parallel_for(
-      storage_manager_->compute_tp(),
-      start_tile_idx,
-      end_tile_idx,
-      [&](uint64_t i) {
+      &resources_.compute_tp(), start_tile_idx, end_tile_idx, [&](uint64_t i) {
         meta->set_mbr(i - start_tile_idx, mbrs[i]);
         return Status::Ok();
       });
@@ -706,7 +700,7 @@ void WriterBase::set_coords_metadata(
 Status WriterBase::compute_tiles_metadata(
     uint64_t tile_num,
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>& tiles) const {
-  auto compute_tp = storage_manager_->compute_tp();
+  auto* compute_tp = &resources_.compute_tp();
 
   // Parallelize over attributes?
   if (tiles.size() > tile_num) {
@@ -811,8 +805,8 @@ Status WriterBase::create_fragment(
 Status WriterBase::filter_tiles(
     tdb::pmr::unordered_map<std::string, WriterTileTupleVector>* tiles) {
   auto timer_se = stats_->start_timer("filter_tiles");
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
         RETURN_CANCEL_OR_ERROR(
@@ -848,8 +842,8 @@ Status WriterBase::filter_tiles(
   }
 
   // For fixed size, process everything, for var size, everything minus offsets.
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, args.size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
         RETURN_NOT_OK(filter_tile(
@@ -861,7 +855,7 @@ Status WriterBase::filter_tiles(
   // Process offsets for var size.
   if (var_size) {
     auto status = parallel_for(
-        storage_manager_->compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+        &resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
           RETURN_NOT_OK(
               filter_tile(name, &tile.offset_tile(), nullptr, true, false));
@@ -914,11 +908,7 @@ Status WriterBase::filter_tile(
 
   assert(!tile->filtered());
   RETURN_NOT_OK(filters.run_forward(
-      stats_,
-      tile,
-      offsets_tile,
-      storage_manager_->compute_tp(),
-      use_chunking));
+      stats_, tile, offsets_tile, &resources_.compute_tp(), use_chunking));
   assert(tile->filtered());
 
   return Status::Ok();

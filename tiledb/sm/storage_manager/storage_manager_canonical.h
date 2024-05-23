@@ -78,7 +78,6 @@ class Metadata;
 class MemoryTracker;
 class Query;
 class RestClient;
-class VFS;
 
 enum class EncryptionType : uint8_t;
 enum class ObjectType : uint8_t;
@@ -218,11 +217,6 @@ class StorageManagerCanonical {
    */
   Status group_create(const std::string& group);
 
-  /** Returns the thread pool for compute-bound tasks. */
-  [[nodiscard]] inline ThreadPool* compute_tp() const {
-    return &(resources_.compute_tp());
-  }
-
   /** Returns the thread pool for io-bound tasks. */
   [[nodiscard]] inline ThreadPool* io_tp() const {
     return &(resources_.io_tp());
@@ -235,24 +229,6 @@ class StorageManagerCanonical {
   inline RestClient* rest_client() const {
     return resources_.rest_client().get();
   }
-
-  /**
-   * Checks if the input URI represents an array.
-   *
-   * @param The URI to be checked.
-   * @return bool
-   */
-  bool is_array(const URI& uri) const;
-
-  /**
-   * Checks if the input URI represents a group.
-   *
-   * @param The URI to be checked.
-   * @param is_group Set to `true` if the URI is a group and `false`
-   *     otherwise.
-   * @return Status
-   */
-  Status is_group(const URI& uri, bool* is_group) const;
 
   /** Removes a TileDB object (group, array). */
   Status object_remove(const char* path) const;
@@ -377,17 +353,6 @@ class StorageManagerCanonical {
   Status store_array_schema(
       const shared_ptr<ArraySchema>& array_schema,
       const EncryptionKey& encryption_key);
-
-  /**
-   * Stores the metadata into persistent storage.
-   *
-   * @param uri The object URI.
-   * @param encryption_key The encryption key to use.
-   * @param metadata The  metadata.
-   * @return Status
-   */
-  Status store_metadata(
-      const URI& uri, const EncryptionKey& encryption_key, Metadata* metadata);
 
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;

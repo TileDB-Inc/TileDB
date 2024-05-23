@@ -118,8 +118,8 @@ Status FragmentMetaConsolidator::consolidate(
 
   // Serialize all fragment metadata footers in parallel
   std::vector<shared_ptr<WriterTile>> tiles(meta.size());
-  auto status = parallel_for(
-      storage_manager_->compute_tp(), 0, tiles.size(), [&](size_t i) {
+  auto status =
+      parallel_for(&resources_.compute_tp(), 0, tiles.size(), [&](size_t i) {
         SizeComputationSerializer size_computation_serializer;
         meta[i]->write_footer(size_computation_serializer);
         tiles[i] = WriterTile::from_generic(
@@ -187,9 +187,7 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
 
   // Get the consolidated fragment metadata URIs to be deleted
   // (all except the last one)
-  ArrayDirectory array_dir(
-      storage_manager_->resources(), URI(array_name), 0, UINT64_MAX);
-
+  ArrayDirectory array_dir(resources_, URI(array_name), 0, UINT64_MAX);
   const auto& fragment_meta_uris = array_dir.fragment_meta_uris();
 
   // Get the latest timestamp
@@ -202,12 +200,11 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
     }
   }
 
-  auto& vfs = resources_.vfs();
-  auto compute_tp = storage_manager_->compute_tp();
-
   // Vacuum
+  auto& vfs = resources_.vfs();
+  auto& compute_tp = resources_.compute_tp();
   throw_if_not_ok(
-      parallel_for(compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
+      parallel_for(&compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
         auto& uri = fragment_meta_uris[i];
         FragmentID fragment_id{uri};
         auto timestamp_range{fragment_id.timestamp_range()};

@@ -211,7 +211,7 @@ FieldDataSize Query::internal_est_result_size(std::string_view field_name) {
         ": operation currently supported only for read queries");
   }
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
       throw QueryStatusException(
           "Error in query estimate result size; "
@@ -221,7 +221,7 @@ FieldDataSize Query::internal_est_result_size(std::string_view field_name) {
         rest_client->get_query_est_result_sizes(array_->array_uri(), this));
   }
   return subarray_.get_est_result_size(
-      field_name, &config_, storage_manager_->compute_tp());
+      field_name, &config_, &resources_.compute_tp());
 }
 
 FieldDataSize Query::get_est_result_size_fixed_nonnull(
@@ -268,14 +268,12 @@ FieldDataSize Query::get_est_result_size_variable_nullable(
 
 std::unordered_map<std::string, Subarray::ResultSize>
 Query::get_est_result_size_map() {
-  return subarray_.get_est_result_size_map(
-      &config_, storage_manager_->compute_tp());
+  return subarray_.get_est_result_size_map(&config_, &resources_.compute_tp());
 }
 
 std::unordered_map<std::string, Subarray::MemorySize>
 Query::get_max_mem_size_map() {
-  return subarray_.get_max_mem_size_map(
-      &config_, storage_manager_->compute_tp());
+  return subarray_.get_max_mem_size_map(&config_, &resources_.compute_tp());
 }
 
 Status Query::get_written_fragment_num(uint32_t* num) const {
@@ -810,10 +808,7 @@ Status Query::process() {
     }
 
     throw_if_not_ok(parallel_for(
-        storage_manager_->compute_tp(),
-        0,
-        enmr_names.size(),
-        [&](const uint64_t i) {
+        &resources_.compute_tp(), 0, enmr_names.size(), [&](const uint64_t i) {
           array_->get_enumeration(enmr_names[i]);
           return Status::Ok();
         }));
@@ -1716,7 +1711,7 @@ bool Query::use_refactored_sparse_unordered_with_dups_reader(
 }
 
 bool Query::non_overlapping_ranges() {
-  return subarray_.non_overlapping_ranges(storage_manager_->compute_tp());
+  return subarray_.non_overlapping_ranges(&resources_.compute_tp());
 }
 
 bool Query::is_dense() const {

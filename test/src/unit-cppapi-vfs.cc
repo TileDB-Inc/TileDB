@@ -507,8 +507,10 @@ TEST_CASE(
   }
 }
 
-using ls_recursive_test_types =
-    std::tuple<tiledb::test::LocalFsTest, tiledb::test::S3Test>;
+using ls_recursive_test_types = std::tuple<
+    tiledb::test::LocalFsTest,
+    tiledb::test::S3Test,
+    tiledb::test::AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "CPP API: VFS ls_recursive filter",
     "[cppapi][vfs][ls-recursive]",

@@ -622,8 +622,9 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   require_tiledb_ok(vfs_ls.remove_dir(URI(path)));
 }
 
-// Currently only S3 is supported for VFS::ls_recursive.
-using TestBackends = std::tuple<S3Test>;
+// Currently only local, S3 and Azure is supported for VFS::ls_recursive.
+// TODO: LocalFsTest currently fails. Fix and re-enable.
+using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: Test internal ls_filtered recursion argument",
     "[vfs][ls_filtered][recursion]",
@@ -637,10 +638,9 @@ TEMPLATE_LIST_TEST_CASE(
   DYNAMIC_SECTION(
       fs.temp_dir_.backend_name()
       << " ls_filtered with recursion: " << (recursive ? "true" : "false")) {
-#ifdef HAVE_S3
     // If testing with recursion use the root directory, otherwise use a subdir.
     auto path = recursive ? fs.temp_dir_ : fs.temp_dir_.join_path("subdir_1");
-    auto ls_objects = fs.get_s3().ls_filtered(
+    auto ls_objects = fs.vfs_.ls_filtered(
         path, VFSTestBase::accept_all_files, accept_all_dirs, recursive);
 
     auto expected = fs.expected_results();
@@ -654,7 +654,6 @@ TEMPLATE_LIST_TEST_CASE(
 
     CHECK(ls_objects.size() == expected.size());
     CHECK(ls_objects == expected);
-#endif
   }
 }
 
@@ -669,7 +668,7 @@ TEST_CASE(
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  if (vfs_test.temp_dir_.is_s3()) {
+  if (vfs_test.temp_dir_.is_s3() || vfs_test.temp_dir_.is_azure()) {
     DYNAMIC_SECTION(backend << " supported backend should not throw") {
       CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
           vfs_test.temp_dir_, VFSTestBase::accept_all_files));
@@ -688,7 +687,7 @@ TEST_CASE(
 TEST_CASE(
     "VFS: Throwing FileFilter for ls_recursive",
     "[vfs][ls_recursive][file-filter]") {
-  std::string prefix = "s3://";
+  std::string prefix = GENERATE("s3://", "azure://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {
     return;
