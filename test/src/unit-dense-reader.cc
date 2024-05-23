@@ -1127,6 +1127,7 @@ TEST_CASE_METHOD(
   // load one as the budget is split across two potential reads. Fixed tiles are
   // both 40 so they both fit in the budget.
   total_budget_ = "1209";
+  tile_upper_memory_limit_ = "200";
   update_config();
 
   // Try to read.
@@ -1242,7 +1243,7 @@ TEST_CASE_METHOD(
   // Each var tiles are 91 and 100 bytes respectively, this will only allow to
   // load one as the budget is split across two potential reads. Fixed tiles are
   // both 40 so they both fit in the budget.
-  total_budget_ = "1160";
+  total_budget_ = "1100";
   update_config();
 
   // Try to read.
@@ -1291,8 +1292,7 @@ TEST_CASE_METHOD(
       0,
       false,
       true,
-      "DenseReader: Cannot process a single tile because of query "
-      "condition, increase memory budget");
+      "DenseReader: Cannot process a single tile, increase memory budget");
 
   // Now read with QC set for a1 and a2, should fail.
   read_fixed_strings(

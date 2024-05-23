@@ -932,7 +932,7 @@ TEST_CASE_METHOD(
   uint64_t data2_size = data.size() * sizeof(int);
   write_1d_fragment(coords2.data(), &coords2_size, data2.data(), &data2_size);
 
-  total_budget_ = "1600000";
+  total_budget_ = "1625000";
   ratio_array_data_ = set_subarray ? "0.003" : "0.002";
   partial_tile_offsets_loading_ = "true";
   update_config();
