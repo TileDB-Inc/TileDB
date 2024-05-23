@@ -217,11 +217,6 @@ class StorageManagerCanonical {
    */
   Status group_create(const std::string& group);
 
-  /** Returns the thread pool for io-bound tasks. */
-  [[nodiscard]] inline ThreadPool* io_tp() const {
-    return &(resources_.io_tp());
-  }
-
   /**
    * If the storage manager was configured with a REST server, return the
    * client instance. Else, return nullptr.

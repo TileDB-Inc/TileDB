@@ -364,7 +364,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
       RETURN_NOT_OK(write_task->get());
     }
 
-    write_task = storage_manager_->io_tp()->execute([&, b, frag_tile_id]() {
+    write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
       close_files = (b == batch_num - 1);
       RETURN_NOT_OK(write_tiles(
           0,
