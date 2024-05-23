@@ -215,6 +215,24 @@ Status Group::open(QueryType query_type) {
   return Group::open(query_type, timestamp_start_, timestamp_end_);
 }
 
+Status Group::close_for_writes() {
+  // Flush the group metadata
+  throw_if_not_ok(
+      unsafe_metadata()->store(resources_, group_uri(), *encryption_key()));
+
+  // Store any changes required
+  if (group_details()->is_modified()) {
+    const URI& group_detail_folder_uri = group_detail_uri();
+    auto group_detail_uri = generate_detail_uri();
+    throw_if_not_ok(group_details()->store(
+        resources_,
+        group_detail_folder_uri,
+        group_detail_uri,
+        *encryption_key()));
+  }
+  return Status::Ok();
+}
+
 Status Group::close() {
   // Check if group is open
   if (!is_open_)
@@ -252,7 +270,7 @@ Status Group::close() {
         query_type_ == QueryType::WRITE ||
         query_type_ == QueryType::MODIFY_EXCLUSIVE) {
       try {
-        throw_if_not_ok(storage_manager_->group_close_for_writes(this));
+        throw_if_not_ok(close_for_writes());
       } catch (StatusException& exc) {
         std::string msg = exc.what();
         msg += " : Was storage for the group moved or deleted before closing?";

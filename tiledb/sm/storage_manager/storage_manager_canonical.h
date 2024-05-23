@@ -146,14 +146,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an group opened for writes.
-   *
-   * @param group The group to be closed.
-   * @return Status
-   */
-  Status group_close_for_writes(tiledb::sm::Group* group);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.

@@ -118,6 +118,13 @@ class Group {
     return Status::Ok();
   }
 
+  /**
+   * Closes a group opened for writes.
+   *
+   * @return Status
+   */
+  Status close_for_writes();
+
   /** Closes the group and frees all memory. */
   Status close();
 
