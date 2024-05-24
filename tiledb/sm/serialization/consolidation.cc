@@ -466,12 +466,16 @@ void array_consolidation_request_serialize(
     const std::vector<std::string>*,
     SerializationType,
     Buffer*) {
-  throw ConsolidationSerializationException("[array_consolidation_request_deserialize] Cannot serialize; serialization not enabled."));
+  throw ConsolidationSerializationException(
+      "[array_consolidation_request_deserialize] Cannot serialize; "
+      "serialization not enabled.");
 }
 
-std::pair<tdb_unique_ptr<Config>*, std::optional<std::vector<URI>>>
+std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(SerializationType, const Buffer&) {
-  throw ConsolidationSerializationException("[array_consolidation_request_deserialize] Cannot deserialize; serialization not enabled."));
+  throw ConsolidationSerializationException(
+      "[array_consolidation_request_deserialize] Cannot deserialize; "
+      "serialization not enabled.");
 }
 
 void serialize_consolidation_plan_request(
