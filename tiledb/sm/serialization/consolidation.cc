@@ -100,7 +100,6 @@ void array_consolidation_request_to_capnp(
 
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_from_capnp(
-    const URI& array_uri,
     const capnp::ArrayConsolidationRequest::Reader&
         array_consolidation_request_reader) {
   auto config_reader = array_consolidation_request_reader.getConfig();
@@ -179,9 +178,7 @@ void array_consolidation_request_serialize(
 
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(
-    const URI& array_uri,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer) {
+    SerializationType serialize_type, const Buffer& serialized_buffer) {
   try {
     switch (serialize_type) {
       case SerializationType::JSON: {
@@ -197,7 +194,7 @@ array_consolidation_request_deserialize(
             array_consolidation_request_reader =
                 array_consolidation_request_builder.asReader();
         return array_consolidation_request_from_capnp(
-            array_uri, array_consolidation_request_reader);
+            array_consolidation_request_reader);
         break;
       }
       case SerializationType::CAPNP: {
@@ -210,7 +207,7 @@ array_consolidation_request_deserialize(
             array_consolidation_request_reader =
                 reader.getRoot<capnp::ArrayConsolidationRequest>();
         return array_consolidation_request_from_capnp(
-            array_uri, array_consolidation_request_reader);
+            array_consolidation_request_reader);
         break;
       }
       default: {

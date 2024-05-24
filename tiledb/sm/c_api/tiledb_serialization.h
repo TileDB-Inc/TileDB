@@ -827,6 +827,25 @@ TILEDB_EXPORT capi_return_t tiledb_handle_consolidation_plan_request(
     const tiledb_buffer_t* request,
     tiledb_buffer_t* response) TILEDB_NOEXCEPT;
 
+/**
+ * Process an array consolidation request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param max_fragments the maximum fragments allowed to serialize if this is a
+ * request for fragment list consolidation
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the ArrayConsolidationRequest Capnp
+ * message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_array_consolidation_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const uint64_t max_fragments,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request) TILEDB_NOEXCEPT;
+
 #ifdef __cplusplus
 }
 #endif

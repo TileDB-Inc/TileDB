@@ -2672,8 +2672,9 @@ int32_t tiledb_array_consolidate(
       tiledb::sm::Consolidator::mode_from_config(input_config) ==
           tiledb::sm::ConsolidationMode::FRAGMENT) {
     throw api::CAPIStatusException(
-        "Please use tiledb_array_consolidate_fragments API for consolidating "
-        "fragments on remote arrays.");
+        "Failed to consolidate fragments; Please use "
+        "tiledb_array_consolidate_fragments API for consolidating fragments on "
+        "remote arrays.");
   }
 
   tiledb::sm::Consolidator::array_consolidate(
@@ -4398,6 +4399,58 @@ capi_return_t tiledb_handle_consolidation_plan_request(
       plan,
       static_cast<tiledb::sm::SerializationType>(serialization_type),
       response->buffer());
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_handle_array_consolidation_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const uint64_t max_fragments,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request) {
+  if (sanity_check(ctx, array) == TILEDB_ERR) {
+    throw api::CAPIStatusException(
+        "Failed to handle consolidation request; Array paramter must be "
+        "valid.");
+  }
+
+  api::ensure_buffer_is_valid(request);
+
+  auto array_uri = array->array_->array_uri().c_str();
+  auto [config, fragment_uris] =
+      tiledb::sm::serialization::array_consolidation_request_deserialize(
+          static_cast<tiledb::sm::SerializationType>(serialization_type),
+          request->buffer());
+
+  if (fragment_uris.has_value()) {
+    if (max_fragments < 1) {
+      throw api::CAPIStatusException(
+          "Failed to handle consolidation request; Invalid maximum fragments "
+          "value.");
+    }
+
+    auto fragments = fragment_uris.value();
+    if (fragments.size() > max_fragments) {
+      throw api::CAPIStatusException(
+          "Failed to handle consolidation request; Fragment list size exceeds "
+          "the specified maximum fragments value.");
+    }
+
+    tiledb::sm::Consolidator::fragments_consolidate(
+        array->array_->array_uri().c_str(),
+        fragments,
+        config,
+        ctx->storage_manager());
+  } else {
+    tiledb::sm::Consolidator::array_consolidate(
+        array_uri,
+        tiledb::sm::EncryptionType::NO_ENCRYPTION,
+        nullptr,
+        0,
+        config,
+        ctx->storage_manager());
+  }
 
   return TILEDB_OK;
 }
@@ -7287,6 +7340,17 @@ CAPI_INTERFACE(
     tiledb_buffer_t* response) {
   return api_entry<tiledb::api::tiledb_handle_consolidation_plan_request>(
       ctx, array, serialization_type, request, response);
+}
+
+CAPI_INTERFACE(
+    handle_array_consolidation_request,
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    const uint64_t max_fragments,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request) {
+  return api_entry<tiledb::api::tiledb_handle_array_consolidation_request>(
+      ctx, array, max_fragments, serialization_type, request);
 }
 
 #ifndef TILEDB_REMOVE_DEPRECATIONS

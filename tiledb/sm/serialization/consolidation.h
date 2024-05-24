@@ -57,14 +57,12 @@ namespace serialization {
 /**
  * Convert Cap'n Proto message to Consolidation request
  *
- * @param array_uri the URI of the array we are consolidating
  * @param consolidation_req_reader cap'n proto class.
  * @return {config, fragment_uris} config object to deserialize into, and the
  * uris of the fragments to be consolidated if any
  */
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_from_capnp(
-    const URI& array_uri,
     const capnp::ArrayConsolidationRequest::Reader& consolidation_req_reader);
 
 /**
@@ -99,7 +97,6 @@ void array_consolidation_request_serialize(
 /**
  * Deserialize consolidation request via Cap'n Proto
  *
- * @param array_uri the URI of the array we are consolidating
  * @param serialize_type format the data is serialized in: Cap'n Proto of JSON.
  * @param serialized_buffer buffer to read serialized bytes from.
  * @return {config, fragment_uris} config object to deserialize into, and the
@@ -107,9 +104,7 @@ void array_consolidation_request_serialize(
  */
 std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(
-    const URI& array_uri,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+    SerializationType serialize_type, const Buffer& serialized_buffer);
 
 /**
  * Serialize a consolidation plan request via Cap'n Proto.
