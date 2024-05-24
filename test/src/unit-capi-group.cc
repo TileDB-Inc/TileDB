@@ -1464,7 +1464,10 @@ TEST_CASE_METHOD(
   remove_temp_dir(temp_dir);
 }
 
-TEST_CASE_METHOD(GroupFx, "C API: Group, dump", "[capi][group][dump][rest]") {
+TEST_CASE_METHOD(
+    GroupFx,
+    "C API: Group, dump",
+    "[capi][group][dump][rest-fails][sc-48099]") {
   // Create and open group in write mode
   std::string temp_dir = fs_vec_[0]->temp_dir();
   create_temp_dir(temp_dir);
