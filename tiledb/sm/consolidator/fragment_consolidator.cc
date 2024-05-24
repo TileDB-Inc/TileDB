@@ -34,6 +34,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/enums/datatype.h"
+#include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_status.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
@@ -314,12 +315,13 @@ Status FragmentConsolidator::consolidate(
 }
 
 Status FragmentConsolidator::consolidate_fragments(
-    const char* array_name,
-    EncryptionType encryption_type,
-    const void* encryption_key,
-    uint32_t key_length,
+    const std::string& array_name,
     const std::vector<std::string>& fragment_uris) {
   auto timer_se = stats_->start_timer("consolidate_frags");
+
+  auto encryption_type = tiledb::sm::EncryptionType::NO_ENCRYPTION;
+  auto encryption_key = nullptr;
+  auto key_length = 0;
 
   // Open array for reading
   auto array_for_reads{

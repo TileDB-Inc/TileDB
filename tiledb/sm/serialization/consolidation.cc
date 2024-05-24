@@ -65,7 +65,7 @@ class ConsolidationSerializationException : public StatusException {
 
 void array_consolidation_request_to_capnp(
     const Config& config,
-    std::vector<URI>* fragment_uris,
+    const std::vector<std::string>* fragment_uris,
     capnp::ArrayConsolidationRequest::Builder*
         array_consolidation_request_builder) {
   // Validate input arguments to be sure that what we are serializing make sense
@@ -93,14 +93,12 @@ void array_consolidation_request_to_capnp(
         array_consolidation_request_builder->initFragments(
             fragment_uris->size());
     for (size_t i = 0; i < fragment_uris->size(); i++) {
-      const auto& relative_uri =
-          serialize_array_uri_to_relative((*fragment_uris)[i]);
-      fragment_list_builder.set(i, relative_uri);
+      fragment_list_builder.set(i, (*fragment_uris)[i]);
     }
   }
 }
 
-std::pair<Config, std::optional<std::vector<URI>>>
+std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_from_capnp(
     const URI& array_uri,
     const capnp::ArrayConsolidationRequest::Reader&
@@ -109,13 +107,12 @@ array_consolidation_request_from_capnp(
   tdb_unique_ptr<Config> decoded_config = nullptr;
   throw_if_not_ok(config_from_capnp(config_reader, &decoded_config));
 
-  std::vector<URI> fragment_uris;
+  std::vector<std::string> fragment_uris;
   if (array_consolidation_request_reader.hasFragments()) {
     auto fragment_reader = array_consolidation_request_reader.getFragments();
     fragment_uris.reserve(fragment_reader.size());
     for (const auto& fragment_uri : fragment_reader) {
-      fragment_uris.emplace_back(deserialize_array_uri_to_absolute(
-          fragment_uri.cStr(), URI(array_uri)));
+      fragment_uris.emplace_back(fragment_uri);
     }
 
     return {*decoded_config, fragment_uris};
@@ -126,7 +123,7 @@ array_consolidation_request_from_capnp(
 
 void array_consolidation_request_serialize(
     const Config& config,
-    std::vector<URI>* fragment_uris,
+    const std::vector<std::string>* fragment_uris,
     SerializationType serialize_type,
     Buffer* serialized_buffer) {
   try {
@@ -180,7 +177,7 @@ void array_consolidation_request_serialize(
   }
 }
 
-std::pair<Config, std::optional<std::vector<URI>>>
+std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(
     const URI& array_uri,
     SerializationType serialize_type,
@@ -468,7 +465,10 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
 #else
 
 void array_consolidation_request_serialize(
-    const Config&, std::vector<URI>*, SerializationType, Buffer*) {
+    const Config&,
+    const std::vector<std::string>*,
+    SerializationType,
+    Buffer*) {
   throw ConsolidationSerializationException("[array_consolidation_request_deserialize] Cannot serialize; serialization not enabled."));
 }
 

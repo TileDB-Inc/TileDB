@@ -2657,13 +2657,31 @@ int32_t tiledb_array_create_with_key(
 
 int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
+  // Validate input arguments
+  api::ensure_context_is_valid(ctx);
   api::ensure_config_is_valid_if_present(config);
+
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
+    throw api::CAPIStatusException(
+        "Failed to consolidate fragments; Invalid input array uri");
+  }
+
+  auto input_config = (config == nullptr) ? ctx->config() : config->config();
+  if (uri.is_tiledb() &&
+      tiledb::sm::Consolidator::mode_from_config(input_config) ==
+          tiledb::sm::ConsolidationMode::FRAGMENT) {
+    throw api::CAPIStatusException(
+        "Please use tiledb_array_consolidate_fragments API for consolidating "
+        "fragments on remote arrays.");
+  }
+
   tiledb::sm::Consolidator::array_consolidate(
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
       0,
-      (config == nullptr) ? ctx->config() : config->config(),
+      input_config,
       ctx->storage_manager());
   return TILEDB_OK;
 }
@@ -2675,7 +2693,15 @@ int32_t tiledb_array_consolidate_with_key(
     const void* encryption_key,
     uint32_t key_length,
     tiledb_config_t* config) {
-  // Sanity checks
+  // Validate input arguments
+  api::ensure_context_is_valid(ctx);
+  api::ensure_config_is_valid_if_present(config);
+
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
+    throw api::CAPIStatusException(
+        "Failed to consolidate fragments; Invalid input array uri");
+  }
 
   tiledb::sm::Consolidator::array_consolidate(
       array_uri,
@@ -2694,7 +2720,33 @@ int32_t tiledb_array_consolidate_fragments(
     const char** fragment_uris,
     const uint64_t num_fragments,
     tiledb_config_t* config) {
-  // Sanity checks
+  // Validate input arguments
+  api::ensure_context_is_valid(ctx);
+  api::ensure_config_is_valid_if_present(config);
+
+  if (fragment_uris == nullptr) {
+    throw api::CAPIStatusException(
+        "Failed to consolidate fragments; Invalid input fragment list");
+  }
+
+  auto uri = tiledb::sm::URI(array_uri);
+  if (uri.is_invalid()) {
+    throw api::CAPIStatusException(
+        "Failed to consolidate fragments; Invalid input array uri");
+  }
+
+  if (num_fragments < 1) {
+    throw api::CAPIStatusException(
+        "Failed to consolidate fragments; Invalid input number of fragments");
+  }
+
+  for (size_t i = 0; i < num_fragments; i++) {
+    if (tiledb::sm::URI(fragment_uris[i]).is_invalid()) {
+      throw api::CAPIStatusException(
+          "Failed to consolidate fragments; Invalid uris in input fragment "
+          "list");
+    }
+  }
 
   // Convert the list of fragments to a vector
   std::vector<std::string> uris;
@@ -2703,14 +2755,9 @@ int32_t tiledb_array_consolidate_fragments(
     uris.emplace_back(fragment_uris[i]);
   }
 
+  auto input_config = (config == nullptr) ? ctx->config() : config->config();
   tiledb::sm::Consolidator::fragments_consolidate(
-      array_uri,
-      tiledb::sm::EncryptionType::NO_ENCRYPTION,
-      nullptr,
-      0,
-      uris,
-      (config == nullptr) ? ctx->config() : config->config(),
-      ctx->storage_manager());
+      array_uri, uris, input_config, ctx->storage_manager());
 
   return TILEDB_OK;
 }

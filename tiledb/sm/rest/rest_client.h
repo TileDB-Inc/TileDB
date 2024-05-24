@@ -397,7 +397,7 @@ class RestClient {
   Status post_consolidation_to_rest(
       const URI& uri,
       const Config& config,
-      std::vector<URI>* fragment_uris = nullptr);
+      std::vector<std::string> const* fragment_uris = nullptr);
 
   /**
    * Post array vacuum request to the REST server.

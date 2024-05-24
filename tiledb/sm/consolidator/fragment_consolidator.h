@@ -204,20 +204,13 @@ class FragmentConsolidator : public Consolidator {
    * carefully.
    *
    * @param array_name URI of array to consolidate.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
    * @param fragment_uris The list of the fragments to consolidate.
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default).
    * @return Status
    */
   Status consolidate_fragments(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
+      const std::string& array_name,
       const std::vector<std::string>& fragment_uris);
 
   /**

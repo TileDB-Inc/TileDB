@@ -62,7 +62,7 @@ namespace serialization {
  * @return {config, fragment_uris} config object to deserialize into, and the
  * uris of the fragments to be consolidated if any
  */
-std::pair<Config, std::optional<std::vector<URI>>>
+std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_from_capnp(
     const URI& array_uri,
     const capnp::ArrayConsolidationRequest::Reader& consolidation_req_reader);
@@ -77,7 +77,7 @@ array_consolidation_request_from_capnp(
  */
 void array_consolidation_request_to_capnp(
     const Config& config,
-    std::vector<URI>* fragment_uris,
+    const std::vector<std::string>* fragment_uris,
     capnp::ArrayConsolidationRequest::Builder* consolidation_req_builder);
 #endif
 
@@ -92,7 +92,7 @@ void array_consolidation_request_to_capnp(
  */
 void array_consolidation_request_serialize(
     const Config& config,
-    std::vector<URI>* fragment_uris,
+    const std::vector<std::string>* fragment_uris,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
@@ -105,7 +105,7 @@ void array_consolidation_request_serialize(
  * @return {config, fragment_uris} config object to deserialize into, and the
  * uris of the fragments to be consolidated if any
  */
-std::pair<Config, std::optional<std::vector<URI>>>
+std::pair<Config, std::optional<std::vector<std::string>>>
 array_consolidation_request_deserialize(
     const URI& array_uri,
     SerializationType serialize_type,

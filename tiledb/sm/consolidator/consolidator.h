@@ -156,10 +156,6 @@ class Consolidator {
    * Consolidates the fragments of an array into a single one.
    *
    * @param array_name The name of the array to be consolidated.
-   * @param encryption_type The encryption type of the array
-   * @param encryption_key If the array is encrypted, the private encryption
-   *    key. For unencrypted arrays, pass `nullptr`.
-   * @param key_length The length in bytes of the encryption key.
    * @param fragment_uris URIs of the fragments to consolidate.
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
@@ -167,11 +163,8 @@ class Consolidator {
    * @param storage_manager The storage manager.
    */
   static void fragments_consolidate(
-      const char* array_name,
-      EncryptionType encryption_type,
-      const void* encryption_key,
-      uint32_t key_length,
-      const std::vector<std::string> fragment_uris,
+      const std::string& array_name,
+      const std::vector<std::string>& fragment_uris,
       const Config& config,
       StorageManager* storage_manager);
 
