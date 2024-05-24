@@ -2109,8 +2109,8 @@ void Query::copy_aggregates_data_to_user_buffer() {
   }
 }
 
-shared_ptr<RestClient> Query::rest_client() const {
-  return resources_.rest_client();
+RestClient* Query::rest_client() const {
+  return resources_.rest_client().get();
 }
 
 }  // namespace tiledb::sm

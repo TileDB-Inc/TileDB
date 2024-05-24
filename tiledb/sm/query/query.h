@@ -913,7 +913,7 @@ class Query {
    * Returns the REST client configured in the context resources associated to
    * this query
    */
-  shared_ptr<RestClient> rest_client() const;
+  RestClient* rest_client() const;
 
  private:
   /* ********************************* */
