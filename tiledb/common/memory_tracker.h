@@ -343,12 +343,14 @@ class MemoryTracker {
   /**
    * Refresh the memory budget used by the new system.
    *
+   * This method should be called only by Query::set_config, which gets called
+   * by the REST server after deserializing the query and creating its strategy,
+   * with a config that contains the new memory budget.
+   *
    * @param new_budget The new memory budget.
    */
   void refresh_memory_budget(uint64_t new_budget) {
     memory_budget_.store(new_budget, std::memory_order_relaxed);
-    // Should we call on_budget_exceeded_ if the new budget has exceeded the
-    // current total counter?
   }
 
  protected:
