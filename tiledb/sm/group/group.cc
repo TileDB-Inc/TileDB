@@ -696,6 +696,8 @@ std::string Group::dump(
         ss << group_rec.dump(indent_size, num_indents + 2, recursive, false);
         group_rec.close();
       } catch (GroupNotFoundException&) {
+        // If the group no longer exists in storage it will be listed but we
+        // won't be able to dump its members
         ss << " (does not exist)" << std::endl;
       }
     } else {
