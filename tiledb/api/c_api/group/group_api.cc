@@ -114,8 +114,7 @@ capi_return_t tiledb_group_open(
     tiledb_group_handle_t* group, tiledb_query_type_t query_type) {
   ensure_group_is_valid(group);
 
-  throw_if_not_ok(
-      group->group().open(static_cast<tiledb::sm::QueryType>(query_type)));
+  group->group().open(static_cast<tiledb::sm::QueryType>(query_type));
 
   return TILEDB_OK;
 }
@@ -123,7 +122,7 @@ capi_return_t tiledb_group_open(
 capi_return_t tiledb_group_close(tiledb_group_handle_t* group) {
   ensure_group_is_valid(group);
 
-  throw_if_not_ok(group->group().close());
+  group->group().close();
 
   return TILEDB_OK;
 }
@@ -270,8 +269,7 @@ capi_return_t tiledb_group_add_member(
     name_optional = name;
   }
 
-  throw_if_not_ok(
-      group->group().mark_member_for_addition(uri, relative, name_optional));
+  group->group().mark_member_for_addition(uri, relative, name_optional);
 
   return TILEDB_OK;
 }
@@ -281,7 +279,7 @@ capi_return_t tiledb_group_remove_member(
   ensure_group_is_valid(group);
   ensure_name_argument_is_valid(name_or_uri);
 
-  throw_if_not_ok(group->group().mark_member_for_removal(name_or_uri));
+  group->group().mark_member_for_removal(name_or_uri);
 
   return TILEDB_OK;
 }
@@ -463,8 +461,7 @@ capi_return_t tiledb_group_get_query_type(
   ensure_output_pointer_is_valid(query_type);
 
   // Get query_type
-  tiledb::sm::QueryType type;
-  throw_if_not_ok(group->group().get_query_type(&type));
+  tiledb::sm::QueryType type = group->group().get_query_type();
 
   *query_type = static_cast<tiledb_query_type_t>(type);
 

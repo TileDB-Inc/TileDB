@@ -282,7 +282,7 @@ Status group_update_from_capnp(
 
   if (group_update_details_reader.hasMembersToRemove()) {
     for (auto uri : group_update_details_reader.getMembersToRemove()) {
-      throw_if_not_ok(group->mark_member_for_removal(uri.cStr()));
+      group->mark_member_for_removal(uri.cStr());
     }
   }
 

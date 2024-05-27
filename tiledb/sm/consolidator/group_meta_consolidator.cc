@@ -70,15 +70,18 @@ Status GroupMetaConsolidator::consolidate(
   auto group_uri = URI(group_name);
   Group group_for_reads(
       storage_manager_->resources(), group_uri, storage_manager_);
-  RETURN_NOT_OK(group_for_reads.open(
-      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
+  group_for_reads.open(
+      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
 
   // Open group for writing
   Group group_for_writes(
       storage_manager_->resources(), group_uri, storage_manager_);
-  RETURN_NOT_OK_ELSE(
-      group_for_writes.open(QueryType::WRITE),
-      throw_if_not_ok(group_for_reads.close()));
+
+  try {
+    group_for_writes.open(QueryType::WRITE);
+  } catch (...) {
+    group_for_reads.close();
+  }
 
   // Copy-assign the read metadata into the metadata of the group for writes
   auto metadata_r = group_for_reads.metadata();
@@ -95,8 +98,8 @@ Status GroupMetaConsolidator::consolidate(
   auto data = ss.str();
 
   // Close groups
-  throw_if_not_ok(group_for_reads.close());
-  throw_if_not_ok(group_for_writes.close());
+  group_for_reads.close();
+  group_for_writes.close();
 
   // Write vacuum file
   throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
