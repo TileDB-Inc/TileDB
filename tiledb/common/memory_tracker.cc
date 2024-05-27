@@ -151,7 +151,16 @@ void* MemoryTrackerResource::do_allocate(size_t bytes, size_t alignment) {
       total_counter_.fetch_add(bytes, std::memory_order_relaxed);
   type_counter_.fetch_add(bytes, std::memory_order_relaxed);
   if (previous_total + bytes > memory_budget_ && on_budget_exceeded_) {
-    on_budget_exceeded_();
+    try {
+      on_budget_exceeded_();
+    } catch (...) {
+      // If the callback throws, undo the counter increments and rethrow.
+      // If we don't do this, the assert in the MemoryTracker destructor
+      // will fail because the total_counter_ will be non-zero.
+      total_counter_.fetch_sub(bytes, std::memory_order_relaxed);
+      type_counter_.fetch_sub(bytes, std::memory_order_relaxed);
+      throw;
+    }
   }
   return upstream_->allocate(bytes, alignment);
 }
