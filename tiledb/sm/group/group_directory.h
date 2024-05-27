@@ -44,6 +44,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class GroupNotFoundException : public StatusException {
+ public:
+  explicit GroupNotFoundException(const std::string& message)
+      : StatusException("Group", message) {
+  }
+};
+
 /** Mode for the GroupDirectory class. */
 enum class GroupDirectoryMode {
   READ,         // Read mode.
