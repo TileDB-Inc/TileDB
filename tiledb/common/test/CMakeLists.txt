@@ -36,8 +36,8 @@ commence(unit_test experimental)
         )
 conclude(unit_test)
 
-commence(unit_test memory_tracker_types)
-    this_target_sources(main.cc unit_memory_tracker_types.cc)
+commence(unit_test memory_tracker)
+    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 
