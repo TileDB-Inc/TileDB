@@ -17,12 +17,7 @@
             "description": "Support Azure Blob Storage",
             "dependencies": [
                 "azure-storage-blobs-cpp",
-                "azure-identity-cpp",
-                {
-                    "name": "libxml2",
-                    "default-features": false,
-                    "platform": "!windows"
-                }
+                "azure-identity-cpp"
             ]
         },
         "gcs": {
@@ -68,8 +63,8 @@
             "dependencies": [
                 "catch2",
                 {
-                  "name": "libfaketime",
-                  "platform": "!windows"
+                    "name": "libfaketime",
+                    "platform": "!windows"
                 }
             ]
         },
