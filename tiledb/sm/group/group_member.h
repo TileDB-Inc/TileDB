@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -43,22 +43,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-
-/** Return a Status_GroupDirectoryError error class Status with a given
- * message **/
-inline Status Status_GroupDirectoryError(const std::string& msg) {
-  return {"[TileDB::GroupDirectory] Error", msg};
-}
-/** Return an Group error class Status with a given message **/
-inline Status Status_GroupError(const std::string& msg) {
-  return {"[TileDB::Group] Error", msg};
-}
-/** Return an GroupMember error class Status with a given message **/
-inline Status Status_GroupMemberError(const std::string& msg) {
-  return {"[TileDB::GroupMember] Error", msg};
-}
+namespace tiledb::sm {
 
 class GroupMember {
  public:
@@ -142,8 +127,7 @@ class GroupMember {
   /** Is group member deleted from group. */
   bool deleted_;
 };
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::GroupMember& group_member);
