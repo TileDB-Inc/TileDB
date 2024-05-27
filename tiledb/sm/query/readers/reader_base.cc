@@ -703,7 +703,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Wait for the read tasks to finish.
-  auto statuses{storage_manager_->io_tp()->wait_all_status(read_tasks)};
+  auto statuses{resources_.io_tp().wait_all_status(read_tasks)};
   for (const auto& st : statuses) {
     throw_if_not_ok(st);
   }

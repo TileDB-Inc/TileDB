@@ -201,7 +201,6 @@ class FilteredData {
       , fragment_metadata_(fragment_metadata)
       , var_sized_(var_sized)
       , nullable_(nullable)
-      , storage_manager_(storage_manager)
       , read_tasks_(read_tasks) {
     if (result_tiles.size() == 0) {
       return;
@@ -395,12 +394,10 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    auto task =
-        storage_manager_->io_tp()->execute([this, offset, data, size, uri]() {
-          throw_if_not_ok(
-              resources_.vfs().read(uri, offset, data, size, false));
-          return Status::Ok();
-        });
+    auto task = resources_.io_tp().execute([this, offset, data, size, uri]() {
+      throw_if_not_ok(resources_.vfs().read(uri, offset, data, size, false));
+      return Status::Ok();
+    });
     read_tasks_.push_back(std::move(task));
   }
 
@@ -637,9 +634,6 @@ class FilteredData {
 
   /** Is the attribute nullable? */
   const bool nullable_;
-
-  /** Storage manager. */
-  StorageManager* storage_manager_;
 
   /** Read tasks. */
   std::vector<ThreadPool::Task>& read_tasks_;

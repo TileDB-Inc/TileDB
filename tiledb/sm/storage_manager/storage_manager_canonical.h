@@ -146,14 +146,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Closes an group opened for writes.
-   *
-   * @param group The group to be closed.
-   * @return Status
-   */
-  Status group_close_for_writes(tiledb::sm::Group* group);
-
-  /**
    * Creates a TileDB array storing its schema.
    *
    * @param array_uri The URI of the array to be created.
@@ -216,11 +208,6 @@ class StorageManagerCanonical {
    * @return Status
    */
   Status group_create(const std::string& group);
-
-  /** Returns the thread pool for io-bound tasks. */
-  [[nodiscard]] inline ThreadPool* io_tp() const {
-    return &(resources_.io_tp());
-  }
 
   /**
    * If the storage manager was configured with a REST server, return the

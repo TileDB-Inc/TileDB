@@ -606,8 +606,8 @@ Status WriterBase::close_files(shared_ptr<FragmentMetadata> meta) const {
     }
   }
 
-  auto status = parallel_for(
-      storage_manager_->io_tp(), 0, file_uris.size(), [&](uint64_t i) {
+  auto status =
+      parallel_for(&resources_.io_tp(), 0, file_uris.size(), [&](uint64_t i) {
         const auto& file_uri = file_uris[i];
         if (layout_ == Layout::GLOBAL_ORDER && remote_query()) {
           resources_.vfs().finalize_and_close_file(file_uri);
@@ -1049,7 +1049,7 @@ Status WriterBase::write_tiles(
 
   std::vector<ThreadPool::Task> tasks;
   for (auto& it : *tiles) {
-    tasks.push_back(storage_manager_->io_tp()->execute([&, this]() {
+    tasks.push_back(resources_.io_tp().execute([&, this]() {
       auto& attr = it.first;
       auto& tiles = it.second;
       RETURN_CANCEL_OR_ERROR(write_tiles(
@@ -1073,7 +1073,7 @@ Status WriterBase::write_tiles(
   }
 
   // Wait for writes and check all statuses
-  auto statuses = storage_manager_->io_tp()->wait_all_status(tasks);
+  auto statuses = resources_.io_tp().wait_all_status(tasks);
   for (auto& st : statuses)
     RETURN_NOT_OK(st);
 
