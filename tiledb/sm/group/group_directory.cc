@@ -163,7 +163,7 @@ Status GroupDirectory::load() {
   }
 
   if (!is_group) {
-    throw GroupDirectoryException("Cannot open group; Group does not exist.");
+    throw GroupNotFoundException("Cannot open group; Group does not exist.");
   }
 
   // The URI manager has been loaded successfully

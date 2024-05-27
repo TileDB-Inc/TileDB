@@ -45,11 +45,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-/** Return an Group error class Status with a given message **/
-inline Status Status_GroupError(const std::string& msg) {
-  return {"[TileDB::Group] Error", msg};
-}
-
 class GroupMember {
  public:
   GroupMember(
