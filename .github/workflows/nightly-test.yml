@@ -69,7 +69,7 @@ jobs:
     uses: ./.github/workflows/ci-linux_mac.yml
     with:
       ci_backend: HDFS
-      matrix_image: ubuntu-22.04
+      matrix_image: ubuntu-24.04
       matrix_compiler_cc: 'gcc-13'
       matrix_compiler_cxx: 'g++-13'
       timeout: 300
