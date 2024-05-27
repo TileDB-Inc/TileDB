@@ -223,7 +223,7 @@ TEST_CASE(
   cfg.buffer_size_ = 1000;
 
   FragmentConsolidationWorkspace cw(tiledb::test::get_test_memory_tracker());
-  cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes);
+  cw.resize_buffers(&statistics, cfg, *schema, avg_cell_sizes, 1);
   auto& buffers = cw.buffers();
   auto& buffer_sizes = cw.sizes();
 

@@ -125,7 +125,9 @@ TEST_CASE(
 
   // Create array
   tiledb::Config cfg;
-  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
   Context ctx(cfg);
   Domain domain(ctx);
   auto d = Dimension::create<int>(ctx, "d1", {{10, 110}}, 50);

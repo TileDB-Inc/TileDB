@@ -346,11 +346,6 @@ class Config {
    *    The size (in bytes) of the attribute buffers used during
    *    consolidation. <br>
    *    **Default**: 50,000,000
-   * - `sm.consolidation.total_buffer_size` <br>
-   *    **Deprecated**
-   *    The size (in bytes) of all attribute buffers used during
-   *    consolidation. <br>
-   *    **Default**: 2,147,483,648
    * - `sm.consolidation.max_fragment_size` <br>
    *    **Experimental** <br>
    *    The size (in bytes) of the maximum on-disk fragment size that will be
@@ -437,11 +432,29 @@ class Config {
    *    incur performance penalties during memory movement operations. It is a
    *    soft limit that we might go over if a single tile doesn't fit into
    *    memory, we will allow to load that tile if it still fits within
-   *    `sm.mem.total_budget`. <br>
-   *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
+   * - `sm.mem.consolidation.buffers_weight` <br>
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    consolidation buffers. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 1
+   * - `sm.mem.consolidation.reader_weight` <br>
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    reader query. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 3
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    writer query. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 2
    * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
    *    Ratio of the budget allocated for coordinates in the sparse global
    *    order reader. <br>

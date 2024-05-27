@@ -2125,8 +2125,17 @@ TEST_CASE_METHOD(
       config, "sm.consolidation.mode", "fragment_meta", &error);
   CHECK(rc == TILEDB_OK);
   rc = tiledb_config_set(
-      config, "sm.consolidation.total_buffer_size", "1048576", &error);
-  CHECK(rc == TILEDB_OK);
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
 
   // Consolidate fragment metadata
   rc = tiledb_array_consolidate(ctx_, array_name.c_str(), config);

@@ -70,7 +70,8 @@ void FragmentConsolidationWorkspace::resize_buffers(
     stats::Stats* stats,
     const FragmentConsolidationConfig& config,
     const ArraySchema& array_schema,
-    std::unordered_map<std::string, uint64_t>& avg_cell_sizes) {
+    std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+    uint64_t total_buffers_budget) {
   auto timer_se = stats->start_timer("resize_buffers");
 
   // For easy reference
@@ -133,15 +134,12 @@ void FragmentConsolidationWorkspace::resize_buffers(
     buffer_weights.emplace_back(sizeof(uint64_t));
   }
 
-  // Use the old buffer size setting to see how much memory we would use.
-  auto buffer_num = buffer_weights.size();
-  uint64_t total_budget = config.total_buffer_size_;
-
   // If a user set the per-attribute buffer size configuration, we override
   // the use of the total_budget_size config setting for backwards
   // compatible behavior.
+  auto buffer_num = buffer_weights.size();
   if (config.buffer_size_ != 0) {
-    total_budget = config.buffer_size_ * buffer_num;
+    total_buffers_budget = config.buffer_size_ * buffer_num;
   }
 
   // Calculate the size of individual buffers by assigning a weight based
@@ -149,7 +147,8 @@ void FragmentConsolidationWorkspace::resize_buffers(
   auto total_weights = std::accumulate(
       buffer_weights.begin(), buffer_weights.end(), static_cast<size_t>(0));
 
-  uint64_t adjusted_budget = total_budget / total_weights * total_weights;
+  uint64_t adjusted_budget =
+      total_buffers_budget / total_weights * total_weights;
 
   if (buffer_num > buffers_.size()) {
     sizes_.resize(buffer_num);
@@ -552,9 +551,18 @@ Status FragmentConsolidator::consolidate_internal(
     }
   }
 
+  // Compute memory budgets
+  uint64_t total_weights =
+      config_.buffers_weight_ + config_.reader_weight_ + config_.writer_weight_;
+  uint64_t single_unit_budget = config_.total_budget_ / total_weights;
+  uint64_t buffers_budget = config_.buffers_weight_ * single_unit_budget;
+  uint64_t reader_budget = config_.reader_weight_ * single_unit_budget;
+  uint64_t writer_budget = config_.writer_weight_ * single_unit_budget;
+
   // Prepare buffers
   auto average_var_cell_sizes = array_for_reads->get_average_var_cell_sizes();
-  cw.resize_buffers(stats_, config_, array_schema, average_var_cell_sizes);
+  cw.resize_buffers(
+      stats_, config_, array_schema, average_var_cell_sizes, buffers_budget);
 
   // Create queries
   tdb_unique_ptr<Query> query_r = nullptr;
@@ -565,7 +573,9 @@ Status FragmentConsolidator::consolidate_internal(
       union_non_empty_domains,
       query_r,
       query_w,
-      new_fragment_uri));
+      new_fragment_uri,
+      reader_budget,
+      writer_budget));
 
   // Get the vacuum URI
   URI vac_uri;
@@ -645,7 +655,9 @@ Status FragmentConsolidator::create_queries(
     const NDRange& subarray,
     tdb_unique_ptr<Query>& query_r,
     tdb_unique_ptr<Query>& query_w,
-    URI* new_fragment_uri) {
+    URI* new_fragment_uri,
+    uint64_t read_memory_budget,
+    uint64_t write_memory_budget) {
   auto timer_se = stats_->start_timer("consolidate_create_queries");
 
   const auto dense = array_for_reads->array_schema_latest().dense();
@@ -655,8 +667,8 @@ Status FragmentConsolidator::create_queries(
   // is not a user input prone to errors).
 
   // Create read query
-  query_r =
-      tdb_unique_ptr<Query>(tdb_new(Query, storage_manager_, array_for_reads));
+  query_r = tdb_unique_ptr<Query>(tdb_new(
+      Query, storage_manager_, array_for_reads, nullopt, read_memory_budget));
   RETURN_NOT_OK(query_r->set_layout(Layout::GLOBAL_ORDER));
 
   // Dense consolidation will do a tile aligned read.
@@ -681,8 +693,12 @@ Status FragmentConsolidator::create_queries(
       first, last, write_version);
 
   // Create write query
-  query_w = tdb_unique_ptr<Query>(
-      tdb_new(Query, storage_manager_, array_for_writes, fragment_name));
+  query_w = tdb_unique_ptr<Query>(tdb_new(
+      Query,
+      storage_manager_,
+      array_for_writes,
+      fragment_name,
+      write_memory_budget));
   RETURN_NOT_OK(query_w->set_layout(Layout::GLOBAL_ORDER));
   RETURN_NOT_OK(query_w->disable_checks_consolidation());
   query_w->set_fragment_size(config_.max_fragment_size_);
@@ -924,21 +940,31 @@ Status FragmentConsolidator::set_config(const Config& config) {
   assert(found);
   config_.buffer_size_ = 0;
   // Only set the buffer_size_ if the user specified a value. Otherwise, we use
-  // the new sm.consolidation.total_buffer_size instead.
+  // the new sm.mem.consolidation.buffers_weight instead.
   if (merged_config.set_params().count("sm.consolidation.buffer_size") > 0) {
     logger_->warn(
         "The `sm.consolidation.buffer_size configuration setting has been "
         "deprecated. Set consolidation buffer sizes using the newer "
-        "`sm.consolidation.total_buffer_size` setting.");
+        "`sm.mem.consolidation.buffers_weight` setting.");
     RETURN_NOT_OK(merged_config.get<uint64_t>(
         "sm.consolidation.buffer_size", &config_.buffer_size_, &found));
     assert(found);
   }
-  config_.total_buffer_size_ = 0;
+  config_.total_budget_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(
-      "sm.consolidation.total_buffer_size",
-      &config_.total_buffer_size_,
-      &found));
+      "sm.mem.total_budget", &config_.total_budget_, &found));
+  assert(found);
+  config_.buffers_weight_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.mem.consolidation.buffers_weight", &config_.buffers_weight_, &found));
+  assert(found);
+  config_.reader_weight_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.mem.consolidation.reader_weight", &config_.reader_weight_, &found));
+  assert(found);
+  config_.writer_weight_ = 0;
+  RETURN_NOT_OK(merged_config.get<uint64_t>(
+      "sm.mem.consolidation.writer_weight", &config_.writer_weight_, &found));
   assert(found);
   config_.max_fragment_size_ = 0;
   RETURN_NOT_OK(merged_config.get<uint64_t>(

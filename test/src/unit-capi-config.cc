@@ -260,7 +260,6 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.consolidation.timestamp_start 0\n";
-  ss << "sm.consolidation.total_buffer_size 2147483648\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
@@ -272,6 +271,9 @@ void check_save_to_file() {
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.consolidation.buffers_weight 1\n";
+  ss << "sm.mem.consolidation.reader_weight 3\n";
+  ss << "sm.mem.consolidation.writer_weight 2\n";
   ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
@@ -632,6 +634,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.dense.reader"] = "refactored";
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
+  all_param_values["sm.mem.consolidation.buffers_weight"] = "1";
+  all_param_values["sm.mem.consolidation.reader_weight"] = "3";
+  all_param_values["sm.mem.consolidation.writer_weight"] = "2";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.tile_upper_memory_limit"] = "1073741824";
   all_param_values["sm.mem.total_budget"] = "10737418240";
@@ -663,7 +668,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
-  all_param_values["sm.consolidation.total_buffer_size"] = "2147483648";
   all_param_values["sm.consolidation.max_fragment_size"] =
       std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
