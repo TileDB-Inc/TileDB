@@ -255,4 +255,4 @@ ${cmake} -DCMAKE_BUILD_TYPE=${build_type} \
     ${vcpkg_base_triplet} \
     "${source_dir}" || die "failed to configure the project"
 
-echo 'bootstrap success. Run "make" to build, "make check" to test, or "make -C tiledb install" to install.'
+echo 'bootstrap success. Run "make" to build, "make check" to test, or "make install" to install.'

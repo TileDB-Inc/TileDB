@@ -243,11 +243,11 @@ jobs:
             # & "$env:BUILD_SOURCESDIRECTORY\scripts\install-minio.ps1"
 
             # update CMake to disable S3 for the test configuration, see minio note above
-            cmake -B $env:BUILD_BUILDDIRECTORY\tiledb -DTILEDB_S3=0 $env:BUILD_SOURCESDIRECTORY
+            cmake -B $env:BUILD_BUILDDIRECTORY -DTILEDB_S3=OFF $env:BUILD_SOURCESDIRECTORY
           }
 
           # CMake exits with non-0 status if there are any warnings during the build, so
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType
+          cmake --build $env:BUILD_BUILDDIRECTORY -j --target tiledb_unit unit_vfs tiledb_regression all_link_complete --config $CMakeBuildType
 
           if ($env:TILEDB_AZURE -eq "ON") {
             if($env.TILEDB_USE_CUSTOM_NODE_JS) {
@@ -278,7 +278,7 @@ jobs:
 
           # Actually run tests
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\tiledb_unit.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\tiledb_unit.exe -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
@@ -286,7 +286,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
           
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\tiledb\sm\filesystem\test\unit_vfs -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\sm\filesystem\test\unit_vfs -d=yes"
           Write-Host "cmds: '$cmds'"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
@@ -294,7 +294,7 @@ jobs:
              $host.SetShouldExit($LastExitCode)
           }
 
-          $cmds = "$env:BUILD_BUILDDIRECTORY\tiledb\test\ci\test_assert.exe -d=yes"
+          $cmds = "$env:BUILD_BUILDDIRECTORY\test\ci\test_assert.exe -d=yes"
           Invoke-Expression $cmds
           if ($LastExitCode -ne 0) {
              Write-Host "Tests failed. test_assert exit status: " $LastExitCocde
@@ -314,9 +314,9 @@ jobs:
 
           $env:Path += ";$env:BUILD_BUILDDIRECTORY\dist\bin;$env:BUILD_BUILDDIRECTORY\externals\install\bin"
 
-          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api")
-          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\c_api\") -Filter *.exe |
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api\test_app_data")
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\c_api\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -347,9 +347,9 @@ jobs:
           Set-Location -path $TestAppDir
           Remove-Item -Path $TestAppDataDir -recurse -force -ErrorAction SilentlyContinue
 
-          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api")
-          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\test_app_data")
-          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "tiledb\examples\cpp_api\") -Filter *.exe |
+          $TestAppDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api")
+          $TestAppDataDir = (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\test_app_data")
+          Get-ChildItem (Join-Path $env:BUILD_BUILDDIRECTORY "examples\cpp_api\") -Filter *.exe |
           Foreach-Object {
             try {
               Set-Location -path $TestAppDir
@@ -406,7 +406,7 @@ jobs:
       - name: Packaging test
         shell: pwsh
         run: |
-          cmake --build $env:BUILD_BUILDDIRECTORY\tiledb --target check-package
+          cmake --build $env:BUILD_BUILDDIRECTORY --target check-package
 
       - name: 'process crashdumps'
         shell: cmd
