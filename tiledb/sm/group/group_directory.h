@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -61,13 +61,13 @@ class GroupDirectory {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  /** Constructor */
-  GroupDirectory() = default;
+  /** Constructor. */
+  GroupDirectory() = delete;
 
   /**
    * Constructor.
    *
-   * @param vfs A pointer to a VFS object for all IO.
+   * @param vfs A reference to a VFS object for all IO.
    * @param tp A thread pool used for parallelism.
    * @param uri The URI of the group directory.
    * @param timestamp_start Only group fragments, metadata, etc. that
@@ -81,8 +81,8 @@ class GroupDirectory {
    * @param mode The mode to load the group directory in.
    */
   GroupDirectory(
-      VFS* vfs,
-      ThreadPool* tp,
+      VFS& vfs,
+      ThreadPool& tp,
       const URI& uri,
       uint64_t timestamp_start,
       uint64_t timestamp_end,
@@ -134,10 +134,10 @@ class GroupDirectory {
   URI uri_;
 
   /** The storage manager. */
-  VFS* vfs_;
+  VFS& vfs_;
 
   /** A thread pool used for parallelism. */
-  ThreadPool* tp_;
+  ThreadPool& tp_;
 
   /** The URIs of all group files. */
   std::vector<URI> group_file_uris_;

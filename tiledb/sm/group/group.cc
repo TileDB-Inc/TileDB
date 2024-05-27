@@ -160,35 +160,23 @@ Status Group::open(
 
     RETURN_NOT_OK(rest_client->post_group_from_rest(group_uri_, this));
   } else if (query_type == QueryType::READ) {
-    try {
-      group_dir_ = make_shared<GroupDirectory>(
-          HERE(),
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          group_uri_,
-          timestamp_start,
-          timestamp_end);
-    } catch (const std::logic_error& le) {
-      return Status_GroupDirectoryError(le.what());
-    }
-
+    group_dir_ = make_shared<GroupDirectory>(
+        HERE(),
+        resources_.vfs(),
+        resources_.compute_tp(),
+        group_uri_,
+        timestamp_start,
+        timestamp_end);
     group_open_for_reads();
   } else {
-    try {
-      group_dir_ = make_shared<GroupDirectory>(
-          HERE(),
-          &resources_.vfs(),
-          &resources_.compute_tp(),
-          group_uri_,
-          timestamp_start,
-          (timestamp_end != 0) ? timestamp_end :
-                                 utils::time::timestamp_now_ms());
-    } catch (const std::logic_error& le) {
-      return Status_GroupDirectoryError(le.what());
-    }
-
+    group_dir_ = make_shared<GroupDirectory>(
+        HERE(),
+        resources_.vfs(),
+        resources_.compute_tp(),
+        group_uri_,
+        timestamp_start,
+        (timestamp_end != 0) ? timestamp_end : utils::time::timestamp_now_ms());
     group_open_for_writes();
-
     metadata_.reset(timestamp_end);
   }
 
@@ -355,7 +343,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
     auto& vfs = resources_.vfs();
     auto& compute_tp = resources_.compute_tp();
     auto group_dir = GroupDirectory(
-        &vfs, &compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
+        vfs, compute_tp, uri, 0, std::numeric_limits<uint64_t>::max());
 
     // Delete the group detail, group metadata and group files
     vfs.remove_files(&compute_tp, group_dir.group_detail_uris());

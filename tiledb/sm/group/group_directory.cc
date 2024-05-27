@@ -43,6 +43,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class GroupDirectoryException : public StatusException {
+ public:
+  explicit GroupDirectoryException(const std::string& message)
+      : StatusException("GroupDirectory", message) {
+  }
+};
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -52,8 +59,8 @@ namespace tiledb::sm {
  * anywhere in the code at present, though that might change.
  */
 GroupDirectory::GroupDirectory(
-    VFS* vfs,
-    ThreadPool* tp,
+    VFS& vfs,
+    ThreadPool& tp,
     const URI& uri,
     uint64_t timestamp_start,
     uint64_t timestamp_end,
@@ -66,7 +73,7 @@ GroupDirectory::GroupDirectory(
     , loaded_(false) {
   auto st = load();
   if (!st.ok()) {
-    throw std::logic_error(st.message());
+    throw GroupDirectoryException(st.message());
   }
 }
 
@@ -124,9 +131,9 @@ Status GroupDirectory::load() {
   // Lists all directories in parallel. Skipping for schema only.
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
-  tasks.emplace_back(tp_->execute([&]() {
+  tasks.emplace_back(tp_.execute([&]() {
     auto&& [st, uris] = list_root_dir_uris();
-    RETURN_NOT_OK(st);
+    throw_if_not_ok(st);
 
     root_dir_uris = std::move(uris.value());
 
@@ -134,13 +141,13 @@ Status GroupDirectory::load() {
   }));
 
   // Load (in parallel) the group metadata URIs
-  tasks.emplace_back(tp_->execute([&]() { return load_group_meta_uris(); }));
+  tasks.emplace_back(tp_.execute([&]() { return load_group_meta_uris(); }));
 
   // Load (in paralell) the group details URIs
-  tasks.emplace_back(tp_->execute([&] { return load_group_detail_uris(); }));
+  tasks.emplace_back(tp_.execute([&] { return load_group_detail_uris(); }));
 
   // Wait for all tasks to complete
-  RETURN_NOT_OK(tp_->wait_all(tasks));
+  throw_if_not_ok(tp_.wait_all(tasks));
 
   // Error check
   bool is_group = false;
@@ -156,8 +163,7 @@ Status GroupDirectory::load() {
   }
 
   if (!is_group) {
-    return LOG_STATUS(
-        Status_GroupDirectoryError("Cannot open group; Group does not exist."));
+    throw GroupDirectoryException("Cannot open group; Group does not exist.");
   }
 
   // The URI manager has been loaded successfully
@@ -177,7 +183,7 @@ bool GroupDirectory::loaded() const {
 tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
   // List the group directory URIs
   std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_->ls(uri_, &group_dir_uris), nullopt);
+  RETURN_NOT_OK_TUPLE(vfs_.ls(uri_, &group_dir_uris), nullopt);
 
   return {Status::Ok(), group_dir_uris};
 }
@@ -186,7 +192,7 @@ Status GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
   std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_meta_uri, &group_meta_dir_uris));
+  throw_if_not_ok(vfs_.ls(group_meta_uri, &group_meta_dir_uris));
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
@@ -210,12 +216,12 @@ Status GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
   std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
-  RETURN_NOT_OK(vfs_->ls(group_detail_uri, &group_detail_dir_uris));
+  throw_if_not_ok(vfs_.ls(group_detail_uri, &group_detail_dir_uris));
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
   auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
       compute_uris_to_vacuum(group_detail_dir_uris);
-  RETURN_NOT_OK(st1);
+  throw_if_not_ok(st1);
   group_detail_uris_to_vacuum_ = std::move(group_detail_uris_to_vacuum.value());
   group_detail_vac_uris_to_vacuum_ =
       std::move(group_detail_vac_uris_to_vacuum.value());
@@ -223,7 +229,7 @@ Status GroupDirectory::load_group_detail_uris() {
   // Compute filtered group details URIs
   auto&& [st2, group_detail_filtered_uris] = compute_filtered_uris(
       group_detail_dir_uris, group_detail_uris_to_vacuum_);
-  RETURN_NOT_OK(st2);
+  throw_if_not_ok(st2);
   group_detail_uris_ = std::move(group_detail_filtered_uris.value());
   group_detail_dir_uris.clear();
 
@@ -263,12 +269,12 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
-  auto status = parallel_for(tp_, 0, vac_files.size(), [&](size_t i) {
+  auto status = parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
-    RETURN_NOT_OK(vfs_->file_size(vac_files[i], &size));
+    throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
     std::string names;
     names.resize(size);
-    RETURN_NOT_OK(vfs_->read(vac_files[i], 0, &names[0], size));
+    throw_if_not_ok(vfs_.read(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
