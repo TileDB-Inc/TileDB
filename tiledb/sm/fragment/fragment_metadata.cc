@@ -2160,22 +2160,9 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
 
   auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
-    auto dim_num = array_schema_->dim_num();
-    non_empty_domain_.resize(dim_num);
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim{domain.dimension_ptr(d)};
-      if (!dim->var_size()) {  // Fixed-sized
-        auto r_size = 2 * dim->coord_size();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size);
-      } else {  // Var-sized
-        uint64_t r_size, start_size;
-        r_size = deserializer.read<uint64_t>();
-        start_size = deserializer.read<uint64_t>();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
-      }
-    }
+    non_empty_domain_ = std::move(
+        NDRectangle::deserialize(deserializer, memory_tracker_, domain)
+            ->get_ndranges());
   }
 
   // Get expanded domain
@@ -2725,20 +2712,9 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
     std::vector<uint8_t> d(domain_size, 0);
     serializer.write(&d[0], domain_size);
   } else {
-    // Write non-empty domain
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim{domain.dimension_ptr(d)};
-      const auto& r = non_empty_domain_[d];
-      if (!dim->var_size()) {  // Fixed-sized
-        serializer.write(r.data(), r.size());
-      } else {  // Var-sized
-        auto r_size = r.size();
-        auto r_start_size = r.start_size();
-        serializer.write<uint64_t>(r_size);
-        serializer.write<uint64_t>(r_start_size);
-        serializer.write(r.data(), r_size);
-      }
-    }
+    NDRectangle(
+        memory_tracker_, array_schema_->shared_domain(), non_empty_domain_)
+        .serialize(serializer);
   }
 }
 

@@ -80,7 +80,8 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     , enumerations_to_add_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
-          memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
+          memory_tracker_->get_resource(MemoryType::ENUMERATION))
+    , shape_to_expand_(memory_tracker) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -91,7 +92,8 @@ ArraySchemaEvolution::ArraySchemaEvolution(
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range,
-    shared_ptr<MemoryTracker> memory_tracker)
+    shared_ptr<Shape> shape,
+    shared_ptr<MemoryTracker> memory_tracker, )
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
           memory_tracker->get_resource(MemoryType::ATTRIBUTES))
@@ -101,7 +103,8 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     , enumerations_to_extend_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_drop_(enmrs_to_drop)
-    , timestamp_range_(timestamp_range) {
+    , timestamp_range_(timestamp_range)
+    , shape_to_expand_(shape) {
   for (auto& elem : attrs_to_add) {
     attributes_to_add_map_.insert(elem);
   }
@@ -174,6 +177,10 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
     // Generate new schema URI
     schema->generate_uri();
   }
+
+  // Get expanded shape
+  auto expanded_shape = this->shape_to_expand();
+  orig_schema->expand_shape(expanded_shape);
 
   return schema;
 }
@@ -370,6 +377,22 @@ std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
       timestamp_range_.first, timestamp_range_.second);
 }
 
+void ArraySchemaEvolution::expand_shape(shared_ptr<Shape> shape) {
+  if (shape == nullptr) {
+    throw ArraySchemaEvolutionException(
+        "Cannot expand the array shape; Input shape is null");
+  }
+
+  std::lock_guard<std::mutex> lock(mtx_);
+  shape_to_expand_ = shape;
+}
+
+shared_ptr<Shape> ArraySchemaEvolution::shape_to_expand() const {
+  std::lock_guard<std::mutex> lock(mtx_);
+
+  return shape_to_expand_;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -380,6 +403,7 @@ void ArraySchemaEvolution::clear() {
   enumerations_to_add_map_.clear();
   enumerations_to_drop_.clear();
   timestamp_range_ = {0, 0};
+  shape_to_expand_ = nullptr;
 }
 
 }  // namespace tiledb::sm

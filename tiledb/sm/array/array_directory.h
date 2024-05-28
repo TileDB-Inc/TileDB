@@ -831,7 +831,6 @@ class ArrayDirectory {
       const std::string& enumeration_path,
       const EncryptionKey& encryption_key,
       shared_ptr<MemoryTracker> memory_tracker) const;
-};
 
 }  // namespace tiledb::sm
 

@@ -66,12 +66,28 @@ commence(object_library enumeration)
 conclude(object_library)
 
 #
+# `ndrectangle` object library
+#
+commence(object_library ndrectangle)
+    this_target_sources(ndrectangle.cc)
+    this_target_object_libraries(constants)
+conclude(object_library)
+
+#
+# `shape` object library
+#
+commence(object_library shape)
+    this_target_sources(shape.cc)
+    this_target_object_libraries(ndrectangle constants)
+conclude(object_library)
+
+#
 # `array_schema` object library
 #
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration fragment time uri_format vfs)
+        attribute domain enumeration fragment shape time uri_format vfs)
 conclude(object_library)
 
 add_test_subdirectory()

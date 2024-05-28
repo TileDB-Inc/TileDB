@@ -188,6 +188,18 @@ class ArraySchemaEvolution {
   /** Returns the timestamp range. */
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
+  /**
+   * Expands the array shape
+   *
+   * @param shape The new shape to expand to
+   */
+  void expand_shape(shared_ptr<Shape> shape);
+
+  /**
+   * Accessor for the shape we want to expand to
+   */
+  shared_ptr<Shape> shape_to_expand() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -224,6 +236,9 @@ class ArraySchemaEvolution {
    * timestamps are stored as a pair.
    */
   std::pair<uint64_t, uint64_t> timestamp_range_;
+
+  /** The array shape to expand */
+  shared_ptr<Shape> shape_to_expand_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

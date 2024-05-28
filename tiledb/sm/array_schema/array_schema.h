@@ -120,6 +120,7 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param shape The array shape object
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    **/
@@ -141,6 +142,7 @@ class ArraySchema {
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters,
+      shared_ptr<Shape> shape,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -585,6 +587,23 @@ class ArraySchema {
       std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
           std::nullopt);
 
+  /**
+   * Expand the array shape
+   *
+   * @param new_shape The new array shape we want to expand to
+   */
+  void expand_shape(shared_ptr<Shape> new_shape);
+
+  /**
+   * Set the array shape on the schema
+   *
+   * @param shape The array shape we want to set on the schema
+   */
+  void set_shape(shared_ptr<Shape> shape);
+
+  /** Array shape accessor */
+  shared_ptr<Shape> get_shape() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -710,6 +729,9 @@ class ArraySchema {
    * loaded from file when loading the array.
    **/
   dimension_label_size_type nlabel_internal_ = 0;
+
+  /** The array shape */
+  shared_ptr<Shape> shape_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -54,6 +54,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Label 1 | [Dimension Label](#dimension_label) | First dimension label |
 | … | … | … |
 | Label N | [Dimension Label](#dimension_label) | Nth dimension label |
+| Shape | [Shape](./shape.md) | The array shape |
 
 ## Domain
 

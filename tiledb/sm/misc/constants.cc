@@ -691,7 +691,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 21;
+const format_version_t base_format_version = 22;
 
 /**
  * The TileDB serialization format version number.
@@ -724,6 +724,12 @@ const format_version_t enumerations_min_format_version = 20;
 
 /** The current enumerations version. */
 const format_version_t enumerations_version = 0;
+
+/** The lowest version supported format version for Shape API. */
+const format_version_t shape_min_format_version = 22;
+
+/** The current Shape API version. */
+const format_version_t shape_version = 0;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;

@@ -104,7 +104,8 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumeration_path_map_(
-          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS)) {
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
+    , shape_(memory_tracker) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -141,6 +142,7 @@ ArraySchema::ArraySchema(
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters,
+    shared_ptr<Shape> shape,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
@@ -165,7 +167,8 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
-    , coords_filters_(coords_filters) {
+    , coords_filters_(coords_filters)
+    , shape(shape) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
   }
@@ -256,6 +259,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
+    , shape(array_schema.shape_)
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -737,6 +741,10 @@ void ArraySchema::dump(FILE* out) const {
     fprintf(out, "\n");
     label->dump(out);
   }
+
+  // Print out array shape
+  fprintf(out, "\n");
+  shape_->dump(out);
 }
 
 Status ArraySchema::has_attribute(
@@ -804,6 +812,7 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
+// shape
 void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
@@ -871,6 +880,9 @@ void ArraySchema::serialize(Serializer& serializer) const {
     serializer.write<uint32_t>(enmr_uri_size);
     serializer.write(enmr_uri.data(), enmr_uri_size);
   }
+
+  // Serialize array shape information
+  shape_->serialize(serializer);
 }
 
 Layout ArraySchema::tile_order() const {
@@ -1422,6 +1434,12 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
     }
   }
 
+  // Load the array shape
+  shared_ptr<Shape> shape = nullptr;
+  if (version >= constants::shape_min_format_version) {
+    shape = Shape::deserialize(deserializer, memory_tracker, domain);
+  }
+
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
@@ -1471,6 +1489,7 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       FilterPipeline(
           coords_filters,
           version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64),
+      shape,
       memory_tracker);
 }
 
@@ -1789,6 +1808,43 @@ void ArraySchema::generate_uri(
       timestamp_range_.first, timestamp_range_.second, std::nullopt);
   uri_ =
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
+}
+
+void ArraySchema::expand_shape(shared_ptr<Shape> new_shape) {
+  if (new_shape == nullptr) {
+    throw ArraySchemaException(
+        "The argument you specified for shape expansion is nullptr.");
+  }
+
+  if (new_shape->empty()) {
+    throw ArraySchemaException(
+        "Unable to expand the array shape, you specified an empty new shape");
+  }
+
+  // Check that the new shape expands the existing one and not shrinks it
+  if (!shape_->covered(new_shape)) {
+    throw ArraySchemaException(
+        "The shape of an array can only be expanded, please adjust your new "
+        "shape object.")
+  }
+
+  new_shape->check_schema_sanity(*this);
+
+  shape_ = new_shape;
+}
+
+shared_ptr<Shape> ArraySchema::get_shape() const {
+  return shape_;
+}
+
+void ArraySchema::set_shape(shared_ptr<Shape> shape) {
+  if (shape == nullptr) {
+    throw ArraySchemaException(
+        "The argument you specified for setting the shape on the schema is "
+        "nullptr.");
+  }
+
+  shape_ = new_shape;
 }
 
 }  // namespace tiledb::sm
