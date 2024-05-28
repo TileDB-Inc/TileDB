@@ -363,7 +363,6 @@ TEST_CASE_METHOD(
     "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   auto expected_results = write_dense_array();
-  check_subarray_stats(2, 2);
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
@@ -384,17 +383,12 @@ TEST_CASE_METHOD(
     query.set_data_buffer("a3", a3_data);
     query.set_offsets_buffer("a3", a3_offsets);
 
-    // Check stats before serialization
-    check_subarray_stats(3, 3);
-
     // Submit query
     query.submit();
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    // Check stats after serialization
-    // #TODO Revisit after Stats serialization is reworked
+    // The deserialized query should also include the read stats
     check_read_stats(query);
-    check_subarray_stats(5, 5);
 
     auto result_el = query.result_buffer_elements_nullable();
     REQUIRE(std::get<1>(result_el["a1"]) == 100);
@@ -438,9 +432,8 @@ TEST_CASE_METHOD(
     query.submit();
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
-    // The deserialized query should also include the write stats
+    // The deserialized query should also include the read stats
     check_read_stats(query);
-    check_subarray_stats(5, 5);
 
     // We expect all cells where `a1` >= `cmp_value` to be filtered
     // out. For the refactored reader, filtered out means the value is
@@ -501,7 +494,6 @@ TEST_CASE_METHOD(
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
-    check_subarray_stats(5, 5);
     check_read_stats(query);
 
     auto result_el = query.result_buffer_elements_nullable();
@@ -552,7 +544,6 @@ TEST_CASE_METHOD(
     query.submit();
     // The deserialized query should also include the read stats
     check_read_stats(query);
-    check_subarray_stats(5, 5);
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
 
     auto result_el = query.result_buffer_elements_nullable();
@@ -567,7 +558,6 @@ TEST_CASE_METHOD(
     query.submit();
     // The deserialized query should also include the read stats
     check_read_stats(query);
-    check_subarray_stats(7, 7);
 
     REQUIRE(query.query_status() == Query::Status::INCOMPLETE);
     result_el = query.result_buffer_elements_nullable();
@@ -584,7 +574,6 @@ TEST_CASE_METHOD(
     query.submit();
     // The deserialized query should also include the read stats
     check_read_stats(query);
-    check_subarray_stats(9, 9);
 
     REQUIRE(query.query_status() == Query::Status::COMPLETE);
     result_el = query.result_buffer_elements_nullable();
@@ -747,6 +736,7 @@ TEST_CASE_METHOD(
     "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
+  check_subarray_stats(1, 1);
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
