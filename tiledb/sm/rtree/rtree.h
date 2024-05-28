@@ -37,7 +37,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
-#include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/storage_format/serialization/serializers.h"
@@ -136,9 +135,8 @@ class RTree {
   /**
    * Sets the RTree domain.
    */
-  inline Status set_domain(const Domain* domain) {
+  inline void set_domain(const Domain* domain) {
     domain_ = domain;
-    return Status::Ok();
   }
 
   /**
@@ -146,13 +144,13 @@ class RTree {
    * if the number of levels in the tree is different from exactly
    * 1 (the leaf level), and if `leaf_id` is out of bounds / invalid.
    */
-  Status set_leaf(uint64_t leaf_id, const NDRange& mbr);
+  void set_leaf(uint64_t leaf_id, const NDRange& mbr);
 
   /**
    * Sets the input MBRs as leaves. This will destroy the existing
    * RTree.
    */
-  Status set_leaves(const tdb::pmr::vector<NDRange>& mbrs);
+  void set_leaves(const tdb::pmr::vector<NDRange>& mbrs);
 
   /**
    * Resizes the leaf level. It destroys the upper levels
@@ -160,7 +158,7 @@ class RTree {
    * It errors if `num` is smaller than the current number
    * of leaves.
    */
-  Status set_leaf_num(uint64_t num);
+  void set_leaf_num(uint64_t num);
 
   /**
    * Deserializes the contents of the object from the input buffer based

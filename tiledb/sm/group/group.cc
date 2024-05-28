@@ -200,8 +200,7 @@ void Group::open(QueryType query_type) {
 
 void Group::close_for_writes() {
   // Flush the group metadata
-  throw_if_not_ok(
-      unsafe_metadata()->store(resources_, group_uri(), *encryption_key()));
+  unsafe_metadata()->store(resources_, group_uri(), *encryption_key());
 
   // Store any changes required
   if (group_details()->is_modified()) {

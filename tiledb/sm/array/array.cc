@@ -520,11 +520,8 @@ Status Array::close() {
     } else {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-        st = opened_array_->metadata().store(
+        opened_array_->metadata().store(
             resources_, array_uri_, *encryption_key());
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
       } else if (
           query_type_ != QueryType::READ && query_type_ != QueryType::DELETE &&
           query_type_ != QueryType::UPDATE) {
