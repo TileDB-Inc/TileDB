@@ -55,32 +55,22 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
 class Array;
-class OpenedArray;
 class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
-class Buffer;
 class Consolidator;
 class EncryptionKey;
-class FragmentMetadata;
-class FragmentInfo;
-class GroupDetails;
-class Metadata;
-class MemoryTracker;
 class Query;
 class RestClient;
 
 enum class EncryptionType : uint8_t;
-enum class ObjectType : uint8_t;
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManagerCanonical {
@@ -298,15 +288,6 @@ class StorageManagerCanonical {
       const char** path,
       ObjectType* type,
       bool* has_next);
-
-  /**
-   * Returns the tiledb object type
-   *
-   * @param uri Path to TileDB object resource
-   * @param type The ObjectType to be retrieved.
-   * @return Status
-   */
-  Status object_type(const URI& uri, ObjectType* type) const;
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);

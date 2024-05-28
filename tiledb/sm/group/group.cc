@@ -560,7 +560,7 @@ void Group::mark_member_for_addition(
         "mode");
   }
   group_details_->mark_member_for_addition(
-      group_member_uri, relative, name, storage_manager_);
+      resources_, group_member_uri, relative, name);
 }
 
 void Group::mark_member_for_removal(const std::string& name) {

@@ -63,15 +63,16 @@ class GroupDetails {
   /**
    * Add a member to a group, this will be flushed to disk on close
    *
+   * @param resources the context resources
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
    */
   void mark_member_for_addition(
+      ContextResources& resources,
       const URI& group_member_uri,
       const bool& relative,
-      std::optional<std::string>& name,
-      StorageManager* storage_manager);
+      std::optional<std::string>& name);
 
   /**
    * Remove a member from a group, this will be flushed to disk on close
