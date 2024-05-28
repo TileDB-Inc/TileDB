@@ -192,14 +192,6 @@ class StorageManagerCanonical {
   const std::unordered_map<std::string, std::string>& tags() const;
 
   /**
-   * Creates a TileDB group.
-   *
-   * @param group The URI of the group to be created.
-   * @return Status
-   */
-  Status group_create(const std::string& group);
-
-  /**
    * Creates a new object iterator for the input path. The iteration
    * in this case will be recursive in the entire directory tree rooted
    * at `path`.

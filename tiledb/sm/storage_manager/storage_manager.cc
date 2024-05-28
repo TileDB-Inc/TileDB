@@ -428,47 +428,6 @@ StorageManagerCanonical::tags() const {
   return tags_;
 }
 
-Status StorageManagerCanonical::group_create(const std::string& group_uri) {
-  // Create group URI
-  URI uri(group_uri);
-  if (uri.is_invalid()) {
-    throw StorageManagerException(
-        "Cannot create group '" + group_uri + "'; Invalid group URI");
-  }
-
-  // Check if group exists
-  bool exists;
-  throw_if_not_ok(is_group(resources_, uri, &exists));
-  if (exists) {
-    throw StorageManagerException(
-        "Cannot create group; Group '" + uri.to_string() + "' already exists");
-  }
-
-  std::lock_guard<std::mutex> lock{object_create_mtx_};
-  if (uri.is_tiledb()) {
-    Group group(resources_, uri, this);
-    throw_if_not_ok(
-        resources_.rest_client()->post_group_create_to_rest(uri, &group));
-    return Status::Ok();
-  }
-
-  // Create group directory
-  throw_if_not_ok(resources_.vfs().create_dir(uri));
-
-  // Create group file
-  URI group_filename = uri.join_path(constants::group_filename);
-  throw_if_not_ok(resources_.vfs().touch(group_filename));
-
-  // Create metadata folder
-  throw_if_not_ok(resources_.vfs().create_dir(
-      uri.join_path(constants::group_metadata_dir_name)));
-
-  // Create group detail folder
-  throw_if_not_ok(resources_.vfs().create_dir(
-      uri.join_path(constants::group_detail_dir_name)));
-  return Status::Ok();
-}
-
 void StorageManagerCanonical::increment_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_++;
