@@ -71,7 +71,7 @@ conclude(object_library)
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration fragment time uri_format vfs)
+        attribute domain enumeration fragment generic_tile_io time uri_format vfs)
 conclude(object_library)
 
 add_test_subdirectory()

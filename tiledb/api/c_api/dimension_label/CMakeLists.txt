@@ -40,7 +40,6 @@ commence(object_library capi_dimension_label_stub)
   this_target_sources(dimension_label_api.cc)
   this_target_link_libraries(export)
   this_target_object_libraries(capi_datatype capi_data_order capi_context_stub)
-  this_target_object_libraries(array_schema)
 conclude(object_library)
 
 add_test_subdirectory()

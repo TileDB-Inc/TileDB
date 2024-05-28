@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -43,11 +43,11 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Attribute;
 class Buffer;
@@ -334,6 +334,16 @@ class ArraySchema {
    * @return Status
    */
   void serialize(Serializer& serializer) const;
+
+  /**
+   * Stores the array schema into persistent storage.
+   *
+   * @param resources The context resources.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  Status store(
+      ContextResources& resources, const EncryptionKey& encryption_key);
 
   /** Returns the tile order. */
   Layout tile_order() const;
@@ -744,7 +754,6 @@ class ArraySchema {
   void clear();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_ARRAY_SCHEMA_H
