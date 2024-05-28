@@ -561,8 +561,8 @@ LsObjects GCS::ls_filtered_impl(
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
-    throw StatusException(Status_GCSError(
-        std::string("URI is not a GCS URI: " + uri_dir.to_string())));
+    throw GCSException(
+        std::string("URI is not a GCS URI: " + uri_dir.to_string()));
   }
 
   std::string prefix = uri_dir.backend_name() + "://";
@@ -603,9 +603,9 @@ LsObjects GCS::ls_filtered_impl(
         google::cloud::storage::Delimiter("/"));
     for (const auto& object_metadata : it) {
       if (!object_metadata) {
-        throw StatusException(Status_GCSError(std::string(
+        throw GCSException(std::string(
             "List objects failed on: " + uri.to_string() + " (" +
-            object_metadata.status().message() + ")")));
+            object_metadata.status().message() + ")"));
       }
 
       LsObjects::value_type entry;
