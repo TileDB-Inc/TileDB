@@ -87,12 +87,12 @@ void Group::open(
     QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
   if (is_open_) {
-    throw GroupStatusException("Cannot open group; Group already open");
+    throw GroupException("Cannot open group; Group already open");
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
       query_type != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException("Cannot open group; Unsupported query type");
+    throw GroupException("Cannot open group; Unsupported query type");
   }
 
   if (timestamp_end == UINT64_MAX) {
@@ -289,7 +289,7 @@ const shared_ptr<GroupDetails> Group::group_details() const {
 QueryType Group::get_query_type() const {
   // Error if the group is not open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get query_type; Group is not open");
+    throw GroupException("Cannot get query_type; Group is not open");
   }
 
   return query_type_;
@@ -571,13 +571,13 @@ void Group::mark_member_for_addition(
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot add member; Group is not open");
+    throw GroupException("Cannot add member; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
@@ -589,14 +589,13 @@ void Group::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException(
-        "Cannot mark member for removal; Group is not open");
+    throw GroupException("Cannot mark member for removal; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
@@ -639,12 +638,12 @@ uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member count; Group is not open");
+    throw GroupException("Cannot get member count; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -657,12 +656,12 @@ tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
 
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member by index; Group is not open");
+    throw GroupException("Cannot get member by index; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -675,12 +674,12 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member by name; Group is not open");
+    throw GroupException("Cannot get member by name; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
