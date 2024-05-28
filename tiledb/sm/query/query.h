@@ -924,6 +924,12 @@ class Query {
   /** Resource used for operations. */
   ContextResources& resources_;
 
+  /** The class stats. */
+  stats::Stats* stats_;
+
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
+
   /** The query memory tracker. */
   shared_ptr<MemoryTracker> query_memory_tracker_;
 
@@ -969,12 +975,6 @@ class Query {
 
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
-
-  /** The class stats. */
-  stats::Stats* stats_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;
