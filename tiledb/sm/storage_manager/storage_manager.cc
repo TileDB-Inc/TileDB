@@ -486,7 +486,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   // Check if group exists
   bool exists;
-  throw_if_not_ok(is_group(uri, &exists));
+  throw_if_not_ok(is_group(resources_, uri, &exists));
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create group; Group '") + uri.c_str() +
