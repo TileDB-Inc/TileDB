@@ -731,6 +731,9 @@ const format_version_t shape_min_format_version = 22;
 /** The current Shape API version. */
 const format_version_t shape_version = 0;
 
+/** The NDRectangle shape */
+const std::string shape_ndrectangle_str = "NDRECTANGLE";
+
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
 

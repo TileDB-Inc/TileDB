@@ -132,8 +132,7 @@ enum class MemoryType {
   TILE_OFFSETS,
   TILE_SUMS,
   WRITER_DATA,
-  WRITER_TILE_DATA,
-  SHAPE
+  WRITER_TILE_DATA
 };
 
 /**

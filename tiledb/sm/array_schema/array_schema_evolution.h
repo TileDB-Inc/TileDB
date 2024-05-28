@@ -55,6 +55,7 @@ class Domain;
 class Enumeration;
 class MemoryTracker;
 class ArraySchema;
+class Shape;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -79,6 +80,7 @@ class ArraySchemaEvolution {
    * @param enmrs_to_add Enumerations to add to the schema.
    * @param attrs_to_drop Attributes to remove from the schema.
    * @param timestamp_range Timestamp range to use for the new schema.
+   * @param timestamp_range Shape to use for the new schema.
    * @param memory_tracker Memory tracker to use for the new schema.
    */
   ArraySchemaEvolution(
@@ -90,6 +92,7 @@ class ArraySchemaEvolution {
           enmrs_to_extend,
       std::unordered_set<std::string> enmrs_to_drop,
       std::pair<uint64_t, uint64_t> timestamp_range,
+      shared_ptr<Shape> shape,
       shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ArraySchemaEvolution);

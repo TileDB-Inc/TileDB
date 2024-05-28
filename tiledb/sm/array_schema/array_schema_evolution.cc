@@ -42,6 +42,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -81,7 +82,8 @@ ArraySchemaEvolution::ArraySchemaEvolution(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
-    , shape_to_expand_(memory_tracker) {
+    , shape_to_expand_(
+          make_shared<Shape>(memory_tracker, constants::shape_version)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -93,7 +95,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range,
     shared_ptr<Shape> shape,
-    shared_ptr<MemoryTracker> memory_tracker, )
+    shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
           memory_tracker->get_resource(MemoryType::ATTRIBUTES))
@@ -180,7 +182,7 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
 
   // Get expanded shape
   auto expanded_shape = this->shape_to_expand();
-  orig_schema->expand_shape(expanded_shape);
+  schema->expand_shape(expanded_shape);
 
   return schema;
 }

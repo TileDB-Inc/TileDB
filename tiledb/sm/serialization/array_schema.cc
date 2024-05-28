@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/data_order.h"
@@ -1151,6 +1152,8 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
       cell_var_offsets_filters,
       cell_validity_filters,
       coords_filters,
+      // TODO: to be changed to actual wire Shape
+      make_shared<Shape>(memory_tracker, constants::shape_version),
       memory_tracker);
 }
 

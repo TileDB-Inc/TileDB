@@ -34,7 +34,8 @@
 #include <sstream>
 
 #include "tiledb/common/memory_tracker.h"
-#include "tiledb/common/random/random_label.h"
+#include "tiledb/sm/array_schema/dimension.h"
+#include "tiledb/sm/array_schema/domain.h"
 
 #include "ndrectangle.h"
 
@@ -45,15 +46,15 @@ NDRectangle::NDRectangle(
     shared_ptr<Domain> dom,
     const NDRange& nd)
     : memory_tracker_(memory_tracker)
-    , domain_(dom)
-    , range_data_(nd) {
+    , range_data_(nd)
+    , domain_(dom) {
 }
 
 NDRectangle::NDRectangle(
     shared_ptr<MemoryTracker> memory_tracker, shared_ptr<Domain> dom)
     : memory_tracker_(memory_tracker)
     , domain_(dom) {
-  range_data.resize(dom->dim_num());
+  range_data_.resize(dom->dim_num());
 }
 
 shared_ptr<const NDRectangle> NDRectangle::deserialize(
@@ -102,7 +103,7 @@ void NDRectangle::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << " - NDRectangle ###" << std::endl;
-  for (dimension_size_type i = 0; i < range_data_.size(); ++i) {
+  for (uint32_t i = 0; i < range_data_.size(); ++i) {
     auto dtype = domain_->dimension_ptr(i)->type();
     ss << "  - " << range_str(range_data_[i], dtype) << std::endl;
   }
@@ -110,7 +111,7 @@ void NDRectangle::dump(FILE* out) const {
   fprintf(out, "%s", ss.str().c_str());
 }
 
-void NDRectangle::set_range(const Range& r, dimension_size_type idx) {
+void NDRectangle::set_range(const Range& r, uint32_t idx) {
   if (idx >= range_data_.size()) {
     throw std::logic_error(
         "You are trying to set a range for an index out of bounds");
@@ -118,12 +119,12 @@ void NDRectangle::set_range(const Range& r, dimension_size_type idx) {
   range_data_[idx] = r;
 }
 
-void set_range_for_name(const Range& r, const std::string& name) {
+void NDRectangle::set_range_for_name(const Range& r, const std::string& name) {
   auto idx = domain_->get_dimension_index(name);
   set_range(r, idx);
 }
 
-const Range& get_range(dimension_size_type idx) const {
+const Range& NDRectangle::get_range(uint32_t idx) const {
   if (idx >= range_data_.size()) {
     throw std::logic_error(
         "You are trying to get a range for an index out of bounds");
@@ -131,7 +132,7 @@ const Range& get_range(dimension_size_type idx) const {
   return range_data_[idx];
 }
 
-const Range& get_range_for_name(const std::string& name) const {
+const Range& NDRectangle::get_range_for_name(const std::string& name) const {
   auto idx = domain_->get_dimension_index(name);
   return get_range(idx);
 }

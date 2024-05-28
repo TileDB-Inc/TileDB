@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/ndrectangle.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
@@ -2158,10 +2159,10 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
   char null_non_empty_domain = 0;
   null_non_empty_domain = deserializer.read<char>();
 
-  auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
     non_empty_domain_ = std::move(
-        NDRectangle::deserialize(deserializer, memory_tracker_, domain)
+        NDRectangle::deserialize(
+            deserializer, memory_tracker_, array_schema_->shared_domain())
             ->get_ndranges());
   }
 

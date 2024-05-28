@@ -56,6 +56,7 @@ class DimensionLabel;
 class Domain;
 class Enumeration;
 class MemoryTracker;
+class Shape;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -142,7 +143,7 @@ class ArraySchema {
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters,
-      shared_ptr<Shape> shape,
+      shared_ptr<const Shape> shape,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -602,7 +603,7 @@ class ArraySchema {
   void set_shape(shared_ptr<Shape> shape);
 
   /** Array shape accessor */
-  shared_ptr<Shape> get_shape() const;
+  shared_ptr<const Shape> get_shape() const;
 
  private:
   /* ********************************* */
@@ -719,6 +720,9 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
+  /** The array shape */
+  shared_ptr<const Shape> shape_;
+
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
@@ -729,9 +733,6 @@ class ArraySchema {
    * loaded from file when loading the array.
    **/
   dimension_label_size_type nlabel_internal_ = 0;
-
-  /** The array shape */
-  shared_ptr<Shape> shape_;
 
   /* ********************************* */
   /*           PRIVATE METHODS         */

@@ -44,6 +44,7 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -215,6 +216,8 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_extend,
       enmrs_to_drop,
       ts_range,
+      // TODO: to be changed to actual wire Shape
+      make_shared<Shape>(memory_tracker, constants::shape_version),
       memory_tracker));
 }
 

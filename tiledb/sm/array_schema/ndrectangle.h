@@ -36,15 +36,13 @@
 #include <iostream>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/pmr.h"
-#include "tiledb/common/types/untyped_datum.h"
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/shape_type.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
 
 class MemoryTracker;
+class Domain;
 
 /** Defines a NDRectangle shape */
 class NDRectangle {
@@ -77,10 +75,10 @@ class NDRectangle {
    * @param memory_tracker The memory tracker.
    * @param dom Array schema domain.
    */
-  NDRectangle(shared_ptr<MemoryTracker> memory_tracker, shared_ptr<Domain> dom)
+  NDRectangle(shared_ptr<MemoryTracker> memory_tracker, shared_ptr<Domain> dom);
 
-      /** Destructor. */
-      ~NDRectangle() = default;
+  /** Destructor. */
+  ~NDRectangle() = default;
 
   /* ********************************* */
   /*             OPERATORS             */
@@ -135,7 +133,7 @@ class NDRectangle {
    * @param r The range to set
    * @param idx The idx of the dimension given the array schema domain ordering
    */
-  void set_range(const Range& r, dimension_size_type idx);
+  void set_range(const Range& r, uint32_t idx);
 
   /**
    * Set a range for the dimension by name
@@ -150,7 +148,7 @@ class NDRectangle {
    *
    * @return The range of the dimension
    */
-  const Range& get_range(dimension_size_type idx) const;
+  const Range& get_range(uint32_t idx) const;
 
   /**
    * Get the range for the dimension specified by name

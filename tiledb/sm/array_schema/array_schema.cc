@@ -41,6 +41,7 @@
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
+#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -105,7 +106,7 @@ ArraySchema::ArraySchema(
     , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumeration_path_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
-    , shape_(memory_tracker) {
+    , shape_(make_shared<Shape>(memory_tracker, constants::shape_version)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -142,7 +143,7 @@ ArraySchema::ArraySchema(
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters,
-    shared_ptr<Shape> shape,
+    shared_ptr<const Shape> shape,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
@@ -168,7 +169,7 @@ ArraySchema::ArraySchema(
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters)
-    , shape(shape) {
+    , shape_(shape) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
   }
@@ -259,7 +260,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
-    , shape(array_schema.shape_)
+    , shape_(array_schema.shape_)
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -1435,7 +1436,7 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
   }
 
   // Load the array shape
-  shared_ptr<Shape> shape = nullptr;
+  shared_ptr<const Shape> shape = nullptr;
   if (version >= constants::shape_min_format_version) {
     shape = Shape::deserialize(deserializer, memory_tracker, domain);
   }
@@ -1825,7 +1826,7 @@ void ArraySchema::expand_shape(shared_ptr<Shape> new_shape) {
   if (!shape_->covered(new_shape)) {
     throw ArraySchemaException(
         "The shape of an array can only be expanded, please adjust your new "
-        "shape object.")
+        "shape object.");
   }
 
   new_shape->check_schema_sanity(*this);
@@ -1833,7 +1834,7 @@ void ArraySchema::expand_shape(shared_ptr<Shape> new_shape) {
   shape_ = new_shape;
 }
 
-shared_ptr<Shape> ArraySchema::get_shape() const {
+shared_ptr<const Shape> ArraySchema::get_shape() const {
   return shape_;
 }
 
@@ -1844,7 +1845,7 @@ void ArraySchema::set_shape(shared_ptr<Shape> shape) {
         "nullptr.");
   }
 
-  shape_ = new_shape;
+  shape_ = shape;
 }
 
 }  // namespace tiledb::sm

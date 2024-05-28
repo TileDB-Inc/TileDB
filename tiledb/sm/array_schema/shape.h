@@ -38,11 +38,14 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/ndrectangle.h"
 #include "tiledb/sm/enums/shape_type.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
 
 class MemoryTracker;
+class ArraySchema;
+class Domain;
 
 /** Defines an array shape */
 class Shape {
@@ -60,8 +63,9 @@ class Shape {
   /** Constructor
    *
    * @param memory_tracker The memory tracker.
+   * @param version the disk version of this shape
    */
-  Shape(shared_ptr<MemoryTracker> memory_tracker);
+  Shape(shared_ptr<MemoryTracker> memory_tracker, format_version_t version);
 
   /** Destructor. */
   ~Shape() = default;
@@ -123,14 +127,14 @@ class Shape {
    *
    * @param ndr A NDRectangle to be set on this Shape object.
    */
-  void set_ndrectangle(std::shared_ptr<NDRectangle> ndr);
+  void set_ndrectangle(std::shared_ptr<const NDRectangle> ndr);
 
   /**
    * Throws if the shape doesn't have a NDRectangle set
    *
    * @return Returns the ndrectangle set on a shape.
    */
-  void ndrectangle();
+  shared_ptr<const NDRectangle> ndrectangle() const;
 
   /**
    * Checks if the argument fully contains this shape.
@@ -172,7 +176,11 @@ class Shape {
   /** A flag which enables or disables inequality comparisons */
   bool empty_;
 
-  shared_ptr<NDRectangle> ndrectangle_;
+  /** The ndrectangle shape */
+  shared_ptr<const NDRectangle> ndrectangle_;
+
+  /** The format version of this Shape */
+  bool version_;
 };
 
 }  // namespace tiledb::sm

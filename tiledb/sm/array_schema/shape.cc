@@ -35,16 +35,18 @@
 
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/random/random_label.h"
+#include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 #include "shape.h"
 
 namespace tiledb::sm {
 
-Shape::Shape(shared_ptr<MemoryTracker> memory_tracker)
+Shape::Shape(shared_ptr<MemoryTracker> memory_tracker, format_version_t version)
     : memory_tracker_(memory_tracker)
     , empty_(true)
-    , ndrectangle_(nullptr) {
+    , version_(version) {
 }
 
 shared_ptr<const Shape> Shape::deserialize(
@@ -61,12 +63,12 @@ shared_ptr<const Shape> Shape::deserialize(
 
   auto empty = deserializer.read<bool>();
 
-  auto shape = make_shared<Shape>(memory_tracker);
+  auto shape = make_shared<Shape>(memory_tracker, disk_version);
   if (empty) {
     return shape;
   }
 
-  auto type = deserializer.read<uint8_t>();
+  ShapeType type = static_cast<ShapeType>(deserializer.read<uint8_t>());
 
   switch (type) {
     case ShapeType::NDRECTANGLE: {
@@ -77,7 +79,7 @@ shared_ptr<const Shape> Shape::deserialize(
     }
     default: {
       throw std::runtime_error(
-          "We found an unsupported " + std::to_string(type) +
+          "We found an unsupported " + shape_type_str(type) +
           "array shape type on disk.");
     }
   }
@@ -97,13 +99,13 @@ void Shape::serialize(Serializer& serializer) const {
 
   switch (type_) {
     case ShapeType::NDRECTANGLE: {
-      NDRectangle::serialize(serializer);
+      ndrectangle_->serialize(serializer);
       break;
     }
     default: {
       throw std::runtime_error(
-          "The shape you're trying to serialize to disk has an unsupported " +
-          "type " + std::to_string(type));
+          "The shape you're trying to serialize has an unsupported type " +
+          shape_type_str(type_));
     }
   }
 }
@@ -114,7 +116,7 @@ void Shape::dump(FILE* out) const {
   }
   std::stringstream ss;
   ss << "### Shape ###" << std::endl;
-  ss << "- Version: " << name_ << std::endl;
+  ss << "- Version: " << version_ << std::endl;
   ss << "- Empty: " << empty_ << std::endl;
   if (empty_) {
     fprintf(out, "%s", ss.str().c_str());
@@ -131,14 +133,14 @@ void Shape::dump(FILE* out) const {
     default: {
       throw std::runtime_error(
           "The shape you're trying to dump as string has an unsupported " +
-          "type " + std::to_string(type));
+          std::string("type ") + shape_type_str(type_));
     }
   }
 
   fprintf(out, "%s", ss.str().c_str());
 }
 
-void Shape::set_ndrectangle(std::shared_ptr<NDRectangle> ndr) {
+void Shape::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
   if (!empty_) {
     throw std::logic_error(
         "Setting a rectangle on a non-empty Shape object is not allowed.");
@@ -147,7 +149,7 @@ void Shape::set_ndrectangle(std::shared_ptr<NDRectangle> ndr) {
   type_ = ShapeType::NDRECTANGLE;
 }
 
-void Shape::ndrectangle() {
+shared_ptr<const NDRectangle> Shape::ndrectangle() const {
   if (empty_ || type_ != ShapeType::NDRECTANGLE) {
     throw std::logic_error(
         "It's not possible to get the ndrectangle from this shape if one isn't "
@@ -165,13 +167,13 @@ bool Shape::covered(const NDRange& expanded_ndrange) const {
   switch (type_) {
     case ShapeType::NDRECTANGLE: {
       return ndrectangle_->domain()->covered(
-          this->ndrectangle()->get_ndranges(), expanded_range);
+          this->ndrectangle()->get_ndranges(), expanded_ndrange);
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this shape operation because one of the shapes "
-          "passed has an unsupported" +
-          "type " + std::to_string(type));
+          "Unable to execute this shape operation because one of the shapes " +
+          std::string("passed has an unsupported") + "type " +
+          shape_type_str(type_));
     }
   }
 }
@@ -189,7 +191,7 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
       }
 
       // Bounds are set for all dimensions
-      for (dimension_size_t i = 0; i < ndranges.size(); ++i) {
+      for (uint32_t i = 0; i < ndranges.size(); ++i) {
         if (ndranges[i].empty()) {
           throw std::logic_error(
               "This shape has no range specified for dimension idx: " +
@@ -198,7 +200,7 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
       }
 
       // Nothing is out of bounds
-      if (!this->covered(schema.domain()->domain())) {
+      if (!this->covered(schema.domain().domain())) {
         throw std::logic_error(
             "This array shape has ranges past the boundaries of the array "
             "schema domain");
@@ -208,9 +210,9 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this shape operation because one of the shapes "
-          "passed has an unsupported" +
-          "type " + std::to_string(type));
+          "Unable to execute this shape operation because one of the shapes " +
+          std::string("passed has an unsupported") + "type " +
+          shape_type_str(type_));
     }
   }
 }
