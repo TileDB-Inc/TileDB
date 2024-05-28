@@ -41,12 +41,27 @@
 #include <functional>
 #include <stdexcept>
 
-/** Inclusion predicate for objects collected by ls. */
+/**
+ * Inclusion predicate for objects collected by ls.
+ *
+ * The predicate accepts:
+ * - A string_view of the path to the object.
+ * - The size of the object in bytes.
+ *
+ * The predicate returns true if the object should be included in the results,
+ * and false otherwise.
+ */
 template <class F>
 concept FilePredicate = std::predicate<F, const std::string_view, uint64_t>;
 
 /**
  * Recursion predicate for directories collected by ls.
+ *
+ * The predicate accepts:
+ * - A string_view of the path to the directory.
+ *
+ * The predicate returns true if items inside the directory should be traversed,
+ * and false otherwise.
  *
  * Directory pruning is currently supported only in local filesystem, and not
  * exposed in the user-facing C API.
