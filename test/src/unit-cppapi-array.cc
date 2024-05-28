@@ -663,7 +663,10 @@ TEST_CASE(
     "C++ API: Consolidation of sequential fragment writes",
     "[cppapi][consolidation][sequential][non-rest]") {
   tiledb::Config cfg;
-  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
   Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";
@@ -714,7 +717,9 @@ TEST_CASE(
 TEST_CASE("C++ API: Encrypted array", "[cppapi][encryption][non-rest]") {
   const char key[] = "0123456789abcdeF0123456789abcdeF";
   tiledb::Config cfg;
-  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = key;
   Context ctx(cfg);
@@ -805,7 +810,9 @@ TEST_CASE(
   tiledb::Config cfg;
   cfg["sm.encryption_type"] = "AES_256_GCM";
   cfg["sm.encryption_key"] = key.c_str();
-  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
   Context ctx(cfg);
   VFS vfs(ctx);
   const std::string array_name = "cpp_unit_array";

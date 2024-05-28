@@ -118,6 +118,9 @@ const std::string Config::SM_QUERY_SPARSE_UNORDERED_WITH_DUPS_READER =
 const std::string Config::SM_MEM_MALLOC_TRIM = "true";
 const std::string Config::SM_UPPER_MEMORY_LIMIT = "1073741824";  // 1GB
 const std::string Config::SM_MEM_TOTAL_BUDGET = "10737418240";   // 10GB
+const std::string Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT = "1";
+const std::string Config::SM_MEM_CONSOLIDATION_READER_WEIGHT = "3";
+const std::string Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT = "2";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS = "0.5";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_TILE_RANGES = "0.1";
 const std::string Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_ARRAY_DATA = "0.1";
@@ -135,7 +138,6 @@ const std::string Config::SM_IO_CONCURRENCY_LEVEL =
 const std::string Config::SM_SKIP_CHECKSUM_VALIDATION = "false";
 const std::string Config::SM_CONSOLIDATION_AMPLIFICATION = "1.0";
 const std::string Config::SM_CONSOLIDATION_BUFFER_SIZE = "50000000";
-const std::string Config::SM_CONSOLIDATION_TOTAL_BUFFER_SIZE = "2147483648";
 const std::string Config::SM_CONSOLIDATION_MAX_FRAGMENT_SIZE =
     std::to_string(UINT64_MAX);
 const std::string Config::SM_CONSOLIDATION_PURGE_DELETED_CELLS = "false";
@@ -308,6 +310,15 @@ const std::map<std::string, std::string> default_config_values = {
         "sm.mem.tile_upper_memory_limit", Config::SM_UPPER_MEMORY_LIMIT),
     std::make_pair("sm.mem.total_budget", Config::SM_MEM_TOTAL_BUDGET),
     std::make_pair(
+        "sm.mem.consolidation.buffers_weight",
+        Config::SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.reader_weight",
+        Config::SM_MEM_CONSOLIDATION_READER_WEIGHT),
+    std::make_pair(
+        "sm.mem.consolidation.writer_weight",
+        Config::SM_MEM_CONSOLIDATION_WRITER_WEIGHT),
+    std::make_pair(
         "sm.mem.reader.sparse_global_order.ratio_coords",
         Config::SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS),
     std::make_pair(
@@ -337,9 +348,6 @@ const std::map<std::string, std::string> default_config_values = {
         Config::SM_CONSOLIDATION_AMPLIFICATION),
     std::make_pair(
         "sm.consolidation.buffer_size", Config::SM_CONSOLIDATION_BUFFER_SIZE),
-    std::make_pair(
-        "sm.consolidation.total_buffer_size",
-        Config::SM_CONSOLIDATION_TOTAL_BUFFER_SIZE),
     std::make_pair(
         "sm.consolidation.max_fragment_size",
         Config::SM_CONSOLIDATION_MAX_FRAGMENT_SIZE),
@@ -762,8 +770,6 @@ Status Config::sanity_check(
   } else if (param == "sm.consolidation.amplification") {
     RETURN_NOT_OK(utils::parse::convert(value, &vf));
   } else if (param == "sm.consolidation.buffer_size") {
-    RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
-  } else if (param == "sm.consolidation.total_buffer_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
   } else if (param == "sm.consolidation.max_fragment_size") {
     RETURN_NOT_OK(utils::parse::convert(value, &vuint64));
