@@ -3083,13 +3083,13 @@ int32_t tiledb_object_type(
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  throw_if_not_ok(ctx->storage_manager()->object_remove(path));
+  throw_if_not_ok(object_remove(ctx->resources(), path));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  throw_if_not_ok(ctx->storage_manager()->object_move(old_path, new_path));
+  throw_if_not_ok(object_move(ctx->resources(), old_path, new_path));
   return TILEDB_OK;
 }
 

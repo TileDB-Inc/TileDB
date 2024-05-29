@@ -78,6 +78,26 @@ Status is_group(ContextResources& resources, const URI& uri, bool* is_group);
 Status object_type(
     ContextResources& resources, const URI& uri, ObjectType* type);
 
+/**
+ * Moves a TileDB object. If `new_path` exists, it will be overwritten.
+ *
+ * @param resources the context resources.
+ * @param old_path the old path of the object.
+ * @param new_path the new path of the object.
+ * @return Status
+ */
+Status object_move(
+    ContextResources& resources, const char* old_path, const char* new_path);
+
+/**
+ * Removes a TileDB object.
+ *
+ * @param resources the context resources.
+ * @param path the path to the object to be removed.
+ * @return Status
+ */
+Status object_remove(ContextResources& resources, const char* path);
+
 }  // namespace tiledb::sm
 
 #endif

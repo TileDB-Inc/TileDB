@@ -424,44 +424,6 @@ void StorageManagerCanonical::decrement_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManagerCanonical::object_remove(const char* path) const {
-  auto uri = URI(path);
-  if (uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot remove object '") + path + "'; Invalid URI"));
-
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot remove object '") + path +
-        "'; Invalid TileDB object"));
-
-  return resources_.vfs().remove_dir(uri);
-}
-
-Status StorageManagerCanonical::object_move(
-    const char* old_path, const char* new_path) const {
-  auto old_uri = URI(old_path);
-  if (old_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object '") + old_path + "'; Invalid URI"));
-
-  auto new_uri = URI(new_path);
-  if (new_uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object to '") + new_path + "'; Invalid URI"));
-
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, old_uri, &obj_type));
-  if (obj_type == ObjectType::INVALID)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot move object '") + old_path +
-        "'; Invalid TileDB object"));
-
-  return resources_.vfs().move_dir(old_uri, new_uri);
-}
-
 const std::unordered_map<std::string, std::string>&
 StorageManagerCanonical::tags() const {
   return tags_;
