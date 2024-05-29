@@ -114,14 +114,14 @@ static BOOL WINAPI win_ctrl_handler(DWORD dwCtrlType) {
 
 void SignalHandlers::initialize() {
   if (signal(SIGINT, tiledb_signal_handler) == SIG_ERR) {
-    throw std::logic_error(
+    throw std::runtime_error(
         std::string("Failed to install Win32 SIGINT handler: ") +
         strerror(errno));
   }
 
   // Win32 applications should also handle Ctrl-Break.
   if (SetConsoleCtrlHandler(win_ctrl_handler, TRUE) == 0) {
-    throw std::logic_error("Failed to install Win32 ctrl handler");
+    throw std::runtime_error("Failed to install Win32 ctrl handler");
   }
 }
 
@@ -143,7 +143,7 @@ void SignalHandlers::initialize() {
 
   // Remember the previous signal handler so we can call it before ours.
   if (sigaction(SIGINT, NULL, &old_action) != 0) {
-    throw std::logic_error(
+    throw std::runtime_error(
         std::string("Failed to get old SIGINT handler: ") + strerror(errno));
   }
   old_sigint_handler = old_action.sa_handler;
@@ -154,7 +154,7 @@ void SignalHandlers::initialize() {
   action.sa_flags = 0;
   action.sa_handler = tiledb_signal_handler;
   if (sigaction(SIGINT, &action, &old_action) != 0) {
-    throw std::logic_error(
+    throw std::runtime_error(
         std::string("Failed to install SIGINT handler: ") + strerror(errno));
   }
 }
