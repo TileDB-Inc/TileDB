@@ -155,8 +155,9 @@ void Consolidator::array_consolidate(
   }
 
   if (array_uri.is_tiledb()) {
-    throw_if_not_ok(storage_manager->rest_client()->post_consolidation_to_rest(
-        array_uri, config));
+    throw_if_not_ok(
+        storage_manager->resources().rest_client()->post_consolidation_to_rest(
+            array_uri, config));
   } else {
     // Get encryption key from config
     std::string encryption_key_from_cfg;
@@ -317,7 +318,8 @@ void Consolidator::array_vacuum(
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        storage_manager->rest_client()->post_vacuum_to_rest(array_uri, config));
+        storage_manager->resources().rest_client()->post_vacuum_to_rest(
+            array_uri, config));
     return;
   }
 

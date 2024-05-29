@@ -240,7 +240,7 @@ Status StorageManager::array_evolve_schema(
   }
 
   if (array_uri.is_tiledb()) {
-    return rest_client()->post_array_schema_evolution_to_rest(
+    return resources_.rest_client()->post_array_schema_evolution_to_rest(
         array_uri, schema_evolution);
   }
 
@@ -486,7 +486,7 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   // Check if group exists
   bool exists;
-  RETURN_NOT_OK(is_group(resources_, uri, &exists));
+  throw_if_not_ok(is_group(resources_, uri, &exists));
   if (exists)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot create group; Group '") + uri.c_str() +
@@ -496,7 +496,8 @@ Status StorageManagerCanonical::group_create(const std::string& group_uri) {
 
   if (uri.is_tiledb()) {
     Group group(resources_, uri, this);
-    RETURN_NOT_OK(rest_client()->post_group_create_to_rest(uri, &group));
+    throw_if_not_ok(
+        resources_.rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
   }
 
@@ -731,8 +732,8 @@ Status StorageManagerCanonical::set_tag(
   tags_[key] = value;
 
   // Tags are added to REST requests as HTTP headers.
-  if (rest_client() != nullptr)
-    RETURN_NOT_OK(rest_client()->set_header(key, value));
+  if (resources_.rest_client() != nullptr)
+    throw_if_not_ok(resources_.rest_client()->set_header(key, value));
 
   return Status::Ok();
 }

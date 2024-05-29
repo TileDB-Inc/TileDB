@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -44,8 +44,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
@@ -139,5 +138,4 @@ std::string QueryPlan::dump_json(uint32_t indent) {
   return rv.dump(indent);
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

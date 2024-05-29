@@ -68,7 +68,6 @@ class QueryException : public StatusException {
       : StatusException("Query", msg) {
   }
 };
-using QueryStatusException = QueryException;
 
 class Array;
 class ArrayDimensionLabelQueries;
@@ -870,7 +869,7 @@ class Query {
       }
       return;
     }
-    throw QueryStatusException(
+    throw QueryException(
         "We currently only support a default channel for queries");
   }
 
@@ -905,13 +904,13 @@ class Query {
 
   inline std::shared_ptr<QueryChannel> aggegate_channel() {
     if (!has_aggregates()) {
-      throw QueryStatusException("Aggregate channel does not exist");
+      throw QueryException("Aggregate channel does not exist");
     }
     return aggregate_channel_;
   }
 
   /**
-   * Returns the REST client configured in the storage manager associated to
+   * Returns the REST client configured in the context resources associated to
    * this query
    */
   RestClient* rest_client() const;
