@@ -59,7 +59,7 @@ enum class Datatype : uint8_t;
 /**
  * Manipulates a TileDB attribute.
  *
- * Notes:
+ * @invariant
  *
  * A valid `cell_val_num` depends on the Attribute datatype and ordering.
  * For `Datatype::ANY`, the only valid value is `constants::var_num`.
@@ -256,7 +256,7 @@ class Attribute {
    * @throws AttributeException if `cell_val_num` is invalid. See class
    * documentation.
    *
-   * Postcondition: `this->cell_val_num() == cell_val_num` if `cell_val_num` is
+   * @post `this->cell_val_num() == cell_val_num` if `cell_val_num` is
    * valid, and `this->cell_val_num()` is unchanged otherwise.
    */
   void set_cell_val_num(unsigned int cell_val_num);

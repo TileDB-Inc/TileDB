@@ -53,8 +53,6 @@ TEST_CASE("ANY Attribute cell val num validity", "[array_schema][attribute]") {
         constants::var_num);
   }
 
-  const unsigned int invalid_cell_val_num = GENERATE(0, 1, 2, 5, 10, 100, 1000);
-
   FilterPipeline empty_pipeline;
   ByteVecValue empty_fill;
 
@@ -73,6 +71,17 @@ TEST_CASE("ANY Attribute cell val num validity", "[array_schema][attribute]") {
   }
 
   SECTION(
+      "set_cell_val_num: no error when redundantly setting "
+      "`constants::var_num`") {
+    Attribute a("a", Datatype::ANY, false);
+    REQUIRE(a.cell_val_num() == constants::var_num);
+    REQUIRE_NOTHROW(a.set_cell_val_num(constants::var_num));
+    CHECK(a.cell_val_num() == constants::var_num);
+  }
+
+  const unsigned int invalid_cell_val_num = GENERATE(0, 1, 2, 5, 10, 100, 1000);
+
+  SECTION(
       "Constructor: only `constants::var_num` is allowed for `Datatype::ANY`") {
     CHECK_THROWS(Attribute(
         "a", Datatype::ANY, invalid_cell_val_num, DataOrder::UNORDERED_DATA));
@@ -88,15 +97,6 @@ TEST_CASE("ANY Attribute cell val num validity", "[array_schema][attribute]") {
   }
 
   SECTION(
-      "set_cell_val_num: no error when redundantly setting "
-      "`constants::var_num`") {
-    Attribute a("a", Datatype::ANY, false);
-    REQUIRE(a.cell_val_num() == constants::var_num);
-    REQUIRE_NOTHROW(a.set_cell_val_num(constants::var_num));
-    CHECK(a.cell_val_num() == constants::var_num);
-  }
-
-  SECTION(
       "set_cell_val_num: only `constants::var_num` is allowed for "
       "`Datatype::ANY`") {
     Attribute a("a", Datatype::ANY, false);
@@ -109,6 +109,7 @@ TEST_CASE("ANY Attribute cell val num validity", "[array_schema][attribute]") {
 TEST_CASE(
     "Non-ANY unordered Attribute cell val num validity",
     "[array_schema][attribute]") {
+  // Includes all datatypes except Datatype::ANY which is covered above
   const auto attribute_datatype = GENERATE(
       Datatype::FLOAT32,
       Datatype::FLOAT64,
@@ -152,6 +153,13 @@ TEST_CASE(
       Datatype::GEOM_WKT,
       Datatype::GEOM_WKB);
 
+  DYNAMIC_SECTION(
+      "Constructor: zero cell val num is invalid for datatype " +
+      datatype_str(attribute_datatype)) {
+    CHECK_THROWS(
+        Attribute("a", attribute_datatype, 0, DataOrder::UNORDERED_DATA));
+  }
+
   const unsigned int valid_cell_val_num =
       GENERATE(1, 2, 5, 10, 100, 1000, constants::var_num);
 
@@ -173,13 +181,6 @@ TEST_CASE(
             valid_cell_val_num,
             DataOrder::UNORDERED_DATA)
             .cell_val_num() == valid_cell_val_num);
-  }
-
-  DYNAMIC_SECTION(
-      "Constructor: zero cell val num is invalid for datatype " +
-      datatype_str(attribute_datatype)) {
-    CHECK_THROWS(
-        Attribute("a", attribute_datatype, 0, DataOrder::UNORDERED_DATA));
   }
 
   DYNAMIC_SECTION(
@@ -251,6 +252,7 @@ TEST_CASE(
 TEST_CASE(
     "Non-ANY, Non-STRING_ASCII ordered Attribute cell val num validity",
     "[array_schema][attribute]") {
+  // Datatype::ANY and string datatypes intentionally omitted
   const auto attribute_datatype = GENERATE(
       Datatype::FLOAT32,
       Datatype::FLOAT64,
@@ -284,9 +286,6 @@ TEST_CASE(
       Datatype::TIME_FS,
       Datatype::TIME_AS);
 
-  const unsigned int invalid_cell_val_num =
-      GENERATE(0, 2, 5, 10, 100, 1000, constants::var_num);
-
   FilterPipeline empty_pipeline;
   ByteVecValue empty_fill;
 
@@ -317,6 +316,9 @@ TEST_CASE(
     CHECK_NOTHROW(a.set_cell_val_num(1));
     CHECK(a.cell_val_num() == 1);
   }
+
+  const unsigned int invalid_cell_val_num =
+      GENERATE(0, 2, 5, 10, 100, 1000, constants::var_num);
 
   DYNAMIC_SECTION(
       "Constructor: cell val num " + std::to_string(invalid_cell_val_num) +
