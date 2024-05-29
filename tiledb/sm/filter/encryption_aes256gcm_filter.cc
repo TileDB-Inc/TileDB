@@ -70,6 +70,11 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
   fprintf(out, "EncryptionAES256GCM");
 }
 
+Datatype EncryptionAES256GCMFilter::output_datatype(Datatype) const {
+  /* encryption gives us meaningless bits with overwhelming probability */
+  return Datatype::BLOB;
+}
+
 Status EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
