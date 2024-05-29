@@ -605,7 +605,7 @@ find_package(LZ4 REQUIRED)
 find_package(Spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(Zstd REQUIRED)
-find_package(unofficial-libmagic REQUIRED)
+find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
     BZip2::BZip2

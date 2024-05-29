@@ -81,7 +81,7 @@ add_test_subdirectory()
 #
 if (TILEDB_TESTS)
   # simple unit test of magic.mgc embedded data vs external data
-  find_package(unofficial-libmagic REQUIRED)
+  find_package(LibMagic MODULE REQUIRED)
   if(NOT EXISTS ${unofficial-libmagic_DICTIONARY})
     message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
   endif()
