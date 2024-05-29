@@ -146,12 +146,14 @@ class LRUCache {
    */
   void insert(const K& key, V&& object, uint64_t size, bool overwrite = true) {
     // Do nothing if the object size is bigger than the cache maximum size
-    if (size > max_size_)
+    if (size > max_size_) {
       return;
+    }
 
     const bool exists = item_map_.count(key) == 1;
-    if (exists && !overwrite)
+    if (exists && !overwrite) {
       return;
+    }
 
     // Evict objects until there is room for `object`. Note that this
     // invalidates the state in `exists`.
