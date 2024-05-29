@@ -60,29 +60,24 @@ GlobalState::GlobalState() {
   initialized_ = false;
 }
 
-Status GlobalState::init(const Config& config) {
+void GlobalState::init(const Config& config) {
   std::unique_lock<std::mutex> lck(init_mtx_);
 
   // Get config params
-  bool found;
-  bool enable_signal_handlers = false;
-  RETURN_NOT_OK(config.get<bool>(
-      "sm.enable_signal_handlers", &enable_signal_handlers, &found));
-  assert(found);
+  bool enable_signal_handlers =
+      config.get<bool>("sm.enable_signal_handlers", Config::must_find);
 
   // run these operations once
   if (!initialized_) {
     config_ = config;
 
     if (enable_signal_handlers) {
-      RETURN_NOT_OK(SignalHandlers::GetSignalHandlers().initialize());
+      SignalHandlers::GetSignalHandlers().initialize();
     }
-    RETURN_NOT_OK(Watchdog::GetWatchdog().initialize());
+    Watchdog::GetWatchdog().initialize();
 
     initialized_ = true;
   }
-
-  return Status::Ok();
 }
 
 void GlobalState::register_storage_manager(StorageManager* sm) {

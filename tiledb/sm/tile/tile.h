@@ -35,7 +35,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/pmr.h"
-#include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/tile/filtered_buffer.h"
 #include "tiledb/storage_format/serialization/serializers.h"

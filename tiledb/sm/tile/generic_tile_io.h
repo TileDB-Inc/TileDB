@@ -203,7 +203,6 @@ class GenericTileIO {
    * Writes the generic tile header to the file.
    *
    * @param header The header to write
-   * @return Status
    */
   void write_generic_tile_header(GenericTileHeader* header);
 
@@ -223,7 +222,6 @@ class GenericTileIO {
    *
    * @param header Header instance to modify.
    * @param encryption_key The encryption key to use.
-   * @return Status
    */
   void configure_encryption_filter(
       GenericTileHeader* header, const EncryptionKey& encryption_key) const;
@@ -236,7 +234,6 @@ class GenericTileIO {
    * @param tile The tile to initialize a header for
    * @param header The header to initialize
    * @param encryption_key The encryption key to use.
-   * @return Status
    */
   void init_generic_tile_header(
       WriterTile* tile,

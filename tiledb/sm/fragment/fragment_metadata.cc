@@ -124,7 +124,7 @@ FragmentMetadata::FragmentMetadata(
 void FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
   tile += tile_index_base_;
-  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(tile, mbr));
+  loaded_metadata_ptr_->rtree().set_leaf(tile, mbr);
   return expand_non_empty_domain(mbr);
 }
 
@@ -1226,7 +1226,7 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles));
+    loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles);
     sparse_tile_num_ = num_tiles;
   }
 }
@@ -2053,7 +2053,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   mbr_num = deserializer.read<uint64_t>();
 
   // Set leaf level
-  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(mbr_num));
+  loaded_metadata_ptr_->rtree().set_leaf_num(mbr_num);
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2062,7 +2062,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
       uint64_t r_size{2 * domain.dimension_ptr(d)->coord_size()};
       mbr[d] = Range(deserializer.get_ptr<char>(r_size), r_size);
     }
-    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(m, mbr));
+    loaded_metadata_ptr_->rtree().set_leaf(m, mbr);
   }
 
   // Build R-tree bottom-up

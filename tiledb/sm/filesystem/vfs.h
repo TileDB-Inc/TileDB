@@ -901,8 +901,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
 
       const uint64_t size = buffer.size();
       ReadAheadBuffer ra_buffer(offset, std::move(buffer));
-      return LRUCache<std::string, ReadAheadBuffer>::insert(
+      LRUCache<std::string, ReadAheadBuffer>::insert(
           uri.to_string(), std::move(ra_buffer), size);
+      return Status::Ok();
     }
 
    private:

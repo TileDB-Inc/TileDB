@@ -94,7 +94,7 @@ StorageManagerCanonical::StorageManagerCanonical(
 
 Status StorageManagerCanonical::init() {
   auto& global_state = global_state::GlobalState::GetGlobalState();
-  RETURN_NOT_OK(global_state.init(config_));
+  global_state.init(config_);
 
   RETURN_NOT_OK(set_default_tags());
 
