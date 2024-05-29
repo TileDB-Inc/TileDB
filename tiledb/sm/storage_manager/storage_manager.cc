@@ -686,6 +686,7 @@ Status StorageManagerCanonical::query_submit_async(Query* query) {
 
 Status StorageManagerCanonical::set_tag(
     const std::string& key, const std::string& value) {
+  std::lock_guard<std::mutex> lock{tags_mtx_};
   tags_[key] = value;
 
   // Tags are added to REST requests as HTTP headers.

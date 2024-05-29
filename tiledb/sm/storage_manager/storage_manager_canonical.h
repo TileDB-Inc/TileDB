@@ -418,6 +418,9 @@ class StorageManagerCanonical {
   /** Tags for the context object. */
   std::unordered_map<std::string, std::string> tags_;
 
+  /** Mutex for providing thread-safety upon setting tags. */
+  std::mutex tags_mtx_;
+
   /* ********************************* */
   /*         PRIVATE METHODS           */
   /* ********************************* */
