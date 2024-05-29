@@ -41,38 +41,28 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory.h"
-#include "tiledb/common/memory_tracker.h"
-#include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
-#include "tiledb/sm/consolidator/fragment_consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/object_type.h"
-#include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
-#include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/global_state/global_state.h"
 #include "tiledb/sm/global_state/unit_test_config.h"
 #include "tiledb/sm/group/group.h"
-#include "tiledb/sm/group/group_details_v1.h"
-#include "tiledb/sm/group/group_details_v2.h"
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile.h"
-#include "tiledb/storage_format/uri/generate_uri.h"
-#include "tiledb/storage_format/uri/parse_uri.h"
 
 #include <algorithm>
 #include <iostream>
@@ -441,7 +431,7 @@ Status StorageManagerCanonical::object_remove(const char* path) const {
         std::string("Cannot remove object '") + path + "'; Invalid URI"));
 
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(uri, &obj_type));
+  throw_if_not_ok(object_type(resources_, uri, &obj_type));
   if (obj_type == ObjectType::INVALID)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot remove object '") + path +
@@ -463,7 +453,7 @@ Status StorageManagerCanonical::object_move(
         std::string("Cannot move object to '") + new_path + "'; Invalid URI"));
 
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(old_uri, &obj_type));
+  throw_if_not_ok(object_type(resources_, old_uri, &obj_type));
   if (obj_type == ObjectType::INVALID)
     return logger_->status(Status_StorageManagerError(
         std::string("Cannot move object '") + old_path +
@@ -524,41 +514,6 @@ void StorageManagerCanonical::increment_in_progress() {
   queries_in_progress_cv_.notify_all();
 }
 
-Status StorageManagerCanonical::object_type(
-    const URI& uri, ObjectType* type) const {
-  URI dir_uri = uri;
-  if (uri.is_s3() || uri.is_azure() || uri.is_gcs()) {
-    // Always add a trailing '/' in the S3/Azure/GCS case so that listing the
-    // URI as a directory will work as expected. Listing a non-directory object
-    // is not an error for S3/Azure/GCS.
-    auto uri_str = uri.to_string();
-    dir_uri =
-        URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
-  } else if (!uri.is_tiledb()) {
-    // For non public cloud backends, listing a non-directory is an error.
-    bool is_dir = false;
-    throw_if_not_ok(resources_.vfs().is_dir(uri, &is_dir));
-    if (!is_dir) {
-      *type = ObjectType::INVALID;
-      return Status::Ok();
-    }
-  }
-  bool exists = is_array(resources_, uri);
-  if (exists) {
-    *type = ObjectType::ARRAY;
-    return Status::Ok();
-  }
-
-  RETURN_NOT_OK(is_group(resources_, uri, &exists));
-  if (exists) {
-    *type = ObjectType::GROUP;
-    return Status::Ok();
-  }
-
-  *type = ObjectType::INVALID;
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::object_iter_begin(
     ObjectIter** obj_iter, const char* path, WalkOrder order) {
   // Sanity check
@@ -580,7 +535,8 @@ Status StorageManagerCanonical::object_iter_begin(
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    RETURN_NOT_OK_ELSE(object_type(uri, &obj_type), tdb_delete(*obj_iter));
+    RETURN_NOT_OK_ELSE(
+        object_type(resources_, uri, &obj_type), tdb_delete(*obj_iter));
     if (obj_type != ObjectType::INVALID) {
       (*obj_iter)->objs_.push_back(uri);
       if (order == WalkOrder::POSTORDER)
@@ -612,9 +568,10 @@ Status StorageManagerCanonical::object_iter_begin(
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    RETURN_NOT_OK(object_type(uri, &obj_type));
-    if (obj_type != ObjectType::INVALID)
+    throw_if_not_ok(object_type(resources_, uri, &obj_type));
+    if (obj_type != ObjectType::INVALID) {
       (*obj_iter)->objs_.push_back(uri);
+    }
   }
 
   return Status::Ok();
@@ -660,7 +617,7 @@ Status StorageManagerCanonical::object_iter_next_postorder(
       // Push the new TileDB objects in the front of the iterator's list
       ObjectType obj_type;
       for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-        RETURN_NOT_OK(object_type(*it, &obj_type));
+        throw_if_not_ok(object_type(resources_, *it, &obj_type));
         if (obj_type != ObjectType::INVALID) {
           obj_iter->objs_.push_front(*it);
           obj_iter->expanded_.push_front(false);
@@ -672,7 +629,7 @@ Status StorageManagerCanonical::object_iter_next_postorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  RETURN_NOT_OK(object_type(front_uri, type));
+  throw_if_not_ok(object_type(resources_, front_uri, type));
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -688,7 +645,7 @@ Status StorageManagerCanonical::object_iter_next_preorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  RETURN_NOT_OK(object_type(front_uri, type));
+  throw_if_not_ok(object_type(resources_, front_uri, type));
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -706,7 +663,7 @@ Status StorageManagerCanonical::object_iter_next_preorder(
   // Push the new TileDB objects in the front of the iterator's list
   ObjectType obj_type;
   for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-    RETURN_NOT_OK(object_type(*it, &obj_type));
+    throw_if_not_ok(object_type(resources_, *it, &obj_type));
     if (obj_type != ObjectType::INVALID)
       obj_iter->objs_.push_front(*it);
   }
@@ -847,7 +804,7 @@ Status StorageManagerCanonical::group_metadata_consolidate(
   }
   // Check if group exists
   ObjectType obj_type;
-  RETURN_NOT_OK(object_type(group_uri, &obj_type));
+  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
     return logger_->status(Status_StorageManagerError(
@@ -873,7 +830,7 @@ void StorageManagerCanonical::group_metadata_vacuum(
 
   // Check if group exists
   ObjectType obj_type;
-  throw_if_not_ok(object_type(group_uri, &obj_type));
+  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
     throw Status_StorageManagerError(

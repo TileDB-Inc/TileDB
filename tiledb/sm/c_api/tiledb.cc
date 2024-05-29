@@ -72,6 +72,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -3075,7 +3076,7 @@ int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
   auto uri = tiledb::sm::URI(path);
   tiledb::sm::ObjectType object_type;
-  throw_if_not_ok(ctx->storage_manager()->object_type(uri, &object_type));
+  throw_if_not_ok(tiledb::sm::object_type(ctx->resources(), uri, &object_type));
 
   *type = static_cast<tiledb_object_t>(object_type);
   return TILEDB_OK;
