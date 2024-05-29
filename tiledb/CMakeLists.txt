@@ -561,7 +561,7 @@ endif()
 
 # Libcurl
 if (TILEDB_SERIALIZATION)
-  find_package(Curl REQUIRED)
+  find_package(CURL REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
       CURL::libcurl
@@ -601,10 +601,10 @@ endif()
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
 find_package(BZip2 REQUIRED)
-find_package(LZ4 REQUIRED)
-find_package(Spdlog REQUIRED)
+find_package(lz4 REQUIRED)
+find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
-find_package(Zstd REQUIRED)
+find_package(zstd REQUIRED)
 find_package(LibMagic MODULE REQUIRED)
 target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
   INTERFACE
@@ -617,7 +617,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
 )
 
 if(TILEDB_WEBP)
-  find_package(Webp REQUIRED)
+  find_package(WebP REQUIRED)
   target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     INTERFACE
     WebP::webp
