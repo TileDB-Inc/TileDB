@@ -458,12 +458,12 @@ add_dependencies(TILEDB_CORE_OBJECTS gen_mgc_unarch)
 
 add_custom_target(
   update-embedded-magic-data
-  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${unofficial-libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
+  COMMAND "$<TARGET_FILE:tdb_gzip_embedded_data>" < "${libmagic_DICTIONARY}" "${MGC_GZIPPED_BIN_OUTPUT_FILE}"
   # need to work in 'local' directory with no prefix paths so no paths are included in archive
   WORKING_DIRECTORY "${MGC_GZIPPED_BIN_OUTPUT_DIRECTORY}"
   COMMAND ${CMAKE_COMMAND} -E tar cvj "magic_mgc_gzipped.bin.tar.bz2" "magic_mgc_gzipped.bin"
   COMMAND ${CMAKE_COMMAND} -E copy "magic_mgc_gzipped.bin.tar.bz2" "${MGC_GZIPPED_BIN_INPUT_FILE}"
-  DEPENDS "${unofficial-libmagic_DICTIONARY}"
+  DEPENDS "${libmagic_DICTIONARY}"
   COMMENT "Re-generate ${MGC_GZIPPED_BIN_INPUT_FILE} for embedded magic.mgc support"
 )
 
@@ -613,7 +613,7 @@ target_link_libraries(TILEDB_CORE_OBJECTS_ILIB
     spdlog::spdlog
     ZLIB::ZLIB
     ${ZSTD_TARGET}
-    unofficial::libmagic::libmagic
+    libmagic
 )
 
 if(TILEDB_WEBP)
