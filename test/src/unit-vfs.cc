@@ -622,9 +622,9 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   require_tiledb_ok(vfs_ls.remove_dir(URI(path)));
 }
 
-// Currently only local, S3 and Azure is supported for VFS::ls_recursive.
+// Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
 // TODO: LocalFsTest currently fails. Fix and re-enable.
-using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest>;
+using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
 TEMPLATE_LIST_TEST_CASE(
     "VFS: Test internal ls_filtered recursion argument",
     "[vfs][ls_filtered][recursion]",
@@ -668,12 +668,7 @@ TEST_CASE(
   }
   std::string backend = vfs_test.temp_dir_.backend_name();
 
-  if (vfs_test.temp_dir_.is_s3() || vfs_test.temp_dir_.is_azure()) {
-    DYNAMIC_SECTION(backend << " supported backend should not throw") {
-      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
-          vfs_test.temp_dir_, VFSTestBase::accept_all_files));
-    }
-  } else {
+  if (vfs_test.temp_dir_.is_hdfs()) {
     DYNAMIC_SECTION(backend << " unsupported backend should throw") {
       CHECK_THROWS_WITH(
           vfs_test.vfs_.ls_recursive(
@@ -681,13 +676,18 @@ TEST_CASE(
           Catch::Matchers::ContainsSubstring(
               "storage backend is not supported"));
     }
+  } else {
+    DYNAMIC_SECTION(backend << " supported backend should not throw") {
+      CHECK_NOTHROW(vfs_test.vfs_.ls_recursive(
+          vfs_test.temp_dir_, VFSTestBase::accept_all_files));
+    }
   }
 }
 
 TEST_CASE(
     "VFS: Throwing FileFilter for ls_recursive",
     "[vfs][ls_recursive][file-filter]") {
-  std::string prefix = GENERATE("s3://", "azure://");
+  std::string prefix = GENERATE("s3://", "azure://", "gcs://", "gs://");
   VFSTest vfs_test({0}, prefix);
   if (!vfs_test.is_supported()) {
     return;
