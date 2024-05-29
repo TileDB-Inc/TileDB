@@ -226,7 +226,7 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
     return TILEDB_ERR;
   }
 
-  auto logger = ctx->storage_manager()->logger();
+  auto logger = ctx->resources().logger();
   logger->warn(message);
 
   return TILEDB_OK;
@@ -1722,7 +1722,7 @@ capi_return_t tiledb_subarray_alloc(
     (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
-        ctx->storage_manager()->logger(),
+        ctx->resources().logger(),
         true,
         ctx->storage_manager());
     (*subarray)->is_allocated_ = true;

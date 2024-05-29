@@ -309,9 +309,6 @@ class StorageManagerCanonical {
     return resources_;
   }
 
-  /** Returns the internal logger object. */
-  shared_ptr<Logger> logger() const;
-
   /**
    * Consolidates the metadata of a group into a single file.
    *
