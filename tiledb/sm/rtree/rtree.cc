@@ -364,7 +364,9 @@ void RTree::deserialize_v1_v4(
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         auto data = deserializer.get_ptr<void>(r_size);
-        mbr.emplace_back(data, r_size);
+        // NDRange is not yet a pmr vector, so we need to explicitly pass the
+        // grandparent container's allocator.
+        mbr.emplace_back(data, r_size, level.get_allocator());
       }
     }
   }
@@ -398,13 +400,17 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           auto data = deserializer.get_ptr<void>(r_size);
-          mbr.emplace_back(data, r_size);
+          // NDRange is not yet a pmr vector, so we need to explicitly pass the
+          // grandparent container's allocator.
+          mbr.emplace_back(data, r_size, level.get_allocator());
         } else {  // Var-sized
           // range_size | start_size | range
           auto r_size = deserializer.read<uint64_t>();
           auto start_size = deserializer.read<uint64_t>();
           auto data = deserializer.get_ptr<void>(r_size);
-          mbr.emplace_back(data, r_size, start_size);
+          // NDRange is not yet a pmr vector, so we need to explicitly pass the
+          // grandparent container's allocator.
+          mbr.emplace_back(data, r_size, start_size, level.get_allocator());
         }
       }
     }
