@@ -345,6 +345,30 @@ void Dimension::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
+void Dimension::dump(std::string* out) const {
+  std::stringstream ss;
+  // Retrieve domain and tile extent strings
+  std::string domain_s = type::range_str(domain_, type_);
+  std::string tile_extent_s = tile_extent_str();
+
+  // Dump
+  ss << "### Dimension ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Domain: " << domain_s << "\n";
+  ss << "- Tile extent: " << tile_extent_s << "\n";
+  ss << "- Filters: " << filters_.size();
+  std::string temp;
+  filters_.dump(&temp);
+  ss << temp << "\n";
+
+  *out = ss.str();
+}
+
 const FilterPipeline& Dimension::filters() const {
   return filters_;
 }

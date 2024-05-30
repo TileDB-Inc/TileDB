@@ -36,6 +36,7 @@
 #define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
 #include "attribute.h"
+#include "capi_string.h"
 #include "domain.h"
 #include "object.h"
 #include "schema_base.h"
@@ -165,7 +166,17 @@ class ArraySchema : public Schema {
   void dump(FILE* out = nullptr) const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(
-        tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
+        tiledb_array_schema_dump_file(ctx.ptr().get(), schema_.get(), out));
+  }
+
+  void dump(std::string* out) const override {
+    auto& ctx = ctx_.get();
+    tiledb_string_t* tdb_string;
+
+    ctx.handle_error(tiledb_array_schema_dump_str(
+        ctx.ptr().get(), schema_.get(), &tdb_string));
+
+    *out = impl::convert_to_string(&tdb_string).value();
   }
 
   /** Returns the array type. */

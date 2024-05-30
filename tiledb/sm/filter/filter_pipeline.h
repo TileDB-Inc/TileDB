@@ -129,9 +129,15 @@ class FilterPipeline {
 
   /**
    * Dumps the filter pipeline details in ASCII format in the selected
-   * output.
+   * output file.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Dumps the filter pipeline details in ASCII format in the selected
+   * output string.
+   */
+  void dump(std::string* out) const;
 
   /**
    * Checks that two filters have compatible input / output types.

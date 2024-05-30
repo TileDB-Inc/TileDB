@@ -693,51 +693,13 @@ void ArraySchema::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::stringstream ss;
-  ss << "- Array type: " << array_type_str(array_type_) << "\n";
-  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
-  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
-  ss << "- Capacity: " << capacity_ << "\n";
-  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
-  ss << "- Coordinates filters: " << coords_filters_.size();
-  fprintf(out, "%s", ss.str().c_str());
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
+}
 
-  coords_filters_.dump(out);
-  fprintf(
-      out,
-      "\n- Offsets filters: %u",
-      (unsigned)cell_var_offsets_filters_.size());
-  cell_var_offsets_filters_.dump(out);
-  fprintf(
-      out, "\n- Validity filters: %u", (unsigned)cell_validity_filters_.size());
-  cell_validity_filters_.dump(out);
-  fprintf(out, "\n");
-
-  if (domain_ != nullptr)
-    domain_->dump(out);
-
-  for (auto& attr : attributes_) {
-    fprintf(out, "\n");
-    attr->dump(out);
-  }
-
-  for (auto& enmr_iter : enumeration_map_) {
-    fprintf(out, "\n");
-    if (enmr_iter.second != nullptr) {
-      enmr_iter.second->dump(out);
-    } else {
-      std::stringstream ss;
-      ss << "### Enumeration ###" << std::endl;
-      ss << "- Name: " << enmr_iter.first << std::endl;
-      ss << "- Loaded: false" << std::endl;
-      fprintf(out, "%s", ss.str().c_str());
-    }
-  }
-
-  for (auto& label : dimension_labels_) {
-    fprintf(out, "\n");
-    label->dump(out);
-  }
+void ArraySchema::dump(std::string* out) const {
+  *out = dump_array_schema();
 }
 
 Status ArraySchema::has_attribute(
@@ -1671,6 +1633,62 @@ const std::string& ArraySchema::name() const {
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
+
+std::string ArraySchema::dump_array_schema() const {
+  std::stringstream ss;
+  ss << "- Array type: " << array_type_str(array_type_) << "\n";
+  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
+  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
+  ss << "- Capacity: " << capacity_ << "\n";
+  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
+  ss << "- Coordinates filters: " << coords_filters_.size();
+
+  std::string temp;
+  coords_filters_.dump(&temp);
+  ss << temp;
+
+  ss << "\n- Offsets filters: " << cell_var_offsets_filters_.size();
+
+  cell_var_offsets_filters_.dump(&temp);
+  ss << temp;
+  ss << "\n- Validity filters: " << cell_validity_filters_.size();
+
+  cell_validity_filters_.dump(&temp);
+  ss << temp;
+  ss << "\n";
+
+  if (domain_ != nullptr) {
+    domain_->dump(&temp);
+    ss << temp;
+  }
+
+  for (auto& attr : attributes_) {
+    ss << "\n";
+    attr->dump(&temp);
+    ss << temp;
+  }
+
+  for (auto& enmr_iter : enumeration_map_) {
+    // fprintf(out, "\n");
+    ss << "\n";
+    if (enmr_iter.second != nullptr) {
+      enmr_iter.second->dump(&temp);
+      ss << temp;
+    } else {
+      ss << "### Enumeration ###" << std::endl;
+      ss << "- Name: " << enmr_iter.first << std::endl;
+      ss << "- Loaded: false" << std::endl;
+    }
+  }
+
+  for (auto& label : dimension_labels_) {
+    ss << "\n";
+    label->dump(&temp);
+    ss << temp;
+  }
+
+  return ss.str();
+}
 
 void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;

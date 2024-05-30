@@ -41,6 +41,10 @@ void WebpFilter::dump(FILE* out) const {
   fprintf(out, "WebpFilter");
 }
 
+void WebpFilter::dump(std::string* out) const {
+  *out = "WebpFilter";
+}
+
 bool WebpFilter::accepts_input_datatype(Datatype datatype) const {
   return datatype == Datatype::UINT8;
 }

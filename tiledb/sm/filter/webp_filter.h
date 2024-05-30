@@ -149,9 +149,15 @@ class WebpFilter : public Filter {
 
   /**
    * Dumps filter details in ASCII format.
-   * @param out Location to write output.
+   * @param out File to write output.
    */
   void dump(FILE* out) const override;
+
+  /**
+   * Dumps filter details in ASCII format.
+   * @param out String to write output.
+   */
+  void dump(std::string* out) const override;
 
   /**
    * Checks if the filter is applicable to the input datatype.

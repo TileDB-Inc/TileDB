@@ -565,6 +565,16 @@ void FilterPipeline::dump(FILE* out) const {
   }
 }
 
+void FilterPipeline::dump(std::string* out) const {
+  *out = "";
+  std::string tmp;
+  for (const auto& filter : filters_) {
+    filter->dump(&tmp);
+    out->append("\n  > ");
+    out->append(tmp);
+  }
+}
+
 void FilterPipeline::ensure_compatible(
     const Filter& first, const Filter& second, Datatype first_input_type) {
   auto first_output_type = first.output_datatype(first_input_type);

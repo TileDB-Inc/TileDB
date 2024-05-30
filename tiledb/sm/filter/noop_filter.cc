@@ -55,6 +55,10 @@ void NoopFilter::dump(FILE* out) const {
   fprintf(out, "NoOp");
 }
 
+void NoopFilter::dump(std::string* out) const {
+  *out = "NoOp";
+}
+
 Status NoopFilter::run_forward(
     const WriterTile&,
     WriterTile* const,

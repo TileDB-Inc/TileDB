@@ -269,8 +269,11 @@ class Domain {
    */
   shared_ptr<Dimension> shared_dimension(const std::string& name) const;
 
-  /** Dumps the domain in ASCII format in the selected output. */
+  /** Dumps the domain in ASCII format in the selected output file. */
   void dump(FILE* out) const;
+
+  /** Dumps the domain in ASCII format in the selected output string. */
+  void dump(std::string* out) const;
 
   /** Expands ND range `r2` using ND range `r1`. */
   void expand_ndrange(const NDRange& r1, NDRange* r2) const;

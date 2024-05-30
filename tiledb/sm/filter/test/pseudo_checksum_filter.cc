@@ -43,6 +43,10 @@ void PseudoChecksumFilter::dump(FILE* out) const {
   (void)out;
 }
 
+void PseudoChecksumFilter::dump(std::string* out) const {
+  (void)out;
+}
+
 Status PseudoChecksumFilter::run_forward(
     const WriterTile&,
     WriterTile* const,

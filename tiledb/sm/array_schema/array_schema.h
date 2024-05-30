@@ -297,8 +297,11 @@ class ArraySchema {
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
 
-  /** Dumps the array schema in ASCII format in the selected output. */
+  /** Dumps the array schema in ASCII format in the selected output file. */
   void dump(FILE* out) const;
+
+  /** Dumps the array schema in ASCII format in the selected output string. */
+  void dump(std::string* out) const;
 
   /**
    * Checks if the array schema has a attribute of the given name.
@@ -590,6 +593,9 @@ class ArraySchema {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** Dump the array schema in ASCII format. */
+  std::string dump_array_schema() const;
 
   /**
    * The memory tracker of the ArraySchema.

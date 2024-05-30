@@ -60,6 +60,11 @@ void PositiveDeltaFilter::dump(FILE* out) const {
   fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
 }
 
+void PositiveDeltaFilter::dump(std::string* out) const {
+  *out = "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=";
+  out->append(std::to_string(max_window_size_));
+}
+
 bool PositiveDeltaFilter::accepts_input_datatype(Datatype datatype) const {
   if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
       datatype_is_time(datatype) || datatype_is_byte(datatype)) {

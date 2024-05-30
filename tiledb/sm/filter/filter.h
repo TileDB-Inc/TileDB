@@ -86,8 +86,11 @@ class Filter {
    */
   Filter* clone(Datatype data_type) const;
 
-  /** Dumps the filter details in ASCII format in the selected output. */
+  /** Dumps the filter details in ASCII format in the selected output file. */
   virtual void dump(FILE* out) const = 0;
+
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  virtual void dump(std::string* out) const = 0;
 
   /**
    * Returns the filter output type

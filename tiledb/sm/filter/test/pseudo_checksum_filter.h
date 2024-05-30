@@ -52,6 +52,8 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
 
   void dump(FILE* out) const override;
 
+  void dump(std::string* out) const override;
+
   Status run_forward(
       const WriterTile&,
       WriterTile* const,

@@ -138,6 +138,17 @@ void CompressionFilter::dump(FILE* out) const {
   }
 }
 
+void CompressionFilter::dump(std::string* out) const {
+  std::string compressor_str = tiledb::sm::compressor_str(compressor_);
+  if (compressor_ == Compressor::DELTA ||
+      compressor_ == Compressor::DOUBLE_DELTA) {
+    *out += compressor_str + ": COMPRESSION_LEVEL=" + std::to_string(level_) +
+            ", REINTERPRET_DATATYPE=" + datatype_str(reinterpret_datatype_);
+  } else {
+    *out += compressor_str + ": COMPRESSION_LEVEL=" + std::to_string(level_);
+  }
+}
+
 CompressionFilter* CompressionFilter::clone_impl() const {
   return tdb_new(
       CompressionFilter,

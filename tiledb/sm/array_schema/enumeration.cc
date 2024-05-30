@@ -408,6 +408,19 @@ void Enumeration::dump(FILE* out) const {
   fprintf(out, "%s", ss.str().c_str());
 }
 
+void Enumeration::dump(std::string* out) const {
+  std::stringstream ss;
+  ss << "### Enumeration ###" << std::endl;
+  ss << "- Name: " << name_ << std::endl;
+  ss << "- Loaded: true" << std::endl;
+  ss << "- Type: " << datatype_str(type_) << std::endl;
+  ss << "- Cell Val Num: " << cell_val_num_ << std::endl;
+  ss << "- Ordered: " << (ordered_ ? "true" : "false") << std::endl;
+  ss << "- Element Count: " << value_map_.size() << std::endl;
+
+  *out = ss.str().c_str();
+}
+
 void Enumeration::generate_value_map() {
   // If we've got no data, there are no values to generate.
   if (data_.size() == 0) {

@@ -699,11 +699,23 @@ int32_t tiledb_array_schema_get_attribute_num(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_dump(
+int32_t tiledb_array_schema_dump_file(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
   array_schema->array_schema_->dump(out);
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_string_t** out) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR)
+    return TILEDB_ERR;
+  std::string str;
+  array_schema->array_schema_->dump(&str);
+  *out = tiledb_string_handle_t::make_handle(str);
   return TILEDB_OK;
 }
 
@@ -5492,11 +5504,20 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    array_schema_dump,
+    array_schema_dump_file,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     FILE* out) {
-  return api_entry<tiledb::api::tiledb_array_schema_dump>(
+  return api_entry<tiledb::api::tiledb_array_schema_dump_file>(
+      ctx, array_schema, out);
+}
+
+CAPI_INTERFACE(
+    array_schema_dump_str,
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_string_t** out) {
+  return api_entry<tiledb::api::tiledb_array_schema_dump_str>(
       ctx, array_schema, out);
 }
 

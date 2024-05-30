@@ -48,6 +48,10 @@ void XORFilter::dump(FILE* out) const {
   fprintf(out, "XORFilter");
 }
 
+void XORFilter::dump(std::string* out) const {
+  *out = "XORFilter";
+}
+
 bool XORFilter::accepts_input_datatype(Datatype datatype) const {
   switch (datatype_size(datatype)) {
     case sizeof(int8_t):

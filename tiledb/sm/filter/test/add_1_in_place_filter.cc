@@ -44,6 +44,10 @@ void Add1InPlace::dump(FILE* out) const {
   (void)out;
 }
 
+void Add1InPlace::dump(std::string* out) const {
+  (void)out;
+}
+
 Status Add1InPlace::run_forward(
     const WriterTile&,
     WriterTile* const,

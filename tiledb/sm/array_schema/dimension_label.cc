@@ -274,6 +274,21 @@ void DimensionLabel::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
+void DimensionLabel::dump(std::string* out) const {
+  std::stringstream ss;
+  ss << "### Dimension Label ###\n";
+  ss << "- Dimension Index: " << dim_id_ << "\n";
+  ss << "- Dimension Label Name: " << dim_label_name_ << "\n";
+  ss << "- URI: " << uri_.to_string() << "\n";
+  ss << "- Label Attribute Name: " << label_attr_name_ << "\n";
+  ss << "- Label Type: " << datatype_str(label_type_) << "\n";
+  (label_cell_val_num_ == constants::var_num) ?
+      ss << "- Label cell val num: var\n" :
+      ss << "- Label cell val num: " << label_cell_val_num_ << "\n";
+  ss << "\n";
+  *out = ss.str();
+}
+
 const shared_ptr<ArraySchema> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(

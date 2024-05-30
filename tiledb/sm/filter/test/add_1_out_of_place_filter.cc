@@ -43,6 +43,10 @@ void Add1OutOfPlace::dump(FILE* out) const {
   (void)out;
 }
 
+void Add1OutOfPlace::dump(std::string* out) const {
+  (void)out;
+}
+
 Status Add1OutOfPlace::run_forward(
     const WriterTile&,
     WriterTile* const,

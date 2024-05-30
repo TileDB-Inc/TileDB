@@ -70,6 +70,10 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
   fprintf(out, "EncryptionAES256GCM");
 }
 
+void EncryptionAES256GCMFilter::dump(std::string* out) const {
+  *out = "EncryptionAES256GCM";
+}
+
 Status EncryptionAES256GCMFilter::run_forward(
     const WriterTile&,
     WriterTile* const,

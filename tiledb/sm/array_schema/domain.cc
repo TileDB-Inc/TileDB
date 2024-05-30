@@ -382,6 +382,16 @@ void Domain::dump(FILE* out) const {
   }
 }
 
+void Domain::dump(std::string* out) const {
+  *out = "";
+  std::string tmp;
+  for (const auto dim : dimension_ptrs_) {
+    dim->dump(&tmp);
+    out->append("\n");
+    out->append(tmp);
+  }
+}
+
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   assert(r2 != nullptr);
 

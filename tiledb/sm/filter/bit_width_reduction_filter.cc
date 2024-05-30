@@ -97,6 +97,11 @@ void BitWidthReductionFilter::dump(FILE* out) const {
   fprintf(out, "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=%u", max_window_size_);
 }
 
+void BitWidthReductionFilter::dump(std::string* out) const {
+  *out = "BitWidthReduction: BIT_WIDTH_MAX_WINDOW=";
+  out->append(std::to_string(max_window_size_));
+}
+
 bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
   if (datatype_is_integer(datatype) || datatype_is_datetime(datatype) ||
       datatype_is_time(datatype) || datatype_is_byte(datatype)) {

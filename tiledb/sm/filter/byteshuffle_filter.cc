@@ -58,6 +58,10 @@ void ByteshuffleFilter::dump(FILE* out) const {
   fprintf(out, "ByteShuffle");
 }
 
+void ByteshuffleFilter::dump(std::string* out) const {
+  *out = "ByteShuffle";
+}
+
 Status ByteshuffleFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const,

@@ -56,6 +56,15 @@ void FloatScalingFilter::dump(FILE* out) const {
       offset_);
 }
 
+void FloatScalingFilter::dump(std::string* out) const {
+  *out = "FloatScalingFilter: BYTE_WIDTH=";
+  out->append(std::to_string(static_cast<uint32_t>(byte_width_)));
+  out->append(", SCALE=");
+  out->append(std::to_string(scale_));
+  out->append(", OFFSET=");
+  out->append(std::to_string(offset_));
+}
+
 void FloatScalingFilter::serialize_impl(Serializer& serializer) const {
   FilterConfig buffer_struct = {scale_, offset_, byte_width_};
   serializer.write(buffer_struct);

@@ -141,9 +141,16 @@ class DimensionLabel {
   }
 
   /**
-   * Dumps the dimension label contents in ASCII form in the selected output.
+   * Dumps the dimension label contents in ASCII form in the selected output
+   * file.
    */
   void dump(FILE* out) const;
+
+  /**
+   * Dumps the dimension label contents in ASCII form in the selected output
+   * string.
+   */
+  void dump(std::string* out) const;
 
   /**
    * Returns ``true`` if the dimension label is not contained inside the array.

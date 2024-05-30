@@ -889,25 +889,45 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
     int32_t* has_attr) TILEDB_NOEXCEPT;
 
 /**
- * Dumps the array schema in ASCII format in the selected output.
+ * Dumps the array schema in ASCII format in the selected file output.
  *
  * **Example:**
  *
  * The following prints the array schema dump in standard output.
  *
  * @code{.c}
- * tiledb_array_schema_dump(ctx, array_schema, stdout);
+ * tiledb_array_schema_dump_file(ctx, array_schema, stdout);
  * @endcode
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
- * @param out The output.
+ * @param out The output file.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_dump(
+TILEDB_EXPORT int32_t tiledb_array_schema_dump_file(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     FILE* out) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the array schema in ASCII format in the selected string output.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_array_schema_dump_str(ctx, array_schema, &tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param array_schema The array schema.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_array_schema_dump_str(
+    tiledb_ctx_t* ctx,
+    const tiledb_array_schema_t* array_schema,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 /* ********************************* */
 /*               QUERY               */

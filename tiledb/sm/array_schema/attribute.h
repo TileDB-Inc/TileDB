@@ -225,8 +225,12 @@ class Attribute {
    */
   static Attribute deserialize(Deserializer& deserializer, uint32_t version);
 
-  /** Dumps the attribute contents in ASCII form in the selected output. */
+  /** Dumps the attribute contents in ASCII form in the selected output file. */
   void dump(FILE* out) const;
+
+  /** Dumps the attribute contents in ASCII form in the selected output string.
+   */
+  void dump(std::string* out) const;
 
   /**
    * Serializes the object members into a binary buffer.

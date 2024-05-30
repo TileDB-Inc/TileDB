@@ -231,6 +231,37 @@ void Attribute::dump(FILE* out) const {
   fprintf(out, "\n");
 }
 
+void Attribute::dump(std::string* out) const {
+  std::stringstream ss;
+  ss << "### Attribute ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  ss << "- Nullable: " << (nullable_ ? "true" : "false") << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Filters: " << filters_.size();
+  std::string temp;
+  filters_.dump(&temp);
+  ss << temp << "\n";
+  ss << "- Fill value: " << fill_value_str();
+  if (nullable_) {
+    ss << "\n";
+    ss << "- Fill value validity: " << fill_value_validity_;
+  }
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    ss << "\n";
+    ss << "- Data ordering: " << data_order_str(order_);
+  }
+  if (enumeration_name_.has_value()) {
+    ss << "\n";
+    ss << "- Enumeration name: " << enumeration_name_.value();
+  }
+  ss << "\n";
+  *out = ss.str();
+}
+
 const FilterPipeline& Attribute::filters() const {
   return filters_;
 }
