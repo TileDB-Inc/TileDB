@@ -105,11 +105,6 @@ bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
   return false;
 }
 
-Datatype BitWidthReductionFilter::output_datatype(Datatype) const {
-  /* if the compression did anything then the result is a binary blob */
-  return Datatype::BLOB;
-}
-
 Status BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
