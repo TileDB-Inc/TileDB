@@ -896,7 +896,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  * The following prints the array schema dump in standard output.
  *
  * @code{.c}
- * tiledb_array_schema_dump_file(ctx, array_schema, stdout);
+ * tiledb_array_schema_dump(ctx, array_schema, stdout);
  * @endcode
  *
  * @param ctx The TileDB context.
@@ -904,7 +904,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  * @param out The output file.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_EXPORT int32_t tiledb_array_schema_dump_file(
+TILEDB_EXPORT int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     FILE* out) TILEDB_NOEXCEPT;

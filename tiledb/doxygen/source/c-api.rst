@@ -334,7 +334,7 @@ Array Schema
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_has_attribute
     :project: TileDB-C
-.. doxygenfunction:: tiledb_array_schema_dump_file
+.. doxygenfunction:: tiledb_array_schema_dump
     :project: TileDB-C
 .. doxygenfunction:: tiledb_array_schema_dump_str
     :project: TileDB-C

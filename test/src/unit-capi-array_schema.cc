@@ -927,7 +927,7 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
   fclose(gold_fout);
   FILE* fout = fopen("fout.txt", "w");
-  tiledb_array_schema_dump_file(ctx_, array_schema, fout);
+  tiledb_array_schema_dump(ctx_, array_schema, fout);
   fclose(fout);
 #ifdef _WIN32
   CHECK(!system("FC gold_fout.txt fout.txt > nul"));

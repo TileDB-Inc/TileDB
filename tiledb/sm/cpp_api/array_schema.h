@@ -166,7 +166,7 @@ class ArraySchema : public Schema {
   void dump(FILE* out = nullptr) const override {
     auto& ctx = ctx_.get();
     ctx.handle_error(
-        tiledb_array_schema_dump_file(ctx.ptr().get(), schema_.get(), out));
+        tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
   }
 
   void dump(std::string* out) const override {

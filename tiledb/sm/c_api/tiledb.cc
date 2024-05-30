@@ -699,7 +699,7 @@ int32_t tiledb_array_schema_get_attribute_num(
   return TILEDB_OK;
 }
 
-int32_t tiledb_array_schema_dump_file(
+int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
@@ -5504,11 +5504,11 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    array_schema_dump_file,
+    array_schema_dump,
     tiledb_ctx_t* ctx,
     const tiledb_array_schema_t* array_schema,
     FILE* out) {
-  return api_entry<tiledb::api::tiledb_array_schema_dump_file>(
+  return api_entry<tiledb::api::tiledb_array_schema_dump>(
       ctx, array_schema, out);
 }
 

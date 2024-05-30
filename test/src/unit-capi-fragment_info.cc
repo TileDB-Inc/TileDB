@@ -1495,14 +1495,11 @@ TEST_CASE("C API: Test fragment info, dump", "[capi][fragment_info][dump]") {
   FILE* frag2_schema_file = fopen("frag2_schema.txt", "w");
   FILE* frag3_schema_file = fopen("frag3_schema.txt", "w");
 
-  rc =
-      tiledb_array_schema_dump_file(ctx, frag1_array_schema, frag1_schema_file);
+  rc = tiledb_array_schema_dump(ctx, frag1_array_schema, frag1_schema_file);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_array_schema_dump_file(ctx, frag2_array_schema, frag2_schema_file);
+  rc = tiledb_array_schema_dump(ctx, frag2_array_schema, frag2_schema_file);
   CHECK(rc == TILEDB_OK);
-  rc =
-      tiledb_array_schema_dump_file(ctx, frag3_array_schema, frag3_schema_file);
+  rc = tiledb_array_schema_dump(ctx, frag3_array_schema, frag3_schema_file);
   CHECK(rc == TILEDB_OK);
 
   fclose(frag1_schema_file);
