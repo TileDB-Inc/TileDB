@@ -35,6 +35,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/logger_public.h"
+#include "tiledb/common/pmr.h"
 #include "tiledb/common/tag.h"
 #include "tiledb/sm/enums/datatype.h"
 
@@ -61,6 +62,15 @@ class Range {
    * The range is stored as a sequence of bytes with manual memory layout. The
    * memory layout is different for fixed-size and variable-size types.
    *
+   * The type is tdb::pmr::pmr_vector<uint8_t> instead of
+   * tdb::pmr::vector<uint8_t>, to keep the class copy-constructible. As the
+   * codebase moves to using memory trackers, some code has been updated to use
+   * the polymorphic allocator, but other hasn't yet. Maintining
+   * copy-constructibility keeps the not-yet-migrated code from breaking.
+   *
+   * All constructors accept an optional allocator argument, whose default value
+   * is an allocator using std::pmr::get_default_resource.
+   *
    * Fixed-size type T:
    *   lower limit: sizeof(T)
    *   upper limit: sizeof(T)
@@ -68,7 +78,12 @@ class Range {
    *   lower limit: range_start_size_
    *   upper limit: range_size() - range_start_size_
    */
-  std::vector<uint8_t> range_;
+  tdb::pmr::pmr_vector<uint8_t> range_;
+
+  /**
+   * Alias to the allocator type used by the range vector.
+   */
+  using allocator_type = decltype(range_)::allocator_type;
 
   /**
    * The byte size of the lower limit of the range. Applicable only to variable
@@ -104,31 +119,40 @@ class Range {
    *
    * @param size Size of the storage array in bytes
    */
-  explicit Range(size_t size)
-      : range_(size) {
+  explicit Range(size_t size, const allocator_type& alloc)
+      : range_(size, alloc) {
   }
 
  public:
   /** Default constructor. */
-  Range()
-      : range_{} {
+  Range(const allocator_type& alloc = {})
+      : range_(alloc) {
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* range, uint64_t range_size)
-      : Range() {
+  Range(
+      const void* range, uint64_t range_size, const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range(range, range_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const void* range, uint64_t range_size, uint64_t range_start_size)
-      : Range() {
+  Range(
+      const void* range,
+      uint64_t range_size,
+      uint64_t range_start_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range(range, range_size, range_start_size);
   }
 
   /** Constructs a range and sets fixed data. */
-  Range(const void* start, const void* end, uint64_t type_size)
-      : Range() {
+  Range(
+      const void* start,
+      const void* end,
+      uint64_t type_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range_fixed(start, end, type_size);
   }
 
@@ -137,14 +161,18 @@ class Range {
       const void* start,
       uint64_t start_size,
       const void* end,
-      uint64_t end_size)
-      : Range() {
+      uint64_t end_size,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_range_var(start, start_size, end, end_size);
   }
 
   /** Constructs a range and sets variable data. */
-  Range(const std::string& s1, const std::string& s2)
-      : Range() {
+  Range(
+      const std::string& s1,
+      const std::string& s2,
+      const allocator_type& alloc = {})
+      : Range(alloc) {
     set_str_range(s1, s2);
   }
 
@@ -156,8 +184,8 @@ class Range {
    * this constructor for language type that we use as fixed-length data.
    */
   template <class T>
-  Range(Tag<T>, T first, T second)
-      : Range(2 * sizeof(T)) {
+  Range(Tag<T>, T first, T second, const allocator_type& alloc = {})
+      : Range(2 * sizeof(T), alloc) {
     auto d{reinterpret_cast<T*>(range_.data())};
     d[0] = first;
     d[1] = second;
