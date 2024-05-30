@@ -34,7 +34,6 @@
 #include "test/support/src/helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/sm/cpp_api/tiledb"
-#include "tiledb/sm/filter/checksum_md5_filter.h"
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/stdx/utility/to_underlying.h"
 
@@ -234,6 +233,16 @@ TEST_CASE(
 
     CHECK_NOTHROW(d1.set_filter_list(filters));
     CHECK_NOTHROW(a1.set_filter_list(filters));
+
+    // Should throw without FloatScale to convert float->int32.
+    auto delta_compressor = GENERATE(
+        TILEDB_FILTER_POSITIVE_DELTA,
+        TILEDB_FILTER_DOUBLE_DELTA,
+        TILEDB_FILTER_DELTA);
+    tiledb::Filter delta_filter(ctx, delta_compressor);
+    filters.add_filter(delta_filter);
+    CHECK_THROWS(d1.set_filter_list(filters));
+    CHECK_THROWS(a1.set_filter_list(filters));
   }
 
   SECTION("- Multiple compressors following type conversion") {
@@ -249,46 +258,6 @@ TEST_CASE(
     filters.add_filter(float_scale);
     filters.add_filter(bzip);
     filters.add_filter(compressor_filter);
-
-    CHECK_NOTHROW(d1.set_filter_list(filters));
-    CHECK_NOTHROW(a1.set_filter_list(filters));
-  }
-
-  SECTION("- Delta cannot run on float input") {
-    // Should throw without FloatScale to convert float->int32.
-    auto delta_compressor = GENERATE(
-        TILEDB_FILTER_POSITIVE_DELTA,
-        TILEDB_FILTER_DOUBLE_DELTA,
-        TILEDB_FILTER_DELTA);
-    tiledb::Filter delta_filter(ctx, delta_compressor);
-    filters.add_filter(delta_filter);
-    CHECK_THROWS(d1.set_filter_list(filters));
-    CHECK_THROWS(a1.set_filter_list(filters));
-
-    tiledb::Filter checksum_filter(ctx, TILEDB_FILTER_CHECKSUM_MD5);
-    filters.add_filter(checksum_filter);
-    CHECK_THROWS(d1.set_filter_list(filters));
-    CHECK_THROWS(a1.set_filter_list(filters));
-  }
-
-  SECTION("- Delta can run if a prior filter converts to non-float type") {
-    // note that this may not be a *wise* choice... but it is nonetheless viable
-    auto converting_filter = GENERATE(
-        TILEDB_FILTER_GZIP,
-        TILEDB_FILTER_LZ4,
-        TILEDB_FILTER_RLE,
-        TILEDB_FILTER_ZSTD);
-
-    auto delta_compressor = GENERATE(
-        TILEDB_FILTER_POSITIVE_DELTA,
-        TILEDB_FILTER_DOUBLE_DELTA,
-        TILEDB_FILTER_DELTA);
-
-    tiledb::Filter convert_filter(ctx, converting_filter);
-    tiledb::Filter delta_filter(ctx, delta_compressor);
-
-    filters.add_filter(convert_filter);
-    filters.add_filter(delta_filter);
 
     CHECK_NOTHROW(d1.set_filter_list(filters));
     CHECK_NOTHROW(a1.set_filter_list(filters));

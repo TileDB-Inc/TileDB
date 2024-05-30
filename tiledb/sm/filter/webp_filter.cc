@@ -44,12 +44,6 @@ void WebpFilter::dump(FILE* out) const {
 bool WebpFilter::accepts_input_datatype(Datatype datatype) const {
   return datatype == Datatype::UINT8;
 }
-
-Datatype WebpFilter::output_datatype(Datatype) const {
-  /* compression produces blobs */
-  return Datatype::BLOB;
-}
-
 }  // namespace tiledb::sm
 
 #ifndef TILEDB_WEBP

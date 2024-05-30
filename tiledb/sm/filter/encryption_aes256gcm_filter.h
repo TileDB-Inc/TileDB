@@ -98,15 +98,6 @@ class EncryptionAES256GCMFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * Returns the filter output type
-   *
-   * @param input_type Expected type used for input. Used for filters which
-   * change output type based on input data. e.g. XORFilter output type is
-   * based on byte width of input type.
-   */
-  Datatype output_datatype(Datatype input_type) const override;
-
-  /**
    * Encrypt the bytes of the input data into the output data buffer.
    */
   Status run_forward(
