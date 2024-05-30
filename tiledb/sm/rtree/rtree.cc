@@ -349,17 +349,22 @@ void RTree::deserialize_v1_v4(
 
   auto level_num = deserializer.read<unsigned>();
   levels_.clear();
-  levels_.resize(level_num);
+  levels_.reserve(level_num);
   auto dim_num = domain->dim_num();
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = deserializer.read<uint64_t>();
-    levels_[l].resize(mbr_num);
+    // We use emplace_back to construct the level in place, which also
+    // implicitly passes the memory tracking allocator all the way down to the
+    // NDRange objects.
+    auto& level = levels_.emplace_back();
+    level.reserve(mbr_num);
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      auto& mbr = level.emplace_back();
+      mbr.reserve(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
         auto r_size{2 * domain->dimension_ptr(d)->coord_size()};
         auto data = deserializer.get_ptr<void>(r_size);
-        levels_[l][m][d] = Range(data, r_size);
+        mbr.emplace_back(data, r_size);
       }
     }
   }
@@ -374,27 +379,32 @@ void RTree::deserialize_v5(Deserializer& deserializer, const Domain* domain) {
   auto level_num = deserializer.read<unsigned>();
 
   levels_.clear();
-  levels_.resize(level_num);
+  levels_.reserve(level_num);
   auto dim_num = domain->dim_num();
 
   for (unsigned l = 0; l < level_num; ++l) {
     auto mbr_num = deserializer.read<uint64_t>();
-    levels_[l].resize(mbr_num);
+    // We use emplace_back to construct the level in place, which also
+    // implicitly passes the memory tracking allocator all the way down to the
+    // NDRange objects.
+    auto& level = levels_.emplace_back();
+    level.reserve(mbr_num);
 
     for (uint64_t m = 0; m < mbr_num; ++m) {
-      levels_[l][m].resize(dim_num);
+      auto& mbr = level.emplace_back();
+      mbr.reserve(dim_num);
       for (unsigned d = 0; d < dim_num; ++d) {
         auto dim{domain->dimension_ptr(d)};
         if (!dim->var_size()) {  // Fixed-sized
           auto r_size = 2 * dim->coord_size();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size);
+          mbr.emplace_back(data, r_size);
         } else {  // Var-sized
           // range_size | start_size | range
           auto r_size = deserializer.read<uint64_t>();
           auto start_size = deserializer.read<uint64_t>();
           auto data = deserializer.get_ptr<void>(r_size);
-          levels_[l][m][d] = Range(data, r_size, start_size);
+          mbr.emplace_back(data, r_size, start_size);
         }
       }
     }
