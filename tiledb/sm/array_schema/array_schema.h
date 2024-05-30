@@ -335,16 +335,6 @@ class ArraySchema {
    */
   void serialize(Serializer& serializer) const;
 
-  /**
-   * Stores the array schema into persistent storage.
-   *
-   * @param resources The context resources.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store(
-      ContextResources& resources, const EncryptionKey& encryption_key);
-
   /** Returns the tile order. */
   Layout tile_order() const;
 

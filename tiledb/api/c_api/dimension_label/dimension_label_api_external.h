@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2023 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -53,7 +53,9 @@ typedef struct tiledb_dimension_label_handle_t tiledb_dimension_label_t;
  *
  * @code{.c}
  * tiledb_dimension_label_t* dim_label;
- * tiledb_dimension_label_free(&dim_label);
+ * tiledb_array_schema_get_dimension_label_from_name(
+ *       ctx, array_schema, "label1", &dimension_label);
+ * tiledb_dimension_label_free(&dimension_label);
  * @endcode
  *
  * @param[in,out] dim_label The dimension label to be destroyed.

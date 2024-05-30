@@ -45,6 +45,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/sm/array_schema/auxiliary.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -211,9 +212,9 @@ Status StorageManagerCanonical::array_create(
           (const void*)encryption_key_from_cfg.c_str(),
           static_cast<uint32_t>(encryption_key_from_cfg.size())));
     }
-    st = array_schema->store(resources_, encryption_key_cfg);
+    st = store_array_schema(resources_, array_schema, encryption_key_cfg);
   } else {
-    st = array_schema->store(resources_, encryption_key);
+    st = store_array_schema(resources_, array_schema, encryption_key);
   }
 
   // Store array schema
@@ -281,7 +282,8 @@ Status StorageManager::array_evolve_schema(
   // Evolve schema
   auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
 
-  Status st = array_schema_evolved->store(resources_, encryption_key);
+  Status st =
+      store_array_schema(resources_, array_schema_evolved, encryption_key);
   if (!st.ok()) {
     throw StorageManagerException(
         "Cannot evolve schema;  Not able to store evolved array schema.");
@@ -342,7 +344,7 @@ Status StorageManagerCanonical::array_upgrade_version(
     throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
 
     // Store array schema
-    st = array_schema->store(resources_, encryption_key_cfg);
+    st = store_array_schema(resources_, array_schema, encryption_key_cfg);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Create commit directory if necessary
