@@ -311,6 +311,9 @@ class Attribute {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /** Dumps the attribute in ASCII format. */
+  std::string dump_attribute() const;
+
   /** Sets the default fill value. */
   void set_default_fill_value();
 

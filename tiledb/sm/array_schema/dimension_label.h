@@ -234,6 +234,9 @@ class DimensionLabel {
   }
 
  private:
+  /** Dumps the dimension label in ASCII format. */
+  std::string dump_dimension_label() const;
+
   /** The index of the dimension the labels are attached to. */
   dimension_size_type dim_id_;
 

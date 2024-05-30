@@ -397,18 +397,16 @@ void Enumeration::dump(FILE* out) const {
   if (out == nullptr) {
     out = stdout;
   }
-  std::stringstream ss;
-  ss << "### Enumeration ###" << std::endl;
-  ss << "- Name: " << name_ << std::endl;
-  ss << "- Loaded: true" << std::endl;
-  ss << "- Type: " << datatype_str(type_) << std::endl;
-  ss << "- Cell Val Num: " << cell_val_num_ << std::endl;
-  ss << "- Ordered: " << (ordered_ ? "true" : "false") << std::endl;
-  ss << "- Element Count: " << value_map_.size() << std::endl;
-  fprintf(out, "%s", ss.str().c_str());
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void Enumeration::dump(std::string* out) const {
+  *out = dump_enumeration();
+}
+
+std::string Enumeration::dump_enumeration() const {
   std::stringstream ss;
   ss << "### Enumeration ###" << std::endl;
   ss << "- Name: " << name_ << std::endl;
@@ -418,7 +416,7 @@ void Enumeration::dump(std::string* out) const {
   ss << "- Ordered: " << (ordered_ ? "true" : "false") << std::endl;
   ss << "- Element Count: " << value_map_.size() << std::endl;
 
-  *out = ss.str().c_str();
+  return ss.str();
 }
 
 void Enumeration::generate_value_map() {

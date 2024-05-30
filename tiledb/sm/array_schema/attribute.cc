@@ -203,63 +203,14 @@ Attribute Attribute::deserialize(
 void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  // Dump
-  fprintf(out, "### Attribute ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  fprintf(out, "- Nullable: %s\n", (nullable_ ? "true" : "false"));
-  if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
-  else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
-  fprintf(out, "- Fill value: %s", fill_value_str().c_str());
-  if (nullable_) {
-    fprintf(out, "\n");
-    fprintf(out, "- Fill value validity: %u", fill_value_validity_);
-  }
-  if (order_ != DataOrder::UNORDERED_DATA) {
-    fprintf(out, "\n");
-    fprintf(out, "- Data ordering: %s", data_order_str(order_).c_str());
-  }
-  if (enumeration_name_.has_value()) {
-    fprintf(out, "\n");
-    fprintf(out, "- Enumeration name: %s", enumeration_name_.value().c_str());
-  }
-  fprintf(out, "\n");
+
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void Attribute::dump(std::string* out) const {
-  std::stringstream ss;
-  ss << "### Attribute ###\n";
-  ss << "- Name: " << name_ << "\n";
-  ss << "- Type: " << datatype_str(type_) << "\n";
-  ss << "- Nullable: " << (nullable_ ? "true" : "false") << "\n";
-  if (!var_size())
-    ss << "- Cell val num: " << cell_val_num_ << "\n";
-  else
-    ss << "- Cell val num: var\n";
-  ss << "- Filters: " << filters_.size();
-  std::string temp;
-  filters_.dump(&temp);
-  ss << temp << "\n";
-  ss << "- Fill value: " << fill_value_str();
-  if (nullable_) {
-    ss << "\n";
-    ss << "- Fill value validity: " << fill_value_validity_;
-  }
-  if (order_ != DataOrder::UNORDERED_DATA) {
-    ss << "\n";
-    ss << "- Data ordering: " << data_order_str(order_);
-  }
-  if (enumeration_name_.has_value()) {
-    ss << "\n";
-    ss << "- Enumeration name: " << enumeration_name_.value();
-  }
-  ss << "\n";
-  *out = ss.str();
+  *out = dump_attribute();
 }
 
 const FilterPipeline& Attribute::filters() const {
@@ -476,6 +427,37 @@ std::optional<std::string> Attribute::get_enumeration_name() const {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+std::string Attribute::dump_attribute() const {
+  std::stringstream ss;
+  ss << "### Attribute ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  ss << "- Nullable: " << (nullable_ ? "true" : "false") << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Filters: " << filters_.size();
+  std::string temp;
+  filters_.dump(&temp);
+  ss << temp << "\n";
+  ss << "- Fill value: " << fill_value_str();
+  if (nullable_) {
+    ss << "\n";
+    ss << "- Fill value validity: " << std::to_string(fill_value_validity_);
+  }
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    ss << "\n";
+    ss << "- Data ordering: " << data_order_str(order_);
+  }
+  if (enumeration_name_.has_value()) {
+    ss << "\n";
+    ss << "- Enumeration name: " << enumeration_name_.value();
+  }
+  ss << "\n";
+  return ss.str();
+}
 
 void Attribute::set_default_fill_value() {
   auto fill_value = constants::fill_value(type_);

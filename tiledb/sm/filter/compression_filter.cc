@@ -124,29 +124,26 @@ void CompressionFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string compressor_str = tiledb::sm::compressor_str(compressor_);
-  if (compressor_ == Compressor::DELTA ||
-      compressor_ == Compressor::DOUBLE_DELTA) {
-    fprintf(
-        out,
-        "%s: COMPRESSION_LEVEL=%i, REINTERPRET_DATATYPE=%s",
-        compressor_str.c_str(),
-        level_,
-        datatype_str(reinterpret_datatype_).c_str());
-  } else {
-    fprintf(out, "%s: COMPRESSION_LEVEL=%i", compressor_str.c_str(), level_);
-  }
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void CompressionFilter::dump(std::string* out) const {
+  *out = dump_compression_filter();
+}
+
+std::string CompressionFilter::dump_compression_filter() const {
+  std::stringstream ss;
   std::string compressor_str = tiledb::sm::compressor_str(compressor_);
   if (compressor_ == Compressor::DELTA ||
       compressor_ == Compressor::DOUBLE_DELTA) {
-    *out += compressor_str + ": COMPRESSION_LEVEL=" + std::to_string(level_) +
-            ", REINTERPRET_DATATYPE=" + datatype_str(reinterpret_datatype_);
+    ss << compressor_str << ": COMPRESSION_LEVEL=" << level_
+       << ", REINTERPRET_DATATYPE=" << datatype_str(reinterpret_datatype_);
   } else {
-    *out += compressor_str + ": COMPRESSION_LEVEL=" + std::to_string(level_);
+    ss << compressor_str << ": COMPRESSION_LEVEL=" << level_;
   }
+  return ss.str();
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {

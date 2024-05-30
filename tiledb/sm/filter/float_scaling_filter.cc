@@ -48,21 +48,21 @@ namespace sm {
 void FloatScalingFilter::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  fprintf(
-      out,
-      "FloatScalingFilter: BYTE_WIDTH=%u, SCALE=%lf, OFFSET=%lf",
-      static_cast<uint32_t>(byte_width_),
-      scale_,
-      offset_);
+
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void FloatScalingFilter::dump(std::string* out) const {
-  *out = "FloatScalingFilter: BYTE_WIDTH=";
-  out->append(std::to_string(static_cast<uint32_t>(byte_width_)));
-  out->append(", SCALE=");
-  out->append(std::to_string(scale_));
-  out->append(", OFFSET=");
-  out->append(std::to_string(offset_));
+  *out = dump_float_scaling_filter();
+}
+
+std::string FloatScalingFilter::dump_float_scaling_filter() const {
+  std::stringstream ss;
+  ss << "FloatScalingFilter: BYTE_WIDTH=" << static_cast<uint32_t>(byte_width_)
+     << ", SCALE=" << scale_ << ", OFFSET=" << offset_;
+  return ss.str();
 }
 
 void FloatScalingFilter::serialize_impl(Serializer& serializer) const {

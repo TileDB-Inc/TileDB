@@ -563,6 +563,9 @@ class Domain {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
+  /** Dumps the domain in ASCII format. */
+  std::string dump_domain() const;
+
   /**
    * Checks the cell order of the input coordinates. Since the coordinates
    * are given for a single dimension, this function simply checks which

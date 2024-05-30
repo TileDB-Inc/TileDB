@@ -262,19 +262,17 @@ shared_ptr<DimensionLabel> DimensionLabel::deserialize(
 void DimensionLabel::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  fprintf(out, "### Dimension Label ###\n");
-  fprintf(out, "- Dimension Index: %i\n", dim_id_);
-  fprintf(out, "- Dimension Label Name: %s\n", dim_label_name_.c_str());
-  fprintf(out, "- URI: %s\n", uri_.c_str());
-  fprintf(out, "- Label Attribute Name: %s\n", label_attr_name_.c_str());
-  fprintf(out, "- Label Type: %s\n", datatype_str(label_type_).c_str());
-  (label_cell_val_num_ == constants::var_num) ?
-      fprintf(out, "- Label cell val num: var\n") :
-      fprintf(out, "- Label cell val num: %u\n", label_cell_val_num_);
-  fprintf(out, "\n");
+
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void DimensionLabel::dump(std::string* out) const {
+  *out = dump_dimension_label();
+}
+
+std::string DimensionLabel::dump_dimension_label() const {
   std::stringstream ss;
   ss << "### Dimension Label ###\n";
   ss << "- Dimension Index: " << dim_id_ << "\n";
@@ -286,7 +284,7 @@ void DimensionLabel::dump(std::string* out) const {
       ss << "- Label cell val num: var\n" :
       ss << "- Label cell val num: " << label_cell_val_num_ << "\n";
   ss << "\n";
-  *out = ss.str();
+  return ss.str();
 }
 
 const shared_ptr<ArraySchema> DimensionLabel::schema() const {

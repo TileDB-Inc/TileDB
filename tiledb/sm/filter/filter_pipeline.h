@@ -336,6 +336,9 @@ class FilterPipeline {
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
 
+  /** Dumps the filter pipeline in ASCII format. */
+  std::string dump_filter_pipeline() const;
+
   /**
    * Get the chunk offsets for a var sized tile so that integral cells are
    * within a chunk.

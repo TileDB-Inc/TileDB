@@ -326,47 +326,14 @@ const Range& Dimension::domain() const {
 void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
-  // Retrieve domain and tile extent strings
-  std::string domain_s = type::range_str(domain_, type_);
-  std::string tile_extent_s = tile_extent_str();
 
-  // Dump
-  fprintf(out, "### Dimension ###\n");
-  fprintf(out, "- Name: %s\n", name_.c_str());
-  fprintf(out, "- Type: %s\n", datatype_str(type_).c_str());
-  if (!var_size())
-    fprintf(out, "- Cell val num: %u\n", cell_val_num_);
-  else
-    fprintf(out, "- Cell val num: var\n");
-  fprintf(out, "- Domain: %s\n", domain_s.c_str());
-  fprintf(out, "- Tile extent: %s\n", tile_extent_s.c_str());
-  fprintf(out, "- Filters: %u", (unsigned)filters_.size());
-  filters_.dump(out);
-  fprintf(out, "\n");
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void Dimension::dump(std::string* out) const {
-  std::stringstream ss;
-  // Retrieve domain and tile extent strings
-  std::string domain_s = type::range_str(domain_, type_);
-  std::string tile_extent_s = tile_extent_str();
-
-  // Dump
-  ss << "### Dimension ###\n";
-  ss << "- Name: " << name_ << "\n";
-  ss << "- Type: " << datatype_str(type_) << "\n";
-  if (!var_size())
-    ss << "- Cell val num: " << cell_val_num_ << "\n";
-  else
-    ss << "- Cell val num: var\n";
-  ss << "- Domain: " << domain_s << "\n";
-  ss << "- Tile extent: " << tile_extent_s << "\n";
-  ss << "- Filters: " << filters_.size();
-  std::string temp;
-  filters_.dump(&temp);
-  ss << temp << "\n";
-
-  *out = ss.str();
+  *out = dump_dimension();
 }
 
 const FilterPipeline& Dimension::filters() const {
@@ -1521,6 +1488,30 @@ Status Dimension::set_null_tile_extent_to_range() {
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
+
+std::string Dimension::dump_dimension() const {
+  std::stringstream ss;
+  // Retrieve domain and tile extent strings
+  std::string domain_s = type::range_str(domain_, type_);
+  std::string tile_extent_s = tile_extent_str();
+
+  // Dump
+  ss << "### Dimension ###\n";
+  ss << "- Name: " << name_ << "\n";
+  ss << "- Type: " << datatype_str(type_) << "\n";
+  if (!var_size())
+    ss << "- Cell val num: " << cell_val_num_ << "\n";
+  else
+    ss << "- Cell val num: var\n";
+  ss << "- Domain: " << domain_s << "\n";
+  ss << "- Tile extent: " << tile_extent_s << "\n";
+  ss << "- Filters: " << filters_.size();
+  std::string temp;
+  filters_.dump(&temp);
+  ss << temp << "\n";
+
+  return ss.str();
+}
 
 Status Dimension::check_domain() const {
   auto g = [&](auto T) {

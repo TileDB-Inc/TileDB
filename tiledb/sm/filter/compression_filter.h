@@ -183,6 +183,9 @@ class CompressionFilter : public Filter {
   /** Datatype to reinterpret prior to compression. */
   Datatype reinterpret_datatype_;
 
+  /** Dumps the compression filter in ASCII format. */
+  std::string dump_compression_filter() const;
+
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;
 

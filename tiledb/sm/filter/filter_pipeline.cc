@@ -559,20 +559,23 @@ void FilterPipeline::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  for (const auto& filter : filters_) {
-    fprintf(out, "\n  > ");
-    filter->dump(out);
-  }
+  std::string s;
+  dump(&s);
+  fprintf(out, "%s", s.c_str());
 }
 
 void FilterPipeline::dump(std::string* out) const {
-  *out = "";
+  *out = dump_filter_pipeline();
+}
+
+std::string FilterPipeline::dump_filter_pipeline() const {
+  std::stringstream ss;
   std::string tmp;
   for (const auto& filter : filters_) {
     filter->dump(&tmp);
-    out->append("\n  > ");
-    out->append(tmp);
+    ss << "\n  > " << tmp;
   }
+  return ss.str();
 }
 
 void FilterPipeline::ensure_compatible(

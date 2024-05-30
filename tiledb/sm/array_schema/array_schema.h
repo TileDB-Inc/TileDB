@@ -594,9 +594,6 @@ class ArraySchema {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /** Dump the array schema in ASCII format. */
-  std::string dump_array_schema() const;
-
   /**
    * The memory tracker of the ArraySchema.
    */
@@ -721,6 +718,9 @@ class ArraySchema {
   /* ********************************* */
   /*           PRIVATE METHODS         */
   /* ********************************* */
+
+  /** Dumps the array schema in ASCII format. */
+  std::string dump_array_schema() const;
 
   /**
    * Throws an error if the union of attribute, dimension, and dimension label

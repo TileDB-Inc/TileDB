@@ -830,6 +830,9 @@ class Dimension {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /** Dumps the dimension in ASCII format. */
+  std::string dump_dimension() const;
+
   /** Returns an error if the set domain is invalid. */
   Status check_domain() const;
 

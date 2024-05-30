@@ -430,6 +430,9 @@ class Enumeration {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
+  /** Dumps the enumeration in ASCII format. */
+  std::string dump_enumeration() const;
+
   /** Populate the value_map_ */
   void generate_value_map();
 
