@@ -175,35 +175,6 @@ class ReaderBase : public StrategyBase {
   /* ********************************* */
 
   /**
-   * Computes a mapping (tile coordinates) -> (result space tile).
-   * The produced result space tiles will contain information only
-   * about fragments that will contribute results. Specifically, if
-   * a fragment is completely covered by a more recent fragment
-   * in a particular space tile, then it will certainly not contribute
-   * results and, thus, no information about that fragment is included
-   * in the space tile.
-   *
-   * @tparam T The datatype of the tile domains.
-   * @param domain The array domain
-   * @param tile_coords The unique coordinates of the tiles that intersect
-   *     a subarray.
-   * @param array_tile_domain The array tile domain.
-   * @param frag_tile_domains The tile domains of each fragment. These
-   *     are assumed to be ordered from the most recent to the oldest
-   *     fragment.
-   * @param result_space_tiles The result space tiles to be produced
-   *     by the function.
-   */
-  template <class T>
-  static void compute_result_space_tiles(
-      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-      const std::vector<std::vector<uint8_t>>& tile_coords,
-      const TileDomain<T>& array_tile_domain,
-      const std::vector<TileDomain<T>>& frag_tile_domains,
-      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
-      shared_ptr<MemoryTracker> memory_tracker);
-
-  /**
    * Computes the minimum and maximum indexes of tile chunks to process based on
    * the available threads.
    *
@@ -659,21 +630,29 @@ class ReaderBase : public StrategyBase {
    * @return Tile size.
    */
   uint64_t get_attribute_tile_size(
-      const std::string& name, unsigned f, uint64_t t);
+      const std::string& name, unsigned f, uint64_t t) const;
 
   /**
-   * Computes the result space tiles based on the current partition.
+   * Get the on disk size of an attribute tile.
+   *
+   * @param name The attribute name.
+   * @param f The fragment idx.
+   * @param t The tile idx.
+   * @return Tile size.
+   */
+  uint64_t get_attribute_persisted_tile_size(
+      const std::string& name, unsigned f, uint64_t t) const;
+
+  /**
+   * Computes the tile domains based on the current partition.
    *
    * @tparam T The domain datatype.
-   * @param subarray The input subarray.
    * @param partitioner_subarray The partitioner subarray.
-   * @param result_space_tiles The result space tiles to be computed.
+   * @return array tile domain, fragments tile domains.
    */
   template <class T>
-  void compute_result_space_tiles(
-      const Subarray& subarray,
-      const Subarray& partitioner_subarray,
-      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const;
+  std::pair<TileDomain<T>, std::vector<TileDomain<T>>> compute_tile_domains(
+      const Subarray& partitioner_subarray) const;
 
   /** Returns `true` if the coordinates are included in the attributes. */
   bool has_coords() const;
