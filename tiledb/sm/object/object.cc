@@ -39,6 +39,13 @@
 
 namespace tiledb::sm {
 
+class ObjectException : public StatusException {
+ public:
+  explicit ObjectException(const std::string& message)
+      : StatusException("Object", message) {
+  }
+};
+
 /* ********************************* */
 /*                API                */
 /* ********************************* */
@@ -127,6 +134,44 @@ Status object_type(
 
   *type = ObjectType::INVALID;
   return Status::Ok();
+}
+
+Status object_move(
+    ContextResources& resources, const char* old_path, const char* new_path) {
+  auto old_uri = URI(old_path);
+  if (old_uri.is_invalid())
+    throw ObjectException(
+        "Cannot move object '" + std::string(old_path) + "'; Invalid URI");
+
+  auto new_uri = URI(new_path);
+  if (new_uri.is_invalid())
+    throw ObjectException(
+        "Cannot move object to '" + std::string(new_path) + "'; Invalid URI");
+
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, old_uri, &obj_type));
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        "Cannot move object '" + std::string(old_path) +
+        "'; Invalid TileDB object");
+
+  return resources.vfs().move_dir(old_uri, new_uri);
+}
+
+Status object_remove(ContextResources& resources, const char* path) {
+  auto uri = URI(path);
+  if (uri.is_invalid())
+    throw ObjectException(
+        "Cannot remove object '" + std::string(path) + "'; Invalid URI");
+
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, uri, &obj_type));
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        "Cannot remove object '" + std::string(path) +
+        "'; Invalid TileDB object");
+
+  return resources.vfs().remove_dir(uri);
 }
 
 }  // namespace tiledb::sm

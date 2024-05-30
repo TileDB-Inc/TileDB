@@ -199,15 +199,6 @@ class StorageManagerCanonical {
    */
   Status group_create(const std::string& group);
 
-  /** Removes a TileDB object (group, array). */
-  Status object_remove(const char* path) const;
-
-  /**
-   * Renames a TileDB object (group, array). If
-   * `new_path` exists, `new_path` will be overwritten.
-   */
-  Status object_move(const char* old_path, const char* new_path) const;
-
   /**
    * Creates a new object iterator for the input path. The iteration
    * in this case will be recursive in the entire directory tree rooted
