@@ -31,6 +31,7 @@
  */
 
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/c_api/tiledb.h"
@@ -55,9 +56,8 @@ using namespace tiledb::test;
 /* ********************************* */
 
 struct CSparseUnorderedWithDupsFx {
-  tiledb_ctx_t* ctx_ = nullptr;
-  tiledb_vfs_t* vfs_ = nullptr;
-  std::string temp_dir_;
+  VFSTestSetup vfs_test_setup_;
+  tiledb_ctx_t* ctx_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups";
   std::string total_budget_;
@@ -110,26 +110,11 @@ struct CSparseUnorderedWithDupsFx {
   void update_config();
 
   CSparseUnorderedWithDupsFx();
-  ~CSparseUnorderedWithDupsFx();
 };
 
-CSparseUnorderedWithDupsFx::CSparseUnorderedWithDupsFx() {
-  reset_config();
-
-  // Create temporary directory based on the supported filesystem.
-#ifdef _WIN32
-  temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  temp_dir_ = "file://" + tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-  create_dir(temp_dir_, ctx_, vfs_);
-  array_name_ = temp_dir_ + ARRAY_NAME;
-}
-
-CSparseUnorderedWithDupsFx::~CSparseUnorderedWithDupsFx() {
-  remove_dir(temp_dir_, ctx_, vfs_);
-  tiledb_ctx_free(&ctx_);
-  tiledb_vfs_free(&vfs_);
+CSparseUnorderedWithDupsFx::CSparseUnorderedWithDupsFx()
+    : ctx_{vfs_test_setup_.ctx_c}
+    , array_name_{vfs_test_setup_.array_uri("testarray")} {
 }
 
 void CSparseUnorderedWithDupsFx::reset_config() {
@@ -142,12 +127,6 @@ void CSparseUnorderedWithDupsFx::reset_config() {
 }
 
 void CSparseUnorderedWithDupsFx::update_config() {
-  if (ctx_ != nullptr)
-    tiledb_ctx_free(&ctx_);
-
-  if (vfs_ != nullptr)
-    tiledb_vfs_free(&vfs_);
-
   tiledb_config_t* config;
   tiledb_error_t* error = nullptr;
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
@@ -208,10 +187,8 @@ void CSparseUnorderedWithDupsFx::update_config() {
           partial_tile_offsets_loading_.c_str(),
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
-
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  vfs_test_setup_.update_config(config);
+  ctx_ = vfs_test_setup_.ctx_c;
   tiledb_config_free(&config);
 }
 
@@ -564,9 +541,8 @@ int32_t CSparseUnorderedWithDupsFx::read_strings(
 }
 
 struct CSparseUnorderedWithDupsVarDataFx {
-  tiledb_ctx_t* ctx_ = nullptr;
-  tiledb_vfs_t* vfs_ = nullptr;
-  std::string temp_dir_;
+  VFSTestSetup vfs_test_setup_;
+  tiledb_ctx_t* ctx_;
   std::string array_name_;
   const char* ARRAY_NAME = "test_sparse_unordered_with_dups_var_data";
 
@@ -578,33 +554,11 @@ struct CSparseUnorderedWithDupsVarDataFx {
   open_default_array_1d_with_fragments(uint64_t capacity = 5);
 
   CSparseUnorderedWithDupsVarDataFx();
-  ~CSparseUnorderedWithDupsVarDataFx();
 };
 
-CSparseUnorderedWithDupsVarDataFx::CSparseUnorderedWithDupsVarDataFx() {
-  tiledb_config_t* config;
-  tiledb_error_t* error = nullptr;
-  REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
-  tiledb_config_free(&config);
-
-  // Create temporary directory based on the supported filesystem.
-#ifdef _WIN32
-  temp_dir_ = tiledb::sm::Win::current_dir() + "\\tiledb_test\\";
-#else
-  temp_dir_ = "file://" + tiledb::sm::Posix::current_dir() + "/tiledb_test/";
-#endif
-  create_dir(temp_dir_, ctx_, vfs_);
-  array_name_ = temp_dir_ + ARRAY_NAME;
-}
-
-CSparseUnorderedWithDupsVarDataFx::~CSparseUnorderedWithDupsVarDataFx() {
-  remove_dir(temp_dir_, ctx_, vfs_);
-  tiledb_ctx_free(&ctx_);
-  tiledb_vfs_free(&vfs_);
+CSparseUnorderedWithDupsVarDataFx::CSparseUnorderedWithDupsVarDataFx()
+    : ctx_{vfs_test_setup_.ctx_c}
+    , array_name_{vfs_test_setup_.array_uri("testarray")} {
 }
 
 void CSparseUnorderedWithDupsVarDataFx::create_default_array_2d() {
@@ -808,7 +762,7 @@ CSparseUnorderedWithDupsVarDataFx::open_default_array_1d_with_fragments(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: Tile ranges budget exceeded",
-    "[sparse-unordered-with-dups][tile-ranges][budget-exceeded]") {
+    "[sparse-unordered-with-dups][tile-ranges][budget-exceeded][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -852,7 +806,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: tile offsets budget exceeded",
-    "[sparse-unordered-with-dups][tile-offsets][budget-exceeded]") {
+    "[sparse-unordered-with-dups][tile-offsets][budget-exceeded][rest]") {
   bool partial_tile_offsets_loading = GENERATE(true, false);
   bool set_subarray = GENERATE(true, false);
 
@@ -916,7 +870,7 @@ TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: tile offsets forcing multiple "
     "iterations",
-    "[sparse-unordered-with-dups][tile-offsets][multiple-iterations]") {
+    "[sparse-unordered-with-dups][tile-offsets][multiple-iterations][rest]") {
   bool set_subarray = GENERATE(true, false);
 
   // Create default array.
@@ -996,7 +950,7 @@ TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: coords budget forcing one tile at a "
     "time",
-    "[sparse-unordered-with-dups][small-coords-budget]") {
+    "[sparse-unordered-with-dups][small-coords-budget][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1090,7 +1044,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: coords budget too small",
-    "[sparse-unordered-with-dups][coords-budget][too-small]") {
+    "[sparse-unordered-with-dups][coords-budget][too-small][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1141,7 +1095,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: fixed user buffer too small",
-    "[sparse-unordered-with-dups][small-fixed-buffer]") {
+    "[sparse-unordered-with-dups][small-fixed-buffer][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1223,7 +1177,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: qc removes full tile",
-    "[sparse-unordered-with-dups][qc-removes-tile]") {
+    "[sparse-unordered-with-dups][qc-removes-tile][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d();
@@ -1320,7 +1274,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: single tile query continuation",
-    "[sparse-unordered-with-dups][single-tile][continuation]") {
+    "[sparse-unordered-with-dups][single-tile][continuation][rest]") {
   bool use_subarray = false;
   SECTION("- No subarray") {
     use_subarray = false;
@@ -1400,7 +1354,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: results shrinked due to data buffer",
-    "[sparse-unordered-with-dups][data-buffer-overflow]") {
+    "[sparse-unordered-with-dups][data-buffer-overflow][rest]") {
   // Create default array.
   create_default_array_2d();
   write_2d_fragment();
@@ -1419,7 +1373,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test compute_var_size_offsets",
-    "[sparse-unordered-with-dups][compute_var_size_offsets]") {
+    "[sparse-unordered-with-dups][compute_var_size_offsets][rest]") {
   uint64_t var_buffer_size = 0;
   std::vector<std::vector<uint64_t>> bitmaps;
   uint64_t capacity = 0;
@@ -1604,7 +1558,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: empty strings",
-    "[sparse-unordered-with-dups][empty-strings]") {
+    "[sparse-unordered-with-dups][empty-strings][rest]") {
   // Create default array.
   reset_config();
   create_default_array_1d_string();
@@ -1643,7 +1597,7 @@ TEST_CASE_METHOD(
     CSparseUnorderedWithDupsVarDataFx,
     "Sparse unordered with dups reader: test "
     "resize_fixed_result_tiles_to_copy",
-    "[sparse-unordered-with-dups][resize_fixed_result_tiles_to_copy]") {
+    "[sparse-unordered-with-dups][resize_fixed_result_tiles_to_copy][rest]") {
   std::vector<std::vector<uint64_t>> bitmaps;
   uint64_t capacity = 0;
   uint64_t num_tiles = 0;
@@ -1810,7 +1764,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     CSparseUnorderedWithDupsFx,
     "Sparse unordered with dups reader: Cell offsets test",
-    "[sparse-unordered-with-dups][cell-offsets-test]") {
+    "[sparse-unordered-with-dups][cell-offsets-test][rest]") {
   // Either vary the fixed buffer or the var buffer. Varying the fixed buffer
   // will trigger the first overflow protection in
   // resize_fixed_result_tiles_to_copy and varying the var buffer will trigger
@@ -1867,9 +1821,8 @@ TEST_CASE_METHOD(
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  vfs_test_setup_.update_config(config);
+  ctx_ = vfs_test_setup_.ctx_c;
   tiledb_config_free(&config);
 
   // Try to read with every possible buffer sizes. When varying
@@ -1961,7 +1914,7 @@ TEST_CASE_METHOD(
     "Sparse unordered with dups reader: Increasing dups with "
     "overlapping range",
     "[sparse-unordered-with-dups][dup-data-test][overlapping-"
-    "ranges]") {
+    "ranges][rest]") {
   // Create default array.
   reset_config();
   int32_t extent = GENERATE(2, 7, 5, 10, 11);
@@ -2016,9 +1969,8 @@ TEST_CASE_METHOD(
           &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  REQUIRE(tiledb_ctx_alloc(config, &ctx_) == TILEDB_OK);
-  REQUIRE(error == nullptr);
-  REQUIRE(tiledb_vfs_alloc(ctx_, config, &vfs_) == TILEDB_OK);
+  vfs_test_setup_.update_config(config);
+  ctx_ = vfs_test_setup_.ctx_c;
   tiledb_config_free(&config);
 
   tiledb_array_t* array;
