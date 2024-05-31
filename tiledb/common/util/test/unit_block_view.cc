@@ -1,5 +1,5 @@
 /**
- * @file   print_types.h
+ * @file   unit_block_view.cc
  *
  * @section LICENSE
  *
@@ -27,26 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This file implements a compile-time debugging utility for investigating
- * the specific types of objects.
- *
- * Based on utility from NWGraph.  Author Luke D'Alessandro.
+ * This file implements unit tests for the block_view class.
  */
 
-#ifndef TILEDB_PRINT_TYPES_H
-#define TILEDB_PRINT_TYPES_H
+#include <catch2/catch_all.hpp>
+#include "tiledb/common/util/block_view.h"
 
-template <class... Ts>
-struct print_types_t;
-
-/*
- * Print (as compiler error message), the types of the
- * variadic argument list.  E.g.,
- *   print_types(foo, bar, baz);
- */
-template <class... Ts>
-constexpr auto print_types(Ts...) {
-  return print_types_t<Ts...>{};
+TEST_CASE("block_view: null test", "[block_view][null test]") {
+  REQUIRE(true);
 }
-
-#endif  // TILEDB_PRINT_TYPES_H

@@ -1,5 +1,5 @@
 /**
- * @file   print_types.h
+ * @file   block_view.h
  *
  * @section LICENSE
  *
@@ -27,26 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file implements a compile-time debugging utility for investigating
- * the specific types of objects.
+ * This file implements a zip view for zipping together a set of ranges.
+ * It is intended to implement the zip view as defined for C++23.  From
+ * https://en.cppreference.com/w/cpp/ranges/zip_view:
+ *  1) A zip_view is a range adaptor that takes one or more views, and produces
+ * a view whose ith element is a tuple-like value consisting of the ith elements
+ * of all views. The size of produced view is the minimum of sizes of all
+ * adapted views. 2) zip is a customization point object that constructs a
+ * zip_view.
  *
- * Based on utility from NWGraph.  Author Luke D'Alessandro.
  */
 
-#ifndef TILEDB_PRINT_TYPES_H
-#define TILEDB_PRINT_TYPES_H
-
-template <class... Ts>
-struct print_types_t;
-
-/*
- * Print (as compiler error message), the types of the
- * variadic argument list.  E.g.,
- *   print_types(foo, bar, baz);
- */
-template <class... Ts>
-constexpr auto print_types(Ts...) {
-  return print_types_t<Ts...>{};
-}
-
-#endif  // TILEDB_PRINT_TYPES_H
+#ifndef TILEDB_BLOCK_VIEW_H
+#define TILEDB_BLOCK_VIEW_H
+#endif  // TILEDB_BLOCK_VIEW_H

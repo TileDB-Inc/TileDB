@@ -39,3 +39,15 @@ this_target_sources(
         unit_zip_view.cc
 )
 conclude(unit_test)
+
+commence(unit_test block_view)
+this_target_sources(
+        unit_block_view.cc
+)
+conclude(unit_test)
+
+commence(unit_test chunk_view)
+this_target_sources(
+        unit_chunk_view.cc
+)
+conclude(unit_test)
