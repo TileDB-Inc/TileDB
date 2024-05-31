@@ -41,8 +41,8 @@
  *
  */
 
-#ifndef TILEDB_ARROW_PROXY_HPP
-#define TILEDB_ARROW_PROXY_HPP
+#ifndef TILEDB_ARROW_PROXY_H
+#define TILEDB_ARROW_PROXY_H
 
 template <class Reference>
 struct arrow_proxy {
@@ -55,4 +55,4 @@ struct arrow_proxy {
 template <typename T>
 arrow_proxy(T&&) -> arrow_proxy<T>;
 
-#endif  // TILEDB_ARROW_PROXY_HPP
+#endif  // TILEDB_ARROW_PROXY_H

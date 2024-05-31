@@ -33,7 +33,7 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <vector>
-#include "../var_length_view.h"
+#include "tiledb/common/util/var_length_view.h"
 
 TEST_CASE("var_length_view: Null test", "[var_length_view][null_test]") {
   REQUIRE(true);

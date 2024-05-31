@@ -1,11 +1,11 @@
 /**
- * @file compile_utils_main.cc
+ * @file   print_types.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,29 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file implements a compile-time debugging utility for investigating
+ * the specific types of objects.
+ *
+ * Based on utility from NWGraph.  Author Luke D'Alessandro.
  */
 
-#include "../bounded_buffer.h"
-#include "../print_types.h"
-#include "../range_join.h"
-#include "../spinlock.h"
-#include "../traits.h"
-#include "tiledb/common/util/arrow_proxy.h"
+#ifndef TILEDB_PRINT_TYPES_H
+#define TILEDB_PRINT_TYPES_H
 
-int main() {
+template <class... Ts>
+struct print_types_t;
+
+/*
+ * Print (as compiler error message), the types of the
+ * variadic argument list.  E.g.,
+ *   print_types(foo, bar, baz);
+ */
+template <class... Ts>
+constexpr auto print_types(Ts...) {
+  return print_types_t<Ts...>{};
 }
+
+#endif // TILEDB_PRINT_TYPES_H
