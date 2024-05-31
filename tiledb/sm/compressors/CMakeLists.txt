@@ -39,7 +39,7 @@ commence(object_library compressors)
     find_package(BZip2 REQUIRED)
     find_package(LZ4 MODULE REQUIRED)
     find_package(ZLIB REQUIRED)
-    find_package(zstd REQUIRED)
+    find_package(Zstd MODULE REQUIRED)
     this_target_link_libraries(BZip2::BZip2 lz4::lz4 ZLIB::ZLIB ${ZSTD_TARGET})
 conclude(object_library)
 
