@@ -43,7 +43,6 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/misc/hilbert.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 

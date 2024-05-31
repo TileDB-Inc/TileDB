@@ -34,21 +34,21 @@
  * `StorageManagerCanonical`. At present, there is an interdependency chain
  * with `generic_tile_io` which must be resolved before this function can be
  * placed into `class ArraySchema`. As such, this file is _intentionally_ left
- * out of the `array_schema` object library and _must_ remain that way. Once
- * these build issues are resolved, this file should be removed and replaced by
- * a member function, `ArraySchema::store`.
+ * out of the `array_schema` object library and _must_ remain that way.
  */
 
 #ifndef TILEDB_AUXILIARY_ARRAY_SCHEMA_H
 #define TILEDB_AUXILIARY_ARRAY_SCHEMA_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/array_schema/array_schema.h"
-#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+class ArraySchema;
+class ContextResources;
+class EncryptionKey;
 
 /* ********************************* */
 /*                API                */
