@@ -1,3 +1,53 @@
+# TileDB v2.24.0 Release Notes
+
+## Deprecation announcements
+
+In version 2.26.0, the superbuild architecture of the build system will be removed and TileDB will become a single-level CMake project with no CMake sub-build for libtiledb after dependencies are built (as of TileDB 2.24, dependencies are built at configuration time with vcpkg). `make install-tiledb` will continue to work, but will become effectively an alias for `make install`, which will always produce an up-to-date install after this change. Other build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. You can preview the effects of this change by configuring with CMake and passing the -DTILEDB_CMAKE_IDE=ON option.
+
+## Configuration changes
+
+* Implement consolidation memory budget variables. [#5011](https://github.com/TileDB-Inc/TileDB/pull/5011)
+
+## New features
+
+* Enable array open v2 and query v3 by default. [#4974](https://github.com/TileDB-Inc/TileDB/pull/4974)
+* Add stats counter `memory_budget_exceeded` for when a query goes over budget. [#4993](https://github.com/TileDB-Inc/TileDB/pull/4993)
+* Support VFS `ls_recursive` API for Azure filesystem. [#4981](https://github.com/TileDB-Inc/TileDB/pull/4981)
+* Support VFS `ls_recursive` API for Google Cloud Storage filesystem. [#4997](https://github.com/TileDB-Inc/TileDB/pull/4997)
+
+## Defects removed
+
+* Fix SEG faults in the SparseGlobalOrderReader when using a Query Condition. [#5012](https://github.com/TileDB-Inc/TileDB/pull/5012)
+* Throw error on dimension drop in schema evolution. [#4958](https://github.com/TileDB-Inc/TileDB/pull/4958)
+* Reject unordered tile/cell order when creating an ArraySchema. [#4973](https://github.com/TileDB-Inc/TileDB/pull/4973)
+* Disallow possibly-invalid reinterpret datatypes for delta and double delta compression filters. [#4992](https://github.com/TileDB-Inc/TileDB/pull/4992)
+* Fix performance regression in group::dump(). [#5002](https://github.com/TileDB-Inc/TileDB/pull/5002)
+* Fix traversal limit in array metadata serialization. [#4971](https://github.com/TileDB-Inc/TileDB/pull/4971)
+
+## API changes
+
+### C API
+
+* Experimental APIs related to groups, deleting arrays and upgrading the format version of arrays were moved to stable. You can use them without including `<tiledb_experimental.h>`. [#4919](https://github.com/TileDB-Inc/TileDB/pull/4919)
+* Add array uri to tiledb_array_deserialize. [#4961](https://github.com/TileDB-Inc/TileDB/pull/4961)
+
+### C++ API
+
+* The experimental `Group` class was moved to stable. You can use it without including `<tiledb_experimental>`. [#4919](https://github.com/TileDB-Inc/TileDB/pull/4919)
+
+## Build System Changes
+
+* Fix AVX2 support detection. [#4969](https://github.com/TileDB-Inc/TileDB/pull/4969)
+* Fix configuration errors when cross-compiling. [#4995](https://github.com/TileDB-Inc/TileDB/pull/4995)
+* Fix build errors where the fmt headers could not be found for spdlog. [#5008](https://github.com/TileDB-Inc/TileDB/pull/5008)
+
+## Internal Improvements
+
+* Implement zip_view for external sort. [#4930](https://github.com/TileDB-Inc/TileDB/pull/4930)
+* Write iter_swap for zip_view for external sort. [#4943](https://github.com/TileDB-Inc/TileDB/pull/4943)
+* Implement proxy sort permutation for external sort. [#4944](https://github.com/TileDB-Inc/TileDB/pull/4944)
+* Implemented offset/length conversion functions for external sort. [#4948](https://github.com/TileDB-Inc/TileDB/pull/4948)
+
 # TileDB v2.23.0 Release Notes
 
 ## Deprecation announcements
