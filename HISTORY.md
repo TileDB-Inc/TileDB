@@ -2,7 +2,7 @@
 
 ## Deprecation announcements
 
-In version 2.26.0, the superbuild architecture of the build system will be removed and TileDB will become a regular CMake project. Build commands of the form make && make -C tiledb <targets> will have to be replaced by make <targets>. You can preview the effects of this change by configuring with CMake and passing the -DTILEDB_CMAKE_IDE=ON option.
+In version 2.26.0, the superbuild architecture of the build system will be removed and TileDB will become a single-level CMake project with no CMake sub-build for libtiledb after dependencies are built (as of TileDB 2.24, dependencies are built at configuration time with vcpkg). `make install-tiledb` will continue to work, but will become effectively an alias for `make install`, which will always produce an up-to-date install after this change. Other build commands of the form `make && make -C tiledb <targets>` will have to be replaced by `make <targets>`. You can preview the effects of this change by configuring with CMake and passing the -DTILEDB_CMAKE_IDE=ON option.
 
 ## Configuration changes
 
