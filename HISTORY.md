@@ -12,6 +12,8 @@ In version 2.26.0, the superbuild architecture of the build system will be remov
 
 * Enable array open v2 and query v3 by default. [#4974](https://github.com/TileDB-Inc/TileDB/pull/4974)
 * Add stats counter `memory_budget_exceeded` for when a query goes over budget. [#4993](https://github.com/TileDB-Inc/TileDB/pull/4993)
+* Support VFS `ls_recursive` API for Azure filesystem. [#4981](https://github.com/TileDB-Inc/TileDB/pull/4981)
+* Support VFS `ls_recursive` API for Google Cloud Storage filesystem. [#4997](https://github.com/TileDB-Inc/TileDB/pull/4997)
 
 ## Defects removed
 
@@ -26,8 +28,6 @@ In version 2.26.0, the superbuild architecture of the build system will be remov
 
 ### C API
 
-* Support VFS `ls_recursive` API for Azure filesystem. [#4981](https://github.com/TileDB-Inc/TileDB/pull/4981)
-* Support VFS `ls_recursive` API for Google Cloud Storage filesystem. [#4997](https://github.com/TileDB-Inc/TileDB/pull/4997)
 * Experimental APIs related to groups, deleting arrays and upgrading the format version of arrays were moved to stable. You can use them without including `<tiledb_experimental.h>`. [#4919](https://github.com/TileDB-Inc/TileDB/pull/4919)
 * Add array uri to tiledb_array_deserialize. [#4961](https://github.com/TileDB-Inc/TileDB/pull/4961)
 
