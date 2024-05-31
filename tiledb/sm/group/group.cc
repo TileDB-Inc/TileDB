@@ -47,6 +47,7 @@
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -98,8 +99,7 @@ Status Group::create(ContextResources& resources, const URI& uri) {
         "Cannot create group; Group '" + uri.to_string() + "' already exists");
   }
 
-  std::mutex object_create_mtx;
-  std::lock_guard<std::mutex> lock{object_create_mtx};
+  std::lock_guard<std::mutex> lock{object_mtx_};
   if (uri.is_tiledb()) {
     StorageManager storage_manager(
         resources, resources.logger(), resources.config());
