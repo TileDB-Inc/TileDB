@@ -1212,6 +1212,25 @@ Status Query::set_offsets_buffer(
     // Check number of coordinates
     uint64_t coords_num =
         *buffer_offsets_size / constants::cell_var_offset_size;
+
+    bool found_config, offsets_extra_element_;
+    if (!config_
+             .get<bool>(
+                 "sm.var_offsets.extra_element",
+                 &offsets_extra_element_,
+                 &found_config)
+             .ok()) {
+      throw QueryException("Error reading 'sm.var_offsets.extra_element'");
+    }
+    assert(found_config);  // writer does it, so... ?
+
+    if (offsets_extra_element_) {
+      // the offsets buffer has `ncoords + 1` elements so that each coordinate
+      // is given by `[offset[i], offset[i + 1])` instead of using the length
+      // to determine the last
+      --coords_num;
+    }
+
     if (coord_offsets_buffer_is_set_ &&
         coords_num != coords_info_.coords_num_ && name == offsets_buffer_name_)
       return logger_->status(Status_QueryError(
