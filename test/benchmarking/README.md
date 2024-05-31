@@ -8,7 +8,7 @@ This directory contains simple benchmarking programs intended for quick apples-a
 
     ```bash
     $ cd TileDB/build
-    $ ../bootstrap && make -j4 && make install-tiledb
+    $ ../bootstrap && make -j4 install
     $ cd ../dist
     ```
 
