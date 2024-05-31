@@ -112,23 +112,6 @@ set(CMAKE_CXX_VISIBILITY_PRESET hidden)
 # Disable warnings from Boost
 set(Boost_NO_WARN_NEW_VERSIONS ON)
 
-############################################################
-# Superbuild setup
-############################################################
-
-# Set the variable used when calling find_package(), find_file() etc.
-# to determine if NO_DEFAULT_PATH should be passed.
-if (TILEDB_FORCE_ALL_DEPS)
-  set(TILEDB_DEPS_NO_DEFAULT_PATH NO_DEFAULT_PATH)
-else()
-  set(TILEDB_DEPS_NO_DEFAULT_PATH)
-endif()
-
-# Set main TileDB Source
-set(TILEDB_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/tiledb")
-# Set experimental TileDB Source
-set(TILEDB_EXPERIMENTAL_BASE_SOURCE "${CMAKE_CURRENT_SOURCE_DIR}/experimental")
-
 project(TileDB)
 message(STATUS "Starting TileDB regular build.")
 message(STATUS "  CMake version: ${CMAKE_VERSION}")
