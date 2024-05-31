@@ -250,17 +250,6 @@ class StorageManagerCanonical {
     return resources_;
   }
 
-  /**
-   * Vacuums the consolidated metadata files of a group.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     vacuumed.
-   * @param config Configuration parameters for vacuuming
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   */
-  void group_metadata_vacuum(const char* group_name, const Config& config);
-
  private:
   /* ********************************* */
   /*        PRIVATE DATATYPES          */

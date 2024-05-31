@@ -585,12 +585,11 @@ Status Array::open(
             array_dir_timestamp_end_,
             ArrayDirectoryMode::SCHEMA_ONLY));
       }
-      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
 
       // Set schemas
-      set_array_schema_latest(array_schema_latest.value());
-      set_array_schemas_all(std::move(array_schemas.value()));
+      auto&& [array_schema_latest, array_schemas] = open_for_writes();
+      set_array_schema_latest(array_schema_latest);
+      set_array_schemas_all(std::move(array_schemas));
 
       // Set the timestamp
       opened_array_->metadata().reset(timestamp_end_opened_at());
@@ -606,12 +605,11 @@ Status Array::open(
             array_dir_timestamp_end_,
             ArrayDirectoryMode::READ));
       }
-      auto&& [st, latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
 
       // Set schemas
-      set_array_schema_latest(latest.value());
-      set_array_schemas_all(std::move(array_schemas.value()));
+      auto&& [latest, array_schemas] = open_for_writes();
+      set_array_schema_latest(latest);
+      set_array_schemas_all(std::move(array_schemas));
 
       auto version = array_schema_latest().version();
       if (query_type == QueryType::DELETE &&
@@ -1842,19 +1840,15 @@ Array::open_for_reads_without_fragments() {
 }
 
 tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
   // Checks
-  if (!resources_.vfs().supports_uri_scheme(array_uri_))
-    return {
-        resources_.logger()->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+  if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
+    throw ArrayException("Cannot open array; URI scheme unsupported.");
+  }
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
@@ -1867,31 +1861,21 @@ Array::open_for_writes() {
   auto version = array_schema_latest->version();
   if constexpr (is_experimental_build) {
     if (version != constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is not the library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      throw ArrayException(
+          "Cannot open array for writes; Array format version (" +
+          std::to_string(version) + ") is not the library format version (" +
+          std::to_string(constants::format_version) + ")");
     }
   } else {
     if (version > constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is newer than library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      throw ArrayException(
+          "Cannot open array for writes; Array format version (" +
+          std::to_string(version) + ") is newer than library format version (" +
+          std::to_string(constants::format_version) + ")");
     }
   }
 
-  return {Status::Ok(), array_schema_latest, array_schemas_all};
+  return {array_schema_latest, array_schemas_all};
 }
 
 void Array::clear_last_max_buffer_sizes() {
@@ -2326,12 +2310,10 @@ void Array::ensure_array_is_valid_for_delete(const URI& uri) {
 void ensure_supported_schema_version_for_read(format_version_t version) {
   // We do not allow reading from arrays written by newer version of TileDB
   if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for reads; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    throw Status_StorageManagerError(err.str());
+    throw ArrayException(
+        "Cannot open array for reads; Array format version (" +
+        std::to_string(version) + ") is newer than library format version (" +
+        std::to_string(constants::format_version) + ")");
   }
 }
 

@@ -238,22 +238,6 @@ class Group {
    */
   void set_metadata_loaded(const bool metadata_loaded);
 
-  /**
-   * Consolidates the metadata of a group into a single file.
-   *
-   * @param resources The context resources.
-   * @param group_name The name of the group whose metadata will be
-   *     consolidated.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  static Status consolidate_metadata(
-      ContextResources& resources,
-      const char* group_name,
-      const Config& config);
-
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
 

@@ -574,31 +574,6 @@ void Group::set_metadata_loaded(const bool metadata_loaded) {
   metadata_loaded_ = metadata_loaded;
 }
 
-Status Group::consolidate_metadata(
-    ContextResources& resources, const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    throw GroupException("Cannot consolidate group metadata; Invalid URI");
-  }
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    throw GroupException(
-        "Cannot consolidate group metadata; Group does not exist");
-  }
-
-  // Consolidate
-  // Encryption credentials are loaded by Group from config
-  StorageManager sm(resources, resources.logger(), config);
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
-  return consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
-}
-
 const EncryptionKey* Group::encryption_key() const {
   return encryption_key_.get();
 }

@@ -120,7 +120,7 @@ Status ArrayMetaConsolidator::consolidate(
 
 void ArrayMetaConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum array metadata; Array name cannot be null");
   }
 

@@ -1200,19 +1200,18 @@ class Array {
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
-  /** Opens an array for writes.
+  /**
+   * Opens an array for writes.
    *
    * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */
