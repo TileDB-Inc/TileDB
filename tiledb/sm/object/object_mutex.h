@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Standalone file for an object mutex.
+ * This file declares an object mutex.
  */
 
 #ifndef TILEDB_OBJECT_MUTEX_H
@@ -49,7 +49,7 @@ namespace tiledb::sm {
  * Once the migration of APIs out of `StorageManagerCanonical` is complete,
  * an audit should be done to determine the true merit of this header.
  */
-std::mutex object_mtx_;
+extern std::mutex object_mtx;
 
 }  // namespace tiledb::sm
 

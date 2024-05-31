@@ -242,6 +242,7 @@ set(TILEDB_CORE_SOURCES
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/utils.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/misc/win_constants.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/object/object.cc
+  ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/object/object_mutex.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/ast/query_ast.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/deletes_and_updates.cc
   ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/query/deletes_and_updates/serialization.cc

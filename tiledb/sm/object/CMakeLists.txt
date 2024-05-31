@@ -31,5 +31,5 @@ include(object_library)
 # `object_mutex` object library
 #
 commence(object_library object_mutex)
-    this_target_sources(object_mutex.h)
+    this_target_sources(object_mutex.cc)
 conclude(object_library)

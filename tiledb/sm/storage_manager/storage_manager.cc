@@ -58,6 +58,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -145,8 +146,7 @@ Status StorageManagerCanonical::array_create(
         "' already exists");
   }
 
-  // #TODO: replace this mutex with tiledb::sm::object_mtx_ upon migration.
-  std::lock_guard<std::mutex> lock{object_create_mtx_};
+  std::lock_guard<std::mutex> lock{object_mtx};
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri();
   array_schema->check(config_);

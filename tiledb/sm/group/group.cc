@@ -99,7 +99,7 @@ Status Group::create(ContextResources& resources, const URI& uri) {
         "Cannot create group; Group '" + uri.to_string() + "' already exists");
   }
 
-  std::lock_guard<std::mutex> lock{object_mtx_};
+  std::lock_guard<std::mutex> lock{object_mtx};
   if (uri.is_tiledb()) {
     StorageManager storage_manager(
         resources, resources.logger(), resources.config());

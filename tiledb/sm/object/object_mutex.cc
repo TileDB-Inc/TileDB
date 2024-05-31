@@ -1,5 +1,5 @@
 /**
- * @file compile_object_mutex_main.cc
+ * @file object_mutex.cc
  *
  * @section LICENSE
  *
@@ -24,11 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines an object mutex.
  */
 
-#include "../object_mutex.h"
+#include "tiledb/sm/object/object_mutex.h"
 
-int main() {
-  std::lock_guard<std::mutex> lock{tiledb::sm::object_mtx};
-  return 0;
-}
+namespace tiledb::sm {
+
+/**
+ * Mutex that protects the atomicity of object operations.
+ */
+std::mutex object_mtx;
+
+}  // namespace tiledb::sm
