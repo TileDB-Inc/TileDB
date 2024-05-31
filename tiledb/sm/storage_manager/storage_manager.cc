@@ -72,6 +72,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class StorageManagerException : public StatusException {
+ public:
+  explicit StorageManagerException(const std::string& message)
+      : StatusException("StorageManager", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -128,15 +135,14 @@ Status StorageManagerCanonical::array_create(
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (array_schema == nullptr) {
-    return logger_->status(
-        Status_StorageManagerError("Cannot create array; Empty array schema"));
+    throw StorageManagerException("Cannot create array; Empty array schema");
   }
 
   // Check if array exists
   if (is_array(resources_, array_uri)) {
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot create array; Array '") + array_uri.c_str() +
-        "' already exists"));
+    throw StorageManagerException(
+        "Cannot create array; Array '" + array_uri.to_string() +
+        "' already exists");
   }
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
@@ -225,8 +231,8 @@ Status StorageManager::array_evolve_schema(
     const EncryptionKey& encryption_key) {
   // Check array schema
   if (schema_evolution == nullptr) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot evolve array; Empty schema evolution"));
+    throw StorageManagerException(
+        "Cannot evolve array; Empty schema evolution");
   }
 
   if (array_uri.is_tiledb()) {
@@ -244,9 +250,9 @@ Status StorageManager::array_evolve_schema(
 
   // Check if array exists
   if (!is_array(resources_, array_uri)) {
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot evolve array; Array '") + array_uri.c_str() +
-        "' not exists"));
+    throw StorageManagerException(
+        "Cannot evolve array; Array '" + array_uri.to_string() +
+        "' not exists");
   }
 
   auto&& array_schema = array_dir.load_array_schema_latest(
@@ -277,9 +283,8 @@ Status StorageManager::array_evolve_schema(
 
   Status st = store_array_schema(array_schema_evolved, encryption_key);
   if (!st.ok()) {
-    logger_->status_no_return_value(st);
-    return logger_->status(Status_StorageManagerError(
-        "Cannot evolve schema;  Not able to store evolved array schema."));
+    throw StorageManagerException(
+        "Cannot evolve schema;  Not able to store evolved array schema.");
   }
 
   return Status::Ok();
@@ -288,10 +293,11 @@ Status StorageManager::array_evolve_schema(
 Status StorageManagerCanonical::array_upgrade_version(
     const URI& array_uri, const Config& override_config) {
   // Check if array exists
-  if (!is_array(resources_, array_uri))
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
-        "' does not exist"));
+  if (!is_array(resources_, array_uri)) {
+    throw StorageManagerException(
+        "Cannot upgrade array; Array '" + array_uri.to_string() +
+        "' does not exist");
+  }
 
   // Load URIs from the array directory
   tiledb::sm::ArrayDirectory array_dir{
@@ -333,33 +339,25 @@ Status StorageManagerCanonical::array_upgrade_version(
     // Create array schema directory if necessary
     URI array_schema_dir_uri =
         array_uri.join_path(constants::array_schema_dir_name);
-    auto st = resources_.vfs().create_dir(array_schema_dir_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
 
     // Store array schema
-    st = store_array_schema(array_schema, encryption_key_cfg);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
+    throw_if_not_ok(store_array_schema(array_schema, encryption_key_cfg));
 
     // Create commit directory if necessary
     URI array_commit_uri =
         array_uri.join_path(constants::array_commits_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_commit_uri),
-        logger_->status_no_return_value(st));
+    throw_if_not_ok(resources_.vfs().create_dir(array_commit_uri));
 
     // Create fragments directory if necessary
     URI array_fragments_uri =
         array_uri.join_path(constants::array_fragments_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_fragments_uri),
-        logger_->status_no_return_value(st));
+    throw_if_not_ok(resources_.vfs().create_dir(array_fragments_uri));
 
     // Create fragment metadata directory if necessary
     URI array_fragment_metadata_uri =
         array_uri.join_path(constants::array_fragment_meta_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_fragment_metadata_uri),
-        logger_->status_no_return_value(st));
+    throw_if_not_ok(resources_.vfs().create_dir(array_fragment_metadata_uri));
   }
 
   return Status::Ok();
@@ -371,8 +369,9 @@ Status StorageManagerCanonical::async_push_query(Query* query) {
       [this, query]() {
         // Process query.
         Status st = query_submit(query);
-        if (!st.ok())
-          logger_->status_no_return_value(st);
+        if (!st.ok()) {
+          resources_.logger()->status_no_return_value(st);
+        }
         return st;
       },
       [query]() {
@@ -432,20 +431,20 @@ StorageManagerCanonical::tags() const {
 Status StorageManagerCanonical::group_create(const std::string& group_uri) {
   // Create group URI
   URI uri(group_uri);
-  if (uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create group '" + group_uri + "'; Invalid group URI"));
+  if (uri.is_invalid()) {
+    throw StorageManagerException(
+        "Cannot create group '" + group_uri + "'; Invalid group URI");
+  }
 
   // Check if group exists
   bool exists;
   throw_if_not_ok(is_group(resources_, uri, &exists));
-  if (exists)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot create group; Group '") + uri.c_str() +
-        "' already exists"));
+  if (exists) {
+    throw StorageManagerException(
+        "Cannot create group; Group '" + uri.to_string() + "' already exists");
+  }
 
   std::lock_guard<std::mutex> lock{object_create_mtx_};
-
   if (uri.is_tiledb()) {
     Group group(resources_, uri, this);
     throw_if_not_ok(
@@ -481,8 +480,8 @@ Status StorageManagerCanonical::object_iter_begin(
   // Sanity check
   URI path_uri(path);
   if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
+    throw StorageManagerException(
+        "Cannot create object iterator; Invalid input path");
   }
 
   // Get all contents of path
@@ -514,8 +513,8 @@ Status StorageManagerCanonical::object_iter_begin(
   // Sanity check
   URI path_uri(path);
   if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
+    throw StorageManagerException(
+        "Cannot create object iterator; Invalid input path");
   }
 
   // Get all contents of path
@@ -711,8 +710,8 @@ Status StorageManagerCanonical::store_array_schema(
   for (auto& enmr_name : array_schema->get_loaded_enumeration_names()) {
     auto enmr = array_schema->get_enumeration(enmr_name);
     if (enmr == nullptr) {
-      return logger_->status(Status_StorageManagerError(
-          "Error serializing enumeration; Loaded enumeration is null"));
+      throw StorageManagerException(
+          "Error serializing enumeration; Loaded enumeration is null");
     }
 
     SizeComputationSerializer enumeration_size_serializer;
@@ -737,10 +736,6 @@ void StorageManagerCanonical::wait_for_zero_in_progress() {
       lck, [this]() { return queries_in_progress_ == 0; });
 }
 
-shared_ptr<Logger> StorageManagerCanonical::logger() const {
-  return logger_;
-}
-
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -761,16 +756,16 @@ Status StorageManagerCanonical::group_metadata_consolidate(
   // Check group URI
   URI group_uri(group_name);
   if (group_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Invalid URI"));
+    throw StorageManagerException(
+        "Cannot consolidate group metadata; Invalid URI");
   }
   // Check if group exists
   ObjectType obj_type;
   throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
 
   if (obj_type != ObjectType::GROUP) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Group does not exist"));
+    throw StorageManagerException(
+        "Cannot consolidate group metadata; Group does not exist");
   }
 
   // Consolidate
