@@ -601,7 +601,7 @@ endif()
 # these must be listed first for Linux. E.g. AWSSDK and Curl depend on Zlib,
 # which is installed here.
 find_package(BZip2 REQUIRED)
-find_package(lz4 REQUIRED)
+find_package(LZ4 MODULE REQUIRED)
 find_package(spdlog REQUIRED)
 find_package(ZLIB REQUIRED)
 find_package(zstd REQUIRED)
