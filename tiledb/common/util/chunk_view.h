@@ -39,6 +39,17 @@
 #include <ranges>
 #include "iterator_facade.h"
 
+/** Helper template, API from cppreference */
+template <class I>
+constexpr I __div_ceil(I num, I denom) {
+  // In cppreference:
+  // I r = num / denom;
+  // if (num % denom)
+  //    ++r;
+  // return r;
+  return (num + denom - 1) / denom;  // This should be a little faster
+}
+
 /**
  * A view that splits a view into subranges of uniform length, as delimited by
  * a chunk size value. The resulting view is a range of subranges, each of which
@@ -82,9 +93,10 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
   /**
    * Constructor taking ranges for the data and index ranges, along with sizes
    */
-  chunk_view(R& data, std::ranges::range_difference_t<R> num_chunks)
+  chunk_view(R& data, std::ranges::range_difference_t<R> chunk_size)
       : data_begin_(std::ranges::begin(data))
-      , num_chunks_(num_chunks) {
+      , data_end_(std::ranges::end(data))
+      , chunk_size_(chunk_size) {
   }
 
   /*
@@ -93,37 +105,37 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
   /** Return iterator to the beginning of the chunk view */
   auto begin() {
-    return chunk_iterator(data_begin_, chunk_size_, 0);
+    return chunk_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return iterator to the end of the chunk view */
   auto end() {
-    return chunk_iterator(data_begin_, num_chunks_, num_chunks_);
+    return chunk_iterator(data_end_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the beginning of the chunk view */
   auto begin() const {
-    return chunk_const_iterator(data_begin_, num_chunks_, 0);
+    return chunk_const_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the end of the chunk view */
   auto end() const {
-    return chunk_const_iterator(data_begin_, num_chunks_, num_chunks_);
+    return chunk_const_iterator(data_end_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the beginning of the chunk view */
   auto cbegin() const {
-    return chunk_const_iterator(data_begin_, 0);
+    return chunk_const_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the end of the chunk view */
   auto cend() const {
-    return chunk_const_iterator(data_begin_, num_chunks_);
+    return chunk_const_iterator(data_end_, data_end_, chunk_size_);
   }
 
-  /** Return the number of subranges in the chunk view */
+  /** Return the number of chunks in the chunk view */
   auto size() const {
-    return num_chunks_;
+    return __div_ceil(data_end_ - data_begin_, chunk_size_);
   }
 
  private:
@@ -138,17 +150,12 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
     /** Primary constructor */
     private_iterator(
         data_iterator_type data_begin,
-        data_index_type chunk_size,
-        data_index_type index = 0)
+        data_iterator_type data_end,
+        data_index_type chunk_size)
         : data_begin_(data_begin)
-        , index_(index)
+        , data_end_(data_end)
+        , current_(data_begin)
         , chunk_size_(chunk_size) {
-    }
-
-    /** Primary constructor */
-    private_iterator(chunk_view&& parent, data_index_type index = 0)
-        : index_(index)
-        , data_begin_(std::ranges::begin(parent)) {
     }
 
     /*************************************************************************
@@ -165,23 +172,39 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
      * We do, however, want to be able to modify the contents of the subrange.
      */
     value_type dereference() const {
-      return {data_begin_, data_begin_ + chunk_size_};
+      if (data_end_ - current_ < chunk_size_) {
+        return {current_, data_end_};
+      } else {
+        return {data_begin_, data_begin_ + chunk_size_};
+      }
     }
 
-    /** Advance the iterator by n */
+    /**
+     * Advance the iterator by n.  Note that we don't move past the end of the
+     * data range.
+     */
     auto advance(data_index_type n) {
-      index_ += n;
-      return *this;
+      if (data_end_ - current_ < chunk_size_) {
+        current_ = data_end_;
+        return *this;
+      } else {
+        current_ += n * chunk_size_;
+        return *this;
+      }
     }
 
     /** Return the distance to another iterator */
     auto distance_to(const private_iterator& other) const {
-      return other.index_ - index_;
+      return other.current_ - current_;
     }
 
     /** Compare two iterators for equality */
     bool operator==(const private_iterator& other) const {
-      return data_begin_ == other.data_begin_ && index_ == other.index_;
+      auto foo = (chunk_size_ == other.chunk_size_);
+      auto bar = (current_ == other.current_);
+      auto x = std::ranges::distance(current_, other.current_);
+
+      return chunk_size_ == other.chunk_size_ && current_ == other.current_;
     }
 
     /** Flag to indicate that the iterator is not a single pass iterator */
@@ -194,8 +217,14 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
      */
     data_iterator_type data_begin_;
 
-    /** The index to the current location of the iterator */
-    data_index_type index_;
+    /**
+     * Iterator to the end of the data range. A copy of the parent
+     * data_end_.
+     */
+    data_iterator_type data_end_;
+
+    /** The current location of the iterator */
+    data_iterator_type current_;
 
     /** The chunk size.  Also cached from parent. */
     data_index_type chunk_size_;
@@ -204,11 +233,11 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
   /** The beginning of the data range */
   std::ranges::iterator_t<R> data_begin_;
 
-  /** The number of chunks in the chunk_range */
-  std::ranges::range_difference_t<R> chunk_size_;
+  /** The end of the data range */
+  std::ranges::iterator_t<R> data_end_;
 
   /** The number of chunks in the chunk_range */
-  std::ranges::range_difference_t<R> num_chunks_;
+  std::ranges::range_difference_t<R> chunk_size_;
 };
 
 /** Deduction guide for chunk_view */
@@ -222,9 +251,9 @@ namespace _chunk {
 struct _fn {
   // @todo Should this take a viewable range?
   // template <std::ranges::viewable_range T>
-  template <std::ranges::random_access_range T>
-  auto constexpr operator()(T&& t) const {
-    return chunk_view<T>{std::forward<T>(t)};
+  template <std::ranges::random_access_range T, class I>
+  auto constexpr operator()(T&& t, I i) const {
+    return chunk_view<T>{std::forward<T>(t), i};
   }
 };
 }  // namespace _chunk

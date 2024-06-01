@@ -58,13 +58,12 @@ TEST_CASE("chunk_view: Range concepts", "[chunk_view][concepts]") {
   CHECK(std::ranges::view<test_type>);
 }
 
-
 // Test that the chunk_view iterators satisfy the expected concepts
 TEST_CASE("chunk_view: Iterator concepts", "[chunk_view][concepts]") {
   using test_type = chunk_view<std::vector<double>>;
   using test_type_iterator = std::ranges::iterator_t<test_type>;
   using test_type_const_iterator = std::ranges::iterator_t<const test_type>;
-  
+
   CHECK(std::input_or_output_iterator<test_type_iterator>);
   CHECK(std::input_or_output_iterator<test_type_const_iterator>);
   CHECK(std::input_iterator<test_type_iterator>);
@@ -84,8 +83,7 @@ TEST_CASE("chunk_view: Iterator concepts", "[chunk_view][concepts]") {
 }
 
 // Test that the chunk_view value_type satisfies the expected concepts
-TEST_CASE(
-    "chunk_view: value_type concepts", "[chunk_view][concepts]") {
+TEST_CASE("chunk_view: value_type concepts", "[chunk_view][concepts]") {
   using test_type = chunk_view<std::vector<double>>;
   CHECK(std::ranges::range<test_type>);
 
@@ -99,4 +97,211 @@ TEST_CASE(
 
   CHECK(std::is_same_v<test_iterator_value_type, range_value_type>);
   CHECK(std::is_same_v<test_iterator_reference_type, range_reference_type>);
+}
+
+std::vector<double> v10 = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+std::vector<double> v11 = {
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0};
+std::vector<double> v12 = {
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+std::vector<double> v13 = {
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0};
+std::vector<double> v14 = {
+    1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0, 13.0, 14.0};
+std::vector<double> v15 = {
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0};
+std::vector<double> v16 = {
+    1.0,
+    2.0,
+    3.0,
+    4.0,
+    5.0,
+    6.0,
+    7.0,
+    8.0,
+    9.0,
+    10.0,
+    11.0,
+    12.0,
+    13.0,
+    14.0,
+    15.0,
+    16.0};
+
+// Simple test that a chunk_view can be constructed
+TEST_CASE("chunk_view: Constructor", "[chunk_view]") {
+  [[maybe_unused]] auto c = _cpo::chunk(v10, 2);
+  [[maybe_unused]] auto d = _cpo::chunk(v10, 3);
+  [[maybe_unused]] auto e = _cpo::chunk(v11, 2);
+  [[maybe_unused]] auto f = _cpo::chunk(v11, 3);
+}
+
+TEST_CASE("chunk_view: Constructor + size", "[chunk_view]") {
+  auto c = _cpo::chunk(v10, 2);
+  CHECK(c.size() == 5);
+  auto d = _cpo::chunk(v10, 3);
+  CHECK(d.size() == 4);
+  auto e = _cpo::chunk(v11, 2);  // 2, 2, 2, 2, 2, 1
+  CHECK(e.size() == 6);
+  auto f = _cpo::chunk(v11, 3);  // 3, 3, 3, 2
+  CHECK(f.size() == 4);
+  auto g = _cpo::chunk(v12, 2);
+  CHECK(g.size() == 6);
+  auto h = _cpo::chunk(v12, 3);
+  CHECK(h.size() == 4);
+  auto i = _cpo::chunk(v12, 4);
+  CHECK(i.size() == 3);
+}
+
+TEST_CASE("chunk_view: Iterators begin and end", "[chunk_view]") {
+  for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+    auto a = _cpo::chunk(v, 2);
+    auto b = a.begin();
+    auto c = a.end();
+    auto d = a.begin();
+    auto e = a.end();
+    CHECK(b != c);
+    CHECK(d != e);
+    CHECK(b == d);
+    CHECK(c == e);
+  }
+
+  for (auto&& v : {v11, v12}) {
+    auto a = _cpo::chunk(v, 2);
+    auto b = a.begin();
+    CHECK(b == a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b != a.end());
+
+    ++b;
+    CHECK(b != a.begin());
+    CHECK(b == a.end());
+  }
+}
+
+TEST_CASE("chunk_view: Iterators ++ and --", "[chunk_view]") {
+  for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+    auto a = _cpo::chunk(v, 2);
+    auto b = a.begin();
+    [[maybe_unused]] auto c = a.end();
+    auto d = a.begin();
+    auto e = a.end();
+    while (b != e) {
+      ++b;
+      d++;
+      CHECK(b == d);
+    }
+  }
+
+  for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+    auto a = _cpo::chunk(v, 2);
+    auto b = a.begin();
+    [[maybe_unused]] auto c = a.end();
+    auto d = a.begin();
+    auto e = a.end();
+    while (b != e) {
+      ++b;
+      --b;
+      b++;
+      d++;
+      d--;
+      ++d;
+      CHECK(b == d);
+    }
+  }
+}
+
+TEST_CASE("chunk_view: Iterators + 1", "[chunk_view]") {
+  for (auto ch : {2, 3, 4, 9, 10, 11}) {
+    for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+      auto a = _cpo::chunk(v, ch);
+      auto b = a.begin();
+      [[maybe_unused]] auto c = a.end();
+      auto d = a.begin();
+      auto e = a.end();
+
+      while (b != e) {
+        auto x = b;
+        b += 1;
+        if (b == e) {
+          break;
+        }
+        CHECK(b != d);
+        CHECK(b == d + 1);
+        CHECK(b != d + 2);
+        d++;
+        CHECK(b == d);
+        CHECK(b == (x + 1));
+      }
+    }
+  }
+}
+
+TEST_CASE("chunk_view: Iterators - 1", "[chunk_view]") {
+  for (auto ch : {2, 3, 4, 9, 10, 11}) {
+    for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+      auto a = _cpo::chunk(v, ch);
+      auto b = a.begin();
+      [[maybe_unused]] auto c = a.end();
+      auto d = a.begin();
+      auto e = a.end();
+
+      while (b != e) {
+        CHECK(b == d);
+
+        ++b;
+        if (b == e) {
+          break;
+        }
+        --b;
+        // CHECK(b == d);
+        b++;
+        d++;
+        CHECK(b == d);
+      }
+    }
+  }
+}
+
+TEST_CASE("chunk_view: Iterators", "[chunk_view]") {
+  for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
+    for (long i = 1; i <= v.size(); ++i) {
+      auto a = _cpo::chunk(v, i);
+      auto b = a.begin();
+      CHECK(b->size() == (unsigned)i);
+    }
+  }
 }
