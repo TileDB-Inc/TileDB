@@ -239,7 +239,7 @@ class zip_view : public std::ranges::view_interface<zip_view<Rngs...>> {
 
     /**
      * Dereference the iterator -- the critical function for defining the
-     * iterator sinc the facade bases many type aliases and other functions
+     * iterator since the facade bases many type aliases and other functions
      * based on it and its signature
      */
     reference dereference() const {
