@@ -147,12 +147,6 @@ class DimensionLabel {
   void dump(FILE* out) const;
 
   /**
-   * Dumps the dimension label contents in ASCII form in the selected output
-   * string.
-   */
-  void dump(std::string* out) const;
-
-  /**
    * Returns ``true`` if the dimension label is not contained inside the array.
    */
   inline bool is_external() const {
@@ -234,9 +228,6 @@ class DimensionLabel {
   }
 
  private:
-  /** Dumps the dimension label in ASCII format. */
-  std::string dump_dimension_label() const;
-
   /** The index of the dimension the labels are attached to. */
   dimension_size_type dim_id_;
 
@@ -283,3 +274,7 @@ class DimensionLabel {
 }  // namespace tiledb::sm
 
 #endif
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::DimensionLabel& dl);

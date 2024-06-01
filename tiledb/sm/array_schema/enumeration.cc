@@ -397,26 +397,9 @@ void Enumeration::dump(FILE* out) const {
   if (out == nullptr) {
     out = stdout;
   }
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void Enumeration::dump(std::string* out) const {
-  *out = dump_enumeration();
-}
-
-std::string Enumeration::dump_enumeration() const {
   std::stringstream ss;
-  ss << "### Enumeration ###" << std::endl;
-  ss << "- Name: " << name_ << std::endl;
-  ss << "- Loaded: true" << std::endl;
-  ss << "- Type: " << datatype_str(type_) << std::endl;
-  ss << "- Cell Val Num: " << cell_val_num_ << std::endl;
-  ss << "- Ordered: " << (ordered_ ? "true" : "false") << std::endl;
-  ss << "- Element Count: " << value_map_.size() << std::endl;
-
-  return ss.str();
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 void Enumeration::generate_value_map() {
@@ -461,3 +444,17 @@ void Enumeration::add_value_to_map(std::string_view& sv, uint64_t index) {
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::Enumeration& enumeration) {
+  os << "### Enumeration ###" << std::endl;
+  os << "- Name: " << enumeration.name() << std::endl;
+  os << "- Loaded: true" << std::endl;
+  os << "- Type: " << datatype_str(enumeration.type()) << std::endl;
+  os << "- Cell Val Num: " << enumeration.cell_val_num() << std::endl;
+  os << "- Ordered: " << (enumeration.ordered() ? "true" : "false")
+     << std::endl;
+  os << "- Element Count: " << enumeration.value_map().size() << std::endl;
+
+  return os;
+}

@@ -327,13 +327,9 @@ void Dimension::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void Dimension::dump(std::string* out) const {
-  *out = dump_dimension();
+  std::stringstream ss;
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 const FilterPipeline& Dimension::filters() const {
@@ -1489,30 +1485,6 @@ Status Dimension::set_null_tile_extent_to_range() {
 /*          PRIVATE METHODS          */
 /* ********************************* */
 
-std::string Dimension::dump_dimension() const {
-  std::stringstream ss;
-  // Retrieve domain and tile extent strings
-  std::string domain_s = type::range_str(domain_, type_);
-  std::string tile_extent_s = tile_extent_str();
-
-  // Dump
-  ss << "### Dimension ###\n";
-  ss << "- Name: " << name_ << "\n";
-  ss << "- Type: " << datatype_str(type_) << "\n";
-  if (!var_size())
-    ss << "- Cell val num: " << cell_val_num_ << "\n";
-  else
-    ss << "- Cell val num: var\n";
-  ss << "- Domain: " << domain_s << "\n";
-  ss << "- Tile extent: " << tile_extent_s << "\n";
-  ss << "- Filters: " << filters_.size();
-  std::string temp;
-  filters_.dump(&temp);
-  ss << temp << "\n";
-
-  return ss.str();
-}
-
 Status Dimension::check_domain() const {
   auto g = [&](auto T) {
     if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
@@ -1653,26 +1625,6 @@ void Dimension::ensure_datatype_is_supported(Datatype type) const {
   }
 }
 
-std::string Dimension::tile_extent_str() const {
-  std::stringstream ss;
-
-  if (!tile_extent_) {
-    return constants::null_str;
-  }
-
-  auto g = [&](auto T) {
-    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
-      auto val = reinterpret_cast<const decltype(T)*>(tile_extent_.data());
-      ss << *val;
-      return ss.str();
-    }
-    throw std::logic_error(
-        "Datatype::" + datatype_str(type_) + " not supported");
-    return std::string("");  // for return type deduction purposes
-  };
-  return apply_with_type(g, type_);
-}
-
 void Dimension::set_dimension_dispatch() {
   if (var_size()) {
     dispatch_ =
@@ -1694,3 +1646,45 @@ Range DimensionVarSize::compute_mbr_var(
 }
 
 }  // namespace tiledb::sm
+
+std::string tile_extent_str(const tiledb::sm::Dimension& dim) {
+  std::stringstream ss;
+
+  if (!dim.tile_extent()) {
+    return tiledb::sm::constants::null_str;
+  }
+
+  auto g = [&](auto T) {
+    if constexpr (tiledb::type::TileDBNumeric<decltype(T)>) {
+      auto val = reinterpret_cast<const decltype(T)*>(dim.tile_extent().data());
+      ss << *val;
+      return ss.str();
+    }
+    throw std::logic_error(
+        "Datatype::" + datatype_str(dim.type()) + " not supported");
+    return std::string("");  // for return type deduction purposes
+  };
+  return apply_with_type(g, dim.type());
+}
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Dimension& dim) {
+  // Retrieve domain and tile extent strings
+  std::string domain_s = tiledb::type::range_str(dim.domain(), dim.type());
+  std::string tile_extent_s = tile_extent_str(dim);
+
+  // Dump
+  os << "### Dimension ###\n";
+  os << "- Name: " << dim.name() << "\n";
+  os << "- Type: " << datatype_str(dim.type()) << "\n";
+  if (!dim.var_size())
+    os << "- Cell val num: " << dim.cell_val_num() << "\n";
+  else
+    os << "- Cell val num: var\n";
+  os << "- Domain: " << domain_s << "\n";
+  os << "- Tile extent: " << tile_extent_s << "\n";
+  os << "- Filters: " << dim.filters().size();
+  os << dim.filters();
+  os << "\n";
+
+  return os;
+}

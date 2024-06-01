@@ -228,10 +228,6 @@ class Attribute {
   /** Dumps the attribute contents in ASCII form in the selected output file. */
   void dump(FILE* out) const;
 
-  /** Dumps the attribute contents in ASCII form in the selected output string.
-   */
-  void dump(std::string* out) const;
-
   /**
    * Serializes the object members into a binary buffer.
    *
@@ -275,6 +271,9 @@ class Attribute {
   /** Get the enumeration for this attribute. */
   std::optional<std::string> get_enumeration_name() const;
 
+  /** Returns the fill value in string form. */
+  std::string fill_value_str() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -311,17 +310,14 @@ class Attribute {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Dumps the attribute in ASCII format. */
-  std::string dump_attribute() const;
-
   /** Sets the default fill value. */
   void set_default_fill_value();
-
-  /** Returns the fill value in string form. */
-  std::string fill_value_str() const;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
 #endif  // TILEDB_ATTRIBUTE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a);

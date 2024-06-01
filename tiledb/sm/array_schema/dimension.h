@@ -164,10 +164,6 @@ class Dimension {
   /** Dumps the dimension contents in ASCII form in the selected output file. */
   void dump(FILE* out) const;
 
-  /** Dumps the dimension contents in ASCII form in the selected output string.
-   */
-  void dump(std::string* out) const;
-
   /** Returns the filter pipeline of this dimension. */
   const FilterPipeline& filters() const;
 
@@ -830,9 +826,6 @@ class Dimension {
   /*          PRIVATE METHODS          */
   /* ********************************* */
 
-  /** Dumps the dimension in ASCII format. */
-  std::string dump_dimension() const;
-
   /** Returns an error if the set domain is invalid. */
   Status check_domain() const;
 
@@ -917,9 +910,6 @@ class Dimension {
   /** Throws error if the input type is not a supported Dimension Datatype. */
   void ensure_datatype_is_supported(Datatype type) const;
 
-  /** Returns the tile extent in string format. */
-  std::string tile_extent_str() const;
-
   /**
    * Sets the dimension dynamic dispatch implementation.
    * Called in the constructor.
@@ -930,3 +920,9 @@ class Dimension {
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_DIMENSION_H
+
+/** Returns the tile extent in string format. */
+std::string tile_extent_str(const tiledb::sm::Dimension& dim);
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Dimension& dim);

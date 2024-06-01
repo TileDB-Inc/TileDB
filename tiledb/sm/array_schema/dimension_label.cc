@@ -263,28 +263,9 @@ void DimensionLabel::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void DimensionLabel::dump(std::string* out) const {
-  *out = dump_dimension_label();
-}
-
-std::string DimensionLabel::dump_dimension_label() const {
   std::stringstream ss;
-  ss << "### Dimension Label ###\n";
-  ss << "- Dimension Index: " << dim_id_ << "\n";
-  ss << "- Dimension Label Name: " << dim_label_name_ << "\n";
-  ss << "- URI: " << uri_.to_string() << "\n";
-  ss << "- Label Attribute Name: " << label_attr_name_ << "\n";
-  ss << "- Label Type: " << datatype_str(label_type_) << "\n";
-  (label_cell_val_num_ == constants::var_num) ?
-      ss << "- Label cell val num: var\n" :
-      ss << "- Label cell val num: " << label_cell_val_num_ << "\n";
-  ss << "\n";
-  return ss.str();
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 const shared_ptr<ArraySchema> DimensionLabel::schema() const {
@@ -346,3 +327,19 @@ void DimensionLabel::serialize(Serializer& serializer, uint32_t) const {
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::DimensionLabel& dl) {
+  os << "### Dimension Label ###\n";
+  os << "- Dimension Index: " << dl.dimension_index() << "\n";
+  os << "- Dimension Label Name: " << dl.name() << "\n";
+  os << "- URI: " << dl.uri().to_string() << "\n";
+  os << "- Label Attribute Name: " << dl.name() << "\n";
+  os << "- Label Type: " << datatype_str(dl.label_type()) << "\n";
+  (dl.label_cell_val_num() == tiledb::sm::constants::var_num) ?
+      os << "- Label cell val num: var\n" :
+      os << "- Label cell val num: " << dl.label_cell_val_num() << "\n";
+  os << "\n";
+
+  return os;
+}

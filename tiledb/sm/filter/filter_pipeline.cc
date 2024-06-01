@@ -559,23 +559,9 @@ void FilterPipeline::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void FilterPipeline::dump(std::string* out) const {
-  *out = dump_filter_pipeline();
-}
-
-std::string FilterPipeline::dump_filter_pipeline() const {
   std::stringstream ss;
-  std::string tmp;
-  for (const auto& filter : filters_) {
-    filter->dump(&tmp);
-    ss << "\n  > " << tmp;
-  }
-  return ss.str();
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 void FilterPipeline::ensure_compatible(
@@ -595,6 +581,10 @@ bool FilterPipeline::has_filter(const FilterType& filter_type) const {
       return true;
   }
   return false;
+}
+
+std::vector<shared_ptr<Filter>> FilterPipeline::filters() const {
+  return filters_;
 }
 
 void FilterPipeline::set_max_chunk_size(uint32_t max_chunk_size) {
@@ -664,3 +654,12 @@ bool FilterPipeline::use_tile_chunking(
 
 }  // namespace sm
 }  // namespace tiledb
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& fp) {
+  for (const auto& filter : fp.filters()) {
+    os << "\n  > ";
+    os << *filter;
+  }
+  return os;
+}

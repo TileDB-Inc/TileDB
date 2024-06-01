@@ -134,12 +134,6 @@ class FilterPipeline {
   void dump(FILE* out) const;
 
   /**
-   * Dumps the filter pipeline details in ASCII format in the selected
-   * output string.
-   */
-  void dump(std::string* out) const;
-
-  /**
    * Checks that two filters have compatible input / output types.
    * Checks fail if the first filter outputs a type not accepted by the second
    * filter as input.
@@ -326,6 +320,8 @@ class FilterPipeline {
   bool use_tile_chunking(
       const bool is_var, const uint32_t version, const Datatype type) const;
 
+  std::vector<shared_ptr<Filter>> filters() const;
+
  private:
   /** A pair of FilterBuffers. */
   typedef std::pair<FilterBuffer, FilterBuffer> FilterBufferPair;
@@ -335,9 +331,6 @@ class FilterPipeline {
 
   /** The max chunk size allowed within tiles. */
   uint32_t max_chunk_size_;
-
-  /** Dumps the filter pipeline in ASCII format. */
-  std::string dump_filter_pipeline() const;
 
   /**
    * Get the chunk offsets for a var sized tile so that integral cells are
@@ -384,3 +377,7 @@ class FilterPipeline {
 }  // namespace tiledb
 
 #endif  // TILEDB_FILTER_PIPELINE_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::FilterPipeline& filter_pipeline);

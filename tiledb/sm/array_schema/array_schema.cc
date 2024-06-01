@@ -693,13 +693,9 @@ void ArraySchema::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void ArraySchema::dump(std::string* out) const {
-  *out = dump_array_schema();
+  std::stringstream ss;
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 Status ArraySchema::has_attribute(
@@ -1630,65 +1626,19 @@ const std::string& ArraySchema::name() const {
   return name_;
 }
 
+const tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>&
+ArraySchema::enumeration_map() const {
+  return enumeration_map_;
+}
+
+const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
+ArraySchema::dimension_labels() const {
+  return dimension_labels_;
+}
+
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-std::string ArraySchema::dump_array_schema() const {
-  std::stringstream ss;
-  ss << "- Array type: " << array_type_str(array_type_) << "\n";
-  ss << "- Cell order: " << layout_str(cell_order_) << "\n";
-  ss << "- Tile order: " << layout_str(tile_order_) << "\n";
-  ss << "- Capacity: " << capacity_ << "\n";
-  ss << "- Allows duplicates: " << (allows_dups_ ? "true" : "false") << "\n";
-  ss << "- Coordinates filters: " << coords_filters_.size();
-
-  std::string temp;
-  coords_filters_.dump(&temp);
-  ss << temp;
-
-  ss << "\n- Offsets filters: " << cell_var_offsets_filters_.size();
-
-  cell_var_offsets_filters_.dump(&temp);
-  ss << temp;
-  ss << "\n- Validity filters: " << cell_validity_filters_.size();
-
-  cell_validity_filters_.dump(&temp);
-  ss << temp;
-  ss << "\n";
-
-  if (domain_ != nullptr) {
-    domain_->dump(&temp);
-    ss << temp;
-  }
-
-  for (auto& attr : attributes_) {
-    ss << "\n";
-    attr->dump(&temp);
-    ss << temp;
-  }
-
-  for (auto& enmr_iter : enumeration_map_) {
-    // fprintf(out, "\n");
-    ss << "\n";
-    if (enmr_iter.second != nullptr) {
-      enmr_iter.second->dump(&temp);
-      ss << temp;
-    } else {
-      ss << "### Enumeration ###" << std::endl;
-      ss << "- Name: " << enmr_iter.first << std::endl;
-      ss << "- Loaded: false" << std::endl;
-    }
-  }
-
-  for (auto& label : dimension_labels_) {
-    ss << "\n";
-    label->dump(&temp);
-    ss << temp;
-  }
-
-  return ss.str();
-}
 
 void ArraySchema::check_attribute_dimension_label_names() const {
   std::set<std::string> names;
@@ -1811,3 +1761,52 @@ void ArraySchema::generate_uri(
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::ArraySchema& schema) {
+  os << "- Array type: " << array_type_str(schema.array_type()) << "\n";
+  os << "- Cell order: " << layout_str(schema.cell_order()) << "\n";
+  os << "- Tile order: " << layout_str(schema.tile_order()) << "\n";
+  os << "- Capacity: " << schema.capacity() << "\n";
+  os << "- Allows duplicates: " << (schema.allows_dups() ? "true" : "false")
+     << "\n";
+  os << "- Coordinates filters: " << schema.coords_filters().size();
+
+  std::string temp;
+  os << schema.coords_filters();
+
+  os << "\n- Offsets filters: " << schema.cell_var_offsets_filters().size();
+
+  os << schema.cell_var_offsets_filters();
+  os << "\n- Validity filters: " << schema.cell_validity_filters().size();
+
+  os << schema.cell_validity_filters();
+  os << "\n";
+
+  if (schema.shared_domain() != nullptr) {
+    os << *schema.shared_domain();
+  }
+
+  for (auto& attr : schema.attributes()) {
+    os << "\n";
+    os << *attr;
+  }
+
+  for (auto& enmr_iter : schema.enumeration_map()) {
+    os << "\n";
+    if (enmr_iter.second != nullptr) {
+      os << *enmr_iter.second;
+    } else {
+      os << "### Enumeration ###" << std::endl;
+      os << "- Name: " << enmr_iter.first << std::endl;
+      os << "- Loaded: false" << std::endl;
+    }
+  }
+
+  for (auto& label : schema.dimension_labels()) {
+    os << "\n";
+    os << *label;
+  }
+
+  return os;
+}

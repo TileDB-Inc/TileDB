@@ -250,3 +250,6 @@ class Filter {
 }  // namespace tiledb
 
 #endif  // TILEDB_FILTER_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter);

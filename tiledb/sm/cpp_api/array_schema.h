@@ -169,16 +169,6 @@ class ArraySchema : public Schema {
         tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
   }
 
-  void dump(std::string* out) const override {
-    auto& ctx = ctx_.get();
-    tiledb_string_t* tdb_string;
-
-    ctx.handle_error(tiledb_array_schema_dump_str(
-        ctx.ptr().get(), schema_.get(), &tdb_string));
-
-    *out = impl::convert_to_string(&tdb_string).value();
-  }
-
   /** Returns the array type. */
   tiledb_array_type_t array_type() const {
     auto& ctx = ctx_.get();
@@ -645,13 +635,14 @@ class ArraySchema : public Schema {
 
 /** Converts the array schema into a string representation. */
 inline std::ostream& operator<<(std::ostream& os, const ArraySchema& schema) {
-  os << "ArraySchema<";
-  os << tiledb::ArraySchema::to_str(schema.array_type());
-  os << ' ' << schema.domain();
-  for (const auto& a : schema.attributes()) {
-    os << ' ' << a.second;
-  }
-  os << '>';
+  auto& ctx = schema.context();
+  tiledb_string_t* tdb_string;
+
+  ctx.handle_error(tiledb_array_schema_dump_str(
+      ctx.ptr().get(), schema.ptr().get(), &tdb_string));
+
+  os << impl::convert_to_string(&tdb_string).value();
+
   return os;
 }
 

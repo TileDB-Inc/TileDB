@@ -713,9 +713,9 @@ int32_t tiledb_array_schema_dump_str(
     tiledb_string_t** out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  std::string str;
-  array_schema->array_schema_->dump(&str);
-  *out = tiledb_string_handle_t::make_handle(str);
+  std::stringstream ss;
+  ss << *array_schema->array_schema_;
+  *out = tiledb_string_handle_t::make_handle(ss.str());
   return TILEDB_OK;
 }
 

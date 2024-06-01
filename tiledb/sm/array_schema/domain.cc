@@ -376,13 +376,9 @@ void Domain::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void Domain::dump(std::string* out) const {
-  *out = dump_domain();
+  std::stringstream ss;
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
@@ -728,17 +724,6 @@ int Domain::tile_order_cmp(
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
-
-std::string Domain::dump_domain() const {
-  std::stringstream ss;
-  std::string tmp;
-  for (const auto dim : dimension_ptrs_) {
-    dim->dump(&tmp);
-    ss << "\n" << tmp;
-  }
-
-  return ss.str();
-}
 
 void Domain::compute_cell_num_per_tile() {
   // Applicable to dimensions that have the same type
@@ -1193,3 +1178,14 @@ template uint64_t Domain::stride<float>(Layout subarray_layout) const;
 template uint64_t Domain::stride<double>(Layout subarray_layout) const;
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain) {
+  std::string tmp;
+
+  for (unsigned i = 0; i < domain.dim_num(); i++) {
+    os << "\n";
+    os << *domain.dimension_ptr(i);
+  }
+
+  return os;
+}

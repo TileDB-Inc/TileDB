@@ -272,9 +272,6 @@ class Domain {
   /** Dumps the domain in ASCII format in the selected output file. */
   void dump(FILE* out) const;
 
-  /** Dumps the domain in ASCII format in the selected output string. */
-  void dump(std::string* out) const;
-
   /** Expands ND range `r2` using ND range `r1`. */
   void expand_ndrange(const NDRange& r1, NDRange* r2) const;
 
@@ -563,9 +560,6 @@ class Domain {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Dumps the domain in ASCII format. */
-  std::string dump_domain() const;
-
   /**
    * Checks the cell order of the input coordinates. Since the coordinates
    * are given for a single dimension, this function simply checks which
@@ -709,3 +703,6 @@ class Domain {
 }  // namespace tiledb::sm
 
 #endif  // TILEDB_DOMAIN_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain);

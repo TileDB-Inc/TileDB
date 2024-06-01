@@ -300,9 +300,6 @@ class ArraySchema {
   /** Dumps the array schema in ASCII format in the selected output file. */
   void dump(FILE* out) const;
 
-  /** Dumps the array schema in ASCII format in the selected output string. */
-  void dump(std::string* out) const;
-
   /**
    * Checks if the array schema has a attribute of the given name.
    *
@@ -589,6 +586,14 @@ class ArraySchema {
       std::optional<std::pair<uint64_t, uint64_t>> timestamp_range =
           std::nullopt);
 
+  /** Returns the enumeration map. */
+  const tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>&
+  enumeration_map() const;
+
+  /** Returns the dimension labels. */
+  const tdb::pmr::vector<shared_ptr<const DimensionLabel>>& dimension_labels()
+      const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -719,9 +724,6 @@ class ArraySchema {
   /*           PRIVATE METHODS         */
   /* ********************************* */
 
-  /** Dumps the array schema in ASCII format. */
-  std::string dump_array_schema() const;
-
   /**
    * Throws an error if the union of attribute, dimension, and dimension label
    * names contain duplicates.
@@ -754,3 +756,7 @@ class ArraySchema {
 }  // namespace tiledb
 
 #endif  // TILEDB_ARRAY_SCHEMA_H
+
+/** Converts the filter into a string representation. */
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::ArraySchema& schema);

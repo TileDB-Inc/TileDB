@@ -204,13 +204,9 @@ void Attribute::dump(FILE* out) const {
   if (out == nullptr)
     out = stdout;
 
-  std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
-}
-
-void Attribute::dump(std::string* out) const {
-  *out = dump_attribute();
+  std::stringstream ss;
+  ss << *this;
+  fprintf(out, "%s", ss.str().c_str());
 }
 
 const FilterPipeline& Attribute::filters() const {
@@ -424,40 +420,25 @@ std::optional<std::string> Attribute::get_enumeration_name() const {
   return enumeration_name_;
 }
 
+std::string Attribute::fill_value_str() const {
+  std::string ret;
+
+  auto v_size = datatype_size(type_);
+  uint64_t num = fill_value_.size() / v_size;
+  auto v = fill_value_.data();
+  for (uint64_t i = 0; i < num; ++i) {
+    ret += utils::parse::to_str(v, type_);
+    v += v_size;
+    if (i != num - 1)
+      ret += ", ";
+  }
+
+  return ret;
+}
+
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
-
-std::string Attribute::dump_attribute() const {
-  std::stringstream ss;
-  ss << "### Attribute ###\n";
-  ss << "- Name: " << name_ << "\n";
-  ss << "- Type: " << datatype_str(type_) << "\n";
-  ss << "- Nullable: " << (nullable_ ? "true" : "false") << "\n";
-  if (!var_size())
-    ss << "- Cell val num: " << cell_val_num_ << "\n";
-  else
-    ss << "- Cell val num: var\n";
-  ss << "- Filters: " << filters_.size();
-  std::string temp;
-  filters_.dump(&temp);
-  ss << temp << "\n";
-  ss << "- Fill value: " << fill_value_str();
-  if (nullable_) {
-    ss << "\n";
-    ss << "- Fill value validity: " << std::to_string(fill_value_validity_);
-  }
-  if (order_ != DataOrder::UNORDERED_DATA) {
-    ss << "\n";
-    ss << "- Data ordering: " << data_order_str(order_);
-  }
-  if (enumeration_name_.has_value()) {
-    ss << "\n";
-    ss << "- Enumeration name: " << enumeration_name_.value();
-  }
-  ss << "\n";
-  return ss.str();
-}
 
 void Attribute::set_default_fill_value() {
   auto fill_value = constants::fill_value(type_);
@@ -495,20 +476,34 @@ ByteVecValue Attribute::default_fill_value(
   return fillvalue;
 }
 
-std::string Attribute::fill_value_str() const {
-  std::string ret;
-
-  auto v_size = datatype_size(type_);
-  uint64_t num = fill_value_.size() / v_size;
-  auto v = fill_value_.data();
-  for (uint64_t i = 0; i < num; ++i) {
-    ret += utils::parse::to_str(v, type_);
-    v += v_size;
-    if (i != num - 1)
-      ret += ", ";
-  }
-
-  return ret;
-}
-
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
+  os << "### Attribute ###\n";
+  os << "- Name: " << a.name() << "\n";
+  os << "- Type: " << datatype_str(a.type()) << "\n";
+  os << "- Nullable: " << (a.nullable() ? "true" : "false") << "\n";
+  if (!a.var_size())
+    os << "- Cell val num: " << a.cell_val_num() << "\n";
+  else
+    os << "- Cell val num: var\n";
+  os << "- Filters: " << a.filters().size();
+  os << a.filters();
+  os << "\n";
+  os << "- Fill value: " << a.fill_value_str();
+  if (a.nullable()) {
+    os << "\n";
+    os << "- Fill value validity: " << std::to_string(a.fill_value_validity());
+  }
+  if (a.order() != tiledb::sm::DataOrder::UNORDERED_DATA) {
+    os << "\n";
+    os << "- Data ordering: " << data_order_str(a.order());
+  }
+  if (a.get_enumeration_name().has_value()) {
+    os << "\n";
+    os << "- Enumeration name: " << a.get_enumeration_name().value();
+  }
+  os << "\n";
+
+  return os;
+}
