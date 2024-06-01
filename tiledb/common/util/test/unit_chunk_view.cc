@@ -57,3 +57,46 @@ TEST_CASE("chunk_view: Range concepts", "[chunk_view][concepts]") {
 
   CHECK(std::ranges::view<test_type>);
 }
+
+
+// Test that the chunk_view iterators satisfy the expected concepts
+TEST_CASE("chunk_view: Iterator concepts", "[chunk_view][concepts]") {
+  using test_type = chunk_view<std::vector<double>>;
+  using test_type_iterator = std::ranges::iterator_t<test_type>;
+  using test_type_const_iterator = std::ranges::iterator_t<const test_type>;
+  
+  CHECK(std::input_or_output_iterator<test_type_iterator>);
+  CHECK(std::input_or_output_iterator<test_type_const_iterator>);
+  CHECK(std::input_iterator<test_type_iterator>);
+  CHECK(std::input_iterator<test_type_const_iterator>);
+  CHECK(!std::output_iterator<
+        test_type_iterator,
+        std::ranges::range_value_t<test_type>>);
+  CHECK(!std::output_iterator<
+        test_type_const_iterator,
+        std::ranges::range_value_t<test_type>>);
+  CHECK(std::forward_iterator<test_type_iterator>);
+  CHECK(std::forward_iterator<test_type_const_iterator>);
+  CHECK(std::bidirectional_iterator<test_type_iterator>);
+  CHECK(std::bidirectional_iterator<test_type_const_iterator>);
+  CHECK(std::random_access_iterator<test_type_iterator>);
+  CHECK(std::random_access_iterator<test_type_const_iterator>);
+}
+
+// Test that the chunk_view value_type satisfies the expected concepts
+TEST_CASE(
+    "chunk_view: value_type concepts", "[chunk_view][concepts]") {
+  using test_type = chunk_view<std::vector<double>>;
+  CHECK(std::ranges::range<test_type>);
+
+  using test_iterator_type = std::ranges::iterator_t<test_type>;
+  using test_iterator_value_type = std::iter_value_t<test_iterator_type>;
+  using test_iterator_reference_type =
+      std::iter_reference_t<test_iterator_type>;
+
+  using range_value_type = std::ranges::range_value_t<test_type>;
+  using range_reference_type = std::ranges::range_reference_t<test_type>;
+
+  CHECK(std::is_same_v<test_iterator_value_type, range_value_type>);
+  CHECK(std::is_same_v<test_iterator_reference_type, range_reference_type>);
+}

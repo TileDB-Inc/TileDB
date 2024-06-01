@@ -103,7 +103,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
   /** Return const iterator to the beginning of the chunk view */
   auto begin() const {
-    return chunk_const_terator(data_begin_, num_chunks_, 0);
+    return chunk_const_iterator(data_begin_, num_chunks_, 0);
   }
 
   /** Return const iterator to the end of the chunk view */
@@ -113,7 +113,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
   /** Return const iterator to the beginning of the chunk view */
   auto cbegin() const {
-    return chunk_const_terator(data_begin_, 0);
+    return chunk_const_iterator(data_begin_, 0);
   }
 
   /** Return const iterator to the end of the chunk view */
