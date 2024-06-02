@@ -344,7 +344,7 @@ Status StorageManagerCanonical::array_upgrade_version(
     throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
 
     // Store array schema
-    st = store_array_schema(resources_, array_schema, encryption_key_cfg);
+    auto st = store_array_schema(resources_, array_schema, encryption_key_cfg);
     RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
 
     // Create commit directory if necessary
