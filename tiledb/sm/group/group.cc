@@ -88,14 +88,14 @@ Group::Group(
 Status Group::create(ContextResources& resources, const URI& uri) {
   // Create group URI
   if (uri.is_invalid())
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
 
   // Check if group exists
   bool exists;
   throw_if_not_ok(is_group(resources, uri, &exists));
   if (exists) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot create group; Group '" + uri.to_string() + "' already exists");
   }
 
