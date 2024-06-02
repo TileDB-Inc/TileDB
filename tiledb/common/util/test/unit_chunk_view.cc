@@ -270,14 +270,74 @@ TEST_CASE("chunk_view: Iterators + 1", "[chunk_view]") {
   }
 }
 
+TEST_CASE("chunk_view: Iterators - 1 - 1", "[chunk_view]") {
+  auto a = _cpo::chunk(v11, 3);
+  auto b = a.begin();
+  auto c = b;
+  auto d = a.begin();
+  auto e = a.end();
+
+  CHECK(b == c);
+  CHECK(c == b);
+  CHECK(b == d);
+  CHECK(d == b);
+  CHECK(c == d);
+  CHECK(c == c);
+  CHECK(d == c);
+  CHECK(c == a.begin());
+  CHECK(b != e);
+  CHECK(b == c);
+  CHECK(c == b);
+
+  auto x = b;
+  ++b;
+  auto y = b;
+
+  CHECK(c != b);
+  CHECK(c == (b - 1));
+  CHECK(b == (c + 1));
+  CHECK(c == x);
+  CHECK(c == y - 1);
+  CHECK(y == (c + 1));
+  CHECK(y == ((b - 1) + 1));
+
+  --b;
+  x = b;
+
+  CHECK(c == x);
+  CHECK(x == b);
+  CHECK(c == b);
+  CHECK(b == c);
+  CHECK(b == a.begin());
+}
+
 TEST_CASE("chunk_view: Iterators - 1", "[chunk_view]") {
   for (auto ch : {2, 3, 4, 9, 10, 11}) {
-    for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
-      auto a = _cpo::chunk(v, ch);
+    for (auto&& vx : {v10, v11, v12, v13, v14, v15, v16}) {
+      auto a = _cpo::chunk(vx, ch);
       auto b = a.begin();
       [[maybe_unused]] auto c = a.end();
       auto d = a.begin();
       auto e = a.end();
+
+      {
+        auto dh = 9;
+        auto a = _cpo::chunk(vx, dh);
+        auto bb = a.begin();
+        auto dd = a.begin();
+        CHECK(bb == dd);
+
+        ++bb;
+
+        if (bb == e) {
+          break;
+        }
+        --bb;
+        if (!(bb == a.begin())) {
+          [[maybe_unused]] auto asdf = 1;  // to allow debugging breakpoint
+        }
+        CHECK(bb == a.begin());
+      }
 
       while (b != e) {
         CHECK(b == d);
@@ -287,6 +347,7 @@ TEST_CASE("chunk_view: Iterators - 1", "[chunk_view]") {
           break;
         }
         --b;
+
         // CHECK(b == d);
         b++;
         d++;
@@ -304,4 +365,25 @@ TEST_CASE("chunk_view: Iterators", "[chunk_view]") {
       CHECK(b->size() == (unsigned)i);
     }
   }
+}
+
+TEST_CASE("chunk_view: Iterators values", "[chunk_view]") {
+  auto a = _cpo::chunk(v10, 5);
+  auto b = a.begin();
+
+  CHECK(b->size() == 5);
+  CHECK((*b)[0] == 1.0);
+  CHECK((*b)[1] == 2.0);
+  CHECK((*b)[2] == 3.0);
+  CHECK((*b)[3] == 4.0);
+  CHECK((*b)[4] == 5.0);
+  ++b;
+  CHECK(b->size() == 5);
+  CHECK((*b)[0] == 6.0);
+  CHECK((*b)[1] == 7.0);
+  CHECK((*b)[2] == 8.0);
+  CHECK((*b)[3] == 9.0);
+  CHECK((*b)[4] == 10.0);
+  ++b;
+  CHECK(b == a.end());
 }
