@@ -146,6 +146,10 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
     /** Default constructor */
     private_iterator() = default;
+    private_iterator(const private_iterator&) = default;
+    private_iterator(private_iterator&&) = default;
+    private_iterator& operator=(const private_iterator&) = default;
+    private_iterator& operator=(private_iterator&&) = default;
 
     /** Primary constructor */
     private_iterator(
@@ -175,7 +179,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
       if (data_end_ - current_ < chunk_size_) {
         return {current_, data_end_};
       } else {
-        return {data_begin_, data_begin_ + chunk_size_};
+        return {current_, current_ + chunk_size_};
       }
     }
 
@@ -183,14 +187,13 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
      * Advance the iterator by n.  Note that we don't move past the end of the
      * data range.
      */
-    auto advance(data_index_type n) {
-      if (data_end_ - current_ < chunk_size_) {
+    auto& advance(data_index_type n) {
+      if (data_end_ - current_ < n * chunk_size_) {
         current_ = data_end_;
-        return *this;
       } else {
         current_ += n * chunk_size_;
-        return *this;
       }
+      return *this;
     }
 
     /** Return the distance to another iterator */
@@ -200,10 +203,6 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
     /** Compare two iterators for equality */
     bool operator==(const private_iterator& other) const {
-      auto foo = (chunk_size_ == other.chunk_size_);
-      auto bar = (current_ == other.current_);
-      auto x = std::ranges::distance(current_, other.current_);
-
       return chunk_size_ == other.chunk_size_ && current_ == other.current_;
     }
 
