@@ -1019,7 +1019,11 @@ TEST_CASE(
   {
     auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
     if (vfs_test_setup.is_rest()) {
-      CHECK_THROWS(group.add_member("subgroup", true, "subgroup"));
+      CHECK_THROWS_WITH(
+          group.add_member("subgroup", true, "subgroup"),
+          Catch::Matchers::EndsWith("Cannot add member; Remote groups do not "
+                                    "support members with relative "
+                                    "URIs"));
     } else {
       CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
     }
