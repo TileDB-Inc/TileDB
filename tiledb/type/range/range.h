@@ -62,12 +62,6 @@ class Range {
    * The range is stored as a sequence of bytes with manual memory layout. The
    * memory layout is different for fixed-size and variable-size types.
    *
-   * The type is tdb::pmr::pmr_vector<uint8_t> instead of
-   * tdb::pmr::vector<uint8_t>, to keep the class copy-constructible. As the
-   * codebase moves to using memory trackers, some code has been updated to use
-   * the polymorphic allocator, but other hasn't yet. Maintining
-   * copy-constructibility keeps the not-yet-migrated code from breaking.
-   *
    * All constructors accept an optional allocator argument, whose default value
    * is an allocator using std::pmr::get_default_resource.
    *
@@ -78,7 +72,7 @@ class Range {
    *   lower limit: range_start_size_
    *   upper limit: range_size() - range_start_size_
    */
-  tdb::pmr::pmr_vector<uint8_t> range_;
+  tdb::pmr::vector<uint8_t> range_;
 
   /**
    * Alias to the allocator type used by the range vector.
@@ -191,8 +185,16 @@ class Range {
     d[1] = second;
   }
 
-  /** Copy constructor. */
-  Range(const Range&) = default;
+  /** Copy constructor.
+   *
+   * We define it manually because tdb::pmr::vector is not copy-constructible.
+   */
+  Range(const Range& range)
+      : range_(range.range_, range.range_.get_allocator())
+      , range_start_size_(range.range_start_size_)
+      , var_size_(range.var_size_)
+      , partition_depth_(range.partition_depth_) {
+  }
 
   /** Move constructor. */
   Range(Range&&) = default;
@@ -200,8 +202,19 @@ class Range {
   /** Destructor. */
   ~Range() = default;
 
-  /** Copy-assign operator.*/
-  Range& operator=(const Range&) = default;
+  /** Copy constructor.
+   *
+   * We define it manually because tdb::pmr::vector is not copy-assignable.
+   */
+  Range& operator=(const Range& other) {
+    if (this != &other) {
+      range_ = {other.range_, other.range_.get_allocator()};
+      range_start_size_ = other.range_start_size_;
+      var_size_ = other.var_size_;
+      partition_depth_ = other.partition_depth_;
+    }
+    return *this;
+  }
 
   /** Move-assign operator. */
   Range& operator=(Range&&) = default;
