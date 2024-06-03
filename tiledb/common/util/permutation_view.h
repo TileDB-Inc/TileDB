@@ -148,8 +148,13 @@ class permutation_view : public std::ranges::view_interface<
     return data_end_ - data_begin_;
   }
 
-  /** Accessor */
-  auto& operator[](size_t i) const {
+  /**
+   * Accessor
+   *
+   * @todo is returning by value the right thing to do?  We should return a
+   * reference, but can't really if there is a proxy...
+   */
+   auto& operator[](size_t i) const {
     // More general? return *(data_begin_ + *(index_begin_ + i));
     return data_begin_[index_begin_[i]];
   }

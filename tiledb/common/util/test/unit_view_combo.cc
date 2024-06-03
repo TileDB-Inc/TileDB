@@ -114,6 +114,9 @@ std::vector<double> q = {
 std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
 std::vector<size_t> p = {0, 2, 7, 10};
 std::vector<size_t> n = {0, 3, 6, 10};
+std::vector<size_t> o = {2, 0, 1};
+std::vector<size_t> m = {1, 0};
+std::vector<size_t> l = {0, 1};
 
 struct subrange_equal {
   template <class R, class S>
@@ -183,22 +186,10 @@ TEST_CASE(
 }
 
 TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
-  std::vector<double> q = {
-      21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
-  std::vector<size_t> p = {0, 2, 7, 10};
-  std::vector<size_t> o = {2, 0, 1};
 
-  std::vector<std::vector<double>> expected{
-      {21.0, 20.0}, {19.0, 18.0, 17.0, 16.0, 15.0}, {14.0, 13.0, 12.0}};
+  /* See unit_permutation_view.cc for validation of the permutation */
   auto w = var_length_view(q, p);
-  CHECK(std::ranges::equal(*(w.begin()), expected[0]));
-  CHECK(std::ranges::equal(*(w.begin() + 1), expected[1]));
-  CHECK(std::ranges::equal(*(w.begin() + 2), expected[2]));
-
   auto x = permutation_view(w, o);
-  CHECK(std::ranges::equal(*(x.begin()), expected[2]));
-  CHECK(std::ranges::equal(*(x.begin() + 1), expected[0]));
-  CHECK(std::ranges::equal(*(x.begin() + 2), expected[1]));
 
   auto a = chunk_view(x, 2);
   CHECK(std::ranges::equal(
@@ -215,10 +206,44 @@ TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
           {19.0, 18.0, 17.0, 16.0, 15.0},
       },
       subrange_equal{}));
-
 }
 
 TEST_CASE("view combo: permute a chunk view", "[view_combo]") {
+  auto w = alt_var_length_view(q, p);
+  auto x = chunk_view(w, 2);
+  auto a = permutation_view(x, l);
+
+  CHECK(std::ranges::equal(
+      a[0],
+      std::vector<std::vector<double>>{
+          {21.0, 20.0},
+          {19.0, 18.0, 17.0, 16.0, 15.0},
+      },
+      subrange_equal{}));
+
+  CHECK(std::ranges::equal(
+      a[1],
+      std::vector<std::vector<double>>{
+          {14.0, 13.0, 12.0},
+      },
+      subrange_equal{}));
+
+  auto b = permutation_view(x, m);
+
+  CHECK(std::ranges::equal(
+      b[0],
+      std::vector<std::vector<double>>{
+          {14.0, 13.0, 12.0},
+      },
+      subrange_equal{}));
+
+  CHECK(std::ranges::equal(
+      b[1],
+      std::vector<std::vector<double>>{
+          {21.0, 20.0},
+          {19.0, 18.0, 17.0, 16.0, 15.0},
+      },
+      subrange_equal{}));
 }
 
 TEST_CASE("view combo: chunk a zip view", "[view_combo]") {
