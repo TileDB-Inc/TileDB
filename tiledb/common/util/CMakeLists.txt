@@ -27,18 +27,4 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
-<<<<<<< HEAD
-=======
-# list(APPEND SOURCES)
-# gather_sources(${SOURCES})
-
-#
-# There is no object library for this target, as it is a header-only library
-#
-# commence(object_library util)
-#    this_target_sources(${SOURCES})
-#    this_target_object_libraries(baseline)
-# conclude(object_library)
-
->>>>>>> 5797ac26b (Reorganize utility classes)
 add_test_subdirectory()

@@ -40,7 +40,7 @@
 #include <catch2/catch_all.hpp>
 #include <numeric>
 #include <ranges>
-#include "tiledb/common/util/iterator_facade.h"
+#include "../iterator_facade.h"
 
 TEST_CASE("iterator_facade: Null test", "[iterator_facade][null_test]") {
   REQUIRE(true);
