@@ -46,6 +46,8 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -81,6 +83,47 @@ Group::Group(
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , resources_(resources) {
   memory_tracker_->set_type(MemoryTrackerType::GROUP);
+}
+
+Status Group::create(ContextResources& resources, const URI& uri) {
+  // Create group URI
+  if (uri.is_invalid())
+    throw GroupException(
+        "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
+
+  // Check if group exists
+  bool exists;
+  throw_if_not_ok(is_group(resources, uri, &exists));
+  if (exists) {
+    throw GroupException(
+        "Cannot create group; Group '" + uri.to_string() + "' already exists");
+  }
+
+  std::lock_guard<std::mutex> lock{object_mtx};
+  if (uri.is_tiledb()) {
+    StorageManager storage_manager(
+        resources, resources.logger(), resources.config());
+    Group group(resources, uri, &storage_manager);
+    throw_if_not_ok(
+        resources.rest_client()->post_group_create_to_rest(uri, &group));
+    return Status::Ok();
+  }
+
+  // Create group directory
+  throw_if_not_ok(resources.vfs().create_dir(uri));
+
+  // Create group file
+  URI group_filename = uri.join_path(constants::group_filename);
+  throw_if_not_ok(resources.vfs().touch(group_filename));
+
+  // Create metadata folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_metadata_dir_name)));
+
+  // Create group detail folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_detail_dir_name)));
+  return Status::Ok();
 }
 
 void Group::open(
