@@ -64,7 +64,6 @@ namespace tiledb::sm {
 class Array;
 class ArrayDirectory;
 class ArraySchema;
-class ArraySchemaEvolution;
 class Consolidator;
 class EncryptionKey;
 class Query;
@@ -134,20 +133,6 @@ class StorageManagerCanonical {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Evolve a TileDB array schema and store its new schema.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param schema_evolution The schema evolution.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_evolve_schema(
-      const URI& uri,
-      ArraySchemaEvolution* array_schema,
-      const EncryptionKey& encryption_key);
 
   /**
    * Upgrade a TileDB array to latest format version.
