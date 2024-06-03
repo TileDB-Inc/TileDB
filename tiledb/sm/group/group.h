@@ -80,6 +80,15 @@ class Group {
   /** Destructor. */
   ~Group() = default;
 
+  /**
+   * Creates a TileDB group.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the group to be created.
+   * @return Status
+   */
+  static Status create(ContextResources& resources, const URI& uri);
+
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
 

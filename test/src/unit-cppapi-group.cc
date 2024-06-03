@@ -1002,3 +1002,41 @@ TEST_CASE("C++ API: Group close group with error", "[cppapi][group][error]") {
 
   cleaner();
 }
+
+TEST_CASE(
+    "C++ API: Group with Relative URI members, write/read, rest",
+    "[cppapi][group][relative][rest]") {
+  VFSTestSetup vfs_test_setup;
+  tiledb::Context ctx{vfs_test_setup.ctx()};
+  auto group_name{vfs_test_setup.array_uri("groups_relative")};
+  auto subgroup_name = group_name + "/subgroup";
+
+  // Create groups
+  tiledb::create_group(ctx, group_name);
+  tiledb::create_group(ctx, subgroup_name);
+
+  // Open group in write mode
+  {
+    auto group = tiledb::Group(ctx, group_name, TILEDB_WRITE);
+    if (vfs_test_setup.is_rest()) {
+      CHECK_THROWS_WITH(
+          group.add_member("subgroup", true, "subgroup"),
+          Catch::Matchers::EndsWith("Cannot add member; Remote groups do not "
+                                    "support members with relative "
+                                    "URIs"));
+    } else {
+      CHECK_NOTHROW(group.add_member("subgroup", true, "subgroup"));
+    }
+    group.close();
+  }
+
+  if (!vfs_test_setup.is_rest()) {
+    auto group = tiledb::Group(ctx, group_name, TILEDB_READ);
+
+    auto subgroup_member = group.member("subgroup");
+
+    CHECK(subgroup_member.type() == tiledb::Object::Type::Group);
+    CHECK(subgroup_member.name() == "subgroup");
+    CHECK(group.is_relative("subgroup"));
+  }
+}
