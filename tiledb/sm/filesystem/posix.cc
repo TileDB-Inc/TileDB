@@ -311,7 +311,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return {Status::Ok(), nullopt};
+    return {Status::Ok(), std::vector<directory_entry{}};
   }
 
   std::vector<directory_entry> entries;
