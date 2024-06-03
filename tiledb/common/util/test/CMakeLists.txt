@@ -26,7 +26,6 @@
 
 include(unit_test)
 
-<<<<<<< HEAD
 commence(unit_test unit_alt_var_length_view)
 this_target_sources(
     unit_alt_var_length_view.cc
@@ -80,18 +79,4 @@ this_target_sources(
         unit_zip_view.cc
 )
 conclude(unit_test)
-=======
-commence(unit_test util)
-this_target_sources(
-        unit_alt_var_length_view.cc
-        unit_iterator_facade.cc
-        unit_permutation_sort.cc
-        unit_permutation_view.cc
-        unit_proxy_sort.cc
-        unit_sort_zip.cc
-        unit_var_length_util.cc
-        unit_var_length_view.cc
-        unit_zip_view.cc
-)
-conclude(unit_test)
->>>>>>> 5797ac26b (Reorganize utility classes)
+
