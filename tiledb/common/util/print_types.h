@@ -49,4 +49,4 @@ constexpr auto print_types(Ts...) {
   return print_types_t<Ts...>{};
 }
 
-#endif // TILEDB_PRINT_TYPES_H
+#endif  // TILEDB_PRINT_TYPES_H
