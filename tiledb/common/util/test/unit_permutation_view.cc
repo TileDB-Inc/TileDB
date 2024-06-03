@@ -33,8 +33,8 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <vector>
-#include "tiledb/common/util/permutation_view.h"
-#include "tiledb/common/util/var_length_view.h"
+#include "../permutation_view.h"
+#include "../var_length_view.h"
 
 TEST_CASE("permutation_view: Null test", "[permutation_view][null_test]") {
   REQUIRE(true);
