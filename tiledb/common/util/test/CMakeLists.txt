@@ -51,3 +51,9 @@ this_target_sources(
         unit_chunk_view.cc
 )
 conclude(unit_test)
+
+commence(unit_test view_combo)
+this_target_sources(
+        unit_view_combo.cc
+)
+conclude(unit_test)
