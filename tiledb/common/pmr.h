@@ -219,13 +219,15 @@ class vector : public pmr_vector<Tp> {
   using const_reverse_iterator =
       typename pmr_vector<Tp>::const_reverse_iterator;
 
-  // Delete all default constructors because they don't require an allocator
+  // Delete default constructor because it doesn't require an allocator
   constexpr vector() noexcept(noexcept(allocator_type())) = delete;
-  constexpr vector(const vector& other) = delete;
-  constexpr vector(vector&& other) noexcept = delete;
 
-  // Delete non-allocator aware copy and move assign.
-  constexpr vector& operator=(const vector& other) = delete;
+  // Default copy constructor and copy assign.
+  constexpr vector(const vector& other) = default;
+  constexpr vector& operator=(const vector& other) = default;
+
+  // Delete non-allocator aware move constructor and move assign.
+  constexpr vector(vector&& other) noexcept = delete;
   constexpr vector& operator=(vector&& other) noexcept = delete;
 
   constexpr explicit vector(const allocator_type& alloc) noexcept
