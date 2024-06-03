@@ -640,31 +640,6 @@ Status StorageManagerCanonical::set_default_tags() {
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::group_metadata_consolidate(
-    const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    throw StorageManagerException(
-        "Cannot consolidate group metadata; Invalid URI");
-  }
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    throw StorageManagerException(
-        "Cannot consolidate group metadata; Group does not exist");
-  }
-
-  // Consolidate
-  // Encryption credentials are loaded by Group from config
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  return consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
-}
-
 void StorageManagerCanonical::group_metadata_vacuum(
     const char* group_name, const Config& config) {
   // Check group URI
