@@ -136,19 +136,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Creates a TileDB array storing its schema.
-   *
-   * @param array_uri The URI of the array to be created.
-   * @param array_schema The array schema.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_create(
-      const URI& array_uri,
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
-  /**
    * Evolve a TileDB array schema and store its new schema.
    *
    * @param array_dir The ArrayDirectory object used to retrieve the

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -124,11 +124,7 @@ class WhiteboxConsistencyController : public ConsistencyController {
     throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
-    Status st = sm->array_create(uri, schema, key);
-    if (!st.ok()) {
-      throw std::runtime_error(
-          "[WhiteboxConsistencyController] Could not create array.");
-    }
+    throw_if_not_ok(Array::create(sm->resources(), uri, schema, key));
     tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
 
     return array;
