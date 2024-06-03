@@ -332,7 +332,7 @@ RTree::Level RTree::build_level(const Level& level) {
       domain_->expand_ndrange(level[mbrs_visited], &new_level[i]);
   }
 
-  return {new_level, memory_tracker_->get_resource(MemoryType::RTREE)};
+  return new_level;
 }
 
 void RTree::deserialize_v1_v4(
