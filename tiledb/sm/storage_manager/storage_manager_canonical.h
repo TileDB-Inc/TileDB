@@ -294,17 +294,6 @@ class StorageManagerCanonical {
    */
   Status set_tag(const std::string& key, const std::string& value);
 
-  /**
-   * Stores an array schema into persistent storage.
-   *
-   * @param array_schema The array metadata to be stored.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_array_schema(
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
