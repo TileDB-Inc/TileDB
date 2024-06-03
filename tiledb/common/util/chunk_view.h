@@ -27,9 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * Quick and dirty implementation of a chunk view for C++23.  This is a view
+ * Simplified implementation of a chunk view for C++23.  This is a view
  * that splits a view into subranges of uniform length, as given by the
  * constructor argument num_chunks.
+ *
+ * @todo Implement the full C++23 chunk view (or wait for C++23 or reference
+ * implementation without GPL)
  */
 
 #ifndef TILEDB_CHUNK_VIEW_H
