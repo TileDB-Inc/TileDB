@@ -1,9 +1,9 @@
 #
-# tiledb/common/util/CMakeLists.txt
+# tiledb/common/util/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
