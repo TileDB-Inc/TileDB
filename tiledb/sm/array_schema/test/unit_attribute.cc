@@ -264,6 +264,9 @@ TEST_CASE(
       Datatype::UINT32,
       Datatype::INT64,
       Datatype::UINT64,
+      // STRING_ASCII omitted due to different semantics, see other TEST_CASEs
+      // Other string datatypes omitted as they are not valid for ordered
+      // attributes.  See `ensure_ordered_attribute_datatype_is_valid`.
       Datatype::DATETIME_YEAR,
       Datatype::DATETIME_WEEK,
       Datatype::DATETIME_DAY,
