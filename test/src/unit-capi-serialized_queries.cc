@@ -656,7 +656,7 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    Subarray cppapi_subarray(ctx, array);
+    Subarray cppapi_subarray(ctx_client, array);
     cppapi_subarray.set_subarray(subarray);
     query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
