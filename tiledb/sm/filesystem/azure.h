@@ -392,8 +392,7 @@ class Azure {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
+  std::vector<filesystem::directory_entry> ls_with_sizes(
       const URI& uri,
       const std::string& delimiter = "/",
       int max_paths = -1) const;

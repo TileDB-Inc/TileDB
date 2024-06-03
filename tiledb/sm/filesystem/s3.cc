@@ -588,8 +588,7 @@ void S3::write(
   }
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
-    const URI& parent) const {
+std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
   return ls_with_sizes(parent, "/", -1);
 }
 
@@ -868,27 +867,22 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
-  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(prefix, delimiter, max_paths)) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+std::vector<directory_entry> S3::ls_with_sizes(
     const URI& prefix, const std::string& delimiter, int max_paths) const {
-  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
+  throw_if_not_ok(init_client());
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    auto st = LOG_STATUS(
-        Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
-    return {st, nullopt};
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -914,11 +908,10 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess()) {
-      auto st = LOG_STATUS(Status_S3Error(
+      throw S3Exception(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
-          outcome_error_message(list_objects_outcome)));
-      return {st, nullopt};
+          outcome_error_message(list_objects_outcome));
     }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
@@ -946,16 +939,15 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
       Aws::String next_marker =
           list_objects_outcome.GetResult().GetNextContinuationToken();
       if (next_marker.empty()) {
-        auto st =
-            LOG_STATUS(Status_S3Error("Failed to retrieve next continuation "
-                                      "token for ListObjectsV2 request."));
-        return {st, nullopt};
+        throw S3Exception(
+            "Failed to retrieve next continuation "
+            "token for ListObjectsV2 request.");
       }
       list_objects_request.SetContinuationToken(std::move(next_marker));
     }
   }
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) const {

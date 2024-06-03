@@ -305,13 +305,12 @@ void Posix::write(
   }
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
-    const URI& uri) const {
+std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return {Status::Ok(), std::vector<directory_entry>{}};
+    return {};
   }
 
   std::vector<directory_entry> entries;
@@ -335,20 +334,15 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
   }
   // close parent directory
   if (closedir(dir) != 0) {
-    auto st = LOG_STATUS(Status_IOError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-    return {st, nullopt};
+    throw IOError(
+        std::string("Cannot close parent directory; ") + strerror(errno));
   }
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(URI(path));
-
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 

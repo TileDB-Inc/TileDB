@@ -161,8 +161,7 @@ class Win {
    * @param path The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& path) const;
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
