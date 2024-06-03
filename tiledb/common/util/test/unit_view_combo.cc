@@ -39,11 +39,13 @@
 #include <ranges>
 #include <vector>
 
-#include <tiledb/common/util/chunk_view.h>
-#include <tiledb/common/util/var_length_view.h>
 #include <tiledb/common/util/alt_var_length_view.h>
-#include <tiledb/common/util/zip_view.h>
+#include <tiledb/common/util/chunk_view.h>
 #include <tiledb/common/util/permutation_view.h>
+#include <tiledb/common/util/var_length_view.h>
+#include <tiledb/common/util/zip_view.h>
+
+#include <tiledb/common/util/print_types.h>
 
 // The null test, just to make sure none of the include files are broken
 TEST_CASE("view combo: Null test", "[view_combo][null_test]") {
@@ -51,7 +53,7 @@ TEST_CASE("view combo: Null test", "[view_combo][null_test]") {
 }
 
 TEST_CASE("view combo: chunk a chunk view", "[view_combo]") {
-  size_t num_elements = 32*1024;
+  size_t num_elements = 32 * 1024;
   size_t chunk_size = 128;
   size_t chunk_chunk_size = 8;
   size_t num_chunks = num_elements / chunk_size;
@@ -66,7 +68,9 @@ TEST_CASE("view combo: chunk a chunk view", "[view_combo]") {
   // Don't worry abount boundary cases for now
   REQUIRE(num_elements % chunk_size == 0);
   REQUIRE(num_elements % (chunk_chunk_size * chunk_size) == 0);
-  REQUIRE(4 * chunk_size * chunk_chunk_size < num_elements); // At least four outer chunks
+  REQUIRE(
+      4 * chunk_size * chunk_chunk_size <
+      num_elements);  // At least four outer chunks
 
   std::vector<int> base_17(num_elements);
   std::vector<int> base_m31(num_elements);
@@ -78,7 +82,7 @@ TEST_CASE("view combo: chunk a chunk view", "[view_combo]") {
   REQUIRE(
       std::ranges::equal(base_17, std::vector<int>(num_elements, 0)) == false);
 
-  auto a = _cpo::chunk(base_17, (long) chunk_size);
+  auto a = _cpo::chunk(base_17, (long)chunk_size);
 
   SECTION("Verify base chunk view") {
     for (size_t i = 0; i < num_chunks; ++i) {
@@ -90,26 +94,128 @@ TEST_CASE("view combo: chunk a chunk view", "[view_combo]") {
   }
 
   SECTION("Verify chunked chunk view") {
-    auto b = _cpo::chunk(a, (long) chunk_chunk_size);
-        for (size_t i = 0; i < num_chunk_chunks; ++i) {
-          auto chunk = b[i];
-          for (size_t j = 0; j < chunk_chunk_size; ++j) {
-                auto inner_chunk = chunk[j];
-                for (size_t k = 0; k < chunk_size; ++k) {
-                  CHECK(inner_chunk[k] == base_17[i * chunk_chunk_size * chunk_size + j * chunk_size + k]);
-                }
-          }
+    auto b = _cpo::chunk(a, (long)chunk_chunk_size);
+    for (size_t i = 0; i < num_chunk_chunks; ++i) {
+      auto chunk = b[i];
+      for (size_t j = 0; j < chunk_chunk_size; ++j) {
+        auto inner_chunk = chunk[j];
+        for (size_t k = 0; k < chunk_size; ++k) {
+          CHECK(
+              inner_chunk[k] ==
+              base_17[i * chunk_chunk_size * chunk_size + j * chunk_size + k]);
         }
+      }
+    }
   }
 }
 
-TEST_CASE("view combo: chunk a var_length view", "[view_combo]") {
-}
+std::vector<double> q = {
+    21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
+std::vector<double> r = {1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0};
+std::vector<size_t> p = {0, 2, 7, 10};
+std::vector<size_t> n = {0, 3, 6, 10};
 
-TEST_CASE("view combo: chunk an alt_var_length view", "[view_combo]") {
+struct subrange_equal {
+  template <class R, class S>
+  bool operator()(R&& a, S&& b) {
+    if (size(a) != size(b)) {
+      return false;
+    }
+    for (size_t i = 0; i < size(a); ++i) {
+      if (a[i] != b[i]) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+
+TEST_CASE(
+    "view combo: chunk var_length_view and alt_var_length view",
+    "[view_combo]") {
+  auto check_chunk_view = [](auto& a) {
+    CHECK(a[0][0][0] == 21.0);
+    CHECK(a[0][0][1] == 20.0);
+    CHECK(a[0][1][0] == 19.0);
+    CHECK(a[0][1][1] == 18.0);
+    CHECK(a[0][1][2] == 17.0);
+    CHECK(a[0][1][3] == 16.0);
+    CHECK(a[0][1][4] == 15.0);
+    CHECK(a[1][0][0] == 14.0);
+    CHECK(a[1][0][1] == 13.0);
+    CHECK(a[1][0][2] == 12.0);
+
+    CHECK(std::ranges::size(a) == 2);
+    CHECK(std::ranges::size(a[0]) == 2);
+    CHECK(std::ranges::size(a[1]) == 1);
+    CHECK(std::ranges::size(a[0][0]) == 2);
+    CHECK(std::ranges::size(a[0][1]) == 5);
+    CHECK(std::ranges::size(a[1][0]) == 3);
+
+    CHECK(std::ranges::equal(a[0][0], std::vector<double>{21.0, 20.0}));
+    CHECK(std::ranges::equal(
+        a[0][1], std::vector<double>{19.0, 18.0, 17.0, 16.0, 15.0}));
+    CHECK(std::ranges::equal(a[1][0], std::vector<double>{14.0, 13.0, 12.0}));
+
+    CHECK(std::ranges::equal(
+        a[0],
+        std::vector<std::vector<double>>{
+            {21.0, 20.0},
+            {19.0, 18.0, 17.0, 16.0, 15.0},
+        },
+        subrange_equal{}));
+
+    CHECK(std::ranges::equal(
+        a[1],
+        std::vector<std::vector<double>>{
+            {14.0, 13.0, 12.0},
+        },
+        subrange_equal{}));
+  };
+
+  auto u = var_length_view(q, p);
+  auto a = chunk_view(u, 2);
+  check_chunk_view(a);
+
+  auto v = alt_var_length_view(q, p);
+  auto b = chunk_view(v, 2);
+  check_chunk_view(b);
 }
 
 TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
+  std::vector<double> q = {
+      21.0, 20.0, 19.0, 18.0, 17.0, 16.0, 15.0, 14.0, 13.0, 12.0};
+  std::vector<size_t> p = {0, 2, 7, 10};
+  std::vector<size_t> o = {2, 0, 1};
+
+  std::vector<std::vector<double>> expected{
+      {21.0, 20.0}, {19.0, 18.0, 17.0, 16.0, 15.0}, {14.0, 13.0, 12.0}};
+  auto w = var_length_view(q, p);
+  CHECK(std::ranges::equal(*(w.begin()), expected[0]));
+  CHECK(std::ranges::equal(*(w.begin() + 1), expected[1]));
+  CHECK(std::ranges::equal(*(w.begin() + 2), expected[2]));
+
+  auto x = permutation_view(w, o);
+  CHECK(std::ranges::equal(*(x.begin()), expected[2]));
+  CHECK(std::ranges::equal(*(x.begin() + 1), expected[0]));
+  CHECK(std::ranges::equal(*(x.begin() + 2), expected[1]));
+
+  auto a = chunk_view(x, 2);
+  CHECK(std::ranges::equal(
+      a[0],
+      std::vector<std::vector<double>>{
+          {14.0, 13.0, 12.0},
+          {21.0, 20.0},
+      },
+      subrange_equal{}));
+
+  CHECK(std::ranges::equal(
+      a[1],
+      std::vector<std::vector<double>>{
+          {19.0, 18.0, 17.0, 16.0, 15.0},
+      },
+      subrange_equal{}));
+
 }
 
 TEST_CASE("view combo: permute a chunk view", "[view_combo]") {
@@ -132,5 +238,3 @@ TEST_CASE("view combo: zip a chunked zipped chunk view", "[view_combo]") {
 
 TEST_CASE("view combo: num_elements % num_chunks != 0", "[view_combo]") {
 }
-
-

@@ -389,7 +389,7 @@ TEST_CASE("chunk_view: Iterators values", "[chunk_view]") {
 }
 
 TEST_CASE("chunk_view: Larger vector", "[chunk_view]") {
-  size_t num_elements = 8*1024;
+  size_t num_elements = 8 * 1024;
   size_t chunk_size = 128;
   size_t num_chunks = num_elements / chunk_size;
 
