@@ -135,18 +135,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Upgrade a TileDB array to latest format version.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param config Configuration parameters for the upgrade
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_upgrade_version(const URI& uri, const Config& config);
-
-  /**
    * Pushes an async query to the queue.
    *
    * @param query The async query.
