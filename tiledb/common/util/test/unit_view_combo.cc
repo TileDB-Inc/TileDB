@@ -57,6 +57,12 @@ TEST_CASE("view combo: chunk a chunk view", "[view_combo]") {
   size_t num_chunks = num_elements / chunk_size;
   size_t num_chunk_chunks = num_elements / (chunk_size * chunk_chunk_size);
 
+  // Make sure we don't have any constructive / destructive interference
+  REQUIRE(chunk_size != chunk_chunk_size);
+  REQUIRE(num_chunks != chunk_size);
+  REQUIRE(num_chunk_chunks != chunk_size);
+  REQUIRE(num_chunks != num_chunk_chunks);
+
   // Don't worry abount boundary cases for now
   REQUIRE(num_elements % chunk_size == 0);
   REQUIRE(num_elements % (chunk_chunk_size * chunk_size) == 0);
