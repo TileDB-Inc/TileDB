@@ -1435,8 +1435,10 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
     }
   }
 
-  // Load the array shape
-  shared_ptr<const Shape> shape = nullptr;
+  // Load the array shape, if this is an older array, it'll get by default
+  // an empty shape object
+  auto shape =
+      make_shared<const Shape>(memory_tracker, constants::shape_version);
   if (version >= constants::shape_min_format_version) {
     shape = Shape::deserialize(deserializer, memory_tracker, domain);
   }
@@ -1811,19 +1813,15 @@ void ArraySchema::generate_uri(
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 }
 
-void ArraySchema::expand_shape(shared_ptr<Shape> new_shape) {
+void ArraySchema::expand_shape(shared_ptr<const Shape> new_shape) {
   if (new_shape == nullptr) {
     throw ArraySchemaException(
         "The argument you specified for shape expansion is nullptr.");
   }
 
-  if (new_shape->empty()) {
-    throw ArraySchemaException(
-        "Unable to expand the array shape, you specified an empty new shape");
-  }
-
   // Check that the new shape expands the existing one and not shrinks it
-  if (!shape_->covered(new_shape)) {
+  // Every shape covers an empty shape.
+  if (!shape_->empty() && !shape_->covered(new_shape)) {
     throw ArraySchemaException(
         "The shape of an array can only be expanded, please adjust your new "
         "shape object.");
@@ -1838,7 +1836,7 @@ shared_ptr<const Shape> ArraySchema::get_shape() const {
   return shape_;
 }
 
-void ArraySchema::set_shape(shared_ptr<Shape> shape) {
+void ArraySchema::set_shape(shared_ptr<const Shape> shape) {
   if (shape == nullptr) {
     throw ArraySchemaException(
         "The argument you specified for setting the shape on the schema is "

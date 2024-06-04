@@ -125,6 +125,8 @@ void Shape::dump(FILE* out) const {
 
   ss << "- Type: " << shape_type_str(type_) << std::endl;
 
+  fprintf(out, "%s", ss.str().c_str());
+
   switch (type_) {
     case ShapeType::NDRECTANGLE: {
       ndrectangle_->dump(out);
@@ -136,8 +138,6 @@ void Shape::dump(FILE* out) const {
           std::string("type ") + shape_type_str(type_));
     }
   }
-
-  fprintf(out, "%s", ss.str().c_str());
 }
 
 void Shape::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
@@ -147,6 +147,7 @@ void Shape::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
   }
   ndrectangle_ = ndr;
   type_ = ShapeType::NDRECTANGLE;
+  empty_ = false;
 }
 
 shared_ptr<const NDRectangle> Shape::ndrectangle() const {
@@ -159,7 +160,7 @@ shared_ptr<const NDRectangle> Shape::ndrectangle() const {
   return ndrectangle_;
 }
 
-bool Shape::covered(shared_ptr<Shape> expanded_shape) const {
+bool Shape::covered(shared_ptr<const Shape> expanded_shape) const {
   return covered(expanded_shape->ndrectangle()->get_ndranges());
 }
 
@@ -210,9 +211,8 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this shape operation because one of the shapes " +
-          std::string("passed has an unsupported") + "type " +
-          shape_type_str(type_));
+          "You used a Shape object which has " + std::string("an unsupported") +
+          "type: " + shape_type_str(type_));
     }
   }
 }

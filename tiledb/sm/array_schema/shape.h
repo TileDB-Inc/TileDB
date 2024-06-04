@@ -115,6 +115,13 @@ class Shape {
   }
 
   /**
+   * @return Returns the format version of this shape
+   */
+  format_version_t version() const {
+    return version_;
+  }
+
+  /**
    * Dump a textual representation of the Shape to the FILE
    *
    * @param out A file pointer to write to. If out is nullptr, use stdout
@@ -142,7 +149,7 @@ class Shape {
    * @param expanded_shape The shape we want to compare against
    * @return True if the argument is a superset of the current instance
    */
-  bool covered(shared_ptr<Shape> expanded_shape) const;
+  bool covered(shared_ptr<const Shape> expanded_shape) const;
 
   /**
    * Checks if the arg fully contains this shape.
@@ -180,7 +187,7 @@ class Shape {
   shared_ptr<const NDRectangle> ndrectangle_;
 
   /** The format version of this Shape */
-  bool version_;
+  format_version_t version_;
 };
 
 }  // namespace tiledb::sm

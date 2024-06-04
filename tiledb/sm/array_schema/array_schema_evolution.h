@@ -92,7 +92,7 @@ class ArraySchemaEvolution {
           enmrs_to_extend,
       std::unordered_set<std::string> enmrs_to_drop,
       std::pair<uint64_t, uint64_t> timestamp_range,
-      shared_ptr<Shape> shape,
+      shared_ptr<const Shape> shape,
       shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ArraySchemaEvolution);
@@ -196,12 +196,12 @@ class ArraySchemaEvolution {
    *
    * @param shape The new shape to expand to
    */
-  void expand_shape(shared_ptr<Shape> shape);
+  void expand_shape(shared_ptr<const Shape> shape);
 
   /**
    * Accessor for the shape we want to expand to
    */
-  shared_ptr<Shape> shape_to_expand() const;
+  shared_ptr<const Shape> shape_to_expand() const;
 
  private:
   /* ********************************* */
@@ -241,7 +241,7 @@ class ArraySchemaEvolution {
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
   /** The array shape to expand */
-  shared_ptr<Shape> shape_to_expand_;
+  shared_ptr<const Shape> shape_to_expand_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

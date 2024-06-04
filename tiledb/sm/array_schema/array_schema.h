@@ -593,14 +593,14 @@ class ArraySchema {
    *
    * @param new_shape The new array shape we want to expand to
    */
-  void expand_shape(shared_ptr<Shape> new_shape);
+  void expand_shape(shared_ptr<const Shape> new_shape);
 
   /**
    * Set the array shape on the schema
    *
    * @param shape The array shape we want to set on the schema
    */
-  void set_shape(shared_ptr<Shape> shape);
+  void set_shape(shared_ptr<const Shape> shape);
 
   /** Array shape accessor */
   shared_ptr<const Shape> get_shape() const;
