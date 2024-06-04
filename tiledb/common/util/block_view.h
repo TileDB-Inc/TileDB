@@ -1,5 +1,5 @@
 /**
- * @file   block_view.h
+ * @file   tiledb/common/util/block_view.h
  *
  * @section LICENSE
  *

@@ -1,11 +1,11 @@
 /**
- * @file arrow_proxy.hpp
+ * @file   tiledb/stdx/ranges
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -27,32 +27,21 @@
  *
  * @section DESCRIPTION
  *
- * This file declares an "arrow proxy" class, necessary when proxy classes are
- * used for iterators.
- *
- * Original copyright statements from NWGraph:
- * @copyright SPDX-FileCopyrightText: 2022 Battelle Memorial Institute
- * @copyright SPDX-FileCopyrightText: 2022 University of Washington
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * @authors
- *   Luke D'Alessandro
- *
+ * This file provides a single header for ranges / views that we have
+ * implemented in anticipation of their availability in C++23.
  */
 
-#ifndef TILEDB_ARROW_PROXY_H
-#define TILEDB_ARROW_PROXY_H
+#ifndef TILEDB_STDX_RANGES
+#define TILEDB_STDX_RANGES
 
-template <class Reference>
-struct arrow_proxy {
-  Reference r;
-  Reference* operator->() {
-    return &r;
-  }
-};
+#include <version>
 
-template <typename T>
-arrow_proxy(T&&) -> arrow_proxy<T>;
+#if !defined(__cpp_lib_ranges_chunk) || __cpp_lib_ranges_chunk < 202202L
+#include "tiledb/stdx/__ranges/chunk_view.h"
+#endif
 
-#endif  // TILEDB_ARROW_PROXY_H
+#if !defined(__cpp_lib_ranges_zip) || __cpp_lib_ranges_zip < 202110L
+#include "tiledb/stdx/__ranges/zip_view.h"
+#endif
+
+#endif  // TILEDB_STDX_RANGES

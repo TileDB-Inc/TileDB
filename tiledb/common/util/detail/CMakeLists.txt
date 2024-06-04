@@ -1,5 +1,5 @@
 #
-# tiledb/common/util/test/CMakeLists.txt
+# tiledb/util/detail/CMakeLists.txt
 #
 # The MIT License
 #
@@ -24,53 +24,7 @@
 # THE SOFTWARE.
 #
 
-include(unit_test)
+include(common NO_POLICY_SCOPE)
+include(object_library)
 
-commence(unit_test unit_alt_var_length_view)
-    this_target_sources(
-        unit_alt_var_length_view.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_permutation_sort)
-    this_target_sources(
-        unit_permutation_sort.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_permutation_view)
-    this_target_sources(
-        unit_permutation_view.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_proxy_sort)
-    this_target_sources(
-        unit_proxy_sort.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_sort_zip)
-    this_target_sources(
-        unit_sort_zip.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_var_length_util)
-    this_target_sources(
-        unit_var_length_util.cc
-)
-conclude(unit_test)
-
-commence(unit_test unit_var_length_view)
-    this_target_sources(
-        unit_var_length_view.cc
-)
-conclude(unit_test)
-
-commence(unit_test block_view)
-    this_target_sources(
-        unit_block_view.cc
-)
-conclude(unit_test)
-
+add_test_subdirectory()

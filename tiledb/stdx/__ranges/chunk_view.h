@@ -1,5 +1,5 @@
 /**
- * @file   chunk_view.h
+ * @file   tiledb/stdx/bits/chunk_view.h
  *
  * @section LICENSE
  *
@@ -40,7 +40,9 @@
 
 #include <concepts>
 #include <ranges>
-#include "iterator_facade.h"
+#include "tiledb/common/util/detail/iterator_facade.h"
+
+namespace stdx::ranges {
 
 /** Helper template, API from cppreference */
 template <class I>
@@ -94,7 +96,9 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
   chunk_view& operator=(chunk_view&&) = default;
 
   /**
-   * Constructor taking ranges for the data and index ranges, along with sizes
+   * Constructor taking ranges for the data range, along with size of the
+   * chunks. This is the signature from cppreference, but having an argument
+   * type for `chunk_size` that could be negative does not seem right.
    */
   chunk_view(R& data, std::ranges::range_difference_t<R> chunk_size)
       : data_begin_(std::ranges::begin(data))
@@ -107,37 +111,37 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
    */
 
   /** Return iterator to the beginning of the chunk view */
-  auto begin() {
+  constexpr auto begin() {
     return chunk_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return iterator to the end of the chunk view */
-  auto end() {
+  constexpr auto end() {
     return chunk_iterator(data_end_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the beginning of the chunk view */
-  auto begin() const {
+  constexpr auto begin() const {
     return chunk_const_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the end of the chunk view */
-  auto end() const {
+  constexpr auto end() const {
     return chunk_const_iterator(data_end_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the beginning of the chunk view */
-  auto cbegin() const {
+  constexpr auto cbegin() const {
     return chunk_const_iterator(data_begin_, data_end_, chunk_size_);
   }
 
   /** Return const iterator to the end of the chunk view */
-  auto cend() const {
+  constexpr auto cend() const {
     return chunk_const_iterator(data_end_, data_end_, chunk_size_);
   }
 
   /** Return the number of chunks in the chunk view */
-  auto size() const {
+  constexpr auto size() const {
     return __div_ceil(data_end_ - data_begin_, chunk_size_);
   }
 
@@ -178,7 +182,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
      * value.  This is fine, since we can't assign a subrange to another.
      * We do, however, want to be able to modify the contents of the subrange.
      */
-    value_type dereference() const {
+    constexpr value_type dereference() const {
       if (data_end_ - current_ < chunk_size_) {
         return {current_, data_end_};
       } else {
@@ -190,7 +194,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
      * Advance the iterator by n.  Note that we don't move past the end of the
      * data range.
      */
-    auto& advance(data_index_type n) {
+    constexpr auto& advance(data_index_type n) {
       if (data_end_ - current_ < n * chunk_size_) {
         current_ = data_end_;
       } else {
@@ -200,12 +204,12 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
     }
 
     /** Return the distance to another iterator */
-    auto distance_to(const private_iterator& other) const {
+    constexpr auto distance_to(const private_iterator& other) const {
       return other.current_ - current_;
     }
 
     /** Compare two iterators for equality */
-    bool operator==(const private_iterator& other) const {
+    constexpr bool operator==(const private_iterator& other) const {
       return chunk_size_ == other.chunk_size_ && current_ == other.current_;
     }
 
@@ -245,7 +249,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 /** Deduction guide for chunk_view */
 template <class R, class I>
 chunk_view(R, I) -> chunk_view<std::ranges::subrange<R>>;
-
+}  // namespace stdx::ranges
 /**
  * Define "chunk()" cpo for creating chunk views
  */
@@ -254,13 +258,18 @@ struct _fn {
   // @todo Should this take a viewable range?
   // template <std::ranges::viewable_range T>
   template <std::ranges::random_access_range T, class I>
-  auto constexpr operator()(T&& t, I i) const {
-    return chunk_view<T>{std::forward<T>(t), i};
+  constexpr auto operator()(T&& t, I i) const {
+    return stdx::ranges::chunk_view<T>{std::forward<T>(t), i};
   }
 };
 }  // namespace _chunk
 inline namespace _cpo {
 inline constexpr auto chunk = _chunk::_fn{};
 }  // namespace _cpo
+
+namespace stdx::views {
+using _cpo::chunk;
+} // namespace stdx::views
+
 
 #endif  // TILEDB_CHUNK_VIEW_H

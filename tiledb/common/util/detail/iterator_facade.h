@@ -1,5 +1,5 @@
 /**
- * @file   iterator_facade.h
+ * @file   tiledb/common/util/iterator_facade.h
  *
  * @section LICENSE
  *
@@ -42,7 +42,7 @@
 #include <iterator>
 #include <type_traits>
 
-#include "arrow_proxy.h"
+#include "tiledb/common/util/detail/arrow_proxy.h"
 
 namespace detail {
 

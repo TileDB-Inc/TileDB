@@ -35,7 +35,7 @@
 #include <type_traits>
 #include <vector>
 #include "tiledb/common/util/alt_var_length_view.h"
-#include "tiledb/common/util/zip_view.h"
+#include "tiledb/stdx/__ranges/zip_view.h"
 
 TEST_CASE("zip_view: Null test", "[zip_view][null_test]") {
   REQUIRE(true);

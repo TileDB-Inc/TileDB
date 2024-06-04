@@ -34,7 +34,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include "tiledb/common/util/alt_var_length_view.h"
-#include "tiledb/common/util/zip_view.h"
+#include "tiledb/stdx/__ranges/zip_view.h"
 
 TEST_CASE("sort_zip: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
