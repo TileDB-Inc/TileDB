@@ -310,7 +310,14 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
   struct dirent* next_path = nullptr;
   DIR* dir = opendir(path.c_str());
   if (dir == nullptr) {
-    return {};
+    auto last_error = errno;
+    // If the directory does not exist, return an empty vector. Otherwise we
+    // have an error.
+    if (last_error == ENOENT) {
+      return {};
+    }
+    throw IOError(
+        std::string("Cannot open directory; ") + strerror(last_error));
   }
 
   std::vector<directory_entry> entries;
