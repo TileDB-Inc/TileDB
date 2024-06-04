@@ -103,7 +103,7 @@ regex_unique_ptr = re.compile(r"unique_ptr<")
 unique_ptr_exceptions = {
     "*": ["tdb_unique_ptr", "tiledb_unique_ptr", "tdb::pmr::unique_ptr"],
     "zstd_compressor.h": ["std::unique_ptr<ZSTD_DCtx, decltype(&ZSTD_freeDCtx)> ctx_;", "std::unique_ptr<ZSTD_CCtx, decltype(&ZSTD_freeCCtx)> ctx_;"],
-    "posix.cc": ["static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);"],
+    "posix.cc": ["std::unique_ptr<DIR, UniqueDIRDeleter>", "static std::unique_ptr<char, decltype(&free)> cwd_(getcwd(nullptr, 0), free);"],
     "curl.h": ["std::unique_ptr<CURL, decltype(&curl_easy_cleanup)>"],
     "pmr.h": ["std::unique_ptr", "unique_ptr<Tp> make_unique("],
 }

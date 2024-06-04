@@ -58,6 +58,16 @@ using filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+struct UniqueDIRDeleter {
+  void operator()(DIR* dir) {
+    if (dir != nullptr) {
+      closedir(dir);
+    }
+  }
+};
+
+using UniqueDIR = std::unique_ptr<DIR, UniqueDIRDeleter>;
+
 Posix::Posix(const Config& config) {
   // Initialize member variables with posix config parameters.
 
@@ -308,8 +318,8 @@ void Posix::write(
 std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
-  DIR* dir = opendir(path.c_str());
-  if (dir == nullptr) {
+  auto dir = UniqueDIR(opendir(path.c_str()));
+  if (!dir) {
     auto last_error = errno;
     // If the directory does not exist, return an empty vector. Otherwise we
     // have an error.
@@ -322,7 +332,7 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
 
   std::vector<directory_entry> entries;
 
-  while ((next_path = readdir(dir)) != nullptr) {
+  while ((next_path = readdir(dir.get())) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
@@ -338,11 +348,6 @@ std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
       file_size(URI(abspath), &size);
       entries.emplace_back(abspath, size, false);
     }
-  }
-  // close parent directory
-  if (closedir(dir) != 0) {
-    throw IOError(
-        std::string("Cannot close parent directory; ") + strerror(errno));
   }
   return entries;
 }
