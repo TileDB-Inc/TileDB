@@ -78,6 +78,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/data_order.h"
 #include "tiledb/sm/enums/datatype.h"
@@ -329,6 +330,9 @@ class TestArraySchema {
             FilterPipeline(),
             FilterPipeline(),
             FilterPipeline(),
+            make_shared<Shape>(
+                tiledb::test::create_test_memory_tracker(),
+                constants::shape_version),
             tiledb::test::create_test_memory_tracker()) {
   }
 
