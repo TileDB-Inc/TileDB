@@ -61,7 +61,9 @@ namespace tiledb::sm {
 struct UniqueDIRDeleter {
   void operator()(DIR* dir) {
     if (dir != nullptr) {
-      closedir(dir);
+      // The only possible error is EBADF, which should not happen here.
+      [[maybe_unused]] auto status = closedir(dir);
+      assert(status == 0);
     }
   }
 };
