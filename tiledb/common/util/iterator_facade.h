@@ -42,7 +42,7 @@
 #include <iterator>
 #include <type_traits>
 
-#include "arrow_proxy.hpp"
+#include "arrow_proxy.h"
 
 namespace detail {
 

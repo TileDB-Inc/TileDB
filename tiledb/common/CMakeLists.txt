@@ -46,6 +46,7 @@ add_subdirectory(interval)
 add_subdirectory(random)
 add_subdirectory(thread_pool)
 add_subdirectory(types)
+add_subdirectory(util)
 
 get_gathered(COMMON_SOURCES)
 set(TILEDB_COMMON_SOURCES ${COMMON_SOURCES} PARENT_SCOPE)

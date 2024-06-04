@@ -1,9 +1,9 @@
 #
-# tiledb/common/test/CMakeLists.txt
+# tiledb/common/util/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,18 +26,56 @@
 
 include(unit_test)
 
-commence(unit_test experimental)
-    this_target_object_libraries(baseline)
-    this_target_sources(
-        main.cc
-        $<IF:$<BOOL:${TILEDB_EXPERIMENTAL_FEATURES}>,
-          unit_is_experimental.cc,
-          unit_is_not_experimental.cc>
-        )
+commence(unit_test unit_alt_var_length_view)
+this_target_sources(
+    unit_alt_var_length_view.cc
+)
 conclude(unit_test)
 
-commence(unit_test memory_tracker)
-    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
-    this_target_object_libraries(baseline)
+commence(unit_test unit_iterator_facade)
+this_target_sources(
+    unit_iterator_facade.cc
+)
 conclude(unit_test)
 
+commence(unit_test unit_permutation_sort)
+this_target_sources(
+    unit_permutation_sort.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_permutation_view)
+this_target_sources(
+    unit_permutation_view.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_proxy_sort)
+this_target_sources(
+    unit_proxy_sort.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_sort_zip)
+this_target_sources(
+    unit_sort_zip.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_var_length_util)
+this_target_sources(
+    unit_var_length_util.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_var_length_view)
+this_target_sources(
+        unit_var_length_view.cc
+)
+conclude(unit_test)
+
+commence(unit_test unit_zip_view)
+this_target_sources(
+        unit_zip_view.cc
+)
+conclude(unit_test)
