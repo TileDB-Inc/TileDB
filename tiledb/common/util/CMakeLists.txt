@@ -1,9 +1,9 @@
 #
-# tiledb/common/thread_pool/CMakeLists.txt
+# tiledb/common/util/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,16 +26,5 @@
 
 include(common NO_POLICY_SCOPE)
 include(object_library)
-
-# list(APPEND SOURCES)
-# gather_sources(${SOURCES})
-
-#
-# There is no object library for this target, as it is a header-only library
-#
-# commence(object_library util)
-#    this_target_sources(${SOURCES})
-#    this_target_object_libraries(baseline)
-# conclude(object_library)
 
 add_test_subdirectory()

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2021 TileDB, Inc.
+ * @copyright Copyright (c) 2021-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -91,7 +91,8 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   tiledb::sm::Array a(tiledb::sm::URI{"mem://junk"}, ctx.storage_manager());
   tiledb::sm::EncryptionKey ek;
   CHECK(ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
-  CHECK(ctx.storage_manager()->array_create(a.array_uri(), sp_as, ek).ok());
+  CHECK(tiledb::sm::Array::create(ctx.resources(), a.array_uri(), sp_as, ek)
+            .ok());
   CHECK(a.open(
              tiledb::sm::QueryType::READ,
              tiledb::sm::EncryptionType::NO_ENCRYPTION,

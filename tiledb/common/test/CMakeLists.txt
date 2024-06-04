@@ -41,8 +41,3 @@ commence(unit_test memory_tracker)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 
-commence(unit_test common_utils)
-    this_target_sources(main.cc ../util/test/unit_alt_var_length_view.cc ../util/test/unit_iterator_facade.cc ../util/test/unit_permutation_sort.cc ../util/test/unit_permutation_view.cc ../util/test/unit_proxy_sort.cc ../util/test/unit_sort_zip.cc ../util/test/unit_var_length_util.cc ../util/test/unit_var_length_view.cc ../util/test/unit_zip_view.cc)
-    this_target_object_libraries(baseline)
-conclude(unit_test)
-
