@@ -371,6 +371,21 @@ class Array {
   const URI& array_uri_serialized() const;
 
   /**
+   * Creates a TileDB array, storing its schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The URI of the array to be created.
+   * @param array_schema The array schema.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  static Status create(
+      ContextResources& resources,
+      const URI& array_uri,
+      const shared_ptr<ArraySchema>& array_schema,
+      const EncryptionKey& encryption_key);
+
+  /**
    * Opens the array for reading at a timestamp retrieved from the config
    * or for writing.
    *

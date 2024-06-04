@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -357,7 +357,7 @@ RequestHandlerFx::~RequestHandlerFx() {
 
 void RequestHandlerFx::create_array() {
   auto schema = create_schema();
-  throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
+  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
 }
 
 void RequestHandlerFx::delete_array() {
