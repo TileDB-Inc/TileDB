@@ -92,8 +92,7 @@ regex_make_shared = re.compile(r"std::make_shared<")
 
 # Contains per-file exceptions to violations of "make_shared".
 make_shared_exceptions = {
-    "*": ["tdb::make_shared"],
-    "*": ["tiledb::common::make_shared"],
+    "*": ["tdb::make_shared", "tiledb::common::make_shared"],
 }
 
 # Match C++ unique_ptr objects.
@@ -148,7 +147,7 @@ violation_checkers = [
 
 
 def iter_file_violations(file_path: str) -> Iterable[Violation]:
-    with open(file_path) as f:
+    with open(file_path, encoding="utf-8") as f:
         for line_num, line in enumerate(f):
             line = line.strip()
             for checker in violation_checkers:
