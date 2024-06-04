@@ -736,7 +736,9 @@ TEST_CASE_METHOD(
     "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
-  check_subarray_stats(1, 1);
+  if (!vfs_test_setup_.is_rest()) {
+    check_subarray_stats(1, 1);
+  }
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
