@@ -339,9 +339,7 @@ TEMPLATE_LIST_TEST_CASE(
     std::string s = "abcdef";
     require_tiledb_ok(vfs.write(ls_file, s.data(), s.size()));
     require_tiledb_ok(vfs.close_file(ls_file));
-    auto&& [status, opt_children] = vfs.ls_with_sizes(ls_dir);
-    require_tiledb_ok(status);
-    auto children = opt_children.value();
+    auto children = vfs.ls_with_sizes(ls_dir);
 #ifdef _WIN32
     // Normalization only for Windows
     ls_file = URI(tiledb::sm::path_win::uri_from_path(ls_file.to_string()));
@@ -599,9 +597,7 @@ TEST_CASE("VFS: test ls_with_sizes", "[vfs][ls-with-sizes]") {
   require_tiledb_ok(vfs_ls.write(URI(subdir_file), s2.data(), s2.size()));
 
   // List
-  auto&& [status, rv] = vfs_ls.ls_with_sizes(URI(dir));
-  auto children = *rv;
-  require_tiledb_ok(status);
+  auto children = vfs_ls.ls_with_sizes(URI(dir));
 
 #ifdef _WIN32
   // Normalization only for Windows
