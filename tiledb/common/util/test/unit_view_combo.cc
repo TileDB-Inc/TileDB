@@ -186,7 +186,6 @@ TEST_CASE(
 }
 
 TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
-
   /* See unit_permutation_view.cc for validation of the permutation */
   auto w = var_length_view(q, p);
   auto x = permutation_view(w, o);
@@ -250,16 +249,4 @@ TEST_CASE("view combo: chunk a zip view", "[view_combo]") {
 }
 
 TEST_CASE("view combo: zip a chunk view", "[view_combo]") {
-}
-
-TEST_CASE("view combo: chunk a zipped chunk view", "[view_combo]") {
-}
-
-TEST_CASE("view combo: zip a chunked chunk view", "[view_combo]") {
-}
-
-TEST_CASE("view combo: zip a chunked zipped chunk view", "[view_combo]") {
-}
-
-TEST_CASE("view combo: num_elements % num_chunks != 0", "[view_combo]") {
 }
