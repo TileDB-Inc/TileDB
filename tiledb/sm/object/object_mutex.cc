@@ -1,11 +1,11 @@
 /**
- * @file compile_utils_main.cc
+ * @file object_mutex.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,19 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file defines an object mutex.
  */
 
-#include "../bounded_buffer.h"
-#include "../print_types.h"
-#include "../range_join.h"
-#include "../spinlock.h"
-#include "../traits.h"
-#include "tiledb/common/util/arrow_proxy.h"
+#include "tiledb/sm/object/object_mutex.h"
 
-int main() {
-}
+namespace tiledb::sm {
+
+/**
+ * Mutex that protects the atomicity of object operations.
+ */
+std::mutex object_mtx;
+
+}  // namespace tiledb::sm

@@ -228,7 +228,7 @@ FieldDataSize Query::internal_est_result_size(std::string_view field_name) {
   if (array_->is_remote() && !subarray_.est_result_size_computed()) {
     auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw QueryStatusException(
+      throw QueryException(
           "Error in query estimate result size; "
           "remote array with no rest client.");
     }
@@ -447,20 +447,21 @@ Status Query::finalize() {
   }
 
   if (array_->is_remote() && type_ == QueryType::WRITE) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
-          "Error in query finalize; remote array with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to finalize query; remote array with no rest client.");
+    }
 
     if (layout_ == Layout::GLOBAL_ORDER) {
-      return logger_->status(Status_QueryError(
-          "Error in query finalize; remote global order writes are only "
-          "allowed to call submit_and_finalize to submit the last tile"));
+      throw QueryException(
+          "Failed to finalize query; remote global order writes are only "
+          "allowed to call submit_and_finalize to submit the last tile");
     }
     return rest_client->finalize_query_to_rest(array_->array_uri(), this);
   }
 
-  RETURN_NOT_OK(strategy_->finalize());
+  throw_if_not_ok(strategy_->finalize());
 
   status_ = QueryStatus::COMPLETED;
   return Status::Ok();
@@ -468,32 +469,33 @@ Status Query::finalize() {
 
 Status Query::submit_and_finalize() {
   if (type_ != QueryType::WRITE || layout_ != Layout::GLOBAL_ORDER) {
-    return logger_->status(
-        Status_QueryError("Error in query submit_and_finalize; Call valid only "
-                          "in global_order writes."));
+    throw QueryException(
+        "Failed to submit and finalize query; Call valid only in global_order "
+        "writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
-  RETURN_NOT_OK(check_buffers_correctness());
+  throw_if_not_ok(check_buffers_correctness());
 
   if (array_->is_remote()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(
-          Status_QueryError("Error in query submit_and_finalize; remote array "
-                            "with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to submit and finalize query; remote array with no rest "
+          "client.");
+    }
 
     if (status_ == QueryStatus::UNINITIALIZED) {
-      RETURN_NOT_OK(create_strategy());
+      throw_if_not_ok(create_strategy());
     }
     return rest_client->submit_and_finalize_query_to_rest(
         array_->array_uri(), this);
   }
 
   init();
-  RETURN_NOT_OK(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager_->query_submit(this));
 
-  RETURN_NOT_OK(strategy_->finalize());
+  throw_if_not_ok(strategy_->finalize());
   status_ = QueryStatus::COMPLETED;
 
   return Status::Ok();
@@ -662,14 +664,14 @@ void Query::init() {
       status_ == QueryStatus::INITIALIZED) {
     // Check if the array got closed
     if (array_ == nullptr || !array_->is_open()) {
-      throw QueryStatusException(
+      throw QueryException(
           "Cannot init query; The associated array is not open");
     }
 
     // Check if the array got re-opened with a different query type
     QueryType array_query_type{array_->get_query_type()};
     if (array_query_type != type_) {
-      throw QueryStatusException(
+      throw QueryException(
           "Cannot init query; Associated array query type does not match "
           "query type: (" +
           query_type_str(array_query_type) + " != " + query_type_str(type_) +
@@ -681,14 +683,14 @@ void Query::init() {
     // Create dimension label queries and remove labels from subarray.
     if (uses_dimension_labels()) {
       if (condition_.has_value()) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot init query; Using query conditions and dimension labels "
             "together is not supported.");
       }
 
       // Check the layout is valid.
       if (layout_ == Layout::GLOBAL_ORDER) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot init query; The global order layout is not supported "
             "when querying dimension labels");
       }
@@ -700,7 +702,7 @@ void Query::init() {
       if (!only_dim_label_query() && type_ == QueryType::READ &&
           !array_schema_->dense() && array_schema_->dim_num() > 1 &&
           !label_buffers_.empty()) {
-        throw QueryStatusException(
+        throw QueryException(
             "Cannot initialize query; Reading dimension label data is not "
             "yet supported on sparse arrays with multiple dimensions.");
       }
@@ -936,7 +938,7 @@ void Query::set_processed_conditions(
 
 void Query::set_config(const Config& config) {
   if (!remote_query_ && status_ != QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_config] Cannot set config after initialization.");
   }
   config_.inherit(config);
@@ -1007,13 +1009,13 @@ Status Query::set_data_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException("[set_data_buffer] Unsupported query type.");
+      throw QueryException("[set_data_buffer] Unsupported query type.");
     }
 
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
         !serialization_allow_new_attr) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_data_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
     }
@@ -1157,13 +1159,12 @@ Status Query::set_offsets_buffer(
   if (array_schema_->is_dim_label(name)) {
     // Check the query type is valid.
     if (type_ != QueryType::READ && type_ != QueryType::WRITE) {
-      throw QueryStatusException(
-          "[set_offsets_buffer] Unsupported query type.");
+      throw QueryException("[set_offsets_buffer] Unsupported query type.");
     }
 
     // Check the dimension label is in fact variable length.
     if (!array_schema_->dimension_label(name).is_var()) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_offsets_buffer] Input dimension label '" + name +
           "' is fixed-sized");
     }
@@ -1172,7 +1173,7 @@ Status Query::set_offsets_buffer(
     const bool exists = label_buffers_.find(name) != label_buffers_.end();
     if (status_ != QueryStatus::UNINITIALIZED && !exists &&
         !serialization_allow_new_attr) {
-      throw QueryStatusException(
+      throw QueryException(
           "[set_offsets_buffer] Cannot set buffer for new dimension label '" +
           name + "' after initialization");
     }
@@ -1456,7 +1457,7 @@ void Query::set_subarray(const void* subarray) {
     case QueryType::WRITE:
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
-        throw QueryStatusException(
+        throw QueryException(
             "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
@@ -1464,7 +1465,7 @@ void Query::set_subarray(const void* subarray) {
 
     default:
 
-      throw QueryStatusException(
+      throw QueryException(
           "[set_subarray] Setting a subarray is not supported for query type "
           "'" +
           query_type_str(type_) + "'.");
@@ -1472,7 +1473,7 @@ void Query::set_subarray(const void* subarray) {
 
   // Check this isn't an already initialized query using dimension labels.
   if (status_ != QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_subarray] Setting a subarray on an already initialized  "
         "query is not supported.");
   }
@@ -1499,14 +1500,14 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
     case QueryType::WRITE:
     case QueryType::MODIFY_EXCLUSIVE:
       if (!array_schema_->dense()) {
-        throw QueryStatusException(
+        throw QueryException(
             "[set_subarray] Setting a subarray is not supported on "
             "sparse writes.");
       }
       break;
 
     default:
-      throw QueryStatusException(
+      throw QueryException(
           "[set_subarray] Setting a subarray is not supported for query type "
           "'" +
           query_type_str(type_) + "'.");
@@ -1514,7 +1515,7 @@ void Query::set_subarray(const tiledb::sm::Subarray& subarray) {
 
   // Check the query has not been initialized.
   if (status_ != tiledb::sm::QueryStatus::UNINITIALIZED) {
-    throw QueryStatusException(
+    throw QueryException(
         "[set_subarray] Setting a subarray on an already initialized "
         "query is not supported.");
   }
@@ -1553,22 +1554,23 @@ Status Query::submit() {
   // Make sure fragment size is only set for global order.
   if (fragment_size_ != std::numeric_limits<uint64_t>::max() &&
       (layout_ != Layout::GLOBAL_ORDER || type_ != QueryType::WRITE)) {
-    throw QueryStatusException(
+    throw QueryException(
         "[submit] Fragment size is only supported for global order writes.");
   }
 
   // Check attribute/dimensions buffers completeness before query submits
-  RETURN_NOT_OK(check_buffers_correctness());
+  throw_if_not_ok(check_buffers_correctness());
 
   if (array_->is_remote()) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      return logger_->status(Status_QueryError(
-          "Error in query submission; remote array with no rest client."));
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw QueryException(
+          "Failed to submit query; remote array with no rest client.");
+    }
 
     if (status_ == QueryStatus::UNINITIALIZED && !only_dim_label_query() &&
         !subarray_.has_label_ranges()) {
-      RETURN_NOT_OK(create_strategy());
+      throw_if_not_ok(create_strategy());
 
       // Allocate remote buffer storage for global order writes if necessary.
       // If we cache an entire write a query may be uninitialized for N submits.
@@ -1578,13 +1580,14 @@ Status Query::submit() {
       }
     }
 
-    RETURN_NOT_OK(rest_client->submit_query_to_rest(array_->array_uri(), this));
+    throw_if_not_ok(
+        rest_client->submit_query_to_rest(array_->array_uri(), this));
 
     reset_coords_markers();
     return Status::Ok();
   }
   init();
-  RETURN_NOT_OK(storage_manager_->query_submit(this));
+  throw_if_not_ok(storage_manager_->query_submit(this));
 
   reset_coords_markers();
   return Status::Ok();
@@ -1977,7 +1980,7 @@ Status Query::check_buffer_names() {
       for (unsigned d = 0; d < array_schema_->dim_num(); d++) {
         auto dim = array_schema_->dimension_ptr(d);
         if (buffers_.count(dim->name()) == 0) {
-          throw QueryStatusException(
+          throw QueryException(
               "[check_buffer_names] Dimension buffer " + dim->name() +
               " is not set");
         }
@@ -2107,7 +2110,7 @@ void Query::copy_aggregates_data_to_user_buffer() {
 }
 
 RestClient* Query::rest_client() const {
-  return storage_manager_->rest_client();
+  return resources_.rest_client().get();
 }
 
 }  // namespace tiledb::sm

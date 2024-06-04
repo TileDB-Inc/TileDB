@@ -40,6 +40,7 @@
 #include "tiledb/sm/consolidator/fragment_meta_consolidator.h"
 #include "tiledb/sm/consolidator/group_meta_consolidator.h"
 #include "tiledb/sm/enums/encryption_type.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/generate_uri.h"
@@ -147,7 +148,8 @@ void Consolidator::array_consolidate(
 
   // Check if array exists
   ObjectType obj_type;
-  throw_if_not_ok(storage_manager->object_type(array_uri, &obj_type));
+  throw_if_not_ok(
+      object_type(storage_manager->resources(), array_uri, &obj_type));
 
   if (obj_type != ObjectType::ARRAY) {
     throw ConsolidatorException(
@@ -155,8 +157,9 @@ void Consolidator::array_consolidate(
   }
 
   if (array_uri.is_tiledb()) {
-    throw_if_not_ok(storage_manager->rest_client()->post_consolidation_to_rest(
-        array_uri, config));
+    throw_if_not_ok(
+        storage_manager->resources().rest_client()->post_consolidation_to_rest(
+            array_uri, config));
   } else {
     // Get encryption key from config
     std::string encryption_key_from_cfg;
@@ -209,7 +212,8 @@ void Consolidator::fragments_consolidate(
 
   // Check if array exists
   ObjectType obj_type;
-  throw_if_not_ok(storage_manager->object_type(array_uri, &obj_type));
+  throw_if_not_ok(
+      object_type(storage_manager->resources(), array_uri, &obj_type));
 
   if (obj_type != ObjectType::ARRAY) {
     throw ConsolidatorException(
@@ -317,7 +321,8 @@ void Consolidator::array_vacuum(
   URI array_uri(array_name);
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
-        storage_manager->rest_client()->post_vacuum_to_rest(array_uri, config));
+        storage_manager->resources().rest_client()->post_vacuum_to_rest(
+            array_uri, config));
     return;
   }
 

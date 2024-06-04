@@ -26,16 +26,14 @@
 #
 # Detect whether polymorphic allocators are available on the system.
 
-# Special case for macOS when the MACOSX_DEPLOYMENT_TARGET is set to anything
+# Special case for macOS when the CMAKE_OSX_DEPLOYMENT_TARGET is set to anything
 # less than 14. For some reason, std::pmr is still detectable, but the resulting
 # binary dies with a dyld missing symbol error.
 
-if (ENV{MACOSX_DEPLOYMENT_TARGET})
-  if (ENV{MACOSX_DEPLOYMENT_TARGET} STRLESS "14")
-    set(TILEDB_USE_CPP17_PMR ON)
-    message(STATUS "Using vendored cpp17::pmr for polymorphic allocators")
-    return()
-  endif()
+if (APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET LESS 14)
+  set(TILEDB_USE_CPP17_PMR ON)
+  message(STATUS "Using vendored cpp17::pmr for polymorphic allocators because of macOS deployment target ${CMAKE_OSX_DEPLOYMENT_TARGET} < 14")
+  return()
 endif()
 
 # Otherwise, if we're not building a targeted macOS version, we just detect

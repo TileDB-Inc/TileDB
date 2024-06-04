@@ -46,6 +46,8 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -56,9 +58,9 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-class GroupStatusException : public StatusException {
+class GroupException : public StatusException {
  public:
-  explicit GroupStatusException(const std::string& message)
+  explicit GroupException(const std::string& message)
       : StatusException("Group", message) {
   }
 };
@@ -83,16 +85,57 @@ Group::Group(
   memory_tracker_->set_type(MemoryTrackerType::GROUP);
 }
 
+Status Group::create(ContextResources& resources, const URI& uri) {
+  // Create group URI
+  if (uri.is_invalid())
+    throw GroupException(
+        "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
+
+  // Check if group exists
+  bool exists;
+  throw_if_not_ok(is_group(resources, uri, &exists));
+  if (exists) {
+    throw GroupException(
+        "Cannot create group; Group '" + uri.to_string() + "' already exists");
+  }
+
+  std::lock_guard<std::mutex> lock{object_mtx};
+  if (uri.is_tiledb()) {
+    StorageManager storage_manager(
+        resources, resources.logger(), resources.config());
+    Group group(resources, uri, &storage_manager);
+    throw_if_not_ok(
+        resources.rest_client()->post_group_create_to_rest(uri, &group));
+    return Status::Ok();
+  }
+
+  // Create group directory
+  throw_if_not_ok(resources.vfs().create_dir(uri));
+
+  // Create group file
+  URI group_filename = uri.join_path(constants::group_filename);
+  throw_if_not_ok(resources.vfs().touch(group_filename));
+
+  // Create metadata folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_metadata_dir_name)));
+
+  // Create group detail folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_detail_dir_name)));
+  return Status::Ok();
+}
+
 void Group::open(
     QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end) {
   // Checks
   if (is_open_) {
-    throw GroupStatusException("Cannot open group; Group already open");
+    throw GroupException("Cannot open group; Group already open");
   }
 
   if (query_type != QueryType::READ && query_type != QueryType::WRITE &&
       query_type != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException("Cannot open group; Unsupported query type");
+    throw GroupException("Cannot open group; Unsupported query type");
   }
 
   if (timestamp_end == UINT64_MAX) {
@@ -137,9 +180,10 @@ void Group::open(
     }
   }
 
-  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION)
-    throw GroupStatusException(
+  if (remote_ && encryption_type != EncryptionType::NO_ENCRYPTION) {
+    throw GroupException(
         "Cannot open group; encrypted remote groups are not supported.");
+  }
 
   // Copy the key bytes.
   throw_if_not_ok(
@@ -149,9 +193,9 @@ void Group::open(
   metadata_loaded_ = false;
 
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
+    auto rest_client = resources_.rest_client();
     if (rest_client == nullptr) {
-      throw GroupStatusException(
+      throw GroupException(
           "Cannot open group; remote group with no REST client.");
     }
 
@@ -200,8 +244,7 @@ void Group::open(QueryType query_type) {
 
 void Group::close_for_writes() {
   // Flush the group metadata
-  throw_if_not_ok(
-      unsafe_metadata()->store(resources_, group_uri(), *encryption_key()));
+  unsafe_metadata()->store(resources_, group_uri(), *encryption_key());
 
   // Store any changes required
   if (group_details()->is_modified()) {
@@ -229,18 +272,20 @@ void Group::close() {
         // Set metadata loaded to be true so when serialization fetches the
         // metadata it won't trigger a deadlock
         metadata_loaded_ = true;
-        auto rest_client = storage_manager_->rest_client();
-        if (rest_client == nullptr)
-          throw GroupStatusException(
+        auto rest_client = resources_.rest_client();
+        if (rest_client == nullptr) {
+          throw GroupException(
               "Error closing group; remote group with no REST client.");
+        }
         throw_if_not_ok(
             rest_client->put_group_metadata_to_rest(group_uri_, this));
       }
       if (!members_to_modify().empty()) {
-        auto rest_client = storage_manager_->rest_client();
-        if (rest_client == nullptr)
-          throw GroupStatusException(
+        auto rest_client = resources_.rest_client();
+        if (rest_client == nullptr) {
+          throw GroupException(
               "Error closing group; remote group with no REST client.");
+        }
         throw_if_not_ok(rest_client->patch_group_to_rest(group_uri_, this));
       }
     }
@@ -254,9 +299,9 @@ void Group::close() {
       try {
         close_for_writes();
       } catch (StatusException& exc) {
-        std::string msg = exc.what();
-        msg += " : Was storage for the group moved or deleted before closing?";
-        throw GroupStatusException(msg);
+        throw GroupException(
+            std::string(exc.what()) +
+            " : Was storage for the group moved or deleted before closing?");
       }
     }
   }
@@ -286,7 +331,7 @@ const shared_ptr<GroupDetails> Group::group_details() const {
 QueryType Group::get_query_type() const {
   // Error if the group is not open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get query_type; Group is not open");
+    throw GroupException("Cannot get query_type; Group is not open");
   }
 
   return query_type_;
@@ -295,21 +340,20 @@ QueryType Group::get_query_type() const {
 void Group::delete_group(const URI& uri, bool recursive) {
   // Check that group is open
   if (!is_open_) {
-    throw GroupStatusException("[delete_group] Group is not open");
+    throw GroupException("[delete_group] Group is not open");
   }
 
   // Check that query type is MODIFY_EXCLUSIVE
   if (query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
-        "[delete_group] Query type must be MODIFY_EXCLUSIVE");
+    throw GroupException("[delete_group] Query type must be MODIFY_EXCLUSIVE");
   }
 
   // Delete group data
   if (remote_) {
-    auto rest_client = storage_manager_->rest_client();
-    if (rest_client == nullptr)
-      throw GroupStatusException(
-          "[delete_group] Remote group with no REST client.");
+    auto rest_client = resources_.rest_client();
+    if (rest_client == nullptr) {
+      throw GroupException("[delete_group] Remote group with no REST client.");
+    }
     rest_client->delete_group_from_rest(uri, recursive);
   } else {
     // Delete group members within the group when deleting recursively
@@ -362,19 +406,22 @@ void Group::delete_group(const URI& uri, bool recursive) {
 
 void Group::delete_metadata(const char* key) {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException("Cannot delete metadata. Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot delete metadata. Group is not open");
+  }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE)
-    throw GroupStatusException(
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw GroupException(
         "Cannot delete metadata. Group was not opened in write or "
         "modify_exclusive mode");
+  }
 
   // Check if key is null
-  if (key == nullptr)
-    throw GroupStatusException("Cannot delete metadata. Key cannot be null");
+  if (key == nullptr) {
+    throw GroupException("Cannot delete metadata. Key cannot be null");
+  }
 
   metadata_.del(key);
 }
@@ -385,23 +432,27 @@ void Group::put_metadata(
     uint32_t value_num,
     const void* value) {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException("Cannot put metadata; Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot put metadata; Group is not open");
+  }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
-      query_type_ != QueryType::MODIFY_EXCLUSIVE)
-    throw GroupStatusException(
+      query_type_ != QueryType::MODIFY_EXCLUSIVE) {
+    throw GroupException(
         "Cannot put metadata; Group was not opened in write or "
         "modify_exclusive mode");
+  }
 
   // Check if key is null
-  if (key == nullptr)
-    throw GroupStatusException("Cannot put metadata; Key cannot be null");
+  if (key == nullptr) {
+    throw GroupException("Cannot put metadata; Key cannot be null");
+  }
 
   // Check if value type is ANY
-  if (value_type == Datatype::ANY)
-    throw GroupStatusException("Cannot put metadata; Value type cannot be ANY");
+  if (value_type == Datatype::ANY) {
+    throw GroupException("Cannot put metadata; Value type cannot be ANY");
+  }
 
   metadata_.put(key, value_type, value_num, value);
 }
@@ -412,21 +463,25 @@ void Group::get_metadata(
     uint32_t* value_num,
     const void** value) {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException("Cannot get metadata; Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot get metadata; Group is not open");
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
-    throw GroupStatusException(
+  if (query_type_ != QueryType::READ) {
+    throw GroupException(
         "Cannot get metadata; Group was not opened in read mode");
+  }
 
   // Check if key is null
-  if (key == nullptr)
-    throw GroupStatusException("Cannot get metadata; Key cannot be null");
+  if (key == nullptr) {
+    throw GroupException("Cannot get metadata; Key cannot be null");
+  }
 
   // Load group metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     load_metadata();
+  }
 
   metadata_.get(key, value_type, value_num, value);
 }
@@ -439,56 +494,65 @@ void Group::get_metadata(
     uint32_t* value_num,
     const void** value) {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException("Cannot get metadata; Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot get metadata; Group is not open");
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
-    throw GroupStatusException(
+  if (query_type_ != QueryType::READ) {
+    throw GroupException(
         "Cannot get metadata; Group was not opened in read mode");
+  }
 
   // Load group metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     load_metadata();
+  }
 
   metadata_.get(index, key, key_len, value_type, value_num, value);
 }
 
 uint64_t Group::get_metadata_num() {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException(
-        "Cannot get number of metadata; Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot get number of metadata; Group is not open");
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
-    throw GroupStatusException(
+  if (query_type_ != QueryType::READ) {
+    throw GroupException(
         "Cannot get number of metadata; Group was not opened in read mode");
+  }
 
   // Load group metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     load_metadata();
+  }
 
   return metadata_.num();
 }
 
 std::optional<Datatype> Group::metadata_type(const char* key) {
   // Check if group is open
-  if (!is_open_)
-    throw GroupStatusException("Cannot get metadata; Group is not open");
+  if (!is_open_) {
+    throw GroupException("Cannot get metadata; Group is not open");
+  }
 
   // Check mode
-  if (query_type_ != QueryType::READ)
-    throw GroupStatusException(
+  if (query_type_ != QueryType::READ) {
+    throw GroupException(
         "Cannot get metadata; Group was not opened in read mode");
+  }
 
   // Check if key is null
-  if (key == nullptr)
-    throw GroupStatusException("Cannot get metadata; Key cannot be null");
+  if (key == nullptr) {
+    throw GroupException("Cannot get metadata; Key cannot be null");
+  }
 
   // Load group metadata, if not loaded yet
-  if (!metadata_loaded_)
+  if (!metadata_loaded_) {
     load_metadata();
+  }
 
   return metadata_.metadata_type(key);
 }
@@ -523,7 +587,7 @@ const Config& Group::config() const {
 
 void Group::set_config(Config config) {
   if (is_open()) {
-    throw GroupStatusException("[set_config] Cannot set config; Group is open");
+    throw GroupException("[set_config] Cannot set config; Group is open");
   }
   config_.inherit(config);
 }
@@ -549,32 +613,39 @@ void Group::mark_member_for_addition(
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot add member; Group is not open");
+    throw GroupException("Cannot add member; Group is not open");
+  }
+
+  if (remote_ && relative) {
+    // Relative URIs are supported in the capnp serialization format, but the
+    // REST server has not yet implemented the logic.
+    throw GroupException(
+        "Cannot add member; Remote groups do not support members with relative "
+        "URIs");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
-        "Cannot get member; Group was not opened in write or modify_exclusive "
+    throw GroupException(
+        "Cannot add member; Group was not opened in write or modify_exclusive "
         "mode");
   }
   group_details_->mark_member_for_addition(
-      group_member_uri, relative, name, storage_manager_);
+      resources_, group_member_uri, relative, name);
 }
 
 void Group::mark_member_for_removal(const std::string& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException(
-        "Cannot mark member for removal; Group is not open");
+    throw GroupException("Cannot mark member for removal; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in write or modify_exclusive "
         "mode");
   }
@@ -617,12 +688,12 @@ uint64_t Group::member_count() const {
   std::lock_guard<std::mutex> lck(mtx_);
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member count; Group is not open");
+    throw GroupException("Cannot get member count; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -635,12 +706,12 @@ tuple<std::string, ObjectType, optional<std::string>> Group::member_by_index(
 
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member by index; Group is not open");
+    throw GroupException("Cannot get member by index; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -653,12 +724,12 @@ Group::member_by_name(const std::string& name) {
 
   // Check if group is open
   if (!is_open_) {
-    throw GroupStatusException("Cannot get member by name; Group is not open");
+    throw GroupException("Cannot get member by name; Group is not open");
   }
 
   // Check mode
   if (query_type_ != QueryType::READ) {
-    throw GroupStatusException(
+    throw GroupException(
         "Cannot get member; Group was not opened in read mode");
   }
 
@@ -715,9 +786,10 @@ std::string Group::dump(
 void Group::load_metadata() {
   if (remote_) {
     auto rest_client = resources_.rest_client();
-    if (rest_client == nullptr)
-      throw GroupStatusException(
+    if (rest_client == nullptr) {
+      throw GroupException(
           "Cannot load metadata; remote group with no REST client.");
+    }
     throw_if_not_ok(
         rest_client->post_group_metadata_from_rest(group_uri_, this));
   } else {

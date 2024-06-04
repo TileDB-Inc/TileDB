@@ -43,6 +43,7 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
@@ -81,10 +82,10 @@ void GroupDetails::delete_member(const shared_ptr<GroupMember> group_member) {
 }
 
 void GroupDetails::mark_member_for_addition(
+    ContextResources& resources,
     const URI& group_member_uri,
     const bool& relative,
-    std::optional<std::string>& name,
-    StorageManager* storage_manager) {
+    std::optional<std::string>& name) {
   std::lock_guard<std::mutex> lck(mtx_);
   URI absolute_group_member_uri = group_member_uri;
   if (relative) {
@@ -92,8 +93,7 @@ void GroupDetails::mark_member_for_addition(
         group_uri_.join_path(group_member_uri.to_string());
   }
   ObjectType type = ObjectType::INVALID;
-  throw_if_not_ok(
-      storage_manager->object_type(absolute_group_member_uri, &type));
+  throw_if_not_ok(object_type(resources, absolute_group_member_uri, &type));
   if (type == ObjectType::INVALID) {
     throw GroupDetailsException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +

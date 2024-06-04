@@ -39,6 +39,7 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/auxiliary.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -51,6 +52,8 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
+#include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -172,6 +175,102 @@ const URI& Array::array_uri_serialized() const {
 
 const EncryptionKey* Array::encryption_key() const {
   return opened_array_->encryption_key();
+}
+
+Status Array::create(
+    ContextResources& resources,
+    const URI& array_uri,
+    const shared_ptr<ArraySchema>& array_schema,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (array_schema == nullptr) {
+    throw ArrayException("Cannot create array; Empty array schema");
+  }
+
+  // Check if array exists
+  if (is_array(resources, array_uri)) {
+    throw ArrayException(
+        "Cannot create array; Array '" + array_uri.to_string() +
+        "' already exists");
+  }
+
+  std::lock_guard<std::mutex> lock{object_mtx};
+  array_schema->set_array_uri(array_uri);
+  array_schema->generate_uri();
+  array_schema->check(resources.config());
+
+  // Create array directory
+  throw_if_not_ok(resources.vfs().create_dir(array_uri));
+
+  // Create array schema directory
+  URI array_schema_dir_uri =
+      array_uri.join_path(constants::array_schema_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+
+  // Create the enumerations directory inside the array schema directory
+  URI array_enumerations_uri =
+      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_enumerations_uri));
+
+  // Create commit directory
+  URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_commit_uri));
+
+  // Create fragments directory
+  URI array_fragments_uri =
+      array_uri.join_path(constants::array_fragments_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_fragments_uri));
+
+  // Create array metadata directory
+  URI array_metadata_uri =
+      array_uri.join_path(constants::array_metadata_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_metadata_uri));
+
+  // Create fragment metadata directory
+  URI array_fragment_metadata_uri =
+      array_uri.join_path(constants::array_fragment_meta_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
+
+  // Create dimension label directory
+  URI array_dimension_labels_uri =
+      array_uri.join_path(constants::array_dimension_labels_dir_name);
+  throw_if_not_ok(resources.vfs().create_dir(array_dimension_labels_uri));
+
+  // Get encryption key from config
+  Status st;
+  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
+    bool found = false;
+    std::string encryption_key_from_cfg =
+        resources.config().get("sm.encryption_key", &found);
+    assert(found);
+    std::string encryption_type_from_cfg =
+        resources.config().get("sm.encryption_type", &found);
+    assert(found);
+    auto&& [st_enc, etc] = encryption_type_enum(encryption_type_from_cfg);
+    throw_if_not_ok(st_enc);
+    EncryptionType encryption_type_cfg = etc.value();
+
+    EncryptionKey encryption_key_cfg;
+    if (encryption_key_from_cfg.empty()) {
+      throw_if_not_ok(
+          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+    } else {
+      throw_if_not_ok(encryption_key_cfg.set_key(
+          encryption_type_cfg,
+          (const void*)encryption_key_from_cfg.c_str(),
+          static_cast<uint32_t>(encryption_key_from_cfg.size())));
+    }
+    st = store_array_schema(resources, array_schema, encryption_key_cfg);
+  } else {
+    st = store_array_schema(resources, array_schema, encryption_key);
+  }
+
+  if (!st.ok()) {
+    throw_if_not_ok(resources.vfs().remove_dir(array_uri));
+    return st;
+  }
+
+  return Status::Ok();
 }
 
 // Used in Consolidator
@@ -520,11 +619,8 @@ Status Array::close() {
     } else {
       if (query_type_ == QueryType::WRITE ||
           query_type_ == QueryType::MODIFY_EXCLUSIVE) {
-        st = opened_array_->metadata().store(
+        opened_array_->metadata().store(
             resources_, array_uri_, *encryption_key());
-        if (!st.ok()) {
-          throw StatusException(st);
-        }
       } else if (
           query_type_ != QueryType::READ && query_type_ != QueryType::DELETE &&
           query_type_ != QueryType::UPDATE) {

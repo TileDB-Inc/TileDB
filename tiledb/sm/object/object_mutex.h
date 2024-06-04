@@ -1,11 +1,11 @@
 /**
- * @file compile_utils_main.cc
+ * @file object_mutex.h
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,33 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file declares an object mutex.
  */
 
-#include "../bounded_buffer.h"
-#include "../print_types.h"
-#include "../range_join.h"
-#include "../spinlock.h"
-#include "../traits.h"
-#include "tiledb/common/util/arrow_proxy.h"
+#ifndef TILEDB_OBJECT_MUTEX_H
+#define TILEDB_OBJECT_MUTEX_H
 
-int main() {
-}
+#include <mutex>
+
+namespace tiledb::sm {
+
+/**
+ * There was previously a mutex member variable in `StorageManagerCanonical`
+ * for providing thread-safety upon the creation of TileDB objects. This header
+ * defines a standalone mutex to preserve this legacy behavior. The mutex is
+ * intended to act as an interim solution as APIs are migrated out of
+ * `StorageManagerCanonical`, but will likely eventually be adopted to protect
+ * the atomicity of all object operations.
+ *
+ * @section Maturity
+ * Once the migration of APIs out of `StorageManagerCanonical` is complete,
+ * an audit should be done to determine the true merit of this header.
+ */
+extern std::mutex object_mtx;
+
+}  // namespace tiledb::sm
+
+#endif  // TILEDB_OBJECT_MUTEX_H

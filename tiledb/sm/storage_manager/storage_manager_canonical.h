@@ -55,32 +55,22 @@
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
 class Array;
-class OpenedArray;
 class ArrayDirectory;
 class ArraySchema;
 class ArraySchemaEvolution;
-class Buffer;
 class Consolidator;
 class EncryptionKey;
-class FragmentMetadata;
-class FragmentInfo;
-class GroupDetails;
-class Metadata;
-class MemoryTracker;
 class Query;
 class RestClient;
 
 enum class EncryptionType : uint8_t;
-enum class ObjectType : uint8_t;
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManagerCanonical {
@@ -146,19 +136,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Creates a TileDB array storing its schema.
-   *
-   * @param array_uri The URI of the array to be created.
-   * @param array_schema The array schema.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_create(
-      const URI& array_uri,
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
-  /**
    * Evolve a TileDB array schema and store its new schema.
    *
    * @param array_dir The ArrayDirectory object used to retrieve the
@@ -200,31 +177,6 @@ class StorageManagerCanonical {
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
-
-  /**
-   * Creates a TileDB group.
-   *
-   * @param group The URI of the group to be created.
-   * @return Status
-   */
-  Status group_create(const std::string& group);
-
-  /**
-   * If the storage manager was configured with a REST server, return the
-   * client instance. Else, return nullptr.
-   */
-  inline RestClient* rest_client() const {
-    return resources_.rest_client().get();
-  }
-
-  /** Removes a TileDB object (group, array). */
-  Status object_remove(const char* path) const;
-
-  /**
-   * Renames a TileDB object (group, array). If
-   * `new_path` exists, `new_path` will be overwritten.
-   */
-  Status object_move(const char* old_path, const char* new_path) const;
 
   /**
    * Creates a new object iterator for the input path. The iteration
@@ -299,15 +251,6 @@ class StorageManagerCanonical {
       ObjectType* type,
       bool* has_next);
 
-  /**
-   * Returns the tiledb object type
-   *
-   * @param uri Path to TileDB object resource
-   * @param type The ObjectType to be retrieved.
-   * @return Status
-   */
-  Status object_type(const URI& uri, ObjectType* type) const;
-
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
 
@@ -330,23 +273,9 @@ class StorageManagerCanonical {
    */
   Status set_tag(const std::string& key, const std::string& value);
 
-  /**
-   * Stores an array schema into persistent storage.
-   *
-   * @param array_schema The array metadata to be stored.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_array_schema(
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
-
-  /** Returns the internal logger object. */
-  shared_ptr<Logger> logger() const;
 
   /**
    * Consolidates the metadata of a group into a single file.
@@ -422,9 +351,6 @@ class StorageManagerCanonical {
 
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
-
-  /** Mutex for providing thread-safety upon creating TileDB objects. */
-  std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;

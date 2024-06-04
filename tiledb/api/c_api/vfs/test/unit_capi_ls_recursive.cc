@@ -38,9 +38,9 @@
 
 using namespace tiledb::test;
 
-// Currently only local, S3 and Azure is supported for VFS::ls_recursive.
+// Currently only local, S3, Azure and GCS are supported for VFS::ls_recursive.
 // TODO: LocalFsTest currently fails. Fix and re-enable.
-using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest>;
+using TestBackends = std::tuple</*LocalFsTest,*/ S3Test, AzureTest, GCSTest>;
 
 TEMPLATE_LIST_TEST_CASE(
     "C API: ls_recursive callback", "[vfs][ls-recursive]", TestBackends) {

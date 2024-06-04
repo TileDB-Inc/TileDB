@@ -161,8 +161,8 @@ class VFSExperimental {
    * be included in the results and false otherwise. If no inclusion predicate
    * is provided, all results are returned.
    *
-   * Currently only local filesystem, S3 and Azure is supported, and the `path`
-   * must be a valid URI for one of those filesystems.
+   * Currently only local filesystem, S3, Azure and GCS are supported, and the
+   * `path` must be a valid URI for one of those filesystems.
    *
    * @code{.c}
    * VFSExperimental::LsInclude predicate = [](std::string_view path,

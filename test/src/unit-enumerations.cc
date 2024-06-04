@@ -2879,7 +2879,7 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
 void EnumerationFx::create_array() {
   auto schema = create_schema();
-  throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
+  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
 }
 
 shared_ptr<Array> EnumerationFx::get_array(QueryType type) {

@@ -187,7 +187,7 @@ void Metadata::serialize(Serializer& serializer) const {
   }
 }
 
-Status Metadata::store(
+void Metadata::store(
     ContextResources& resources,
     const URI& uri,
     const EncryptionKey& encryption_key) {
@@ -199,7 +199,7 @@ Status Metadata::store(
 
   // Do nothing if there are no metadata to write
   if (0 == size_computation_serializer.size()) {
-    return Status::Ok();
+    return;
   }
   auto tile{WriterTile::from_generic(
       size_computation_serializer.size(),
@@ -211,8 +211,6 @@ Status Metadata::store(
 
   // Create a metadata file name
   GenericTileIO::store_data(resources, get_uri(uri), tile, encryption_key);
-
-  return Status::Ok();
 }
 
 void Metadata::del(const char* key) {

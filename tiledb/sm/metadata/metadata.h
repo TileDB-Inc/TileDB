@@ -143,9 +143,8 @@ class Metadata {
    * @param resources The context resources.
    * @param uri The object URI.
    * @param encryption_key The encryption key to use.
-   * @return Status
    */
-  Status store(
+  void store(
       ContextResources& resources,
       const URI& uri,
       const EncryptionKey& encryption_key);
