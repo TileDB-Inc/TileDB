@@ -749,9 +749,9 @@ std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
 #endif
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
-    Status st;
-    std::tie(st, entries) = hdfs_->ls_with_sizes(parent);
+    auto&& [st, entries_optional] = hdfs_->ls_with_sizes(parent);
     throw_if_not_ok(st);
+    entries = *std::move(entries_optional);
 #else
     throw BuiltWithout("HDFS");
 #endif
