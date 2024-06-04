@@ -26,8 +26,8 @@
 
 include(unit_test)
 
-commence(unit_test unit_iterator_facade)
-this_target_sources(
+commence(unit_test iterator_facade)
+    this_target_sources(
         unit_iterator_facade.cc
 )
 conclude(unit_test)

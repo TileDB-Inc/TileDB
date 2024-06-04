@@ -207,7 +207,7 @@ TEST_CASE("sort_zip: mini sort zip view", "[zip_view]") {
 
 TEST_CASE("sort_zip: range sort zip view concepts", "[zip_view]") {
   using VI = std::ranges::iterator_t<std::vector<int>>;
-  using ZI = std::ranges::iterator_t<zip_view<std::vector<int>>>;
+  using ZI = std::ranges::iterator_t<stdx::ranges::zip_view<std::vector<int>>>;
 
   CHECK(std::forward_iterator<VI>);
   CHECK(std::indirectly_movable_storable<VI, VI>);

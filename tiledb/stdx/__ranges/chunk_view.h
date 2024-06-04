@@ -269,7 +269,6 @@ inline constexpr auto chunk = _chunk::_fn{};
 
 namespace stdx::views {
 using _cpo::chunk;
-} // namespace stdx::views
-
+}  // namespace stdx::views
 
 #endif  // TILEDB_CHUNK_VIEW_H

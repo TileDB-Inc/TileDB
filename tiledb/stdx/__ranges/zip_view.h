@@ -344,7 +344,7 @@ inline constexpr auto zip = _zip::_fn{};
 
 namespace stdx::views {
 using _cpo::zip;
-} // namespace stdx::views
+}  // namespace stdx::views
 
 /**
  * Define "swap()" for tuples of references

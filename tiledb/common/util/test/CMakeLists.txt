@@ -26,43 +26,43 @@
 
 include(unit_test)
 
-commence(unit_test unit_alt_var_length_view)
+commence(unit_test alt_var_length_view)
     this_target_sources(
         unit_alt_var_length_view.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_permutation_sort)
+commence(unit_test permutation_sort)
     this_target_sources(
         unit_permutation_sort.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_permutation_view)
+commence(unit_test permutation_view)
     this_target_sources(
         unit_permutation_view.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_proxy_sort)
+commence(unit_test proxy_sort)
     this_target_sources(
         unit_proxy_sort.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_sort_zip)
+commence(unit_test sort_zip)
     this_target_sources(
         unit_sort_zip.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_var_length_util)
+commence(unit_test var_length_util)
     this_target_sources(
         unit_var_length_util.cc
 )
 conclude(unit_test)
 
-commence(unit_test unit_var_length_view)
+commence(unit_test var_length_view)
     this_target_sources(
         unit_var_length_view.cc
 )
