@@ -61,40 +61,28 @@ namespace tiledb::sm {
 /**
  * A class that wraps a POSIX DIR* and closes it when it goes out of scope.
  */
-class UniqueDIR {
+class PosixDIR {
  public:
-  /** Default constructor is deleted. */
-  UniqueDIR() = delete;
-
-  DISABLE_COPY_AND_COPY_ASSIGN(UniqueDIR);
-
-  /** Move constructor. */
-  UniqueDIR(UniqueDIR&& other) noexcept
-      : dir_(std::exchange(other.dir_, nullptr)) {
-  }
-
-  /** Move assignment. */
-  UniqueDIR& operator=(UniqueDIR&& other) noexcept {
-    if (this != &other) {
-      // If the directory does not exist, return nullopt. Otherwise we have an
-      // error.
-      dir_ = std::exchange(other.dir_, nullptr);
-    }
-    return *this;
-  }
+  DISABLE_COPY_AND_COPY_ASSIGN(PosixDIR);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(PosixDIR);
 
   /** Destructor. */
-  ~UniqueDIR() {
-    if (dir_ != nullptr) {
+  ~PosixDIR() {
+    if (dir_.has_value() && dir_.value() != nullptr) {
       // The only possible error is EBADF, which should not happen here.
-      [[maybe_unused]] auto status = closedir(dir_);
+      [[maybe_unused]] auto status = closedir(dir_.value());
       assert(status == 0);
     }
   }
 
   /** Returns the wrapped directory pointer. */
   DIR* get() const {
-    return dir_;
+    return dir_.value();
+  }
+
+  /** Returns if the dir is empty. */
+  bool empty() {
+    return !dir_.has_value();
   }
 
   /**
@@ -105,7 +93,7 @@ class UniqueDIR {
    *     the directory does not exist.
    * @throws IOError an error occurs while opening the directory.
    */
-  static optional<UniqueDIR> open(const std::string& path) {
+  static PosixDIR open(const std::string& path) {
     DIR* dir = opendir(path.c_str());
     if (dir == nullptr) {
       auto last_error = errno;
@@ -115,7 +103,7 @@ class UniqueDIR {
       throw IOError(
           std::string("Cannot open directory; ") + strerror(last_error));
     }
-    return UniqueDIR(dir);
+    return {dir};
   }
 
  private:
@@ -124,13 +112,13 @@ class UniqueDIR {
    *
    * @param dir The directory pointer to wrap.
    */
-  explicit UniqueDIR(DIR* dir)
+  PosixDIR(optional<DIR*> dir = nullopt)
       : dir_(dir) {
     assert(dir != nullptr);
   }
 
   /** The wrapped directory pointer. */
-  DIR* dir_;
+  optional<DIR*> dir_;
 };
 
 Posix::Posix(const Config& config) {
@@ -383,14 +371,14 @@ void Posix::write(
 std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
-  auto dir = UniqueDIR::open(path);
-  if (!dir) {
+  auto dir = PosixDIR::open(path);
+  if (dir.empty()) {
     return {};
   }
 
   std::vector<directory_entry> entries;
 
-  while ((next_path = readdir(dir->get())) != nullptr) {
+  while ((next_path = readdir(dir.get())) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
