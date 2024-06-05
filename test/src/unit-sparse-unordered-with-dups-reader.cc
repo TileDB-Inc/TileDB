@@ -1011,16 +1011,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array = nullptr;
   tiledb_query_t* query = nullptr;
 
-  // Read accordingly
-  int buffer_size;
-  if (one_frag) {
-    buffer_size = 100;
-  } else {
-    buffer_size = 16100;
-  }
-
-  int coords_r[buffer_size];
-  int data_r[buffer_size];
+  int coords_r[16100];
+  int data_r[16100];
   uint64_t coords_r_size = sizeof(coords_r);
   uint64_t data_r_size = sizeof(data_r);
   auto rc = 0;
@@ -1041,7 +1033,14 @@ TEST_CASE_METHOD(
     CHECK(rc == TILEDB_OK);
 
     // Validate the results.
-    for (int i = 0; i < buffer_size; i++) {
+    int elements_to_check;
+    if (one_frag) {
+      elements_to_check = 100;
+    } else {
+      elements_to_check = 16100;
+    }
+
+    for (int i = 0; i < elements_to_check; i++) {
       CHECK(coords_r[i] == i + 1);
       CHECK(data_r[i] == i + 1);
     }
