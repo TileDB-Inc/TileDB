@@ -583,6 +583,13 @@ if (TILEDB_TESTS)
   endif()
 
   add_subdirectory(test/regression)
+
+  # Add custom target 'check'
+  add_custom_target(check
+    COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
+    DEPENDS tests
+    USES_TERMINAL
+  )
 endif()
 
 # -------------------------------------------------------
