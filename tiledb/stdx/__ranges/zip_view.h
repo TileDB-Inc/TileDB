@@ -346,6 +346,10 @@ namespace stdx::views {
 using _cpo::zip;
 }  // namespace stdx::views
 
+namespace stdx::ranges::views {
+using _cpo::zip;
+}  // namespace stdx::ranges::views
+
 /**
  * Define "swap()" for tuples of references
  *
