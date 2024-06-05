@@ -39,6 +39,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class ContextException : public StatusException {
+ public:
+  explicit ContextException(const std::string& message)
+      : StatusException("Context", message) {
+  }
+};
+
 static common::Logger::Level get_log_level(const Config& config);
 
 /* ****************************** */
@@ -234,7 +241,7 @@ void Context::init_loggers(const Config& config) {
   throw_if_not_ok(config.get<uint32_t>("config.logging_level", &level, &found));
   assert(found);
   if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
-    throw std::invalid_argument(
+    throw ContextException(
         "Cannot set logger level; Unsupported level:" + std::to_string(level) +
         "set in configuration");
   }
