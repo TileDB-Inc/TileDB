@@ -45,7 +45,6 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -302,8 +301,8 @@ class Array {
 
   /** Constructor. */
   Array(
+      ContextResources& resources,
       const URI& array_uri,
-      StorageManager* storage_manager,
       ConsistencyController& cc = controller());
 
   /** Destructor. */
@@ -1109,9 +1108,6 @@ class Array {
    * `nullopt`, use the current time.
    */
   optional<uint64_t> new_component_timestamp_;
-
-  /** TileDB storage manager. */
-  StorageManager* storage_manager_;
 
   /** TileDB Context Resources. */
   ContextResources& resources_;

@@ -57,7 +57,6 @@
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
@@ -87,8 +86,8 @@ ConsistencyController& controller() {
 /* ********************************* */
 
 Array::Array(
+    ContextResources& resources,
     const URI& array_uri,
-    StorageManager* storage_manager,
     ConsistencyController& cc)
     : array_uri_(array_uri)
     , array_uri_serialized_(array_uri)
@@ -98,11 +97,10 @@ Array::Array(
     , user_set_timestamp_end_(nullopt)
     , array_dir_timestamp_end_(UINT64_MAX)
     , new_component_timestamp_(nullopt)
-    , storage_manager_(storage_manager)
-    , resources_(storage_manager_->resources())
+    , resources_(resources)
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
-    , memory_tracker_(storage_manager->resources().create_memory_tracker())
+    , memory_tracker_(resources_.create_memory_tracker())
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }
