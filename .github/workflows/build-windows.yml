@@ -131,10 +131,6 @@ jobs:
         uses: TheMrMilchmann/setup-msvc-dev@v3
         with:
           arch: x64
-          # By default Visual Studio 2022 chooses the earliest installed toolset
-          # version for the main build and vcpkg chooses the latest. Force it to
-          # use the latest (14.39 currently).
-          toolset: ${{ matrix.os == 'windows-2022' && '14.39' || '' }}
       # This must happen after checkout, because checkout would remove the directory.
       - name: Install Ninja
         uses: seanmiddleditch/gha-setup-ninja@v4
