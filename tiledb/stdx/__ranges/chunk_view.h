@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/stdx/bits/chunk_view.h
+ * @file tiledb/stdx/__ranges/chunk_view.h
  *
  * @section LICENSE
  *
@@ -29,7 +29,9 @@
  *
  * Simplified implementation of a chunk view for C++23.  This is a view
  * that splits a view into subranges of uniform length, as given by the
- * constructor argument num_chunks.
+ * constructor argument `chunk_size`.  The size of the last chunk may be less
+ * than or equal to `chunk_size`.  The number of chunks is determined by
+ * `detail::div_ceil`.
  *
  * @todo Implement the full C++23 chunk view (or wait for C++23 or reference
  * implementation without GPL)

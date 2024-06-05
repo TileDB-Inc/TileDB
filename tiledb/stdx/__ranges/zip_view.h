@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/stdx/bits/zip_view.h
+ * @file tiledb/stdx/__ranges/zip_view.h
  *
  * @section LICENSE
  *
