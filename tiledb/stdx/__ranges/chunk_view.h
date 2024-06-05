@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/stdx/bits/chunk_view.h
+ * @file tiledb/stdx/__ranges/chunk_view.h
  *
  * @section LICENSE
  *
@@ -29,7 +29,9 @@
  *
  * Simplified implementation of a chunk view for C++23.  This is a view
  * that splits a view into subranges of uniform length, as given by the
- * constructor argument num_chunks.
+ * constructor argument `chunk_size`.  The size of the last chunk may be less
+ * than or equal to `chunk_size`.  The number of chunks is determined by
+ * `detail::div_ceil`.
  *
  * @todo Implement the full C++23 chunk view (or wait for C++23 or reference
  * implementation without GPL)
@@ -44,9 +46,11 @@
 
 namespace stdx::ranges {
 
-/** Helper template, API from cppreference */
+namespace detail {
+
+/** Helper template, API from cppreference, sans "__" prefix */
 template <class I>
-constexpr I __div_ceil(I num, I denom) {
+constexpr I div_ceil(I num, I denom) {
   // In cppreference:
   // I r = num / denom;
   // if (num % denom)
@@ -54,6 +58,7 @@ constexpr I __div_ceil(I num, I denom) {
   // return r;
   return (num + denom - 1) / denom;  // This should be a little faster
 }
+}  // namespace detail
 
 /**
  * A view that splits a view into subranges of uniform length, as delimited by
@@ -142,7 +147,7 @@ class chunk_view : public std::ranges::view_interface<chunk_view<R>> {
 
   /** Return the number of chunks in the chunk view */
   constexpr auto size() const {
-    return __div_ceil(data_end_ - data_begin_, chunk_size_);
+    return detail::div_ceil(data_end_ - data_begin_, chunk_size_);
   }
 
  private:
@@ -271,4 +276,7 @@ namespace stdx::views {
 using _cpo::chunk;
 }  // namespace stdx::views
 
+namespace stdx::ranges::views {
+using _cpo::chunk;
+}  // namespace stdx::ranges::views
 #endif  // TILEDB_CHUNK_VIEW_H

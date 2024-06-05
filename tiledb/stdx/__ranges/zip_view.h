@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/stdx/bits/zip_view.h
+ * @file tiledb/stdx/__ranges/zip_view.h
  *
  * @section LICENSE
  *
@@ -345,6 +345,10 @@ inline constexpr auto zip = _zip::_fn{};
 namespace stdx::views {
 using _cpo::zip;
 }  // namespace stdx::views
+
+namespace stdx::ranges::views {
+using _cpo::zip;
+}  // namespace stdx::ranges::views
 
 /**
  * Define "swap()" for tuples of references

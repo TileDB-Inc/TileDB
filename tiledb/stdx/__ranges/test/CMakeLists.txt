@@ -1,5 +1,5 @@
 #
-# tiledb/stdx__ranges/test/CMakeLists.txt
+# tiledb/stdx/__ranges/test/CMakeLists.txt
 #
 # The MIT License
 #
