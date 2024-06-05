@@ -52,6 +52,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class ArraySchema;
+class ArraySchemaEvolution;
 class SchemaEvolution;
 class FragmentMetadata;
 class MemoryTracker;
@@ -362,6 +363,21 @@ class Array {
       std::unordered_map<std::string, shared_ptr<ArraySchema>>&& all_schemas) {
     opened_array_->set_array_schemas_all(std::move(all_schemas));
   }
+
+  /**
+   * Evolve a TileDB array schema and store its new schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The uri of the array whose schema is to be evolved.
+   * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  static Status evolve_array_schema(
+      ContextResources& resources,
+      const URI& array_uri,
+      ArraySchemaEvolution* array_schema,
+      const EncryptionKey& encryption_key);
 
   /** Returns the array URI. */
   const URI& array_uri() const;

@@ -165,6 +165,71 @@ OpenedArray::load_delete_and_update_conditions() {
   return {Status::Ok(), conditions, update_values};
 }
 
+Status Array::evolve_array_schema(
+    ContextResources& resources,
+    const URI& array_uri,
+    ArraySchemaEvolution* schema_evolution,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (schema_evolution == nullptr) {
+    throw ArrayException("Cannot evolve array; Empty schema evolution");
+  }
+
+  if (array_uri.is_tiledb()) {
+    return resources.rest_client()->post_array_schema_evolution_to_rest(
+        array_uri, schema_evolution);
+  }
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      resources,
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
+  // Check if array exists
+  if (!is_array(resources, array_uri)) {
+    throw ArrayException(
+        "Cannot evolve array; '" + array_uri.to_string() + "' does not exist");
+  }
+
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key, resources.ephemeral_memory_tracker());
+
+  // Load required enumerations before evolution.
+  auto enmr_names = schema_evolution->enumeration_names_to_extend();
+  if (enmr_names.size() > 0) {
+    std::unordered_set<std::string> enmr_path_set;
+    for (auto name : enmr_names) {
+      enmr_path_set.insert(array_schema->get_enumeration_path_name(name));
+    }
+    std::vector<std::string> enmr_paths;
+    for (auto path : enmr_path_set) {
+      enmr_paths.emplace_back(path);
+    }
+
+    auto loaded_enmrs = array_dir.load_enumerations_from_paths(
+        enmr_paths, encryption_key, resources.create_memory_tracker());
+
+    for (auto enmr : loaded_enmrs) {
+      array_schema->store_enumeration(enmr);
+    }
+  }
+
+  // Evolve schema
+  auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
+
+  Status st =
+      store_array_schema(resources, array_schema_evolved, encryption_key);
+  if (!st.ok()) {
+    throw ArrayException(
+        "Cannot evolve schema;  Not able to store evolved array schema.");
+  }
+
+  return Status::Ok();
+}
+
 const URI& Array::array_uri() const {
   return array_uri_;
 }
