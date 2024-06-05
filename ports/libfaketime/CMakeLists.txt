@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.12)
+cmake_minimum_required(VERSION 3.20)
 
 project(faketime VERSION 0.9.10)
 
@@ -21,16 +21,9 @@ target_include_directories(${PROJECT_NAME}
 
 file(GLOB_RECURSE PUBLIC_HEADERS "src/*.h")
 
-target_sources(
-        ${PROJECT_NAME}
-        PUBLIC
-        FILE_SET HEADERS
-        BASE_DIRS src
-        FILES ${PUBLIC_HEADERS}
-)
+install(FILES ${PUBLIC_HEADERS} DESTINATION include)
 
 install(TARGETS ${PROJECT_NAME}
-        FILE_SET HEADERS
         RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
         LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
         ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
