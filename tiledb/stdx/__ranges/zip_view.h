@@ -1,5 +1,5 @@
 /**
- * @file   zip_view.h
+ * @file   tiledb/stdx/bits/zip_view.h
  *
  * @section LICENSE
  *
@@ -58,8 +58,8 @@
 #define TILEDB_ZIP_VIEW_H
 
 #include <ranges>
-#include "iterator_facade.h"
-
+#include "tiledb/common/util/detail/iterator_facade.h"
+namespace stdx::ranges {
 /*
  * @todo Should this take viewable ranges?  E.g.,
  * template <std::ranges::viewable_range... Rngs>
@@ -323,7 +323,7 @@ class zip_view : public std::ranges::view_interface<zip_view<Rngs...>> {
   /** The ranges being zipped */
   std::tuple<Rngs...> ranges_;
 };
-
+}  // namespace stdx::ranges
 /**
  * Define "zip()" cpo for creating zip views
  */
@@ -333,13 +333,18 @@ struct _fn {
   // template <std::ranges::viewable_range... T>
   template <std::ranges::random_access_range... T>
   auto constexpr operator()(T&&... t) const {
-    return zip_view<T...>{std::forward<T>(t)...};
+    return stdx::ranges::zip_view<T...>{std::forward<T>(t)...};
   }
 };
 }  // namespace _zip
+
 inline namespace _cpo {
 inline constexpr auto zip = _zip::_fn{};
 }  // namespace _cpo
+
+namespace stdx::views {
+using _cpo::zip;
+}  // namespace stdx::views
 
 /**
  * Define "swap()" for tuples of references

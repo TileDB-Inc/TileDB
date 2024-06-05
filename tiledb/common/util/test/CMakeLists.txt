@@ -1,9 +1,9 @@
 #
-# tiledb/common/util/CMakeLists.txt
+# tiledb/common/util/test/CMakeLists.txt
 #
 # The MIT License
 #
-# Copyright (c) 2021 TileDB, Inc.
+# Copyright (c) 2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -26,31 +26,54 @@
 
 include(unit_test)
 
-commence(unit_test util)
-this_target_sources(
+commence(unit_test alt_var_length_view)
+    this_target_sources(
         unit_alt_var_length_view.cc
-        unit_iterator_facade.cc
+)
+conclude(unit_test)
+
+commence(unit_test permutation_sort)
+    this_target_sources(
         unit_permutation_sort.cc
+)
+conclude(unit_test)
+
+commence(unit_test permutation_view)
+    this_target_sources(
         unit_permutation_view.cc
+)
+conclude(unit_test)
+
+commence(unit_test proxy_sort)
+    this_target_sources(
         unit_proxy_sort.cc
+)
+conclude(unit_test)
+
+commence(unit_test sort_zip)
+    this_target_sources(
         unit_sort_zip.cc
+)
+conclude(unit_test)
+
+commence(unit_test var_length_util)
+    this_target_sources(
         unit_var_length_util.cc
+)
+conclude(unit_test)
+
+commence(unit_test var_length_view)
+    this_target_sources(
         unit_var_length_view.cc
-        unit_zip_view.cc
 )
 conclude(unit_test)
 
 commence(unit_test block_view)
-this_target_sources(
+    this_target_sources(
         unit_block_view.cc
 )
 conclude(unit_test)
 
-commence(unit_test chunk_view)
-this_target_sources(
-        unit_chunk_view.cc
-)
-conclude(unit_test)
 
 commence(unit_test view_combo)
 this_target_sources(

@@ -34,7 +34,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include "tiledb/common/util/alt_var_length_view.h"
-#include "tiledb/common/util/zip_view.h"
+#include "tiledb/stdx/__ranges/zip_view.h"
 
 TEST_CASE("sort_zip: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
@@ -207,7 +207,7 @@ TEST_CASE("sort_zip: mini sort zip view", "[zip_view]") {
 
 TEST_CASE("sort_zip: range sort zip view concepts", "[zip_view]") {
   using VI = std::ranges::iterator_t<std::vector<int>>;
-  using ZI = std::ranges::iterator_t<zip_view<std::vector<int>>>;
+  using ZI = std::ranges::iterator_t<stdx::ranges::zip_view<std::vector<int>>>;
 
   CHECK(std::forward_iterator<VI>);
   CHECK(std::indirectly_movable_storable<VI, VI>);

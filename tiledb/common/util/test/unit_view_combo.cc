@@ -40,10 +40,10 @@
 #include <vector>
 
 #include <tiledb/common/util/alt_var_length_view.h>
-#include <tiledb/common/util/chunk_view.h>
 #include <tiledb/common/util/permutation_view.h>
 #include <tiledb/common/util/var_length_view.h>
-#include <tiledb/common/util/zip_view.h>
+#include <tiledb/stdx/__ranges/chunk_view.h>
+#include <tiledb/stdx/__ranges/zip_view.h>
 
 #include <tiledb/common/util/print_types.h>
 
@@ -177,11 +177,11 @@ TEST_CASE(
   };
 
   auto u = var_length_view(q, p);
-  auto a = chunk_view(u, 2);
+  auto a = stdx::ranges::chunk_view(u, 2);
   check_chunk_view(a);
 
   auto v = alt_var_length_view(q, p);
-  auto b = chunk_view(v, 2);
+  auto b = stdx::ranges::chunk_view(v, 2);
   check_chunk_view(b);
 }
 
@@ -190,7 +190,7 @@ TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
   auto w = var_length_view(q, p);
   auto x = permutation_view(w, o);
 
-  auto a = chunk_view(x, 2);
+  auto a = stdx::ranges::chunk_view(x, 2);
   CHECK(std::ranges::equal(
       a[0],
       std::vector<std::vector<double>>{
@@ -209,7 +209,7 @@ TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
 
 TEST_CASE("view combo: permute a chunk view", "[view_combo]") {
   auto w = alt_var_length_view(q, p);
-  auto x = chunk_view(w, 2);
+  auto x = stdx::ranges::chunk_view(w, 2);
   auto a = permutation_view(x, l);
 
   CHECK(std::ranges::equal(
@@ -245,8 +245,103 @@ TEST_CASE("view combo: permute a chunk view", "[view_combo]") {
       subrange_equal{}));
 }
 
+// #define print_types
+
+#include <tiledb/common/util/print_types.h>
 TEST_CASE("view combo: chunk a zip view", "[view_combo]") {
+  auto z = zip(q, r, r);
+
+  // Verify what zip_view returns
+  CHECK(std::get<0>(z[0]) == 21.0);
+  CHECK(std::get<0>(z[1]) == 20.0);
+  CHECK(std::get<0>(z[2]) == 19.0);
+  CHECK(std::get<0>(z[3]) == 18.0);
+  CHECK(std::get<1>(z[0]) == 1.0);
+  CHECK(std::get<1>(z[1]) == 2.0);
+  CHECK(std::get<1>(z[2]) == 3.0);
+  CHECK(std::get<1>(*(z.begin() + 3)) == 4.0);
+
+  CHECK(std::ranges::equal(
+      z,
+      std::vector<std::tuple<double, double, double>>{
+          {21.0, 1.0, 1.0},
+          {20.0, 2.0, 2.0},
+          {19.0, 3.0, 3.0},
+          {18.0, 4.0, 4.0},
+          {17.0, 5.0, 5.0},
+          {16.0, 6.0, 6.0},
+          {15.0, 7.0, 7.0},
+          {14.0, 8.0, 8.0},
+          {13.0, 9.0, 9.0},
+          {12.0, 10.0, 10.0},
+      }));
+
+  auto a = stdx::ranges::chunk_view(z, 2);
+  CHECK(std::ranges::size(a) == 5);
+  CHECK(std::ranges::size(a[0]) == 2);
+
+  CHECK(std::get<0>(a[0][0]) == 21.0);
+  CHECK(std::get<0>(a[0][1]) == 20.0);
+  CHECK(std::get<1>(a[0][0]) == 1.0);
+  CHECK(std::get<1>(a[0][1]) == 2.0);
+  CHECK(std::get<0>(a[1][0]) == 19.0);
+  CHECK(std::get<0>(a[1][1]) == 18.0);
+  CHECK(std::get<1>(a[1][0]) == 3.0);
+  CHECK(std::get<1>(a[1][1]) == 4.0);
+
+  auto&& [b, c] = a[0];
+  auto&& [d, e] = a[1];
+
+  auto&& [f, g, n] = b[0];
+  auto&& [h, i, o] = b[1];
+  auto&& [j, k, p] = c[0];
+  auto&& [l, m, q] = c[1];
+
+  CHECK(std::get<0>(b[0]) == 21.0);
+  CHECK(std::get<1>(b[0]) == 1.0);
+  CHECK(std::get<2>(b[0]) == 1.0);
+  CHECK(std::get<0>(b[1]) == 20.0);
+  CHECK(std::get<1>(b[1]) == 2.0);
+  CHECK(std::get<2>(b[1]) == 2.0);
+  CHECK(std::get<0>(b[1]) == 20.0);
+  CHECK(std::get<1>(b[1]) == 2.0);
+  CHECK(std::get<1>(b[1]) == 2.0);
+  CHECK(std::get<0>(c[0]) == 19.0);
+  CHECK(std::get<1>(c[0]) == 3.0);
+  CHECK(std::get<0>(c[1]) == 18.0);
+  CHECK(std::get<1>(c[1]) == 4.0);
+  CHECK(f == 21.0);
+  CHECK(h == 20.0);
+  CHECK(j == 19.0);
+  CHECK(g == 1.0);
+  CHECK(q == 4.0);
+
+  CHECK(b[0] == std::tuple{21.0, 1.0, 1.0});
+  CHECK(b[1] == std::tuple{20.0, 2.0, 2.0});
+  CHECK(c[0] == std::tuple{19.0, 3.0, 3.0});
+  CHECK(c[1] == std::tuple{18.0, 4.0, 4.0});
+  CHECK(c[2] == std::tuple{17.0, 5.0, 5.0});
+
+  // a[0] is the same as the first two elements of z
+  CHECK(std::ranges::equal(
+      a[0],
+      std::vector<std::tuple<double, double, double>>{
+          {21.0, 1.0, 1.0},
+          {20.0, 2.0, 2.0},
+      }));
+
+  CHECK(std::equal(b, b + 1, std::begin(z)));
+  CHECK(std::equal(c, c + 1, std::begin(z) + 2));
 }
 
 TEST_CASE("view combo: zip a chunk view", "[view_combo]") {
+  auto c = chunk(q, 2);
+  auto d = chunk(r, 3);
+
+  auto z = zip(c, d, d);
+  CHECK(size(z) == 4);  // 3, 3, 3, 1
+
+  CHECK(std::ranges::equal(std::get<0>(z[0]), std::vector<double>{21.0, 20.0}));
+  CHECK(std::ranges::equal(
+      std::get<1>(z[0]), std::vector<double>{1.0, 2.0, 3.0}));
 }

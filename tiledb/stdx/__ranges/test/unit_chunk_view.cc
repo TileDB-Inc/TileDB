@@ -31,7 +31,7 @@
  */
 
 #include <catch2/catch_all.hpp>
-#include "tiledb/common/util/chunk_view.h"
+#include "tiledb/stdx/__ranges/chunk_view.h"
 
 TEST_CASE("chunk_view: null test", "[chunk_view][null test]") {
   REQUIRE(true);
@@ -39,7 +39,7 @@ TEST_CASE("chunk_view: null test", "[chunk_view][null test]") {
 
 // Test that the chunk_view satisfies the expected concepts
 TEST_CASE("chunk_view: Range concepts", "[chunk_view][concepts]") {
-  using test_type = chunk_view<std::vector<double>>;
+  using test_type = stdx::ranges::chunk_view<std::vector<double>>;
 
   CHECK(std::ranges::range<test_type>);
   CHECK(!std::ranges::borrowed_range<test_type>);
@@ -60,7 +60,7 @@ TEST_CASE("chunk_view: Range concepts", "[chunk_view][concepts]") {
 
 // Test that the chunk_view iterators satisfy the expected concepts
 TEST_CASE("chunk_view: Iterator concepts", "[chunk_view][concepts]") {
-  using test_type = chunk_view<std::vector<double>>;
+  using test_type = stdx::ranges::chunk_view<std::vector<double>>;
   using test_type_iterator = std::ranges::iterator_t<test_type>;
   using test_type_const_iterator = std::ranges::iterator_t<const test_type>;
 
@@ -84,7 +84,7 @@ TEST_CASE("chunk_view: Iterator concepts", "[chunk_view][concepts]") {
 
 // Test that the chunk_view value_type satisfies the expected concepts
 TEST_CASE("chunk_view: value_type concepts", "[chunk_view][concepts]") {
-  using test_type = chunk_view<std::vector<double>>;
+  using test_type = stdx::ranges::chunk_view<std::vector<double>>;
   CHECK(std::ranges::range<test_type>);
 
   using test_iterator_type = std::ranges::iterator_t<test_type>;
@@ -359,8 +359,8 @@ TEST_CASE("chunk_view: Iterators - 1", "[chunk_view]") {
 
 TEST_CASE("chunk_view: Iterators", "[chunk_view]") {
   for (auto&& v : {v10, v11, v12, v13, v14, v15, v16}) {
-    for (long i = 1; i <= v.size(); ++i) {
-      auto a = _cpo::chunk(v, i);
+    for (size_t i = 1; i <= v.size(); ++i) {
+      auto a = _cpo::chunk(v, (long)i);
       auto b = a.begin();
       CHECK(b->size() == (unsigned)i);
     }

@@ -1,5 +1,5 @@
 /**
- * @file   permutation_view.h
+ * @file   tiledb/common/util/permutation_view.h
  *
  * @section LICENSE
  *
@@ -50,8 +50,8 @@
 
 #include <cassert>
 #include <ranges>
-#include "iterator_facade.h"
 #include "proxy_sort.h"
+#include "tiledb/common/util/detail/iterator_facade.h"
 
 /**
  * A view that creates a permutation of the underlying view, as determined by

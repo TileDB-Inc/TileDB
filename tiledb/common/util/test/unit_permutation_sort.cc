@@ -40,7 +40,7 @@
 #include "tiledb/common/util/permutation_view.h"
 #include "tiledb/common/util/proxy_sort.h"
 #include "tiledb/common/util/var_length_view.h"
-#include "tiledb/common/util/zip_view.h"
+#include "tiledb/stdx/__ranges/zip_view.h"
 
 TEST_CASE("permutation_sort: Null test", "[permutation_sort][null_test]") {
   REQUIRE(true);
