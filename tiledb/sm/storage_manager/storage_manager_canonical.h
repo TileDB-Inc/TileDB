@@ -263,19 +263,6 @@ class StorageManagerCanonical {
   }
 
   /**
-   * Consolidates the metadata of a group into a single file.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     consolidated.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status group_metadata_consolidate(
-      const char* group_name, const Config& config);
-
-  /**
    * Vacuums the consolidated metadata files of a group.
    *
    * @param group_name The name of the group whose metadata will be
