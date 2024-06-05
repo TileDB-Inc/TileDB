@@ -82,8 +82,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
-    , shape_to_expand_(
-          make_shared<const Shape>(memory_tracker, constants::shape_version)) {
+    , shape_to_expand_(nullptr) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -181,7 +180,9 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
   }
 
   // Get expanded shape
-  schema->expand_shape(shape_to_expand_);
+  if (shape_to_expand_) {
+    schema->expand_shape(shape_to_expand_);
+  }
 
   return schema;
 }

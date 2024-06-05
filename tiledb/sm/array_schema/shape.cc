@@ -36,6 +36,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/random/random_label.h"
 #include "tiledb/sm/array_schema/array_schema.h"
+#include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -164,11 +165,22 @@ bool Shape::covered(shared_ptr<const Shape> expanded_shape) const {
   return covered(expanded_shape->ndrectangle()->get_ndranges());
 }
 
-bool Shape::covered(const NDRange& expanded_ndrange) const {
+bool Shape::covered(const NDRange& ndranges) const {
   switch (type_) {
     case ShapeType::NDRECTANGLE: {
-      return ndrectangle_->domain()->covered(
-          this->ndrectangle()->get_ndranges(), expanded_ndrange);
+      for (unsigned d = 0; d < ndranges.size(); ++d) {
+        auto dim = ndrectangle_->domain()->dimension_ptr(d);
+        if (dim->var_size() && ndranges[d].empty()) {
+          // This is a free pass for array schema var size dimensions for
+          // which we don't support specifying a domain.
+          continue;
+        }
+
+        if (!dim->covered(ndrectangle_->get_range(d), ndranges[d])) {
+          return false;
+        }
+      }
+      return true;
     }
     default: {
       throw std::runtime_error(

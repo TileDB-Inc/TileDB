@@ -52,7 +52,9 @@
 
 using namespace tiledb::sm;
 
-struct ShapeFx {
+template <typename T>
+class ShapeFx {
+ public:
   ShapeFx();
   ~ShapeFx();
 
@@ -70,6 +72,8 @@ struct ShapeFx {
 
   shared_ptr<ArraySchema> create_schema();
 
+  shared_ptr<ArraySchema> create_schema_var();
+
   void create_array(shared_ptr<ArraySchema> schema);
   shared_ptr<Array> get_array(QueryType type);
   shared_ptr<ArrayDirectory> get_array_directory();
@@ -86,7 +90,8 @@ struct ShapeFx {
   EncryptionKey enc_key_;
 };
 
-ShapeFx::ShapeFx()
+template <class T>
+ShapeFx<T>::ShapeFx()
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
     , uri_("shape_array")
     , ctx_(cfg_) {
@@ -95,11 +100,13 @@ ShapeFx::ShapeFx()
   memory_tracker_ = tiledb::test::create_test_memory_tracker();
 }
 
-ShapeFx::~ShapeFx() {
+template <class T>
+ShapeFx<T>::~ShapeFx() {
   rm_array();
 }
 
-void ShapeFx::rm_array() {
+template <class T>
+void ShapeFx<T>::rm_array() {
   bool is_dir;
   throw_if_not_ok(ctx_.resources().vfs().is_dir(uri_, &is_dir));
   if (is_dir) {
@@ -107,7 +114,8 @@ void ShapeFx::rm_array() {
   }
 }
 
-shared_ptr<const Shape> ShapeFx::create_shape(
+template <class T>
+shared_ptr<const Shape> ShapeFx<T>::create_shape(
     const NDRange& ranges,
     shared_ptr<const ArraySchema> schema,
     shared_ptr<NDRectangle> ndrectangle,
@@ -130,7 +138,8 @@ shared_ptr<const Shape> ShapeFx::create_shape(
   return shape;
 }
 
-void ShapeFx::check_storage_serialization(
+template <class T>
+void ShapeFx<T>::check_storage_serialization(
     shared_ptr<ArraySchema> schema, const NDRange& ranges) {
   auto shape = create_shape(ranges, schema);
 
@@ -144,7 +153,8 @@ void ShapeFx::check_storage_serialization(
   check_shapes_equal(deserialized, shape);
 }
 
-void ShapeFx::check_shapes_equal(
+template <class T>
+void ShapeFx<T>::check_shapes_equal(
     shared_ptr<const Shape> s1, shared_ptr<const Shape> s2) {
   REQUIRE(s1->empty() == s2->empty());
   REQUIRE(s1->type() == s2->type());
@@ -153,7 +163,8 @@ void ShapeFx::check_shapes_equal(
       s1->ndrectangle()->get_ndranges() == s2->ndrectangle()->get_ndranges());
 }
 
-storage_size_t ShapeFx::calculate_serialized_size(
+template <class T>
+storage_size_t ShapeFx<T>::calculate_serialized_size(
     shared_ptr<const Shape> shape) {
   storage_size_t num_bytes = 0;
 
@@ -172,13 +183,20 @@ storage_size_t ShapeFx::calculate_serialized_size(
 
   auto ndrectangle = shape->ndrectangle();
   for (auto& range : ndrectangle->get_ndranges()) {
+    if (range.var_size()) {
+      // Range length
+      num_bytes += sizeof(uint64_t);
+      // Minimum value length
+      num_bytes += sizeof(uint64_t);
+    }
     num_bytes += range.size();
   }
 
   return num_bytes;
 }
 
-shared_ptr<WriterTile> ShapeFx::serialize_to_tile(
+template <class T>
+shared_ptr<WriterTile> ShapeFx<T>::serialize_to_tile(
     shared_ptr<const Shape> shape) {
   SizeComputationSerializer size_serializer;
   shape->serialize(size_serializer);
@@ -190,7 +208,8 @@ shared_ptr<WriterTile> ShapeFx::serialize_to_tile(
   return tile;
 }
 
-shared_ptr<ArraySchema> ShapeFx::create_schema() {
+template <class T>
+shared_ptr<ArraySchema> ShapeFx<T>::create_schema() {
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
 
@@ -216,47 +235,99 @@ shared_ptr<ArraySchema> ShapeFx::create_schema() {
   return schema;
 }
 
-void ShapeFx::create_array(shared_ptr<ArraySchema> schema) {
+template <class T>
+shared_ptr<ArraySchema> ShapeFx<T>::create_schema_var() {
+  auto schema =
+      make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
+  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
+  auto dim = make_shared<Dimension>(
+      HERE(), "dim1", Datatype::STRING_ASCII, memory_tracker_);
+  auto dim2 = make_shared<Dimension>(
+      HERE(), "dim2", Datatype::STRING_ASCII, memory_tracker_);
+  throw_if_not_ok(dom->add_dimension(dim));
+  throw_if_not_ok(dom->add_dimension(dim2));
+
+  throw_if_not_ok(schema->set_domain(dom));
+
+  auto attr1 = make_shared<Attribute>(HERE(), "attr1", Datatype::INT32);
+
+  throw_if_not_ok(schema->add_attribute(attr1));
+
+  return schema;
+}
+
+template <class T>
+void ShapeFx<T>::create_array(shared_ptr<ArraySchema> schema) {
   throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
 }
 
-shared_ptr<Array> ShapeFx::get_array(QueryType type) {
+template <class T>
+shared_ptr<Array> ShapeFx<T>::get_array(QueryType type) {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
   throw_if_not_ok(array->open(type, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   return array;
 }
 
-shared_ptr<ArrayDirectory> ShapeFx::get_array_directory() {
+template <class T>
+shared_ptr<ArrayDirectory> ShapeFx<T>::get_array_directory() {
   return make_shared<ArrayDirectory>(
       HERE(), ctx_.resources(), uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 }
 
-shared_ptr<ArraySchema> ShapeFx::get_array_schema_latest() {
+template <class T>
+shared_ptr<ArraySchema> ShapeFx<T>::get_array_schema_latest() {
   auto array_dir = get_array_directory();
   return array_dir->load_array_schema_latest(enc_key_, memory_tracker_);
 }
 
-TEST_CASE_METHOD(ShapeFx, "Create Empty Shape", "[shape][create][empty]") {
+TEST_CASE_METHOD(
+    ShapeFx<int32_t>, "Create Empty Shape", "[shape][create][empty]") {
   auto schema = create_schema();
   auto shape =
       create_shape(schema->shared_domain()->domain(), schema, nullptr, true);
 }
 
-TEST_CASE_METHOD(ShapeFx, "Create Shape", "[shape][create]") {
-  auto schema = create_schema();
-  auto shape = create_shape(schema->shared_domain()->domain(), schema);
+using FixedVarTypes = std::tuple<int32_t, std::string>;
+TEMPLATE_LIST_TEST_CASE_METHOD(
+    ShapeFx, "Create Shape", "[shape][create]", FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 1000};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
+  auto shape = this->create_shape({r, r}, schema);
 }
 
-TEST_CASE_METHOD(
-    ShapeFx, "Check disk serialization works", "[shape][serialization]") {
-  auto schema = create_schema();
-  auto shape = create_shape(schema->shared_domain()->domain(), schema);
-
-  check_storage_serialization(schema, schema->shared_domain()->domain());
-}
-
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
+    "Check disk serialization works",
+    "[shape][serialization]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 1000};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
+
+  this->check_storage_serialization(schema, {r, r});
+}
+
+TEST_CASE_METHOD(
+    ShapeFx<int32_t>,
     "Check array create throws if shape exceeds array schema domain bounds",
     "[shape][create][out-of-schema-domain]") {
   auto schema = create_schema();
@@ -285,20 +356,25 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(create_array(schema), matcher);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
-    "Check array create throws if no all dims are set",
-    "[shape][create][all-dims]") {
-  auto schema = create_schema();
+    "Check array create throws if not all dims are set",
+    "[shape][create][all-dims]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 1000};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
-  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  auto dim =
-      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
-  int range[2] = {0, 1000};
-  throw_if_not_ok(dim->set_domain(range));
-  throw_if_not_ok(dom->add_dimension(dim));
-
-  auto shape = create_shape(dom->domain(), schema);
+  auto shape = this->create_shape({r}, schema);
 
   // It's fine if an incorrect shape doesn't throw here, sanity checks on
   // schema are performed during array creation when we know schema domain
@@ -308,29 +384,32 @@ TEST_CASE_METHOD(
   auto matcher = Catch::Matchers::ContainsSubstring(
       "schema have a non-equal number of dimensions");
 
-  REQUIRE_THROWS_WITH(create_array(schema), matcher);
+  REQUIRE_THROWS_WITH(this->create_array(schema), matcher);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Check array create throws if shape has an empty range",
-    "[shape][create][no-empty-ranges]") {
-  auto schema = create_schema();
-
-  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  auto dim =
-      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
-  int range[2] = {0, 1000};
-  throw_if_not_ok(dim->set_domain(range));
-  throw_if_not_ok(dom->add_dimension(dim));
+    "[shape][create][no-empty-ranges]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 1000};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
   auto ndrectangle =
-      make_shared<NDRectangle>(memory_tracker_, schema->shared_domain());
-  std::vector<int32_t> rdata = {1, 2};
-  ndrectangle->set_range_for_name(
-      Range(rdata.data(), 2 * sizeof(int32_t)), "dim1");
+      make_shared<NDRectangle>(this->memory_tracker_, schema->shared_domain());
+  ndrectangle->set_range_for_name(r, "dim1");
 
-  auto shape = create_shape(dom->domain(), schema, ndrectangle);
+  auto shape = this->create_shape({r, r}, schema, ndrectangle);
 
   // It's fine if an incorrect shape doesn't throw here, sanity checks on
   // schema are performed during array creation when we know schema domain
@@ -340,11 +419,11 @@ TEST_CASE_METHOD(
   auto matcher = Catch::Matchers::ContainsSubstring(
       "no range specified for dimension idx");
 
-  REQUIRE_THROWS_WITH(create_array(schema), matcher);
+  REQUIRE_THROWS_WITH(this->create_array(schema), matcher);
 }
 
 TEST_CASE_METHOD(
-    ShapeFx,
+    ShapeFx<int32_t>,
     "Check NDRectangle verifies bounds for dim indices",
     "[shape][ndrectangle][index-bounds]") {
   auto schema = create_schema();
@@ -364,53 +443,70 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(ndrectangle->get_range_for_name("nonexistent"), matcher2);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Check writing/reading shape to/from array end to end",
-    "[shape][create][end-to-end-shape]") {
-  auto schema = create_schema();
+    "[shape][create][end-to-end-shape]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {10, 59};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
-  auto dom = make_shared<Domain>(HERE(), memory_tracker_);
-  auto dim =
-      make_shared<Dimension>(HERE(), "dim1", Datatype::INT32, memory_tracker_);
-  int range[2] = {10, 50};
-  throw_if_not_ok(dim->set_domain(range));
-  auto dim2 =
-      make_shared<Dimension>(HERE(), "dim2", Datatype::INT32, memory_tracker_);
-  throw_if_not_ok(dim2->set_domain(range));
-  throw_if_not_ok(dom->add_dimension(dim));
-  throw_if_not_ok(dom->add_dimension(dim2));
-
-  auto shape = create_shape(dom->domain(), schema);
+  auto shape = this->create_shape({r, r}, schema);
 
   schema->set_shape(shape);
 
-  create_array(schema);
+  this->create_array(schema);
 
-  auto opened_array = get_array(QueryType::READ);
+  auto opened_array = this->get_array(QueryType::READ);
 
-  check_shapes_equal(shape, opened_array->array_schema_latest().get_shape());
+  this->check_shapes_equal(
+      shape, opened_array->array_schema_latest().get_shape());
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Schema evolution, evolving to bigger shape works",
-    "[shape][evolution][simple]") {
-  auto schema = create_schema();
+    "[shape][evolution][simple]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  std::vector<TestType> rdata_expanded;
+  Range r_expanded;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+    rdata_expanded = {"ABB", "ZZZ"};
+    r_expanded = Range(rdata_expanded[0], rdata_expanded[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 50};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+    rdata_expanded = {1, 55};
+    r_expanded = Range(rdata_expanded.data(), 2 * sizeof(int32_t));
+  }
 
-  std::vector<int32_t> rdata = {1, 50};
-  auto r = Range(rdata.data(), 2 * sizeof(int32_t));
-  auto shape = create_shape({r, r}, schema);
+  auto shape = this->create_shape({r, r}, schema);
   schema->set_shape(shape);
-  create_array(schema);
-  auto opened_array = get_array(QueryType::READ);
+  this->create_array(schema);
+  auto opened_array = this->get_array(QueryType::READ);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
   auto orig_schema = opened_array->array_schema_latest_ptr();
 
-  std::vector<int32_t> rdata_expanded = {1, 55};
-  auto r_expanded = Range(rdata_expanded.data(), 2 * sizeof(int32_t));
-  auto shape_expanded = create_shape({r_expanded, r_expanded}, orig_schema);
+  auto shape_expanded =
+      this->create_shape({r_expanded, r_expanded}, orig_schema);
 
   // Check shape expansion doesn't throw
   ase->expand_shape(shape_expanded);
@@ -418,33 +514,48 @@ TEST_CASE_METHOD(
 
   // Persist evolved schema and read it back, check it shows the correct
   // rectangle
-  throw_if_not_ok(
-      ctx_.storage_manager()->array_evolve_schema(uri_, ase.get(), enc_key_));
+  throw_if_not_ok(this->ctx_.storage_manager()->array_evolve_schema(
+      this->uri_, ase.get(), this->enc_key_));
 
   // Read it back
-  auto new_schema = get_array_schema_latest();
+  auto new_schema = this->get_array_schema_latest();
 
   REQUIRE(
       new_schema->get_shape()->ndrectangle()->get_ndranges() ==
       NDRange{{r_expanded, r_expanded}});
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Schema evolution, contracting shape throws",
-    "[shape][evolution][contraction]") {
-  auto schema = create_schema();
+    "[shape][evolution][contraction]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  std::vector<TestType> rdata_contracted;
+  Range r_contracted;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+    rdata_contracted = {"ABD", "ZZZ"};
+    r_contracted = Range(rdata_contracted[0], rdata_contracted[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 50};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+    rdata_contracted = {1, 45};
+    r_contracted = Range(rdata_contracted.data(), 2 * sizeof(int32_t));
+  }
 
-  std::vector<int32_t> rdata = {1, 50};
-  auto r = Range(rdata.data(), 2 * sizeof(int32_t));
-  auto shape = create_shape({r, r}, schema);
+  auto shape = this->create_shape({r, r}, schema);
   schema->set_shape(shape);
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  std::vector<int32_t> rdata_contracted = {1, 45};
-  auto r_contracted = Range(rdata_contracted.data(), 2 * sizeof(int32_t));
-  auto shape_contracted = create_shape({r_contracted, r_contracted}, schema);
+  auto shape_contracted =
+      this->create_shape({r_contracted, r_contracted}, schema);
 
   // It's fine if a contracted shape doesn't throw here, sanity checks are
   // performed when evolution is applied and the schema is available.
@@ -455,7 +566,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ShapeFx,
+    ShapeFx<int32_t>,
     "Schema evolution, empty shape evolution not allowed",
     "[shape][evolution][empty_new]") {
   auto schema = create_schema();
@@ -469,17 +580,27 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(ase->expand_shape(empty_shape), matcher);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Check you can evolve from an empty shape schema",
-    "[shape][evolution][empty_existing]") {
-  auto schema = create_schema();
+    "[shape][evolution][empty_existing]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 50};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  std::vector<int32_t> rdata = {1, 50};
-  auto r = Range(rdata.data(), 2 * sizeof(int32_t));
-  auto shape = create_shape({r, r}, schema);
+  auto shape = this->create_shape({r, r}, schema);
 
   ase->expand_shape(shape);
 
@@ -487,7 +608,7 @@ TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ShapeFx,
+    ShapeFx<int32_t>,
     "Check array evolution throws if new shape exceeds array schema domain "
     "bounds",
     "[shape][evolution][out-of-schema-domain]") {
@@ -506,17 +627,27 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(ase->evolve_schema(schema), matcher);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Check array evolution throws if not all dims are set for the new shape",
-    "[shape][evolution][all-dims]") {
-  auto schema = create_schema();
+    "[shape][evolution][all-dims]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 50};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  std::vector<int32_t> rdata = {1, 50};
-  auto r = Range(rdata.data(), 2 * sizeof(int32_t));
-  auto shape = create_shape({r}, schema);
+  auto shape = this->create_shape({r}, schema);
 
   ase->expand_shape(shape);
 
@@ -525,20 +656,30 @@ TEST_CASE_METHOD(
   REQUIRE_THROWS_WITH(ase->evolve_schema(schema), matcher);
 }
 
-TEST_CASE_METHOD(
+TEMPLATE_LIST_TEST_CASE_METHOD(
     ShapeFx,
     "Check array evolution throws if new shape has an empty range",
-    "[shape][evolution][no-empty-ranges]") {
-  auto schema = create_schema();
+    "[shape][evolution][no-empty-ranges]",
+    FixedVarTypes) {
+  shared_ptr<ArraySchema> schema;
+  std::vector<TestType> rdata;
+  Range r;
+  if constexpr (std::is_same_v<TestType, std::string>) {
+    schema = this->create_schema_var();
+    rdata = {"ABC", "ZYZ"};
+    r = Range(rdata[0], rdata[1]);
+  } else {
+    schema = this->create_schema();
+    rdata = {1, 50};
+    r = Range(rdata.data(), 2 * sizeof(int32_t));
+  }
 
-  auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
+  auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
   auto ndrectangle =
-      make_shared<NDRectangle>(memory_tracker_, schema->shared_domain());
-  std::vector<int32_t> rdata = {1, 2};
-  ndrectangle->set_range_for_name(
-      Range(rdata.data(), 2 * sizeof(int32_t)), "dim1");
-  auto shape = create_shape({}, schema, ndrectangle);
+      make_shared<NDRectangle>(this->memory_tracker_, schema->shared_domain());
+  ndrectangle->set_range_for_name(r, "dim1");
+  auto shape = this->create_shape({}, schema, ndrectangle);
 
   ase->expand_shape(shape);
 
