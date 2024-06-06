@@ -205,13 +205,14 @@ bool CurrentDomain::covered(const NDRange& ndranges) const {
   }
 }
 
-void CurrentDomain::check_schema_sanity(const ArraySchema& schema) const {
+void CurrentDomain::check_schema_sanity(
+    shared_ptr<Domain> schema_domain) const {
   switch (type_) {
     case CurrentDomainType::NDRECTANGLE: {
       auto& ndranges = ndrectangle_->get_ndranges();
 
       // Dim nums match
-      if (schema.dim_num() != ndranges.size()) {
+      if (schema_domain->dim_num() != ndranges.size()) {
         throw std::logic_error(
             "The array current_domain and the array schema have a non-equal "
             "number of dimensions");
@@ -227,7 +228,7 @@ void CurrentDomain::check_schema_sanity(const ArraySchema& schema) const {
       }
 
       // Nothing is out of bounds
-      if (!this->covered(schema.domain().domain())) {
+      if (!this->covered(schema_domain->domain())) {
         throw std::logic_error(
             "This array current_domain has ranges past the boundaries of the "
             "array "

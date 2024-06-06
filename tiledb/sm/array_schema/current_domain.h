@@ -177,9 +177,9 @@ class CurrentDomain {
    * Perform various checks to ensure the current_domain is coherent with the
    * array schema
    *
-   * @param schema The array schema
+   * @param schema_domain The array schema domain
    */
-  void check_schema_sanity(const ArraySchema& schema) const;
+  void check_schema_sanity(shared_ptr<Domain> schema_domain) const;
 
  private:
   /* ********************************* */

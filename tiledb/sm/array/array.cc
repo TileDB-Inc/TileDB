@@ -267,7 +267,8 @@ Status Array::create(
 
   // Check current_domain is specified correctly if set
   if (!array_schema->get_current_domain()->empty()) {
-    array_schema->get_current_domain()->check_schema_sanity(*array_schema);
+    array_schema->get_current_domain()->check_schema_sanity(
+        array_schema->shared_domain());
   }
 
   // Create array directory

@@ -1832,7 +1832,7 @@ void ArraySchema::expand_current_domain(
         "current_domain object.");
   }
 
-  new_current_domain->check_schema_sanity(*this);
+  new_current_domain->check_schema_sanity(this->shared_domain());
 
   current_domain_ = new_current_domain;
 }
