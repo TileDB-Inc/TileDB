@@ -68,7 +68,7 @@ shared_ptr<const CurrentDomain> CurrentDomain::deserialize(
     throw std::runtime_error(
         "Invalid current_domain API version on disk. '" +
         std::to_string(disk_version) +
-        "' is newer than your current library current_domain version '" +
+        "' is newer than the current library current_domain version '" +
         std::to_string(constants::current_domain_version) + "'");
   }
 
@@ -113,7 +113,7 @@ void CurrentDomain::serialize(Serializer& serializer) const {
     }
     default: {
       throw std::runtime_error(
-          "The current_domain you're trying to serialize has an unsupported "
+          "The current_domain to serialize has an unsupported "
           "type " +
           current_domain_type_str(type_));
     }
@@ -144,7 +144,7 @@ void CurrentDomain::dump(FILE* out) const {
     }
     default: {
       throw std::runtime_error(
-          "The current_domain you're trying to dump as string has an "
+          "The current_domain to dump as string has an "
           "unsupported " +
           std::string("type ") + current_domain_type_str(type_));
     }
@@ -238,8 +238,7 @@ void CurrentDomain::check_schema_sanity(const ArraySchema& schema) const {
     }
     default: {
       throw std::runtime_error(
-          "You used a CurrentDomain object which has " +
-          std::string("an unsupported") +
+          "The CurrentDomain object has " + std::string("an unsupported") +
           "type: " + current_domain_type_str(type_));
     }
   }

@@ -388,8 +388,8 @@ void ArraySchemaEvolution::expand_current_domain(
 
   if (current_domain->empty()) {
     throw ArraySchemaEvolutionException(
-        "Unable to expand the array current_domain, you specified an empty new "
-        "current_domain");
+        "Unable to expand the array current_domain, the new current_domain "
+        "specified is empty");
   }
 
   std::lock_guard<std::mutex> lock(mtx_);

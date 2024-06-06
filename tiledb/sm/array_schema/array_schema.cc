@@ -1819,7 +1819,7 @@ void ArraySchema::expand_current_domain(
     shared_ptr<const CurrentDomain> new_current_domain) {
   if (new_current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument you specified for current_domain expansion is nullptr.");
+        "The argument specified for current_domain expansion is nullptr.");
   }
 
   // Check that the new current_domain expands the existing one and not shrinks
@@ -1845,7 +1845,7 @@ void ArraySchema::set_current_domain(
     shared_ptr<const CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument you specified for setting the current_domain on the "
+        "The argument specified for setting the current_domain on the "
         "schema is "
         "nullptr.");
   }
