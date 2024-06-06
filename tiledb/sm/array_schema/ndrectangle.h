@@ -36,7 +36,7 @@
 #include <iostream>
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/enums/shape_type.h"
+#include "tiledb/sm/enums/current_domain_type.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
@@ -44,7 +44,7 @@ namespace tiledb::sm {
 class MemoryTracker;
 class Domain;
 
-/** Defines a NDRectangle shape */
+/** Defines a NDRectangle */
 class NDRectangle {
  public:
   /* ********************************* */
@@ -102,6 +102,16 @@ class NDRectangle {
       Deserializer& deserializer,
       shared_ptr<MemoryTracker> memory_tracker,
       shared_ptr<Domain> domain);
+
+  /**
+   * Deserialize a ndrange
+   *
+   * @param deserializer The deserializer to deserialize from.
+   * @param domain The domain from array schema
+   * @return A new NDRange.
+   */
+  static NDRange deserialize_ndranges(
+      Deserializer& deserializer, shared_ptr<Domain> domain);
 
   /**
    * Serializes the NDRectangle into a buffer.
@@ -162,15 +172,13 @@ class NDRectangle {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
-  /**
-   * The memory tracker of the ndrectangle.
-   */
+  /** The memory tracker of the ndrectangle. */
   shared_ptr<MemoryTracker> memory_tracker_;
 
   /** Per dimension ranges of the rectangle */
   NDRange range_data_;
 
-  /** Per dimension ranges of the rectangle */
+  /** Array Schema domain  */
   shared_ptr<Domain> domain_;
 
   /* ********************************* */

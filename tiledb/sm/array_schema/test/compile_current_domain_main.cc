@@ -1,5 +1,5 @@
 /**
- * @file compile_shape_main.cc
+ * @file compile_current_domain_main.cc
  *
  * @section LICENSE
  *
@@ -26,11 +26,11 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/sm/array_schema/shape.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 
 int main(int, char*[]) {
   try {
-    tiledb::sm::Shape(nullptr);
+    tiledb::sm::CurrentDomain(nullptr);
   } catch (...) {
   }
   return 0;

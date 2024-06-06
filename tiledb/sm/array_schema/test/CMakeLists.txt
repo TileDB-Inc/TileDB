@@ -38,7 +38,7 @@ commence(unit_test array_schema)
         unit_dimension_label.cc
         unit_domain_data.cc
         unit_tile_domain.cc
-        unit-shape.cc
+        unit_current_domain.cc
     )
     this_target_link_libraries(tiledb_test_support_lib)
 conclude(unit_test)

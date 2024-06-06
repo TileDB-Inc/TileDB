@@ -37,11 +37,11 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
-#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -106,7 +106,8 @@ ArraySchema::ArraySchema(
     , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumeration_path_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
-    , shape_(make_shared<Shape>(memory_tracker, constants::shape_version)) {
+    , current_domain_(make_shared<CurrentDomain>(
+          memory_tracker, constants::current_domain_version)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -143,7 +144,7 @@ ArraySchema::ArraySchema(
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters,
-    shared_ptr<const Shape> shape,
+    shared_ptr<const CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
@@ -169,7 +170,7 @@ ArraySchema::ArraySchema(
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
     , coords_filters_(coords_filters)
-    , shape_(shape) {
+    , current_domain_(current_domain) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
   }
@@ -260,7 +261,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
-    , shape_(array_schema.shape_)
+    , current_domain_(array_schema.current_domain_)
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -743,9 +744,9 @@ void ArraySchema::dump(FILE* out) const {
     label->dump(out);
   }
 
-  // Print out array shape
+  // Print out array current_domain
   fprintf(out, "\n");
-  shape_->dump(out);
+  current_domain_->dump(out);
 }
 
 Status ArraySchema::has_attribute(
@@ -813,7 +814,7 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
-// shape
+// current_domain
 void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
@@ -882,8 +883,8 @@ void ArraySchema::serialize(Serializer& serializer) const {
     serializer.write(enmr_uri.data(), enmr_uri_size);
   }
 
-  // Serialize array shape information
-  shape_->serialize(serializer);
+  // Serialize array current_domain information
+  current_domain_->serialize(serializer);
 }
 
 Layout ArraySchema::tile_order() const {
@@ -1435,12 +1436,13 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
     }
   }
 
-  // Load the array shape, if this is an older array, it'll get by default
-  // an empty shape object
-  auto shape =
-      make_shared<const Shape>(memory_tracker, constants::shape_version);
-  if (version >= constants::shape_min_format_version) {
-    shape = Shape::deserialize(deserializer, memory_tracker, domain);
+  // Load the array current_domain, if this is an older array, it'll get by
+  // default an empty current_domain object
+  auto current_domain = make_shared<const CurrentDomain>(
+      memory_tracker, constants::current_domain_version);
+  if (version >= constants::current_domain_min_format_version) {
+    current_domain =
+        CurrentDomain::deserialize(deserializer, memory_tracker, domain);
   }
 
   // Validate
@@ -1492,7 +1494,7 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       FilterPipeline(
           coords_filters,
           version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64),
-      shape,
+      current_domain,
       memory_tracker);
 }
 
@@ -1813,37 +1815,42 @@ void ArraySchema::generate_uri(
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
 }
 
-void ArraySchema::expand_shape(shared_ptr<const Shape> new_shape) {
-  if (new_shape == nullptr) {
+void ArraySchema::expand_current_domain(
+    shared_ptr<const CurrentDomain> new_current_domain) {
+  if (new_current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument you specified for shape expansion is nullptr.");
+        "The argument you specified for current_domain expansion is nullptr.");
   }
 
-  // Check that the new shape expands the existing one and not shrinks it
-  // Every shape covers an empty shape.
-  if (!shape_->empty() && !shape_->covered(new_shape)) {
+  // Check that the new current_domain expands the existing one and not shrinks
+  // it Every current_domain covers an empty current_domain.
+  if (!current_domain_->empty() &&
+      !current_domain_->covered(new_current_domain)) {
     throw ArraySchemaException(
-        "The shape of an array can only be expanded, please adjust your new "
-        "shape object.");
+        "The current_domain of an array can only be expanded, please adjust "
+        "your new "
+        "current_domain object.");
   }
 
-  new_shape->check_schema_sanity(*this);
+  new_current_domain->check_schema_sanity(*this);
 
-  shape_ = new_shape;
+  current_domain_ = new_current_domain;
 }
 
-shared_ptr<const Shape> ArraySchema::get_shape() const {
-  return shape_;
+shared_ptr<const CurrentDomain> ArraySchema::get_current_domain() const {
+  return current_domain_;
 }
 
-void ArraySchema::set_shape(shared_ptr<const Shape> shape) {
-  if (shape == nullptr) {
+void ArraySchema::set_current_domain(
+    shared_ptr<const CurrentDomain> current_domain) {
+  if (current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument you specified for setting the shape on the schema is "
+        "The argument you specified for setting the current_domain on the "
+        "schema is "
         "nullptr.");
   }
 
-  shape_ = shape;
+  current_domain_ = current_domain;
 }
 
 }  // namespace tiledb::sm

@@ -39,10 +39,10 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
-#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/compressor.h"
@@ -82,7 +82,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
-    , shape_to_expand_(nullptr) {
+    , current_domain_to_expand_(nullptr) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(
@@ -93,7 +93,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range,
-    shared_ptr<const Shape> shape,
+    shared_ptr<const CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
@@ -105,7 +105,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_drop_(enmrs_to_drop)
     , timestamp_range_(timestamp_range)
-    , shape_to_expand_(shape) {
+    , current_domain_to_expand_(current_domain) {
   for (auto& elem : attrs_to_add) {
     attributes_to_add_map_.insert(elem);
   }
@@ -179,9 +179,9 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
     schema->generate_uri();
   }
 
-  // Get expanded shape
-  if (shape_to_expand_) {
-    schema->expand_shape(shape_to_expand_);
+  // Get expanded current_domain
+  if (current_domain_to_expand_) {
+    schema->expand_current_domain(current_domain_to_expand_);
   }
 
   return schema;
@@ -379,25 +379,28 @@ std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
       timestamp_range_.first, timestamp_range_.second);
 }
 
-void ArraySchemaEvolution::expand_shape(shared_ptr<const Shape> shape) {
-  if (shape == nullptr) {
+void ArraySchemaEvolution::expand_current_domain(
+    shared_ptr<const CurrentDomain> current_domain) {
+  if (current_domain == nullptr) {
     throw ArraySchemaEvolutionException(
-        "Cannot expand the array shape; Input shape is null");
+        "Cannot expand the array current_domain; Input current_domain is null");
   }
 
-  if (shape->empty()) {
+  if (current_domain->empty()) {
     throw ArraySchemaEvolutionException(
-        "Unable to expand the array shape, you specified an empty new shape");
+        "Unable to expand the array current_domain, you specified an empty new "
+        "current_domain");
   }
 
   std::lock_guard<std::mutex> lock(mtx_);
-  shape_to_expand_ = shape;
+  current_domain_to_expand_ = current_domain;
 }
 
-shared_ptr<const Shape> ArraySchemaEvolution::shape_to_expand() const {
+shared_ptr<const CurrentDomain> ArraySchemaEvolution::current_domain_to_expand()
+    const {
   std::lock_guard<std::mutex> lock(mtx_);
 
-  return shape_to_expand_;
+  return current_domain_to_expand_;
 }
 
 /* ****************************** */
@@ -410,7 +413,7 @@ void ArraySchemaEvolution::clear() {
   enumerations_to_add_map_.clear();
   enumerations_to_drop_.clear();
   timestamp_range_ = {0, 0};
-  shape_to_expand_ = nullptr;
+  current_domain_to_expand_ = nullptr;
 }
 
 }  // namespace tiledb::sm

@@ -709,14 +709,14 @@ extern const format_version_t enumerations_min_format_version;
 /** The current Enumerations version. */
 extern const format_version_t enumerations_version;
 
-/** The lowest version supported format version for Shape API. */
-extern const format_version_t shape_min_format_version;
+/** The lowest version supported format version for CurrentDomain API. */
+extern const format_version_t current_domain_min_format_version;
 
-/** The current Shape API version. */
-extern const format_version_t shape_version;
+/** The current CurrentDomain API version. */
+extern const format_version_t current_domain_version;
 
-/** The NDRectangle shape */
-extern const std::string shape_ndrectangle_str;
+/** The NDRectangle current_domain */
+extern const std::string current_domain_ndrectangle_str;
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 extern const uint64_t max_tile_chunk_size;

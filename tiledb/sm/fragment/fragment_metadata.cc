@@ -2160,10 +2160,8 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
   null_non_empty_domain = deserializer.read<char>();
 
   if (null_non_empty_domain == 0) {
-    non_empty_domain_ = std::move(
-        NDRectangle::deserialize(
-            deserializer, memory_tracker_, array_schema_->shared_domain())
-            ->get_ndranges());
+    non_empty_domain_ = NDRectangle::deserialize_ndranges(
+        deserializer, array_schema_->shared_domain());
   }
 
   // Get expanded domain

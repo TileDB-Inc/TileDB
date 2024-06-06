@@ -1,5 +1,5 @@
 /**
- * @file shape_type.h
+ * @file current_domain_type.h
  *
  * @section LICENSE
  *
@@ -27,12 +27,12 @@
  *
  * @section DESCRIPTION
  *
- * This defines the TileDB ShapeType enum that maps to tiledb_shapetype_t
- * C-API enum.
+ * This defines the TileDB CurrentDomainType enum that maps to
+ * tiledb_current_domain_type_t C-API enum.
  */
 
-#ifndef TILEDB_SHAPE_TYPE_H
-#define TILEDB_SHAPE_TYPE_H
+#ifndef TILEDB_CURRENT_DOMAIN_TYPE_H
+#define TILEDB_CURRENT_DOMAIN_TYPE_H
 
 #include <cassert>
 #include "tiledb/common/status.h"
@@ -43,30 +43,33 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** A shape type. */
-enum class ShapeType : uint8_t {
-#define TILEDB_SHAPE_TYPE_ENUM(id) id
+/** A current_domain type. */
+enum class CurrentDomainType : uint8_t {
+#define TILEDB_CURRENT_DOMAIN_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
-#undef TILEDB_SHAPE_TYPE_ENUM
+#undef TILEDB_CURRENT_DOMAIN_TYPE_ENUM
 };
 
-/** Returns the string representation of the input shape type. */
-inline const std::string& shape_type_str(ShapeType shape_type) {
-  switch (shape_type) {
-    case ShapeType::NDRECTANGLE:
-      return constants::shape_ndrectangle_str;
+/** Returns the string representation of the input current_domain type. */
+inline const std::string& current_domain_type_str(
+    CurrentDomainType current_domain_type) {
+  switch (current_domain_type) {
+    case CurrentDomainType::NDRECTANGLE:
+      return constants::current_domain_ndrectangle_str;
     default:
       return constants::empty_str;
   }
 }
 
-/** Returns the shape type given a string representation. */
-inline Status shape_type_enum(
-    const std::string& shape_type_str, ShapeType* shape_type) {
-  if (shape_type_str == constants::shape_ndrectangle_str)
-    *shape_type = ShapeType::NDRECTANGLE;
+/** Returns the current_domain type given a string representation. */
+inline Status current_domain_type_enum(
+    const std::string& current_domain_type_str,
+    CurrentDomainType* current_domain_type) {
+  if (current_domain_type_str == constants::current_domain_ndrectangle_str)
+    *current_domain_type = CurrentDomainType::NDRECTANGLE;
   else {
-    return Status_Error("Invalid ShapeType " + shape_type_str);
+    return Status_Error(
+        "Invalid CurrentDomain type " + current_domain_type_str);
   }
   return Status::Ok();
 }
@@ -74,4 +77,4 @@ inline Status shape_type_enum(
 }  // namespace sm
 }  // namespace tiledb
 
-#endif  // TILEDB_SHAPE_TYPE_H
+#endif  // TILEDB_CURRENT_DOMAIN_TYPE_H

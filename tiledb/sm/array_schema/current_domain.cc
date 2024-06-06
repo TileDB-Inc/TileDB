@@ -1,5 +1,5 @@
 /**
- * @file shape.cc
+ * @file current_domain.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * This file implements class Shape.
+ * This file implements class CurrentDomain.
  */
 
 #include <iostream>
@@ -40,56 +40,64 @@
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
-#include "shape.h"
+#include "current_domain.h"
 
 namespace tiledb::sm {
 
-Shape::Shape(shared_ptr<MemoryTracker> memory_tracker, format_version_t version)
+CurrentDomain::CurrentDomain(
+    shared_ptr<MemoryTracker> memory_tracker, format_version_t version)
     : memory_tracker_(memory_tracker)
     , empty_(true)
     , version_(version) {
 }
 
-shared_ptr<const Shape> Shape::deserialize(
+CurrentDomain::CurrentDomain(
+    shared_ptr<MemoryTracker> memory_tracker,
+    format_version_t version,
+    shared_ptr<const NDRectangle> ndr)
+    : CurrentDomain(memory_tracker, version) {
+  set_ndrectangle(ndr);
+}
+
+shared_ptr<const CurrentDomain> CurrentDomain::deserialize(
     Deserializer& deserializer,
     shared_ptr<MemoryTracker> memory_tracker,
     shared_ptr<Domain> domain) {
   auto disk_version = deserializer.read<uint32_t>();
-  if (disk_version > constants::shape_version) {
+  if (disk_version > constants::current_domain_version) {
     throw std::runtime_error(
-        "Invalid shape API version on disk. '" + std::to_string(disk_version) +
-        "' is newer than your current library shape version '" +
-        std::to_string(constants::shape_version) + "'");
+        "Invalid current_domain API version on disk. '" +
+        std::to_string(disk_version) +
+        "' is newer than your current library current_domain version '" +
+        std::to_string(constants::current_domain_version) + "'");
   }
 
   auto empty = deserializer.read<bool>();
 
-  auto shape = make_shared<Shape>(memory_tracker, disk_version);
   if (empty) {
-    return shape;
+    return make_shared<CurrentDomain>(memory_tracker, disk_version);
   }
 
-  ShapeType type = static_cast<ShapeType>(deserializer.read<uint8_t>());
+  CurrentDomainType type =
+      static_cast<CurrentDomainType>(deserializer.read<uint8_t>());
 
   switch (type) {
-    case ShapeType::NDRECTANGLE: {
+    case CurrentDomainType::NDRECTANGLE: {
       auto ndrectangle =
           NDRectangle::deserialize(deserializer, memory_tracker, domain);
-      shape->set_ndrectangle(ndrectangle);
-      break;
+      return make_shared<CurrentDomain>(
+          memory_tracker, disk_version, ndrectangle);
     }
     default: {
       throw std::runtime_error(
-          "We found an unsupported " + shape_type_str(type) +
-          "array shape type on disk.");
+          "We found an unsupported " + current_domain_type_str(type) +
+          "array current_domain type on disk.");
     }
   }
-
-  return shape;
 }
 
-void Shape::serialize(Serializer& serializer) const {
-  serializer.write<uint32_t>(constants::shape_version);
+void CurrentDomain::serialize(Serializer& serializer) const {
+  serializer.write<uint32_t>(constants::current_domain_version);
   serializer.write<bool>(empty_);
 
   if (empty_) {
@@ -99,24 +107,25 @@ void Shape::serialize(Serializer& serializer) const {
   serializer.write<uint8_t>(static_cast<uint8_t>(type_));
 
   switch (type_) {
-    case ShapeType::NDRECTANGLE: {
+    case CurrentDomainType::NDRECTANGLE: {
       ndrectangle_->serialize(serializer);
       break;
     }
     default: {
       throw std::runtime_error(
-          "The shape you're trying to serialize has an unsupported type " +
-          shape_type_str(type_));
+          "The current_domain you're trying to serialize has an unsupported "
+          "type " +
+          current_domain_type_str(type_));
     }
   }
 }
 
-void Shape::dump(FILE* out) const {
+void CurrentDomain::dump(FILE* out) const {
   if (out == nullptr) {
     out = stdout;
   }
   std::stringstream ss;
-  ss << "### Shape ###" << std::endl;
+  ss << "### CurrentDomain ###" << std::endl;
   ss << "- Version: " << version_ << std::endl;
   ss << "- Empty: " << empty_ << std::endl;
   if (empty_) {
@@ -124,50 +133,54 @@ void Shape::dump(FILE* out) const {
     return;
   }
 
-  ss << "- Type: " << shape_type_str(type_) << std::endl;
+  ss << "- Type: " << current_domain_type_str(type_) << std::endl;
 
   fprintf(out, "%s", ss.str().c_str());
 
   switch (type_) {
-    case ShapeType::NDRECTANGLE: {
+    case CurrentDomainType::NDRECTANGLE: {
       ndrectangle_->dump(out);
       break;
     }
     default: {
       throw std::runtime_error(
-          "The shape you're trying to dump as string has an unsupported " +
-          std::string("type ") + shape_type_str(type_));
+          "The current_domain you're trying to dump as string has an "
+          "unsupported " +
+          std::string("type ") + current_domain_type_str(type_));
     }
   }
 }
 
-void Shape::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
+void CurrentDomain::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
   if (!empty_) {
     throw std::logic_error(
-        "Setting a rectangle on a non-empty Shape object is not allowed.");
+        "Setting a rectangle on a non-empty CurrentDomain object is not "
+        "allowed.");
   }
   ndrectangle_ = ndr;
-  type_ = ShapeType::NDRECTANGLE;
+  type_ = CurrentDomainType::NDRECTANGLE;
   empty_ = false;
 }
 
-shared_ptr<const NDRectangle> Shape::ndrectangle() const {
-  if (empty_ || type_ != ShapeType::NDRECTANGLE) {
+shared_ptr<const NDRectangle> CurrentDomain::ndrectangle() const {
+  if (empty_ || type_ != CurrentDomainType::NDRECTANGLE) {
     throw std::logic_error(
-        "It's not possible to get the ndrectangle from this shape if one isn't "
+        "It's not possible to get the ndrectangle from this current_domain if "
+        "one isn't "
         "set.");
   }
 
   return ndrectangle_;
 }
 
-bool Shape::covered(shared_ptr<const Shape> expanded_shape) const {
-  return covered(expanded_shape->ndrectangle()->get_ndranges());
+bool CurrentDomain::covered(
+    shared_ptr<const CurrentDomain> expanded_current_domain) const {
+  return covered(expanded_current_domain->ndrectangle()->get_ndranges());
 }
 
-bool Shape::covered(const NDRange& ndranges) const {
+bool CurrentDomain::covered(const NDRange& ndranges) const {
   switch (type_) {
-    case ShapeType::NDRECTANGLE: {
+    case CurrentDomainType::NDRECTANGLE: {
       for (unsigned d = 0; d < ndranges.size(); ++d) {
         auto dim = ndrectangle_->domain()->dimension_ptr(d);
         if (dim->var_size() && ndranges[d].empty()) {
@@ -184,22 +197,23 @@ bool Shape::covered(const NDRange& ndranges) const {
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this shape operation because one of the shapes " +
+          "Unable to execute this current_domain operation because one of the "
+          "current_domains " +
           std::string("passed has an unsupported") + "type " +
-          shape_type_str(type_));
+          current_domain_type_str(type_));
     }
   }
 }
 
-void Shape::check_schema_sanity(const ArraySchema& schema) const {
+void CurrentDomain::check_schema_sanity(const ArraySchema& schema) const {
   switch (type_) {
-    case ShapeType::NDRECTANGLE: {
+    case CurrentDomainType::NDRECTANGLE: {
       auto& ndranges = ndrectangle_->get_ndranges();
 
       // Dim nums match
       if (schema.dim_num() != ndranges.size()) {
         throw std::logic_error(
-            "The array shape and the array schema have a non-equal "
+            "The array current_domain and the array schema have a non-equal "
             "number of dimensions");
       }
 
@@ -207,7 +221,7 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
       for (uint32_t i = 0; i < ndranges.size(); ++i) {
         if (ndranges[i].empty()) {
           throw std::logic_error(
-              "This shape has no range specified for dimension idx: " +
+              "This current_domain has no range specified for dimension idx: " +
               std::to_string(i));
         }
       }
@@ -215,7 +229,8 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
       // Nothing is out of bounds
       if (!this->covered(schema.domain().domain())) {
         throw std::logic_error(
-            "This array shape has ranges past the boundaries of the array "
+            "This array current_domain has ranges past the boundaries of the "
+            "array "
             "schema domain");
       }
 
@@ -223,8 +238,9 @@ void Shape::check_schema_sanity(const ArraySchema& schema) const {
     }
     default: {
       throw std::runtime_error(
-          "You used a Shape object which has " + std::string("an unsupported") +
-          "type: " + shape_type_str(type_));
+          "You used a CurrentDomain object which has " +
+          std::string("an unsupported") +
+          "type: " + current_domain_type_str(type_));
     }
   }
 }

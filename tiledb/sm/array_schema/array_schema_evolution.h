@@ -55,7 +55,7 @@ class Domain;
 class Enumeration;
 class MemoryTracker;
 class ArraySchema;
-class Shape;
+class CurrentDomain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -80,7 +80,7 @@ class ArraySchemaEvolution {
    * @param enmrs_to_add Enumerations to add to the schema.
    * @param attrs_to_drop Attributes to remove from the schema.
    * @param timestamp_range Timestamp range to use for the new schema.
-   * @param timestamp_range Shape to use for the new schema.
+   * @param timestamp_range CurrentDomain to use for the new schema.
    * @param memory_tracker Memory tracker to use for the new schema.
    */
   ArraySchemaEvolution(
@@ -92,7 +92,7 @@ class ArraySchemaEvolution {
           enmrs_to_extend,
       std::unordered_set<std::string> enmrs_to_drop,
       std::pair<uint64_t, uint64_t> timestamp_range,
-      shared_ptr<const Shape> shape,
+      shared_ptr<const CurrentDomain> current_domain,
       shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ArraySchemaEvolution);
@@ -192,16 +192,16 @@ class ArraySchemaEvolution {
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
   /**
-   * Expands the array shape
+   * Expands the array current_domain
    *
-   * @param shape The new shape to expand to
+   * @param current_domain The new current_domain to expand to
    */
-  void expand_shape(shared_ptr<const Shape> shape);
+  void expand_current_domain(shared_ptr<const CurrentDomain> current_domain);
 
   /**
-   * Accessor for the shape we want to expand to
+   * Accessor for the current_domain we want to expand to
    */
-  shared_ptr<const Shape> shape_to_expand() const;
+  shared_ptr<const CurrentDomain> current_domain_to_expand() const;
 
  private:
   /* ********************************* */
@@ -240,8 +240,8 @@ class ArraySchemaEvolution {
    */
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
-  /** The array shape to expand */
-  shared_ptr<const Shape> shape_to_expand_;
+  /** The array current_domain to expand */
+  shared_ptr<const CurrentDomain> current_domain_to_expand_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

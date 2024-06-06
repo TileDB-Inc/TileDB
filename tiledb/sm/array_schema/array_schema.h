@@ -56,7 +56,7 @@ class DimensionLabel;
 class Domain;
 class Enumeration;
 class MemoryTracker;
-class Shape;
+class CurrentDomain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -121,7 +121,7 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
-   * @param shape The array shape object
+   * @param current_domain The array current_domain object
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    **/
@@ -143,7 +143,7 @@ class ArraySchema {
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters,
-      shared_ptr<const Shape> shape,
+      shared_ptr<const CurrentDomain> current_domain,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -589,21 +589,22 @@ class ArraySchema {
           std::nullopt);
 
   /**
-   * Expand the array shape
+   * Expand the array current_domain
    *
-   * @param new_shape The new array shape we want to expand to
+   * @param new_current_domain The new array current_domain we want to expand to
    */
-  void expand_shape(shared_ptr<const Shape> new_shape);
+  void expand_current_domain(
+      shared_ptr<const CurrentDomain> new_current_domain);
 
   /**
-   * Set the array shape on the schema
+   * Set the array current_domain on the schema
    *
-   * @param shape The array shape we want to set on the schema
+   * @param current_domain The array current_domain we want to set on the schema
    */
-  void set_shape(shared_ptr<const Shape> shape);
+  void set_current_domain(shared_ptr<const CurrentDomain> current_domain);
 
-  /** Array shape accessor */
-  shared_ptr<const Shape> get_shape() const;
+  /** Array current_domain accessor */
+  shared_ptr<const CurrentDomain> get_current_domain() const;
 
  private:
   /* ********************************* */
@@ -720,8 +721,8 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
-  /** The array shape */
-  shared_ptr<const Shape> shape_;
+  /** The array current_domain */
+  shared_ptr<const CurrentDomain> current_domain_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

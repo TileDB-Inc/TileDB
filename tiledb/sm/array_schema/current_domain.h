@@ -1,5 +1,5 @@
 /**
- * @file shape.h
+ * @file current_domain.h
  *
  * @section LICENSE
  *
@@ -27,17 +27,17 @@
  *
  * @section DESCRIPTION
  *
- * This file defines class Shape.
+ * This file defines class CurrentDomain.
  */
 
-#ifndef TILEDB_SHAPE_H
-#define TILEDB_SHAPE_H
+#ifndef TILEDB_CURRENT_DOMAIN_H
+#define TILEDB_CURRENT_DOMAIN_H
 
 #include <iostream>
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/ndrectangle.h"
-#include "tiledb/sm/enums/shape_type.h"
+#include "tiledb/sm/enums/current_domain_type.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
@@ -47,112 +47,126 @@ class MemoryTracker;
 class ArraySchema;
 class Domain;
 
-/** Defines an array shape */
-class Shape {
+/** Defines an array current_domain */
+class CurrentDomain {
  public:
   /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
   /** No default constructor*/
-  Shape() = delete;
+  CurrentDomain() = delete;
 
-  DISABLE_COPY(Shape);
-  DISABLE_MOVE(Shape);
+  DISABLE_COPY(CurrentDomain);
+  DISABLE_MOVE(CurrentDomain);
 
   /** Constructor
    *
    * @param memory_tracker The memory tracker.
-   * @param version the disk version of this shape
+   * @param version the disk version of this current_domain
    */
-  Shape(shared_ptr<MemoryTracker> memory_tracker, format_version_t version);
+  CurrentDomain(
+      shared_ptr<MemoryTracker> memory_tracker, format_version_t version);
+
+  /** Constructor
+   *
+   * @param memory_tracker The memory tracker.
+   * @param version the disk version of this current_domain
+   * @param ndr the NDRectangle to to set on this instance
+   */
+  CurrentDomain(
+      shared_ptr<MemoryTracker> memory_tracker,
+      format_version_t version,
+      shared_ptr<const NDRectangle> ndr);
 
   /** Destructor. */
-  ~Shape() = default;
+  ~CurrentDomain() = default;
 
   /* ********************************* */
   /*             OPERATORS             */
   /* ********************************* */
 
-  DISABLE_COPY_ASSIGN(Shape);
-  DISABLE_MOVE_ASSIGN(Shape);
+  DISABLE_COPY_ASSIGN(CurrentDomain);
+  DISABLE_MOVE_ASSIGN(CurrentDomain);
 
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
   /**
-   * Deserialize a Shape
+   * Deserialize a CurrentDomain
    *
    * @param deserializer The deserializer to deserialize from.
-   * @param memory_tracker The memory tracker associated with this Shape.
+   * @param memory_tracker The memory tracker associated with this
+   * CurrentDomain.
    * @param domain The array schema domain.
-   * @return A new Shape.
+   * @return A new CurrentDomain.
    */
-  static shared_ptr<const Shape> deserialize(
+  static shared_ptr<const CurrentDomain> deserialize(
       Deserializer& deserializer,
       shared_ptr<MemoryTracker> memory_tracker,
       shared_ptr<Domain> domain);
 
   /**
-   * Serializes the Shape into a buffer.
+   * Serializes the CurrentDomain into a buffer.
    *
    * @param serializer The object the array schema is serialized into.
    */
   void serialize(Serializer& serializer) const;
 
   /**
-   * @return Returns the type of shape stored in this instance
+   * @return Returns the type of current_domain stored in this instance
    */
-  ShapeType type() const {
+  CurrentDomainType type() const {
     return type_;
   }
 
   /**
-   * @return Returns whether this shape is empty or not.
+   * @return Returns whether this current_domain is empty or not.
    */
   bool empty() const {
     return empty_;
   }
 
   /**
-   * @return Returns the format version of this shape
+   * @return Returns the format version of this current_domain
    */
   format_version_t version() const {
     return version_;
   }
 
   /**
-   * Dump a textual representation of the Shape to the FILE
+   * Dump a textual representation of the CurrentDomain to the FILE
    *
    * @param out A file pointer to write to. If out is nullptr, use stdout
    */
   void dump(FILE* out) const;
 
   /**
-   * Sets a NDRectangle to this shape and adjusts its type to reflect that.
-   * Throws if the shape is not empty.
+   * Sets a NDRectangle to this current_domain and adjusts its type to reflect
+   * that. Throws if the current_domain is not empty.
    *
-   * @param ndr A NDRectangle to be set on this Shape object.
+   * @param ndr A NDRectangle to be set on this CurrentDomain object.
    */
   void set_ndrectangle(std::shared_ptr<const NDRectangle> ndr);
 
   /**
-   * Throws if the shape doesn't have a NDRectangle set
+   * Throws if the current_domain doesn't have a NDRectangle set
    *
-   * @return Returns the ndrectangle set on a shape.
+   * @return Returns the ndrectangle set on a current_domain.
    */
   shared_ptr<const NDRectangle> ndrectangle() const;
 
   /**
-   * Checks if the argument fully contains this shape.
+   * Checks if the argument fully contains this current_domain.
    *
-   * @param expanded_shape The shape we want to compare against
+   * @param expanded_current_domain The current_domain we want to compare
+   * against
    * @return True if the argument is a superset of the current instance
    */
-  bool covered(shared_ptr<const Shape> expanded_shape) const;
+  bool covered(shared_ptr<const CurrentDomain> expanded_current_domain) const;
 
   /**
-   * Checks if the arg fully contains this shape.
+   * Checks if the arg fully contains this current_domain.
    *
    * @param expanded_range The ndrange we want to compare against
    * @return True if the argument is a superset of the current instance
@@ -160,8 +174,8 @@ class Shape {
   bool covered(const NDRange& expanded_range) const;
 
   /**
-   * Perform various checks to ensure the shape is coherent with the array
-   * schema
+   * Perform various checks to ensure the current_domain is coherent with the
+   * array schema
    *
    * @param schema The array schema
    */
@@ -173,23 +187,23 @@ class Shape {
   /* ********************************* */
 
   /**
-   * The memory tracker of the Shape.
+   * The memory tracker of the CurrentDomain.
    */
   shared_ptr<MemoryTracker> memory_tracker_;
 
-  /** The type of the shape */
-  ShapeType type_;
+  /** The type of the current_domain */
+  CurrentDomainType type_;
 
   /** A flag which enables or disables inequality comparisons */
   bool empty_;
 
-  /** The ndrectangle shape */
+  /** The ndrectangle current_domain */
   shared_ptr<const NDRectangle> ndrectangle_;
 
-  /** The format version of this Shape */
+  /** The format version of this CurrentDomain */
   format_version_t version_;
 };
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_SHAPE_H
+#endif  // TILEDB_CURRENT_DOMAIN_H

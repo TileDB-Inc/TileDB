@@ -1,5 +1,5 @@
 /**
- * @file unit-shape.cc
+ * @file unit-current_domain.cc
  *
  * @section LICENSE
  *
@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the Shape API.
+ * Tests the CurrentDomain API.
  */
 
 #include <sstream>
@@ -40,9 +40,9 @@
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
-#include "tiledb/sm/array_schema/shape.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -53,12 +53,12 @@
 using namespace tiledb::sm;
 
 template <typename T>
-class ShapeFx {
+class CurrentDomainFx {
  public:
-  ShapeFx();
-  ~ShapeFx();
+  CurrentDomainFx();
+  ~CurrentDomainFx();
 
-  shared_ptr<const Shape> create_shape(
+  shared_ptr<const CurrentDomain> create_current_domain(
       const NDRange& ranges,
       shared_ptr<const ArraySchema> schema,
       shared_ptr<NDRectangle> ndrectangle = nullptr,
@@ -67,8 +67,10 @@ class ShapeFx {
   void check_storage_serialization(
       shared_ptr<ArraySchema> schema, const NDRange& ranges);
 
-  storage_size_t calculate_serialized_size(shared_ptr<const Shape> shape);
-  shared_ptr<WriterTile> serialize_to_tile(shared_ptr<const Shape> shape);
+  storage_size_t calculate_serialized_size(
+      shared_ptr<const CurrentDomain> current_domain);
+  shared_ptr<WriterTile> serialize_to_tile(
+      shared_ptr<const CurrentDomain> current_domain);
 
   shared_ptr<ArraySchema> create_schema();
 
@@ -78,8 +80,8 @@ class ShapeFx {
   shared_ptr<Array> get_array(QueryType type);
   shared_ptr<ArrayDirectory> get_array_directory();
   shared_ptr<ArraySchema> get_array_schema_latest();
-  void check_shapes_equal(
-      shared_ptr<const Shape> s1, shared_ptr<const Shape> s2);
+  void check_current_domains_equal(
+      shared_ptr<const CurrentDomain> s1, shared_ptr<const CurrentDomain> s2);
 
   void rm_array();
 
@@ -91,9 +93,9 @@ class ShapeFx {
 };
 
 template <class T>
-ShapeFx<T>::ShapeFx()
+CurrentDomainFx<T>::CurrentDomainFx()
     : memory_tracker_(tiledb::test::create_test_memory_tracker())
-    , uri_("shape_array")
+    , uri_("current_domain_array")
     , ctx_(cfg_) {
   rm_array();
   throw_if_not_ok(enc_key_.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
@@ -101,12 +103,12 @@ ShapeFx<T>::ShapeFx()
 }
 
 template <class T>
-ShapeFx<T>::~ShapeFx() {
+CurrentDomainFx<T>::~CurrentDomainFx() {
   rm_array();
 }
 
 template <class T>
-void ShapeFx<T>::rm_array() {
+void CurrentDomainFx<T>::rm_array() {
   bool is_dir;
   throw_if_not_ok(ctx_.resources().vfs().is_dir(uri_, &is_dir));
   if (is_dir) {
@@ -115,15 +117,16 @@ void ShapeFx<T>::rm_array() {
 }
 
 template <class T>
-shared_ptr<const Shape> ShapeFx<T>::create_shape(
+shared_ptr<const CurrentDomain> CurrentDomainFx<T>::create_current_domain(
     const NDRange& ranges,
     shared_ptr<const ArraySchema> schema,
     shared_ptr<NDRectangle> ndrectangle,
     bool empty) {
-  // create shape
-  auto shape = make_shared<Shape>(memory_tracker_, constants::shape_version);
+  // create current_domain
+  auto current_domain = make_shared<CurrentDomain>(
+      memory_tracker_, constants::current_domain_version);
   if (empty) {
-    return shape;
+    return current_domain;
   }
 
   if (ndrectangle == nullptr) {
@@ -132,30 +135,30 @@ shared_ptr<const Shape> ShapeFx<T>::create_shape(
         memory_tracker_, schema->shared_domain(), ranges);
   }
 
-  // set ndrectangle to shape
-  shape->set_ndrectangle(ndrectangle);
+  // set ndrectangle to current_domain
+  current_domain->set_ndrectangle(ndrectangle);
 
-  return shape;
+  return current_domain;
 }
 
 template <class T>
-void ShapeFx<T>::check_storage_serialization(
+void CurrentDomainFx<T>::check_storage_serialization(
     shared_ptr<ArraySchema> schema, const NDRange& ranges) {
-  auto shape = create_shape(ranges, schema);
+  auto current_domain = create_current_domain(ranges, schema);
 
-  auto tile = serialize_to_tile(shape);
-  REQUIRE(tile->size() == calculate_serialized_size(shape));
+  auto tile = serialize_to_tile(current_domain);
+  REQUIRE(tile->size() == calculate_serialized_size(current_domain));
 
   Deserializer deserializer(tile->data(), tile->size());
-  auto deserialized = Shape::deserialize(
+  auto deserialized = CurrentDomain::deserialize(
       deserializer, memory_tracker_, schema->shared_domain());
 
-  check_shapes_equal(deserialized, shape);
+  check_current_domains_equal(deserialized, current_domain);
 }
 
 template <class T>
-void ShapeFx<T>::check_shapes_equal(
-    shared_ptr<const Shape> s1, shared_ptr<const Shape> s2) {
+void CurrentDomainFx<T>::check_current_domains_equal(
+    shared_ptr<const CurrentDomain> s1, shared_ptr<const CurrentDomain> s2) {
   REQUIRE(s1->empty() == s2->empty());
   REQUIRE(s1->type() == s2->type());
   REQUIRE(s1->version() == s2->version());
@@ -164,24 +167,24 @@ void ShapeFx<T>::check_shapes_equal(
 }
 
 template <class T>
-storage_size_t ShapeFx<T>::calculate_serialized_size(
-    shared_ptr<const Shape> shape) {
+storage_size_t CurrentDomainFx<T>::calculate_serialized_size(
+    shared_ptr<const CurrentDomain> current_domain) {
   storage_size_t num_bytes = 0;
 
   // uint32_t - version
   num_bytes += sizeof(uint32_t);
 
-  // bool - empty shape flag
+  // bool - empty current_domain flag
   num_bytes += sizeof(bool);
 
-  if (shape->empty()) {
+  if (current_domain->empty()) {
     return num_bytes;
   }
 
   // uint8_t - type
   num_bytes += sizeof(uint8_t);
 
-  auto ndrectangle = shape->ndrectangle();
+  auto ndrectangle = current_domain->ndrectangle();
   for (auto& range : ndrectangle->get_ndranges()) {
     if (range.var_size()) {
       // Range length
@@ -196,20 +199,20 @@ storage_size_t ShapeFx<T>::calculate_serialized_size(
 }
 
 template <class T>
-shared_ptr<WriterTile> ShapeFx<T>::serialize_to_tile(
-    shared_ptr<const Shape> shape) {
+shared_ptr<WriterTile> CurrentDomainFx<T>::serialize_to_tile(
+    shared_ptr<const CurrentDomain> current_domain) {
   SizeComputationSerializer size_serializer;
-  shape->serialize(size_serializer);
+  current_domain->serialize(size_serializer);
 
   auto tile{WriterTile::from_generic(size_serializer.size(), memory_tracker_)};
   Serializer serializer(tile->data(), tile->size());
-  shape->serialize(serializer);
+  current_domain->serialize(serializer);
 
   return tile;
 }
 
 template <class T>
-shared_ptr<ArraySchema> ShapeFx<T>::create_schema() {
+shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema() {
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
 
@@ -236,7 +239,7 @@ shared_ptr<ArraySchema> ShapeFx<T>::create_schema() {
 }
 
 template <class T>
-shared_ptr<ArraySchema> ShapeFx<T>::create_schema_var() {
+shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema_var() {
   auto schema =
       make_shared<ArraySchema>(HERE(), ArrayType::SPARSE, memory_tracker_);
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
@@ -257,39 +260,44 @@ shared_ptr<ArraySchema> ShapeFx<T>::create_schema_var() {
 }
 
 template <class T>
-void ShapeFx<T>::create_array(shared_ptr<ArraySchema> schema) {
+void CurrentDomainFx<T>::create_array(shared_ptr<ArraySchema> schema) {
   throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
 }
 
 template <class T>
-shared_ptr<Array> ShapeFx<T>::get_array(QueryType type) {
+shared_ptr<Array> CurrentDomainFx<T>::get_array(QueryType type) {
   auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
   throw_if_not_ok(array->open(type, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   return array;
 }
 
 template <class T>
-shared_ptr<ArrayDirectory> ShapeFx<T>::get_array_directory() {
+shared_ptr<ArrayDirectory> CurrentDomainFx<T>::get_array_directory() {
   return make_shared<ArrayDirectory>(
       HERE(), ctx_.resources(), uri_, 0, UINT64_MAX, ArrayDirectoryMode::READ);
 }
 
 template <class T>
-shared_ptr<ArraySchema> ShapeFx<T>::get_array_schema_latest() {
+shared_ptr<ArraySchema> CurrentDomainFx<T>::get_array_schema_latest() {
   auto array_dir = get_array_directory();
   return array_dir->load_array_schema_latest(enc_key_, memory_tracker_);
 }
 
 TEST_CASE_METHOD(
-    ShapeFx<int32_t>, "Create Empty Shape", "[shape][create][empty]") {
+    CurrentDomainFx<int32_t>,
+    "Create Empty CurrentDomain",
+    "[current_domain][create][empty]") {
   auto schema = create_schema();
-  auto shape =
-      create_shape(schema->shared_domain()->domain(), schema, nullptr, true);
+  auto current_domain = create_current_domain(
+      schema->shared_domain()->domain(), schema, nullptr, true);
 }
 
 using FixedVarTypes = std::tuple<int32_t, std::string>;
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx, "Create Shape", "[shape][create]", FixedVarTypes) {
+    CurrentDomainFx,
+    "Create CurrentDomain",
+    "[current_domain][create]",
+    FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
   Range r;
@@ -302,13 +310,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     rdata = {1, 1000};
     r = Range(rdata.data(), 2 * sizeof(int32_t));
   }
-  auto shape = this->create_shape({r, r}, schema);
+  auto current_domain = this->create_current_domain({r, r}, schema);
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
+    CurrentDomainFx,
     "Check disk serialization works",
-    "[shape][serialization]",
+    "[current_domain][serialization]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -327,9 +335,10 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ShapeFx<int32_t>,
-    "Check array create throws if shape exceeds array schema domain bounds",
-    "[shape][create][out-of-schema-domain]") {
+    CurrentDomainFx<int32_t>,
+    "Check array create throws if current_domain exceeds array schema domain "
+    "bounds",
+    "[current_domain][create][out-of-schema-domain]") {
   auto schema = create_schema();
 
   auto dom = make_shared<Domain>(HERE(), memory_tracker_);
@@ -343,12 +352,12 @@ TEST_CASE_METHOD(
   throw_if_not_ok(dom->add_dimension(dim));
   throw_if_not_ok(dom->add_dimension(dim2));
 
-  auto shape = create_shape(dom->domain(), schema);
+  auto current_domain = create_current_domain(dom->domain(), schema);
 
-  // It's fine if an incorrect shape doesn't throw here, sanity checks on
-  // schema are performed during array creation when we know schema domain
+  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
-  schema->set_shape(shape);
+  schema->set_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "past the boundaries of the array schema domain");
@@ -357,9 +366,9 @@ TEST_CASE_METHOD(
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
+    CurrentDomainFx,
     "Check array create throws if not all dims are set",
-    "[shape][create][all-dims]",
+    "[current_domain][create][all-dims]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -374,12 +383,12 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     r = Range(rdata.data(), 2 * sizeof(int32_t));
   }
 
-  auto shape = this->create_shape({r}, schema);
+  auto current_domain = this->create_current_domain({r}, schema);
 
-  // It's fine if an incorrect shape doesn't throw here, sanity checks on
-  // schema are performed during array creation when we know schema domain
+  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
-  schema->set_shape(shape);
+  schema->set_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "schema have a non-equal number of dimensions");
@@ -388,9 +397,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Check array create throws if shape has an empty range",
-    "[shape][create][no-empty-ranges]",
+    CurrentDomainFx,
+    "Check array create throws if current_domain has an empty range",
+    "[current_domain][create][no-empty-ranges]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -409,12 +418,13 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
       make_shared<NDRectangle>(this->memory_tracker_, schema->shared_domain());
   ndrectangle->set_range_for_name(r, "dim1");
 
-  auto shape = this->create_shape({r, r}, schema, ndrectangle);
+  auto current_domain =
+      this->create_current_domain({r, r}, schema, ndrectangle);
 
-  // It's fine if an incorrect shape doesn't throw here, sanity checks on
-  // schema are performed during array creation when we know schema domain
+  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
-  schema->set_shape(shape);
+  schema->set_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "no range specified for dimension idx");
@@ -423,9 +433,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 TEST_CASE_METHOD(
-    ShapeFx<int32_t>,
+    CurrentDomainFx<int32_t>,
     "Check NDRectangle verifies bounds for dim indices",
-    "[shape][ndrectangle][index-bounds]") {
+    "[current_domain][ndrectangle][index-bounds]") {
   auto schema = create_schema();
 
   auto ndrectangle =
@@ -444,9 +454,9 @@ TEST_CASE_METHOD(
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Check writing/reading shape to/from array end to end",
-    "[shape][create][end-to-end-shape]",
+    CurrentDomainFx,
+    "Check writing/reading current_domain to/from array end to end",
+    "[current_domain][create][end-to-end-current_domain]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -461,22 +471,22 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     r = Range(rdata.data(), 2 * sizeof(int32_t));
   }
 
-  auto shape = this->create_shape({r, r}, schema);
+  auto current_domain = this->create_current_domain({r, r}, schema);
 
-  schema->set_shape(shape);
+  schema->set_current_domain(current_domain);
 
   this->create_array(schema);
 
   auto opened_array = this->get_array(QueryType::READ);
 
-  this->check_shapes_equal(
-      shape, opened_array->array_schema_latest().get_shape());
+  this->check_current_domains_equal(
+      current_domain, opened_array->array_schema_latest().get_current_domain());
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Schema evolution, evolving to bigger shape works",
-    "[shape][evolution][simple]",
+    CurrentDomainFx,
+    "Schema evolution, evolving to bigger current_domain works",
+    "[current_domain][evolution][simple]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -497,19 +507,19 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     r_expanded = Range(rdata_expanded.data(), 2 * sizeof(int32_t));
   }
 
-  auto shape = this->create_shape({r, r}, schema);
-  schema->set_shape(shape);
+  auto current_domain = this->create_current_domain({r, r}, schema);
+  schema->set_current_domain(current_domain);
   this->create_array(schema);
   auto opened_array = this->get_array(QueryType::READ);
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
   auto orig_schema = opened_array->array_schema_latest_ptr();
 
-  auto shape_expanded =
-      this->create_shape({r_expanded, r_expanded}, orig_schema);
+  auto current_domain_expanded =
+      this->create_current_domain({r_expanded, r_expanded}, orig_schema);
 
-  // Check shape expansion doesn't throw
-  ase->expand_shape(shape_expanded);
+  // Check current_domain expansion doesn't throw
+  ase->expand_current_domain(current_domain_expanded);
   auto evolved_schema = ase->evolve_schema(orig_schema);
 
   // Persist evolved schema and read it back, check it shows the correct
@@ -521,14 +531,14 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   auto new_schema = this->get_array_schema_latest();
 
   REQUIRE(
-      new_schema->get_shape()->ndrectangle()->get_ndranges() ==
+      new_schema->get_current_domain()->ndrectangle()->get_ndranges() ==
       NDRange{{r_expanded, r_expanded}});
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Schema evolution, contracting shape throws",
-    "[shape][evolution][contraction]",
+    CurrentDomainFx,
+    "Schema evolution, contracting current_domain throws",
+    "[current_domain][evolution][contraction]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -549,41 +559,42 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
     r_contracted = Range(rdata_contracted.data(), 2 * sizeof(int32_t));
   }
 
-  auto shape = this->create_shape({r, r}, schema);
-  schema->set_shape(shape);
+  auto current_domain = this->create_current_domain({r, r}, schema);
+  schema->set_current_domain(current_domain);
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  auto shape_contracted =
-      this->create_shape({r_contracted, r_contracted}, schema);
+  auto current_domain_contracted =
+      this->create_current_domain({r_contracted, r_contracted}, schema);
 
-  // It's fine if a contracted shape doesn't throw here, sanity checks are
-  // performed when evolution is applied and the schema is available.
-  ase->expand_shape(shape_contracted);
+  // It's fine if a contracted current_domain doesn't throw here, sanity checks
+  // are performed when evolution is applied and the schema is available.
+  ase->expand_current_domain(current_domain_contracted);
 
   auto matcher = Catch::Matchers::ContainsSubstring("can only be expanded");
   REQUIRE_THROWS_WITH(ase->evolve_schema(schema), matcher);
 }
 
 TEST_CASE_METHOD(
-    ShapeFx<int32_t>,
-    "Schema evolution, empty shape evolution not allowed",
-    "[shape][evolution][empty_new]") {
+    CurrentDomainFx<int32_t>,
+    "Schema evolution, empty current_domain evolution not allowed",
+    "[current_domain][evolution][empty_new]") {
   auto schema = create_schema();
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
-  auto empty_shape = create_shape({}, schema, nullptr, true);
+  auto empty_current_domain = create_current_domain({}, schema, nullptr, true);
 
-  auto matcher =
-      Catch::Matchers::ContainsSubstring("specified an empty new shape");
-  REQUIRE_THROWS_WITH(ase->expand_shape(empty_shape), matcher);
+  auto matcher = Catch::Matchers::ContainsSubstring(
+      "specified an empty new current_domain");
+  REQUIRE_THROWS_WITH(
+      ase->expand_current_domain(empty_current_domain), matcher);
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Check you can evolve from an empty shape schema",
-    "[shape][evolution][empty_existing]",
+    CurrentDomainFx,
+    "Check you can evolve from an empty current_domain schema",
+    "[current_domain][evolution][empty_existing]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -600,27 +611,28 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  auto shape = this->create_shape({r, r}, schema);
+  auto current_domain = this->create_current_domain({r, r}, schema);
 
-  ase->expand_shape(shape);
+  ase->expand_current_domain(current_domain);
 
   CHECK_NOTHROW(ase->evolve_schema(schema));
 }
 
 TEST_CASE_METHOD(
-    ShapeFx<int32_t>,
-    "Check array evolution throws if new shape exceeds array schema domain "
+    CurrentDomainFx<int32_t>,
+    "Check array evolution throws if new current_domain exceeds array schema "
+    "domain "
     "bounds",
-    "[shape][evolution][out-of-schema-domain]") {
+    "[current_domain][evolution][out-of-schema-domain]") {
   auto schema = create_schema();
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
 
   std::vector<int32_t> rdata = {1, 1001};
   auto r = Range(rdata.data(), 2 * sizeof(int32_t));
-  auto shape = create_shape({r, r}, schema);
+  auto current_domain = create_current_domain({r, r}, schema);
 
-  ase->expand_shape(shape);
+  ase->expand_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "past the boundaries of the array schema domain");
@@ -628,9 +640,10 @@ TEST_CASE_METHOD(
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Check array evolution throws if not all dims are set for the new shape",
-    "[shape][evolution][all-dims]",
+    CurrentDomainFx,
+    "Check array evolution throws if not all dims are set for the new "
+    "current_domain",
+    "[current_domain][evolution][all-dims]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -647,9 +660,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), this->memory_tracker_);
 
-  auto shape = this->create_shape({r}, schema);
+  auto current_domain = this->create_current_domain({r}, schema);
 
-  ase->expand_shape(shape);
+  ase->expand_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "schema have a non-equal number of dimensions");
@@ -657,9 +670,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
-    ShapeFx,
-    "Check array evolution throws if new shape has an empty range",
-    "[shape][evolution][no-empty-ranges]",
+    CurrentDomainFx,
+    "Check array evolution throws if new current_domain has an empty range",
+    "[current_domain][evolution][no-empty-ranges]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
   std::vector<TestType> rdata;
@@ -679,9 +692,9 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   auto ndrectangle =
       make_shared<NDRectangle>(this->memory_tracker_, schema->shared_domain());
   ndrectangle->set_range_for_name(r, "dim1");
-  auto shape = this->create_shape({}, schema, ndrectangle);
+  auto current_domain = this->create_current_domain({}, schema, ndrectangle);
 
-  ase->expand_shape(shape);
+  ase->expand_current_domain(current_domain);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
       "no range specified for dimension idx");

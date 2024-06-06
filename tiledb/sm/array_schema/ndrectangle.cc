@@ -57,10 +57,8 @@ NDRectangle::NDRectangle(
   range_data_.resize(dom->dim_num());
 }
 
-shared_ptr<const NDRectangle> NDRectangle::deserialize(
-    Deserializer& deserializer,
-    shared_ptr<MemoryTracker> memory_tracker,
-    shared_ptr<Domain> domain) {
+NDRange NDRectangle::deserialize_ndranges(
+    Deserializer& deserializer, shared_ptr<Domain> domain) {
   NDRange nd;
   auto dim_num = domain->dim_num();
   nd.resize(dim_num);
@@ -76,8 +74,15 @@ shared_ptr<const NDRectangle> NDRectangle::deserialize(
       nd[d] = Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
     }
   }
+  return nd;
+}
 
-  return make_shared<NDRectangle>(memory_tracker, domain, nd);
+shared_ptr<const NDRectangle> NDRectangle::deserialize(
+    Deserializer& deserializer,
+    shared_ptr<MemoryTracker> memory_tracker,
+    shared_ptr<Domain> domain) {
+  return make_shared<NDRectangle>(
+      memory_tracker, domain, deserialize_ndranges(deserializer, domain));
 }
 
 void NDRectangle::serialize(Serializer& serializer) const {
@@ -114,7 +119,7 @@ void NDRectangle::dump(FILE* out) const {
 void NDRectangle::set_range(const Range& r, uint32_t idx) {
   if (idx >= range_data_.size()) {
     throw std::logic_error(
-        "You are trying to set a range for an index out of bounds");
+        "Trying to set a range for an index out of bounds is not possible.");
   }
   range_data_[idx] = r;
 }
@@ -127,7 +132,7 @@ void NDRectangle::set_range_for_name(const Range& r, const std::string& name) {
 const Range& NDRectangle::get_range(uint32_t idx) const {
   if (idx >= range_data_.size()) {
     throw std::logic_error(
-        "You are trying to get a range for an index out of bounds");
+        "Trying to get a range for an index out of bounds is not possible.");
   }
   return range_data_[idx];
 }
