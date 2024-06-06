@@ -81,8 +81,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
     , enumerations_to_add_map_(
           memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumerations_to_extend_map_(
-          memory_tracker_->get_resource(MemoryType::ENUMERATION))
-    , current_domain_to_expand_(nullptr) {
+          memory_tracker_->get_resource(MemoryType::ENUMERATION)) {
 }
 
 ArraySchemaEvolution::ArraySchemaEvolution(

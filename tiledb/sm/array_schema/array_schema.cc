@@ -745,7 +745,6 @@ void ArraySchema::dump(FILE* out) const {
   }
 
   // Print out array current_domain
-  fprintf(out, "\n");
   current_domain_->dump(out);
 }
 

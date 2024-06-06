@@ -219,8 +219,7 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_drop,
       ts_range,
       // TODO: to add actual wire CurrentDomain (ch48253)
-      make_shared<CurrentDomain>(
-          memory_tracker, constants::current_domain_version),
+      nullptr,
       memory_tracker));
 }
 
