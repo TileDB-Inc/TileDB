@@ -958,6 +958,6 @@ include(${CMAKE_SOURCE_DIR}/cmake/package.cmake)
 # Add alias for compatibility with earlier TileDB versions.
 add_custom_target(install-tiledb
   COMMENT "The install-tiledb target is deprecated and can lead to worse performance. Use install instead."
-  COMMAND ${CMAKE_COMMAND} --build . --target install
+  COMMAND ${CMAKE_COMMAND} --build . --target install --config $<CONFIG>
   WORKING_DIRECTORY ${PROJECT_BINARY_DIR}
 )
