@@ -1,5 +1,5 @@
 #
-# scripts/generate_embedded_data_header.cmake
+# tiledb/sm/misc/generate_embedded_data_header.script.cmake
 #
 #
 # The MIT License

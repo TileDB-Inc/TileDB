@@ -51,8 +51,8 @@ set(MGC_GZIPPED_H_OUTPUT_FILE "${PROJECT_BINARY_DIR}/magic_mgc.zst.h_")
 
 add_custom_command(
   OUTPUT "${MGC_GZIPPED_H_OUTPUT_FILE}"
-  DEPENDS "${libmagic_DICTIONARY}" "${PROJECT_SOURCE_DIR}/scripts/generate_embedded_data_header.cmake"
-  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_H_OUTPUT_FILE}" -P "${PROJECT_SOURCE_DIR}/scripts/generate_embedded_data_header.cmake"
+  DEPENDS "${libmagic_DICTIONARY}" "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
+  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_H_OUTPUT_FILE}" -P "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
 )
 add_custom_target(gen_mgc_unarch
   DEPENDS ${MGC_GZIPPED_H_OUTPUT_FILE}
