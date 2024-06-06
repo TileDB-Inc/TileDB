@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -57,6 +57,8 @@ class AttributeStatusException : public StatusException {
   }
 };
 
+using AttributeException = AttributeStatusException;
+
 /* ********************************* */
 /*     CONSTRUCTORS & DESTRUCTORS    */
 /* ********************************* */
@@ -81,25 +83,11 @@ Attribute::Attribute(
     , name_(name)
     , type_(type)
     , order_(order) {
-  set_default_fill_value();
-
-  // If ordered, check the number of values of cells is supported.
   if (order_ != DataOrder::UNORDERED_DATA) {
     ensure_ordered_attribute_datatype_is_valid(type_);
-    if (type == Datatype::STRING_ASCII) {
-      if (cell_val_num_ != constants::var_num) {
-        throw std::invalid_argument(
-            "Ordered attributes with datatype '" + datatype_str(type_) +
-            "' must have cell_val_num=1.");
-      }
-    } else {
-      if (cell_val_num_ != 1) {
-        throw std::invalid_argument(
-            "Ordered attributes with datatype '" + datatype_str(type_) +
-            "' must have cell_val_num=1.");
-      }
-    }
   }
+  validate_cell_val_num(cell_val_num_);
+  set_default_fill_value();
 }
 
 Attribute::Attribute(
@@ -121,6 +109,7 @@ Attribute::Attribute(
     , fill_value_validity_(fill_value_validity)
     , order_(order)
     , enumeration_name_(enumeration_name) {
+  validate_cell_val_num(cell_val_num_);
 }
 
 /* ********************************* */
@@ -303,22 +292,41 @@ void Attribute::serialize(
 }
 
 void Attribute::set_cell_val_num(unsigned int cell_val_num) {
-  if (type_ == Datatype::ANY) {
-    throw AttributeStatusException(
+  validate_cell_val_num(cell_val_num);
+  cell_val_num_ = cell_val_num;
+  set_default_fill_value();
+}
+
+void Attribute::validate_cell_val_num(unsigned int cell_val_num) const {
+  if (type_ == Datatype::ANY && cell_val_num != constants::var_num) {
+    throw AttributeException(
         "Cannot set number of values per cell; Attribute datatype `ANY` is "
         "always variable-sized");
   }
 
-  if (order_ != DataOrder::UNORDERED_DATA && type_ != Datatype::STRING_ASCII &&
-      cell_val_num != 1) {
-    throw AttributeStatusException(
-        "Cannot set number of values per cell; An ordered attribute with "
-        "datatype '" +
-        datatype_str(type_) + "' can only have cell_val_num=1.");
+  // If ordered, check the number of values of cells is supported.
+  if (order_ != DataOrder::UNORDERED_DATA) {
+    if (type_ == Datatype::STRING_ASCII) {
+      if (cell_val_num != constants::var_num) {
+        throw AttributeException(
+            "Cannot set number of values per cell; Ordered attributes with "
+            "datatype '" +
+            datatype_str(type_) +
+            "' must have `cell_val_num=constants::var_num`.");
+      }
+    } else {
+      if (cell_val_num != 1) {
+        throw AttributeException(
+            "Ordered attributes with datatype '" + datatype_str(type_) +
+            "' must have `cell_val_num=1`.");
+      }
+    }
   }
 
-  cell_val_num_ = cell_val_num;
-  set_default_fill_value();
+  // check zero last so we get the more informative error first
+  if (cell_val_num == 0) {
+    throw AttributeException("Cannot set zero values per cell");
+  }
 }
 
 void Attribute::set_nullable(const bool nullable) {
