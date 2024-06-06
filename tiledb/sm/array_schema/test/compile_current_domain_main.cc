@@ -30,7 +30,7 @@
 
 int main(int, char*[]) {
   try {
-    tiledb::sm::CurrentDomain(nullptr);
+    tiledb::sm::CurrentDomain(nullptr, 0);
   } catch (...) {
   }
   return 0;
