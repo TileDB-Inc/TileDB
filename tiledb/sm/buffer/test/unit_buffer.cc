@@ -32,6 +32,7 @@
  */
 
 #include "tiledb/sm/buffer/buffer.h"
+#include "tiledb/sm/buffer/buffer_list.h"
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
@@ -251,4 +252,35 @@ TEST_CASE("Buffer: Overflow on advance_offset", "[buffer][Buffer]") {
   uint64_t n = std::numeric_limits<uint64_t>::max();
   buff.advance_offset(n);
   CHECK(buff.offset() == buff.size());
+}
+
+TEST_CASE("Buffer List: Don't accidentally return zero bytes read.") {
+  BufferList blist;
+
+  uint8_t data1[3] = {1, 2, 3};
+  REQUIRE(blist.add_buffer(Buffer(data1, 3)).ok());
+
+  uint8_t data2[3] = {4, 5, 6};
+  REQUIRE(blist.add_buffer(Buffer(data2, 3)).ok());
+
+  uint8_t data3[6] = {0, 0, 0, 0, 0, 0};
+  uint64_t num_read = 1000;
+
+  REQUIRE(blist.read_at_most(data3, 3, &num_read).ok());
+  REQUIRE(num_read == 3);
+  REQUIRE(data3[0] == 1);
+  REQUIRE(data3[1] == 2);
+  REQUIRE(data3[2] == 3);
+
+  REQUIRE(blist.read_at_most(data3, 3, &num_read).ok());
+  REQUIRE(num_read == 3);
+  REQUIRE(data3[0] == 4);
+  REQUIRE(data3[1] == 5);
+  REQUIRE(data3[2] == 6);
+
+  REQUIRE(blist.read_at_most(data3, 6, &num_read).ok());
+  REQUIRE(num_read == 0);
+
+  REQUIRE(blist.read_at_most(data3, 6, &num_read).ok());
+  REQUIRE(num_read == 0);
 }
