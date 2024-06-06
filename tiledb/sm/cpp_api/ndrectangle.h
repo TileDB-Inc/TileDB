@@ -68,7 +68,7 @@ class NDRectangle {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  NDRectangle(const Context& ctx, const tiledb::Domain& domain)
+  NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
       : ctx_(ctx)
       , domain_(domain) {
     tiledb_ndrect_t* capi_ndrect;
