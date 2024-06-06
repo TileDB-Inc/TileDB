@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.554">
+<meta name="generator" content="quarto-1.4.555">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -296,7 +296,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="main-structure" class="level2">
 <h2 class="anchored" data-anchor-id="main-structure">Main Structure</h2>
 <p>Internally tile data is divided into “chunks.” Every tile is at least one chunk. Each tile has the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -331,7 +331,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="chunk-format" class="level2">
 <h2 class="anchored" data-anchor-id="chunk-format">Chunk Format</h2>
 <p>A chunk has the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -381,7 +381,7 @@ ul.task-list li input[type="checkbox"] {
 <h3 class="anchored" data-anchor-id="byteshuffle-filter">Byteshuffle Filter</h3>
 <p>The byteshuffle filter does not filter input metadata, and the output data is guaranteed to be the same length as the input data.</p>
 <p>The byteshuffle filter produces output metadata in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -413,7 +413,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The byteshuffle filter produces output data in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -443,7 +443,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="bitshuffle-filter" class="level3">
 <h3 class="anchored" data-anchor-id="bitshuffle-filter">Bitshuffle Filter</h3>
 <p>The bitshuffle filter does not filter input metadata. It produces output metadata in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -475,7 +475,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The bitshuffle filter produces output data in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -505,7 +505,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="bit-width-reduction-filter" class="level3">
 <h3 class="anchored" data-anchor-id="bit-width-reduction-filter">Bit Width Reduction Filter</h3>
 <p>The bit width reduction filter does not filter input metadata. It produces output metadata in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -542,7 +542,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The type <code>WindowMD</code> has the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -574,7 +574,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The bit width reduction filter produces output data in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -609,7 +609,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="positive-delta-encoding-filter" class="level3">
 <h3 class="anchored" data-anchor-id="positive-delta-encoding-filter">Positive Delta Encoding Filter</h3>
 <p>The positive-delta encoding filter does not filter input metadata. It produces output metadata in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -641,7 +641,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The type <code>WindowMD</code> has the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -668,7 +668,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The positive-delta encoding filter produces output data in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -698,7 +698,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="compression-filters" class="level3">
 <h3 class="anchored" data-anchor-id="compression-filters">Compression Filters</h3>
 <p>The compression filters do filter input metadata. They produce output metadata in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -755,7 +755,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The type <code>CompressedPartMD</code> has the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -782,7 +782,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The compression filters then produce output data in the format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -832,7 +832,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="checksum-filters" class="level3">
 <h3 class="anchored" data-anchor-id="checksum-filters">Checksum Filters</h3>
 <p>The filter metadata for <code>TILEDB_FILTER_CHECKSUM_{MD5,SHA256}</code> has internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -918,7 +918,7 @@ ul.task-list li input[type="checkbox"] {
 <h3 class="anchored" data-anchor-id="encryption-filters">Encryption Filters</h3>
 <p>If the array is <strong>encrypted</strong>, TileDB uses an extra internal filter <code>INTERNAL_FILTER_AES_256_GCM</code> for AES encryption.</p>
 <p>The encryption filter metadata have the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -970,7 +970,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The <code>AESPartMD</code> field has the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -1088,7 +1088,7 @@ ul.task-list li input[type="checkbox"] {
 </table>
 <p>The original metadata is <strong>not</strong> included in the metadata output.</p>
 <p>The <code>AESPart</code> field has the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -1125,7 +1125,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>The data output of the encryption filter is:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">

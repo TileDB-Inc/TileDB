@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.554">
+<meta name="generator" content="quarto-1.4.555">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -335,7 +335,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="fragment-metadata-file" class="level2">
 <h2 class="anchored" data-anchor-id="fragment-metadata-file">Fragment Metadata File</h2>
 <p>The fragment metadata file has the following on-disk format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -489,7 +489,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="r-tree" class="level3">
 <h3 class="anchored" data-anchor-id="r-tree">R-Tree</h3>
 <p>The R-Tree is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -559,7 +559,7 @@ ul.task-list li input[type="checkbox"] {
 <section id="mbr" class="level3">
 <h3 class="anchored" data-anchor-id="mbr">MBR</h3>
 <p>Each MBR entry has format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -591,7 +591,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>For <em>fixed-sized dimensions</em>, the <code>1DRange</code> format is:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -618,7 +618,7 @@ ul.task-list li input[type="checkbox"] {
 </tbody>
 </table>
 <p>For <em>var-sized dimensions</em>, the <code>1DRange</code> format is:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -659,7 +659,7 @@ ul.task-list li input[type="checkbox"] {
 <h3 class="anchored" data-anchor-id="tile-offsets">Tile Offsets</h3>
 <p>Tile offsets refer to each <em>on-disk</em> data tile’s starting byte offset.<br>
 Tile offsets is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -695,7 +695,7 @@ Tile offsets is a <a href="../format_spec/generic_tile.html">generic tile</a> wi
 <h3 class="anchored" data-anchor-id="tile-sizes">Tile Sizes</h3>
 <p>The tile size refers to the <em>in-memory</em> size.<br>
 It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -730,7 +730,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="tile-mins-maxes" class="level3">
 <h3 class="anchored" data-anchor-id="tile-mins-maxes">Tile Mins Maxes</h3>
 <p>The tile mins maxes is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -775,7 +775,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="tile-sums" class="level3">
 <h3 class="anchored" data-anchor-id="tile-sums">Tile Sums</h3>
 <p>The tile sums is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -810,7 +810,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="tile-null-count" class="level3">
 <h3 class="anchored" data-anchor-id="tile-null-count">Tile Null Count</h3>
 <p>The tile null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -845,7 +845,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="tile-fragment-min-max-sum-null-count" class="level3">
 <h3 class="anchored" data-anchor-id="tile-fragment-min-max-sum-null-count">Tile Fragment Min Max Sum Null Count</h3>
 <p>The fragment min max sum null count is a <a href="../format_spec/generic_tile.html">generic tile</a> with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 33%">
 <col style="width: 33%">
@@ -930,7 +930,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="tile-processed-conditions" class="level3">
 <h3 class="anchored" data-anchor-id="tile-processed-conditions">Tile Processed Conditions</h3>
 <p>The processed conditions is a <a href="../format_spec/generic_tile.html">generic tile</a> and is the list of delete/update conditions that have already been applied for this fragment and don’t need to be applied again, sorted by filename, with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -975,7 +975,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="footer" class="level3">
 <h3 class="anchored" data-anchor-id="footer">Footer</h3>
 <p>The footer is a simple blob (i.e., <em>not a generic tile</em>) with the following internal format:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>
@@ -1206,7 +1206,7 @@ It is a <a href="../format_spec/generic_tile.html">generic tile</a> with the fol
 <section id="data-file" class="level2">
 <h2 class="anchored" data-anchor-id="data-file">Data File</h2>
 <p>The on-disk format of each data file is:</p>
-<table class="table">
+<table class="caption-top table">
 <thead>
 <tr class="header">
 <th style="text-align: left;"><strong>Field</strong></th>

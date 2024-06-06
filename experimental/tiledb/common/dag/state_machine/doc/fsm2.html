@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.4.554">
+<meta name="generator" content="quarto-1.4.555">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -209,7 +209,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 <p>Our basic goal for the <code>Source</code> and <code>Sink</code> ports is to transfer a data item from a <code>Source</code> to a connected (bound) <code>Sink</code>. At a high level, the way a client would use the <code>Source</code> to do this is the following: - create a data item - insert the data item into a <code>Source</code> port - invoke the fill event - invoke the push event</p>
 <p>Similarly, the desired usage of a <code>Sink</code> port is also to transfer a data item from a <code>Source</code> to a bound <code>Sink</code>. At a high level, the way a client would use the <code>Source</code> is the following - invoke the pull event - extract the data item from the <code>Sink</code> port - consume the item - invoke the drain event</p>
 <p>Based on these product states and the four above events, the state transition table for the product state machine (which we will just refer to as the “state machine” below is the following:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
 <col style="width: 18%">
@@ -301,7 +301,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </ul>
 <p>Note that the exit action is called <em>before</em> the state transition. Note also that the entry action is called with the new state (the post transition state).</p>
 <p>The tables for exit actions to be perfomed on state transitions is:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
 <col style="width: 18%">
@@ -364,7 +364,7 @@ pre > code.sourceCode > span > a:first-child::before { text-decoration: underlin
 </tbody>
 </table>
 <p>The table for entry actions to be performend on state transitions is:</p>
-<table class="table">
+<table class="caption-top table">
 <colgroup>
 <col style="width: 11%">
 <col style="width: 18%">
