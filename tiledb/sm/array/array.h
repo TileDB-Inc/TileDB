@@ -1046,6 +1046,19 @@ class Array {
     return resources_.rest_client();
   }
 
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status upgrade_version(
+      ContextResources& resources, const URI& uri, const Config& config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

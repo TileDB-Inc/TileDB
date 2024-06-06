@@ -3071,8 +3071,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri, (config == nullptr) ? ctx->config() : config->config()));
+  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+      ctx->resources(),
+      uri,
+      (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }

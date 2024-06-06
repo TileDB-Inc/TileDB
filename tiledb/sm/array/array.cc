@@ -2124,6 +2124,83 @@ const ArrayDirectory& Array::load_array_directory() {
   return array_directory();
 }
 
+Status Array::upgrade_version(
+    ContextResources& resources,
+    const URI& array_uri,
+    const Config& override_config) {
+  // Check if array exists
+  if (!is_array(resources, array_uri)) {
+    throw ArrayException(
+        "Cannot upgrade array; Array '" + array_uri.to_string() +
+        "' does not exist");
+  }
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      resources,
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
+  // Get encryption key from config
+  bool found = false;
+  std::string encryption_key_from_cfg =
+      override_config.get("sm.encryption_key", &found);
+  assert(found);
+  std::string encryption_type_from_cfg =
+      override_config.get("sm.encryption_type", &found);
+  assert(found);
+  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
+  throw_if_not_ok(st1);
+  EncryptionType encryption_type_cfg = etc.value();
+
+  EncryptionKey encryption_key_cfg;
+  if (encryption_key_from_cfg.empty()) {
+    throw_if_not_ok(
+        encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+  } else {
+    throw_if_not_ok(encryption_key_cfg.set_key(
+        encryption_type_cfg,
+        (const void*)encryption_key_from_cfg.c_str(),
+        static_cast<uint32_t>(encryption_key_from_cfg.size())));
+  }
+
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key_cfg, resources.ephemeral_memory_tracker());
+
+  if (array_schema->version() < constants::format_version) {
+    array_schema->generate_uri();
+    array_schema->set_version(constants::format_version);
+
+    // Create array schema directory if necessary
+    URI array_schema_dir_uri =
+        array_uri.join_path(constants::array_schema_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+
+    // Store array schema
+    throw_if_not_ok(
+        store_array_schema(resources, array_schema, encryption_key_cfg));
+
+    // Create commit directory if necessary
+    URI array_commit_uri =
+        array_uri.join_path(constants::array_commits_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_commit_uri));
+
+    // Create fragments directory if necessary
+    URI array_fragments_uri =
+        array_uri.join_path(constants::array_fragments_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_fragments_uri));
+
+    // Create fragment metadata directory if necessary
+    URI array_fragment_metadata_uri =
+        array_uri.join_path(constants::array_fragment_meta_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
+  }
+
+  return Status::Ok();
+}
+
 Status Array::compute_non_empty_domain() {
   // Keep the current opened array alive for the duration of this call.
   auto opened_array = opened_array_;
