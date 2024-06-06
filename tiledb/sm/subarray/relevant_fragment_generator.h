@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -34,14 +34,13 @@
 #define TILEDB_RELEVANT_FRAGMENTS_GENERATOR_H
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 
 #include <vector>
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class OpenedArray;
 class RelevantFragments;
@@ -151,8 +150,7 @@ class RelevantFragmentGenerator {
 
   /** Reference to the subarray. */
   const Subarray& subarray_;
-};  // namespace sm
-}  // namespace sm
-}  // namespace tiledb
+};
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_RELEVANT_FRAGMENTS_GENERATOR_H
