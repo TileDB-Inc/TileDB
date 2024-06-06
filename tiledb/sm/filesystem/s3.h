@@ -791,8 +791,7 @@ class S3 : FilesystemBase {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
-      const URI& parent) const override;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const override;
 
   /**
    * Disconnects a S3 client.
@@ -889,9 +888,9 @@ class S3 : FilesystemBase {
    * @param prefix The parent path to list sub-paths.
    * @param delimiter The uri is truncated to the first delimiter.
    * @param max_paths The maximum number of paths to be retrieved.
-   * @return Status tuple where second is a list of directory_entry objects.
+   * @return A list of directory_entry objects.
    */
-  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
+  std::vector<directory_entry> ls_with_sizes(
       const URI& prefix, const std::string& delimiter, int max_paths) const;
 
   /**

@@ -222,10 +222,8 @@ Status VFS::dir_size(const URI& dir_name, uint64_t* dir_size) const {
   do {
     auto uri = to_ls.front();
     to_ls.pop_front();
-    auto&& [st, children] = ls_with_sizes(uri);
-    RETURN_NOT_OK(st);
 
-    for (const auto& child : *children) {
+    for (const auto& child : ls_with_sizes(uri)) {
       if (!child.is_directory()) {
         *dir_size += child.file_size();
       } else {
@@ -703,90 +701,74 @@ Status VFS::is_bucket(const URI& uri, bool* is_bucket) const {
 
 Status VFS::ls(const URI& parent, std::vector<URI>* uris) const {
   stats_->add_counter("ls_num", 1);
-  auto&& [st, entries] = ls_with_sizes(parent);
-  RETURN_NOT_OK(st);
 
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(parent)) {
     uris->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> VFS::ls_with_sizes(
-    const URI& parent) const {
+std::vector<directory_entry> VFS::ls_with_sizes(const URI& parent) const {
   // Noop if `parent` is not a directory, do not error out.
   // For S3, GCS and Azure, `ls` on a non-directory will just
   // return an empty `uris` vector.
   if (!(parent.is_s3() || parent.is_gcs() || parent.is_azure())) {
     bool flag = false;
-    RETURN_NOT_OK_TUPLE(this->is_dir(parent, &flag), nullopt);
+    throw_if_not_ok(this->is_dir(parent, &flag));
 
     if (!flag) {
-      return {Status::Ok(), std::vector<directory_entry>()};
+      return {};
     }
   }
 
-  optional<std::vector<directory_entry>> entries;
+  std::vector<directory_entry> entries;
   if (parent.is_file()) {
 #ifdef _WIN32
-    Status st;
-    std::tie(st, entries) = win_.ls_with_sizes(parent);
+    entries = win_.ls_with_sizes(parent);
 #else
-    Status st;
-    std::tie(st, entries) = posix_.ls_with_sizes(parent);
+    entries = posix_.ls_with_sizes(parent);
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_s3()) {
 #ifdef HAVE_S3
-    Status st;
-    std::tie(st, entries) = s3().ls_with_sizes(parent);
+    entries = s3().ls_with_sizes(parent);
 #else
-    auto st = Status_VFSError("TileDB was built without S3 support");
+    throw BuiltWithout("S3");
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_azure()) {
 #ifdef HAVE_AZURE
-    Status st;
-    std::tie(st, entries) = azure_.ls_with_sizes(parent);
+    entries = azure_.ls_with_sizes(parent);
 #else
-    auto st = Status_VFSError("TileDB was built without Azure support");
+    throw BuiltWithout("Azure");
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-    Status st;
-    std::tie(st, entries) = gcs_.ls_with_sizes(parent);
+    entries = gcs_.ls_with_sizes(parent);
 #else
-    auto st = Status_VFSError("TileDB was built without GCS support");
+    throw BuiltWithout("GCS");
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_hdfs()) {
 #ifdef HAVE_HDFS
-    Status st;
-    std::tie(st, entries) = hdfs_->ls_with_sizes(parent);
+    auto&& [st, entries_optional] = hdfs_->ls_with_sizes(parent);
+    throw_if_not_ok(st);
+    entries = *std::move(entries_optional);
 #else
-    auto st = Status_VFSError("TileDB was built without HDFS support");
+    throw BuiltWithout("HDFS");
 #endif
-    RETURN_NOT_OK_TUPLE(st, nullopt);
   } else if (parent.is_memfs()) {
-    Status st;
-    std::tie(st, entries) =
-        memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
-    RETURN_NOT_OK_TUPLE(st, nullopt);
+    entries = memfs_.ls_with_sizes(URI("mem://" + parent.to_path()));
   } else {
-    auto st = Status_VFSError("Unsupported URI scheme: " + parent.to_string());
-    return {st, std::nullopt};
+    throw UnsupportedURI(parent.to_string());
   }
   parallel_sort(
       compute_tp_,
-      entries->begin(),
-      entries->end(),
+      entries.begin(),
+      entries.end(),
       [](const directory_entry& l, const directory_entry& r) {
         return l.path().native() < r.path().native();
       });
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status VFS::move_file(const URI& old_uri, const URI& new_uri) {

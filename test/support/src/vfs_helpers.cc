@@ -451,12 +451,16 @@ VFSTestBase::VFSTestBase(
 }
 
 VFSTestBase::~VFSTestBase() {
-  if (vfs_.supports_uri_scheme(temp_dir_)) {
-    bool is_dir = false;
-    vfs_.is_dir(temp_dir_, &is_dir).ok();
-    if (is_dir) {
-      vfs_.remove_dir(temp_dir_).ok();
+  try {
+    if (vfs_.supports_uri_scheme(temp_dir_)) {
+      bool is_dir = false;
+      vfs_.is_dir(temp_dir_, &is_dir).ok();
+      if (is_dir) {
+        vfs_.remove_dir(temp_dir_).ok();
+      }
     }
+  } catch (const std::exception& e) {
+    // Suppress exceptions in destructors.
   }
 }
 
