@@ -37,6 +37,7 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/enums/current_domain_type.h"
+#include "tiledb/sm/misc/types.h"
 #include "tiledb/storage_format/serialization/serializers.h"
 
 namespace tiledb::sm {
