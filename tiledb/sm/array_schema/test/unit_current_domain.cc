@@ -261,7 +261,7 @@ shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema_var() {
 
 template <class T>
 void CurrentDomainFx<T>::create_array(shared_ptr<ArraySchema> schema) {
-  throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
+  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
 }
 
 template <class T>
@@ -524,8 +524,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   // Persist evolved schema and read it back, check it shows the correct
   // rectangle
-  throw_if_not_ok(this->ctx_.storage_manager()->array_evolve_schema(
-      this->uri_, ase.get(), this->enc_key_));
+  throw_if_not_ok(Array::evolve_array_schema(
+      this->ctx_.resources(), this->uri_, ase.get(), this->enc_key_));
 
   // Read it back
   auto new_schema = this->get_array_schema_latest();
@@ -586,7 +586,7 @@ TEST_CASE_METHOD(
   auto empty_current_domain = create_current_domain({}, schema, nullptr, true);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
-      "specified an empty new current_domain");
+      "the new current_domain specified is empty");
   REQUIRE_THROWS_WITH(
       ase->expand_current_domain(empty_current_domain), matcher);
 }
