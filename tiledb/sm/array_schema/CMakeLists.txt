@@ -70,7 +70,7 @@ conclude(object_library)
 #
 commence(object_library ndrectangle)
     this_target_sources(ndrectangle.cc)
-    this_target_object_libraries(constants)
+    this_target_object_libraries(constants domain)
 conclude(object_library)
 
 #
