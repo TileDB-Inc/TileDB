@@ -1,5 +1,5 @@
 /**
- * @file   proxy_sort.h
+ * @file   tiledb/common/util/proxy_sort.h
  *
  * @section LICENSE
  *

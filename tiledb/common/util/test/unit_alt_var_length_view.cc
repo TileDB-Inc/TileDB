@@ -33,7 +33,7 @@
 #include <algorithm>
 #include <catch2/catch_all.hpp>
 #include <vector>
-#include "../alt_var_length_view.h"
+#include "tiledb/common/util/alt_var_length_view.h"
 
 TEST_CASE(
     "alt_var_length_view: Null test", "[alt_var_length_view][null_test]") {

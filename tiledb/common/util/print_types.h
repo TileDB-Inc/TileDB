@@ -1,5 +1,5 @@
 /**
- * @file   print_types.h
+ * @file   tiledb/common/util/print_types.h
  *
  * @section LICENSE
  *
@@ -28,9 +28,50 @@
  * @section DESCRIPTION
  *
  * This file implements a compile-time debugging utility for investigating
- * the specific types of objects.
+ * the specific types of objects.  It is the equivalent of a compile-time
+ * `printf`, but for types and is useful for debugging compile-time issues
+ * related to templates.  It is intended for development use only and should
+ * not be included in production code.
  *
- * Based on utility from NWGraph.  Author Luke D'Alessandro.
+ * As a compile-time "printf" for types, it will generate a compiler error
+ * whose message will contain the expanded types of the variables passed to it.
+ * Note that the `print_types` takes *variable* as argument, not actual types
+ * or template parameters.  The programmer will need to inspect the error
+ * message to determine the types of the variables.
+ *
+ * @example
+ *
+ *   // See https://godbolt.org/z/3q341cs57 for running example
+ *   #include <vector>
+ *   #include "tiledb/common/util/print_types.h"
+ *
+ *   template <class S, class T>
+ *   void foo(const S& s, const T& t) {
+ *     // Note we pass s and t, not S and T
+ *     print_types(s, t);
+ *   }
+ *
+ *   int main() {
+ *     foo(1.0, std::vector<std::vector<int>>{{1, 2}, {3, 4}});
+ *   }
+ *
+ * This will produce an error message like the following (gcc 12.1):
+ *   <source>:18:31: error: invalid use of incomplete type 'struct
+ *   print_types_t<double, std::vector<std::vector<int, std::allocator<int> >,
+ *   std::allocator<std::vector<int, std::allocator<int> > > > >' 18 |   return
+ *   print_types_t<Ts...>{};
+ *
+ * Or like the following (clang 16.0):
+ *   <source>:18:10: error: implicit instantiation of undefined template
+ *   'print_types_t<double, std::vector<std::vector<int>>>' return
+ *   print_types_t<Ts...>{};
+ *
+ *   The types of the variable `s` and `t` are contained in the template
+ *   arguments shown for `print_types`.  In this case they are respectively
+ *   `double` and `std::vector<std::vector<int>>`.
+ *
+ * This file is based on the `print_types` utility from NWGraph.
+ * Author Luke D'Alessandro.
  */
 
 #ifndef TILEDB_PRINT_TYPES_H

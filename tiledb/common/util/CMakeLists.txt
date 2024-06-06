@@ -27,4 +27,5 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
+add_subdirectory(detail)
 add_test_subdirectory()

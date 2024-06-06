@@ -1,11 +1,11 @@
 /**
- * @file compile_utils_main.cc
+ * @file   unit_block_view.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,14 +24,15 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file implements unit tests for the block_view class.
  */
 
-#include "../bounded_buffer.h"
-#include "../print_types.h"
-#include "../range_join.h"
-#include "../spinlock.h"
-#include "../traits.h"
-#include "tiledb/common/util/detail/arrow_proxy.h"
+#include <catch2/catch_all.hpp>
+#include "tiledb/common/util/block_view.h"
 
-int main() {
+TEST_CASE("block_view: null test", "[block_view][null test]") {
+  REQUIRE(true);
 }

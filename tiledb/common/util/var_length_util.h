@@ -1,5 +1,5 @@
 /**
- * @file   var_length_util.h
+ * @file   tiledb/common/util/var_length_util.h
  *
  * @section LICENSE
  *
