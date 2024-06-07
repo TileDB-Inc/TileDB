@@ -1002,7 +1002,7 @@ TEST_CASE_METHOD(
     write_1d_fragment(coords4.data(), &coords4_size, data4.data(), &data4_size);
   }
 
-  total_budget_ = "3000000";
+  total_budget_ = "3300000";
   ratio_array_data_ = "0.002";
   partial_tile_offsets_loading_ =
       enable_partial_tile_offsets_loading ? "true" : "false";
