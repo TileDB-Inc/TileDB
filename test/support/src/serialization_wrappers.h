@@ -35,6 +35,7 @@
 #define TILEDB_TEST_SERIALIZATION_WRAPPERS_H
 
 #include <string>
+#include <vector>
 
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
@@ -141,4 +142,11 @@ int tiledb_fragment_info_serialize(
  */
 void tiledb_subarray_serialize(
     tiledb_ctx_t* ctx, tiledb_array_t* array, tiledb_subarray_t** subarray);
+
+void tiledb_array_consolidation_request_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_serialization_type_t serialize_type,
+    const std::vector<std::string>* fragment_uris_in,
+    std::vector<std::string>* fragment_uris_out);
+
 #endif  // TILEDB_TEST_SERIALIZATION_WRAPPERS_H

@@ -33,9 +33,12 @@
 
 #include "test/support/src/helpers.h"
 #include "tiledb/api/c_api/array_schema/array_schema_api_internal.h"
+#include "tiledb/api/c_api/buffer/buffer_api_internal.h"
+#include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/sm/c_api/tiledb.h"
 #include "tiledb/sm/c_api/tiledb_serialization.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/serialization/consolidation.h"
 #include "tiledb/sm/serialization/query.h"
 
 #ifdef TILEDB_SERIALIZATION
@@ -218,4 +221,29 @@ void tiledb_subarray_serialize(
               .ok());
   *subarray = deserialized_subarray;
 #endif
+}
+
+void tiledb_array_consolidation_request_wrapper(
+    tiledb_ctx_t* ctx,
+    tiledb_serialization_type_t serialize_type,
+    const std::vector<std::string>* fragment_uris_in,
+    std::vector<std::string>* fragment_uris_out) {
+  // Serialize and Deserialize
+  auto buffer = tiledb_buffer_handle_t::make_handle();
+  serialization::array_consolidation_request_serialize(
+      ctx->config(),
+      fragment_uris_in,
+      static_cast<tiledb::sm::SerializationType>(serialize_type),
+      &(buffer->buffer()));
+
+  auto [config, fragment_uris_deser] =
+      serialization::array_consolidation_request_deserialize(
+          static_cast<tiledb::sm::SerializationType>(serialize_type),
+          buffer->buffer());
+
+  tiledb_buffer_handle_t::break_handle(buffer);
+
+  if (fragment_uris_deser.has_value()) {
+    *fragment_uris_out = fragment_uris_deser.value();
+  }
 }

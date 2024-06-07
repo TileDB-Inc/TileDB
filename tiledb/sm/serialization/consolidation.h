@@ -58,22 +58,24 @@ namespace serialization {
  * Convert Cap'n Proto message to Consolidation request
  *
  * @param consolidation_req_reader cap'n proto class.
- * @param config config object to deserialize into.
- * @return Status
+ * @return {config, fragment_uris} config object to deserialize into, and the
+ * uris of the fragments to be consolidated if any
  */
-Status array_consolidation_request_from_capnp(
-    const capnp::ArrayConsolidationRequest::Reader& consolidation_req_reader,
-    Config* Config);
+std::pair<Config, std::optional<std::vector<std::string>>>
+array_consolidation_request_from_capnp(
+    const capnp::ArrayConsolidationRequest::Reader& consolidation_req_reader);
 
 /**
  * Convert Consolidation Request to Cap'n Proto message.
  *
  * @param config config to serialize info from
+ * @param fragment_uris The uris of the fragments to be consolidated if this is
+ * a request for fragment list consolidation
  * @param consolidation_req_builder cap'n proto class.
- * @return Status
  */
-Status array_consolidation_request_to_capnp(
+void array_consolidation_request_to_capnp(
     const Config& config,
+    const std::vector<std::string>* fragment_uris,
     capnp::ArrayConsolidationRequest::Builder* consolidation_req_builder);
 #endif
 
@@ -81,27 +83,28 @@ Status array_consolidation_request_to_capnp(
  * Serialize a consolidation request via Cap'n Proto.
  *
  * @param config config object to get info to serialize.
+ * @param fragment_uris The uris of the fragments to be consolidated if this is
+ * a request for fragment list consolidation
  * @param serialize_type format to serialize into Cap'n Proto or JSON.
  * @param serialized_buffer buffer to store serialized bytes in.
- * @return Status
  */
-Status array_consolidation_request_serialize(
+void array_consolidation_request_serialize(
     const Config& config,
+    const std::vector<std::string>* fragment_uris,
     SerializationType serialize_type,
     Buffer* serialized_buffer);
 
 /**
  * Deserialize consolidation request via Cap'n Proto
  *
- * @param config config object to store the deserialized info in.
  * @param serialize_type format the data is serialized in: Cap'n Proto of JSON.
  * @param serialized_buffer buffer to read serialized bytes from.
- * @return Status
+ * @return {config, fragment_uris} config object to deserialize into, and the
+ * uris of the fragments to be consolidated if any
  */
-Status array_consolidation_request_deserialize(
-    Config** config,
-    SerializationType serialize_type,
-    const Buffer& serialized_buffer);
+std::pair<Config, std::optional<std::vector<std::string>>>
+array_consolidation_request_deserialize(
+    SerializationType serialize_type, const Buffer& serialized_buffer);
 
 /**
  * Serialize a consolidation plan request via Cap'n Proto.

@@ -151,16 +151,16 @@ void Consolidator::array_consolidate(
     throw ConsolidatorException("Cannot consolidate array; Invalid URI");
   }
 
-  // Check if array exists
-  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
-    throw ConsolidatorException(
-        "Cannot consolidate array; Array does not exist");
-  }
-
   if (array_uri.is_tiledb()) {
     throw_if_not_ok(
         resources.rest_client()->post_consolidation_to_rest(array_uri, config));
   } else {
+      // Check if array exists
+    if (object_type(resources, array_uri) != ObjectType::ARRAY) {
+      throw ConsolidatorException(
+          "Cannot consolidate array; Array does not exist");
+    }
+
     // Get encryption key from config
     std::string encryption_key_from_cfg;
     if (!encryption_key) {
@@ -212,46 +212,54 @@ void Consolidator::fragments_consolidate(
     throw ConsolidatorException("Cannot consolidate array; Invalid URI");
   }
 
-  // Check if array exists
-  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
-    throw ConsolidatorException(
-        "Cannot consolidate array; Array does not exist");
-  }
-
-  // Get encryption key from config
-  std::string encryption_key_from_cfg;
-  if (!encryption_key) {
-    bool found = false;
-    encryption_key_from_cfg = config.get("sm.encryption_key", &found);
-    assert(found);
-  }
-
-  if (!encryption_key_from_cfg.empty()) {
-    encryption_key = encryption_key_from_cfg.c_str();
-    key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
-    std::string encryption_type_from_cfg;
-    bool found = false;
-    encryption_type_from_cfg = config.get("sm.encryption_type", &found);
-    assert(found);
-    auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
-    throw_if_not_ok(st);
-    encryption_type = et.value();
-
-    if (!EncryptionKey::is_valid_key_length(
-            encryption_type,
-            static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
-      encryption_key = nullptr;
-      key_length = 0;
+  if (array_uri.is_tiledb()) {
+    throw_if_not_ok(
+        storage_manager->resources().rest_client()->post_consolidation_to_rest(
+            array_uri, config, &fragment_uris));
+  } else {
+      // Check if array exists
+    if (object_type(resources, array_uri) != ObjectType::ARRAY) {
+      throw ConsolidatorException(
+          "Cannot consolidate array; Array does not exist");
     }
-  }
 
-  // Consolidate
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::FRAGMENT, config, storage_manager);
-  auto fragment_consolidator =
-      dynamic_cast<FragmentConsolidator*>(consolidator.get());
-  throw_if_not_ok(fragment_consolidator->consolidate_fragments(
-      array_name, encryption_type, encryption_key, key_length, fragment_uris));
+    // Get encryption key from config
+    std::string encryption_key_from_cfg;
+    if (!encryption_key) {
+      bool found = false;
+      encryption_key_from_cfg = config.get("sm.encryption_key", &found);
+      assert(found);
+    }
+
+    if (!encryption_key_from_cfg.empty()) {
+      encryption_key = encryption_key_from_cfg.c_str();
+      key_length = static_cast<uint32_t>(encryption_key_from_cfg.size());
+      std::string encryption_type_from_cfg;
+      bool found = false;
+      encryption_type_from_cfg = config.get("sm.encryption_type", &found);
+      assert(found);
+      auto [st, et] = encryption_type_enum(encryption_type_from_cfg);
+      throw_if_not_ok(st);
+      encryption_type = et.value();
+
+      if (!EncryptionKey::is_valid_key_length(
+              encryption_type,
+              static_cast<uint32_t>(encryption_key_from_cfg.size()))) {
+        encryption_key = nullptr;
+        key_length = 0;
+      }
+    }
+
+    // Consolidate
+    auto fragment_consolidator =
+        make_shared<FragmentConsolidator>(HERE(), config, storage_manager);
+    throw_if_not_ok(fragment_consolidator->consolidate_fragments(
+        array_name,
+        encryption_type,
+        encryption_key,
+        key_length,
+        fragment_uris));
+  }
 }
 
 void Consolidator::write_consolidated_commits_file(

@@ -7169,7 +7169,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, dense split fragments",
-    "[capi][consolidation][dense][split-fragments][non-rest]") {
+    "[capi][consolidation][dense][split-fragments][rest]") {
   remove_dense_array();
   create_dense_array();
   write_dense_subarray(1, 2, 1, 2);
@@ -7253,7 +7253,7 @@ TEST_CASE_METHOD(
 TEST_CASE_METHOD(
     ConsolidationFx,
     "C API: Test consolidation, sparse split fragments",
-    "[capi][consolidation][sparse][split-fragments][non-rest]") {
+    "[capi][consolidation][sparse][split-fragments][rest]") {
   remove_sparse_array();
   create_sparse_array();
   write_sparse_row(0);
