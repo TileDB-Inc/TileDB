@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/auxiliary.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -263,6 +264,12 @@ Status Array::create(
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri();
   array_schema->check(resources.config());
+
+  // Check current domain is specified correctly if set
+  if (!array_schema->get_current_domain()->empty()) {
+    array_schema->get_current_domain()->check_schema_sanity(
+        array_schema->shared_domain());
+  }
 
   // Create array directory
   throw_if_not_ok(resources.vfs().create_dir(array_uri));
