@@ -27,7 +27,7 @@
  *
  * @section DESCRIPTION
  *
- * Tests the CurrentDomain API.
+ * Tests the CurrentDomain.
  */
 
 #include <sstream>
@@ -122,7 +122,7 @@ shared_ptr<const CurrentDomain> CurrentDomainFx<T>::create_current_domain(
     shared_ptr<const ArraySchema> schema,
     shared_ptr<NDRectangle> ndrectangle,
     bool empty) {
-  // create current_domain
+  // create current domain
   auto current_domain = make_shared<CurrentDomain>(
       memory_tracker_, constants::current_domain_version);
   if (empty) {
