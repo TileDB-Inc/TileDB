@@ -37,6 +37,7 @@
 #include <unordered_map>
 #include <vector>
 
+#include "tiledb/common/exception/exception.h"
 #include "tiledb/common/macros.h"
 #include "tiledb/common/status.h"
 
@@ -51,6 +52,14 @@ class directory_entry;
 namespace sm {
 
 class URI;
+
+/** Class for MemFS status exceptions. */
+class MemFSException : public StatusException {
+ public:
+  explicit MemFSException(const std::string& msg)
+      : StatusException("MemFS", msg) {
+  }
+};
 
 /**
  * The in-memory filesystem.
@@ -139,10 +148,9 @@ class MemFilesystem {
    * Lists files and files information under path
    *
    * @param path  The parent path to list sub-paths
-   * @return Status
+   * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& path) const;
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
 
   /**
    * Move a given filesystem path.

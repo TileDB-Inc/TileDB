@@ -115,8 +115,8 @@ class FilesystemBase {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  virtual tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const = 0;
+  virtual std::vector<filesystem::directory_entry> ls_with_sizes(
+      const URI& parent) const = 0;
 
   /**
    * Renames a file.
