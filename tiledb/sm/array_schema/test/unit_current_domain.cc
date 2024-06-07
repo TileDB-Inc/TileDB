@@ -135,7 +135,7 @@ shared_ptr<const CurrentDomain> CurrentDomainFx<T>::create_current_domain(
         memory_tracker_, schema->shared_domain(), ranges);
   }
 
-  // set ndrectangle to current_domain
+  // set ndrectangle to current domain
   current_domain->set_ndrectangle(ndrectangle);
 
   return current_domain;

@@ -43,14 +43,14 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-/** A current_domain type. */
+/** A current domain type. */
 enum class CurrentDomainType : uint8_t {
 #define TILEDB_CURRENT_DOMAIN_TYPE_ENUM(id) id
 #include "tiledb/sm/c_api/tiledb_enum.h"
 #undef TILEDB_CURRENT_DOMAIN_TYPE_ENUM
 };
 
-/** Returns the string representation of the input current_domain type. */
+/** Returns the string representation of the input current domain type. */
 inline const std::string& current_domain_type_str(
     CurrentDomainType current_domain_type) {
   switch (current_domain_type) {
@@ -61,7 +61,7 @@ inline const std::string& current_domain_type_str(
   }
 }
 
-/** Returns the current_domain type given a string representation. */
+/** Returns the current domain type given a string representation. */
 inline Status current_domain_type_enum(
     const std::string& current_domain_type_str,
     CurrentDomainType* current_domain_type) {

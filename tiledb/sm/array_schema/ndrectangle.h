@@ -181,10 +181,6 @@ class NDRectangle {
 
   /** Array Schema domain  */
   shared_ptr<Domain> domain_;
-
-  /* ********************************* */
-  /*          PRIVATE METHODS          */
-  /* ********************************* */
 };
 
 }  // namespace tiledb::sm
