@@ -110,7 +110,7 @@ Status GroupMetaConsolidator::consolidate(
 
 void GroupMetaConsolidator::vacuum(const char* group_name) {
   if (group_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum group metadata; Group name cannot be null");
   }
 

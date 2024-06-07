@@ -136,11 +136,8 @@ Status StorageManagerCanonical::async_push_query(Query* query) {
       &resources_.compute_tp(),
       [this, query]() {
         // Process query.
-        Status st = query_submit(query);
-        if (!st.ok()) {
-          resources_.logger()->status_no_return_value(st);
-        }
-        return st;
+        throw_if_not_ok(query_submit(query));
+        return Status::Ok();
       },
       [query]() {
         // Task was cancelled. This is safe to perform in a separate thread,
@@ -402,29 +399,6 @@ Status StorageManagerCanonical::set_default_tags() {
   RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
 
   return Status::Ok();
-}
-
-void StorageManagerCanonical::group_metadata_vacuum(
-    const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Invalid URI");
-  }
-
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Group does not exist");
-  }
-
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  consolidator->vacuum(group_name);
 }
 
 }  // namespace tiledb::sm

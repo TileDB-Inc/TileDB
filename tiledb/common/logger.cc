@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -145,10 +145,6 @@ void Logger::fatal(const char* msg) {
 Status Logger::status(const Status& st) {
   logger_->error(st.message());
   return st;
-}
-
-void Logger::status_no_return_value(const Status& st) {
-  logger_->error(st.message());
 }
 
 void Logger::trace(const std::string& msg) {

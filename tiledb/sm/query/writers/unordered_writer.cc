@@ -273,7 +273,7 @@ Status UnorderedWriter::check_coord_dups() const {
         return Status::Ok();
       });
 
-  RETURN_NOT_OK_ELSE(status, logger_->status_no_return_value(status));
+  RETURN_NOT_OK_ELSE(status, logger_->error(status.message()));
 
   return Status::Ok();
 }

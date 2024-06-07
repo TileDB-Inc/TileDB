@@ -599,6 +599,28 @@ Status Group::consolidate_metadata(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 }
 
+void Group::vacuum_metadata(
+    ContextResources& resources, const char* group_name, const Config& config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    throw GroupException("Cannot vacuum group metadata; Invalid URI");
+  }
+
+  // Check if group exists
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    throw GroupException("Cannot vacuum group metadata; Group does not exist");
+  }
+
+  StorageManager sm(resources, resources.logger(), config);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  consolidator->vacuum(group_name);
+}
+
 const EncryptionKey* Group::encryption_key() const {
   return encryption_key_.get();
 }
