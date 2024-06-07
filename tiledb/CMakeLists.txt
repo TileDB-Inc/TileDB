@@ -120,6 +120,7 @@ if (TILEDB_CPP_API)
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/capi_string.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/ndrectangle.h
+    ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/current_domain.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/subarray_experimental.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/type.h
     ${TILEDB_CORE_INCLUDE_DIR}/tiledb/sm/cpp_api/utils.h
