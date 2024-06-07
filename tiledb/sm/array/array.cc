@@ -265,7 +265,7 @@ Status Array::create(
   array_schema->generate_uri();
   array_schema->check(resources.config());
 
-  // Check current_domain is specified correctly if set
+  // Check current domain is specified correctly if set
   if (!array_schema->get_current_domain()->empty()) {
     array_schema->get_current_domain()->check_schema_sanity(
         array_schema->shared_domain());

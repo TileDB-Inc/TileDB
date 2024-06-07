@@ -192,14 +192,14 @@ class ArraySchemaEvolution {
   std::pair<uint64_t, uint64_t> timestamp_range() const;
 
   /**
-   * Expands the array current_domain
+   * Expands the array current domain
    *
-   * @param current_domain The new current_domain to expand to
+   * @param current_domain The new current domain to expand to
    */
   void expand_current_domain(shared_ptr<const CurrentDomain> current_domain);
 
   /**
-   * Accessor for the current_domain we want to expand to
+   * Accessor for the current domain we want to expand to
    */
   shared_ptr<const CurrentDomain> current_domain_to_expand() const;
 
@@ -240,7 +240,7 @@ class ArraySchemaEvolution {
    */
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
-  /** The array current_domain to expand */
+  /** The array current domain to expand */
   shared_ptr<const CurrentDomain> current_domain_to_expand_;
 
   /** Mutex for thread-safety. */

@@ -174,7 +174,7 @@ storage_size_t CurrentDomainFx<T>::calculate_serialized_size(
   // uint32_t - version
   num_bytes += sizeof(uint32_t);
 
-  // bool - empty current_domain flag
+  // bool - empty current domain flag
   num_bytes += sizeof(bool);
 
   if (current_domain->empty()) {
@@ -336,7 +336,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CurrentDomainFx<int32_t>,
-    "Check array create throws if current_domain exceeds array schema domain "
+    "Check array create throws if current domain exceeds array schema domain "
     "bounds",
     "[current_domain][create][out-of-schema-domain]") {
   auto schema = create_schema();
@@ -354,7 +354,7 @@ TEST_CASE_METHOD(
 
   auto current_domain = create_current_domain(dom->domain(), schema);
 
-  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // It's fine if an incorrect current domain doesn't throw here, sanity checks
   // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
   schema->set_current_domain(current_domain);
@@ -385,7 +385,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   auto current_domain = this->create_current_domain({r}, schema);
 
-  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // It's fine if an incorrect current domain doesn't throw here, sanity checks
   // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
   schema->set_current_domain(current_domain);
@@ -398,7 +398,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Check array create throws if current_domain has an empty range",
+    "Check array create throws if current domain has an empty range",
     "[current_domain][create][no-empty-ranges]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -421,7 +421,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   auto current_domain =
       this->create_current_domain({r, r}, schema, ndrectangle);
 
-  // It's fine if an incorrect current_domain doesn't throw here, sanity checks
+  // It's fine if an incorrect current domain doesn't throw here, sanity checks
   // on schema are performed during array creation when we know schema domain
   // can't be changed anymore.
   schema->set_current_domain(current_domain);
@@ -455,7 +455,7 @@ TEST_CASE_METHOD(
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Check writing/reading current_domain to/from array end to end",
+    "Check writing/reading current domain to/from array end to end",
     "[current_domain][create][end-to-end-current_domain]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -485,7 +485,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Schema evolution, evolving to bigger current_domain works",
+    "Schema evolution, evolving to bigger current domain works",
     "[current_domain][evolution][simple]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -518,7 +518,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   auto current_domain_expanded =
       this->create_current_domain({r_expanded, r_expanded}, orig_schema);
 
-  // Check current_domain expansion doesn't throw
+  // Check current domain expansion doesn't throw
   ase->expand_current_domain(current_domain_expanded);
   auto evolved_schema = ase->evolve_schema(orig_schema);
 
@@ -537,7 +537,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Schema evolution, contracting current_domain throws",
+    "Schema evolution, contracting current domain throws",
     "[current_domain][evolution][contraction]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -567,7 +567,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
   auto current_domain_contracted =
       this->create_current_domain({r_contracted, r_contracted}, schema);
 
-  // It's fine if a contracted current_domain doesn't throw here, sanity checks
+  // It's fine if a contracted current domain doesn't throw here, sanity checks
   // are performed when evolution is applied and the schema is available.
   ase->expand_current_domain(current_domain_contracted);
 
@@ -577,7 +577,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CurrentDomainFx<int32_t>,
-    "Schema evolution, empty current_domain evolution not allowed",
+    "Schema evolution, empty current domain evolution not allowed",
     "[current_domain][evolution][empty_new]") {
   auto schema = create_schema();
 
@@ -586,14 +586,14 @@ TEST_CASE_METHOD(
   auto empty_current_domain = create_current_domain({}, schema, nullptr, true);
 
   auto matcher = Catch::Matchers::ContainsSubstring(
-      "the new current_domain specified is empty");
+      "the new current domain specified is empty");
   REQUIRE_THROWS_WITH(
       ase->expand_current_domain(empty_current_domain), matcher);
 }
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Check you can evolve from an empty current_domain schema",
+    "Check you can evolve from an empty current domain schema",
     "[current_domain][evolution][empty_existing]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -620,9 +620,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     CurrentDomainFx<int32_t>,
-    "Check array evolution throws if new current_domain exceeds array schema "
-    "domain "
-    "bounds",
+    "Check array evolution throws if new current domain exceeds array schema "
+    "domain bounds",
     "[current_domain][evolution][out-of-schema-domain]") {
   auto schema = create_schema();
 
@@ -642,7 +641,7 @@ TEST_CASE_METHOD(
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
     "Check array evolution throws if not all dims are set for the new "
-    "current_domain",
+    "current domain",
     "[current_domain][evolution][all-dims]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;
@@ -671,7 +670,7 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
 TEMPLATE_LIST_TEST_CASE_METHOD(
     CurrentDomainFx,
-    "Check array evolution throws if new current_domain has an empty range",
+    "Check array evolution throws if new current domain has an empty range",
     "[current_domain][evolution][no-empty-ranges]",
     FixedVarTypes) {
   shared_ptr<ArraySchema> schema;

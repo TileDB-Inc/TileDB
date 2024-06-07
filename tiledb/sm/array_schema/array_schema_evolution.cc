@@ -178,7 +178,7 @@ shared_ptr<ArraySchema> ArraySchemaEvolution::evolve_schema(
     schema->generate_uri();
   }
 
-  // Get expanded current_domain
+  // Get expanded current domain
   if (current_domain_to_expand_) {
     schema->expand_current_domain(current_domain_to_expand_);
   }
@@ -382,12 +382,12 @@ void ArraySchemaEvolution::expand_current_domain(
     shared_ptr<const CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaEvolutionException(
-        "Cannot expand the array current_domain; Input current_domain is null");
+        "Cannot expand the array current domain; Input current domain is null");
   }
 
   if (current_domain->empty()) {
     throw ArraySchemaEvolutionException(
-        "Unable to expand the array current_domain, the new current_domain "
+        "Unable to expand the array current domain, the new current domain "
         "specified is empty");
   }
 

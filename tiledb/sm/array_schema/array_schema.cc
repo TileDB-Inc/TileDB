@@ -744,7 +744,7 @@ void ArraySchema::dump(FILE* out) const {
     label->dump(out);
   }
 
-  // Print out array current_domain
+  // Print out array current domain
   current_domain_->dump(out);
 }
 
@@ -882,7 +882,7 @@ void ArraySchema::serialize(Serializer& serializer) const {
     serializer.write(enmr_uri.data(), enmr_uri_size);
   }
 
-  // Serialize array current_domain information
+  // Serialize array current domain information
   current_domain_->serialize(serializer);
 }
 
@@ -1435,8 +1435,8 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
     }
   }
 
-  // Load the array current_domain, if this is an older array, it'll get by
-  // default an empty current_domain object
+  // Load the array current domain, if this is an older array, it'll get by
+  // default an empty current domain object
   auto current_domain = make_shared<const CurrentDomain>(
       memory_tracker, constants::current_domain_version);
   if (version >= constants::current_domain_min_format_version) {
@@ -1818,17 +1818,16 @@ void ArraySchema::expand_current_domain(
     shared_ptr<const CurrentDomain> new_current_domain) {
   if (new_current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument specified for current_domain expansion is nullptr.");
+        "The argument specified for current domain expansion is nullptr.");
   }
 
-  // Check that the new current_domain expands the existing one and not shrinks
-  // it Every current_domain covers an empty current_domain.
+  // Check that the new current domain expands the existing one and not shrinks
+  // it Every current domain covers an empty current domain.
   if (!current_domain_->empty() &&
       !current_domain_->covered(new_current_domain)) {
     throw ArraySchemaException(
-        "The current_domain of an array can only be expanded, please adjust "
-        "your new "
-        "current_domain object.");
+        "The current domain of an array can only be expanded, please adjust "
+        "your new current domain object.");
   }
 
   new_current_domain->check_schema_sanity(this->shared_domain());
@@ -1844,9 +1843,8 @@ void ArraySchema::set_current_domain(
     shared_ptr<const CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaException(
-        "The argument specified for setting the current_domain on the "
-        "schema is "
-        "nullptr.");
+        "The argument specified for setting the current domain on the "
+        "schema is nullptr.");
   }
 
   current_domain_ = current_domain;

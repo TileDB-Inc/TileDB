@@ -121,7 +121,7 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
-   * @param current_domain The array current_domain object
+   * @param current_domain The array current domain object
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    **/
@@ -589,21 +589,21 @@ class ArraySchema {
           std::nullopt);
 
   /**
-   * Expand the array current_domain
+   * Expand the array current domain
    *
-   * @param new_current_domain The new array current_domain we want to expand to
+   * @param new_current_domain The new array current domain we want to expand to
    */
   void expand_current_domain(
       shared_ptr<const CurrentDomain> new_current_domain);
 
   /**
-   * Set the array current_domain on the schema
+   * Set the array current domain on the schema
    *
-   * @param current_domain The array current_domain we want to set on the schema
+   * @param current_domain The array current domain we want to set on the schema
    */
   void set_current_domain(shared_ptr<const CurrentDomain> current_domain);
 
-  /** Array current_domain accessor */
+  /** Array current domain accessor */
   shared_ptr<const CurrentDomain> get_current_domain() const;
 
  private:
@@ -721,7 +721,7 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
-  /** The array current_domain */
+  /** The array current domain */
   shared_ptr<const CurrentDomain> current_domain_;
 
   /** Mutex for thread-safety. */

@@ -731,7 +731,7 @@ const format_version_t current_domain_min_format_version = 22;
 /** The current CurrentDomain API version. */
 const format_version_t current_domain_version = 0;
 
-/** The NDRectangle current_domain */
+/** The NDRectangle current domain */
 const std::string current_domain_ndrectangle_str = "NDRECTANGLE";
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */

@@ -66,9 +66,9 @@ shared_ptr<const CurrentDomain> CurrentDomain::deserialize(
   auto disk_version = deserializer.read<uint32_t>();
   if (disk_version > constants::current_domain_version) {
     throw std::runtime_error(
-        "Invalid current_domain API version on disk. '" +
+        "Invalid current domain API version on disk. '" +
         std::to_string(disk_version) +
-        "' is newer than the current library current_domain version '" +
+        "' is newer than the current library current domain version '" +
         std::to_string(constants::current_domain_version) + "'");
   }
 
@@ -91,7 +91,7 @@ shared_ptr<const CurrentDomain> CurrentDomain::deserialize(
     default: {
       throw std::runtime_error(
           "We found an unsupported " + current_domain_type_str(type) +
-          "array current_domain type on disk.");
+          "array current domain type on disk.");
     }
   }
 }
@@ -113,8 +113,7 @@ void CurrentDomain::serialize(Serializer& serializer) const {
     }
     default: {
       throw std::runtime_error(
-          "The current_domain to serialize has an unsupported "
-          "type " +
+          "The current domain to serialize has an unsupported type " +
           current_domain_type_str(type_));
     }
   }
@@ -125,7 +124,7 @@ void CurrentDomain::dump(FILE* out) const {
     out = stdout;
   }
   std::stringstream ss;
-  ss << "### CurrentDomain ###" << std::endl;
+  ss << "### Current domain ###" << std::endl;
   ss << "- Version: " << version_ << std::endl;
   ss << "- Empty: " << empty_ << std::endl;
   if (empty_) {
@@ -144,9 +143,8 @@ void CurrentDomain::dump(FILE* out) const {
     }
     default: {
       throw std::runtime_error(
-          "The current_domain to dump as string has an "
-          "unsupported " +
-          std::string("type ") + current_domain_type_str(type_));
+          "The current domain to dump as string has an unsupported type " +
+          current_domain_type_str(type_));
     }
   }
 }
@@ -165,9 +163,8 @@ void CurrentDomain::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
 shared_ptr<const NDRectangle> CurrentDomain::ndrectangle() const {
   if (empty_ || type_ != CurrentDomainType::NDRECTANGLE) {
     throw std::logic_error(
-        "It's not possible to get the ndrectangle from this current_domain if "
-        "one isn't "
-        "set.");
+        "It's not possible to get the ndrectangle from this current domain if "
+        "one isn't set.");
   }
 
   return ndrectangle_;
@@ -197,9 +194,8 @@ bool CurrentDomain::covered(const NDRange& ndranges) const {
     }
     default: {
       throw std::runtime_error(
-          "Unable to execute this current_domain operation because one of the "
-          "current_domains " +
-          std::string("passed has an unsupported") + "type " +
+          "Unable to execute this current domain operation because one of the "
+          "current domains passed has an unsupported type " +
           current_domain_type_str(type_));
     }
   }
@@ -214,7 +210,7 @@ void CurrentDomain::check_schema_sanity(
       // Dim nums match
       if (schema_domain->dim_num() != ndranges.size()) {
         throw std::logic_error(
-            "The array current_domain and the array schema have a non-equal "
+            "The array current domain and the array schema have a non-equal "
             "number of dimensions");
       }
 
@@ -222,7 +218,7 @@ void CurrentDomain::check_schema_sanity(
       for (uint32_t i = 0; i < ndranges.size(); ++i) {
         if (ndranges[i].empty()) {
           throw std::logic_error(
-              "This current_domain has no range specified for dimension idx: " +
+              "This current domain has no range specified for dimension idx: " +
               std::to_string(i));
         }
       }
@@ -230,9 +226,8 @@ void CurrentDomain::check_schema_sanity(
       // Nothing is out of bounds
       if (!this->covered(schema_domain->domain())) {
         throw std::logic_error(
-            "This array current_domain has ranges past the boundaries of the "
-            "array "
-            "schema domain");
+            "This array current domain has ranges past the boundaries of the "
+            "array schema domain");
       }
 
       break;
