@@ -58,6 +58,69 @@ using filesystem::directory_entry;
 
 namespace tiledb::sm {
 
+/**
+ * A class that wraps a POSIX DIR* and closes it when it goes out of scope.
+ */
+class PosixDIR {
+ public:
+  DISABLE_COPY_AND_COPY_ASSIGN(PosixDIR);
+  DISABLE_MOVE_AND_MOVE_ASSIGN(PosixDIR);
+
+  /** Destructor. */
+  ~PosixDIR() {
+    if (dir_.has_value() && dir_.value() != nullptr) {
+      // The only possible error is EBADF, which should not happen here.
+      [[maybe_unused]] auto status = closedir(dir_.value());
+      assert(status == 0);
+    }
+  }
+
+  /** Returns the wrapped directory pointer. */
+  DIR* get() const {
+    return dir_.value();
+  }
+
+  /** Returns if the dir is empty. */
+  bool empty() {
+    return !dir_.has_value();
+  }
+
+  /**
+   * Opens a directory and returns a UniqueDIR if it exists.
+   *
+   * @param path The path to the directory to open.
+   * @return A UniqueDIR if the directory was opened successfully, or nullopt if
+   *     the directory does not exist.
+   * @throws IOError an error occurs while opening the directory.
+   */
+  static PosixDIR open(const std::string& path) {
+    DIR* dir = opendir(path.c_str());
+    if (dir == nullptr) {
+      auto last_error = errno;
+      if (last_error == ENOENT) {
+        return {};
+      }
+      throw IOError(
+          std::string("Cannot open directory; ") + strerror(last_error));
+    }
+    return {dir};
+  }
+
+ private:
+  /**
+   * Internal constructor that gets called from the `open` method.
+   *
+   * @param dir The directory pointer to wrap.
+   */
+  PosixDIR(optional<DIR*> dir = nullopt)
+      : dir_(dir) {
+    assert(dir != nullptr);
+  }
+
+  /** The wrapped directory pointer. */
+  optional<DIR*> dir_;
+};
+
 Posix::Posix(const Config& config) {
   // Initialize member variables with posix config parameters.
 
@@ -305,18 +368,17 @@ void Posix::write(
   }
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
-    const URI& uri) const {
+std::vector<directory_entry> Posix::ls_with_sizes(const URI& uri) const {
   std::string path = uri.to_path();
   struct dirent* next_path = nullptr;
-  DIR* dir = opendir(path.c_str());
-  if (dir == nullptr) {
-    return {Status::Ok(), std::vector<directory_entry>{}};
+  auto dir = PosixDIR::open(path);
+  if (dir.empty()) {
+    return {};
   }
 
   std::vector<directory_entry> entries;
 
-  while ((next_path = readdir(dir)) != nullptr) {
+  while ((next_path = readdir(dir.get())) != nullptr) {
     if (!strcmp(next_path->d_name, ".") || !strcmp(next_path->d_name, ".."))
       continue;
     std::string abspath = path + "/" + next_path->d_name;
@@ -333,22 +395,12 @@ tuple<Status, optional<std::vector<directory_entry>>> Posix::ls_with_sizes(
       entries.emplace_back(abspath, size, false);
     }
   }
-  // close parent directory
-  if (closedir(dir) != 0) {
-    auto st = LOG_STATUS(Status_IOError(
-        std::string("Cannot close parent directory; ") + strerror(errno)));
-    return {st, nullopt};
-  }
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status Posix::ls(
     const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(URI(path));
-
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 

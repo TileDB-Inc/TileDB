@@ -36,6 +36,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -571,6 +572,53 @@ Metadata* Group::unsafe_metadata() {
 
 void Group::set_metadata_loaded(const bool metadata_loaded) {
   metadata_loaded_ = metadata_loaded;
+}
+
+Status Group::consolidate_metadata(
+    ContextResources& resources, const char* group_name, const Config& config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    throw GroupException("Cannot consolidate group metadata; Invalid URI");
+  }
+  // Check if group exists
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    throw GroupException(
+        "Cannot consolidate group metadata; Group does not exist");
+  }
+
+  // Consolidate
+  // Encryption credentials are loaded by Group from config
+  StorageManager sm(resources, resources.logger(), config);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  return consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+}
+
+void Group::vacuum_metadata(
+    ContextResources& resources, const char* group_name, const Config& config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    throw GroupException("Cannot vacuum group metadata; Invalid URI");
+  }
+
+  // Check if group exists
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    throw GroupException("Cannot vacuum group metadata; Group does not exist");
+  }
+
+  StorageManager sm(resources, resources.logger(), config);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  consolidator->vacuum(group_name);
 }
 
 const EncryptionKey* Group::encryption_key() const {

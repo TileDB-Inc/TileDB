@@ -3016,8 +3016,11 @@ int32_t tiledb_array_evolve(
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
-  throw_if_not_ok(ctx->storage_manager()->array_evolve_schema(
-      uri, array_schema_evolution->array_schema_evolution_, key));
+  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+      ctx->resources(),
+      uri,
+      array_schema_evolution->array_schema_evolution_,
+      key));
 
   // Success
   return TILEDB_OK;
@@ -3068,8 +3071,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri, (config == nullptr) ? ctx->config() : config->config()));
+  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+      ctx->resources(),
+      uri,
+      (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }

@@ -61,14 +61,6 @@ class StorageManagerStub {
   inline Status cancel_all_tasks() {
     return Status{};
   }
-  inline Status group_metadata_consolidate(const char*, const Config&) {
-    throw std::logic_error(
-        "StorageManagerStub does not support group metadata consolidation");
-  }
-  inline Status group_metadata_vacuum(const char*, const Config&) {
-    throw std::logic_error(
-        "StorageManagerStub does not support group metadata vacuum");
-  }
   inline Status set_tag(const std::string&, const std::string&) {
     return Status{};
   }

@@ -64,7 +64,6 @@ namespace tiledb::sm {
 class Array;
 class ArrayDirectory;
 class ArraySchema;
-class ArraySchemaEvolution;
 class Consolidator;
 class EncryptionKey;
 class Query;
@@ -134,32 +133,6 @@ class StorageManagerCanonical {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Evolve a TileDB array schema and store its new schema.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param schema_evolution The schema evolution.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_evolve_schema(
-      const URI& uri,
-      ArraySchemaEvolution* array_schema,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Upgrade a TileDB array to latest format version.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param config Configuration parameters for the upgrade
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
    * Pushes an async query to the queue.
@@ -276,30 +249,6 @@ class StorageManagerCanonical {
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
-
-  /**
-   * Consolidates the metadata of a group into a single file.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     consolidated.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status group_metadata_consolidate(
-      const char* group_name, const Config& config);
-
-  /**
-   * Vacuums the consolidated metadata files of a group.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     vacuumed.
-   * @param config Configuration parameters for vacuuming
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   */
-  void group_metadata_vacuum(const char* group_name, const Config& config);
 
  private:
   /* ********************************* */

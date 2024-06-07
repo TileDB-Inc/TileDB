@@ -165,6 +165,71 @@ OpenedArray::load_delete_and_update_conditions() {
   return {Status::Ok(), conditions, update_values};
 }
 
+Status Array::evolve_array_schema(
+    ContextResources& resources,
+    const URI& array_uri,
+    ArraySchemaEvolution* schema_evolution,
+    const EncryptionKey& encryption_key) {
+  // Check array schema
+  if (schema_evolution == nullptr) {
+    throw ArrayException("Cannot evolve array; Empty schema evolution");
+  }
+
+  if (array_uri.is_tiledb()) {
+    return resources.rest_client()->post_array_schema_evolution_to_rest(
+        array_uri, schema_evolution);
+  }
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      resources,
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
+  // Check if array exists
+  if (!is_array(resources, array_uri)) {
+    throw ArrayException(
+        "Cannot evolve array; '" + array_uri.to_string() + "' does not exist");
+  }
+
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key, resources.ephemeral_memory_tracker());
+
+  // Load required enumerations before evolution.
+  auto enmr_names = schema_evolution->enumeration_names_to_extend();
+  if (enmr_names.size() > 0) {
+    std::unordered_set<std::string> enmr_path_set;
+    for (auto name : enmr_names) {
+      enmr_path_set.insert(array_schema->get_enumeration_path_name(name));
+    }
+    std::vector<std::string> enmr_paths;
+    for (auto path : enmr_path_set) {
+      enmr_paths.emplace_back(path);
+    }
+
+    auto loaded_enmrs = array_dir.load_enumerations_from_paths(
+        enmr_paths, encryption_key, resources.create_memory_tracker());
+
+    for (auto enmr : loaded_enmrs) {
+      array_schema->store_enumeration(enmr);
+    }
+  }
+
+  // Evolve schema
+  auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
+
+  Status st =
+      store_array_schema(resources, array_schema_evolved, encryption_key);
+  if (!st.ok()) {
+    throw ArrayException(
+        "Cannot evolve schema;  Not able to store evolved array schema.");
+  }
+
+  return Status::Ok();
+}
+
 const URI& Array::array_uri() const {
   return array_uri_;
 }
@@ -520,12 +585,11 @@ Status Array::open(
             array_dir_timestamp_end_,
             ArrayDirectoryMode::SCHEMA_ONLY));
       }
-      auto&& [st, array_schema_latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
 
       // Set schemas
-      set_array_schema_latest(array_schema_latest.value());
-      set_array_schemas_all(std::move(array_schemas.value()));
+      auto&& [array_schema_latest, array_schemas] = open_for_writes();
+      set_array_schema_latest(array_schema_latest);
+      set_array_schemas_all(std::move(array_schemas));
 
       // Set the timestamp
       opened_array_->metadata().reset(timestamp_end_opened_at());
@@ -541,12 +605,11 @@ Status Array::open(
             array_dir_timestamp_end_,
             ArrayDirectoryMode::READ));
       }
-      auto&& [st, latest, array_schemas] = open_for_writes();
-      throw_if_not_ok(st);
 
       // Set schemas
-      set_array_schema_latest(latest.value());
-      set_array_schemas_all(std::move(array_schemas.value()));
+      auto&& [latest, array_schemas] = open_for_writes();
+      set_array_schema_latest(latest);
+      set_array_schemas_all(std::move(array_schemas));
 
       auto version = array_schema_latest().version();
       if (query_type == QueryType::DELETE &&
@@ -1777,19 +1840,15 @@ Array::open_for_reads_without_fragments() {
 }
 
 tuple<
-    Status,
-    optional<shared_ptr<ArraySchema>>,
-    optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+    shared_ptr<ArraySchema>,
+    std::unordered_map<std::string, shared_ptr<ArraySchema>>>
 Array::open_for_writes() {
   auto timer_se =
       resources_.stats().start_timer("array_open_write_load_schemas");
   // Checks
-  if (!resources_.vfs().supports_uri_scheme(array_uri_))
-    return {
-        resources_.logger()->status(Status_StorageManagerError(
-            "Cannot open array; URI scheme unsupported.")),
-        nullopt,
-        nullopt};
+  if (!resources_.vfs().supports_uri_scheme(array_uri_)) {
+    throw ArrayException("Cannot open array; URI scheme unsupported.");
+  }
 
   // Load array schemas
   auto&& [array_schema_latest, array_schemas_all] =
@@ -1802,31 +1861,21 @@ Array::open_for_writes() {
   auto version = array_schema_latest->version();
   if constexpr (is_experimental_build) {
     if (version != constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is not the library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      throw ArrayException(
+          "Cannot open array for writes; Array format version (" +
+          std::to_string(version) + ") is not the library format version (" +
+          std::to_string(constants::format_version) + ")");
     }
   } else {
     if (version > constants::format_version) {
-      std::stringstream err;
-      err << "Cannot open array for writes; Array format version (";
-      err << version;
-      err << ") is newer than library format version (";
-      err << constants::format_version << ")";
-      return {
-          resources_.logger()->status(Status_StorageManagerError(err.str())),
-          nullopt,
-          nullopt};
+      throw ArrayException(
+          "Cannot open array for writes; Array format version (" +
+          std::to_string(version) + ") is newer than library format version (" +
+          std::to_string(constants::format_version) + ")");
     }
   }
 
-  return {Status::Ok(), array_schema_latest, array_schemas_all};
+  return {array_schema_latest, array_schemas_all};
 }
 
 void Array::clear_last_max_buffer_sizes() {
@@ -2059,6 +2108,83 @@ const ArrayDirectory& Array::load_array_directory() {
   return array_directory();
 }
 
+Status Array::upgrade_version(
+    ContextResources& resources,
+    const URI& array_uri,
+    const Config& override_config) {
+  // Check if array exists
+  if (!is_array(resources, array_uri)) {
+    throw ArrayException(
+        "Cannot upgrade array; Array '" + array_uri.to_string() +
+        "' does not exist");
+  }
+
+  // Load URIs from the array directory
+  tiledb::sm::ArrayDirectory array_dir{
+      resources,
+      array_uri,
+      0,
+      UINT64_MAX,
+      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
+
+  // Get encryption key from config
+  bool found = false;
+  std::string encryption_key_from_cfg =
+      override_config.get("sm.encryption_key", &found);
+  assert(found);
+  std::string encryption_type_from_cfg =
+      override_config.get("sm.encryption_type", &found);
+  assert(found);
+  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
+  throw_if_not_ok(st1);
+  EncryptionType encryption_type_cfg = etc.value();
+
+  EncryptionKey encryption_key_cfg;
+  if (encryption_key_from_cfg.empty()) {
+    throw_if_not_ok(
+        encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
+  } else {
+    throw_if_not_ok(encryption_key_cfg.set_key(
+        encryption_type_cfg,
+        (const void*)encryption_key_from_cfg.c_str(),
+        static_cast<uint32_t>(encryption_key_from_cfg.size())));
+  }
+
+  auto&& array_schema = array_dir.load_array_schema_latest(
+      encryption_key_cfg, resources.ephemeral_memory_tracker());
+
+  if (array_schema->version() < constants::format_version) {
+    array_schema->generate_uri();
+    array_schema->set_version(constants::format_version);
+
+    // Create array schema directory if necessary
+    URI array_schema_dir_uri =
+        array_uri.join_path(constants::array_schema_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
+
+    // Store array schema
+    throw_if_not_ok(
+        store_array_schema(resources, array_schema, encryption_key_cfg));
+
+    // Create commit directory if necessary
+    URI array_commit_uri =
+        array_uri.join_path(constants::array_commits_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_commit_uri));
+
+    // Create fragments directory if necessary
+    URI array_fragments_uri =
+        array_uri.join_path(constants::array_fragments_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_fragments_uri));
+
+    // Create fragment metadata directory if necessary
+    URI array_fragment_metadata_uri =
+        array_uri.join_path(constants::array_fragment_meta_dir_name);
+    throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
+  }
+
+  return Status::Ok();
+}
+
 Status Array::compute_non_empty_domain() {
   // Keep the current opened array alive for the duration of this call.
   auto opened_array = opened_array_;
@@ -2184,12 +2310,10 @@ void Array::ensure_array_is_valid_for_delete(const URI& uri) {
 void ensure_supported_schema_version_for_read(format_version_t version) {
   // We do not allow reading from arrays written by newer version of TileDB
   if (version > constants::format_version) {
-    std::stringstream err;
-    err << "Cannot open array for reads; Array format version (";
-    err << version;
-    err << ") is newer than library format version (";
-    err << constants::format_version << ")";
-    throw Status_StorageManagerError(err.str());
+    throw ArrayException(
+        "Cannot open array for reads; Array format version (" +
+        std::to_string(version) + ") is newer than library format version (" +
+        std::to_string(constants::format_version) + ")");
   }
 }
 
