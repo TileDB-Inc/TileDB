@@ -40,6 +40,7 @@
 #include "domain.h"
 #include "object.h"
 #include "tiledb.h"
+#include "current_domain.h"
 #include "tiledb_experimental.h"
 
 #include <array>
@@ -213,6 +214,19 @@ class ArraySchemaEvolution {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_evolution_drop_enumeration(
         ctx.ptr().get(), evolution_.get(), enumeration_name.c_str()));
+    return *this;
+  }
+
+  /**
+   * Expands the current domain with the given NDRectangle if applicable
+   *
+   * @param current_domain The currentDomain to expand.
+   * @param ndrect The NDRectangle to use for the expansion.
+   */
+  ArraySchemaEvolution& expand_current_domain(
+      const CurrentDomain& current_domain, const NDRectangle& ndrect) {
+    auto& ctx = ctx_.get();
+    // ctx.handle_error(); TODO
     return *this;
   }
 
