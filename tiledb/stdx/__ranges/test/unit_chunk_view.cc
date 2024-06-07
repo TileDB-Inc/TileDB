@@ -387,7 +387,6 @@ TEST_CASE("chunk_view: Iterators values", "[chunk_view]") {
   ++b;
   CHECK(b == a.end());
 }
-<<<<<<< HEAD
 
 TEST_CASE("chunk_view: Larger vector", "[chunk_view]") {
   size_t num_elements = 8 * 1024;
