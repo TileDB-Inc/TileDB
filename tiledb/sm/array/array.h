@@ -1050,6 +1050,9 @@ class Array {
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
 
+  /** TileDB Context Resources. */
+  ContextResources& resources_;
+
   /** The opened array that can be used by queries. */
   shared_ptr<OpenedArray> opened_array_;
 
@@ -1108,9 +1111,6 @@ class Array {
    * `nullopt`, use the current time.
    */
   optional<uint64_t> new_component_timestamp_;
-
-  /** TileDB Context Resources. */
-  ContextResources& resources_;
 
   /** The array config. */
   Config config_;

@@ -89,7 +89,8 @@ Array::Array(
     ContextResources& resources,
     const URI& array_uri,
     ConsistencyController& cc)
-    : array_uri_(array_uri)
+    : resources_(resources)
+    , array_uri_(array_uri)
     , array_uri_serialized_(array_uri)
     , is_open_(false)
     , is_opening_or_closing_(false)
@@ -97,7 +98,6 @@ Array::Array(
     , user_set_timestamp_end_(nullopt)
     , array_dir_timestamp_end_(UINT64_MAX)
     , new_component_timestamp_(nullopt)
-    , resources_(resources)
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
     , memory_tracker_(resources_.create_memory_tracker())
