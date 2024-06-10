@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,7 +38,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/filesystem/ssl_config.h"
@@ -58,13 +58,11 @@ class BlobServiceClient;
 
 using namespace tiledb::common;
 
-namespace tiledb {
-
-namespace common::filesystem {
+namespace tiledb::common::filesystem {
 class directory_entry;
 }
 
-namespace sm {
+namespace tiledb::sm {
 
 /** Class for Azure status exceptions. */
 class AzureException : public StatusException {
@@ -925,8 +923,7 @@ AzureScanner<F, D>::fetch_results() {
 
   return begin_;
 }
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // HAVE_AZURE
 #endif  // TILEDB_AZURE_H
