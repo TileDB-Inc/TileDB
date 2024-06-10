@@ -1,5 +1,5 @@
 /**
- * @file   unit_zip_view.cc
+ * @file   tiledb/stdx/__ranges/test/unit_zip_view.cc
  *
  * @section LICENSE
  *
@@ -34,8 +34,8 @@
 #include <catch2/catch_all.hpp>
 #include <type_traits>
 #include <vector>
-#include "../alt_var_length_view.h"
-#include "../zip_view.h"
+#include "tiledb/common/util/alt_var_length_view.h"
+#include "tiledb/stdx/__ranges/zip_view.h"
 
 TEST_CASE("zip_view: Null test", "[zip_view][null_test]") {
   REQUIRE(true);
@@ -66,7 +66,8 @@ TEST_CASE("zip_view: Should not copy", "[zip_view]") {
 
 /** Test that the zip_view type satisfies the expected range concepts */
 TEST_CASE("zip_view: Range concepts", "[zip_view][concepts]") {
-  using test_type = zip_view<std::vector<double>, std::vector<int>>;
+  using test_type =
+      stdx::ranges::zip_view<std::vector<double>, std::vector<int>>;
 
   CHECK(std::ranges::range<test_type>);
   CHECK(!std::ranges::borrowed_range<test_type>);
@@ -86,7 +87,8 @@ TEST_CASE("zip_view: Range concepts", "[zip_view][concepts]") {
 
 /** Test that the zip_view iterator satisfies the expected concepts */
 TEST_CASE("zip_view: Iterator concepts", "[zip_view][concepts]") {
-  using test_type = zip_view<std::vector<double>, std::vector<int>>;
+  using test_type =
+      stdx::ranges::zip_view<std::vector<double>, std::vector<int>>;
   using test_type_iterator = std::ranges::iterator_t<test_type>;
   using test_type_const_iterator = std::ranges::iterator_t<const test_type>;
   // using test_type_const_iterator = decltype((const test_type){}.begin());
@@ -152,7 +154,8 @@ TEST_CASE("zip_view: Iterator concepts", "[zip_view][concepts]") {
 
 // Test that the zip_view value_type satisfies the expected concepts
 TEST_CASE("zip_view: value_type concepts", "[zip_view][concepts]") {
-  using test_type = zip_view<std::vector<double>, std::vector<int>>;
+  using test_type =
+      stdx::ranges::zip_view<std::vector<double>, std::vector<int>>;
   CHECK(std::ranges::range<test_type>);
 
   using test_iterator_type = std::ranges::iterator_t<test_type>;

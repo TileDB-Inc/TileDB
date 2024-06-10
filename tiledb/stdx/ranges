@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file   tiledb/stdx/ranges
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,6 +24,24 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
+ *
+ * @section DESCRIPTION
+ *
+ * This file provides a single header for ranges / views that we have
+ * implemented in anticipation of their availability in C++23.
  */
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+#ifndef TILEDB_STDX_RANGES
+#define TILEDB_STDX_RANGES
+
+#include <version>
+
+#if !defined(__cpp_lib_ranges_chunk) || __cpp_lib_ranges_chunk < 202202L
+#include "tiledb/stdx/__ranges/chunk_view.h"
+#endif
+
+#if !defined(__cpp_lib_ranges_zip) || __cpp_lib_ranges_zip < 202110L
+#include "tiledb/stdx/__ranges/zip_view.h"
+#endif
+
+#endif  // TILEDB_STDX_RANGES

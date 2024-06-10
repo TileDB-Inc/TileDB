@@ -1045,6 +1045,19 @@ class Array {
     return resources_.rest_client();
   }
 
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status upgrade_version(
+      ContextResources& resources, const URI& uri, const Config& config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1183,19 +1196,18 @@ class Array {
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
-  /** Opens an array for writes.
+  /**
+   * Opens an array for writes.
    *
    * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */

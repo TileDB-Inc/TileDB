@@ -1,11 +1,11 @@
 /**
- * @file arrow_proxy.hpp
+ * @file compile_current_domain_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -24,35 +24,14 @@
  * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
- *
- * @section DESCRIPTION
- *
- * This file declares an "arrow proxy" class, necessary when proxy classes are
- * used for iterators.
- *
- * Original copyright statements from NWGraph:
- * @copyright SPDX-FileCopyrightText: 2022 Battelle Memorial Institute
- * @copyright SPDX-FileCopyrightText: 2022 University of Washington
- *
- * SPDX-License-Identifier: BSD-3-Clause
- *
- * @authors
- *   Luke D'Alessandro
- *
  */
 
-#ifndef TILEDB_ARROW_PROXY_H
-#define TILEDB_ARROW_PROXY_H
+#include "tiledb/sm/array_schema/current_domain.h"
 
-template <class Reference>
-struct arrow_proxy {
-  Reference r;
-  Reference* operator->() {
-    return &r;
+int main(int, char*[]) {
+  try {
+    tiledb::sm::CurrentDomain(nullptr, 0);
+  } catch (...) {
   }
-};
-
-template <typename T>
-arrow_proxy(T&&) -> arrow_proxy<T>;
-
-#endif  // TILEDB_ARROW_PROXY_H
+  return 0;
+}

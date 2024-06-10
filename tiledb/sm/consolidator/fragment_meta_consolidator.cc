@@ -181,7 +181,7 @@ Status FragmentMetaConsolidator::consolidate(
 
 void FragmentMetaConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum fragment metadata; Array name cannot be null");
   }
 

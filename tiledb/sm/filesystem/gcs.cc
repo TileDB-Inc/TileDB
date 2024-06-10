@@ -477,32 +477,27 @@ Status GCS::ls(
     const std::string& delimiter,
     const int max_paths) const {
   assert(paths);
-  auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
-  RETURN_NOT_OK(st);
 
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
+std::vector<directory_entry> GCS::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
-  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
+  throw_if_not_ok(init_client());
 
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_gcs()) {
-    auto st = LOG_STATUS(Status_GCSError(
-        std::string("URI is not a GCS URI: " + uri_dir.to_string())));
-    return {st, nullopt};
+    throw GCSException("URI is not a GCS URI: " + uri_dir.to_string());
   }
 
   std::string bucket_name;
   std::string object_path;
-  RETURN_NOT_OK_TUPLE(
-      parse_gcs_uri(uri_dir, &bucket_name, &object_path), nullopt);
+  throw_if_not_ok(parse_gcs_uri(uri_dir, &bucket_name, &object_path));
 
   std::vector<directory_entry> entries;
   google::cloud::storage::Prefix prefix_option(object_path);
@@ -515,10 +510,9 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     if (!object_metadata.ok()) {
       const google::cloud::Status status = object_metadata.status();
 
-      auto st = LOG_STATUS(Status_GCSError(std::string(
+      throw GCSException(
           "List objects failed on: " + uri.to_string() + " (" +
-          status.message() + ")")));
-      return {st, nullopt};
+          status.message() + ")");
     }
 
     if (entries.size() >= static_cast<size_t>(max_paths)) {
@@ -549,7 +543,7 @@ tuple<Status, optional<std::vector<directory_entry>>> GCS::ls_with_sizes(
     }
   }
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 LsObjects GCS::ls_filtered_impl(

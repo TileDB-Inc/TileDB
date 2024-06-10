@@ -1,5 +1,5 @@
 /**
- * @file   var_length_view.h
+ * @file   tiledb/common/util/var_length_view.h
  *
  * @section LICENSE
  *
@@ -47,7 +47,7 @@
 
 #include <ranges>
 
-#include "iterator_facade.h"
+#include "tiledb/common/util/detail/iterator_facade.h"
 
 /**
  * A view that splits a view into subranges of variable length, as delimited by
