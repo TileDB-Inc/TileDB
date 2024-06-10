@@ -253,10 +253,10 @@ class DenseReader : public ReaderBase, public IQueryStrategy {
    * @param frag_tile_domains The relevant fragments tile domains.
    * @param iteration_tile_data The iteration data.
    *
-   * @return wait_compute_task_before_read, tile_end, result_space_tiles.
+   * @return wait_compute_task_before_read, result_space_tiles.
    */
   template <class DimType>
-  tuple<bool, uint64_t, std::map<const DimType*, ResultSpaceTile<DimType>>>
+  tuple<bool, std::map<const DimType*, ResultSpaceTile<DimType>>>
   compute_result_space_tiles(
       const uint64_t t_start,
       const std::vector<std::string>& names,

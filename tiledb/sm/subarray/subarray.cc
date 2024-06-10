@@ -860,6 +860,8 @@ uint64_t Subarray::tile_cell_num(const T* tile_coords) const {
           &overlaps);
 
       if (overlaps) {
+        // Here we need to do +1 because both the start and end are included in
+        // the number of cells.
         cell_num_for_dim +=
             static_cast<uint64_t>(new_range[1] - new_range[0] + 1);
       }
@@ -1936,7 +1938,7 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
-                  tile_var_size / attr_datatype_size *
+                  tile_size / constants::cell_var_offset_size *
                   constants::cell_validity_size;
           }
         }
@@ -1977,7 +1979,7 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
-                (tile_var_size / attr_datatype_size *
+                (tile_size / constants::cell_var_offset_size *
                  constants::cell_validity_size) *
                 ratio;
         }

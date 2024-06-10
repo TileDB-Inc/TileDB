@@ -889,7 +889,7 @@ class Subarray {
   void crop_to_tile(DenseTileSubarray<T>& ret, const T* tile_coords) const;
 
   /**
-   * Returns the number of cells in a specfic tile for this subarray.
+   * Returns the number of cells in a specific tile for this subarray.
    */
   template <class T>
   uint64_t tile_cell_num(const T* tile_coords) const;

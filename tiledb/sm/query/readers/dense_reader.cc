@@ -373,17 +373,9 @@ Status DenseReader::dense_read() {
   while (t_end < tile_coords.size()) {
     stats_->add_counter("internal_loop_num", 1);
 
-    // If the available memory is less than the tile upper memory limit, we
-    // cannot load two batches at once. Wait for the first compute task to
-    // complete before loading more tiles.
-    uint64_t available_memory = array_memory_tracker_->get_memory_available();
-    if (compute_task.valid() && available_memory < tile_upper_memory_limit_) {
-      throw_if_not_ok(resources_.compute_tp().wait(compute_task));
-    }
-
     // Compute result space tiles. The result space tiles hold all the
     // relevant result tiles of the dense fragments.
-    auto&& [wait_compute_task_before_read_ret, t_end_ret, result_space_tiles] =
+    auto&& [wait_compute_task_before_read_ret, result_space_tiles] =
         compute_result_space_tiles<DimType>(
             t_start,
             names,
@@ -392,7 +384,7 @@ Status DenseReader::dense_read() {
             tiles_cell_num,
             array_tile_domain,
             frag_tile_domains);
-    t_end = t_end_ret;
+    t_end = t_start + result_space_tiles.size();
     wait_compute_task_before_read |= wait_compute_task_before_read_ret;
 
     // Create the iteration data.
@@ -743,7 +735,7 @@ DenseReader::field_names_to_process(
 }
 
 template <class DimType>
-tuple<bool, uint64_t, std::map<const DimType*, ResultSpaceTile<DimType>>>
+tuple<bool, std::map<const DimType*, ResultSpaceTile<DimType>>>
 DenseReader::compute_result_space_tiles(
     const uint64_t t_start,
     const std::vector<std::string>& names,
@@ -760,7 +752,7 @@ DenseReader::compute_result_space_tiles(
   const auto& tile_coords = subarray.tile_coords();
 
   // Keep track of the required memory to load the result space tiles. Split up
-  // filtered versusn unfiltered. The memory budget is combined for all
+  // filtered versus unfiltered. The memory budget is combined for all
   // query condition attributes.
   uint64_t required_memory_query_condition_unfiltered = 0;
   std::vector<uint64_t> required_memory_unfiltered(
@@ -974,7 +966,7 @@ DenseReader::compute_result_space_tiles(
     }
   }
 
-  return {wait_compute_task_before_read, t_end, std::move(result_space_tiles)};
+  return {wait_compute_task_before_read, std::move(result_space_tiles)};
 }
 
 template <class DimType>
