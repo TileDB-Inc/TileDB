@@ -34,6 +34,7 @@
 #define TILEDB_OBJECT_ITER_H
 
 #include "tiledb/common/common.h"
+#include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
