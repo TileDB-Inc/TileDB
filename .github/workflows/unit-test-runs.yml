@@ -13,8 +13,6 @@ jobs:
         os: [macos-latest, ubuntu-latest, windows-latest]
       fail-fast: false
     name: Build - ${{ matrix.os }}
-    env:
-      CXXFLAGS: ${{ matrix.os == 'windows-latest' && '/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR' || '' }} # https://github.com/actions/runner-images/issues/10004
     timeout-minutes: 90
     defaults:
       run:
@@ -62,7 +60,8 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON
+            -DTILEDB_ASSERTIONS=ON \
+            -DCMAKE_CXX_FLAGS="${{ matrix.os == 'windows-latest' && '/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR' || '' }}"
           cmake --build build -j4
           # Build all unit tests
           cmake --build build/tiledb --target tests -j4
