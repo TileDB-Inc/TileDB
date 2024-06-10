@@ -513,7 +513,10 @@ void S3::touch(const URI& uri) const {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
-  put_object_request.SetStorageClass(storage_class_);
+  // TODO: These checks are not needed since AWS SDK 1.11.275
+  // https://github.com/aws/aws-sdk-cpp/pull/2875
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
@@ -1557,7 +1560,8 @@ Status S3::initiate_multipart_request(
   if (!s3_params_.sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
-  multipart_upload_request.SetStorageClass(storage_class_);
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    multipart_upload_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     multipart_upload_request.SetACL(object_canned_acl_);
   }
@@ -1752,7 +1756,8 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
-  put_object_request.SetStorageClass(storage_class_);
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
