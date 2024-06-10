@@ -199,7 +199,7 @@ TEST_CASE("URI: Test REST components, valid", "[uri]") {
       {"tiledb://namespace/azure://container/dir",
        "namespace",
        "azure://container/dir"}};
-  constexpr size_t N = sizeof(valid_rest_uri)/sizeof(test_vector);
+  constexpr size_t N = sizeof(valid_rest_uri) / sizeof(test_vector);
 
   for (size_t j = 0; j < N; ++j) {
     auto x{valid_rest_uri[j]};
@@ -233,7 +233,7 @@ TEST_CASE("URI: Test REST components, invalid", "[uri]") {
       "tiledb:///"};
   constexpr size_t N{sizeof(invalid_rest_uri) / sizeof(std::string)};
 
-  for (size_t j = 0 ; j < N ; ++j) {
+  for (size_t j = 0; j < N; ++j) {
     std::string x{invalid_rest_uri[j]};
     DYNAMIC_SECTION("\"" << x << "\" invalid") {
       CHECK(!URI(x).get_rest_components(&ns, &array).ok());
