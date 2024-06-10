@@ -633,6 +633,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
     filtered_data.emplace_back(
+        resources_,
         *this,
         min_batch_size_,
         max_batch_size_,
@@ -643,7 +644,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
         var_sized,
         nullable,
         val_only,
-        storage_manager_,
         read_tasks,
         memory_tracker_);
 
