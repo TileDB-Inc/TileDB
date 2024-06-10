@@ -36,7 +36,6 @@
 #define TILEDB_CPP_API_ARRAY_SCHEMA_H
 
 #include "attribute.h"
-#include "current_domain.h"
 #include "domain.h"
 #include "object.h"
 #include "schema_base.h"
@@ -421,19 +420,6 @@ class ArraySchema : public Schema {
   }
 
   /**
-   * Returns a copy of the schema's array currentDomain. To change the
-   * currentDomain, use `set_current_domain()`.
-   *
-   * @return Copy of the schema's currentDomain
-   */
-  CurrentDomain current_domain() const {
-    auto& ctx = ctx_.get();
-    tiledb_current_domain_t* current_domain;
-    // ctx.handle_error(); TODO
-    return CurrentDomain(ctx, current_domain);
-  }
-
-  /**
    * Sets the array domain.
    *
    * **Example:**
@@ -452,18 +438,6 @@ class ArraySchema : public Schema {
     auto& ctx = ctx_.get();
     ctx.handle_error(tiledb_array_schema_set_domain(
         ctx.ptr().get(), schema_.get(), domain.ptr().get()));
-    return *this;
-  }
-
-  /**
-   * Sets the currentDomain.
-   *
-   * @param current_domain The currentDomain to use
-   * @return Reference to this `ArraySchema` instance.
-   */
-  ArraySchema& set_current_domain(const CurrentDomain& current_domain) {
-    auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
     return *this;
   }
 

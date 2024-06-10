@@ -38,6 +38,7 @@
 #include "enumeration_experimental.h"
 #include "filter_list.h"
 #include "tiledb_experimental.h"
+#include "current_domain.h"
 
 #include <optional>
 
@@ -154,6 +155,31 @@ class ArraySchemaExperimental {
     ctx.handle_error(tiledb_array_schema_get_dimension_label_from_name(
         ctx.ptr().get(), array_schema.ptr().get(), name.c_str(), &dim_label));
     return DimensionLabel(ctx, dim_label);
+  }
+
+  /**
+   * Returns a copy of the schema's array currentDomain. To change the
+   * currentDomain, use `set_current_domain()`.
+   *
+   * @return Copy of the schema's currentDomain
+   */
+  CurrentDomain current_domain() const {
+    auto& ctx = ctx_.get();
+    tiledb_current_domain_t* current_domain;
+    // ctx.handle_error(); TODO
+    return CurrentDomain(ctx, current_domain);
+  }
+
+  /**
+   * Sets the currentDomain.
+   *
+   * @param current_domain The currentDomain to use
+   * @return Reference to this `ArraySchema` instance.
+   */
+  ArraySchemaExperimental& set_current_domain(const CurrentDomain& current_domain) {
+    auto& ctx = ctx_.get();
+    // ctx.handle_error(); TODO
+    return *this;
   }
 
   /**
