@@ -584,7 +584,10 @@ if (TILEDB_TESTS)
 
   add_subdirectory(test/regression)
 
-  # Add custom target 'check'
+  # Add custom target 'check', which builds and runs all tests.
+  # This includes both the main test suite in the 'test' directory (consisting of
+  # tiledb_unit, tiledb_regression and other tests), as well as the standalone
+  # tests in subdirectories of the 'tiledb' directory.
   add_custom_target(check
     COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
     DEPENDS tests
