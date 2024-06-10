@@ -53,6 +53,11 @@ jobs:
         shell: bash
         if: ${{ !startsWith(matrix.os, 'windows-') }}
 
+      - name: 'Print env'
+        run: set
+        shell: cmd
+        if: ${{ startsWith(matrix.os, 'windows-') }}
+
       - name: 'Build standalone unit tests'
         run: |
           cmake -S . \
