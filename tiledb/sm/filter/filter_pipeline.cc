@@ -357,11 +357,11 @@ Status FilterPipeline::filter_chunks_forward(
     std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
     dest_offset += sizeof(uint32_t);
     // Write the chunk metadata
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         final_stage_output_metadata.copy_to((char*)dest + dest_offset));
     dest_offset += metadata_size;
     // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
     return Status::Ok();
   });
 

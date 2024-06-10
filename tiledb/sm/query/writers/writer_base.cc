@@ -809,8 +809,8 @@ Status WriterBase::filter_tiles(
       parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        RETURN_CANCEL_OR_ERROR(
-            filter_tiles(tiles_it->first, &tiles_it->second));
+        throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
+        this->throw_if_cancellation_requested();
         return Status::Ok();
       });
 
@@ -846,7 +846,7 @@ Status WriterBase::filter_tiles(
       parallel_for(&resources_.compute_tp(), 0, args.size(), [&](uint64_t i) {
         const auto& [tile, offset_tile, contains_offsets, is_nullable] =
             args[i];
-        RETURN_NOT_OK(filter_tile(
+        throw_if_not_ok(filter_tile(
             name, tile, offset_tile, contains_offsets, is_nullable));
         return Status::Ok();
       });
@@ -857,7 +857,7 @@ Status WriterBase::filter_tiles(
     auto status = parallel_for(
         &resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
           auto& tile = (*tiles)[i];
-          RETURN_NOT_OK(
+          throw_if_not_ok(
               filter_tile(name, &tile.offset_tile(), nullptr, true, false));
           return Status::Ok();
         });

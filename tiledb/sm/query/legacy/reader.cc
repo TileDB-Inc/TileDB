@@ -581,7 +581,7 @@ Status Reader::compute_range_result_coords(
   auto status =
       parallel_for(&resources_.compute_tp(), 0, range_num, [&](uint64_t r) {
         // Compute overlapping coordinates per range
-        RETURN_NOT_OK(compute_range_result_coords(
+        throw_if_not_ok(compute_range_result_coords(
             subarray,
             r,
             result_tile_map,
@@ -591,12 +591,14 @@ Status Reader::compute_range_result_coords(
         // Dedup unless there is a single fragment or array schema allows
         // duplicates
         if (!single_fragment[r] && !allows_dups) {
-          RETURN_CANCEL_OR_ERROR(sort_result_coords(
+          throw_if_not_ok(sort_result_coords(
               range_result_coords[r].begin(),
               range_result_coords[r].end(),
               range_result_coords[r].size(),
               sort_layout));
-          RETURN_CANCEL_OR_ERROR(dedup_result_coords(range_result_coords[r]));
+          this->throw_if_cancellation_requested();
+          throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
+          this->throw_if_cancellation_requested();
         }
 
         return Status::Ok();
@@ -678,13 +680,14 @@ Status Reader::compute_range_result_coords(
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
   auto status =
       parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint32_t f) {
-        return compute_range_result_coords(
+        throw_if_not_ok(compute_range_result_coords(
             subarray,
             range_idx,
             f,
             result_tile_map,
             result_tiles,
-            range_result_coords_vec[f]);
+            range_result_coords_vec[f]));
+        return Status::Ok();
       });
   RETURN_NOT_OK(status);
 

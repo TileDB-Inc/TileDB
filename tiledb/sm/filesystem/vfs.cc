@@ -432,9 +432,9 @@ void VFS::remove_dirs(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     bool is_dir;
-    RETURN_NOT_OK(this->is_dir(uris[i], &is_dir));
+    throw_if_not_ok(this->is_dir(uris[i], &is_dir));
     if (is_dir) {
-      RETURN_NOT_OK(remove_dir(uris[i]));
+      throw_if_not_ok(remove_dir(uris[i]));
     }
     return Status::Ok();
   }));
@@ -486,7 +486,7 @@ Status VFS::remove_file(const URI& uri) const {
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(remove_file(uris[i]));
+    throw_if_not_ok(remove_file(uris[i]));
     return Status::Ok();
   }));
 }
@@ -494,7 +494,7 @@ void VFS::remove_files(
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const {
   throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
-    RETURN_NOT_OK(remove_file(uris[i].uri_));
+    throw_if_not_ok(remove_file(uris[i].uri_));
     return Status::Ok();
   }));
 }

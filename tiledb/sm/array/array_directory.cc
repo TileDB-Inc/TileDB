@@ -177,7 +177,9 @@ ArrayDirectory::load_all_array_schemas(
           array_schema->set_array_uri(uri_);
           schema_vector[schema_ith] = array_schema;
         } catch (std::exception& e) {
-          return Status_ArrayDirectoryError(e.what());
+          std::throw_with_nested(ArrayDirectoryException(
+              "Cannot load array schema from URI '" + schema_uri.to_string() +
+              "'."));
         }
 
         return Status::Ok();
@@ -316,13 +318,12 @@ void ArrayDirectory::delete_fragments_list(
   // Delete fragments and commits
   throw_if_not_ok(parallel_for(
       &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(resources_.get().vfs().remove_dir(uris[i]));
+        auto& vfs = resources_.get().vfs();
+        throw_if_not_ok(vfs.remove_dir(uris[i]));
         bool is_file = false;
-        RETURN_NOT_OK(
-            resources_.get().vfs().is_file(commit_uris_to_delete[i], &is_file));
+        throw_if_not_ok(vfs.is_file(commit_uris_to_delete[i], &is_file));
         if (is_file) {
-          RETURN_NOT_OK(
-              resources_.get().vfs().remove_file(commit_uris_to_delete[i]));
+          throw_if_not_ok(vfs.remove_file(commit_uris_to_delete[i]));
         }
         return Status::Ok();
       }));
@@ -937,7 +938,7 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
     if (stdx::string::starts_with(array_dir_uris[i].last_path_part(), "."))
       return Status::Ok();
     int32_t flag;
-    RETURN_NOT_OK(this->is_fragment(
+    throw_if_not_ok(this->is_fragment(
         array_dir_uris[i], ok_uris, consolidated_commit_uris_set_, &flag));
     is_fragment[i] = (uint8_t)flag;
     return Status::Ok();
@@ -1076,11 +1077,11 @@ ArrayDirectory::compute_uris_to_vacuum(
   auto& tp = resources_.get().compute_tp();
   auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
-    RETURN_NOT_OK(resources_.get().vfs().file_size(vac_files[i], &size));
+    auto& vfs = resources_.get().vfs();
+    throw_if_not_ok(vfs.file_size(vac_files[i], &size));
     std::string names;
     names.resize(size);
-    RETURN_NOT_OK(
-        resources_.get().vfs().read(vac_files[i], 0, &names[0], size));
+    throw_if_not_ok(vfs.read(vac_files[i], 0, &names[0], size));
     std::stringstream ss(names);
     bool vacuum_vac_file = true;
     for (std::string uri_str; std::getline(ss, uri_str);) {
