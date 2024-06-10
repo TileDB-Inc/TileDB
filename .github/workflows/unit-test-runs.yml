@@ -10,7 +10,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest, windows-latest]
+        # Temporarily reverting to windows-2019 until https://github.com/actions/runner-images/issues/10004 gets fixed.
+        os: [macos-latest, ubuntu-latest, windows-2019]
       fail-fast: false
     name: Build - ${{ matrix.os }}
     timeout-minutes: 90
@@ -65,8 +66,7 @@ jobs:
             -G Ninja \
             -DCMAKE_BUILD_TYPE=Debug \
             -DTILEDB_SERIALIZATION=ON \
-            -DTILEDB_ASSERTIONS=ON \
-            -DCMAKE_CXX_FLAGS="${{ matrix.os == 'windows-latest' && '/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR' || '' }}"
+            -DTILEDB_ASSERTIONS=ON
           cmake --build build -j4
           # Build all unit tests
           cmake --build build/tiledb --target tests -j4
