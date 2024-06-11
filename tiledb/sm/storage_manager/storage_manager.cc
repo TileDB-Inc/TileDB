@@ -131,90 +131,13 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_upgrade_version(
-    const URI& array_uri, const Config& override_config) {
-  // Check if array exists
-  if (!is_array(resources_, array_uri)) {
-    throw StorageManagerException(
-        "Cannot upgrade array; Array '" + array_uri.to_string() +
-        "' does not exist");
-  }
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir{
-      resources(),
-      array_uri,
-      0,
-      UINT64_MAX,
-      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
-
-  // Get encryption key from config
-  bool found = false;
-  std::string encryption_key_from_cfg =
-      override_config.get("sm.encryption_key", &found);
-  assert(found);
-  std::string encryption_type_from_cfg =
-      override_config.get("sm.encryption_type", &found);
-  assert(found);
-  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
-  RETURN_NOT_OK(st1);
-  EncryptionType encryption_type_cfg = etc.value();
-
-  EncryptionKey encryption_key_cfg;
-  if (encryption_key_from_cfg.empty()) {
-    RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
-  } else {
-    RETURN_NOT_OK(encryption_key_cfg.set_key(
-        encryption_type_cfg,
-        (const void*)encryption_key_from_cfg.c_str(),
-        static_cast<uint32_t>(encryption_key_from_cfg.size())));
-  }
-
-  auto&& array_schema = array_dir.load_array_schema_latest(
-      encryption_key_cfg, resources().ephemeral_memory_tracker());
-
-  if (array_schema->version() < constants::format_version) {
-    array_schema->generate_uri();
-    array_schema->set_version(constants::format_version);
-
-    // Create array schema directory if necessary
-    URI array_schema_dir_uri =
-        array_uri.join_path(constants::array_schema_dir_name);
-    throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
-
-    // Store array schema
-    auto st = store_array_schema(resources_, array_schema, encryption_key_cfg);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
-
-    // Create commit directory if necessary
-    URI array_commit_uri =
-        array_uri.join_path(constants::array_commits_dir_name);
-    throw_if_not_ok(resources_.vfs().create_dir(array_commit_uri));
-
-    // Create fragments directory if necessary
-    URI array_fragments_uri =
-        array_uri.join_path(constants::array_fragments_dir_name);
-    throw_if_not_ok(resources_.vfs().create_dir(array_fragments_uri));
-
-    // Create fragment metadata directory if necessary
-    URI array_fragment_metadata_uri =
-        array_uri.join_path(constants::array_fragment_meta_dir_name);
-    throw_if_not_ok(resources_.vfs().create_dir(array_fragment_metadata_uri));
-  }
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::async_push_query(Query* query) {
   cancelable_tasks_.execute(
       &resources_.compute_tp(),
       [this, query]() {
         // Process query.
-        Status st = query_submit(query);
-        if (!st.ok()) {
-          resources_.logger()->status_no_return_value(st);
-        }
-        return st;
+        throw_if_not_ok(query_submit(query));
+        return Status::Ok();
       },
       [query]() {
         // Task was cancelled. This is safe to perform in a separate thread,
@@ -476,29 +399,6 @@ Status StorageManagerCanonical::set_default_tags() {
   RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
 
   return Status::Ok();
-}
-
-void StorageManagerCanonical::group_metadata_vacuum(
-    const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Invalid URI");
-  }
-
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Group does not exist");
-  }
-
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  consolidator->vacuum(group_name);
 }
 
 }  // namespace tiledb::sm

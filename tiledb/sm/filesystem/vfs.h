@@ -506,8 +506,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
-      const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking

@@ -202,9 +202,8 @@ class Context {
    * Initializes global and local logger.
    *
    * @param config The configuration parameters.
-   * @return Status
    */
-  Status init_loggers(const Config& config);
+  void init_loggers(const Config& config);
 };
 
 }  // namespace tiledb::sm

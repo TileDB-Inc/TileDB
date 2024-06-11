@@ -585,32 +585,26 @@ Status Azure::ls(
     const int max_paths) const {
   assert(paths);
 
-  auto&& [st, entries] = ls_with_sizes(uri, delimiter, max_paths);
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(uri, delimiter, max_paths)) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
+std::vector<directory_entry> Azure::ls_with_sizes(
     const URI& uri, const std::string& delimiter, int max_paths) const {
   const auto& c = client();
 
   const URI uri_dir = uri.add_trailing_slash();
 
   if (!uri_dir.is_azure()) {
-    auto st = LOG_STATUS(Status_AzureError(
-        std::string("URI is not an Azure URI: " + uri_dir.to_string())));
-    return {st, nullopt};
+    throw AzureException("URI is not an Azure URI: " + uri_dir.to_string());
   }
 
   std::string container_name;
   std::string blob_path;
-  RETURN_NOT_OK_TUPLE(
-      parse_azure_uri(uri_dir, &container_name, &blob_path), nullopt);
+  throw_if_not_ok(parse_azure_uri(uri_dir, &container_name, &blob_path));
 
   auto container_client = c.GetBlobContainerClient(container_name);
 
@@ -624,9 +618,8 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     try {
       response = container_client.ListBlobsByHierarchy(delimiter, options);
     } catch (const ::Azure::Storage::StorageException& e) {
-      auto st = LOG_STATUS(Status_AzureError(
-          "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message));
-      return {st, nullopt};
+      throw AzureException(
+          "List blobs failed on: " + uri_dir.to_string() + "; " + e.Message);
     }
 
     for (const auto& blob : response.Blobs) {
@@ -648,7 +641,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Azure::ls_with_sizes(
     options.ContinuationToken = response.NextPageToken;
   } while (options.ContinuationToken.HasValue());
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status Azure::move_object(const URI& old_uri, const URI& new_uri) {

@@ -369,7 +369,7 @@ void RequestHandlerFx::delete_array() {
 }
 
 shared_ptr<Array> RequestHandlerFx::get_array(QueryType type) {
-  auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   throw_if_not_ok(array->open(type, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   return array;
 }

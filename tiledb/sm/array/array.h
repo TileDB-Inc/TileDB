@@ -45,7 +45,6 @@
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/fragment/fragment_info.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -302,8 +301,8 @@ class Array {
 
   /** Constructor. */
   Array(
+      ContextResources& resources,
       const URI& array_uri,
-      StorageManager* storage_manager,
       ConsistencyController& cc = controller());
 
   /** Destructor. */
@@ -1046,10 +1045,26 @@ class Array {
     return resources_.rest_client();
   }
 
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status upgrade_version(
+      ContextResources& resources, const URI& uri, const Config& config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** TileDB Context Resources. */
+  ContextResources& resources_;
 
   /** The opened array that can be used by queries. */
   shared_ptr<OpenedArray> opened_array_;
@@ -1109,12 +1124,6 @@ class Array {
    * `nullopt`, use the current time.
    */
   optional<uint64_t> new_component_timestamp_;
-
-  /** TileDB storage manager. */
-  StorageManager* storage_manager_;
-
-  /** TileDB Context Resources. */
-  ContextResources& resources_;
 
   /** The array config. */
   Config config_;
@@ -1187,19 +1196,18 @@ class Array {
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
-  /** Opens an array for writes.
+  /**
+   * Opens an array for writes.
    *
    * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */

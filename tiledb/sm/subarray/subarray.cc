@@ -825,17 +825,52 @@ template <class T>
 Subarray Subarray::crop_to_tile(const T* tile_coords, Layout layout) const {
   // TBD: is it ok that Subarray log id will increase as if it's a new subarray?
   Subarray ret(array_, layout, stats_->parent(), logger_, false);
-  crop_to_tile_impl(tile_coords, ret);
+  crop_to_tile_impl<T, Subarray>(tile_coords, ret);
 
   return ret;
 }
 
 template <class T>
 void Subarray::crop_to_tile(
-    Subarray* ret, const T* tile_coords, Layout layout) const {
-  new (ret) Subarray(array_, layout, stats_->parent(), logger_, false);
-  Subarray(array_, layout, stats_->parent(), logger_, false);
-  crop_to_tile_impl(tile_coords, *ret);
+    DenseTileSubarray<T>& ret, const T* tile_coords) const {
+  crop_to_tile_impl<T, DenseTileSubarray<T>>(tile_coords, ret);
+}
+
+template <class T>
+uint64_t Subarray::tile_cell_num(const T* tile_coords) const {
+  uint64_t ret = 1;
+  T new_range[2];
+  bool overlaps;
+
+  // Get tile subarray based on the input coordinates
+  const auto& array_schema = array_->array_schema_latest();
+  std::vector<T> tile_subarray(2 * dim_num());
+  array_schema.domain().get_tile_subarray(tile_coords, &tile_subarray[0]);
+
+  // Compute cell num per dims.
+  for (unsigned d = 0; d < dim_num(); ++d) {
+    uint64_t cell_num_for_dim = 0;
+    for (size_t r = 0; r < range_subset_[d].num_ranges(); ++r) {
+      const auto& range = range_subset_[d][r];
+      utils::geometry::overlap(
+          (const T*)range.data(),
+          &tile_subarray[2 * d],
+          1,
+          new_range,
+          &overlaps);
+
+      if (overlaps) {
+        // Here we need to do +1 because both the start and end are included in
+        // the number of cells.
+        cell_num_for_dim +=
+            static_cast<uint64_t>(new_range[1] - new_range[0] + 1);
+      }
+    }
+
+    ret *= cell_num_for_dim;
+  }
+
+  return ret;
 }
 
 uint32_t Subarray::dim_num() const {
@@ -1903,7 +1938,7 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
             (*result_sizes)[n].size_var_ += tile_var_size;
             if (nullable[n])
               (*result_sizes)[n].size_validity_ +=
-                  tile_var_size / attr_datatype_size *
+                  tile_size / constants::cell_var_offset_size *
                   constants::cell_validity_size;
           }
         }
@@ -1944,7 +1979,7 @@ void Subarray::compute_relevant_fragment_est_result_sizes(
           (*result_sizes)[n].size_var_ += tile_var_size * ratio;
           if (nullable[n])
             (*result_sizes)[n].size_validity_ +=
-                (tile_var_size / attr_datatype_size *
+                (tile_size / constants::cell_var_offset_size *
                  constants::cell_validity_size) *
                 ratio;
         }
@@ -2651,8 +2686,8 @@ bool Subarray::non_overlapping_ranges_for_dim(const uint64_t dim_idx) {
   return true;
 }
 
-template <class T>
-void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
+template <class T, class SubarrayT>
+void Subarray::crop_to_tile_impl(const T* tile_coords, SubarrayT& ret) const {
   T new_range[2];
   bool overlaps;
 
@@ -2676,9 +2711,9 @@ void Subarray::crop_to_tile_impl(const T* tile_coords, Subarray& ret) const {
 
       if (overlaps) {
         ret.add_range_unsafe(d, Range(new_range, r_size));
-        ret.original_range_idx_.resize(dim_num());
-        ret.original_range_idx_[d].resize(i + 1);
-        ret.original_range_idx_[d][i++] = r;
+        ret.original_range_idx_unsafe().resize(dim_num());
+        ret.original_range_idx_unsafe()[d].resize(i + 1);
+        ret.original_range_idx_unsafe()[d][i++] = r;
       }
     }
   }
@@ -2749,25 +2784,38 @@ template Subarray Subarray::crop_to_tile<double>(
     const double* tile_coords, Layout layout) const;
 
 template void Subarray::crop_to_tile<int8_t>(
-    Subarray* ret, const int8_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<int8_t>& ret, const int8_t* tile_coords) const;
 template void Subarray::crop_to_tile<uint8_t>(
-    Subarray* ret, const uint8_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<uint8_t>& ret, const uint8_t* tile_coords) const;
 template void Subarray::crop_to_tile<int16_t>(
-    Subarray* ret, const int16_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<int16_t>& ret, const int16_t* tile_coords) const;
 template void Subarray::crop_to_tile<uint16_t>(
-    Subarray* ret, const uint16_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<uint16_t>& ret, const uint16_t* tile_coords) const;
 template void Subarray::crop_to_tile<int32_t>(
-    Subarray* ret, const int32_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<int32_t>& ret, const int32_t* tile_coords) const;
 template void Subarray::crop_to_tile<uint32_t>(
-    Subarray* ret, const uint32_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<uint32_t>& ret, const uint32_t* tile_coords) const;
 template void Subarray::crop_to_tile<int64_t>(
-    Subarray* ret, const int64_t* tile_coords, Layout layout) const;
+    DenseTileSubarray<int64_t>& ret, const int64_t* tile_coords) const;
 template void Subarray::crop_to_tile<uint64_t>(
-    Subarray* ret, const uint64_t* tile_coords, Layout layout) const;
-template void Subarray::crop_to_tile<float>(
-    Subarray* ret, const float* tile_coords, Layout layout) const;
-template void Subarray::crop_to_tile<double>(
-    Subarray* ret, const double* tile_coords, Layout layout) const;
+    DenseTileSubarray<uint64_t>& ret, const uint64_t* tile_coords) const;
+
+template uint64_t Subarray::tile_cell_num<int8_t>(
+    const int8_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<uint8_t>(
+    const uint8_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<int16_t>(
+    const int16_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<uint16_t>(
+    const uint16_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<int32_t>(
+    const int32_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<uint32_t>(
+    const uint32_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<int64_t>(
+    const int64_t* tile_coords) const;
+template uint64_t Subarray::tile_cell_num<uint64_t>(
+    const uint64_t* tile_coords) const;
 
 /* ********************************* */
 /*         LABEL RANGE SUBSET        */

@@ -35,7 +35,7 @@
 #include <ranges>
 #include <string>
 #include <vector>
-#include "../proxy_sort.h"
+#include "tiledb/common/util/proxy_sort.h"
 
 TEST_CASE("proxy_sort: Null test", "[proxy_sort][null_test]") {
   REQUIRE(true);

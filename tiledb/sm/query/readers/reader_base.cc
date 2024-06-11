@@ -101,66 +101,6 @@ ReaderBase::ReaderBase(
   }
 }
 
-/* ********************************* */
-/*          STATIC FUNCTIONS         */
-/* ********************************* */
-
-template <class T>
-void ReaderBase::compute_result_space_tiles(
-    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
-    const std::vector<std::vector<uint8_t>>& tile_coords,
-    const TileDomain<T>& array_tile_domain,
-    const std::vector<TileDomain<T>>& frag_tile_domains,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
-    shared_ptr<MemoryTracker> memory_tracker) {
-  auto fragment_num = (unsigned)frag_tile_domains.size();
-  auto dim_num = array_tile_domain.dim_num();
-  std::vector<T> start_coords;
-  const T* coords;
-  start_coords.resize(dim_num);
-
-  // For all tile coordinates
-  for (const auto& tc : tile_coords) {
-    coords = (T*)(&(tc[0]));
-    start_coords = array_tile_domain.start_coords(coords);
-
-    // Create result space tile and insert into the map
-    auto r =
-        result_space_tiles.emplace(coords, ResultSpaceTile<T>(memory_tracker));
-    auto& result_space_tile = r.first->second;
-    result_space_tile.set_start_coords(start_coords);
-
-    // Add fragment info to the result space tile
-    for (unsigned f = 0; f < fragment_num; ++f) {
-      // Check if the fragment overlaps with the space tile
-      if (!frag_tile_domains[f].in_tile_domain(coords))
-        continue;
-
-      // Check if any previous fragment covers this fragment
-      // for the tile identified by `coords`
-      bool covered = false;
-      for (unsigned j = 0; j < f; ++j) {
-        if (frag_tile_domains[j].covers(coords, frag_tile_domains[f])) {
-          covered = true;
-          break;
-        }
-      }
-
-      // Exclude this fragment from the space tile
-      if (covered)
-        continue;
-
-      // Include this fragment in the space tile
-      auto frag_domain = frag_tile_domains[f].domain_slice();
-      auto frag_idx = frag_tile_domains[f].id();
-      result_space_tile.append_frag_domain(frag_idx, frag_domain);
-      auto tile_idx = frag_tile_domains[f].tile_pos(coords);
-      result_space_tile.set_result_tile(
-          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
-    }
-  }
-}
-
 /* ****************************** */
 /*         PUBLIC METHODS         */
 /* ****************************** */
@@ -633,6 +573,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
     filtered_data.emplace_back(
+        resources_,
         *this,
         min_batch_size_,
         max_batch_size_,
@@ -643,7 +584,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
         var_sized,
         nullable,
         val_only,
-        storage_manager_,
         read_tasks,
         memory_tracker_);
 
@@ -1056,7 +996,7 @@ uint64_t ReaderBase::offsets_bytesize() const {
 }
 
 uint64_t ReaderBase::get_attribute_tile_size(
-    const std::string& name, unsigned f, uint64_t t) {
+    const std::string& name, unsigned f, uint64_t t) const {
   uint64_t tile_size = 0;
   if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
     return tile_size;
@@ -1077,11 +1017,34 @@ uint64_t ReaderBase::get_attribute_tile_size(
   return tile_size;
 }
 
+uint64_t ReaderBase::get_attribute_persisted_tile_size(
+    const std::string& name, unsigned f, uint64_t t) const {
+  uint64_t tile_size = 0;
+  if (!fragment_metadata_[f]->array_schema()->is_field(name)) {
+    return tile_size;
+  }
+
+  tile_size +=
+      fragment_metadata_[f]->loaded_metadata()->persisted_tile_size(name, t);
+
+  if (array_schema_.var_size(name)) {
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->persisted_tile_var_size(
+            name, t);
+  }
+
+  if (array_schema_.is_nullable(name)) {
+    tile_size +=
+        fragment_metadata_[f]->loaded_metadata()->persisted_tile_validity_size(
+            name, t);
+  }
+
+  return tile_size;
+}
+
 template <class T>
-void ReaderBase::compute_result_space_tiles(
-    const Subarray& subarray,
-    const Subarray& partitioner_subarray,
-    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
+std::pair<TileDomain<T>, std::vector<TileDomain<T>>>
+ReaderBase::compute_tile_domains(const Subarray& partitioner_subarray) const {
   // For easy reference
   auto domain = array_schema_.domain().domain();
   auto tile_extents = array_schema_.domain().tile_extents();
@@ -1102,19 +1065,9 @@ void ReaderBase::compute_result_space_tiles(
     }
   }
 
-  // Get tile coords and array domain
-  const auto& tile_coords = subarray.tile_coords();
-  TileDomain<T> array_tile_domain(
-      UINT32_MAX, domain, domain, tile_extents, tile_order);
-
-  // Compute result space tiles
-  compute_result_space_tiles<T>(
-      fragment_metadata_,
-      tile_coords,
-      array_tile_domain,
-      frag_tile_domains,
-      result_space_tiles,
-      query_memory_tracker_);
+  return {
+      TileDomain<T>(UINT32_MAX, domain, domain, tile_extents, tile_order),
+      frag_tile_domains};
 }
 
 bool ReaderBase::has_coords() const {
@@ -1263,38 +1216,22 @@ void ReaderBase::validate_attribute_order(
 }
 
 // Explicit template instantiations
-template void ReaderBase::compute_result_space_tiles<int8_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int8_t*, ResultSpaceTile<int8_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint8_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint8_t*, ResultSpaceTile<uint8_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int16_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int16_t*, ResultSpaceTile<int16_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint16_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint16_t*, ResultSpaceTile<uint16_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int32_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int32_t*, ResultSpaceTile<int32_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint32_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint32_t*, ResultSpaceTile<uint32_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<int64_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const int64_t*, ResultSpaceTile<int64_t>>&) const;
-template void ReaderBase::compute_result_space_tiles<uint64_t>(
-    const Subarray&,
-    const Subarray&,
-    std::map<const uint64_t*, ResultSpaceTile<uint64_t>>&) const;
+template std::pair<TileDomain<int8_t>, std::vector<TileDomain<int8_t>>>
+ReaderBase::compute_tile_domains<int8_t>(const Subarray&) const;
+template std::pair<TileDomain<uint8_t>, std::vector<TileDomain<uint8_t>>>
+ReaderBase::compute_tile_domains<uint8_t>(const Subarray&) const;
+template std::pair<TileDomain<int16_t>, std::vector<TileDomain<int16_t>>>
+ReaderBase::compute_tile_domains<int16_t>(const Subarray&) const;
+template std::pair<TileDomain<uint16_t>, std::vector<TileDomain<uint16_t>>>
+ReaderBase::compute_tile_domains<uint16_t>(const Subarray&) const;
+template std::pair<TileDomain<int32_t>, std::vector<TileDomain<int32_t>>>
+ReaderBase::compute_tile_domains<int32_t>(const Subarray&) const;
+template std::pair<TileDomain<uint32_t>, std::vector<TileDomain<uint32_t>>>
+ReaderBase::compute_tile_domains<uint32_t>(const Subarray&) const;
+template std::pair<TileDomain<int64_t>, std::vector<TileDomain<int64_t>>>
+ReaderBase::compute_tile_domains<int64_t>(const Subarray&) const;
+template std::pair<TileDomain<uint64_t>, std::vector<TileDomain<uint64_t>>>
+ReaderBase::compute_tile_domains<uint64_t>(const Subarray&) const;
 template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>
 ReaderBase::cache_dimension_label_data<int8_t>();
 template tuple<Range, std::vector<const void*>, std::vector<uint64_t>>

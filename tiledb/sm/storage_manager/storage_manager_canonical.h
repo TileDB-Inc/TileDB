@@ -48,7 +48,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
@@ -133,18 +133,6 @@ class StorageManagerCanonical {
   /* ********************************* */
   /*                API                */
   /* ********************************* */
-
-  /**
-   * Upgrade a TileDB array to latest format version.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param config Configuration parameters for the upgrade
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_upgrade_version(const URI& uri, const Config& config);
 
   /**
    * Pushes an async query to the queue.
@@ -261,17 +249,6 @@ class StorageManagerCanonical {
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
-
-  /**
-   * Vacuums the consolidated metadata files of a group.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     vacuumed.
-   * @param config Configuration parameters for vacuuming
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   */
-  void group_metadata_vacuum(const char* group_name, const Config& config);
 
  private:
   /* ********************************* */
