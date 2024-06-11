@@ -68,7 +68,7 @@ Status CommitsConsolidator::consolidate(
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(storage_manager_->resources(), array_uri);
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 

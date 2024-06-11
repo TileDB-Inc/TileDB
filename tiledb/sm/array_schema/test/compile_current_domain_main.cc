@@ -1,11 +1,11 @@
 /**
- * @file thread_pool.h
+ * @file compile_current_domain_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,4 +26,12 @@
  * THE SOFTWARE.
  */
 
-#include "tiledb/common/thread_pool/thread_pool.h"
+#include "tiledb/sm/array_schema/current_domain.h"
+
+int main(int, char*[]) {
+  try {
+    tiledb::sm::CurrentDomain(nullptr, 0);
+  } catch (...) {
+  }
+  return 0;
+}

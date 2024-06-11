@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2019-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2019-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,12 +40,11 @@
 #include <mutex>
 #include <unordered_set>
 
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
  public:
@@ -94,8 +93,7 @@ class S3ThreadPoolExecutor : public Aws::Utils::Threading::Executor {
   std::condition_variable cv_;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // HAVE_S3
 #endif  // TILEDB_S3_THREAD_POOL_EXECUTOR_H

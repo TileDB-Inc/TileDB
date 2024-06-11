@@ -1093,7 +1093,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "Array - Get Enumeration Error - Not Open",
     "[enumeration][array][error][not-open]") {
-  auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
   REQUIRE_THROWS(array->get_enumeration("foo"), matcher);
 }
@@ -1140,7 +1140,7 @@ TEST_CASE_METHOD(
     EnumerationFx,
     "Array - Load All Enumerations Error - Not Open",
     "[enumeration][array][error][not-open]") {
-  auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   auto matcher = Catch::Matchers::ContainsSubstring("Array is not open");
   REQUIRE_THROWS(array->load_all_enumerations());
 }
@@ -2464,7 +2464,7 @@ TEST_CASE_METHOD(
   throw_if_not_ok(cfg.set("rest.load_enumerations_on_array_open", do_load));
   Context ctx(cfg);
 
-  auto a1 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+  auto a1 = make_shared<Array>(HERE(), ctx.resources(), uri_);
   throw_if_not_ok(
       a1->open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   REQUIRE(a1->serialize_enumerations() == (do_load == "true"));
@@ -2472,7 +2472,7 @@ TEST_CASE_METHOD(
       a1->array_schema_latest_ptr()->get_loaded_enumeration_names().size() ==
       0);
 
-  auto a2 = make_shared<Array>(HERE(), uri_, ctx.storage_manager());
+  auto a2 = make_shared<Array>(HERE(), ctx.resources(), uri_);
 
   ser_des_array(ctx, a1.get(), a2.get(), client_side, ser_type);
 
@@ -2885,7 +2885,7 @@ void EnumerationFx::create_array() {
 }
 
 shared_ptr<Array> EnumerationFx::get_array(QueryType type) {
-  auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   throw_if_not_ok(array->open(type, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   return array;
 }

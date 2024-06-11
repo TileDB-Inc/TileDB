@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/auxiliary.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/crypto/crypto.h"
@@ -57,7 +58,6 @@
 #include "tiledb/sm/query/deletes_and_updates/serialization.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/rest/rest_client.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 
 #include <cassert>
@@ -87,10 +87,11 @@ ConsistencyController& controller() {
 /* ********************************* */
 
 Array::Array(
+    ContextResources& resources,
     const URI& array_uri,
-    StorageManager* storage_manager,
     ConsistencyController& cc)
-    : array_uri_(array_uri)
+    : resources_(resources)
+    , array_uri_(array_uri)
     , array_uri_serialized_(array_uri)
     , is_open_(false)
     , is_opening_or_closing_(false)
@@ -98,11 +99,9 @@ Array::Array(
     , user_set_timestamp_end_(nullopt)
     , array_dir_timestamp_end_(UINT64_MAX)
     , new_component_timestamp_(nullopt)
-    , storage_manager_(storage_manager)
-    , resources_(storage_manager_->resources())
     , config_(resources_.config())
     , remote_(array_uri.is_tiledb())
-    , memory_tracker_(storage_manager->resources().create_memory_tracker())
+    , memory_tracker_(resources_.create_memory_tracker())
     , consistency_controller_(cc)
     , consistency_sentry_(nullopt) {
 }
@@ -263,6 +262,12 @@ Status Array::create(
   array_schema->set_array_uri(array_uri);
   array_schema->generate_uri();
   array_schema->check(resources.config());
+
+  // Check current domain is specified correctly if set
+  if (!array_schema->get_current_domain()->empty()) {
+    array_schema->get_current_domain()->check_schema_sanity(
+        array_schema->shared_domain());
+  }
 
   // Create array directory
   throw_if_not_ok(resources.vfs().create_dir(array_uri));

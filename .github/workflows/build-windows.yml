@@ -61,6 +61,7 @@ jobs:
       TILEDB_WEBP: ${{ matrix.TILEDB_WEBP }}
       TILEDB_CMAKE_BUILD_TYPE: 'Release'
       VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
+      CXXFLAGS: '/D_DISABLE_CONSTEXPR_MUTEX_CONSTRUCTOR' # https://github.com/actions/runner-images/issues/10004
     steps:
       - name: 'tiledb env prep'
         run: |

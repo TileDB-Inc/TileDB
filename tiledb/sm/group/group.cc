@@ -66,13 +66,9 @@ class GroupException : public StatusException {
   }
 };
 
-Group::Group(
-    ContextResources& resources,
-    const URI& group_uri,
-    StorageManager* storage_manager)
+Group::Group(ContextResources& resources, const URI& group_uri)
     : memory_tracker_(resources.create_memory_tracker())
     , group_uri_(group_uri)
-    , storage_manager_(storage_manager)
     , config_(resources.config())
     , remote_(group_uri.is_tiledb())
     , metadata_(memory_tracker_)
@@ -102,9 +98,7 @@ Status Group::create(ContextResources& resources, const URI& uri) {
 
   std::lock_guard<std::mutex> lock{object_mtx};
   if (uri.is_tiledb()) {
-    StorageManager storage_manager(
-        resources, resources.logger(), resources.config());
-    Group group(resources, uri, &storage_manager);
+    Group group(resources, uri);
     throw_if_not_ok(
         resources.rest_client()->post_group_create_to_rest(uri, &group));
     return Status::Ok();
@@ -369,7 +363,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
         if (member->type() == ObjectType::ARRAY) {
           Array::delete_array(resources_, member_uri);
         } else if (member->type() == ObjectType::GROUP) {
-          Group group_rec(resources_, member_uri, storage_manager_);
+          Group group_rec(resources_, member_uri);
           group_rec.open(QueryType::MODIFY_EXCLUSIVE);
           group_rec.delete_group(member_uri, true);
         }
@@ -808,7 +802,7 @@ std::string Group::dump(
         member_uri = group_uri_.join_path(it->uri().to_string());
       }
 
-      Group group_rec(resources_, member_uri, storage_manager_);
+      Group group_rec(resources_, member_uri);
       try {
         group_rec.open(QueryType::READ);
         ss << std::endl;
@@ -927,7 +921,7 @@ void Group::load_group_from_uri(const URI& uri) {
       uri,
       0,
       *encryption_key(),
-      storage_manager_->resources().ephemeral_memory_tracker());
+      resources_.ephemeral_memory_tracker());
 
   resources_.stats().add_counter("read_group_size", tile->size());
 
@@ -952,7 +946,7 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
         uri.uri_,
         0,
         *encryption_key(),
-        storage_manager_->resources().ephemeral_memory_tracker());
+        resources_.ephemeral_memory_tracker());
 
     resources_.stats().add_counter("read_group_size", tile->size());
 
