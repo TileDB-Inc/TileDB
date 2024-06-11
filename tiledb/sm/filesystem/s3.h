@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/platform/platform.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
@@ -224,6 +224,8 @@ struct S3Parameters {
             sse_algorithm_ == "kms" ?
                 config.get<std::string>("vfs.s3.sse_kms_key_id").value() :
                 "")
+      , storage_class_(
+            config.get<std::string>("vfs.s3.storage_class", Config::must_find))
       , bucket_acl_str_(config.get<std::string>(
             "vfs.s3.bucket_canned_acl", Config::must_find))
       , object_acl_str_(config.get<std::string>(
@@ -325,6 +327,9 @@ struct S3Parameters {
 
   /** The server-side encryption key to use with the kms algorithm. */
   std::string sse_kms_key_id_;
+
+  /** The S3 storage class. */
+  std::string storage_class_;
 
   /** Names of values found in Aws::S3::Model::BucketCannedACL enumeration. */
   std::string bucket_acl_str_;
@@ -1376,6 +1381,9 @@ class S3 : FilesystemBase {
 
   /** The server-side encryption algorithm. */
   Aws::S3::Model::ServerSideEncryption sse_;
+
+  /** The storage class for a s3 upload request. */
+  Aws::S3::Model::StorageClass storage_class_;
 
   /** Protects file_buffers map */
   std::mutex file_buffers_mtx_;

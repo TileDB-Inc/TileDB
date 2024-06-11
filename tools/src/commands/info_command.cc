@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -42,15 +42,13 @@
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
 #include "tiledb/sm/fragment/fragment_metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 
 #include <cassert>
 #include <fstream>
 #include <iostream>
 #include <sstream>
 
-namespace tiledb {
-namespace cli {
+namespace tiledb::cli {
 
 using namespace tiledb::sm;
 
@@ -119,11 +117,10 @@ void InfoCommand::print_tile_sizes() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   EncryptionKey enc_key;
@@ -193,11 +190,10 @@ void InfoCommand::print_schema_info() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
@@ -211,11 +207,10 @@ void InfoCommand::write_svg_mbrs() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
@@ -287,11 +282,10 @@ void InfoCommand::write_text_mbrs() const {
   Config config;
   auto logger = make_shared<Logger>(HERE(), "");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, logger, config);
 
   // Open the array
   URI uri(array_uri_);
-  Array array(uri, &sm);
+  Array array(resources, uri);
   THROW_NOT_OK(
       array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
@@ -560,5 +554,4 @@ std::vector<std::string> InfoCommand::mbr_to_string(
   return result;
 }
 
-}  // namespace cli
-}  // namespace tiledb
+}  // namespace tiledb::cli

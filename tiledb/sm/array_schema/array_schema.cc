@@ -37,6 +37,7 @@
 #include "tiledb/common/logger.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -104,7 +105,9 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::DIMENSION_LABELS))
     , enumeration_map_(memory_tracker_->get_resource(MemoryType::ENUMERATION))
     , enumeration_path_map_(
-          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS)) {
+          memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
+    , current_domain_(make_shared<CurrentDomain>(
+          memory_tracker, constants::current_domain_version)) {
   // Set up default filter pipelines for coords, offsets, and validity values.
   coords_filters_.add_filter(CompressionFilter(
       constants::coords_compression,
@@ -141,6 +144,7 @@ ArraySchema::ArraySchema(
     FilterPipeline cell_var_offsets_filters,
     FilterPipeline cell_validity_filters,
     FilterPipeline coords_filters,
+    shared_ptr<const CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , uri_(uri)
@@ -165,7 +169,8 @@ ArraySchema::ArraySchema(
           memory_tracker_->get_resource(MemoryType::ENUMERATION_PATHS))
     , cell_var_offsets_filters_(cell_var_offsets_filters)
     , cell_validity_filters_(cell_validity_filters)
-    , coords_filters_(coords_filters) {
+    , coords_filters_(coords_filters)
+    , current_domain_(current_domain) {
   for (auto atr : attributes) {
     attributes_.push_back(atr);
   }
@@ -256,6 +261,7 @@ ArraySchema::ArraySchema(const ArraySchema& array_schema)
     , cell_var_offsets_filters_{array_schema.cell_var_offsets_filters_}
     , cell_validity_filters_{array_schema.cell_validity_filters_}
     , coords_filters_{array_schema.coords_filters_}
+    , current_domain_(array_schema.current_domain_)
     , mtx_{} {
   throw_if_not_ok(set_domain(array_schema.domain_));
 
@@ -737,6 +743,9 @@ void ArraySchema::dump(FILE* out) const {
     fprintf(out, "\n");
     label->dump(out);
   }
+
+  // Print out array current domain
+  current_domain_->dump(out);
 }
 
 Status ArraySchema::has_attribute(
@@ -804,6 +813,7 @@ bool ArraySchema::is_nullable(const std::string& name) const {
 //   dimension_label #1
 //   dimension_label #2
 //   ...
+// current_domain
 void ArraySchema::serialize(Serializer& serializer) const {
   // Write version, which is always the current version. Despite
   // the in-memory `version_`, we will serialize every array schema
@@ -871,6 +881,9 @@ void ArraySchema::serialize(Serializer& serializer) const {
     serializer.write<uint32_t>(enmr_uri_size);
     serializer.write(enmr_uri.data(), enmr_uri_size);
   }
+
+  // Serialize array current domain information
+  current_domain_->serialize(serializer);
 }
 
 Layout ArraySchema::tile_order() const {
@@ -1422,6 +1435,15 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
     }
   }
 
+  // Load the array current domain, if this is an older array, it'll get by
+  // default an empty current domain object
+  auto current_domain = make_shared<const CurrentDomain>(
+      memory_tracker, constants::current_domain_version);
+  if (version >= constants::current_domain_min_format_version) {
+    current_domain =
+        CurrentDomain::deserialize(deserializer, memory_tracker, domain);
+  }
+
   // Validate
   if (cell_order == Layout::HILBERT &&
       domain->dim_num() > Hilbert::HC_MAX_DIM) {
@@ -1471,6 +1493,7 @@ shared_ptr<ArraySchema> ArraySchema::deserialize(
       FilterPipeline(
           coords_filters,
           version < 5 ? domain->dimension_ptr(0)->type() : Datatype::UINT64),
+      current_domain,
       memory_tracker);
 }
 
@@ -1789,6 +1812,42 @@ void ArraySchema::generate_uri(
       timestamp_range_.first, timestamp_range_.second, std::nullopt);
   uri_ =
       array_uri_.join_path(constants::array_schema_dir_name).join_path(name_);
+}
+
+void ArraySchema::expand_current_domain(
+    shared_ptr<const CurrentDomain> new_current_domain) {
+  if (new_current_domain == nullptr) {
+    throw ArraySchemaException(
+        "The argument specified for current domain expansion is nullptr.");
+  }
+
+  // Check that the new current domain expands the existing one and not shrinks
+  // it Every current domain covers an empty current domain.
+  if (!current_domain_->empty() &&
+      !current_domain_->covered(new_current_domain)) {
+    throw ArraySchemaException(
+        "The current domain of an array can only be expanded, please adjust "
+        "your new current domain object.");
+  }
+
+  new_current_domain->check_schema_sanity(this->shared_domain());
+
+  current_domain_ = new_current_domain;
+}
+
+shared_ptr<const CurrentDomain> ArraySchema::get_current_domain() const {
+  return current_domain_;
+}
+
+void ArraySchema::set_current_domain(
+    shared_ptr<const CurrentDomain> current_domain) {
+  if (current_domain == nullptr) {
+    throw ArraySchemaException(
+        "The argument specified for setting the current domain on the "
+        "schema is nullptr.");
+  }
+
+  current_domain_ = current_domain;
 }
 
 }  // namespace tiledb::sm

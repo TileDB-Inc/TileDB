@@ -4,7 +4,7 @@ title: Format Specification
 
 **Notes:**
 
-* The current TileDB format version number is **21** (`uint32_t`).
+* The current TileDB format version number is **22** (`uint32_t`).
 * Data written by TileDB and referenced in this document is **little-endian**
   with the following exceptions:
 
@@ -36,6 +36,7 @@ title: Format Specification
 |19|2.16|[Vac files now use relative URIs](https://github.com/TileDB-Inc/TileDB/commit/ef3236a526b67c50138436a16f67ad274c2ca037)|
 |20|2.17|[Enumerations](https://github.com/TileDB-Inc/TileDB/commit/c0d7c6a50fdeffbcc7d8c9ba4a29230fe22baed6)|
 |21|2.19|[Tile metadata are now correctly calculated for nullable fixed size strings on dense arrays](https://github.com/TileDB-Inc/TileDB/commit/081bcc5f7ce4bee576f08b97de348236ac88d429)|
+|22|2.25|[Add array current domain](https://github.com/TileDB-Inc/TileDB/commit/9116d3c95a83d72545520acb9a7808fc63478963)|
 
 ## Table of Contents
 

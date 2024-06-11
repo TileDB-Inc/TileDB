@@ -219,6 +219,7 @@ const std::string Config::VFS_S3_CONNECT_MAX_TRIES = "5";
 const std::string Config::VFS_S3_CONNECT_SCALE_FACTOR = "25";
 const std::string Config::VFS_S3_SSE = "";
 const std::string Config::VFS_S3_SSE_KMS_KEY_ID = "";
+const std::string Config::VFS_S3_STORAGE_CLASS = "NOT_SET";
 const std::string Config::VFS_S3_REQUEST_TIMEOUT_MS = "3000";
 const std::string Config::VFS_S3_REQUESTER_PAYS = "false";
 const std::string Config::VFS_S3_PROXY_SCHEME = "http";
@@ -482,6 +483,7 @@ const std::map<std::string, std::string> default_config_values = {
         "vfs.s3.connect_scale_factor", Config::VFS_S3_CONNECT_SCALE_FACTOR),
     std::make_pair("vfs.s3.sse", Config::VFS_S3_SSE),
     std::make_pair("vfs.s3.sse_kms_key_id", Config::VFS_S3_SSE_KMS_KEY_ID),
+    std::make_pair("vfs.s3.storage_class", Config::VFS_S3_STORAGE_CLASS),
     std::make_pair(
         "vfs.s3.request_timeout_ms", Config::VFS_S3_REQUEST_TIMEOUT_MS),
     std::make_pair("vfs.s3.requester_pays", Config::VFS_S3_REQUESTER_PAYS),

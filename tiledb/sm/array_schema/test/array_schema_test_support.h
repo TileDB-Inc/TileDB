@@ -76,6 +76,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -329,6 +330,9 @@ class TestArraySchema {
             FilterPipeline(),
             FilterPipeline(),
             FilterPipeline(),
+            make_shared<CurrentDomain>(
+                tiledb::test::create_test_memory_tracker(),
+                constants::current_domain_version),
             tiledb::test::create_test_memory_tracker()) {
   }
 

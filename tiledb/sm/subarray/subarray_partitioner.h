@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,15 +37,14 @@
 
 #include <unordered_map>
 #include "tiledb/common/common.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/stats/stats.h"
 #include "tiledb/sm/subarray/subarray.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /**
  * Iterates over partitions of a subarray in a way that the results
@@ -565,7 +564,6 @@ class SubarrayPartitioner {
       ByteVecValue* splitting_value) const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SUBARRAY_PARTITIONER_H

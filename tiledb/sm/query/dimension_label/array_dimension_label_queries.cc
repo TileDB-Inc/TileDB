@@ -359,7 +359,7 @@ shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
   // Create the dimension label.
   auto label_iter = dimension_labels_.try_emplace(
       dim_label_name,
-      make_shared<Array>(HERE(), dim_label_uri, storage_manager_));
+      make_shared<Array>(HERE(), storage_manager_->resources(), dim_label_uri));
   const auto dim_label = label_iter.first->second;
 
   // Open the dimension label with the same timestamps and encryption as the

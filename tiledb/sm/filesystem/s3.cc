@@ -81,6 +81,13 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
+/*
+ * Functions to convert strings to AWS enums.
+ *
+ * The AWS SDK provides some enum conversion functions, but they must not be
+ * used, because they have non-deterministic behavior in certain scenarios.
+ */
+
 Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
   std::transform(loglevel.begin(), loglevel.end(), loglevel.begin(), ::tolower);
   if (loglevel == "fatal")
@@ -157,6 +164,47 @@ Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
     return Aws::S3::Model::BucketCannedACL::NOT_SET;
 }
 
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param storage_class_str A textual string naming one of the
+ *        Aws::S3::Model::StorageClass enum members.
+ */
+Aws::S3::Model::StorageClass S3_StorageClass_from_str(
+    const std::string& storage_class_str) {
+  using Aws::S3::Model::StorageClass;
+  if (storage_class_str.empty())
+    return StorageClass::NOT_SET;
+
+  if (storage_class_str == "NOT_SET")
+    return StorageClass::NOT_SET;
+  else if (storage_class_str == "STANDARD")
+    return StorageClass::STANDARD;
+  else if (storage_class_str == "REDUCED_REDUNDANCY")
+    return StorageClass::REDUCED_REDUNDANCY;
+  else if (storage_class_str == "STANDARD_IA")
+    return StorageClass::STANDARD_IA;
+  else if (storage_class_str == "ONEZONE_IA")
+    return StorageClass::ONEZONE_IA;
+  else if (storage_class_str == "INTELLIGENT_TIERING")
+    return StorageClass::INTELLIGENT_TIERING;
+  else if (storage_class_str == "GLACIER")
+    return StorageClass::GLACIER;
+  else if (storage_class_str == "DEEP_ARCHIVE")
+    return StorageClass::DEEP_ARCHIVE;
+  else if (storage_class_str == "OUTPOSTS")
+    return StorageClass::OUTPOSTS;
+  else if (storage_class_str == "GLACIER_IR")
+    return StorageClass::GLACIER_IR;
+  else if (storage_class_str == "SNOW")
+    return StorageClass::SNOW;
+  else if (storage_class_str == "EXPRESS_ONEZONE")
+    return StorageClass::EXPRESS_ONEZONE;
+  else
+    return StorageClass::NOT_SET;
+}
+
 }  // namespace
 
 using namespace tiledb::common;
@@ -200,6 +248,7 @@ S3::S3(
           s3_params_.requester_pays_ ? Aws::S3::Model::RequestPayer::requester :
                                        Aws::S3::Model::RequestPayer::NOT_SET)
     , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    , storage_class_(S3_StorageClass_from_str(s3_params_.storage_class_))
     , object_canned_acl_(
           S3_ObjectCannedACL_from_str(s3_params_.object_acl_str_))
     , bucket_canned_acl_(
@@ -511,6 +560,10 @@ void S3::touch(const URI& uri) const {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  // TODO: These checks are not needed since AWS SDK 1.11.275
+  // https://github.com/aws/aws-sdk-cpp/pull/2875
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
@@ -1554,6 +1607,8 @@ Status S3::initiate_multipart_request(
   if (!s3_params_.sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    multipart_upload_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     multipart_upload_request.SetACL(object_canned_acl_);
   }
@@ -1748,6 +1803,8 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }

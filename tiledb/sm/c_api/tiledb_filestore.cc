@@ -212,7 +212,7 @@ int32_t tiledb_filestore_uri_import(
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::WRITE,
       0,
@@ -399,7 +399,7 @@ int32_t tiledb_filestore_uri_export(
   }
 
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::READ,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -502,7 +502,7 @@ int32_t tiledb_filestore_buffer_import(
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::WRITE,
       0,
@@ -582,7 +582,7 @@ int32_t tiledb_filestore_buffer_export(
 
   tiledb::sm::Context& context = ctx->context();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::READ,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -642,7 +642,7 @@ int32_t tiledb_filestore_size(
 
   tiledb::sm::Context& context = ctx->context();
   tiledb::sm::Array array(
-      tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      context.resources(), tiledb::sm::URI(filestore_array_uri));
 
   throw_if_not_ok(array.open(
       tiledb::sm::QueryType::READ,
