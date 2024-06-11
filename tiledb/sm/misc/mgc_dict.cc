@@ -44,7 +44,7 @@ std::vector<uint8_t> prepare_data() {
   ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
   PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
   ZStd::ZSTD_Decompress_Context ctx;
-  ZStd::decompress(ctx, &input, &output);
+  ZStd::decompress(ctx, input, output);
 
   return expanded_buffer;
 }

@@ -104,25 +104,25 @@ void ZStd::decompress(
   ResourceGuard context_guard(*decompress_ctx_pool);
   auto& context = context_guard.get();
 
-  decompress(context, input_buffer, output_buffer);
+  decompress(context, *input_buffer, *output_buffer);
 }
 
 void ZStd::decompress(
     ZSTD_Decompress_Context& decompress_ctx,
-    ConstBuffer* input_buffer,
-    PreallocatedBuffer* output_buffer) {
+    ConstBuffer& input_buffer,
+    PreallocatedBuffer& output_buffer) {
   // Sanity check
-  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
+  if (input_buffer.data() == nullptr || output_buffer.data() == nullptr)
     throw ZStdException(
         "Failed decompressing with ZStd; invalid buffer format");
 
   // Decompress
   uint64_t zstd_ret = ZSTD_decompressDCtx(
       decompress_ctx.ptr(),
-      output_buffer->cur_data(),
-      output_buffer->free_space(),
-      input_buffer->data(),
-      input_buffer->size());
+      output_buffer.cur_data(),
+      output_buffer.free_space(),
+      input_buffer.data(),
+      input_buffer.size());
 
   // Check error
   if (ZSTD_isError(zstd_ret) != 0) {
@@ -131,7 +131,7 @@ void ZStd::decompress(
   }
 
   // Set size decompressed data
-  output_buffer->advance_offset(zstd_ret);
+  output_buffer.advance_offset(zstd_ret);
 }
 
 uint64_t ZStd::overhead(uint64_t nbytes) {

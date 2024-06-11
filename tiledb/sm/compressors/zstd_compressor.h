@@ -128,8 +128,8 @@ class ZStd {
    */
   static void decompress(
       ZSTD_Decompress_Context& decompress_ctx,
-      ConstBuffer* input_buffer,
-      PreallocatedBuffer* output_buffer);
+      ConstBuffer& input_buffer,
+      PreallocatedBuffer& output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {
