@@ -68,14 +68,12 @@ Status GroupMetaConsolidator::consolidate(
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  Group group_for_reads(
-      storage_manager_->resources(), group_uri, storage_manager_);
+  Group group_for_reads(storage_manager_->resources(), group_uri);
   group_for_reads.open(
       QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
 
   // Open group for writing
-  Group group_for_writes(
-      storage_manager_->resources(), group_uri, storage_manager_);
+  Group group_for_writes(storage_manager_->resources(), group_uri);
 
   try {
     group_for_writes.open(QueryType::WRITE);
