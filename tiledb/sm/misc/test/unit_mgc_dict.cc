@@ -33,21 +33,12 @@
  */
 
 #include <test/support/tdb_catch.h>
-#include "tiledb/common/common.h"
-#include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/misc/mgc_dict.h"
-#include "tiledb/sm/misc/types.h"
 
-#include <inttypes.h>
 #include <memory.h>
-#include <stdio.h>
+#include <fstream>
 #include <iostream>
 #include <vector>
-
-#ifdef _WIN32
-#include <fcntl.h>
-#include <io.h>
-#endif
 
 #ifndef TILEDB_PATH_TO_MAGIC_MGC
 #error "TILEDB_PATH_TO_MAGIC_MGC not defined!"
@@ -56,24 +47,21 @@
 using namespace tiledb::sm;
 
 TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_validity]") {
-  FILE* infile = nullptr;
-  infile = fopen(TILEDB_PATH_TO_MAGIC_MGC, "rb");
-  REQUIRE(infile);
-
-  fseek(infile, 0L, SEEK_END);
-  uint64_t magic_mgc_len = ftell(infile);
-  fseek(infile, 0L, SEEK_SET);
-
-  char* magic_mgc_data = tdb_new_array(char, magic_mgc_len);
-  REQUIRE(fread(magic_mgc_data, 1, magic_mgc_len, infile) == magic_mgc_len);
-  fclose(infile);
+  std::vector<char> magic_mgc_data;
+  {
+    std::ifstream infile(TILEDB_PATH_TO_MAGIC_MGC, std::ios::binary);
+    magic_mgc_data.assign(
+        std::istreambuf_iterator<char>(infile),
+        std::istreambuf_iterator<char>());
+  }
 
   auto magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
-  REQUIRE(magic_mgc_embedded_data.size() == magic_mgc_len);
-
+  REQUIRE(magic_mgc_data.size() == magic_mgc_embedded_data.size());
   REQUIRE(
-      memcmp(magic_mgc_data, magic_mgc_embedded_data.data(), magic_mgc_len) ==
-      0);
+      memcmp(
+          magic_mgc_data.data(),
+          magic_mgc_embedded_data.data(),
+          magic_mgc_data.size()) == 0);
 }
 
 char empty_txt[] = {""};  // further below, treated differently from others here
