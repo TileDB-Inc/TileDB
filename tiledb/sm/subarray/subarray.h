@@ -93,6 +93,80 @@ class FragmentMetadata;
 enum class Layout : uint8_t;
 enum class QueryType : uint8_t;
 
+template <class T>
+class DenseTileSubarray {
+ public:
+  /**
+   * Stores information about a range along a single dimension. The
+   * whole range resides in a single tile.
+   */
+  struct DenseTileRange {
+    /** The start of the range in global coordinates. */
+    T start_;
+    /** The end of the range in global coordinates. */
+    T end_;
+
+    /** Constructor. */
+    DenseTileRange(T start, T end)
+        : start_(start)
+        , end_(end) {
+    }
+
+    /** Equality operator. */
+    bool operator==(const DenseTileRange& r) const {
+      return (r.start_ == start_ && r.end_ == end_);
+    }
+  };
+
+  /* ********************************* */
+  /*     CONSTRUCTORS & DESTRUCTORS    */
+  /* ********************************* */
+
+  DenseTileSubarray() = delete;
+
+  DenseTileSubarray(unsigned dim_num)
+      : ranges_(dim_num) {
+  }
+
+  /* ********************************* */
+  /*                 API               */
+  /* ********************************* */
+
+  /** Returns the orignal range indexes. */
+  inline const std::vector<std::vector<uint64_t>>& original_range_idx() const {
+    return original_range_idx_;
+  }
+
+  /** Returns the ranges. */
+  inline const std::vector<std::vector<DenseTileRange>>& ranges() const {
+    return ranges_;
+  }
+
+  /** Returns the orignal range indexes to be modified. */
+  inline std::vector<std::vector<uint64_t>>& original_range_idx_unsafe() {
+    return original_range_idx_;
+  }
+
+  /**
+   * Adds a range along the dimension with the given index, without
+   * performing any error checks.
+   */
+  void add_range_unsafe(uint32_t dim_idx, const Range& range) {
+    ranges_[dim_idx].emplace_back(range.start_as<T>(), range.end_as<T>());
+  }
+
+ private:
+  /* ********************************* */
+  /*         PRIVATE ATTRIBUTES        */
+  /* ********************************* */
+
+  /** Stores a vector of 1D ranges per dimension. */
+  std::vector<std::vector<uint64_t>> original_range_idx_;
+
+  /** Stores the ranges per dimension. */
+  std::vector<std::vector<DenseTileRange>> ranges_;
+};
+
 /**
  * Interface to implement for a class that can store tile ranges computed by
  * this class.
@@ -508,6 +582,11 @@ class Subarray {
       const void* end,
       uint64_t end_size);
 
+  /** Returns the orignal range indexes to be modified. */
+  inline std::vector<std::vector<uint64_t>>& original_range_idx_unsafe() {
+    return original_range_idx_;
+  }
+
   /**
    * Adds a range along the dimension with the given index, without
    * performing any error checks.
@@ -807,7 +886,13 @@ class Subarray {
    * the input `layout`.
    */
   template <class T>
-  void crop_to_tile(Subarray* ret, const T* tile_coords, Layout layout) const;
+  void crop_to_tile(DenseTileSubarray<T>& ret, const T* tile_coords) const;
+
+  /**
+   * Returns the number of cells in a specific tile for this subarray.
+   */
+  template <class T>
+  uint64_t tile_cell_num(const T* tile_coords) const;
 
   /** Returns the number of dimensions of the subarray. */
   uint32_t dim_num() const;
@@ -1556,8 +1641,8 @@ class Subarray {
    * tile with the input coordinates. The new subarray will have
    * the input `layout`.
    */
-  template <class T>
-  void crop_to_tile_impl(const T* tile_coords, Subarray& ret) const;
+  template <class T, class SubarrayT>
+  void crop_to_tile_impl(const T* tile_coords, SubarrayT& ret) const;
 };
 
 }  // namespace tiledb::sm
