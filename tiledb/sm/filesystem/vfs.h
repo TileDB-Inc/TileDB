@@ -506,8 +506,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<directory_entry>>> ls_with_sizes(
-      const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
 
   /**
    * Lists objects and object information that start with `prefix`, invoking
@@ -546,9 +545,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
 #endif
       } else if (parent.is_gcs()) {
 #ifdef HAVE_GCS
-        throw filesystem::VFSException(
-            "Recursive ls over " + parent.backend_name() +
-            " storage backend is not supported.");
+        results = gcs_.ls_filtered(parent, f, d, recursive);
 #else
         throw filesystem::VFSException("TileDB was built without GCS support");
 #endif
@@ -586,7 +583,7 @@ class VFS : private VFSBase, protected S3_within_VFS {
    * invoking the FilePredicate on each entry collected and the
    * DirectoryPredicate on common prefixes for pruning.
    *
-   * Currently this API is only supported for local files, S3 and Azure.
+   * Currently this API is only supported for local files, S3, Azure and GCS.
    *
    * @param parent The parent prefix to list sub-paths.
    * @param f The FilePredicate to invoke on each object for filtering.
@@ -903,8 +900,9 @@ class VFS : private VFSBase, protected S3_within_VFS {
 
       const uint64_t size = buffer.size();
       ReadAheadBuffer ra_buffer(offset, std::move(buffer));
-      return LRUCache<std::string, ReadAheadBuffer>::insert(
+      LRUCache<std::string, ReadAheadBuffer>::insert(
           uri.to_string(), std::move(ra_buffer), size);
+      return Status::Ok();
     }
 
    private:

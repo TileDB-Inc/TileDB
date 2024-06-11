@@ -1003,7 +1003,15 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
 
   auto rc = tiledb_config_set(
-      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 
@@ -1356,8 +1364,16 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_config_alloc(&config, &error) == TILEDB_OK);
   REQUIRE(error == nullptr);
 
-  int rc = tiledb_config_set(
-      config, "sm.consolidation.total_buffer_size", "1048576", &error);
+  auto rc = tiledb_config_set(
+      config, "sm.mem.consolidation.buffers_weight", "1", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.reader_weight", "5000", &error);
+  REQUIRE(rc == TILEDB_OK);
+  REQUIRE(error == nullptr);
+  rc = tiledb_config_set(
+      config, "sm.mem.consolidation.writer_weight", "5000", &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
 

@@ -40,6 +40,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/dimension_label.h"
 #include "tiledb/sm/array_schema/domain.h"
@@ -912,6 +913,8 @@ Status array_schema_to_capnp(
     }
   }
 
+  // TODO: to add actual wire CurrentDomain (ch48253)
+
   return Status::Ok();
 }
 
@@ -1151,6 +1154,9 @@ shared_ptr<ArraySchema> array_schema_from_capnp(
       cell_var_offsets_filters,
       cell_validity_filters,
       coords_filters,
+      // TODO: to be changed to actual wire CurrentDomain (ch48253)
+      make_shared<CurrentDomain>(
+          memory_tracker, constants::current_domain_version),
       memory_tracker);
 }
 

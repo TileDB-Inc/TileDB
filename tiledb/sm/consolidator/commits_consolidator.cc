@@ -68,7 +68,7 @@ Status CommitsConsolidator::consolidate(
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(storage_manager_->resources(), array_uri);
   RETURN_NOT_OK(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
@@ -103,7 +103,7 @@ Status CommitsConsolidator::consolidate(
 
 void CommitsConsolidator::vacuum(const char* array_name) {
   if (array_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum array metadata; Array name cannot be null");
   }
 

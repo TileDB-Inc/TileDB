@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -45,7 +45,6 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/layout.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/storage_format/uri/parse_uri.h"
 
 using namespace tiledb;
@@ -99,7 +98,8 @@ class WhiteboxConsistencyController : public ConsistencyController {
    * Warning: This does not clean up leftovers from previous failed runs.
    * Manual intervention may be required in the build tree.
    */
-  tdb_unique_ptr<Array> create_array(const URI uri, StorageManager* sm) {
+  tdb_unique_ptr<Array> create_array(
+      ContextResources& resources, const URI uri) {
     // Create Domain
     uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
@@ -124,19 +124,15 @@ class WhiteboxConsistencyController : public ConsistencyController {
     throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
-    Status st = sm->array_create(uri, schema, key);
-    if (!st.ok()) {
-      throw std::runtime_error(
-          "[WhiteboxConsistencyController] Could not create array.");
-    }
-    tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
+    throw_if_not_ok(Array::create(resources, uri, schema, key));
+    tdb_unique_ptr<Array> array(new Array{resources, uri, *this});
 
     return array;
   }
 
-  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+  tdb_unique_ptr<Array> open_array(ContextResources& resources, const URI uri) {
     // Create array
-    tdb_unique_ptr<Array> array{create_array(uri, sm)};
+    tdb_unique_ptr<Array> array{create_array(resources, uri)};
 
     // Open the array
     Status st =

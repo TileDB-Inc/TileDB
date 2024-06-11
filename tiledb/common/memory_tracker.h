@@ -97,6 +97,7 @@
 #define TILEDB_MEMORY_TRACKER_H
 
 #include <condition_variable>
+#include <functional>
 #include <thread>
 
 #include "tiledb/common/pmr.h"
@@ -179,10 +180,14 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
   explicit MemoryTrackerResource(
       tdb::pmr::memory_resource* upstream,
       std::atomic<uint64_t>& total_counter,
-      std::atomic<uint64_t>& type_counter)
+      std::atomic<uint64_t>& type_counter,
+      const std::atomic<uint64_t>& memory_budget,
+      std::function<void()> on_budget_exceeded)
       : upstream_(upstream)
       , total_counter_(total_counter)
-      , type_counter_(type_counter) {
+      , type_counter_(type_counter)
+      , memory_budget_(memory_budget)
+      , on_budget_exceeded_(on_budget_exceeded) {
   }
 
   /** The number of bytes tracked by this resource. */
@@ -208,6 +213,12 @@ class MemoryTrackerResource : public tdb::pmr::memory_resource {
 
   /** A reference to the memory type counter this resource is tracking. */
   std::atomic<uint64_t>& type_counter_;
+
+  /** The memory budget for this resource. */
+  const std::atomic<uint64_t>& memory_budget_;
+
+  /** A function to call when the budget is exceeded. */
+  std::function<void()> on_budget_exceeded_;
 };
 
 class MemoryTracker {
@@ -254,9 +265,9 @@ class MemoryTracker {
    */
   bool take_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + size <= memory_budget_) {
-      memory_usage_ += size;
-      memory_usage_by_type_[mem_type] += size;
+    if (legacy_memory_usage_ + size <= legacy_memory_budget_) {
+      legacy_memory_usage_ += size;
+      legacy_memory_usage_by_type_[mem_type] += size;
       return true;
     }
 
@@ -270,8 +281,8 @@ class MemoryTracker {
    */
   void release_memory(uint64_t size, MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    memory_usage_ -= size;
-    memory_usage_by_type_[mem_type] -= size;
+    legacy_memory_usage_ -= size;
+    legacy_memory_usage_by_type_[mem_type] -= size;
   }
 
   /**
@@ -282,11 +293,11 @@ class MemoryTracker {
    */
   bool set_budget(uint64_t size) {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ > size) {
+    if (legacy_memory_usage_ > size) {
       return false;
     }
 
-    memory_budget_ = size;
+    legacy_memory_budget_ = size;
     return true;
   }
 
@@ -295,7 +306,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_usage() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_;
+    return legacy_memory_usage_;
   }
 
   /**
@@ -303,7 +314,7 @@ class MemoryTracker {
    */
   uint64_t get_memory_usage(MemoryType mem_type) {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_usage_by_type_[mem_type];
+    return legacy_memory_usage_by_type_[mem_type];
   }
 
   /**
@@ -312,10 +323,12 @@ class MemoryTracker {
    */
   uint64_t get_memory_available() {
     std::lock_guard<std::mutex> lg(mutex_);
-    if (memory_usage_ + counters_[MemoryType::TILE_OFFSETS] > memory_budget_) {
+    if (legacy_memory_usage_ + counters_[MemoryType::TILE_OFFSETS] >
+        legacy_memory_budget_) {
       return 0;
     }
-    return memory_budget_ - memory_usage_ - counters_[MemoryType::TILE_OFFSETS];
+    return legacy_memory_budget_ - legacy_memory_usage_ -
+           counters_[MemoryType::TILE_OFFSETS];
   }
 
   /**
@@ -324,7 +337,20 @@ class MemoryTracker {
    */
   uint64_t get_memory_budget() {
     std::lock_guard<std::mutex> lg(mutex_);
-    return memory_budget_;
+    return legacy_memory_budget_;
+  }
+
+  /**
+   * Refresh the memory budget used by the new system.
+   *
+   * This method should be called only by Query::set_config, which gets called
+   * by the REST server after deserializing the query and creating its strategy,
+   * with a config that contains the new memory budget.
+   *
+   * @param new_budget The new memory budget.
+   */
+  void refresh_memory_budget(uint64_t new_budget) {
+    memory_budget_.store(new_budget, std::memory_order_relaxed);
   }
 
  protected:
@@ -341,27 +367,39 @@ class MemoryTracker {
    *
    * For tests that need to have a temporary MemoryTracker instance, there is
    * a `create_test_memory_tracker()` API available in the test support library.
+   *
+   * @param memory_budget The memory budget for this MemoryTracker.
+   * @param on_budget_exceeded The function to call when the budget is exceeded.
+   * Defaults to a function that does nothing.
    */
-  MemoryTracker()
-      : memory_usage_(0)
-      , memory_budget_(std::numeric_limits<uint64_t>::max())
+  MemoryTracker(
+      uint64_t memory_budget = std::numeric_limits<uint64_t>::max(),
+      std::function<void()> on_budget_exceeded = []() {})
+      : legacy_memory_usage_(0)
+      , legacy_memory_budget_(std::numeric_limits<uint64_t>::max())
       , id_(generate_id())
       , type_(MemoryTrackerType::ANONYMOUS)
       , upstream_(tdb::pmr::get_default_resource())
-      , total_counter_(0){};
+      , total_counter_(0)
+      , memory_budget_(memory_budget)
+      , on_budget_exceeded_(on_budget_exceeded){};
 
  private:
   /** Protects all non-atomic member variables. */
   std::mutex mutex_;
 
+  /* Legacy memory tracker infrastructure */
+
   /** Memory usage for tracked structures. */
-  uint64_t memory_usage_;
+  uint64_t legacy_memory_usage_;
 
   /** Memory budget. */
-  uint64_t memory_budget_;
+  uint64_t legacy_memory_budget_;
 
   /** Memory usage by type. */
-  std::unordered_map<MemoryType, uint64_t> memory_usage_by_type_;
+  std::unordered_map<MemoryType, uint64_t> legacy_memory_usage_by_type_;
+
+  /* Modern memory tracker infrastructure */
 
   /** The id of this MemoryTracker. */
   uint64_t id_;
@@ -382,6 +420,12 @@ class MemoryTracker {
   /** The total memory usage of this MemoryTracker. */
   std::atomic<uint64_t> total_counter_;
 
+  /** Memory budget. */
+  std::atomic<uint64_t> memory_budget_;
+
+  /** A function to call when the budget is exceeded. */
+  std::function<void()> on_budget_exceeded_;
+
   /** Generate a unique id for this MemoryTracker. */
   static uint64_t generate_id();
 };
@@ -397,9 +441,17 @@ class MemoryTrackerManager {
   /**
    * Create a new memory tracker.
    *
+   * @param memory_budget The memory budget for the new MemoryTracker. Defaults
+   * to unlimited.
+   *
+   * @param on_budget_exceeded The function to call when the budget is exceeded.
+   * Defaults to a function that does nothing.
+   *
    * @return The created MemoryTracker.
    */
-  shared_ptr<MemoryTracker> create_tracker();
+  shared_ptr<MemoryTracker> create_tracker(
+      uint64_t memory_budget = std::numeric_limits<uint64_t>::max(),
+      std::function<void()> on_budget_exceeded = []() {});
 
   /**
    * Generate a JSON string representing the current state of tracked memory.

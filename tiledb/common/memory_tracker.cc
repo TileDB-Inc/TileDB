@@ -147,8 +147,21 @@ uint64_t MemoryTrackerResource::get_count() {
 }
 
 void* MemoryTrackerResource::do_allocate(size_t bytes, size_t alignment) {
-  total_counter_.fetch_add(bytes, std::memory_order_relaxed);
+  auto previous_total =
+      total_counter_.fetch_add(bytes, std::memory_order_relaxed);
   type_counter_.fetch_add(bytes, std::memory_order_relaxed);
+  if (previous_total + bytes > memory_budget_ && on_budget_exceeded_) {
+    try {
+      on_budget_exceeded_();
+    } catch (...) {
+      // If the callback throws, undo the counter increments and rethrow.
+      // If we don't do this, the assert in the MemoryTracker destructor
+      // will fail because the total_counter_ will be non-zero.
+      total_counter_.fetch_sub(bytes, std::memory_order_relaxed);
+      type_counter_.fetch_sub(bytes, std::memory_order_relaxed);
+      throw;
+    }
+  }
   return upstream_->allocate(bytes, alignment);
 }
 
@@ -189,7 +202,12 @@ tdb::pmr::memory_resource* MemoryTracker::get_resource(MemoryType type) {
 
   // Create and track a shared_ptr to the new memory resource.
   auto ret = make_shared<MemoryTrackerResource>(
-      HERE(), upstream_, total_counter_, counters_[type]);
+      HERE(),
+      upstream_,
+      total_counter_,
+      counters_[type],
+      memory_budget_,
+      on_budget_exceeded_);
   resources_.emplace(type, ret);
 
   // Return the raw memory resource pointer for use by pmr containers.
@@ -215,7 +233,8 @@ uint64_t MemoryTracker::generate_id() {
   return curr_id.fetch_add(1);
 }
 
-shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
+shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker(
+    uint64_t memory_budget, std::function<void()> on_budget_exceeded) {
   /*
    * The MemoryTracker class has a protected constructor to hopefully help
    * self-document that instances should almost never be created directly
@@ -232,8 +251,9 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
      * Pass through to the protected MemoryTracker constructor for
      * make_shared.
      */
-    MemoryTrackerCreator()
-        : MemoryTracker() {
+    MemoryTrackerCreator(
+        uint64_t memory_budget, std::function<void()> on_budget_exceeded)
+        : MemoryTracker(memory_budget, on_budget_exceeded) {
     }
   };
 
@@ -250,7 +270,8 @@ shared_ptr<MemoryTracker> MemoryTrackerManager::create_tracker() {
   }
 
   // Create a new tracker
-  auto ret = make_shared<MemoryTrackerCreator>(HERE());
+  auto ret = make_shared<MemoryTrackerCreator>(
+      HERE(), memory_budget, on_budget_exceeded);
   trackers_.emplace(trackers_.begin(), ret);
 
   return ret;

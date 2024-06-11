@@ -1,3 +1,42 @@
+# TileDB v2.23.0 Release Notes
+
+## Deprecation announcements
+
+* All deprecated APIs will be removed in version 2.26. TileDB can be built with `--remove-deprecations` (`bootstrap`) or `-DTILEDB_REMOVE_DEPRECATIONS` (CMake) to validate that projects are not using any deprecated APIs.
+
+## Improvements
+
+* Improve diagnostics when an Azure endpoint is not configured. [#4845](https://github.com/TileDB-Inc/TileDB/pull/4845)
+* Do not attempt Azure shared key authentication if no account name is specified. [#4856](https://github.com/TileDB-Inc/TileDB/pull/4856)
+* Clarify the documentation for the non empty domain CAPI. [#4885](https://github.com/TileDB-Inc/TileDB/pull/4885)
+* Make closing a group that is not open a no-op. [#4917](https://github.com/TileDB-Inc/TileDB/pull/4917)
+
+## Defects removed
+
+* Fix wrong fallback cell order for Hilbert. [#4924](https://github.com/TileDB-Inc/TileDB/pull/4924)
+* Config serialization should take into account environment variables. [#4865](https://github.com/TileDB-Inc/TileDB/pull/4865)
+* Vac files should only be removed if paths removal was fully successful. [#4889](https://github.com/TileDB-Inc/TileDB/pull/4889)
+* Fix C query condition examples. [#4912](https://github.com/TileDB-Inc/TileDB/pull/4912)
+
+### C++ API
+
+* `Query::submit_async` is deprecated. Call `Query::submit()` on another thread instead. [#4879](https://github.com/TileDB-Inc/TileDB/pull/4879)
+* Overloads of methods and constructors in `Array` and `ArraySchema` that accept encryption keys are deprecated. Specify the encryption key with the `sm.encryption_type` and `sm.encryption_key` config options instead. [#4879](https://github.com/TileDB-Inc/TileDB/pull/4879)
+* Add C++ API for tiledb_array_consolidate_fragments. [#4884](https://github.com/TileDB-Inc/TileDB/pull/4884)
+
+## Build System Changes
+
+* Vcpkg is always enabled; turning the `TILEDB_VCPKG` option off is no longer supported and fails. [#4570](https://github.com/TileDB-Inc/TileDB/pull/4570)
+* Update the `TILEDB_REMOVE_DEPRECATIONS` option to exclude all deprecated C and C++ APIs from the library binary and the headers. [#4887](https://github.com/TileDB-Inc/TileDB/pull/4887)
+
+## Internal Improvements
+
+* Implement iterator facade for external sort. [#4914](https://github.com/TileDB-Inc/TileDB/pull/4914)
+* Implement var_length_view and unit tests for external sort. [#4918](https://github.com/TileDB-Inc/TileDB/pull/4918)
+* Implement permutation view for external sort. [#4920](https://github.com/TileDB-Inc/TileDB/pull/4920)
+* Implement proxy sort for external sort. [#4922](https://github.com/TileDB-Inc/TileDB/pull/4922)
+* Implement alt var length view for external sort. [#4925](https://github.com/TileDB-Inc/TileDB/pull/4925)
+
 # TileDB v2.22.0 Release Notes
 
 ## Deprecation announcements

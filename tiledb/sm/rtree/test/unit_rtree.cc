@@ -147,13 +147,13 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
       {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   auto mbrs_1d = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
   RTree rtree1(&d1, 3, tracker);
-  CHECK(!rtree1.set_leaf(0, mbrs_1d[0]).ok());
-  CHECK(rtree1.set_leaf_num(mbrs_1d.size()).ok());
+  CHECK_THROWS(rtree1.set_leaf(0, mbrs_1d[0]));
+  rtree1.set_leaf_num(mbrs_1d.size());
   for (size_t m = 0; m < mbrs_1d.size(); ++m)
-    CHECK(rtree1.set_leaf(m, mbrs_1d[m]).ok());
-  CHECK(!rtree1.set_leaf_num(1).ok());
+    rtree1.set_leaf(m, mbrs_1d[m]);
+  CHECK_THROWS(rtree1.set_leaf_num(1));
   rtree1.build_tree();
-  CHECK(!rtree1.set_leaf(0, mbrs_1d[0]).ok());
+  CHECK_THROWS(rtree1.set_leaf(0, mbrs_1d[0]));
   CHECK(rtree1.height() == 2);
   CHECK(rtree1.dim_num() == 1);
   CHECK(rtree1.subtree_leaf_num(0) == 3);
@@ -214,7 +214,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   auto mbrs_2d = create_mbrs<int64_t, 2>(
       {1, 3, 5, 10, 20, 22, 24, 25, 11, 15, 30, 31}, tracker);
   RTree rtree2(&d2, 5, tracker);
-  CHECK(rtree2.set_leaves(mbrs_2d).ok());
+  rtree2.set_leaves(mbrs_2d);
   rtree2.build_tree();
   CHECK(rtree2.height() == 2);
   CHECK(rtree2.dim_num() == 2);
@@ -254,7 +254,7 @@ TEST_CASE("RTree: Test R-Tree, basic functions", "[rtree][basic]") {
   const Domain d2f = create_domain(
       {"d"}, {Datatype::FLOAT32}, {dim_dom_f}, {&dim_extent_f}, tracker);
   RTree rtreef(&d2f, 5, tracker);
-  CHECK(rtreef.set_leaves(mbrs_f).ok());
+  rtreef.set_leaves(mbrs_f);
   rtreef.build_tree();
 
   NDRange rangef(1);
@@ -297,7 +297,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 2", "[rtree][1d][2h]") {
       {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   auto mbrs = create_mbrs<int32_t, 1>({1, 3, 5, 10, 20, 22}, tracker);
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 1);
@@ -344,7 +344,7 @@ TEST_CASE("RTree: Test 1D R-tree, height 3", "[rtree][1d][3h]") {
   Domain dom1 = create_domain(
       {"d"}, {Datatype::INT32}, {dim_dom}, {&dim_extent}, tracker);
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 1);
@@ -414,7 +414,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 2", "[rtree][2d][2h]") {
   auto mbrs = create_mbrs<int32_t, 2>(
       {1, 3, 2, 4, 5, 7, 6, 9, 10, 12, 10, 15}, tracker);
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -470,7 +470,7 @@ TEST_CASE("RTree: Test 2D R-tree, height 3", "[rtree][2d][3h]") {
        23, 23, 19, 20, 24, 26, 25, 28, 30, 32, 30, 35, 35, 37, 40, 42, 40, 42},
       tracker);
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 2);
@@ -555,7 +555,7 @@ TEST_CASE(
   auto mbrs =
       create_mbrs<uint8_t, int32_t>({0, 1, 3, 5}, {5, 6, 7, 9}, tracker);
   RTree rtree(&d1, 5, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -618,7 +618,7 @@ TEST_CASE(
   auto mbrs =
       create_mbrs<uint64_t, float>({0, 1, 3, 5}, {.5f, .6f, .7f, .9f}, tracker);
   RTree rtree(&d1, 5, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -675,7 +675,7 @@ TEST_CASE(
   auto mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20}, {5, 6, 7, 9, 11, 30}, tracker);
   RTree rtree(&dom, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -745,7 +745,7 @@ TEST_CASE(
   auto mbrs = create_mbrs<uint8_t, int32_t>(
       {0, 1, 3, 5, 11, 20, 21, 26}, {5, 6, 7, 9, 11, 30, 31, 40}, tracker);
   RTree rtree(&dom, 2, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 2);
@@ -882,7 +882,7 @@ TEST_CASE(
       create_str_mbrs<1>({"aa", "b", "eee", "g", "gggg", "ii"}, tracker);
 
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 1);
@@ -972,7 +972,7 @@ TEST_CASE(
       tracker);
 
   RTree rtree(&dom1, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 3);
   CHECK(rtree.dim_num() == 1);
@@ -1058,7 +1058,7 @@ TEST_CASE(
       tracker);
 
   RTree rtree(&dom, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);
@@ -1165,7 +1165,7 @@ TEST_CASE(
       {"aa", "b", "eee", "g", "gggg", "ii"}, {1, 5, 7, 8, 10, 14}, tracker);
 
   RTree rtree(&dom, 3, tracker);
-  CHECK(rtree.set_leaves(mbrs).ok());
+  rtree.set_leaves(mbrs);
   rtree.build_tree();
   CHECK(rtree.height() == 2);
   CHECK(rtree.dim_num() == 2);

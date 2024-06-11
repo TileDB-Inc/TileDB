@@ -227,6 +227,15 @@ class Config {
   /** Maximum memory budget for readers and writers. */
   static const std::string SM_MEM_TOTAL_BUDGET;
 
+  /** Weight for consolidation buffers used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_BUFFERS_WEIGHT;
+
+  /** Weight for consolidation read query used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_READER_WEIGHT;
+
+  /** Weight for consolidation write query used to split total budget. */
+  static const std::string SM_MEM_CONSOLIDATION_WRITER_WEIGHT;
+
   /** Ratio of the sparse global order reader budget used for coords. */
   static const std::string SM_MEM_SPARSE_GLOBAL_ORDER_RATIO_COORDS;
 
@@ -276,9 +285,6 @@ class Config {
 
   /** The buffer size for each attribute used in consolidation. */
   static const std::string SM_CONSOLIDATION_BUFFER_SIZE;
-
-  /** The total buffer size for all attributes during consolidation. */
-  static const std::string SM_CONSOLIDATION_TOTAL_BUFFER_SIZE;
 
   /** The maximum fragment size used in consolidation. */
   static const std::string SM_CONSOLIDATION_MAX_FRAGMENT_SIZE;
@@ -554,6 +560,9 @@ class Config {
 
   /** The S3 KMS key id for KMS server-side-encryption. */
   static const std::string VFS_S3_SSE_KMS_KEY_ID;
+
+  /** The S3 storage class to upload objects to. */
+  static const std::string VFS_S3_STORAGE_CLASS;
 
   /** Request timeout in milliseconds. */
   static const std::string VFS_S3_REQUEST_TIMEOUT_MS;

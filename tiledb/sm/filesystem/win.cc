@@ -45,6 +45,7 @@
 #include <sstream>
 #include <string_view>
 
+#include "filesystem_base.h"
 #include "path_win.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
@@ -334,18 +335,14 @@ bool Win::is_file(const std::string& path) const {
 }
 
 Status Win::ls(const std::string& path, std::vector<std::string>* paths) const {
-  auto&& [st, entries] = ls_with_sizes(URI(path));
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(URI(path))) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
-    const URI& uri) const {
+std::vector<directory_entry> Win::ls_with_sizes(const URI& uri) const {
   auto path = uri.to_path();
   bool ends_with_slash = path.length() > 0 && path[path.length() - 1] == '\\';
   const std::string glob = path + (ends_with_slash ? "*" : "\\*");
@@ -389,7 +386,7 @@ tuple<Status, optional<std::vector<directory_entry>>> Win::ls_with_sizes(
   }
 
   FindClose(find_h);
-  return {Status::Ok(), entries};
+  return entries;
 
 err:
   auto gle = GetLastError();
@@ -401,11 +398,9 @@ err:
     offender.append(" ");
     offender.append(what_call);
   }
-  std::string errmsg(
+  throw IOError(
       "Failed to list directory \"" + path + "\" " +
       get_last_error_msg(gle, offender.c_str()));
-  auto st = LOG_STATUS(Status_IOError(errmsg));
-  return {st, nullopt};
 }
 
 Status Win::move_path(

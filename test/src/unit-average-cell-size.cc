@@ -207,7 +207,7 @@ struct CPPAverageCellSizeFx {
       uint64_t a2_size,
       optional<uint64_t> a3_size = std::nullopt) {
     auto array_for_reads{make_shared<sm::Array>(
-        HERE(), sm::URI(array_name), ctx_.ptr().get()->storage_manager())};
+        HERE(), ctx_.ptr().get()->resources(), sm::URI(array_name))};
     REQUIRE(array_for_reads
                 ->open_without_fragments(
                     sm::EncryptionType::NO_ENCRYPTION, nullptr, 0)

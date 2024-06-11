@@ -45,6 +45,14 @@
 #include <iostream>
 #include <list>
 
+/** Class for locally generated status exceptions. */
+class RTreeException : public StatusException {
+ public:
+  explicit RTreeException(const std::string& msg)
+      : StatusException("RTree", msg) {
+  }
+};
+
 using namespace tiledb::common;
 
 namespace tiledb {
@@ -260,38 +268,34 @@ void RTree::serialize(Serializer& serializer) const {
   }
 }
 
-Status RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
+void RTree::set_leaf(uint64_t leaf_id, const NDRange& mbr) {
   if (levels_.size() != 1)
-    return LOG_STATUS(Status_RTreeError(
-        "Cannot set leaf; There are more than one levels in the tree"));
+    throw RTreeException(
+        "Cannot set leaf; There are more than one levels in the tree");
 
   if (leaf_id >= levels_[0].size())
-    return LOG_STATUS(Status_RTreeError("Cannot set leaf; Invalid lead index"));
+    throw RTreeException("Cannot set leaf; Invalid lead index");
 
   levels_[0][leaf_id] = mbr;
-
-  return Status::Ok();
 }
 
-Status RTree::set_leaves(const tdb::pmr::vector<NDRange>& mbrs) {
+void RTree::set_leaves(const tdb::pmr::vector<NDRange>& mbrs) {
   levels_.clear();
   levels_.resize(1);
   levels_[0].assign(mbrs.begin(), mbrs.end());
-  return Status::Ok();
 }
 
-Status RTree::set_leaf_num(uint64_t num) {
+void RTree::set_leaf_num(uint64_t num) {
   // There should be exactly one level (the leaf level)
   if (levels_.size() != 1)
     levels_.resize(1);
 
   if (num < levels_[0].size())
-    return LOG_STATUS(
-        Status_RTreeError("Cannot set number of leaves; provided number "
-                          "cannot be smaller than the current leaf number"));
+    throw RTreeException(
+        "Cannot set number of leaves; provided number "
+        "cannot be smaller than the current leaf number");
 
   levels_[0].resize(num);
-  return Status::Ok();
 }
 
 void RTree::deserialize(

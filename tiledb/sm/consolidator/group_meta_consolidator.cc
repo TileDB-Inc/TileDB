@@ -70,15 +70,18 @@ Status GroupMetaConsolidator::consolidate(
   auto group_uri = URI(group_name);
   Group group_for_reads(
       storage_manager_->resources(), group_uri, storage_manager_);
-  RETURN_NOT_OK(group_for_reads.open(
-      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_));
+  group_for_reads.open(
+      QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
 
   // Open group for writing
   Group group_for_writes(
       storage_manager_->resources(), group_uri, storage_manager_);
-  RETURN_NOT_OK_ELSE(
-      group_for_writes.open(QueryType::WRITE),
-      throw_if_not_ok(group_for_reads.close()));
+
+  try {
+    group_for_writes.open(QueryType::WRITE);
+  } catch (...) {
+    group_for_reads.close();
+  }
 
   // Copy-assign the read metadata into the metadata of the group for writes
   auto metadata_r = group_for_reads.metadata();
@@ -95,8 +98,8 @@ Status GroupMetaConsolidator::consolidate(
   auto data = ss.str();
 
   // Close groups
-  throw_if_not_ok(group_for_reads.close());
-  throw_if_not_ok(group_for_writes.close());
+  group_for_reads.close();
+  group_for_writes.close();
 
   // Write vacuum file
   throw_if_not_ok(resources_.vfs().write(vac_uri, data.c_str(), data.size()));
@@ -107,24 +110,19 @@ Status GroupMetaConsolidator::consolidate(
 
 void GroupMetaConsolidator::vacuum(const char* group_name) {
   if (group_name == nullptr) {
-    throw Status_StorageManagerError(
+    throw std::invalid_argument(
         "Cannot vacuum group metadata; Group name cannot be null");
   }
 
   // Get the group metadata URIs and vacuum file URIs to be vacuumed
   auto& vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
-  GroupDirectory group_dir;
-  try {
-    group_dir = GroupDirectory(
-        &vfs,
-        &compute_tp,
-        URI(group_name),
-        0,
-        std::numeric_limits<uint64_t>::max());
-  } catch (const std::logic_error& le) {
-    throw Status_GroupDirectoryError(le.what());
-  }
+  GroupDirectory group_dir(
+      vfs,
+      compute_tp,
+      URI(group_name),
+      0,
+      std::numeric_limits<uint64_t>::max());
 
   // Delete the group metadata and vacuum files
   vfs.remove_files(&compute_tp, group_dir.group_meta_uris_to_vacuum());

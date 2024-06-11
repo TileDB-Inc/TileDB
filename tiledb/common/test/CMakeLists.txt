@@ -36,13 +36,8 @@ commence(unit_test experimental)
         )
 conclude(unit_test)
 
-commence(unit_test memory_tracker_types)
-    this_target_sources(main.cc unit_memory_tracker_types.cc)
-    this_target_object_libraries(baseline)
-conclude(unit_test)
-
-commence(unit_test common_utils)
-    this_target_sources(main.cc unit_alt_var_length_view.cc unit_iterator_facade.cc unit_permutation_sort.cc unit_permutation_view.cc unit_proxy_sort.cc unit_sort_zip.cc unit_var_length_util.cc unit_var_length_view.cc unit_zip_view.cc)
+commence(unit_test memory_tracker)
+    this_target_sources(main.cc unit_memory_tracker.cc unit_memory_tracker_types.cc)
     this_target_object_libraries(baseline)
 conclude(unit_test)
 

@@ -41,6 +41,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
 #include "tiledb/sm/array_schema/attribute.h"
+#include "tiledb/sm/array_schema/current_domain.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
 #include "tiledb/sm/array_schema/enumeration.h"
@@ -152,6 +153,8 @@ Status array_schema_evolution_to_capnp(
   timestamp_builder.set(0, timestamp_range.first);
   timestamp_builder.set(1, timestamp_range.second);
 
+  // TODO: to add actual wire CurrentDomain (ch48253)
+
   return Status::Ok();
 }
 
@@ -215,6 +218,8 @@ tdb_unique_ptr<ArraySchemaEvolution> array_schema_evolution_from_capnp(
       enmrs_to_extend,
       enmrs_to_drop,
       ts_range,
+      // TODO: to add actual wire CurrentDomain (ch48253)
+      nullptr,
       memory_tracker));
 }
 

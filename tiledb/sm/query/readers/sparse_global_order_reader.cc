@@ -1651,15 +1651,18 @@ SparseGlobalOrderReader<BitmapType>::respect_copy_memory_budget(
         // Get the size for all tiles.
         uint64_t idx = 0;
         for (; idx < max_cs_idx; idx++) {
-          // Skip this tile if it's aggregate only and we can aggregate it with
-          // the fragment metadata only.
-          if (agg_only &&
-              can_aggregate_tile_with_frag_md(result_cell_slabs[idx])) {
+          auto rcs = result_cell_slabs[idx];
+          if (rcs.length_ == 0) {
             continue;
           }
 
-          auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(
-              result_cell_slabs[idx].tile_);
+          // Skip this tile if it's aggregate only and we can aggregate it with
+          // the fragment metadata only.
+          if (agg_only && can_aggregate_tile_with_frag_md(rcs)) {
+            continue;
+          }
+
+          auto rt = static_cast<GlobalOrderResultTile<BitmapType>*>(rcs.tile_);
           const auto f = rt->frag_idx();
           const auto t = rt->tile_idx();
           auto id = std::pair<uint64_t, uint64_t>(f, t);

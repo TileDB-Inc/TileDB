@@ -31,10 +31,20 @@
  */
 
 #include "tiledb/sm/object/object.h"
+#include "tiledb/common/stdx_string.h"
+#include "tiledb/sm/enums/object_type.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/rest/rest_client.h"
+#include "tiledb/storage_format/uri/parse_uri.h"
 
 namespace tiledb::sm {
+
+class ObjectException : public StatusException {
+ public:
+  explicit ObjectException(const std::string& message)
+      : StatusException("Object", message) {
+  }
+};
 
 /* ********************************* */
 /*                API                */
@@ -89,6 +99,79 @@ Status is_group(ContextResources& resources, const URI& uri, bool* is_group) {
         vfs.is_file(uri.join_path(constants::group_filename), is_group));
   }
   return Status::Ok();
+}
+
+Status object_type(
+    ContextResources& resources, const URI& uri, ObjectType* type) {
+  URI dir_uri = uri;
+  if (uri.is_s3() || uri.is_azure() || uri.is_gcs()) {
+    // Always add a trailing '/' in the S3/Azure/GCS case so that listing the
+    // URI as a directory will work as expected. Listing a non-directory object
+    // is not an error for S3/Azure/GCS.
+    auto uri_str = uri.to_string();
+    dir_uri =
+        URI(utils::parse::ends_with(uri_str, "/") ? uri_str : (uri_str + "/"));
+  } else if (!uri.is_tiledb()) {
+    // For non public cloud backends, listing a non-directory is an error.
+    bool is_dir = false;
+    throw_if_not_ok(resources.vfs().is_dir(uri, &is_dir));
+    if (!is_dir) {
+      *type = ObjectType::INVALID;
+      return Status::Ok();
+    }
+  }
+  bool exists = is_array(resources, uri);
+  if (exists) {
+    *type = ObjectType::ARRAY;
+    return Status::Ok();
+  }
+
+  throw_if_not_ok(is_group(resources, uri, &exists));
+  if (exists) {
+    *type = ObjectType::GROUP;
+    return Status::Ok();
+  }
+
+  *type = ObjectType::INVALID;
+  return Status::Ok();
+}
+
+Status object_move(
+    ContextResources& resources, const char* old_path, const char* new_path) {
+  auto old_uri = URI(old_path);
+  if (old_uri.is_invalid())
+    throw ObjectException(
+        "Cannot move object '" + std::string(old_path) + "'; Invalid URI");
+
+  auto new_uri = URI(new_path);
+  if (new_uri.is_invalid())
+    throw ObjectException(
+        "Cannot move object to '" + std::string(new_path) + "'; Invalid URI");
+
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, old_uri, &obj_type));
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        "Cannot move object '" + std::string(old_path) +
+        "'; Invalid TileDB object");
+
+  return resources.vfs().move_dir(old_uri, new_uri);
+}
+
+Status object_remove(ContextResources& resources, const char* path) {
+  auto uri = URI(path);
+  if (uri.is_invalid())
+    throw ObjectException(
+        "Cannot remove object '" + std::string(path) + "'; Invalid URI");
+
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, uri, &obj_type));
+  if (obj_type == ObjectType::INVALID)
+    throw ObjectException(
+        "Cannot remove object '" + std::string(path) +
+        "'; Invalid TileDB object");
+
+  return resources.vfs().remove_dir(uri);
 }
 
 }  // namespace tiledb::sm

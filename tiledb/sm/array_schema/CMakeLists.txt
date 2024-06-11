@@ -66,18 +66,28 @@ commence(object_library enumeration)
 conclude(object_library)
 
 #
+# `ndrectangle` object library
+#
+commence(object_library ndrectangle)
+    this_target_sources(ndrectangle.cc)
+    this_target_object_libraries(constants domain)
+conclude(object_library)
+
+#
+# `current_domain` object library
+#
+commence(object_library current_domain)
+    this_target_sources(current_domain.cc)
+    this_target_object_libraries(ndrectangle constants)
+conclude(object_library)
+
+#
 # `array_schema` object library
 #
 commence(object_library array_schema)
     this_target_sources(array_schema.cc dimension_label.cc)
     this_target_object_libraries(
-        attribute domain enumeration fragment time uri_format vfs)
+        attribute domain enumeration fragment current_domain time uri_format vfs)
 conclude(object_library)
-
-# This is linked outside the object_library scope as an active subversion of
-# the principle that object libraries must compile as standalone modules. As
-# long as this directive is necessary to have to the compile test pass, we
-# cannot consider `array_schema` as a properly-constructed object library.
-target_link_libraries(compile_array_schema PRIVATE generic_tile_io)
 
 add_test_subdirectory()

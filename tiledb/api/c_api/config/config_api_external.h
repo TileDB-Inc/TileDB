@@ -171,11 +171,6 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The size (in bytes) of the attribute buffers used during
  *    consolidation. <br>
  *    **Default**: 50,000,000
- * - `sm.consolidation.total_buffer_size` <br>
- *    **Deprecated**
- *    The size (in bytes) of all attribute buffers used during
- *    consolidation. <br>
- *    **Default**: 2,147,483,648
  * - `sm.consolidation.max_fragment_size` <br>
  *    **Experimental** <br>
  *    The size (in bytes) of the maximum on-disk fragment size that will be
@@ -261,6 +256,26 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  * - `sm.mem.total_budget` <br>
  *    Memory budget for readers and writers. <br>
  *    **Default**: 10GB
+ * - `sm.mem.consolidation.buffers_weight` <br>
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    consolidation buffers. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 1
+ * - `sm.mem.consolidation.reader_weight` <br>
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    reader query. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 3
+ *    Weight used to split `sm.mem.total_budget` and assign to the
+ *    writer query. The budget is split across 3 values,
+ *    `sm.mem.consolidation.buffers_weight`,
+ *    `sm.mem.consolidation.reader_weight` and
+ *    `sm.mem.consolidation.writer_weight`. <br>
+ *    **Default**: 2
  * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
  *    Ratio of the budget allocated for coordinates in the sparse global
  *    order reader. <br>
@@ -554,6 +569,22 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The server-side encryption key to use if
  *    vfs.s3.sse == "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.storage_class` <br>
+ *    The storage class to use for the newly uploaded S3 objects. The set of
+ *    accepted values is found in the Aws::S3::Model::StorageClass enumeration.
+ *    "NOT_SET"
+ *    "STANDARD"
+ *    "REDUCED_REDUNDANCY"
+ *    "STANDARD_IA"
+ *    "ONEZONE_IA"
+ *    "INTELLIGENT_TIERING"
+ *    "GLACIER"
+ *    "DEEP_ARCHIVE"
+ *    "OUTPOSTS"
+ *    "GLACIER_IR"
+ *    "SNOW"
+ *    "EXPRESS_ONEZONE" <br>
+ *    **Default**: "NOT_SET"
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
  *    "NOT_SET"
@@ -665,13 +696,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    with the open array <br>
  *    **Default**: true
  * - `rest.use_refactored_array_open` <br>
- *    If true, the new REST routes and APIs for opening an array
+ *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
- *    **Default**: true
+ *    **Default**: false
  * - `rest.use_refactored_array_open_and_query_submit` <br>
- *    If true, the new REST routes and APIs for opening an array and submitting
- * a query will be used <br>
- *    **Default**: true
+ *    If true, the new, experimental REST routes and APIs for opening an array
+ *    and submitting a query will be used <br>
+ *    **Default**: false
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)

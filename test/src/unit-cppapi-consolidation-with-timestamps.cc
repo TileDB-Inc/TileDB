@@ -672,8 +672,8 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "20000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.22");
+  cfg.set("sm.mem.total_budget", "30000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.15");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -722,8 +722,8 @@ TEST_CASE_METHOD(
 
   // Will only allow to load two tiles out of 3.
   Config cfg;
-  cfg.set("sm.mem.total_budget", "20000");
-  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.22");
+  cfg.set("sm.mem.total_budget", "30000");
+  cfg.set("sm.mem.reader.sparse_global_order.ratio_coords", "0.15");
   ctx_ = Context(cfg);
 
   std::string stats;
@@ -1270,7 +1270,9 @@ TEST_CASE_METHOD(
   // fully removed for overlapping ranges, this test case can be deleted.
   tiledb::Config cfg;
   cfg.set("sm.merge_overlapping_ranges_experimental", "false");
-  cfg["sm.consolidation.total_buffer_size"] = "1048576";
+  cfg["sm.mem.consolidation.buffers_weight"] = "1";
+  cfg["sm.mem.consolidation.reader_weight"] = "5000";
+  cfg["sm.mem.consolidation.writer_weight"] = "5000";
   ctx_ = Context(cfg);
   sm_ = ctx_.ptr().get()->storage_manager();
   vfs_ = VFS(ctx_);

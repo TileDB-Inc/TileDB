@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -212,7 +212,7 @@ int32_t tiledb_filestore_uri_import(
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::WRITE,
       0,
@@ -281,7 +281,7 @@ int32_t tiledb_filestore_uri_import(
   tiledb::sm::Subarray subarray(
       array.get(),
       nullptr,
-      context.storage_manager()->logger(),
+      context.resources().logger(),
       true,
       context.storage_manager());
   // We need to get the right end boundary of the last space tile.
@@ -305,7 +305,7 @@ int32_t tiledb_filestore_uri_import(
     tiledb::sm::Subarray subarray_cloud_fix(
         array.get(),
         nullptr,
-        context.storage_manager()->logger(),
+        context.resources().logger(),
         true,
         context.storage_manager());
 
@@ -399,7 +399,7 @@ int32_t tiledb_filestore_uri_export(
   }
 
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::READ,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -433,7 +433,7 @@ int32_t tiledb_filestore_uri_export(
     tiledb::sm::Subarray subarray(
         array.get(),
         nullptr,
-        context.storage_manager()->logger(),
+        context.resources().logger(),
         true,
         context.storage_manager());
     uint64_t subarray_range_arr[] = {start_range, end_range};
@@ -502,7 +502,7 @@ int32_t tiledb_filestore_buffer_import(
   // Sync up the fragment timestamp and metadata timestamp
   uint64_t time_now = tiledb_timestamp_now_ms();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::WRITE,
       0,
@@ -550,7 +550,7 @@ int32_t tiledb_filestore_buffer_import(
   tiledb::sm::Subarray subarray(
       array.get(),
       nullptr,
-      context.storage_manager()->logger(),
+      context.resources().logger(),
       true,
       context.storage_manager());
   uint64_t subarray_range_arr[] = {
@@ -582,7 +582,7 @@ int32_t tiledb_filestore_buffer_export(
 
   tiledb::sm::Context& context = ctx->context();
   auto array = make_shared<tiledb::sm::Array>(
-      HERE(), tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      HERE(), context.resources(), tiledb::sm::URI(filestore_array_uri));
   throw_if_not_ok(array->open(
       tiledb::sm::QueryType::READ,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
@@ -612,7 +612,7 @@ int32_t tiledb_filestore_buffer_export(
   tiledb::sm::Subarray subarray(
       array.get(),
       nullptr,
-      context.storage_manager()->logger(),
+      context.resources().logger(),
       true,
       context.storage_manager());
   uint64_t subarray_range_arr[] = {
@@ -642,7 +642,7 @@ int32_t tiledb_filestore_size(
 
   tiledb::sm::Context& context = ctx->context();
   tiledb::sm::Array array(
-      tiledb::sm::URI(filestore_array_uri), context.storage_manager());
+      context.resources(), tiledb::sm::URI(filestore_array_uri));
 
   throw_if_not_ok(array.open(
       tiledb::sm::QueryType::READ,

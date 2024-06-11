@@ -111,6 +111,10 @@ class ContextResources {
     return rest_client_;
   }
 
+  [[nodiscard]] inline MemoryTrackerManager& memory_tracker_manager() const {
+    return *memory_tracker_manager_;
+  }
+
   /**
    * Create a new MemoryTracker
    *

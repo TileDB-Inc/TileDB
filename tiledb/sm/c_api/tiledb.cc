@@ -72,6 +72,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -225,7 +226,7 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
     return TILEDB_ERR;
   }
 
-  auto logger = ctx->storage_manager()->logger();
+  auto logger = ctx->resources().logger();
   logger->warn(message);
 
   return TILEDB_OK;
@@ -1721,7 +1722,7 @@ capi_return_t tiledb_subarray_alloc(
     (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
-        ctx->storage_manager()->logger(),
+        ctx->resources().logger(),
         true,
         ctx->storage_manager());
     (*subarray)->is_allocated_ = true;
@@ -2163,7 +2164,7 @@ int32_t tiledb_array_alloc(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
@@ -2223,7 +2224,7 @@ int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ = make_shared<tiledb::sm::Array>(
-        HERE(), tiledb::sm::URI(uri), ctx->storage_manager());
+        HERE(), ctx->resources(), tiledb::sm::URI(uri));
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
@@ -2311,7 +2312,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (...) {
     delete array;
     array = nullptr;
@@ -2381,7 +2382,7 @@ capi_return_t tiledb_array_delete_fragments_list(
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (...) {
     delete array;
     array = nullptr;
@@ -2561,8 +2562,8 @@ int32_t tiledb_array_create(
     throw_if_not_ok(
         key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
     // Create the array
-    throw_if_not_ok(ctx->storage_manager()->array_create(
-        uri, array_schema->array_schema_, key));
+    throw_if_not_ok(tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2580,8 +2581,11 @@ int32_t tiledb_array_create(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(ctx->storage_manager()->array_create(
-          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+      throw_if_not_ok(tiledb::sm::Array::create(
+          ctx->resources(),
+          dim_label_ref.uri(uri),
+          dim_label_ref.schema(),
+          key));
     }
   }
   return TILEDB_OK;
@@ -2629,8 +2633,8 @@ int32_t tiledb_array_create_with_key(
         key_length));
 
     // Create the array
-    throw_if_not_ok(ctx->storage_manager()->array_create(
-        uri, array_schema->array_schema_, key));
+    throw_if_not_ok(tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2648,8 +2652,11 @@ int32_t tiledb_array_create_with_key(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(ctx->storage_manager()->array_create(
-          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+      throw_if_not_ok(tiledb::sm::Array::create(
+          ctx->resources(),
+          dim_label_ref.uri(uri),
+          dim_label_ref.schema(),
+          key));
     }
   }
   return TILEDB_OK;
@@ -3009,8 +3016,11 @@ int32_t tiledb_array_evolve(
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
-  throw_if_not_ok(ctx->storage_manager()->array_evolve_schema(
-      uri, array_schema_evolution->array_schema_evolution_, key));
+  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+      ctx->resources(),
+      uri,
+      array_schema_evolution->array_schema_evolution_,
+      key));
 
   // Success
   return TILEDB_OK;
@@ -3061,8 +3071,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri, (config == nullptr) ? ctx->config() : config->config()));
+  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+      ctx->resources(),
+      uri,
+      (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }
@@ -3075,20 +3087,20 @@ int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
   auto uri = tiledb::sm::URI(path);
   tiledb::sm::ObjectType object_type;
-  throw_if_not_ok(ctx->storage_manager()->object_type(uri, &object_type));
+  throw_if_not_ok(tiledb::sm::object_type(ctx->resources(), uri, &object_type));
 
   *type = static_cast<tiledb_object_t>(object_type);
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  throw_if_not_ok(ctx->storage_manager()->object_remove(path));
+  throw_if_not_ok(object_remove(ctx->resources(), path));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  throw_if_not_ok(ctx->storage_manager()->object_move(old_path, new_path));
+  throw_if_not_ok(object_move(ctx->resources(), old_path, new_path));
   return TILEDB_OK;
 }
 
@@ -3360,7 +3372,7 @@ int32_t tiledb_deserialize_array(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
@@ -3514,7 +3526,7 @@ int32_t tiledb_deserialize_array_open(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
@@ -3695,7 +3707,7 @@ int32_t tiledb_deserialize_query_and_array(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");

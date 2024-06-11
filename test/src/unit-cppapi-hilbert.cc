@@ -1780,7 +1780,9 @@ TEST_CASE(
   Config config;
   config["sm.consolidation.mode"] = "fragments";
   config["sm.vacuum.mode"] = "fragments";
-  config["sm.consolidation.total_buffer_size"] = "1048576";
+  config["sm.mem.consolidation.buffers_weight"] = "1";
+  config["sm.mem.consolidation.reader_weight"] = "5000";
+  config["sm.mem.consolidation.writer_weight"] = "5000";
   CHECK_NOTHROW(Array::consolidate(ctx, array_name, &config));
   CHECK_NOTHROW(Array::vacuum(ctx, array_name, &config));
   auto contents = vfs.ls(get_fragment_dir(array_name));

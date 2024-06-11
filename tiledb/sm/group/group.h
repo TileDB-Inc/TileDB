@@ -35,7 +35,6 @@
 
 #include <atomic>
 
-#include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/crypto/encryption_key.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -81,6 +80,15 @@ class Group {
   /** Destructor. */
   ~Group() = default;
 
+  /**
+   * Creates a TileDB group.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the group to be created.
+   * @return Status
+   */
+  static Status create(ContextResources& resources, const URI& uri);
+
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
 
@@ -89,11 +97,10 @@ class Group {
    *
    * @param query_type The query type. This should always be READ. It
    *    is here only for sanity check.
-   * @return Status
    *
    * @note Applicable only to reads.
    */
-  Status open(QueryType query_type);
+  void open(QueryType query_type);
 
   /**
    * Opens the group.
@@ -102,31 +109,25 @@ class Group {
    * @param timestamp_start The start timestamp at which to open the group
    * @param timestamp_end The end timestamp at which to open the group
    * @param query_type The query type. This should always be READ. It
-   * @return Status
    *
    */
-  Status open(
+  void open(
       QueryType query_type, uint64_t timestamp_start, uint64_t timestamp_end);
 
   /**
    * Closes a group opened for reads.
-   *
-   * @return Status
    */
-  inline Status close_for_reads() {
+  inline void close_for_reads() {
     // Closing a group opened for reads does nothing at present.
-    return Status::Ok();
   }
 
   /**
    * Closes a group opened for writes.
-   *
-   * @return Status
    */
-  Status close_for_writes();
+  void close_for_writes();
 
   /** Closes the group and frees all memory. */
-  Status close();
+  void close();
 
   /**
    * Clear a group
@@ -237,6 +238,37 @@ class Group {
    */
   void set_metadata_loaded(const bool metadata_loaded);
 
+  /**
+   * Consolidates the metadata of a group into a single file.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     consolidated.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status consolidate_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
+
+  /**
+   * Vacuums the consolidated metadata files of a group.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     vacuumed.
+   * @param config Configuration parameters for vacuuming
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void vacuum_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
+
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
 
@@ -280,9 +312,8 @@ class Group {
    * @param group_member_uri group member uri
    * @param relative is this URI relative
    * @param name optional name for member
-   * @return Status
    */
-  Status mark_member_for_addition(
+  void mark_member_for_addition(
       const URI& group_member_uri,
       const bool& relative,
       std::optional<std::string>& name);
@@ -293,9 +324,8 @@ class Group {
    * @param name Name of member to remove. If the member has no name,
    * this parameter should be set to the URI of the member. In that case, only
    * the unnamed member with the given URI will be removed.
-   * @return Status
    */
-  Status mark_member_for_removal(const std::string& name);
+  void mark_member_for_removal(const std::string& name);
 
   /**
    * Get the vector of members to modify, used in serialization only
@@ -371,7 +401,7 @@ class Group {
   bool is_remote() const;
 
   /** Retrieves the query type. Errors if the group is not open. */
-  Status get_query_type(QueryType* query_type) const;
+  QueryType get_query_type() const;
 
   /**
    * Dump a string representation of a group

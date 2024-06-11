@@ -76,6 +76,35 @@ class Reader : public ReaderBase, public IQueryStrategy {
   DISABLE_COPY_AND_COPY_ASSIGN(Reader);
   DISABLE_MOVE_AND_MOVE_ASSIGN(Reader);
 
+  /**
+   * Computes a mapping (tile coordinates) -> (result space tile).
+   * The produced result space tiles will contain information only
+   * about fragments that will contribute results. Specifically, if
+   * a fragment is completely covered by a more recent fragment
+   * in a particular space tile, then it will certainly not contribute
+   * results and, thus, no information about that fragment is included
+   * in the space tile.
+   *
+   * @tparam T The datatype of the tile domains.
+   * @param domain The array domain
+   * @param tile_coords The unique coordinates of the tiles that intersect
+   *     a subarray.
+   * @param array_tile_domain The array tile domain.
+   * @param frag_tile_domains The tile domains of each fragment. These
+   *     are assumed to be ordered from the most recent to the oldest
+   *     fragment.
+   * @param result_space_tiles The result space tiles to be produced
+   *     by the function.
+   */
+  template <class T>
+  static void compute_result_space_tiles(
+      const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+      const std::vector<std::vector<uint8_t>>& tile_coords,
+      const TileDomain<T>& array_tile_domain,
+      const std::vector<TileDomain<T>>& frag_tile_domains,
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+      shared_ptr<MemoryTracker> memory_tracker);
+
   /* ********************************* */
   /*                 API               */
   /* ********************************* */
@@ -110,6 +139,20 @@ class Reader : public ReaderBase, public IQueryStrategy {
 
   /** Returns the name of the strategy */
   std::string name();
+
+  /**
+   * Computes the result space tiles based on the current partition.
+   *
+   * @tparam T The domain datatype.
+   * @param subarray The input subarray.
+   * @param partitioner_subarray The partitioner subarray.
+   * @param result_space_tiles The result space tiles to be computed.
+   */
+  template <class T>
+  void compute_result_space_tiles(
+      const Subarray& subarray,
+      const Subarray& partitioner_subarray,
+      std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const;
 
   /**
    * Computes the result cell slabs for the input subarray, given the

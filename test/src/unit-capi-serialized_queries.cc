@@ -118,6 +118,22 @@ struct SerializationFx {
     REQUIRE(loop_num->second > 0);
   }
 
+  static void check_subarray_stats(int dim0_expected, int dim1_expected) {
+    Stats::enable();
+    std::string stats;
+    Stats::dump(&stats);
+    // Note: if these checks fail, use Stats::dump(stdout) to validate counters
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.subSubarray.add_range_dim_0\": " +
+            std::to_string(dim0_expected)) != std::string::npos);
+    CHECK(
+        stats.find(
+            "\"Context.StorageManager.subSubarray.add_range_dim_1\": " +
+            std::to_string(dim1_expected)) != std::string::npos);
+    Stats::disable();
+  }
+
   static void check_delete_stats(const Query& query) {
     auto stats = ((sm::Reader*)query.ptr()->query_->strategy())->stats();
     REQUIRE(stats != nullptr);
@@ -177,7 +193,9 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -218,10 +236,10 @@ struct SerializationFx {
 
     Array array(ctx, array_uri, TILEDB_WRITE);
     Query query(ctx, array);
-    Subarray sub(ctx, array);
-    sub.add_range(0, subarray[0], subarray[1]);
-    sub.add_range(1, subarray[2], subarray[3]);
-    query.set_subarray(sub);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -356,7 +374,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -365,6 +385,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -393,7 +414,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -407,6 +430,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -456,7 +480,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -465,6 +491,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -500,7 +527,9 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_data_buffer("a1", a1);
@@ -575,7 +604,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -625,7 +656,9 @@ TEST_CASE_METHOD(
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
     query.set_layout(TILEDB_GLOBAL_ORDER);
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx_client, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -634,6 +667,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -667,7 +701,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_coordinates(coords);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
@@ -677,6 +713,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -699,6 +736,9 @@ TEST_CASE_METHOD(
     "[query][dense][serialization][rest]") {
   create_array(TILEDB_DENSE);
   write_dense_array_ranges();
+  if (!vfs_test_setup_.is_rest()) {
+    check_subarray_stats(1, 1);
+  }
 
   SECTION("- Read all") {
     Array array(ctx, array_uri, TILEDB_READ);
@@ -710,10 +750,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    Subarray sub(ctx, array);
-    sub.add_range(0, subarray[0], subarray[1]);
-    sub.add_range(1, subarray[2], subarray[3]);
-    query.set_subarray(sub);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -722,6 +762,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -746,10 +787,10 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
 
-    Subarray sub(ctx, array);
-    sub.add_range(0, subarray[0], subarray[1]);
-    sub.add_range(1, subarray[2], subarray[3]);
-    query.set_subarray(sub);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);
@@ -758,6 +799,7 @@ TEST_CASE_METHOD(
 
     // Submit query
     query.submit();
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
 
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -781,10 +823,10 @@ TEST_CASE_METHOD(
     std::vector<char> a3_data(60);
     std::vector<uint64_t> a3_offsets(4);
     std::vector<int32_t> subarray = {3, 4, 3, 4};
-    Subarray sub(ctx, array);
-    sub.add_range(0, subarray[0], subarray[1]);
-    sub.add_range(1, subarray[2], subarray[3]);
-    query.set_subarray(sub);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.add_range(0, subarray[0], subarray[1]);
+    cppapi_subarray.add_range(1, subarray[2], subarray[3]);
+    query.set_subarray(cppapi_subarray);
 
     auto set_buffers = [&](Query& q) {
       q.set_data_buffer("a1", a1);
@@ -796,7 +838,6 @@ TEST_CASE_METHOD(
 
     // Submit initial query.
     set_buffers(query);
-    // Submit query
     query.submit();
     // The deserialized query should also include the read stats
     check_read_stats(query);
@@ -861,7 +902,9 @@ TEST_CASE_METHOD(
     std::vector<uint64_t> a3_offsets(1000);
     std::vector<int32_t> subarray = {1, 10, 1, 10};
 
-    query.set_subarray(subarray);
+    Subarray cppapi_subarray(ctx, array);
+    cppapi_subarray.set_subarray(subarray);
+    query.set_subarray(cppapi_subarray);
     query.set_data_buffer("a1", a1);
     query.set_data_buffer("a2", a2);
     query.set_validity_buffer("a2", a2_nullable);

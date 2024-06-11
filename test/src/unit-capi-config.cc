@@ -239,8 +239,8 @@ void check_save_to_file() {
   ss << "rest.retry_initial_delay_ms 500\n";
   ss << "rest.server_address https://api.tiledb.com\n";
   ss << "rest.server_serialization_format CAPNP\n";
-  ss << "rest.use_refactored_array_open true\n";
-  ss << "rest.use_refactored_array_open_and_query_submit true\n";
+  ss << "rest.use_refactored_array_open false\n";
+  ss << "rest.use_refactored_array_open_and_query_submit false\n";
   ss << "sm.allow_separate_attribute_writes false\n";
   ss << "sm.allow_updates_experimental false\n";
   ss << "sm.check_coord_dups true\n";
@@ -260,7 +260,6 @@ void check_save_to_file() {
   ss << "sm.consolidation.steps 4294967295\n";
   ss << "sm.consolidation.timestamp_end " << std::to_string(UINT64_MAX) << "\n";
   ss << "sm.consolidation.timestamp_start 0\n";
-  ss << "sm.consolidation.total_buffer_size 2147483648\n";
   ss << "sm.dedup_coords false\n";
   ss << "sm.enable_signal_handlers true\n";
   ss << "sm.encryption_type NO_ENCRYPTION\n";
@@ -272,6 +271,9 @@ void check_save_to_file() {
   ss << "sm.io_concurrency_level " << std::thread::hardware_concurrency()
      << "\n";
   ss << "sm.max_tile_overlap_size 314572800\n";
+  ss << "sm.mem.consolidation.buffers_weight 1\n";
+  ss << "sm.mem.consolidation.reader_weight 3\n";
+  ss << "sm.mem.consolidation.writer_weight 2\n";
   ss << "sm.mem.malloc_trim true\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_array_data 0.1\n";
   ss << "sm.mem.reader.sparse_global_order.ratio_coords 0.5\n";
@@ -338,6 +340,7 @@ void check_save_to_file() {
   ss << "vfs.s3.requester_pays false\n";
   ss << "vfs.s3.scheme https\n";
   ss << "vfs.s3.skip_init false\n";
+  ss << "vfs.s3.storage_class NOT_SET\n";
   ss << "vfs.s3.use_multipart_upload true\n";
   ss << "vfs.s3.use_virtual_addressing true\n";
   ss << "vfs.s3.verify_ssl true\n";
@@ -576,13 +579,13 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
-      config, "rest.use_refactored_array_open", "false", &error);
+      config, "rest.use_refactored_array_open", "true", &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
   rc = tiledb_config_set(
       config,
       "rest.use_refactored_array_open_and_query_submit",
-      "false",
+      "true",
       &error);
   CHECK(rc == TILEDB_OK);
   CHECK(error == nullptr);
@@ -610,8 +613,8 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["rest.load_metadata_on_array_open"] = "false";
   all_param_values["rest.load_non_empty_domain_on_array_open"] = "false";
   all_param_values["rest.load_enumerations_on_array_open"] = "false";
-  all_param_values["rest.use_refactored_array_open"] = "false";
-  all_param_values["rest.use_refactored_array_open_and_query_submit"] = "false";
+  all_param_values["rest.use_refactored_array_open"] = "true";
+  all_param_values["rest.use_refactored_array_open_and_query_submit"] = "true";
   all_param_values["sm.allow_separate_attribute_writes"] = "false";
   all_param_values["sm.allow_updates_experimental"] = "false";
   all_param_values["sm.encryption_key"] = "";
@@ -632,6 +635,9 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.query.dense.reader"] = "refactored";
   all_param_values["sm.query.sparse_global_order.reader"] = "refactored";
   all_param_values["sm.query.sparse_unordered_with_dups.reader"] = "refactored";
+  all_param_values["sm.mem.consolidation.buffers_weight"] = "1";
+  all_param_values["sm.mem.consolidation.reader_weight"] = "3";
+  all_param_values["sm.mem.consolidation.writer_weight"] = "2";
   all_param_values["sm.mem.malloc_trim"] = "true";
   all_param_values["sm.mem.tile_upper_memory_limit"] = "1073741824";
   all_param_values["sm.mem.total_budget"] = "10737418240";
@@ -663,7 +669,6 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["sm.consolidation.step_min_frags"] = "4294967295";
   all_param_values["sm.consolidation.step_max_frags"] = "4294967295";
   all_param_values["sm.consolidation.buffer_size"] = "50000000";
-  all_param_values["sm.consolidation.total_buffer_size"] = "2147483648";
   all_param_values["sm.consolidation.max_fragment_size"] =
       std::to_string(UINT64_MAX);
   all_param_values["sm.consolidation.step_size_ratio"] = "0.0";
@@ -735,6 +740,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   all_param_values["vfs.s3.connect_scale_factor"] = "25";
   all_param_values["vfs.s3.sse"] = "";
   all_param_values["vfs.s3.sse_kms_key_id"] = "";
+  all_param_values["vfs.s3.storage_class"] = "NOT_SET";
   all_param_values["vfs.s3.logging_level"] = "Off";
   all_param_values["vfs.s3.request_timeout_ms"] = "3000";
   all_param_values["vfs.s3.requester_pays"] = "false";
@@ -808,6 +814,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   vfs_param_values["s3.connect_scale_factor"] = "25";
   vfs_param_values["s3.sse"] = "";
   vfs_param_values["s3.sse_kms_key_id"] = "";
+  vfs_param_values["s3.storage_class"] = "NOT_SET";
   vfs_param_values["s3.logging_level"] = "Off";
   vfs_param_values["s3.request_timeout_ms"] = "3000";
   vfs_param_values["s3.requester_pays"] = "false";
@@ -876,6 +883,7 @@ TEST_CASE("C API: Test config iter", "[capi][config]") {
   s3_param_values["connect_scale_factor"] = "25";
   s3_param_values["sse"] = "";
   s3_param_values["sse_kms_key_id"] = "";
+  s3_param_values["storage_class"] = "NOT_SET";
   s3_param_values["logging_level"] = "Off";
   s3_param_values["request_timeout_ms"] = "3000";
   s3_param_values["requester_pays"] = "false";

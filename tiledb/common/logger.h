@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #ifndef TILEDB_LOGGER_H
 #define TILEDB_LOGGER_H
 
-#include <fmt/format.h>
+#include <spdlog/fmt/fmt.h>
 #include <atomic>
 #include <sstream>
 
@@ -48,8 +48,7 @@ namespace spdlog {
 class logger;
 }
 
-namespace tiledb {
-namespace common {
+namespace tiledb::common {
 
 /** Definition of class Logger. */
 class Logger {
@@ -316,13 +315,6 @@ class Logger {
   Status status(const Status& st);
 
   /**
-   * Log a message from a Status object without returning it.
-   *
-   * @param st The Status object to log
-   */
-  void status_no_return_value(const Status& st);
-
-  /**
    * Log an error and exit with a non-zero status.
    *
    * @param msg The string to log.
@@ -457,8 +449,7 @@ inline Status logger_format_from_string(
   return Status::Ok();
 }
 
-}  // namespace common
-}  // namespace tiledb
+}  // namespace tiledb::common
 
 // Also include the public-permissible logger functions here.
 #include "tiledb/common/logger_public.h"

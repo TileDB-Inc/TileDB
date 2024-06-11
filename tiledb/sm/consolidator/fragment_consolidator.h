@@ -79,8 +79,14 @@ struct FragmentConsolidationConfig : Consolidator::ConsolidationConfigBase {
   float amplification_;
   /** Attribute buffer size. */
   uint64_t buffer_size_;
-  /** Total buffer size for all attributes. */
-  uint64_t total_buffer_size_;
+  /** Total memory budget for consolidation operation. */
+  uint64_t total_budget_;
+  /** Consolidation buffers weight used to partition total budget. */
+  uint64_t buffers_weight_;
+  /** Reader weight used to partition total budget. */
+  uint64_t reader_weight_;
+  /** Writer weight used to partition total budget. */
+  uint64_t writer_weight_;
   /** Max fragment size. */
   uint64_t max_fragment_size_;
   /**
@@ -124,13 +130,15 @@ class FragmentConsolidationWorkspace {
    * @param config The consolidation config.
    * @param array_schema The array schema.
    * @param avg_cell_sizes The average cell sizes.
+   * @param total_buffers_budget Total budget for the consolidation buffers.
    * @return a consolidation workspace containing the buffers
    */
   void resize_buffers(
       stats::Stats* stats,
       const FragmentConsolidationConfig& config,
       const ArraySchema& array_schema,
-      std::unordered_map<std::string, uint64_t>& avg_cell_sizes);
+      std::unordered_map<std::string, uint64_t>& avg_cell_sizes,
+      uint64_t total_buffers_budget);
 
   /** Accessor for buffers. */
   tdb::pmr::vector<span<std::byte>>& buffers() {
@@ -310,6 +318,8 @@ class FragmentConsolidator : public Consolidator {
    * @param query_r This query reads from the fragments to be consolidated.
    * @param query_w This query writes to the new consolidated fragment.
    * @param new_fragment_uri The URI of the new fragment to be created.
+   * @param read_memory_budget Memory budget for the read operation.
+   * @param write_memory_budget Memory budget for the write operation.
    * @return Status
    */
   Status create_queries(
@@ -318,7 +328,9 @@ class FragmentConsolidator : public Consolidator {
       const NDRange& subarray,
       tdb_unique_ptr<Query>& query_r,
       tdb_unique_ptr<Query>& query_w,
-      URI* new_fragment_uri);
+      URI* new_fragment_uri,
+      uint64_t read_memory_budget,
+      uint64_t write_memory_budget);
 
   /**
    * Based on the input fragment info, this algorithm decides the (sorted) list

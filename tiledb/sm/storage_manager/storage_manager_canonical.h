@@ -48,39 +48,28 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/enums/walk_order.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/misc/cancelable_tasks.h"
 #include "tiledb/sm/misc/types.h"
-#include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
-#include "tiledb/sm/tile/filtered_buffer.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
 
 class Array;
-class OpenedArray;
 class ArrayDirectory;
 class ArraySchema;
-class ArraySchemaEvolution;
-class Buffer;
 class Consolidator;
 class EncryptionKey;
-class FragmentMetadata;
-class FragmentInfo;
-class GroupDetails;
-class Metadata;
-class MemoryTracker;
 class Query;
 class RestClient;
 
 enum class EncryptionType : uint8_t;
-enum class ObjectType : uint8_t;
 
 /** The storage manager that manages pretty much everything in TileDB. */
 class StorageManagerCanonical {
@@ -146,45 +135,6 @@ class StorageManagerCanonical {
   /* ********************************* */
 
   /**
-   * Creates a TileDB array storing its schema.
-   *
-   * @param array_uri The URI of the array to be created.
-   * @param array_schema The array schema.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_create(
-      const URI& array_uri,
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Evolve a TileDB array schema and store its new schema.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param schema_evolution The schema evolution.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status array_evolve_schema(
-      const URI& uri,
-      ArraySchemaEvolution* array_schema,
-      const EncryptionKey& encryption_key);
-
-  /**
-   * Upgrade a TileDB array to latest format version.
-   *
-   * @param array_dir The ArrayDirectory object used to retrieve the
-   *     various URIs in the array directory.
-   * @param config Configuration parameters for the upgrade
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status array_upgrade_version(const URI& uri, const Config& config);
-
-  /**
    * Pushes an async query to the queue.
    *
    * @param query The async query.
@@ -200,31 +150,6 @@ class StorageManagerCanonical {
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
-
-  /**
-   * Creates a TileDB group.
-   *
-   * @param group The URI of the group to be created.
-   * @return Status
-   */
-  Status group_create(const std::string& group);
-
-  /**
-   * If the storage manager was configured with a REST server, return the
-   * client instance. Else, return nullptr.
-   */
-  inline RestClient* rest_client() const {
-    return resources_.rest_client().get();
-  }
-
-  /** Removes a TileDB object (group, array). */
-  Status object_remove(const char* path) const;
-
-  /**
-   * Renames a TileDB object (group, array). If
-   * `new_path` exists, `new_path` will be overwritten.
-   */
-  Status object_move(const char* old_path, const char* new_path) const;
 
   /**
    * Creates a new object iterator for the input path. The iteration
@@ -299,15 +224,6 @@ class StorageManagerCanonical {
       ObjectType* type,
       bool* has_next);
 
-  /**
-   * Returns the tiledb object type
-   *
-   * @param uri Path to TileDB object resource
-   * @param type The ObjectType to be retrieved.
-   * @return Status
-   */
-  Status object_type(const URI& uri, ObjectType* type) const;
-
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
 
@@ -330,47 +246,9 @@ class StorageManagerCanonical {
    */
   Status set_tag(const std::string& key, const std::string& value);
 
-  /**
-   * Stores an array schema into persistent storage.
-   *
-   * @param array_schema The array metadata to be stored.
-   * @param encryption_key The encryption key to use.
-   * @return Status
-   */
-  Status store_array_schema(
-      const shared_ptr<ArraySchema>& array_schema,
-      const EncryptionKey& encryption_key);
-
   [[nodiscard]] inline ContextResources& resources() const {
     return resources_;
   }
-
-  /** Returns the internal logger object. */
-  shared_ptr<Logger> logger() const;
-
-  /**
-   * Consolidates the metadata of a group into a single file.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     consolidated.
-   * @param config Configuration parameters for the consolidation
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   * @return Status
-   */
-  Status group_metadata_consolidate(
-      const char* group_name, const Config& config);
-
-  /**
-   * Vacuums the consolidated metadata files of a group.
-   *
-   * @param group_name The name of the group whose metadata will be
-   *     vacuumed.
-   * @param config Configuration parameters for vacuuming
-   *     (`nullptr` means default, which will use the config associated with
-   *      this instance).
-   */
-  void group_metadata_vacuum(const char* group_name, const Config& config);
 
  private:
   /* ********************************* */
@@ -422,9 +300,6 @@ class StorageManagerCanonical {
 
   /** Mutex protecting cancellation_in_progress_. */
   std::mutex cancellation_in_progress_mtx_;
-
-  /** Mutex for providing thread-safety upon creating TileDB objects. */
-  std::mutex object_create_mtx_;
 
   /** Stores the TileDB configuration parameters. */
   Config config_;

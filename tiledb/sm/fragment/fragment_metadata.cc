@@ -40,6 +40,7 @@
 #include "tiledb/sm/array_schema/attribute.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/array_schema/domain.h"
+#include "tiledb/sm/array_schema/ndrectangle.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/filesystem/vfs.h"
 #include "tiledb/sm/fragment/fragment_identifier.h"
@@ -124,7 +125,7 @@ FragmentMetadata::FragmentMetadata(
 void FragmentMetadata::set_mbr(uint64_t tile, const NDRange& mbr) {
   // For easy reference
   tile += tile_index_base_;
-  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(tile, mbr));
+  loaded_metadata_ptr_->rtree().set_leaf(tile, mbr);
   return expand_non_empty_domain(mbr);
 }
 
@@ -1226,7 +1227,7 @@ void FragmentMetadata::set_num_tiles(uint64_t num_tiles) {
   }
 
   if (!dense_) {
-    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles));
+    loaded_metadata_ptr_->rtree().set_leaf_num(num_tiles);
     sparse_tile_num_ = num_tiles;
   }
 }
@@ -2053,7 +2054,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
   mbr_num = deserializer.read<uint64_t>();
 
   // Set leaf level
-  throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf_num(mbr_num));
+  loaded_metadata_ptr_->rtree().set_leaf_num(mbr_num);
   auto& domain{array_schema_->domain()};
   auto dim_num = domain.dim_num();
   for (uint64_t m = 0; m < mbr_num; ++m) {
@@ -2062,7 +2063,7 @@ void FragmentMetadata::load_mbrs(Deserializer& deserializer) {
       uint64_t r_size{2 * domain.dimension_ptr(d)->coord_size()};
       mbr[d] = Range(deserializer.get_ptr<char>(r_size), r_size);
     }
-    throw_if_not_ok(loaded_metadata_ptr_->rtree().set_leaf(m, mbr));
+    loaded_metadata_ptr_->rtree().set_leaf(m, mbr);
   }
 
   // Build R-tree bottom-up
@@ -2158,24 +2159,9 @@ void FragmentMetadata::load_non_empty_domain_v5_or_higher(
   char null_non_empty_domain = 0;
   null_non_empty_domain = deserializer.read<char>();
 
-  auto& domain{array_schema_->domain()};
   if (null_non_empty_domain == 0) {
-    auto dim_num = array_schema_->dim_num();
-    non_empty_domain_.resize(dim_num);
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim{domain.dimension_ptr(d)};
-      if (!dim->var_size()) {  // Fixed-sized
-        auto r_size = 2 * dim->coord_size();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size);
-      } else {  // Var-sized
-        uint64_t r_size, start_size;
-        r_size = deserializer.read<uint64_t>();
-        start_size = deserializer.read<uint64_t>();
-        non_empty_domain_[d] =
-            Range(deserializer.get_ptr<char>(r_size), r_size, start_size);
-      }
-    }
+    non_empty_domain_ = NDRectangle::deserialize_ndranges(
+        deserializer, array_schema_->shared_domain());
   }
 
   // Get expanded domain
@@ -2725,20 +2711,9 @@ void FragmentMetadata::write_non_empty_domain(Serializer& serializer) const {
     std::vector<uint8_t> d(domain_size, 0);
     serializer.write(&d[0], domain_size);
   } else {
-    // Write non-empty domain
-    for (unsigned d = 0; d < dim_num; ++d) {
-      auto dim{domain.dimension_ptr(d)};
-      const auto& r = non_empty_domain_[d];
-      if (!dim->var_size()) {  // Fixed-sized
-        serializer.write(r.data(), r.size());
-      } else {  // Var-sized
-        auto r_size = r.size();
-        auto r_start_size = r.start_size();
-        serializer.write<uint64_t>(r_size);
-        serializer.write<uint64_t>(r_start_size);
-        serializer.write(r.data(), r_size);
-      }
-    }
+    NDRectangle(
+        memory_tracker_, array_schema_->shared_domain(), non_empty_domain_)
+        .serialize(serializer);
   }
 }
 

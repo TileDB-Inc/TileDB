@@ -68,7 +68,6 @@ class QueryException : public StatusException {
       : StatusException("Query", msg) {
   }
 };
-using QueryStatusException = QueryException;
 
 class Array;
 class ArrayDimensionLabelQueries;
@@ -870,7 +869,7 @@ class Query {
       }
       return;
     }
-    throw QueryStatusException(
+    throw QueryException(
         "We currently only support a default channel for queries");
   }
 
@@ -905,13 +904,13 @@ class Query {
 
   inline std::shared_ptr<QueryChannel> aggegate_channel() {
     if (!has_aggregates()) {
-      throw QueryStatusException("Aggregate channel does not exist");
+      throw QueryException("Aggregate channel does not exist");
     }
     return aggregate_channel_;
   }
 
   /**
-   * Returns the REST client configured in the storage manager associated to
+   * Returns the REST client configured in the context resources associated to
    * this query
    */
   RestClient* rest_client() const;
@@ -923,6 +922,12 @@ class Query {
 
   /** Resource used for operations. */
   ContextResources& resources_;
+
+  /** The class stats. */
+  stats::Stats* stats_;
+
+  /** The class logger. */
+  shared_ptr<Logger> logger_;
 
   /** The query memory tracker. */
   shared_ptr<MemoryTracker> query_memory_tracker_;
@@ -969,12 +974,6 @@ class Query {
 
   /** The query strategy. */
   tdb_unique_ptr<IQueryStrategy> strategy_;
-
-  /** The class stats. */
-  stats::Stats* stats_;
-
-  /** The class logger. */
-  shared_ptr<Logger> logger_;
 
   /** UID of the logger instance */
   inline static std::atomic<uint64_t> logger_id_ = 0;

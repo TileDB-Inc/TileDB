@@ -1611,6 +1611,82 @@ TEST_CASE(
 }
 
 TEST_CASE(
+    "Testing sparse query condition with the same fragment domain.",
+    "[query][query-condition][sparse][same-fd]") {
+  Context ctx;
+  VFS vfs(ctx);
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+
+  // Create a simple 1D vector with domain 1-10 and one attribute.
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "d", {{1, 10}}, 5));
+  ArraySchema schema(ctx, TILEDB_SPARSE);
+  schema.set_domain(domain);
+  schema.set_cell_order(TILEDB_HILBERT);
+  schema.set_allows_dups(false);
+  schema.set_capacity(2);
+
+  Attribute attr = Attribute::create<int>(ctx, "a");
+  Attribute attr2 = Attribute::create<int>(ctx, "a2");
+  int fill_value = -1;
+  attr.set_fill_value(&fill_value, sizeof(int));
+  schema.add_attribute(attr);
+  schema.add_attribute(attr2);
+  Array::create(array_name, schema);
+
+  // Open array for write.
+  Array array(ctx, array_name, TILEDB_WRITE);
+
+  std::vector<int> dim_vals = {1, 2, 3, 4, 5, 6, 7, 8, 9, 10};
+
+  // Write all values as 3 in the array.
+  std::vector<int> vals = {3, 3, 3, 3, 3, 3, 3, 3, 3, 3};
+  Query query_w(ctx, array, TILEDB_WRITE);
+  query_w.set_buffer("d", dim_vals);
+  query_w.set_buffer("a", vals);
+  query_w.set_buffer("a2", vals);
+  REQUIRE(query_w.submit() == Query::Status::COMPLETE);
+
+  // Write values from 1-10 as 7 in the array.
+  std::vector<int> vals2 = {7, 7, 7, 7, 7, 7, 7, 7, 7, 6};
+  Query query_w2(ctx, array, TILEDB_WRITE);
+  query_w2.set_buffer("d", dim_vals);
+  query_w2.set_buffer("a", vals2);
+  query_w2.set_buffer("a2", vals);
+  REQUIRE(query_w2.submit() == Query::Status::COMPLETE);
+
+  array.close();
+
+  // Open the array for read.
+  Array array_r(ctx, array_name, TILEDB_READ);
+
+  // Query the data with query condition a < 7.
+  QueryCondition qc(ctx);
+  int val1 = 7;
+  qc.init("a", &val1, sizeof(int), TILEDB_LT);
+
+  std::vector<int> vals_read(10);
+  std::vector<int> vals_read2(10);
+  std::vector<int> dim_vals_read(10);
+  Query query_r(ctx, array_r, TILEDB_READ);
+  query_r.set_layout(TILEDB_GLOBAL_ORDER);
+  query_r.set_buffer("a", vals_read);
+  query_r.set_buffer("a2", vals_read2);
+  query_r.set_buffer("d", dim_vals_read);
+  query_r.set_condition(qc);
+  REQUIRE(query_r.submit() == Query::Status::COMPLETE);
+
+  array_r.close();
+
+  if (vfs.is_dir(array_name)) {
+    vfs.remove_dir(array_name);
+  }
+}
+
+TEST_CASE(
     "Testing read query with basic QC, condition on dimension, with range "
     "within a tile.",
     "[query][query-condition][dimension]") {

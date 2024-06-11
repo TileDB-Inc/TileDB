@@ -31,7 +31,7 @@
 #include "../range_join.h"
 #include "../spinlock.h"
 #include "../traits.h"
-#include "tiledb/common/arrow_proxy.hpp"
+#include "tiledb/common/util/detail/arrow_proxy.h"
 
 int main() {
 }
