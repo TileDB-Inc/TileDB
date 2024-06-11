@@ -206,4 +206,7 @@ class CurrentDomain {
 
 }  // namespace tiledb::sm
 
+std::ostream& operator<<(
+    std::ostream& os, const tiledb::sm::CurrentDomain& current_domain);
+
 #endif  // TILEDB_CURRENT_DOMAIN_H

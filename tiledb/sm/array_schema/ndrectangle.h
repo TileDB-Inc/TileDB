@@ -185,4 +185,6 @@ class NDRectangle {
 
 }  // namespace tiledb::sm
 
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr);
+
 #endif  // TILEDB_NDRECTANGLE_H

@@ -107,13 +107,10 @@ void NDRectangle::dump(FILE* out) const {
   }
 
   std::stringstream ss;
-  ss << " - NDRectangle ###" << std::endl;
-  for (uint32_t i = 0; i < range_data_.size(); ++i) {
-    auto dtype = domain_->dimension_ptr(i)->type();
-    ss << "  - " << range_str(range_data_[i], dtype) << std::endl;
-  }
-
-  fprintf(out, "%s", ss.str().c_str());
+  ss << *this;
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 void NDRectangle::set_range(const Range& r, uint32_t idx) {
@@ -143,3 +140,13 @@ const Range& NDRectangle::get_range_for_name(const std::string& name) const {
 }
 
 }  // namespace tiledb::sm
+
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::NDRectangle& ndr) {
+  os << " - NDRectangle ###" << std::endl;
+  for (uint32_t i = 0; i < ndr.get_ndranges().size(); ++i) {
+    auto dtype = ndr.domain()->dimension_ptr(i)->type();
+    os << "  - " << range_str(ndr.get_range(i), dtype) << std::endl;
+  }
+
+  return os;
+}
