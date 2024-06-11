@@ -49,8 +49,10 @@ namespace tiledb::sm {
 /* ****************************** */
 
 GroupMetaConsolidator::GroupMetaConsolidator(
-    const Config& config, StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources,
+    const Config& config,
+    StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
   auto st = set_config(config);
   if (!st.ok()) {
     throw std::logic_error(st.message());
@@ -68,12 +70,12 @@ Status GroupMetaConsolidator::consolidate(
 
   // Open group for reading
   auto group_uri = URI(group_name);
-  Group group_for_reads(storage_manager_->resources(), group_uri);
+  Group group_for_reads(resources_, group_uri, storage_manager_);
   group_for_reads.open(
       QueryType::READ, config_.timestamp_start_, config_.timestamp_end_);
 
   // Open group for writing
-  Group group_for_writes(storage_manager_->resources(), group_uri);
+  Group group_for_writes(resources_, group_uri, storage_manager_);
 
   try {
     group_for_writes.open(QueryType::WRITE);
@@ -136,10 +138,10 @@ Status GroupMetaConsolidator::set_config(const Config& config) {
   Config merged_config = resources_.config();
   merged_config.inherit(config);
   bool found = false;
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_start", &config_.timestamp_start_, &found));
   assert(found);
-  RETURN_NOT_OK(merged_config.get<uint64_t>(
+  throw_if_not_ok(merged_config.get<uint64_t>(
       "sm.consolidation.timestamp_end", &config_.timestamp_end_, &found));
   assert(found);
 

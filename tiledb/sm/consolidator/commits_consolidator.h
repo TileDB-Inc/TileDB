@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -38,6 +38,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
@@ -54,9 +55,18 @@ class CommitsConsolidator : public Consolidator {
   /**
    * Constructor.
    *
-   * @param storage_manager Storage manager.
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of all Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * CommitsConsolidator(ContextResources&).
+   *
+   * @param resources The context resources.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
-  explicit CommitsConsolidator(StorageManager* storage_manager);
+  explicit CommitsConsolidator(
+      ContextResources& resources, StorageManager* storage_manager);
 
   /** Destructor. */
   ~CommitsConsolidator() = default;

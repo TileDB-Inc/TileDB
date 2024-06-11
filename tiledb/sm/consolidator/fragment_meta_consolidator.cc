@@ -52,8 +52,8 @@ namespace tiledb::sm {
 /* ****************************** */
 
 FragmentMetaConsolidator::FragmentMetaConsolidator(
-    StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+    ContextResources& resources, StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
 }
 
 /* ****************************** */
@@ -70,8 +70,8 @@ Status FragmentMetaConsolidator::consolidate(
   check_array_uri(array_name);
 
   // Open array for reading
-  Array array(storage_manager_->resources(), URI(array_name));
-  RETURN_NOT_OK(
+  Array array(resources_, URI(array_name));
+  throw_if_not_ok(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
 
   // Include only fragments with footers / separate basic metadata
@@ -129,7 +129,7 @@ Status FragmentMetaConsolidator::consolidate(
 
         return Status::Ok();
       });
-  RETURN_NOT_OK(status);
+  throw_if_not_ok(status);
 
   auto serialize_data = [&](Serializer& serializer, uint64_t offset) {
     // Write number of fragments
@@ -166,10 +166,10 @@ Status FragmentMetaConsolidator::consolidate(
   serialize_data(serializer, offset);
 
   // Close array
-  RETURN_NOT_OK(array.close());
+  throw_if_not_ok(array.close());
 
   EncryptionKey enc_key;
-  RETURN_NOT_OK(enc_key.set_key(encryption_type, encryption_key, key_length));
+  throw_if_not_ok(enc_key.set_key(encryption_type, encryption_key, key_length));
 
   GenericTileIO tile_io(resources_, uri);
   [[maybe_unused]] uint64_t nbytes = 0;
