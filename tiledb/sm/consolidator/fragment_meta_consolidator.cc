@@ -70,7 +70,7 @@ Status FragmentMetaConsolidator::consolidate(
   check_array_uri(array_name);
 
   // Open array for reading
-  Array array(URI(array_name), storage_manager_);
+  Array array(storage_manager_->resources(), URI(array_name));
   RETURN_NOT_OK(
       array.open(QueryType::READ, encryption_type, encryption_key, key_length));
 
