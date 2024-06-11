@@ -29,7 +29,6 @@
 #include "magic.h"
 
 #include "tiledb/common/common.h"
-#include "tiledb/sm/misc/types.h"
 
 namespace tiledb {
 namespace sm {
@@ -52,9 +51,9 @@ class magic_dict {
   /**
    * Provides access to the internally expanded data.
    *
-   * @return a reference to the internal ByteVecValue holding the expanded data.
+   * @return a span to the internal buffer holding the expanded data.
    */
-  static const tiledb::sm::ByteVecValue& expanded_buffer();
+  static span<const uint8_t> expanded_buffer();
 };
 
 }  // namespace sm

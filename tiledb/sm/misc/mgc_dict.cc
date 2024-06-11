@@ -39,8 +39,8 @@
 namespace tiledb {
 namespace sm {
 
-const tiledb::sm::ByteVecValue prepare_data() {
-  tiledb::sm::ByteVecValue expanded_buffer(magic_mgc_decompressed_size);
+std::vector<uint8_t> prepare_data() {
+  std::vector<uint8_t> expanded_buffer(magic_mgc_decompressed_size);
 
   ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
   PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
@@ -51,7 +51,7 @@ const tiledb::sm::ByteVecValue prepare_data() {
 }
 
 int magic_dict::magic_mgc_embedded_load(magic_t magic) {
-  auto& buffer = expanded_buffer();
+  auto buffer = expanded_buffer();
 
   void* data = const_cast<unsigned char*>(buffer.data());
   size_t size = buffer.size();
@@ -59,7 +59,7 @@ int magic_dict::magic_mgc_embedded_load(magic_t magic) {
   return magic_load_buffers(magic, &data, &size, 1);
 }
 
-const tiledb::sm::ByteVecValue& magic_dict::expanded_buffer() {
+span<const uint8_t> magic_dict::expanded_buffer() {
   // Thread-safe initialization of the expanded data.
   static auto expanded_buffer = prepare_data();
   return expanded_buffer;

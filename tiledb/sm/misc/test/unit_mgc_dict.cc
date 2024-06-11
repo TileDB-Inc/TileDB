@@ -68,7 +68,7 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_validity]") {
   REQUIRE(fread(magic_mgc_data, 1, magic_mgc_len, infile) == magic_mgc_len);
   fclose(infile);
 
-  auto& magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
+  auto magic_mgc_embedded_data = tiledb::sm::magic_dict::expanded_buffer();
   REQUIRE(magic_mgc_embedded_data.size() == magic_mgc_len);
 
   REQUIRE(
