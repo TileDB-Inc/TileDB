@@ -58,6 +58,7 @@ jobs:
     with:
       ci_backend: S3
       matrix_image: macos-12
+      cmake_generator: 'Ninja' # Use Ninja due to performance issues.
       timeout: 120
       bootstrap_args: '--enable=s3,serialization,tools --enable-release-symbols'
 
@@ -66,6 +67,7 @@ jobs:
     with:
       ci_backend: GCS
       matrix_image: macos-12
+      cmake_generator: 'Ninja' # Use Ninja due to performance issues.
       timeout: 120
       bootstrap_args: '--enable-gcs --enable-release-symbols'
 
@@ -100,6 +102,7 @@ jobs:
     with:
       ci_backend: AZURE
       matrix_image: macos-12
+      cmake_generator: 'Ninja' # Use Ninja due to performance issues.
       timeout: 120
       bootstrap_args: '--enable-azure'
 
