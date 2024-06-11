@@ -30,31 +30,21 @@
 
 #include "tiledb/common/common.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::magic_dict {
 
-using tiledb::common::Status;
+/**
+ * Have libmagic load data from our embedded version.
+ *
+ * @param magic - libmagic object obtained from magic_open()
+ * @return the value libmgaic returns from magic_load_buffers().
+ */
+int magic_mgc_embedded_load(magic_t magic);
 
-class magic_dict {
- public:
-  /** Default constructor is deleted. */
-  magic_dict() = delete;
+/**
+ * Provides access to the internally expanded data.
+ *
+ * @return a span to the internal buffer holding the expanded data.
+ */
+span<const uint8_t> expanded_buffer();
 
-  /**
-   * Have libmagic load data from our embedded version.
-   *
-   * @param magic - libmagic object obtained from magic_open()
-   * @return the value libmgaic returns from magic_load_buffers().
-   */
-  static int magic_mgc_embedded_load(magic_t magic);
-
-  /**
-   * Provides access to the internally expanded data.
-   *
-   * @return a span to the internal buffer holding the expanded data.
-   */
-  static span<const uint8_t> expanded_buffer();
-};
-
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::magic_dict

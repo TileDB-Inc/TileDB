@@ -36,8 +36,7 @@
 #include <stdexcept>
 #include <string>
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm::magic_dict {
 
 std::vector<uint8_t> prepare_data() {
   std::vector<uint8_t> expanded_buffer(magic_mgc_decompressed_size);
@@ -50,7 +49,7 @@ std::vector<uint8_t> prepare_data() {
   return expanded_buffer;
 }
 
-int magic_dict::magic_mgc_embedded_load(magic_t magic) {
+int magic_mgc_embedded_load(magic_t magic) {
   auto buffer = expanded_buffer();
 
   void* data = const_cast<unsigned char*>(buffer.data());
@@ -59,11 +58,10 @@ int magic_dict::magic_mgc_embedded_load(magic_t magic) {
   return magic_load_buffers(magic, &data, &size, 1);
 }
 
-span<const uint8_t> magic_dict::expanded_buffer() {
+span<const uint8_t> expanded_buffer() {
   // Thread-safe initialization of the expanded data.
   static auto expanded_buffer = prepare_data();
   return expanded_buffer;
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::magic_dict

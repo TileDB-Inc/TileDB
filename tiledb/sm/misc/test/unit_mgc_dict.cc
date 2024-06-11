@@ -53,7 +53,7 @@
 #error "TILEDB_PATH_TO_MAGIC_MGC not defined!"
 #endif
 
-using tiledb::sm::magic_dict;
+using namespace tiledb::sm;
 
 TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_validity]") {
   FILE* infile = nullptr;
