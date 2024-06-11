@@ -317,6 +317,9 @@ TEST_CASE_METHOD(
   CHECK_NOTHROW(cropped_subarray.get_range(1, 1, &range));
   CHECK(!memcmp(range->data(), &c_range_1_1[0], 2 * sizeof(uint64_t)));
 
+  auto tile_cell_num = subarray.tile_cell_num(&tile_coords[0]);
+  CHECK(tile_cell_num == cropped_subarray.cell_num());
+
   close_array(ctx_, array_);
 }
 

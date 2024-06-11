@@ -142,6 +142,66 @@ Reader::Reader(
   check_validity_buffer_sizes();
 }
 
+/* ********************************* */
+/*          STATIC FUNCTIONS         */
+/* ********************************* */
+
+template <class T>
+void Reader::compute_result_space_tiles(
+    const std::vector<shared_ptr<FragmentMetadata>>& fragment_metadata,
+    const std::vector<std::vector<uint8_t>>& tile_coords,
+    const TileDomain<T>& array_tile_domain,
+    const std::vector<TileDomain<T>>& frag_tile_domains,
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles,
+    shared_ptr<MemoryTracker> memory_tracker) {
+  auto fragment_num = (unsigned)frag_tile_domains.size();
+  auto dim_num = array_tile_domain.dim_num();
+  std::vector<T> start_coords;
+  const T* coords;
+  start_coords.resize(dim_num);
+
+  // For all tile coordinates
+  for (const auto& tc : tile_coords) {
+    coords = (T*)(&(tc[0]));
+    start_coords = array_tile_domain.start_coords(coords);
+
+    // Create result space tile and insert into the map
+    auto r =
+        result_space_tiles.emplace(coords, ResultSpaceTile<T>(memory_tracker));
+    auto& result_space_tile = r.first->second;
+    result_space_tile.set_start_coords(start_coords);
+
+    // Add fragment info to the result space tile
+    for (unsigned f = 0; f < fragment_num; ++f) {
+      // Check if the fragment overlaps with the space tile
+      if (!frag_tile_domains[f].in_tile_domain(coords))
+        continue;
+
+      // Check if any previous fragment covers this fragment
+      // for the tile identified by `coords`
+      bool covered = false;
+      for (unsigned j = 0; j < f; ++j) {
+        if (frag_tile_domains[j].covers(coords, frag_tile_domains[f])) {
+          covered = true;
+          break;
+        }
+      }
+
+      // Exclude this fragment from the space tile
+      if (covered)
+        continue;
+
+      // Include this fragment in the space tile
+      auto frag_domain = frag_tile_domains[f].domain_slice();
+      auto frag_idx = frag_tile_domains[f].id();
+      result_space_tile.append_frag_domain(frag_idx, frag_domain);
+      auto tile_idx = frag_tile_domains[f].tile_pos(coords);
+      result_space_tile.set_result_tile(
+          frag_idx, tile_idx, *fragment_metadata[frag_idx].get());
+    }
+  }
+}
+
 /* ****************************** */
 /*               API              */
 /* ****************************** */
@@ -1473,6 +1533,23 @@ Status Reader::process_tiles(
   }
 
   return Status::Ok();
+}
+
+template <class T>
+void Reader::compute_result_space_tiles(
+    const Subarray& subarray,
+    const Subarray& partitioner_subarray,
+    std::map<const T*, ResultSpaceTile<T>>& result_space_tiles) const {
+  auto&& [array_tile_domain, frag_tile_domains] =
+      compute_tile_domains<T>(partitioner_subarray);
+
+  compute_result_space_tiles<T>(
+      fragment_metadata_,
+      subarray.tile_coords(),
+      array_tile_domain,
+      frag_tile_domains,
+      result_space_tiles,
+      query_memory_tracker_);
 }
 
 template <class T>
