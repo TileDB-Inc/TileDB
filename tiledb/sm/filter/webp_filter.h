@@ -161,15 +161,6 @@ class WebpFilter : public Filter {
   bool accepts_input_datatype(Datatype datatype) const override;
 
   /**
-   * Returns the filter output type
-   *
-   * @param input_type Expected type used for input. Used for filters which
-   * change output type based on input data. e.g. XORFilter output type is
-   * based on byte width of input type.
-   */
-  Datatype output_datatype(Datatype input_type) const override;
-
-  /**
    * Runs the filter forward, taking raw colorspace values as input and writing.
    * encoded WebP data to the TileDB Array.
    *

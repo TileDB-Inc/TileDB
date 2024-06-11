@@ -52,6 +52,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 class ArraySchema;
+class ArraySchemaEvolution;
 class SchemaEvolution;
 class FragmentMetadata;
 class MemoryTracker;
@@ -363,12 +364,42 @@ class Array {
     opened_array_->set_array_schemas_all(std::move(all_schemas));
   }
 
+  /**
+   * Evolve a TileDB array schema and store its new schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The uri of the array whose schema is to be evolved.
+   * @param schema_evolution The schema evolution.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  static Status evolve_array_schema(
+      ContextResources& resources,
+      const URI& array_uri,
+      ArraySchemaEvolution* array_schema,
+      const EncryptionKey& encryption_key);
+
   /** Returns the array URI. */
   const URI& array_uri() const;
 
   /** Returns the serialized array URI, this is for backwards compatibility with
    * serialization in pre TileDB 2.4 */
   const URI& array_uri_serialized() const;
+
+  /**
+   * Creates a TileDB array, storing its schema.
+   *
+   * @param resources The context resources.
+   * @param array_uri The URI of the array to be created.
+   * @param array_schema The array schema.
+   * @param encryption_key The encryption key to use.
+   * @return Status
+   */
+  static Status create(
+      ContextResources& resources,
+      const URI& array_uri,
+      const shared_ptr<ArraySchema>& array_schema,
+      const EncryptionKey& encryption_key);
 
   /**
    * Opens the array for reading at a timestamp retrieved from the config
@@ -1015,6 +1046,19 @@ class Array {
     return resources_.rest_client();
   }
 
+  /**
+   * Upgrade a TileDB array to latest format version.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the array.
+   * @param config Configuration parameters for the upgrade
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status upgrade_version(
+      ContextResources& resources, const URI& uri, const Config& config);
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -1156,19 +1200,18 @@ class Array {
       std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_reads_without_fragments();
 
-  /** Opens an array for writes.
+  /**
+   * Opens an array for writes.
    *
    * @param array The array to open.
-   * @return tuple of Status, latest ArraySchema and map of all array schemas
-   *        Status Ok on success, else error
+   * @return tuple of latest ArraySchema and map of all array schemas
    *        ArraySchema The array schema to be retrieved after the
    *          array is opened.
    *        ArraySchemaMap Map of all array schemas found keyed by name
    */
   tuple<
-      Status,
-      optional<shared_ptr<ArraySchema>>,
-      optional<std::unordered_map<std::string, shared_ptr<ArraySchema>>>>
+      shared_ptr<ArraySchema>,
+      std::unordered_map<std::string, shared_ptr<ArraySchema>>>
   open_for_writes();
 
   /** Clears the cached max buffer sizes and subarray. */

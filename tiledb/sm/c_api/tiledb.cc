@@ -226,7 +226,7 @@ capi_return_t tiledb_log_warn(tiledb_ctx_t* ctx, const char* message) {
     return TILEDB_ERR;
   }
 
-  auto logger = ctx->storage_manager()->logger();
+  auto logger = ctx->resources().logger();
   logger->warn(message);
 
   return TILEDB_OK;
@@ -1734,7 +1734,7 @@ capi_return_t tiledb_subarray_alloc(
     (*subarray)->subarray_ = new tiledb::sm::Subarray(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
-        ctx->storage_manager()->logger(),
+        ctx->resources().logger(),
         true,
         ctx->storage_manager());
     (*subarray)->is_allocated_ = true;
@@ -2574,8 +2574,8 @@ int32_t tiledb_array_create(
     throw_if_not_ok(
         key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
     // Create the array
-    throw_if_not_ok(ctx->storage_manager()->array_create(
-        uri, array_schema->array_schema_, key));
+    throw_if_not_ok(tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2593,8 +2593,11 @@ int32_t tiledb_array_create(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(ctx->storage_manager()->array_create(
-          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+      throw_if_not_ok(tiledb::sm::Array::create(
+          ctx->resources(),
+          dim_label_ref.uri(uri),
+          dim_label_ref.schema(),
+          key));
     }
   }
   return TILEDB_OK;
@@ -2642,8 +2645,8 @@ int32_t tiledb_array_create_with_key(
         key_length));
 
     // Create the array
-    throw_if_not_ok(ctx->storage_manager()->array_create(
-        uri, array_schema->array_schema_, key));
+    throw_if_not_ok(tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key));
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2661,8 +2664,11 @@ int32_t tiledb_array_create_with_key(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(ctx->storage_manager()->array_create(
-          dim_label_ref.uri(uri), dim_label_ref.schema(), key));
+      throw_if_not_ok(tiledb::sm::Array::create(
+          ctx->resources(),
+          dim_label_ref.uri(uri),
+          dim_label_ref.schema(),
+          key));
     }
   }
   return TILEDB_OK;
@@ -3022,8 +3028,11 @@ int32_t tiledb_array_evolve(
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
-  throw_if_not_ok(ctx->storage_manager()->array_evolve_schema(
-      uri, array_schema_evolution->array_schema_evolution_, key));
+  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+      ctx->resources(),
+      uri,
+      array_schema_evolution->array_schema_evolution_,
+      key));
 
   // Success
   return TILEDB_OK;
@@ -3074,8 +3083,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(ctx->storage_manager()->array_upgrade_version(
-      uri, (config == nullptr) ? ctx->config() : config->config()));
+  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+      ctx->resources(),
+      uri,
+      (config == nullptr) ? ctx->config() : config->config()));
 
   return TILEDB_OK;
 }

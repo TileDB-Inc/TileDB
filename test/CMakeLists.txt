@@ -252,7 +252,6 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
-    src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
   )

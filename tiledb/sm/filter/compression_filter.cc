@@ -742,14 +742,15 @@ void CompressionFilter::init_decompression_resource_pool(uint64_t size) {
   }
 }
 
-Datatype CompressionFilter::output_datatype(Datatype) const {
-  /*
-   * If the compression did anything at all, we have a binary blob afterwards.
-   * Even if it didn't, the output format interleaves metadata with
-   * compressed data, so we can't interpret as a stream of any particular
-   * datatype anyway.
-   */
-  return Datatype::BLOB;
+Datatype CompressionFilter::output_datatype(Datatype datatype) const {
+  switch (compressor_) {
+    case Compressor::DOUBLE_DELTA:
+    case Compressor::DELTA:
+      return reinterpret_datatype_ == Datatype::ANY ? datatype :
+                                                      reinterpret_datatype_;
+    default:
+      return datatype;
+  }
 }
 
 }  // namespace sm

@@ -2064,9 +2064,11 @@ TEST_CASE_METHOD(
 
   auto ase = make_shared<ArraySchemaEvolution>(HERE(), memory_tracker_);
   ase->extend_enumeration(new_enmr);
-  auto st = ctx_.storage_manager()->array_evolve_schema(
-      array->array_uri(), ase.get(), array->get_encryption_key());
-  throw_if_not_ok(st);
+  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+      ctx_.resources(),
+      array->array_uri(),
+      ase.get(),
+      array->get_encryption_key()));
 
   // Check that we can not rewrite the query condition.
   array = get_array(QueryType::READ);
@@ -2879,7 +2881,7 @@ shared_ptr<ArraySchema> EnumerationFx::create_schema() {
 
 void EnumerationFx::create_array() {
   auto schema = create_schema();
-  throw_if_not_ok(ctx_.storage_manager()->array_create(uri_, schema, enc_key_));
+  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
 }
 
 shared_ptr<Array> EnumerationFx::get_array(QueryType type) {

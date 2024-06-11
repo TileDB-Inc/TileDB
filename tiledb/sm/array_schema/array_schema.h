@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -46,8 +46,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Attribute;
 class Buffer;
@@ -57,6 +56,7 @@ class DimensionLabel;
 class Domain;
 class Enumeration;
 class MemoryTracker;
+class CurrentDomain;
 
 enum class ArrayType : uint8_t;
 enum class Compressor : uint8_t;
@@ -121,6 +121,7 @@ class ArraySchema {
    * @param cell_validity_filters
    *    The filter pipeline run on validity tiles for nullable attributes.
    * @param coords_filters The filter pipeline run on coordinate tiles.
+   * @param current_domain The array current domain object
    * @param memory_tracker The memory tracker of the array this fragment
    *     metadata corresponds to.
    **/
@@ -142,6 +143,7 @@ class ArraySchema {
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters,
+      shared_ptr<const CurrentDomain> current_domain,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -602,6 +604,24 @@ class ArraySchema {
     return dimension_labels_;
   }
 
+  /**
+   * Expand the array current domain
+   *
+   * @param new_current_domain The new array current domain we want to expand to
+   */
+  void expand_current_domain(
+      shared_ptr<const CurrentDomain> new_current_domain);
+
+  /**
+   * Set the array current domain on the schema
+   *
+   * @param current_domain The array current domain we want to set on the schema
+   */
+  void set_current_domain(shared_ptr<const CurrentDomain> current_domain);
+
+  /** Array current domain accessor */
+  shared_ptr<const CurrentDomain> get_current_domain() const;
+
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
@@ -717,6 +737,9 @@ class ArraySchema {
   /** The filter pipeline run on coordinate tiles. */
   FilterPipeline coords_filters_;
 
+  /** The array current domain */
+  shared_ptr<const CurrentDomain> current_domain_;
+
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;
 
@@ -760,8 +783,7 @@ class ArraySchema {
   void clear();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(
