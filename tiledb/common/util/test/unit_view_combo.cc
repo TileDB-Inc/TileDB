@@ -1,5 +1,5 @@
 /**
- * @file   unit_zip_view.cc
+ * @file   unit_view_combo.cc
  *
  * @section LICENSE
  *
