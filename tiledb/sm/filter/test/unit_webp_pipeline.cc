@@ -65,17 +65,22 @@ TEST_CASE("Filter: Round trip WebpFilter RGB data", "[filter][webp]") {
     }
   }
   // For the write process 10 rows at a time using tile chunking.
-  WhiteboxWriterTile::set_max_tile_chunk_size(10 * row_stride);
+  // The row stride is 300 bytes, so the tile chunk size is 3000 bytes.
+  uint64_t extent_y = 10;
+  WhiteboxWriterTile::set_max_tile_chunk_size(extent_y * row_stride);
 
   FilterPipeline pipeline;
   ThreadPool tp(4);
   float quality = 100.0f;
   bool lossless = true;
+  // NOTE: The extent_y parameter must respect chunk size or risk OOB access.
+  // This sets WebpFilter::extents_ which is passed to WebP API during encoding.
+  // If we set this to `height`, webp will reach past the end of chunked data.
   pipeline.add_filter(WebpFilter(
       quality,
       WebpInputFormat::WEBP_RGB,
       lossless,
-      height,
+      extent_y,
       width * 3,
       Datatype::UINT8));
   bool use_chunking = true;
@@ -88,6 +93,9 @@ TEST_CASE("Filter: Round trip WebpFilter RGB data", "[filter][webp]") {
   CHECK(tile->filtered_buffer().size() != 0);
 
   // Read the full image back with chunking disabled.
+  // NOTE: For the read case, WebP decoding APIs don't require height and width.
+  // Instead, WebP takes references to these values during unfiltering and sets
+  // them to the correct values after decoding is finished.
   WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
   auto unfiltered_tile =
       create_tile_for_unfiltering(height * row_stride, tile, tracker);
