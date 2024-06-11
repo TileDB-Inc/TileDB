@@ -921,8 +921,5 @@ class Dimension {
 
 #endif  // TILEDB_DIMENSION_H
 
-/** Returns the tile extent in string format. */
-std::string tile_extent_str(const tiledb::sm::Dimension& dim);
-
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Dimension& dim);

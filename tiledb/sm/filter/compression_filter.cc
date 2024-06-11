@@ -125,11 +125,12 @@ void CompressionFilter::dump(FILE* out) const {
     out = stdout;
 
   std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
+  output(&s);
+  [[maybe_unused]] size_t r = fwrite(s.c_str(), sizeof(char), s.size(), out);
+  assert(r == s.size());
 }
 
-void CompressionFilter::dump(std::string* out) const {
+void CompressionFilter::output(std::string* out) const {
   *out = dump_compression_filter();
 }
 

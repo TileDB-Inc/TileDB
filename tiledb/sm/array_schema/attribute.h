@@ -271,9 +271,6 @@ class Attribute {
   /** Get the enumeration for this attribute. */
   std::optional<std::string> get_enumeration_name() const;
 
-  /** Returns the fill value in string form. */
-  std::string fill_value_str() const;
-
  private:
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */

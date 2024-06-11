@@ -206,7 +206,9 @@ void Attribute::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 const FilterPipeline& Attribute::filters() const {
@@ -420,22 +422,6 @@ std::optional<std::string> Attribute::get_enumeration_name() const {
   return enumeration_name_;
 }
 
-std::string Attribute::fill_value_str() const {
-  std::string ret;
-
-  auto v_size = datatype_size(type_);
-  uint64_t num = fill_value_.size() / v_size;
-  auto v = fill_value_.data();
-  for (uint64_t i = 0; i < num; ++i) {
-    ret += utils::parse::to_str(v, type_);
-    v += v_size;
-    if (i != num - 1)
-      ret += ", ";
-  }
-
-  return ret;
-}
-
 /* ********************************* */
 /*          PRIVATE METHODS          */
 /* ********************************* */
@@ -490,7 +476,18 @@ std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
   os << "- Filters: " << a.filters().size();
   os << a.filters();
   os << "\n";
-  os << "- Fill value: " << a.fill_value_str();
+
+  os << "- Fill value: ";
+  auto v_size = tiledb::sm::datatype_size(a.type());
+  uint64_t num = a.fill_value().size() / v_size;
+  auto v = a.fill_value().data();
+  for (uint64_t i = 0; i < num; ++i) {
+    os << tiledb::sm::utils::parse::to_str(v, a.type());
+    v += v_size;
+    if (i != num - 1)
+      os << ", ";
+  }
+
   if (a.nullable()) {
     os << "\n";
     os << "- Fill value validity: " << std::to_string(a.fill_value_validity());

@@ -48,7 +48,7 @@ void XORFilter::dump(FILE* out) const {
   fprintf(out, "XORFilter");
 }
 
-void XORFilter::dump(std::string* out) const {
+void XORFilter::output(std::string* out) const {
   *out = "XORFilter";
 }
 

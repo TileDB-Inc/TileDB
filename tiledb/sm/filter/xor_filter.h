@@ -69,9 +69,6 @@ class XORFilter : public Filter {
   /** Dumps the filter details in ASCII format in the selected output file. */
   void dump(FILE* out) const override;
 
-  /** Dumps the filter details in ASCII format in the selected output string. */
-  void dump(std::string* out) const override;
-
   /**
    * Checks if the filter is applicable to the input datatype.
    *
@@ -114,6 +111,10 @@ class XORFilter : public Filter {
       FilterBuffer* output_metadata,
       FilterBuffer* output,
       const Config& config) const override;
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  void output(std::string* out) const override;
 
  private:
   /**

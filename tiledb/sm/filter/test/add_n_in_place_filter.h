@@ -52,8 +52,6 @@ class AddNInPlace : public tiledb::sm::Filter {
 
   void dump(FILE* out) const override;
 
-  void dump(std::string* out) const override;
-
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
@@ -76,6 +74,9 @@ class AddNInPlace : public tiledb::sm::Filter {
   void set_increment(uint64_t increment);
 
   AddNInPlace* clone_impl() const override;
+
+ protected:
+  void output(std::string* out) const override;
 
  private:
   uint64_t increment_;

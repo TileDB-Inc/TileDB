@@ -50,11 +50,12 @@ void FloatScalingFilter::dump(FILE* out) const {
     out = stdout;
 
   std::string s;
-  dump(&s);
-  fprintf(out, "%s", s.c_str());
+  output(&s);
+  [[maybe_unused]] size_t r = fwrite(s.c_str(), sizeof(char), s.size(), out);
+  assert(r == s.size());
 }
 
-void FloatScalingFilter::dump(std::string* out) const {
+void FloatScalingFilter::output(std::string* out) const {
   *out = dump_float_scaling_filter();
 }
 

@@ -44,7 +44,7 @@ void Add1InPlace::dump(FILE* out) const {
   (void)out;
 }
 
-void Add1InPlace::dump(std::string* out) const {
+void Add1InPlace::output(std::string* out) const {
   (void)out;
 }
 

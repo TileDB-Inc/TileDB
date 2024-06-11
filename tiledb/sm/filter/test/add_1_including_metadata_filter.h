@@ -54,8 +54,6 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
 
   void dump(FILE* out) const override;
 
-  void dump(std::string* out) const override;
-
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
@@ -74,6 +72,9 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
       const tiledb::sm::Config& config) const override;
 
   Add1IncludingMetadataFilter* clone_impl() const override;
+
+ protected:
+  void output(std::string* out) const override;
 };
 
 }  // namespace tiledb::sm

@@ -561,7 +561,9 @@ void FilterPipeline::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 void FilterPipeline::ensure_compatible(

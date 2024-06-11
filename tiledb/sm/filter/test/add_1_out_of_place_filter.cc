@@ -43,7 +43,7 @@ void Add1OutOfPlace::dump(FILE* out) const {
   (void)out;
 }
 
-void Add1OutOfPlace::dump(std::string* out) const {
+void Add1OutOfPlace::output(std::string* out) const {
   (void)out;
 }
 

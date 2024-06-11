@@ -60,7 +60,7 @@ void ChecksumSHA256Filter::dump(FILE* out) const {
   fprintf(out, "ChecksumSHA256");
 }
 
-void ChecksumSHA256Filter::dump(std::string* out) const {
+void ChecksumSHA256Filter::output(std::string* out) const {
   *out = "ChecksumSHA256";
 }
 

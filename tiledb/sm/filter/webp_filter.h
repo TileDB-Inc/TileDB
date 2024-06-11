@@ -154,12 +154,6 @@ class WebpFilter : public Filter {
   void dump(FILE* out) const override;
 
   /**
-   * Dumps filter details in ASCII format.
-   * @param out String to write output.
-   */
-  void dump(std::string* out) const override;
-
-  /**
    * Checks if the filter is applicable to the input datatype.
    *
    * @param type Input datatype to check filter compatibility.
@@ -293,6 +287,13 @@ class WebpFilter : public Filter {
   inline std::pair<uint16_t, uint16_t> get_extents() const {
     return extents_;
   }
+
+ protected:
+  /**
+   * Dumps filter details in ASCII format.
+   * @param out String to write output.
+   */
+  void output(std::string* out) const override;
 
  private:
   /* ********************************* */

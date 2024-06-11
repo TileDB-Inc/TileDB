@@ -82,7 +82,7 @@ class Schema {
   /*          VIRTUAL INTERFACE        */
   /* ********************************* */
 
-  /** Dumps the array schema in an ASCII representation to an output file. */
+  /** Dumps the array schema in an ASCII representation to an output. */
   virtual void dump(FILE* out) const = 0;
 
   /** Adds an attribute to the array. */

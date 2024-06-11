@@ -311,11 +311,6 @@ shared_ptr<const Attribute> ArraySchema::shared_attribute(
   return attributes_[it->second.index];
 }
 
-const tdb::pmr::vector<shared_ptr<const Attribute>>& ArraySchema::attributes()
-    const {
-  return attributes_;
-}
-
 uint64_t ArraySchema::capacity() const {
   return capacity_;
 }
@@ -695,7 +690,9 @@ void ArraySchema::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 Status ArraySchema::has_attribute(
@@ -1626,16 +1623,6 @@ const std::string& ArraySchema::name() const {
   return name_;
 }
 
-const tdb::pmr::unordered_map<std::string, shared_ptr<const Enumeration>>&
-ArraySchema::enumeration_map() const {
-  return enumeration_map_;
-}
-
-const tdb::pmr::vector<shared_ptr<const DimensionLabel>>&
-ArraySchema::dimension_labels() const {
-  return dimension_labels_;
-}
-
 /* ****************************** */
 /*         PRIVATE METHODS        */
 /* ****************************** */
@@ -1772,7 +1759,6 @@ std::ostream& operator<<(
      << "\n";
   os << "- Coordinates filters: " << schema.coords_filters().size();
 
-  std::string temp;
   os << schema.coords_filters();
 
   os << "\n- Offsets filters: " << schema.cell_var_offsets_filters().size();

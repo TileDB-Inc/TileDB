@@ -329,7 +329,9 @@ void Dimension::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 const FilterPipeline& Dimension::filters() const {
@@ -1647,7 +1649,7 @@ Range DimensionVarSize::compute_mbr_var(
 
 }  // namespace tiledb::sm
 
-std::string tile_extent_str(const tiledb::sm::Dimension& dim) {
+inline std::string tile_extent_str(const tiledb::sm::Dimension& dim) {
   std::stringstream ss;
 
   if (!dim.tile_extent()) {
@@ -1660,8 +1662,9 @@ std::string tile_extent_str(const tiledb::sm::Dimension& dim) {
       ss << *val;
       return ss.str();
     }
-    throw std::logic_error(
+    throw std::runtime_error(
         "Datatype::" + datatype_str(dim.type()) + " not supported");
+
     return std::string("");  // for return type deduction purposes
   };
   return apply_with_type(g, dim.type());

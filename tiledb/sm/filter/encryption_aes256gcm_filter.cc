@@ -70,7 +70,7 @@ void EncryptionAES256GCMFilter::dump(FILE* out) const {
   fprintf(out, "EncryptionAES256GCM");
 }
 
-void EncryptionAES256GCMFilter::dump(std::string* out) const {
+void EncryptionAES256GCMFilter::output(std::string* out) const {
   *out = "EncryptionAES256GCM";
 }
 

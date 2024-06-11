@@ -43,7 +43,7 @@ void PseudoChecksumFilter::dump(FILE* out) const {
   (void)out;
 }
 
-void PseudoChecksumFilter::dump(std::string* out) const {
+void PseudoChecksumFilter::output(std::string* out) const {
   (void)out;
 }
 

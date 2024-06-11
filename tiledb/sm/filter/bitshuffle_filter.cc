@@ -58,7 +58,7 @@ void BitshuffleFilter::dump(FILE* out) const {
   fprintf(out, "BitShuffle");
 }
 
-void BitshuffleFilter::dump(std::string* out) const {
+void BitshuffleFilter::output(std::string* out) const {
   *out = "BitShuffle";
 }
 

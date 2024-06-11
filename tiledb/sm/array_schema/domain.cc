@@ -378,7 +378,9 @@ void Domain::dump(FILE* out) const {
 
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {

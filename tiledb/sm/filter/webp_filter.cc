@@ -41,7 +41,7 @@ void WebpFilter::dump(FILE* out) const {
   fprintf(out, "WebpFilter");
 }
 
-void WebpFilter::dump(std::string* out) const {
+void WebpFilter::output(std::string* out) const {
   *out = "WebpFilter";
 }
 

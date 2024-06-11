@@ -40,6 +40,20 @@
 
 using namespace tiledb::common;
 
+// Forward declarations
+namespace tiledb::sm {
+class Filter;
+}
+
+/**
+ * Converts the filter into a string representation.
+ *
+ * @param os Output stream
+ * @param filter Filter to represent as a string
+ * @return the output stream argument
+ */
+std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter);
+
 namespace tiledb {
 namespace sm {
 
@@ -61,6 +75,9 @@ enum class Datatype : uint8_t;
  * and a reverse direction (for reads).
  */
 class Filter {
+  friend std::ostream& ::operator<<(
+      std::ostream & os, const tiledb::sm::Filter & filter);
+
  public:
   /**
    * Constructor.
@@ -88,9 +105,6 @@ class Filter {
 
   /** Dumps the filter details in ASCII format in the selected output file. */
   virtual void dump(FILE* out) const = 0;
-
-  /** Dumps the filter details in ASCII format in the selected output string. */
-  virtual void dump(std::string* out) const = 0;
 
   /**
    * Returns the filter output type
@@ -244,12 +258,12 @@ class Filter {
    * @param buff The buffer to serialize the data into.
    */
   virtual void serialize_impl(Serializer& serializer) const;
+
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  virtual void output(std::string* out) const = 0;
 };
 
 }  // namespace sm
 }  // namespace tiledb
 
 #endif  // TILEDB_FILTER_H
-
-/** Converts the filter into a string representation. */
-std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter);

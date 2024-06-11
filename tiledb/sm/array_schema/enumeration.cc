@@ -399,7 +399,9 @@ void Enumeration::dump(FILE* out) const {
   }
   std::stringstream ss;
   ss << *this;
-  fprintf(out, "%s", ss.str().c_str());
+  [[maybe_unused]] size_t r =
+      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  assert(r == ss.str().size());
 }
 
 void Enumeration::generate_value_map() {
@@ -449,7 +451,6 @@ std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::Enumeration& enumeration) {
   os << "### Enumeration ###" << std::endl;
   os << "- Name: " << enumeration.name() << std::endl;
-  os << "- Loaded: true" << std::endl;
   os << "- Type: " << datatype_str(enumeration.type()) << std::endl;
   os << "- Cell Val Num: " << enumeration.cell_val_num() << std::endl;
   os << "- Ordered: " << (enumeration.ordered() ? "true" : "false")

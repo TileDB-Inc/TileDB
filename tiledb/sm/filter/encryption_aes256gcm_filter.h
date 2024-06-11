@@ -97,9 +97,6 @@ class EncryptionAES256GCMFilter : public Filter {
   /** Dumps the filter details in ASCII format in the selected output file. */
   void dump(FILE* out) const override;
 
-  /** Dumps the filter details in ASCII format in the selected output string. */
-  void dump(std::string* out) const override;
-
   /**
    * Returns the filter output type
    *
@@ -153,6 +150,10 @@ class EncryptionAES256GCMFilter : public Filter {
    * @param key_bytes Buffer holding the key, expected to be `uint8_t[32]`.
    */
   void set_key(const void* key_bytes);
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  void output(std::string* out) const override;
 
  private:
   /** Pointer to a buffer storing the secret key. */

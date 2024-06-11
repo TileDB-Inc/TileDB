@@ -702,7 +702,7 @@ class Domain {
 
 }  // namespace tiledb::sm
 
-#endif  // TILEDB_DOMAIN_H
-
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain);
+
+#endif  // TILEDB_DOMAIN_H

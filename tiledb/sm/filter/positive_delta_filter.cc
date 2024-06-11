@@ -60,7 +60,7 @@ void PositiveDeltaFilter::dump(FILE* out) const {
   fprintf(out, "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=%u", max_window_size_);
 }
 
-void PositiveDeltaFilter::dump(std::string* out) const {
+void PositiveDeltaFilter::output(std::string* out) const {
   *out = "PositiveDelta: POSITIVE_DELTA_MAX_WINDOW=";
   out->append(std::to_string(max_window_size_));
 }

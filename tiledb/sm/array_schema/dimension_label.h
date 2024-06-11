@@ -273,8 +273,8 @@ class DimensionLabel {
 
 }  // namespace tiledb::sm
 
-#endif
-
 /** Converts the filter into a string representation. */
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::DimensionLabel& dl);
+
+#endif

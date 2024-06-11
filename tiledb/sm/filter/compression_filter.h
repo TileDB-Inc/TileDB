@@ -123,9 +123,6 @@ class CompressionFilter : public Filter {
   /** Dumps the filter details in ASCII format in the selected output file. */
   void dump(FILE* out) const override;
 
-  /** Dumps the filter details in ASCII format in the selected output string. */
-  void dump(std::string* out) const override;
-
   /**
    * Compress the given input into the given output.
    */
@@ -154,6 +151,10 @@ class CompressionFilter : public Filter {
 
   /** Set the compression level used by this filter instance. */
   void set_compression_level(int compressor_level);
+
+ protected:
+  /** Dumps the filter details in ASCII format in the selected output string. */
+  void output(std::string* out) const override;
 
  private:
   /** The compressor. */

@@ -60,7 +60,7 @@ void ChecksumMD5Filter::dump(FILE* out) const {
   fprintf(out, "ChecksumMD5");
 }
 
-void ChecksumMD5Filter::dump(std::string* out) const {
+void ChecksumMD5Filter::output(std::string* out) const {
   *out = "ChecksumMD5";
 }
 

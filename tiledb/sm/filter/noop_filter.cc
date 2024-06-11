@@ -55,7 +55,7 @@ void NoopFilter::dump(FILE* out) const {
   fprintf(out, "NoOp");
 }
 
-void NoopFilter::dump(std::string* out) const {
+void NoopFilter::output(std::string* out) const {
   *out = "NoOp";
 }
 
