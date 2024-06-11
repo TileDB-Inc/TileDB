@@ -43,6 +43,13 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
+class WhiteboxWriterTile {
+ public:
+  static void set_max_tile_chunk_size(uint64_t size) {
+    WriterTile::max_tile_chunk_size_ = size;
+  }
+};
+
 class TileDataGenerator {
  public:
   virtual ~TileDataGenerator() = default;
@@ -139,7 +146,7 @@ class IncrementTileDataGenerator : public TileDataGenerator {
   }
 
   ~IncrementTileDataGenerator() {
-    WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+    WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
   }
 
   uint64_t cell_size() const override {

@@ -42,12 +42,12 @@ SimpleVariableTestData::SimpleVariableTestData()
     : target_ncells_per_chunk_{10}
     , elements_per_chunk_{14, 6, 11, 7, 10, 10, 20, 10, 12}
     , tile_data_generator_{{4, 10, 6, 11, 7, 9, 1, 10, 20, 2, 2, 2, 2, 2, 12}} {
-  WriterTile::set_max_tile_chunk_size(
+  WhiteboxWriterTile::set_max_tile_chunk_size(
       target_ncells_per_chunk_ * sizeof(uint64_t));
 }
 
 SimpleVariableTestData::~SimpleVariableTestData() {
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
 
 /**
