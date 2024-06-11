@@ -254,8 +254,6 @@ struct file_data_sizes_s {
       {0, 0, 0}};
 
 TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
-  int errcnt = 0;
-
   magic_t magic_mimeenc_embedded;
   magic_t magic_mimeenc_external;
   magic_t magic_mimetyp_embedded;
@@ -390,15 +388,9 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
         return 2;
       }
 
-      if (strcmp(mime_type_embedded, mime_type_external)) {
-        fprintf(
-            stderr,
-            "ERROR mismatch (%s) mime type embedded (%s) vs external (%s)\n",
-            file_item->file_name,
-            mime_type_embedded,
-            mime_type_external);
-        ++errcnt;
-      }
+      CHECK(
+          std::string_view(mime_type_embedded) ==
+          std::string_view(mime_type_external));
 
       mime_enc_embedded = magic_buffer(
           magic_mimeenc_embedded,
@@ -431,17 +423,9 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
         return 2;
       }
 
-      if (strcmp(mime_enc_embedded, mime_enc_external)) {
-        fprintf(
-            stderr,
-            "ERROR mismatch (%s) mime encoding embedded (%s) vs external "
-            "(%s)\n",
-            file_item->file_name,
-            mime_enc_embedded,
-            mime_enc_external);
-        ++errcnt;
-      }
-      file_item++;
+      CHECK(
+          std::string_view(mime_enc_embedded) ==
+          std::string_view(mime_enc_external));
       if (!global_open_close) {
         magic_closes();
       }
@@ -457,6 +441,4 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
   REQUIRE(proc_list(file_data_sizes2, true) == 0);
   REQUIRE(proc_list(file_data_sizes1, false) == 0);
   REQUIRE(proc_list(file_data_sizes2, false) == 0);
-
-  REQUIRE(errcnt == 0);
 }
