@@ -92,10 +92,6 @@ void ZStd::decompress(
     ConstBuffer* input_buffer,
     PreallocatedBuffer* output_buffer) {
   // Sanity check
-  if (input_buffer->data() == nullptr || output_buffer->data() == nullptr)
-    throw ZStdException(
-        "Failed decompressing with ZStd; invalid buffer format");
-
   if (decompress_ctx_pool == nullptr) {
     throw ZStdException(
         "Failed decompressing with ZStd; Resource pool not initialized");
