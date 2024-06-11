@@ -69,7 +69,7 @@ Status ArrayMetaConsolidator::consolidate(
 
   // Open array for reading
   auto array_uri = URI(array_name);
-  Array array_for_reads(array_uri, storage_manager_);
+  Array array_for_reads(storage_manager_->resources(), array_uri);
   RETURN_NOT_OK(array_for_reads.open(
       QueryType::READ,
       config_.timestamp_start_,
@@ -79,7 +79,7 @@ Status ArrayMetaConsolidator::consolidate(
       key_length));
 
   // Open array for writing
-  Array array_for_writes(array_uri, storage_manager_);
+  Array array_for_writes(storage_manager_->resources(), array_uri);
   RETURN_NOT_OK_ELSE(
       array_for_writes.open(
           QueryType::WRITE, encryption_type, encryption_key, key_length),

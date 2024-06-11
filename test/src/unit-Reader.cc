@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -164,7 +164,7 @@ TEST_CASE_METHOD(
   std::unordered_map<std::string, tiledb::sm::QueryBuffer> aggregate_buffers;
   std::optional<QueryCondition> condition;
   ThreadPool tp_cpu(4), tp_io(4);
-  Array array(URI(array_name_), context.storage_manager());
+  Array array(context.resources(), URI(array_name_));
   CHECK(array.open(QueryType::READ, EncryptionType::NO_ENCRYPTION, nullptr, 0)
             .ok());
   Subarray subarray(&array, &g_helper_stats, g_helper_logger());

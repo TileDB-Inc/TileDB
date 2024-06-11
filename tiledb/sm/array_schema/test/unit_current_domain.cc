@@ -266,7 +266,7 @@ void CurrentDomainFx<T>::create_array(shared_ptr<ArraySchema> schema) {
 
 template <class T>
 shared_ptr<Array> CurrentDomainFx<T>::get_array(QueryType type) {
-  auto array = make_shared<Array>(HERE(), uri_, ctx_.storage_manager());
+  auto array = make_shared<Array>(HERE(), ctx_.resources(), uri_);
   throw_if_not_ok(array->open(type, EncryptionType::NO_ENCRYPTION, nullptr, 0));
   return array;
 }
