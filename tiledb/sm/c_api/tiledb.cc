@@ -2176,7 +2176,7 @@ int32_t tiledb_array_alloc(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
@@ -2236,7 +2236,7 @@ int32_t tiledb_array_delete(tiledb_ctx_t* ctx, const char* uri) {
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ = make_shared<tiledb::sm::Array>(
-        HERE(), tiledb::sm::URI(uri), ctx->storage_manager());
+        HERE(), ctx->resources(), tiledb::sm::URI(uri));
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");
@@ -2324,7 +2324,7 @@ capi_return_t tiledb_array_delete_fragments_v2(
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (...) {
     delete array;
     array = nullptr;
@@ -2394,7 +2394,7 @@ capi_return_t tiledb_array_delete_fragments_list(
   tiledb_array_t* array = new (std::nothrow) tiledb_array_t;
   try {
     array->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (...) {
     delete array;
     array = nullptr;
@@ -3384,7 +3384,7 @@ int32_t tiledb_deserialize_array(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
@@ -3538,7 +3538,7 @@ int32_t tiledb_deserialize_array_open(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation "
@@ -3719,7 +3719,7 @@ int32_t tiledb_deserialize_query_and_array(
   // Allocate an array object
   try {
     (*array)->array_ =
-        make_shared<tiledb::sm::Array>(HERE(), uri, ctx->storage_manager());
+        make_shared<tiledb::sm::Array>(HERE(), ctx->resources(), uri);
   } catch (std::bad_alloc&) {
     auto st = Status_Error(
         "Failed to create TileDB array object; Memory allocation error");

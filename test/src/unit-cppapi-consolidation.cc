@@ -226,6 +226,7 @@ TEST_CASE(
 
   Context ctx;
   Config config;
+  config.set("sm.consolidation.buffer_size", "1000");
 
   FragmentInfo fragment_info(ctx, array_name);
   fragment_info.load();

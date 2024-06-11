@@ -96,7 +96,7 @@ tdb_unique_ptr<Array> QueryPlanFx::create_array(const URI uri) {
 
   // Create the (empty) array on disk.
   throw_if_not_ok(Array::create(resources_, uri, schema, key));
-  tdb_unique_ptr<Array> array(new Array{uri, sm_.get()});
+  tdb_unique_ptr<Array> array(new Array{resources_, uri});
 
   return array;
 }
