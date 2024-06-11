@@ -177,9 +177,10 @@ ArrayDirectory::load_all_array_schemas(
           array_schema->set_array_uri(uri_);
           schema_vector[schema_ith] = array_schema;
         } catch (std::exception& e) {
-          std::throw_with_nested(ArrayDirectoryException(
-              "Cannot load array schema from URI '" + schema_uri.to_string() +
-              "'."));
+          // TODO: We could throw a nested exception, but converting exceptions
+          // to statuses loses the inner exception messages. We can revisit this
+          // when Status gets removed from this module.
+          throw ArrayDirectoryException(e.what());
         }
 
         return Status::Ok();
