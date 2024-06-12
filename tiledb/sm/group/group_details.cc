@@ -92,8 +92,7 @@ void GroupDetails::mark_member_for_addition(
     absolute_group_member_uri =
         group_uri_.join_path(group_member_uri.to_string());
   }
-  ObjectType type = ObjectType::INVALID;
-  throw_if_not_ok(object_type(resources, absolute_group_member_uri, &type));
+  ObjectType type = object_type(resources, absolute_group_member_uri);
   if (type == ObjectType::INVALID) {
     throw GroupDetailsException(
         "Cannot add group member " + absolute_group_member_uri.to_string() +
@@ -203,7 +202,7 @@ GroupDetails::members() const {
   return members_;
 }
 
-Status GroupDetails::store(
+void GroupDetails::store(
     ContextResources& resources,
     const URI& group_detail_folder_uri,
     const URI& group_detail_uri,
@@ -231,8 +230,6 @@ Status GroupDetails::store(
     throw_if_not_ok(vfs.create_dir(group_detail_folder_uri));
   }
   GenericTileIO::store_data(resources, group_detail_uri, tile, encryption_key);
-
-  return Status::Ok();
 }
 
 std::optional<shared_ptr<GroupDetails>> GroupDetails::deserialize(

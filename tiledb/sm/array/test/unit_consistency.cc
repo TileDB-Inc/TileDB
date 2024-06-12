@@ -168,7 +168,7 @@ TEST_CASE(
   WhiteboxConsistencyController x;
   const URI uri = URI("whitebox_single_array");
 
-  // Create a StorageManager
+  // Create a ContextResources
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
@@ -193,7 +193,7 @@ TEST_CASE(
     "[ConsistencyController][array][vector]") {
   WhiteboxConsistencyController x;
 
-  // Create a StorageManager
+  // Create a ContextResources
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
@@ -235,7 +235,7 @@ TEST_CASE(
   WhiteboxConsistencyController x;
   const URI uri = URI("whitebox_modify_exclusive");
 
-  // Create a StorageManager
+  // Create a ContextResources
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");

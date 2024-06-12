@@ -82,16 +82,14 @@ Group::Group(ContextResources& resources, const URI& group_uri)
   memory_tracker_->set_type(MemoryTrackerType::GROUP);
 }
 
-Status Group::create(ContextResources& resources, const URI& uri) {
+void Group::create(ContextResources& resources, const URI& uri) {
   // Create group URI
   if (uri.is_invalid())
     throw GroupException(
         "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
 
   // Check if group exists
-  bool exists;
-  throw_if_not_ok(is_group(resources, uri, &exists));
-  if (exists) {
+  if (is_group(resources, uri)) {
     throw GroupException(
         "Cannot create group; Group '" + uri.to_string() + "' already exists");
   }
@@ -101,7 +99,7 @@ Status Group::create(ContextResources& resources, const URI& uri) {
     Group group(resources, uri);
     throw_if_not_ok(
         resources.rest_client()->post_group_create_to_rest(uri, &group));
-    return Status::Ok();
+    return;
   }
 
   // Create group directory
@@ -118,7 +116,6 @@ Status Group::create(ContextResources& resources, const URI& uri) {
   // Create group detail folder
   throw_if_not_ok(resources.vfs().create_dir(
       uri.join_path(constants::group_detail_dir_name)));
-  return Status::Ok();
 }
 
 void Group::open(
@@ -245,11 +242,11 @@ void Group::close_for_writes() {
   if (group_details()->is_modified()) {
     const URI& group_detail_folder_uri = group_detail_uri();
     auto group_detail_uri = generate_detail_uri();
-    throw_if_not_ok(group_details()->store(
+    group_details()->store(
         resources_,
         group_detail_folder_uri,
         group_detail_uri,
-        *encryption_key()));
+        *encryption_key());
   }
 }
 
@@ -568,7 +565,7 @@ void Group::set_metadata_loaded(const bool metadata_loaded) {
   metadata_loaded_ = metadata_loaded;
 }
 
-Status Group::consolidate_metadata(
+void Group::consolidate_metadata(
     ContextResources& resources, const char* group_name, const Config& config) {
   // Check group URI
   URI group_uri(group_name);
@@ -576,10 +573,7 @@ Status Group::consolidate_metadata(
     throw GroupException("Cannot consolidate group metadata; Invalid URI");
   }
   // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
+  if (object_type(resources, group_uri) != ObjectType::GROUP) {
     throw GroupException(
         "Cannot consolidate group metadata; Group does not exist");
   }
@@ -587,10 +581,10 @@ Status Group::consolidate_metadata(
   // Consolidate
   // Encryption credentials are loaded by Group from config
   StorageManager sm(resources, resources.logger(), config);
-  auto consolidator = Consolidator::create(
-      resources, ConsolidationMode::GROUP_META, config, &sm);
-  return consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  throw_if_not_ok(consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0));
 }
 
 void Group::vacuum_metadata(
@@ -602,10 +596,7 @@ void Group::vacuum_metadata(
   }
 
   // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
+  if (object_type(resources, group_uri) != ObjectType::GROUP) {
     throw GroupException("Cannot vacuum group metadata; Group does not exist");
   }
 

@@ -63,9 +63,9 @@ bool is_array(ContextResources& resources, const URI& uri);
  * @param uri the URI to be checked.
  * @param is_group Set to `true` if the URI is a group and `false`
  *     otherwise.
- * @return Status
+ * @return bool
  */
-Status is_group(ContextResources& resources, const URI& uri, bool* is_group);
+bool is_group(ContextResources& resources, const URI& uri);
 
 /**
  * Returns the tiledb object type
@@ -73,10 +73,9 @@ Status is_group(ContextResources& resources, const URI& uri, bool* is_group);
  * @param resources the context resources.
  * @param uri Path to TileDB object resource
  * @param type The ObjectType to be retrieved.
- * @return Status
+ * @return ObjectType
  */
-Status object_type(
-    ContextResources& resources, const URI& uri, ObjectType* type);
+ObjectType object_type(ContextResources& resources, const URI& uri);
 
 /**
  * Moves a TileDB object. If `new_path` exists, it will be overwritten.
@@ -84,9 +83,8 @@ Status object_type(
  * @param resources the context resources.
  * @param old_path the old path of the object.
  * @param new_path the new path of the object.
- * @return Status
  */
-Status object_move(
+void object_move(
     ContextResources& resources, const char* old_path, const char* new_path);
 
 /**
@@ -94,9 +92,8 @@ Status object_move(
  *
  * @param resources the context resources.
  * @param path the path to the object to be removed.
- * @return Status
  */
-Status object_remove(ContextResources& resources, const char* path);
+void object_remove(ContextResources& resources, const char* path);
 
 }  // namespace tiledb::sm
 

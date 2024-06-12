@@ -2562,8 +2562,8 @@ int32_t tiledb_array_create(
     throw_if_not_ok(
         key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
     // Create the array
-    throw_if_not_ok(tiledb::sm::Array::create(
-        ctx->resources(), uri, array_schema->array_schema_, key));
+    tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key);
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2581,11 +2581,11 @@ int32_t tiledb_array_create(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(tiledb::sm::Array::create(
+      tiledb::sm::Array::create(
           ctx->resources(),
           dim_label_ref.uri(uri),
           dim_label_ref.schema(),
-          key));
+          key);
     }
   }
   return TILEDB_OK;
@@ -2633,8 +2633,8 @@ int32_t tiledb_array_create_with_key(
         key_length));
 
     // Create the array
-    throw_if_not_ok(tiledb::sm::Array::create(
-        ctx->resources(), uri, array_schema->array_schema_, key));
+    tiledb::sm::Array::create(
+        ctx->resources(), uri, array_schema->array_schema_, key);
 
     // Create any dimension labels in the array.
     for (tiledb::sm::ArraySchema::dimension_label_size_type ilabel{0};
@@ -2652,11 +2652,11 @@ int32_t tiledb_array_create_with_key(
       }
 
       // Create the dimension label array with the same key.
-      throw_if_not_ok(tiledb::sm::Array::create(
+      tiledb::sm::Array::create(
           ctx->resources(),
           dim_label_ref.uri(uri),
           dim_label_ref.schema(),
-          key));
+          key);
     }
   }
   return TILEDB_OK;
@@ -2893,8 +2893,8 @@ int32_t tiledb_array_encryption_type(
 
   // Get encryption type
   tiledb::sm::EncryptionType enc;
-  throw_if_not_ok(sm::Array::encryption_type(
-      ctx->resources(), tiledb::sm::URI(array_uri), &enc));
+  sm::Array::encryption_type(
+      ctx->resources(), tiledb::sm::URI(array_uri), &enc);
   *encryption_type = static_cast<tiledb_encryption_type_t>(enc);
 
   return TILEDB_OK;
@@ -3020,11 +3020,11 @@ int32_t tiledb_array_evolve(
   throw_if_not_ok(
       key.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0));
   // Evolve schema
-  throw_if_not_ok(tiledb::sm::Array::evolve_array_schema(
+  tiledb::sm::Array::evolve_array_schema(
       ctx->resources(),
       uri,
       array_schema_evolution->array_schema_evolution_,
-      key));
+      key);
 
   // Success
   return TILEDB_OK;
@@ -3075,10 +3075,10 @@ int32_t tiledb_array_upgrade_version(
   }
 
   // Upgrade version
-  throw_if_not_ok(tiledb::sm::Array::upgrade_version(
+  tiledb::sm::Array::upgrade_version(
       ctx->resources(),
       uri,
-      (config == nullptr) ? ctx->config() : config->config()));
+      (config == nullptr) ? ctx->config() : config->config());
 
   return TILEDB_OK;
 }
@@ -3089,22 +3089,19 @@ int32_t tiledb_array_upgrade_version(
 
 int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
-  auto uri = tiledb::sm::URI(path);
-  tiledb::sm::ObjectType object_type;
-  throw_if_not_ok(tiledb::sm::object_type(ctx->resources(), uri, &object_type));
-
-  *type = static_cast<tiledb_object_t>(object_type);
+  *type = static_cast<tiledb_object_t>(
+      tiledb::sm::object_type(ctx->resources(), tiledb::sm::URI(path)));
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_remove(tiledb_ctx_t* ctx, const char* path) {
-  throw_if_not_ok(object_remove(ctx->resources(), path));
+  object_remove(ctx->resources(), path);
   return TILEDB_OK;
 }
 
 int32_t tiledb_object_move(
     tiledb_ctx_t* ctx, const char* old_path, const char* new_path) {
-  throw_if_not_ok(object_move(ctx->resources(), old_path, new_path));
+  object_move(ctx->resources(), old_path, new_path);
   return TILEDB_OK;
 }
 

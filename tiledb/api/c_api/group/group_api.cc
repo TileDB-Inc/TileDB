@@ -81,8 +81,7 @@ capi_return_t tiledb_group_create(
     tiledb_ctx_handle_t* ctx, const char* group_uri) {
   ensure_group_uri_argument_is_valid(group_uri);
 
-  throw_if_not_ok(
-      tiledb::sm::Group::create(ctx->resources(), tiledb::sm::URI(group_uri)));
+  tiledb::sm::Group::create(ctx->resources(), tiledb::sm::URI(group_uri));
 
   return TILEDB_OK;
 }
@@ -576,8 +575,7 @@ capi_return_t tiledb_group_consolidate_metadata(
   ensure_group_uri_argument_is_valid(group_uri);
 
   auto cfg = (config == nullptr) ? ctx->config() : config->config();
-  throw_if_not_ok(tiledb::sm::Group::consolidate_metadata(
-      ctx->resources(), group_uri, cfg));
+  tiledb::sm::Group::consolidate_metadata(ctx->resources(), group_uri, cfg);
 
   return TILEDB_OK;
 }

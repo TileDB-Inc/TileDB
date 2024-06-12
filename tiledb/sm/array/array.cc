@@ -110,10 +110,7 @@ Array::Array(
 /*                API                */
 /* ********************************* */
 
-tuple<
-    Status,
-    optional<std::vector<QueryCondition>>,
-    optional<std::vector<std::vector<UpdateValue>>>>
+tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
 OpenedArray::load_delete_and_update_conditions() {
   auto& locations = array_directory().delete_and_update_tiles_location();
   auto conditions = std::vector<QueryCondition>(locations.size());
@@ -159,12 +156,11 @@ OpenedArray::load_delete_and_update_conditions() {
         throw_if_not_ok(conditions[i].check(array_schema_latest()));
         return Status::Ok();
       });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
 
-  return {Status::Ok(), conditions, update_values};
+  return {conditions, update_values};
 }
 
-Status Array::evolve_array_schema(
+void Array::evolve_array_schema(
     ContextResources& resources,
     const URI& array_uri,
     ArraySchemaEvolution* schema_evolution,
@@ -175,8 +171,9 @@ Status Array::evolve_array_schema(
   }
 
   if (array_uri.is_tiledb()) {
-    return resources.rest_client()->post_array_schema_evolution_to_rest(
-        array_uri, schema_evolution);
+    throw_if_not_ok(
+        resources.rest_client()->post_array_schema_evolution_to_rest(
+            array_uri, schema_evolution));
   }
 
   // Load URIs from the array directory
@@ -218,15 +215,12 @@ Status Array::evolve_array_schema(
 
   // Evolve schema
   auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
-
-  Status st =
-      store_array_schema(resources, array_schema_evolved, encryption_key);
-  if (!st.ok()) {
-    throw ArrayException(
-        "Cannot evolve schema;  Not able to store evolved array schema.");
+  try {
+    store_array_schema(resources, array_schema_evolved, encryption_key);
+  } catch (std::exception& e) {
+    std::throw_with_nested(ArrayException(
+        "Cannot evolve schema; Not able to store evolved array schema."));
   }
-
-  return Status::Ok();
 }
 
 const URI& Array::array_uri() const {
@@ -241,7 +235,7 @@ const EncryptionKey* Array::encryption_key() const {
   return opened_array_->encryption_key();
 }
 
-Status Array::create(
+void Array::create(
     ContextResources& resources,
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
@@ -307,7 +301,6 @@ Status Array::create(
   throw_if_not_ok(resources.vfs().create_dir(array_dimension_labels_uri));
 
   // Get encryption key from config
-  Status st;
   if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
     bool found = false;
     std::string encryption_key_from_cfg =
@@ -330,17 +323,18 @@ Status Array::create(
           (const void*)encryption_key_from_cfg.c_str(),
           static_cast<uint32_t>(encryption_key_from_cfg.size())));
     }
-    st = store_array_schema(resources, array_schema, encryption_key_cfg);
+    try {
+      store_array_schema(resources, array_schema, encryption_key_cfg);
+    } catch (...) {
+      throw_if_not_ok(resources.vfs().remove_dir(array_uri));
+    }
   } else {
-    st = store_array_schema(resources, array_schema, encryption_key);
+    try {
+      store_array_schema(resources, array_schema, encryption_key);
+    } catch (...) {
+      throw_if_not_ok(resources.vfs().remove_dir(array_uri));
+    }
   }
-
-  if (!st.ok()) {
-    throw_if_not_ok(resources.vfs().remove_dir(array_uri));
-    return st;
-  }
-
-  return Status::Ok();
 }
 
 // Used in Consolidator
@@ -833,7 +827,7 @@ void Array::delete_fragments_list(const std::vector<URI>& fragment_uris) {
   }
 }
 
-Status Array::encryption_type(
+void Array::encryption_type(
     ContextResources& resources,
     const URI& uri,
     EncryptionType* encryption_type) {
@@ -859,8 +853,6 @@ Status Array::encryption_type(
   auto&& header = GenericTileIO::read_generic_tile_header(
       resources, array_dir->latest_array_schema_uri(), 0);
   *encryption_type = static_cast<EncryptionType>(header.encryption_type);
-
-  return Status::Ok();
 }
 
 shared_ptr<const Enumeration> Array::get_enumeration(
@@ -2113,7 +2105,7 @@ const ArrayDirectory& Array::load_array_directory() {
   return array_directory();
 }
 
-Status Array::upgrade_version(
+void Array::upgrade_version(
     ContextResources& resources,
     const URI& array_uri,
     const Config& override_config) {
@@ -2168,8 +2160,7 @@ Status Array::upgrade_version(
     throw_if_not_ok(resources.vfs().create_dir(array_schema_dir_uri));
 
     // Store array schema
-    throw_if_not_ok(
-        store_array_schema(resources, array_schema, encryption_key_cfg));
+    store_array_schema(resources, array_schema, encryption_key_cfg);
 
     // Create commit directory if necessary
     URI array_commit_uri =
@@ -2186,8 +2177,6 @@ Status Array::upgrade_version(
         array_uri.join_path(constants::array_fragment_meta_dir_name);
     throw_if_not_ok(resources.vfs().create_dir(array_fragment_metadata_uri));
   }
-
-  return Status::Ok();
 }
 
 Status Array::compute_non_empty_domain() {

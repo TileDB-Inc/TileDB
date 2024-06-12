@@ -218,12 +218,9 @@ class OpenedArray {
   /**
    * Loads the delete and update conditions from storage.
    *
-   * @return Status, vector of the conditions, vector of the update values.
+   * @return vector of the conditions, vector of the update values.
    */
-  tuple<
-      Status,
-      optional<std::vector<QueryCondition>>,
-      optional<std::vector<std::vector<UpdateValue>>>>
+  tuple<std::vector<QueryCondition>, std::vector<std::vector<UpdateValue>>>
   load_delete_and_update_conditions();
 
  private:
@@ -375,9 +372,8 @@ class Array {
    * @param array_uri The uri of the array whose schema is to be evolved.
    * @param schema_evolution The schema evolution.
    * @param encryption_key The encryption key to use.
-   * @return Status
    */
-  static Status evolve_array_schema(
+  static void evolve_array_schema(
       ContextResources& resources,
       const URI& array_uri,
       ArraySchemaEvolution* array_schema,
@@ -397,9 +393,8 @@ class Array {
    * @param array_uri The URI of the array to be created.
    * @param array_schema The array schema.
    * @param encryption_key The encryption key to use.
-   * @return Status
    */
-  static Status create(
+  static void create(
       ContextResources& resources,
       const URI& array_uri,
       const shared_ptr<ArraySchema>& array_schema,
@@ -578,9 +573,8 @@ class Array {
    * @param resources The context resources.
    * @param uri The URI of the array.
    * @param encryption_type Set to the encryption type.
-   * @return Status
    */
-  static Status encryption_type(
+  static void encryption_type(
       ContextResources& resources,
       const URI& uri,
       EncryptionType* encryption_type);
@@ -1058,9 +1052,8 @@ class Array {
    * @param config Configuration parameters for the upgrade
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @return Status
    */
-  static Status upgrade_version(
+  static void upgrade_version(
       ContextResources& resources, const URI& uri, const Config& config);
 
  private:

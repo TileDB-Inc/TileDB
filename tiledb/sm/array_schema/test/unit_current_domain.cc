@@ -261,7 +261,7 @@ shared_ptr<ArraySchema> CurrentDomainFx<T>::create_schema_var() {
 
 template <class T>
 void CurrentDomainFx<T>::create_array(shared_ptr<ArraySchema> schema) {
-  throw_if_not_ok(Array::create(ctx_.resources(), uri_, schema, enc_key_));
+  Array::create(ctx_.resources(), uri_, schema, enc_key_);
 }
 
 template <class T>
@@ -524,8 +524,8 @@ TEMPLATE_LIST_TEST_CASE_METHOD(
 
   // Persist evolved schema and read it back, check it shows the correct
   // rectangle
-  throw_if_not_ok(Array::evolve_array_schema(
-      this->ctx_.resources(), this->uri_, ase.get(), this->enc_key_));
+  Array::evolve_array_schema(
+      this->ctx_.resources(), this->uri_, ase.get(), this->enc_key_);
 
   // Read it back
   auto new_schema = this->get_array_schema_latest();

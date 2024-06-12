@@ -91,8 +91,7 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
   tiledb::sm::Array a(ctx.resources(), tiledb::sm::URI{"mem://junk"});
   tiledb::sm::EncryptionKey ek;
   CHECK(ek.set_key(tiledb::sm::EncryptionType::NO_ENCRYPTION, nullptr, 0).ok());
-  CHECK(tiledb::sm::Array::create(ctx.resources(), a.array_uri(), sp_as, ek)
-            .ok());
+  tiledb::sm::Array::create(ctx.resources(), a.array_uri(), sp_as, ek);
   CHECK(a.open(
              tiledb::sm::QueryType::READ,
              tiledb::sm::EncryptionType::NO_ENCRYPTION,

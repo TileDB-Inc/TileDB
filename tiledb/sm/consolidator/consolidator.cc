@@ -152,10 +152,7 @@ void Consolidator::array_consolidate(
   }
 
   // Check if array exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
+  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
     throw ConsolidatorException(
         "Cannot consolidate array; Array does not exist");
   }
@@ -216,10 +213,7 @@ void Consolidator::fragments_consolidate(
   }
 
   // Check if array exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources, array_uri, &obj_type));
-
-  if (obj_type != ObjectType::ARRAY) {
+  if (object_type(resources, array_uri) != ObjectType::ARRAY) {
     throw ConsolidatorException(
         "Cannot consolidate array; Array does not exist");
   }

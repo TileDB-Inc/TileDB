@@ -208,17 +208,16 @@ void UpdatesFx::check_update_conditions(
   auto array_ptr = array->ptr()->array_;
 
   // Load delete conditions.
-  auto&& [st, conditions, update_values] =
+  auto&& [conditions, update_values] =
       array_ptr->opened_array()->load_delete_and_update_conditions();
-  REQUIRE(st.ok());
-  REQUIRE(conditions->size() == qcs.size());
+  REQUIRE(conditions.size() == qcs.size());
 
   for (uint64_t i = 0; i < qcs.size(); i++) {
     // Compare to negated condition.
     auto cmp = qcs[i].ptr()->query_condition_->negated_condition();
-    CHECK(tiledb::test::ast_equal(conditions->at(i).ast(), cmp.ast()));
+    CHECK(tiledb::test::ast_equal(conditions[i].ast(), cmp.ast()));
 
-    auto& loaded_update_values = update_values->at(i);
+    auto loaded_update_values = update_values[i];
     for (uint64_t j = 0; j < uvs[i].size(); j++) {
       CHECK(uvs[i][j].field_name() == loaded_update_values[j].field_name());
     }
