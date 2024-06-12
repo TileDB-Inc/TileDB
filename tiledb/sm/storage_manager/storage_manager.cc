@@ -45,6 +45,7 @@
 #include "tiledb/sm/array/array_directory.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/array_schema/array_schema_evolution.h"
+#include "tiledb/sm/array_schema/auxiliary.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/array_type.h"
@@ -58,6 +59,7 @@
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/storage_manager/storage_manager.h"
@@ -71,6 +73,13 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+class StorageManagerException : public StatusException {
+ public:
+  explicit StorageManagerException(const std::string& message)
+      : StatusException("StorageManager", message) {
+  }
+};
 
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
@@ -122,258 +131,13 @@ StorageManagerCanonical::~StorageManagerCanonical() {
 /*               API              */
 /* ****************************** */
 
-Status StorageManagerCanonical::array_create(
-    const URI& array_uri,
-    const shared_ptr<ArraySchema>& array_schema,
-    const EncryptionKey& encryption_key) {
-  // Check array schema
-  if (array_schema == nullptr) {
-    return logger_->status(
-        Status_StorageManagerError("Cannot create array; Empty array schema"));
-  }
-
-  // Check if array exists
-  if (is_array(resources_, array_uri)) {
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot create array; Array '") + array_uri.c_str() +
-        "' already exists"));
-  }
-
-  std::lock_guard<std::mutex> lock{object_create_mtx_};
-  array_schema->set_array_uri(array_uri);
-  array_schema->generate_uri();
-  array_schema->check(config_);
-
-  // Create array directory
-  throw_if_not_ok(resources_.vfs().create_dir(array_uri));
-
-  // Create array schema directory
-  URI array_schema_dir_uri =
-      array_uri.join_path(constants::array_schema_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
-
-  // Create the enumerations directory inside the array schema directory
-  URI array_enumerations_uri =
-      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_enumerations_uri));
-
-  // Create commit directory
-  URI array_commit_uri = array_uri.join_path(constants::array_commits_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_commit_uri));
-
-  // Create fragments directory
-  URI array_fragments_uri =
-      array_uri.join_path(constants::array_fragments_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_fragments_uri));
-
-  // Create array metadata directory
-  URI array_metadata_uri =
-      array_uri.join_path(constants::array_metadata_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_metadata_uri));
-
-  // Create fragment metadata directory
-  URI array_fragment_metadata_uri =
-      array_uri.join_path(constants::array_fragment_meta_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_fragment_metadata_uri));
-
-  // Create dimension label directory
-  URI array_dimension_labels_uri =
-      array_uri.join_path(constants::array_dimension_labels_dir_name);
-  throw_if_not_ok(resources_.vfs().create_dir(array_dimension_labels_uri));
-
-  // Get encryption key from config
-  Status st;
-  if (encryption_key.encryption_type() == EncryptionType::NO_ENCRYPTION) {
-    bool found = false;
-    std::string encryption_key_from_cfg =
-        config_.get("sm.encryption_key", &found);
-    assert(found);
-    std::string encryption_type_from_cfg =
-        config_.get("sm.encryption_type", &found);
-    assert(found);
-    auto&& [st_enc, etc] = encryption_type_enum(encryption_type_from_cfg);
-    RETURN_NOT_OK(st_enc);
-    EncryptionType encryption_type_cfg = etc.value();
-
-    EncryptionKey encryption_key_cfg;
-    if (encryption_key_from_cfg.empty()) {
-      RETURN_NOT_OK(
-          encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
-    } else {
-      RETURN_NOT_OK(encryption_key_cfg.set_key(
-          encryption_type_cfg,
-          (const void*)encryption_key_from_cfg.c_str(),
-          static_cast<uint32_t>(encryption_key_from_cfg.size())));
-    }
-    st = store_array_schema(array_schema, encryption_key_cfg);
-  } else {
-    st = store_array_schema(array_schema, encryption_key);
-  }
-
-  // Store array schema
-  if (!st.ok()) {
-    throw_if_not_ok(resources_.vfs().remove_dir(array_uri));
-    return st;
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManager::array_evolve_schema(
-    const URI& array_uri,
-    ArraySchemaEvolution* schema_evolution,
-    const EncryptionKey& encryption_key) {
-  // Check array schema
-  if (schema_evolution == nullptr) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot evolve array; Empty schema evolution"));
-  }
-
-  if (array_uri.is_tiledb()) {
-    return resources_.rest_client()->post_array_schema_evolution_to_rest(
-        array_uri, schema_evolution);
-  }
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir{
-      resources(),
-      array_uri,
-      0,
-      UINT64_MAX,
-      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
-
-  // Check if array exists
-  if (!is_array(resources_, array_uri)) {
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot evolve array; Array '") + array_uri.c_str() +
-        "' not exists"));
-  }
-
-  auto&& array_schema = array_dir.load_array_schema_latest(
-      encryption_key, resources_.ephemeral_memory_tracker());
-
-  // Load required enumerations before evolution.
-  auto enmr_names = schema_evolution->enumeration_names_to_extend();
-  if (enmr_names.size() > 0) {
-    std::unordered_set<std::string> enmr_path_set;
-    for (auto name : enmr_names) {
-      enmr_path_set.insert(array_schema->get_enumeration_path_name(name));
-    }
-    std::vector<std::string> enmr_paths;
-    for (auto path : enmr_path_set) {
-      enmr_paths.emplace_back(path);
-    }
-
-    auto loaded_enmrs = array_dir.load_enumerations_from_paths(
-        enmr_paths, encryption_key, resources_.create_memory_tracker());
-
-    for (auto enmr : loaded_enmrs) {
-      array_schema->store_enumeration(enmr);
-    }
-  }
-
-  // Evolve schema
-  auto array_schema_evolved = schema_evolution->evolve_schema(array_schema);
-
-  Status st = store_array_schema(array_schema_evolved, encryption_key);
-  if (!st.ok()) {
-    logger_->status_no_return_value(st);
-    return logger_->status(Status_StorageManagerError(
-        "Cannot evolve schema;  Not able to store evolved array schema."));
-  }
-
-  return Status::Ok();
-}
-
-Status StorageManagerCanonical::array_upgrade_version(
-    const URI& array_uri, const Config& override_config) {
-  // Check if array exists
-  if (!is_array(resources_, array_uri))
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot upgrade array; Array '") + array_uri.c_str() +
-        "' does not exist"));
-
-  // Load URIs from the array directory
-  tiledb::sm::ArrayDirectory array_dir{
-      resources(),
-      array_uri,
-      0,
-      UINT64_MAX,
-      tiledb::sm::ArrayDirectoryMode::SCHEMA_ONLY};
-
-  // Get encryption key from config
-  bool found = false;
-  std::string encryption_key_from_cfg =
-      override_config.get("sm.encryption_key", &found);
-  assert(found);
-  std::string encryption_type_from_cfg =
-      override_config.get("sm.encryption_type", &found);
-  assert(found);
-  auto [st1, etc] = encryption_type_enum(encryption_type_from_cfg);
-  RETURN_NOT_OK(st1);
-  EncryptionType encryption_type_cfg = etc.value();
-
-  EncryptionKey encryption_key_cfg;
-  if (encryption_key_from_cfg.empty()) {
-    RETURN_NOT_OK(encryption_key_cfg.set_key(encryption_type_cfg, nullptr, 0));
-  } else {
-    RETURN_NOT_OK(encryption_key_cfg.set_key(
-        encryption_type_cfg,
-        (const void*)encryption_key_from_cfg.c_str(),
-        static_cast<uint32_t>(encryption_key_from_cfg.size())));
-  }
-
-  auto&& array_schema = array_dir.load_array_schema_latest(
-      encryption_key_cfg, resources().ephemeral_memory_tracker());
-
-  if (array_schema->version() < constants::format_version) {
-    array_schema->generate_uri();
-    array_schema->set_version(constants::format_version);
-
-    // Create array schema directory if necessary
-    URI array_schema_dir_uri =
-        array_uri.join_path(constants::array_schema_dir_name);
-    auto st = resources_.vfs().create_dir(array_schema_dir_uri);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
-
-    // Store array schema
-    st = store_array_schema(array_schema, encryption_key_cfg);
-    RETURN_NOT_OK_ELSE(st, logger_->status_no_return_value(st));
-
-    // Create commit directory if necessary
-    URI array_commit_uri =
-        array_uri.join_path(constants::array_commits_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_commit_uri),
-        logger_->status_no_return_value(st));
-
-    // Create fragments directory if necessary
-    URI array_fragments_uri =
-        array_uri.join_path(constants::array_fragments_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_fragments_uri),
-        logger_->status_no_return_value(st));
-
-    // Create fragment metadata directory if necessary
-    URI array_fragment_metadata_uri =
-        array_uri.join_path(constants::array_fragment_meta_dir_name);
-    RETURN_NOT_OK_ELSE(
-        resources_.vfs().create_dir(array_fragment_metadata_uri),
-        logger_->status_no_return_value(st));
-  }
-
-  return Status::Ok();
-}
-
 Status StorageManagerCanonical::async_push_query(Query* query) {
   cancelable_tasks_.execute(
       &resources_.compute_tp(),
       [this, query]() {
         // Process query.
-        Status st = query_submit(query);
-        if (!st.ok())
-          logger_->status_no_return_value(st);
-        return st;
+        throw_if_not_ok(query_submit(query));
+        return Status::Ok();
       },
       [query]() {
         // Task was cancelled. This is safe to perform in a separate thread,
@@ -429,47 +193,6 @@ StorageManagerCanonical::tags() const {
   return tags_;
 }
 
-Status StorageManagerCanonical::group_create(const std::string& group_uri) {
-  // Create group URI
-  URI uri(group_uri);
-  if (uri.is_invalid())
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create group '" + group_uri + "'; Invalid group URI"));
-
-  // Check if group exists
-  bool exists;
-  throw_if_not_ok(is_group(resources_, uri, &exists));
-  if (exists)
-    return logger_->status(Status_StorageManagerError(
-        std::string("Cannot create group; Group '") + uri.c_str() +
-        "' already exists"));
-
-  std::lock_guard<std::mutex> lock{object_create_mtx_};
-
-  if (uri.is_tiledb()) {
-    Group group(resources_, uri, this);
-    throw_if_not_ok(
-        resources_.rest_client()->post_group_create_to_rest(uri, &group));
-    return Status::Ok();
-  }
-
-  // Create group directory
-  throw_if_not_ok(resources_.vfs().create_dir(uri));
-
-  // Create group file
-  URI group_filename = uri.join_path(constants::group_filename);
-  throw_if_not_ok(resources_.vfs().touch(group_filename));
-
-  // Create metadata folder
-  throw_if_not_ok(resources_.vfs().create_dir(
-      uri.join_path(constants::group_metadata_dir_name)));
-
-  // Create group detail folder
-  throw_if_not_ok(resources_.vfs().create_dir(
-      uri.join_path(constants::group_detail_dir_name)));
-  return Status::Ok();
-}
-
 void StorageManagerCanonical::increment_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_++;
@@ -481,8 +204,8 @@ Status StorageManagerCanonical::object_iter_begin(
   // Sanity check
   URI path_uri(path);
   if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
+    throw StorageManagerException(
+        "Cannot create object iterator; Invalid input path");
   }
 
   // Get all contents of path
@@ -514,8 +237,8 @@ Status StorageManagerCanonical::object_iter_begin(
   // Sanity check
   URI path_uri(path);
   if (path_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot create object iterator; Invalid input path"));
+    throw StorageManagerException(
+        "Cannot create object iterator; Invalid input path");
   }
 
   // Get all contents of path
@@ -657,88 +380,10 @@ Status StorageManagerCanonical::set_tag(
   return Status::Ok();
 }
 
-Status StorageManagerCanonical::store_array_schema(
-    const shared_ptr<ArraySchema>& array_schema,
-    const EncryptionKey& encryption_key) {
-  const URI schema_uri = array_schema->uri();
-
-  // Serialize
-  SizeComputationSerializer size_computation_serializer;
-  array_schema->serialize(size_computation_serializer);
-
-  auto tile{WriterTile::from_generic(
-      size_computation_serializer.size(),
-      resources_.ephemeral_memory_tracker())};
-  Serializer serializer(tile->data(), tile->size());
-  array_schema->serialize(serializer);
-  resources_.stats().add_counter("write_array_schema_size", tile->size());
-
-  // Delete file if it exists already
-  bool exists;
-  throw_if_not_ok(resources_.vfs().is_file(schema_uri, &exists));
-  if (exists) {
-    throw_if_not_ok(resources_.vfs().remove_file(schema_uri));
-  }
-
-  // Check if the array schema directory exists
-  // If not create it, this is caused by a pre-v10 array
-  bool schema_dir_exists = false;
-  URI array_schema_dir_uri =
-      array_schema->array_uri().join_path(constants::array_schema_dir_name);
-  throw_if_not_ok(
-      resources_.vfs().is_dir(array_schema_dir_uri, &schema_dir_exists));
-
-  if (!schema_dir_exists) {
-    throw_if_not_ok(resources_.vfs().create_dir(array_schema_dir_uri));
-  }
-
-  GenericTileIO::store_data(resources_, schema_uri, tile, encryption_key);
-
-  // Create the `__enumerations` directory under `__schema` if it doesn't
-  // exist. This might happen if someone tries to add an enumeration to an
-  // array created before version 19.
-  bool enumerations_dir_exists = false;
-  URI array_enumerations_dir_uri =
-      array_schema_dir_uri.join_path(constants::array_enumerations_dir_name);
-  throw_if_not_ok(resources_.vfs().is_dir(
-      array_enumerations_dir_uri, &enumerations_dir_exists));
-
-  if (!enumerations_dir_exists) {
-    throw_if_not_ok(resources_.vfs().create_dir(array_enumerations_dir_uri));
-  }
-
-  // Serialize all enumerations into the `__enumerations` directory
-  for (auto& enmr_name : array_schema->get_loaded_enumeration_names()) {
-    auto enmr = array_schema->get_enumeration(enmr_name);
-    if (enmr == nullptr) {
-      return logger_->status(Status_StorageManagerError(
-          "Error serializing enumeration; Loaded enumeration is null"));
-    }
-
-    SizeComputationSerializer enumeration_size_serializer;
-    enmr->serialize(enumeration_size_serializer);
-
-    auto tile{WriterTile::from_generic(
-        enumeration_size_serializer.size(),
-        resources_.ephemeral_memory_tracker())};
-    Serializer serializer(tile->data(), tile->size());
-    enmr->serialize(serializer);
-
-    auto abs_enmr_uri = array_enumerations_dir_uri.join_path(enmr->path_name());
-    GenericTileIO::store_data(resources_, abs_enmr_uri, tile, encryption_key);
-  }
-
-  return Status::Ok();
-}
-
 void StorageManagerCanonical::wait_for_zero_in_progress() {
   std::unique_lock<std::mutex> lck(queries_in_progress_mtx_);
   queries_in_progress_cv_.wait(
       lck, [this]() { return queries_in_progress_ == 0; });
-}
-
-shared_ptr<Logger> StorageManagerCanonical::logger() const {
-  return logger_;
 }
 
 /* ****************************** */
@@ -754,54 +399,6 @@ Status StorageManagerCanonical::set_default_tags() {
   RETURN_NOT_OK(set_tag("x-tiledb-api-language", "c"));
 
   return Status::Ok();
-}
-
-Status StorageManagerCanonical::group_metadata_consolidate(
-    const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Invalid URI"));
-  }
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    return logger_->status(Status_StorageManagerError(
-        "Cannot consolidate group metadata; Group does not exist"));
-  }
-
-  // Consolidate
-  // Encryption credentials are loaded by Group from config
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  return consolidator->consolidate(
-      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
-}
-
-void StorageManagerCanonical::group_metadata_vacuum(
-    const char* group_name, const Config& config) {
-  // Check group URI
-  URI group_uri(group_name);
-  if (group_uri.is_invalid()) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Invalid URI");
-  }
-
-  // Check if group exists
-  ObjectType obj_type;
-  throw_if_not_ok(object_type(resources_, group_uri, &obj_type));
-
-  if (obj_type != ObjectType::GROUP) {
-    throw Status_StorageManagerError(
-        "Cannot vacuum group metadata; Group does not exist");
-  }
-
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, this);
-  consolidator->vacuum(group_name);
 }
 
 }  // namespace tiledb::sm

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,8 +37,14 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
+
+class ContextException : public StatusException {
+ public:
+  explicit ContextException(const std::string& message)
+      : StatusException("Context", message) {
+  }
+};
 
 static common::Logger::Level get_log_level(const Config& config);
 
@@ -67,7 +73,7 @@ Context::Context(const Config& config)
   /*
    * Logger class is not yet C.41-compliant
    */
-  throw_if_not_ok(init_loggers(config));
+  init_loggers(config);
 }
 
 /* ****************************** */
@@ -111,9 +117,10 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_async_threads", &num_async_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_async_threads);
-    logger_->status_no_return_value(Status_StorageManagerError(
+    logger_->error(
+        "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_async_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
+        "config parameter \"sm.compute_concurrency_level\".");
   }
 
   uint64_t num_reader_threads{0};
@@ -121,9 +128,10 @@ Status Context::get_config_thread_count(
       "sm.num_reader_threads", &num_reader_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_reader_threads);
-    logger_->status_no_return_value(Status_StorageManagerError(
+    logger_->error(
+        "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_reader_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
+        "config parameter \"sm.compute_concurrency_level\".");
   }
 
   uint64_t num_writer_threads{0};
@@ -131,9 +139,10 @@ Status Context::get_config_thread_count(
       "sm.num_writer_threads", &num_writer_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_writer_threads);
-    logger_->status_no_return_value(Status_StorageManagerError(
+    logger_->error(
+        "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_writer_threads\" has been removed; use "
-        "config parameter \"sm.compute_concurrency_level\"."));
+        "config parameter \"sm.compute_concurrency_level\".");
   }
 
   uint64_t num_vfs_threads{0};
@@ -141,9 +150,10 @@ Status Context::get_config_thread_count(
       config.get<uint64_t>("sm.num_vfs_threads", &num_vfs_threads, &found));
   if (found) {
     config_thread_count = std::max(config_thread_count, num_vfs_threads);
-    logger_->status_no_return_value(Status_StorageManagerError(
+    logger_->error(
+        "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_vfs_threads\" has been removed; use "
-        "config parameter \"sm.io_concurrency_level\"."));
+        "config parameter \"sm.io_concurrency_level\".");
   }
 
   // The "sm.num_tbb_threads" has been deprecated. Users may still be setting
@@ -156,9 +166,10 @@ Status Context::get_config_thread_count(
   if (found) {
     config_thread_count =
         std::max(config_thread_count, static_cast<uint64_t>(num_tbb_threads));
-    logger_->status_no_return_value(Status_StorageManagerError(
+    logger_->error(
+        "[Context::get_config_thread_count] "
         "Config parameter \"sm.num_tbb_threads\" has been removed; use "
-        "config parameter \"sm.io_concurrency_level\"."));
+        "config parameter \"sm.io_concurrency_level\".");
   }
 
   config_thread_count_ret = static_cast<size_t>(config_thread_count);
@@ -210,16 +221,16 @@ size_t Context::get_io_thread_count(const Config& config) {
       std::max(config_thread_count, io_concurrency_level));
 }
 
-Status Context::init_loggers(const Config& config) {
+void Context::init_loggers(const Config& config) {
   // temporarily set level to error so that possible errors reading
   // configuration are visible to the user
   logger_->set_level(Logger::Level::ERR);
 
   const char* format_conf;
-  RETURN_NOT_OK(config.get("config.logging_format", &format_conf));
+  throw_if_not_ok(config.get("config.logging_format", &format_conf));
   assert(format_conf != nullptr);
   Logger::Format format = Logger::Format::DEFAULT;
-  RETURN_NOT_OK(logger_format_from_string(format_conf, &format));
+  throw_if_not_ok(logger_format_from_string(format_conf, &format));
 
   global_logger(format);
   logger_->set_format(static_cast<Logger::Format>(format));
@@ -227,18 +238,16 @@ Status Context::init_loggers(const Config& config) {
   // set logging level from config
   bool found = false;
   uint32_t level = static_cast<unsigned int>(Logger::Level::ERR);
-  RETURN_NOT_OK(config.get<uint32_t>("config.logging_level", &level, &found));
+  throw_if_not_ok(config.get<uint32_t>("config.logging_level", &level, &found));
   assert(found);
   if (level > static_cast<unsigned int>(Logger::Level::TRACE)) {
-    return logger_->status(Status_StorageManagerError(
+    throw ContextException(
         "Cannot set logger level; Unsupported level:" + std::to_string(level) +
-        "set in configuration"));
+        "set in configuration");
   }
 
   global_logger().set_level(static_cast<Logger::Level>(level));
   logger_->set_level(static_cast<Logger::Level>(level));
-
-  return Status::Ok();
 }
 
 common::Logger::Level get_log_level(const Config& config) {
@@ -260,5 +269,4 @@ common::Logger::Level get_log_level(const Config& config) {
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

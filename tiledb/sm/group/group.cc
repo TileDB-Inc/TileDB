@@ -36,6 +36,7 @@
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/stdx_string.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/encryption_type.h"
 #include "tiledb/sm/enums/query_type.h"
@@ -46,6 +47,8 @@
 #include "tiledb/sm/group/group_member_v2.h"
 #include "tiledb/sm/metadata/metadata.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_mutex.h"
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/storage_manager/context_resources.h"
@@ -63,13 +66,9 @@ class GroupException : public StatusException {
   }
 };
 
-Group::Group(
-    ContextResources& resources,
-    const URI& group_uri,
-    StorageManager* storage_manager)
+Group::Group(ContextResources& resources, const URI& group_uri)
     : memory_tracker_(resources.create_memory_tracker())
     , group_uri_(group_uri)
-    , storage_manager_(storage_manager)
     , config_(resources.config())
     , remote_(group_uri.is_tiledb())
     , metadata_(memory_tracker_)
@@ -81,6 +80,45 @@ Group::Group(
     , encryption_key_(tdb::make_shared<EncryptionKey>(HERE()))
     , resources_(resources) {
   memory_tracker_->set_type(MemoryTrackerType::GROUP);
+}
+
+Status Group::create(ContextResources& resources, const URI& uri) {
+  // Create group URI
+  if (uri.is_invalid())
+    throw GroupException(
+        "Cannot create group '" + uri.to_string() + "'; Invalid group URI");
+
+  // Check if group exists
+  bool exists;
+  throw_if_not_ok(is_group(resources, uri, &exists));
+  if (exists) {
+    throw GroupException(
+        "Cannot create group; Group '" + uri.to_string() + "' already exists");
+  }
+
+  std::lock_guard<std::mutex> lock{object_mtx};
+  if (uri.is_tiledb()) {
+    Group group(resources, uri);
+    throw_if_not_ok(
+        resources.rest_client()->post_group_create_to_rest(uri, &group));
+    return Status::Ok();
+  }
+
+  // Create group directory
+  throw_if_not_ok(resources.vfs().create_dir(uri));
+
+  // Create group file
+  URI group_filename = uri.join_path(constants::group_filename);
+  throw_if_not_ok(resources.vfs().touch(group_filename));
+
+  // Create metadata folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_metadata_dir_name)));
+
+  // Create group detail folder
+  throw_if_not_ok(resources.vfs().create_dir(
+      uri.join_path(constants::group_detail_dir_name)));
+  return Status::Ok();
 }
 
 void Group::open(
@@ -325,7 +363,7 @@ void Group::delete_group(const URI& uri, bool recursive) {
         if (member->type() == ObjectType::ARRAY) {
           Array::delete_array(resources_, member_uri);
         } else if (member->type() == ObjectType::GROUP) {
-          Group group_rec(resources_, member_uri, storage_manager_);
+          Group group_rec(resources_, member_uri);
           group_rec.open(QueryType::MODIFY_EXCLUSIVE);
           group_rec.delete_group(member_uri, true);
         }
@@ -530,6 +568,53 @@ void Group::set_metadata_loaded(const bool metadata_loaded) {
   metadata_loaded_ = metadata_loaded;
 }
 
+Status Group::consolidate_metadata(
+    ContextResources& resources, const char* group_name, const Config& config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    throw GroupException("Cannot consolidate group metadata; Invalid URI");
+  }
+  // Check if group exists
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    throw GroupException(
+        "Cannot consolidate group metadata; Group does not exist");
+  }
+
+  // Consolidate
+  // Encryption credentials are loaded by Group from config
+  StorageManager sm(resources, resources.logger(), config);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  return consolidator->consolidate(
+      group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
+}
+
+void Group::vacuum_metadata(
+    ContextResources& resources, const char* group_name, const Config& config) {
+  // Check group URI
+  URI group_uri(group_name);
+  if (group_uri.is_invalid()) {
+    throw GroupException("Cannot vacuum group metadata; Invalid URI");
+  }
+
+  // Check if group exists
+  ObjectType obj_type;
+  throw_if_not_ok(object_type(resources, group_uri, &obj_type));
+
+  if (obj_type != ObjectType::GROUP) {
+    throw GroupException("Cannot vacuum group metadata; Group does not exist");
+  }
+
+  StorageManager sm(resources, resources.logger(), config);
+  auto consolidator =
+      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  consolidator->vacuum(group_name);
+}
+
 const EncryptionKey* Group::encryption_key() const {
   return encryption_key_.get();
 }
@@ -573,11 +658,19 @@ void Group::mark_member_for_addition(
     throw GroupException("Cannot add member; Group is not open");
   }
 
+  if (remote_ && relative) {
+    // Relative URIs are supported in the capnp serialization format, but the
+    // REST server has not yet implemented the logic.
+    throw GroupException(
+        "Cannot add member; Remote groups do not support members with relative "
+        "URIs");
+  }
+
   // Check mode
   if (query_type_ != QueryType::WRITE &&
       query_type_ != QueryType::MODIFY_EXCLUSIVE) {
     throw GroupException(
-        "Cannot get member; Group was not opened in write or modify_exclusive "
+        "Cannot add member; Group was not opened in write or modify_exclusive "
         "mode");
   }
   group_details_->mark_member_for_addition(
@@ -709,7 +802,7 @@ std::string Group::dump(
         member_uri = group_uri_.join_path(it->uri().to_string());
       }
 
-      Group group_rec(resources_, member_uri, storage_manager_);
+      Group group_rec(resources_, member_uri);
       try {
         group_rec.open(QueryType::READ);
         ss << std::endl;
@@ -828,7 +921,7 @@ void Group::load_group_from_uri(const URI& uri) {
       uri,
       0,
       *encryption_key(),
-      storage_manager_->resources().ephemeral_memory_tracker());
+      resources_.ephemeral_memory_tracker());
 
   resources_.stats().add_counter("read_group_size", tile->size());
 
@@ -853,7 +946,7 @@ void Group::load_group_from_all_uris(const std::vector<TimestampedURI>& uris) {
         uri.uri_,
         0,
         *encryption_key(),
-        storage_manager_->resources().ephemeral_memory_tracker());
+        resources_.ephemeral_memory_tracker());
 
     resources_.stats().add_counter("read_group_size", tile->size());
 

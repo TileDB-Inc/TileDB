@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,7 +37,7 @@
 #include "tiledb/sm/storage_manager/storage_manager.h"
 
 #ifdef __linux__
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/filesystem/posix.h"
 #include "tiledb/sm/misc/utils.h"
 #endif
@@ -46,9 +46,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
-namespace global_state {
+namespace tiledb::sm::global_state {
 
 GlobalState& GlobalState::GetGlobalState() {
   // This is thread-safe in C++11.
@@ -95,6 +93,4 @@ std::set<StorageManager*> GlobalState::storage_managers() {
   return storage_managers_;
 }
 
-}  // namespace global_state
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::global_state

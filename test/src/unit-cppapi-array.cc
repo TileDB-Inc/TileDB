@@ -1984,7 +1984,8 @@ TEST_CASE(
 
   // Read from upgraded version
   Array array_read(ctx, old_array_name, TILEDB_READ);
-  std::vector<int> subarray_read = {1, 4, 10, 10};
+  Subarray subarray_read(ctx, array_read);
+  subarray_read.set_subarray({1, 4, 10, 10});
   std::vector<int> a_read;
   a_read.resize(4);
   std::vector<int> d1_read;

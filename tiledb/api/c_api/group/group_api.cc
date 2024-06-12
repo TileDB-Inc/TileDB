@@ -81,7 +81,8 @@ capi_return_t tiledb_group_create(
     tiledb_ctx_handle_t* ctx, const char* group_uri) {
   ensure_group_uri_argument_is_valid(group_uri);
 
-  throw_if_not_ok(ctx->storage_manager()->group_create(group_uri));
+  throw_if_not_ok(
+      tiledb::sm::Group::create(ctx->resources(), tiledb::sm::URI(group_uri)));
 
   return TILEDB_OK;
 }
@@ -99,7 +100,7 @@ capi_return_t tiledb_group_alloc(
         "Failed to allocate TileDB group API object; Invalid URI");
   }
 
-  *group = tiledb_group_handle_t::make_handle(uri, ctx->storage_manager());
+  *group = tiledb_group_handle_t::make_handle(ctx->resources(), uri);
 
   return TILEDB_OK;
 }
@@ -575,8 +576,8 @@ capi_return_t tiledb_group_consolidate_metadata(
   ensure_group_uri_argument_is_valid(group_uri);
 
   auto cfg = (config == nullptr) ? ctx->config() : config->config();
-  throw_if_not_ok(
-      ctx->storage_manager()->group_metadata_consolidate(group_uri, cfg));
+  throw_if_not_ok(tiledb::sm::Group::consolidate_metadata(
+      ctx->resources(), group_uri, cfg));
 
   return TILEDB_OK;
 }
@@ -586,7 +587,7 @@ capi_return_t tiledb_group_vacuum_metadata(
   ensure_group_uri_argument_is_valid(group_uri);
 
   auto cfg = (config == nullptr) ? ctx->config() : config->config();
-  ctx->storage_manager()->group_metadata_vacuum(group_uri, cfg);
+  sm::Group::vacuum_metadata(ctx->resources(), group_uri, cfg);
 
   return TILEDB_OK;
 }

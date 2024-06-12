@@ -81,6 +81,13 @@ using tiledb::common::filesystem::directory_entry;
 
 namespace {
 
+/*
+ * Functions to convert strings to AWS enums.
+ *
+ * The AWS SDK provides some enum conversion functions, but they must not be
+ * used, because they have non-deterministic behavior in certain scenarios.
+ */
+
 Aws::Utils::Logging::LogLevel aws_log_name_to_level(std::string loglevel) {
   std::transform(loglevel.begin(), loglevel.end(), loglevel.begin(), ::tolower);
   if (loglevel == "fatal")
@@ -157,6 +164,47 @@ Aws::S3::Model::BucketCannedACL S3_BucketCannedACL_from_str(
     return Aws::S3::Model::BucketCannedACL::NOT_SET;
 }
 
+/**
+ * Return a S3 enum value for any recognized string or NOT_SET if
+ * B) the string is not recognized to match any of the enum values
+ *
+ * @param storage_class_str A textual string naming one of the
+ *        Aws::S3::Model::StorageClass enum members.
+ */
+Aws::S3::Model::StorageClass S3_StorageClass_from_str(
+    const std::string& storage_class_str) {
+  using Aws::S3::Model::StorageClass;
+  if (storage_class_str.empty())
+    return StorageClass::NOT_SET;
+
+  if (storage_class_str == "NOT_SET")
+    return StorageClass::NOT_SET;
+  else if (storage_class_str == "STANDARD")
+    return StorageClass::STANDARD;
+  else if (storage_class_str == "REDUCED_REDUNDANCY")
+    return StorageClass::REDUCED_REDUNDANCY;
+  else if (storage_class_str == "STANDARD_IA")
+    return StorageClass::STANDARD_IA;
+  else if (storage_class_str == "ONEZONE_IA")
+    return StorageClass::ONEZONE_IA;
+  else if (storage_class_str == "INTELLIGENT_TIERING")
+    return StorageClass::INTELLIGENT_TIERING;
+  else if (storage_class_str == "GLACIER")
+    return StorageClass::GLACIER;
+  else if (storage_class_str == "DEEP_ARCHIVE")
+    return StorageClass::DEEP_ARCHIVE;
+  else if (storage_class_str == "OUTPOSTS")
+    return StorageClass::OUTPOSTS;
+  else if (storage_class_str == "GLACIER_IR")
+    return StorageClass::GLACIER_IR;
+  else if (storage_class_str == "SNOW")
+    return StorageClass::SNOW;
+  else if (storage_class_str == "EXPRESS_ONEZONE")
+    return StorageClass::EXPRESS_ONEZONE;
+  else
+    return StorageClass::NOT_SET;
+}
+
 }  // namespace
 
 using namespace tiledb::common;
@@ -200,6 +248,7 @@ S3::S3(
           s3_params_.requester_pays_ ? Aws::S3::Model::RequestPayer::requester :
                                        Aws::S3::Model::RequestPayer::NOT_SET)
     , sse_(Aws::S3::Model::ServerSideEncryption::NOT_SET)
+    , storage_class_(S3_StorageClass_from_str(s3_params_.storage_class_))
     , object_canned_acl_(
           S3_ObjectCannedACL_from_str(s3_params_.object_acl_str_))
     , bucket_canned_acl_(
@@ -511,6 +560,10 @@ void S3::touch(const URI& uri) const {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  // TODO: These checks are not needed since AWS SDK 1.11.275
+  // https://github.com/aws/aws-sdk-cpp/pull/2875
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }
@@ -588,8 +641,7 @@ void S3::write(
   }
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
-    const URI& parent) const {
+std::vector<directory_entry> S3::ls_with_sizes(const URI& parent) const {
   return ls_with_sizes(parent, "/", -1);
 }
 
@@ -868,27 +920,22 @@ Status S3::ls(
     std::vector<std::string>* paths,
     const std::string& delimiter,
     int max_paths) const {
-  auto&& [st, entries] = ls_with_sizes(prefix, delimiter, max_paths);
-  RETURN_NOT_OK(st);
-
-  for (auto& fs : *entries) {
+  for (auto& fs : ls_with_sizes(prefix, delimiter, max_paths)) {
     paths->emplace_back(fs.path().native());
   }
 
   return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
+std::vector<directory_entry> S3::ls_with_sizes(
     const URI& prefix, const std::string& delimiter, int max_paths) const {
-  RETURN_NOT_OK_TUPLE(init_client(), nullopt);
+  throw_if_not_ok(init_client());
 
   const auto prefix_dir = prefix.add_trailing_slash();
 
   auto prefix_str = prefix_dir.to_string();
   if (!prefix_dir.is_s3()) {
-    auto st = LOG_STATUS(
-        Status_S3Error(std::string("URI is not an S3 URI: " + prefix_str)));
-    return {st, nullopt};
+    throw S3Exception("URI is not an S3 URI: " + prefix_str);
   }
 
   Aws::Http::URI aws_uri = prefix_str.c_str();
@@ -914,11 +961,10 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
     auto list_objects_outcome = client_->ListObjectsV2(list_objects_request);
 
     if (!list_objects_outcome.IsSuccess()) {
-      auto st = LOG_STATUS(Status_S3Error(
+      throw S3Exception(
           std::string("Error while listing with prefix '") + prefix_str +
           "' and delimiter '" + delimiter + "'" +
-          outcome_error_message(list_objects_outcome)));
-      return {st, nullopt};
+          outcome_error_message(list_objects_outcome));
     }
 
     for (const auto& object : list_objects_outcome.GetResult().GetContents()) {
@@ -946,16 +992,15 @@ tuple<Status, optional<std::vector<directory_entry>>> S3::ls_with_sizes(
       Aws::String next_marker =
           list_objects_outcome.GetResult().GetNextContinuationToken();
       if (next_marker.empty()) {
-        auto st =
-            LOG_STATUS(Status_S3Error("Failed to retrieve next continuation "
-                                      "token for ListObjectsV2 request."));
-        return {st, nullopt};
+        throw S3Exception(
+            "Failed to retrieve next continuation "
+            "token for ListObjectsV2 request.");
       }
       list_objects_request.SetContinuationToken(std::move(next_marker));
     }
   }
 
-  return {Status::Ok(), entries};
+  return entries;
 }
 
 Status S3::move_object(const URI& old_uri, const URI& new_uri) const {
@@ -1562,6 +1607,8 @@ Status S3::initiate_multipart_request(
   if (!s3_params_.sse_kms_key_id_.empty())
     multipart_upload_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    multipart_upload_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     multipart_upload_request.SetACL(object_canned_acl_);
   }
@@ -1756,6 +1803,8 @@ void S3::write_direct(const URI& uri, const void* buffer, uint64_t length) {
   if (!s3_params_.sse_kms_key_id_.empty())
     put_object_request.SetSSEKMSKeyId(
         Aws::String(s3_params_.sse_kms_key_id_.c_str()));
+  if (storage_class_ != Aws::S3::Model::StorageClass::NOT_SET)
+    put_object_request.SetStorageClass(storage_class_);
   if (object_canned_acl_ != Aws::S3::Model::ObjectCannedACL::NOT_SET) {
     put_object_request.SetACL(object_canned_acl_);
   }

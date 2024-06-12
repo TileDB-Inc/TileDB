@@ -37,7 +37,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/group/group.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/stats/stats.h"

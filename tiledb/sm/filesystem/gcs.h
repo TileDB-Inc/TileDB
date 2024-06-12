@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -39,7 +39,7 @@
 
 #include "tiledb/common/rwlock.h"
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/curl/curl_init.h"
@@ -268,8 +268,7 @@ class GCS {
    * @param max_paths The maximum number of paths to be retrieved
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(
+  std::vector<filesystem::directory_entry> ls_with_sizes(
       const URI& uri,
       const std::string& delimiter = "/",
       int max_paths = -1) const;

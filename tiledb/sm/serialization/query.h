@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2018-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2018-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,7 +36,7 @@
 #include <unordered_map>
 
 #include "tiledb/common/status.h"
-#include "tiledb/common/thread_pool.h"
+#include "tiledb/common/thread_pool/thread_pool.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/subarray.h"
@@ -47,8 +47,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class Buffer;
@@ -282,7 +281,6 @@ Status query_from_capnp(
 #endif
 
 }  // namespace serialization
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SERIALIZATION_QUERY_H

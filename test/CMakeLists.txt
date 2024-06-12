@@ -252,7 +252,6 @@ endif()
 if (TILEDB_SERIALIZATION)
   list(APPEND TILEDB_UNIT_TEST_SOURCES
     src/unit-capi-serialized_queries.cc
-    src/unit-capi-serialized_queries_using_subarray.cc
     src/unit-QueryCondition-serialization.cc
     src/unit-curl.cc
   )
@@ -397,13 +396,6 @@ if(TILEDB_HDFS)
     set_tests_properties("tiledb_unit" PROPERTIES ENVIRONMENT "DYLD_FORCE_FLAT_NAMESPACE=1")
   endif()
 endif()
-
-# Add custom target 'check'
-add_custom_target(check
-  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
-  DEPENDS tests
-  USES_TERMINAL
-)
 
 # CI tests
 add_subdirectory(ci)

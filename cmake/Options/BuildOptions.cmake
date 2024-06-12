@@ -34,6 +34,7 @@ option(TILEDB_LOG_OUTPUT_ON_FAILURE "If true, print error logs if dependency sub
 option(TILEDB_SKIP_S3AWSSDK_DIR_LENGTH_CHECK "If true, skip check needed path length for awssdk (TILEDB_S3) dependent builds" OFF)
 option(TILEDB_EXPERIMENTAL_FEATURES "If true, build and include experimental features" OFF)
 option(TILEDB_TESTS_AWS_S3_CONFIG "Use an S3 config appropriate for AWS in tests" OFF)
+option(TILEDB_DISABLE_AUTO_VCPKG "Do not automatically download vcpkg. Ignored if CMAKE_TOOLCHAIN_FILE or ENV{VCPKG_ROOT} is set." OFF)
 
 option(CMAKE_EXPORT_COMPILE_COMMANDS "cmake compile commands" ON)
 
@@ -49,7 +50,7 @@ if (DEFINED TILEDB_STATIC)
 endif()
 
 if (NOT TILEDB_VCPKG)
-  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported.")
+  message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported. To disable automatically downloading vcpkg, enable the TILEDB_DISABLE_AUTO_VCPKG option, or set ENV{TILEDB_DISABLE_AUTO_VCPKG} to any value.")
 endif()
 
 # enable assertions by default for debug builds

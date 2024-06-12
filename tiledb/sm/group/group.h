@@ -42,7 +42,6 @@
 #include "tiledb/sm/group/group_directory.h"
 #include "tiledb/sm/group/group_member.h"
 #include "tiledb/sm/metadata/metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 using namespace tiledb::common;
 
@@ -60,25 +59,24 @@ class GroupDetailsException : public StatusException {
 class Group {
  public:
   /**
-   * Constructs a Group object given a uri and a ContextResources reference.
-   * This is a transitional constructor in the sense that we are working
-   * on removing the dependency of the Group class on StorageManager. For
-   * now we still need to keep the storage_manager argument, but once the
-   * dependency is gone the signature will be
-   * Group(ContextResources&, const URI&).
+   * Constructs a Group object given a ContextResources reference and a uri.
    *
    * @param resources A ContextResources reference
    * @param group_uri The location of the group
-   * @param storage_manager A StorageManager pointer
-   *    (this will go away in the near future)
    */
-  Group(
-      ContextResources& resources,
-      const URI& group_uri,
-      StorageManager* storage_manager);
+  Group(ContextResources& resources, const URI& group_uri);
 
   /** Destructor. */
   ~Group() = default;
+
+  /**
+   * Creates a TileDB group.
+   *
+   * @param resources The context resources.
+   * @param uri The URI of the group to be created.
+   * @return Status
+   */
+  static Status create(ContextResources& resources, const URI& uri);
 
   /** Returns the group directory object. */
   const shared_ptr<GroupDirectory> group_directory() const;
@@ -228,6 +226,37 @@ class Group {
    * @return void
    */
   void set_metadata_loaded(const bool metadata_loaded);
+
+  /**
+   * Consolidates the metadata of a group into a single file.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     consolidated.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @return Status
+   */
+  static Status consolidate_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
+
+  /**
+   * Vacuums the consolidated metadata files of a group.
+   *
+   * @param resources The context resources.
+   * @param group_name The name of the group whose metadata will be
+   *     vacuumed.
+   * @param config Configuration parameters for vacuuming
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   */
+  static void vacuum_metadata(
+      ContextResources& resources,
+      const char* group_name,
+      const Config& config);
 
   /** Returns a constant pointer to the encryption key. */
   const EncryptionKey* encryption_key() const;
@@ -402,9 +431,6 @@ class Group {
 
   /** The group directory object for listing URIs. */
   shared_ptr<GroupDirectory> group_dir_;
-
-  /** TileDB storage manager. */
-  StorageManager* storage_manager_;
 
   /** The group config. */
   Config config_;

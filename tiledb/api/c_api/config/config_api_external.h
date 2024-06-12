@@ -569,6 +569,22 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    The server-side encryption key to use if
  *    vfs.s3.sse == "kms" (AWS key management service). <br>
  *    **Default**: ""
+ * - `vfs.s3.storage_class` <br>
+ *    The storage class to use for the newly uploaded S3 objects. The set of
+ *    accepted values is found in the Aws::S3::Model::StorageClass enumeration.
+ *    "NOT_SET"
+ *    "STANDARD"
+ *    "REDUCED_REDUNDANCY"
+ *    "STANDARD_IA"
+ *    "ONEZONE_IA"
+ *    "INTELLIGENT_TIERING"
+ *    "GLACIER"
+ *    "DEEP_ARCHIVE"
+ *    "OUTPOSTS"
+ *    "GLACIER_IR"
+ *    "SNOW"
+ *    "EXPRESS_ONEZONE" <br>
+ *    **Default**: "NOT_SET"
  * - `vfs.s3.bucket_canned_acl` <br>
  *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
  *    "NOT_SET"
@@ -680,13 +696,13 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    with the open array <br>
  *    **Default**: true
  * - `rest.use_refactored_array_open` <br>
- *    If true, the new REST routes and APIs for opening an array
+ *    If true, the new, experimental REST routes and APIs for opening an array
  *    will be used <br>
- *    **Default**: true
+ *    **Default**: false
  * - `rest.use_refactored_array_open_and_query_submit` <br>
- *    If true, the new REST routes and APIs for opening an array and submitting
- * a query will be used <br>
- *    **Default**: true
+ *    If true, the new, experimental REST routes and APIs for opening an array
+ *    and submitting a query will be used <br>
+ *    **Default**: false
  * - `rest.curl.buffer_size` <br>
  *    Set curl buffer size for REST requests <br>
  *    **Default**: 524288 (512KB)
