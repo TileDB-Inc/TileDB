@@ -736,7 +736,8 @@ void RestClient::post_query_plan_from_rest(
   // Get array
   const Array* array = query.array();
   if (array == nullptr) {
-    throw RestClientException("Error submitting query plan to REST; null array.");
+    throw RestClientException(
+        "Error submitting query plan to REST; null array.");
   }
 
   Buffer buff;

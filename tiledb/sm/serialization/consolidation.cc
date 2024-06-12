@@ -44,10 +44,9 @@
 
 #include "tiledb/common/logger_public.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
-#include "tiledb/sm/misc/utils.h"
-
 
 using namespace tiledb::common;
 
@@ -435,26 +434,22 @@ Status array_consolidation_request_deserialize(
 
 void serialize_consolidation_plan_request(
     uint64_t, const Config&, SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 uint64_t deserialize_consolidation_plan_request(
     SerializationType, const Buffer&) {
-  throw GenericException(
-      "Cannot deserialize; serialization not enabled.");
+  throw GenericException("Cannot deserialize; serialization not enabled.");
 }
 
 void serialize_consolidation_plan_response(
     const ConsolidationPlan&, SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
     SerializationType, const Buffer&) {
-  throw GenericException(
-      "Cannot deserialize; serialization not enabled.");
+  throw GenericException("Cannot deserialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

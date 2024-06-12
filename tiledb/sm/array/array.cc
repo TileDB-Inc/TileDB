@@ -246,7 +246,6 @@ Status Array::create(
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
-
   // Check array schema
   if (array_schema == nullptr) {
     throw ArrayException("Cannot create array; Empty array schema");

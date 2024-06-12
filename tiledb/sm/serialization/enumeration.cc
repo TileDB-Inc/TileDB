@@ -42,9 +42,8 @@
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/config/config.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/serialization/enumeration.h"
 #include "tiledb/sm/misc/utils.h"
-
+#include "tiledb/sm/serialization/enumeration.h"
 
 using namespace tiledb::common;
 
@@ -358,29 +357,25 @@ void serialize_load_enumerations_request(
     const std::vector<std::string>&,
     SerializationType,
     Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 std::vector<std::string> deserialize_load_enumerations_request(
     SerializationType, const Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 void serialize_load_enumerations_response(
     const std::vector<shared_ptr<const Enumeration>>&,
     SerializationType,
     Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 std::vector<shared_ptr<const Enumeration>>
 deserialize_load_enumerations_response(
     SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

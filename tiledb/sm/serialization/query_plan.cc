@@ -46,9 +46,9 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/query_plan.h"
-#include "tiledb/sm/misc/utils.h"
 
 using namespace tiledb::common;
 
@@ -339,26 +339,22 @@ QueryPlan deserialize_query_plan_response(
 
 void serialize_query_plan_request(
     const Config&, Query&, const SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 void deserialize_query_plan_request(
     const SerializationType, const Buffer&, ThreadPool&, Query&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 void serialize_query_plan_response(
     const QueryPlan&, const SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 QueryPlan deserialize_query_plan_response(
     Query&, const SerializationType, const Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION

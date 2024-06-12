@@ -67,10 +67,9 @@
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/enumeration.h"
-#include "tiledb/sm/misc/utils.h"
-
 
 #include <cstring>
 #include <set>
@@ -2083,26 +2082,22 @@ Status max_buffer_sizes_deserialize(
 
 void serialize_load_array_schema_request(
     const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType, const Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 void serialize_load_array_schema_response(
     const ArraySchema&, SerializationType, Buffer&) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
-  throw GenericException(
-      "Cannot serialize; serialization not enabled.");
+  throw GenericException("Cannot serialize; serialization not enabled.");
 }
 
 #endif  // TILEDB_SERIALIZATION
