@@ -69,7 +69,7 @@ TEST_CASE("sort_chunk: std::vector", "[sort_chunk]") {
 
   /* Create chunk view of v */
   auto cv = stdx::views::chunk(v, (long)chunk_size);
-  CHECK(std::ranges::size(cv) == num_chunks);
+  CHECK(std::ranges::size(cv) == (long)num_chunks);
 
   /* Sort each chunk */
   for (auto&& cu : cv) {
@@ -104,7 +104,7 @@ TEST_CASE("sort_chunk: zip_view of std::vector", "sort_chunk") {
 
   /* Create chunk view of v */
   auto cz = stdx::ranges::chunk_view(z, chunk_size);
-  CHECK(std::ranges::size(cz) == num_chunks);
+  CHECK(std::ranges::size(cz) == (long)num_chunks);
 
   /* Sort each chunk */
   for (auto&& cy : cz) {

@@ -290,7 +290,7 @@ TEST_CASE("view combo: chunk a zip view", "[view_combo]") {
   CHECK(std::get<1>(a[1][1]) == 4.0);
 
   auto&& [b, c] = a[0];
-  auto&& [d, e] = a[1];
+  [[maybe_unused]] auto&& [d, e] = a[1];
 
   auto&& [f, g, n] = b[0];
   auto&& [h, i, o] = b[1];
