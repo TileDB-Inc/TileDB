@@ -1807,3 +1807,107 @@ TEST_CASE_METHOD(
     }
   }
 }
+
+TEST_CASE_METHOD(
+    VariableOffsetsFx,
+    "C++ API: Test sm.var_offsets.extra_element: sparse array with string "
+    "dimension",
+    "[var-offsets-dim][extra-offset][sparse][rest]") {
+  std::string array_name =
+      vfs_test_setup_.array_uri("test_32bit_offset_string_dim");
+  auto ctx = vfs_test_setup_.ctx();
+
+  /*
+   * Use the `sm.var_offsets.extra_element` option on the write
+   * side and read side respectively and make sure that we can
+   * read back the same logical data and offsets that we put in.
+   */
+
+  const std::string data = "abcdefghij";
+
+  // Starting offsets of each value; does not include "extra offset" (added by
+  // write or read if needed)
+  const std::vector<uint64_t> data_elem_offsets = {0, 0, 2, 5, 6};
+
+  auto do_write_extra_offset = GENERATE(true, false);
+  auto do_read_extra_offset = GENERATE(true, false);
+
+  // Create and write array
+  {
+    Domain domain(ctx);
+    domain.add_dimension(
+        Dimension::create(ctx, "dim1", TILEDB_STRING_ASCII, nullptr, nullptr));
+
+    ArraySchema schema(ctx, TILEDB_SPARSE);
+    schema.set_domain(domain);
+
+    tiledb::Array::create(array_name, schema);
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_WRITE);
+
+    Config config;
+
+    std::vector<uint64_t> write_offsets = data_elem_offsets;
+
+    Query query(ctx, array, TILEDB_WRITE);
+    if (do_write_extra_offset) {
+      config["sm.var_offsets.extra_element"] = "true";
+      query.set_config(config);
+      write_offsets.push_back(data.size());
+    }
+
+    query.set_data_buffer("dim1", (char*)data.data(), data.size());
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)(write_offsets.data()), write_offsets.size());
+
+    query.set_layout(TILEDB_UNORDERED);
+    query.submit();
+    query.finalize();
+    array.close();
+  }
+
+  // Read contents back
+  {
+    Config config;
+    if (do_read_extra_offset) {
+      config["sm.var_offsets.extra_element"] = "true";
+    }
+
+    const uint64_t expect_num_read_offsets =
+        data_elem_offsets.size() + (do_read_extra_offset ? 1 : 0);
+    std::vector<uint64_t> read_offsets(expect_num_read_offsets, 0xFFFFFFFF);
+
+    std::string read_data;
+    read_data.resize(data.size());
+
+    auto array = tiledb::Array(ctx, array_name, TILEDB_READ);
+    Query query(ctx, array, TILEDB_READ);
+    Subarray subarray(ctx, array);
+    subarray.add_range(0, std::string(""), std::string("zzzzz"));
+    query.set_config(config);
+    query.set_subarray(subarray);
+    query.set_data_buffer("dim1", (char*)read_data.data(), read_data.size());
+    query.set_offsets_buffer(
+        "dim1", (uint64_t*)read_offsets.data(), read_offsets.size());
+
+    query.submit();
+
+    REQUIRE(query.query_status() == Query::Status::COMPLETE);
+
+    const auto results = query.result_buffer_elements();
+    const uint64_t num_read_offsets = results.at("dim1").first;
+    const uint64_t num_read_bytes = results.at("dim1").second;
+
+    CHECK(num_read_offsets == expect_num_read_offsets);
+    CHECK(num_read_bytes == data.size());
+    CHECK(read_data == data);
+
+    const std::vector<uint64_t> read_offsets_starts(
+        read_offsets.begin(), read_offsets.begin() + data_elem_offsets.size());
+    CHECK(data_elem_offsets == read_offsets_starts);
+
+    if (do_read_extra_offset) {
+      CHECK(num_read_bytes == read_offsets.back());
+    }
+  }
+}
