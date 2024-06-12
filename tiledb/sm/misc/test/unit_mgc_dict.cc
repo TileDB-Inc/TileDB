@@ -231,182 +231,145 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
   magic_t magic_mimetyp_embedded;
   magic_t magic_mimetyp_external;
 
-  auto magic_opens = [&]() {
-    auto magic_debug_options = 0;  // MAGIC_DEBUG | MAGIC_CHECK | MAGIC_ERROR;
-    magic_mimeenc_embedded =
-        magic_open(MAGIC_MIME_ENCODING | magic_debug_options);
-    if (auto rval = magic_dict::magic_mgc_embedded_load(magic_mimeenc_embedded);
-        rval != 0) {
-      auto str_rval = std::to_string(rval);
+  auto magic_debug_options = 0;  // MAGIC_DEBUG | MAGIC_CHECK | MAGIC_ERROR;
+  magic_mimeenc_embedded =
+      magic_open(MAGIC_MIME_ENCODING | magic_debug_options);
+  if (auto rval = magic_dict::magic_mgc_embedded_load(magic_mimeenc_embedded);
+      rval != 0) {
+    auto str_rval = std::to_string(rval);
+    auto err = magic_error(magic_mimeenc_embedded);
+    if (!err) {
+      err =
+          "(magic_error() returned 0, unexpected error loading embedded "
+          "data ";
+    }
+    magic_close(magic_mimeenc_embedded);
+    throw std::runtime_error(
+        std::string("cannot load magic database - ") + str_rval + err);
+  }
+  magic_mimeenc_external =
+      magic_open(MAGIC_MIME_ENCODING | magic_debug_options);
+  if (auto rval = magic_load(magic_mimeenc_external, TILEDB_PATH_TO_MAGIC_MGC);
+      rval != 0) {
+    auto str_rval = std::to_string(rval);
+    auto err = magic_error(magic_mimeenc_external);
+    if (!err) {
+      err =
+          "(magic_error() returned 0, try setting env var 'MAGIC' to "
+          "location "
+          "of magic.mgc or "
+          "alternate!)";
+    }
+    magic_close(magic_mimeenc_external);
+    throw std::runtime_error(
+        std::string("cannot load magic database - ") + str_rval + err);
+  }
+  magic_mimetyp_embedded = magic_open(MAGIC_MIME_TYPE | magic_debug_options);
+  if (auto rval = magic_dict::magic_mgc_embedded_load(magic_mimetyp_embedded);
+      rval != 0) {
+    auto str_rval = std::to_string(rval);
+    auto err = magic_error(magic_mimetyp_embedded);
+    if (!err) {
+      err =
+          "(magic_error() returned 0, unexpected error loading embedded "
+          "data ";
+    }
+    magic_close(magic_mimetyp_embedded);
+    throw std::runtime_error(
+        std::string("cannot load magic database - ") + str_rval + err);
+  }
+  magic_mimetyp_external = magic_open(MAGIC_MIME_TYPE | magic_debug_options);
+  if (auto rval = magic_load(magic_mimetyp_external, TILEDB_PATH_TO_MAGIC_MGC);
+      rval != 0) {
+    auto str_rval = std::to_string(rval);
+    auto err = magic_error(magic_mimetyp_external);
+    if (!err) {
+      err =
+          "(magic_error() returned 0, try setting env var 'MAGIC' to "
+          "location "
+          "of magic.mgc or "
+          "alternate!)";
+    }
+    magic_close(magic_mimetyp_external);
+    throw std::runtime_error(
+        std::string("cannot load magic database - ") + str_rval + err);
+  }
+
+  for (auto& file_item : file_data) {
+    const char* mime_type_embedded = nullptr;
+    const char* mime_type_external = nullptr;
+    const char* mime_enc_embedded = nullptr;
+    const char* mime_enc_external = nullptr;
+
+    mime_type_embedded = magic_buffer(
+        magic_mimetyp_embedded,
+        file_item.file_data.data(),
+        file_item.file_data.size());
+    if (!mime_type_embedded) {
+      auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
       auto err = magic_error(magic_mimeenc_embedded);
       if (!err) {
-        err =
-            "(magic_error() returned 0, unexpected error loading embedded "
-            "data ";
+        err = "(magic_buffer(..._embedded) returned 0!)";
       }
       magic_close(magic_mimeenc_embedded);
-      std::cerr << std::string("cannot load magic database - ") + str_rval +
-                       err;
-      return 1;
+      throw std::runtime_error(
+          std::string("cannot access mime_type - ") + str_rval + err);
     }
-    magic_mimeenc_external =
-        magic_open(MAGIC_MIME_ENCODING | magic_debug_options);
-    if (auto rval =
-            magic_load(magic_mimeenc_external, TILEDB_PATH_TO_MAGIC_MGC);
-        rval != 0) {
-      auto str_rval = std::to_string(rval);
-      auto err = magic_error(magic_mimeenc_external);
-      if (!err) {
-        err =
-            "(magic_error() returned 0, try setting env var 'MAGIC' to "
-            "location "
-            "of magic.mgc or "
-            "alternate!)";
-      }
-      magic_close(magic_mimeenc_external);
-      std::cerr << std::string("cannot load magic database - ") + str_rval +
-                       err;
-      return 2;
-    }
-    magic_mimetyp_embedded = magic_open(MAGIC_MIME_TYPE | magic_debug_options);
-    if (auto rval = magic_dict::magic_mgc_embedded_load(magic_mimetyp_embedded);
-        rval != 0) {
-      auto str_rval = std::to_string(rval);
-      auto err = magic_error(magic_mimetyp_embedded);
-      if (!err) {
-        err =
-            "(magic_error() returned 0, unexpected error loading embedded "
-            "data ";
-      }
-      magic_close(magic_mimetyp_embedded);
-      std::cerr << std::string("cannot load magic database - ") + str_rval +
-                       err;
-      return 1;
-    }
-    magic_mimetyp_external = magic_open(MAGIC_MIME_TYPE | magic_debug_options);
-    if (auto rval =
-            magic_load(magic_mimetyp_external, TILEDB_PATH_TO_MAGIC_MGC);
-        rval != 0) {
-      auto str_rval = std::to_string(rval);
+    mime_type_external = magic_buffer(
+        magic_mimetyp_external,
+        file_item.file_data.data(),
+        file_item.file_data.size());
+    if (!mime_type_external) {
+      auto str_rval = std::to_string(magic_errno(magic_mimetyp_external));
       auto err = magic_error(magic_mimetyp_external);
       if (!err) {
-        err =
-            "(magic_error() returned 0, try setting env var 'MAGIC' to "
-            "location "
-            "of magic.mgc or "
-            "alternate!)";
+        err = "(magic_buffer(..._external) returned 0!)";
       }
       magic_close(magic_mimetyp_external);
-      std::cerr << std::string("cannot load magic database - ") + str_rval +
-                       err;
-      return 2;
-    }
-    return 0;
-  };
-
-  auto magic_closes = [&]() {
-    magic_close(magic_mimeenc_embedded);
-    magic_close(magic_mimeenc_external);
-    magic_close(magic_mimetyp_embedded);
-    magic_close(magic_mimetyp_external);
-  };
-
-  auto proc_list = [&](bool global_open_close = true) {
-    if (global_open_close) {
-      if (auto rval = magic_opens(); rval != 0) {
-        return rval;
-      }
+      throw std::runtime_error(
+          std::string("cannot access mime_type - ") + str_rval + err);
     }
 
-    for (auto& file_item : file_data) {
-      if (!global_open_close) {
-        if (auto rval = magic_opens(); rval != 0) {
-          return rval;
-        }
-      }
-      const char* mime_type_embedded = nullptr;
-      const char* mime_type_external = nullptr;
-      const char* mime_enc_embedded = nullptr;
-      const char* mime_enc_external = nullptr;
+    CHECK(
+        std::string_view(mime_type_embedded) ==
+        std::string_view(mime_type_external));
 
-      mime_type_embedded = magic_buffer(
-          magic_mimetyp_embedded,
-          file_item.file_data.data(),
-          file_item.file_data.size());
-      if (!mime_type_embedded) {
-        auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
-        auto err = magic_error(magic_mimeenc_embedded);
-        if (!err) {
-          err = "(magic_buffer(..._embedded) returned 0!)";
-        }
-        magic_close(magic_mimeenc_embedded);
-        std::cerr << std::string("cannot access mime_type - ") + str_rval + err;
-        return 2;
+    mime_enc_embedded = magic_buffer(
+        magic_mimeenc_embedded,
+        file_item.file_data.data(),
+        file_item.file_data.size());
+    if (!mime_enc_embedded) {
+      auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
+      auto err = magic_error(magic_mimeenc_embedded);
+      if (!err) {
+        err = "(magic_buffer(..._embedded) returned 0!)";
       }
-      mime_type_external = magic_buffer(
-          magic_mimetyp_external,
-          file_item.file_data.data(),
-          file_item.file_data.size());
-      if (!mime_type_external) {
-        auto str_rval = std::to_string(magic_errno(magic_mimetyp_external));
-        auto err = magic_error(magic_mimetyp_external);
-        if (!err) {
-          err = "(magic_buffer(..._external) returned 0!)";
-        }
-        magic_close(magic_mimetyp_external);
-        std::cerr << std::string("cannot access mime_type - ") + str_rval + err;
-        return 2;
-      }
-
-      CHECK(
-          std::string_view(mime_type_embedded) ==
-          std::string_view(mime_type_external));
-
-      mime_enc_embedded = magic_buffer(
-          magic_mimeenc_embedded,
-          file_item.file_data.data(),
-          file_item.file_data.size());
-      if (!mime_enc_embedded) {
-        auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
-        auto err = magic_error(magic_mimeenc_embedded);
-        if (!err) {
-          err = "(magic_buffer(..._embedded) returned 0!)";
-        }
-        magic_close(magic_mimeenc_embedded);
-        std::cerr << std::string("cannot access mime_encoding - ") + str_rval +
-                         err;
-        return 2;
-      }
-      mime_enc_external = magic_buffer(
-          magic_mimeenc_external,
-          file_item.file_data.data(),
-          file_item.file_data.size());
-      if (!mime_enc_embedded) {
-        auto str_rval = std::to_string(magic_errno(magic_mimeenc_external));
-        auto err = magic_error(magic_mimeenc_external);
-        if (!err) {
-          err = "(magic_buffer(..._embedded) returned 0!)";
-        }
-        magic_close(magic_mimeenc_external);
-        std::cerr << std::string("cannot access mime_encoding - ") + str_rval +
-                         err;
-        return 2;
-      }
-
-      CHECK(
-          std::string_view(mime_enc_embedded) ==
-          std::string_view(mime_enc_external));
-      if (!global_open_close) {
-        magic_closes();
-      }
+      magic_close(magic_mimeenc_embedded);
+      throw std::runtime_error(
+          std::string("cannot access mime_encoding - ") + str_rval + err);
     }
-    if (global_open_close) {
-      magic_closes();
+    mime_enc_external = magic_buffer(
+        magic_mimeenc_external,
+        file_item.file_data.data(),
+        file_item.file_data.size());
+    if (!mime_enc_embedded) {
+      auto str_rval = std::to_string(magic_errno(magic_mimeenc_external));
+      auto err = magic_error(magic_mimeenc_external);
+      if (!err) {
+        err = "(magic_buffer(..._embedded) returned 0!)";
+      }
+      magic_close(magic_mimeenc_external);
+      throw std::runtime_error(
+          std::string("cannot access mime_encoding - ") + str_rval + err);
     }
 
-    return 0;
-  };
+    CHECK(
+        std::string_view(mime_enc_embedded) ==
+        std::string_view(mime_enc_external));
+  }
 
-  REQUIRE(proc_list(true) == 0);
-  REQUIRE(proc_list(false) == 0);
+  magic_close(magic_mimeenc_embedded);
+  magic_close(magic_mimeenc_external);
+  magic_close(magic_mimetyp_embedded);
+  magic_close(magic_mimetyp_external);
 }
