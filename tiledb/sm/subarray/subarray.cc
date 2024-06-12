@@ -57,7 +57,7 @@
 #include "tiledb/sm/rest/rest_client.h"
 #include "tiledb/sm/rtree/rtree.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/subarray/relevant_fragment_generator.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
@@ -95,15 +95,13 @@ Subarray::Subarray(
     const Array* array,
     Stats* const parent_stats,
     shared_ptr<Logger> logger,
-    const bool coalesce_ranges,
-    StorageManager* storage_manager)
+    const bool coalesce_ranges)
     : Subarray(
           array->opened_array(),
           Layout::UNORDERED,
           parent_stats,
           logger,
-          coalesce_ranges,
-          storage_manager) {
+          coalesce_ranges) {
 }
 
 Subarray::Subarray(
@@ -111,15 +109,13 @@ Subarray::Subarray(
     const Layout layout,
     Stats* const parent_stats,
     shared_ptr<Logger> logger,
-    const bool coalesce_ranges,
-    StorageManager* storage_manager)
+    const bool coalesce_ranges)
     : Subarray(
           array->opened_array(),
           layout,
           parent_stats,
           logger,
-          coalesce_ranges,
-          storage_manager) {
+          coalesce_ranges) {
 }
 
 Subarray::Subarray(
@@ -127,14 +123,11 @@ Subarray::Subarray(
     const Layout layout,
     Stats* const parent_stats,
     shared_ptr<Logger> logger,
-    const bool coalesce_ranges,
-    StorageManager* storage_manager)
+    const bool coalesce_ranges)
     : stats_(
           parent_stats ?
               parent_stats->create_child("Subarray") :
-          storage_manager ?
-              storage_manager->resources().stats().create_child("subSubarray") :
-              nullptr)
+              opened_array->resources().stats().create_child("subSubarray"))
     , logger_(logger->clone("Subarray", ++logger_id_))
     , array_(opened_array)
     , layout_(layout)
@@ -143,10 +136,6 @@ Subarray::Subarray(
     , relevant_fragments_(opened_array->fragment_metadata().size())
     , coalesce_ranges_(coalesce_ranges)
     , ranges_sorted_(false) {
-  if (!parent_stats && !storage_manager) {
-    throw std::runtime_error(
-        "Subarray(): missing parent_stats requires live storage_manager!");
-  }
   add_default_ranges();
 }
 
