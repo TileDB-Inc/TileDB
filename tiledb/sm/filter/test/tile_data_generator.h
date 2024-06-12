@@ -37,18 +37,12 @@
 #include <algorithm>
 #include <numeric>
 #include <optional>
+#include "test/support/src/whitebox_helpers.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm {
-
-class WhiteboxWriterTile {
- public:
-  static void set_max_tile_chunk_size(uint64_t size) {
-    WriterTile::max_tile_chunk_size_ = size;
-  }
-};
 
 class TileDataGenerator {
  public:
