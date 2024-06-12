@@ -100,7 +100,7 @@ capi_return_t tiledb_group_alloc(
         "Failed to allocate TileDB group API object; Invalid URI");
   }
 
-  *group = tiledb_group_handle_t::make_handle(uri, ctx->storage_manager());
+  *group = tiledb_group_handle_t::make_handle(ctx->resources(), uri);
 
   return TILEDB_OK;
 }

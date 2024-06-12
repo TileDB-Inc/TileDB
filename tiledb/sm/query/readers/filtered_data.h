@@ -36,7 +36,7 @@
 #include "tiledb/common/common.h"
 #include "tiledb/common/memory_tracker.h"
 #include "tiledb/common/status.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 
 using namespace tiledb::common;
 
@@ -158,6 +158,7 @@ class FilteredData {
   /**
    * Constructor using a sorted list of result tiles.
    *
+   * @param resources The context resources.
    * @param reader Reader object used to know which tile to skip.
    * @param min_batch_size Minimum batch size we are trying to reach.
    * @param max_batch_size Maximum batch size to create.
@@ -171,11 +172,11 @@ class FilteredData {
    * @param var_sized Is the field var sized?
    * @param nullable Is the field nullable?
    * @param validity_only Is the field read for validity only?
-   * @param storage_manager Storage manager.
    * @param read_tasks Read tasks to queue new tasks on for new data blocks.
    * @param memory_tracker Memory tracker.
    */
   FilteredData(
+      ContextResources& resources,
       const ReaderBase& reader,
       const uint64_t min_batch_size,
       const uint64_t max_batch_size,
@@ -186,10 +187,9 @@ class FilteredData {
       const bool var_sized,
       const bool nullable,
       const bool validity_only,
-      StorageManager* storage_manager,
       std::vector<ThreadPool::Task>& read_tasks,
       shared_ptr<MemoryTracker> memory_tracker)
-      : resources_(storage_manager->resources())
+      : resources_(resources)
       , memory_tracker_(memory_tracker)
       , fixed_data_blocks_(
             memory_tracker_->get_resource(MemoryType::FILTERED_DATA))
