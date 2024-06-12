@@ -205,7 +205,7 @@ struct FileData {
   }
 };
 
-std::vector<FileData> file_data_sizes1 = {
+std::vector<FileData> file_data = {
     {"empty_text", empty_txt, strlen(empty_txt)},
     {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
     {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
@@ -224,26 +224,6 @@ std::vector<FileData> file_data_sizes1 = {
      quickstart_dense_csv_gz,
      sizeof(quickstart_dense_csv_gz)},
     {"text_txt", text_txt, sizeof(text_txt)}};
-
-std::vector<FileData> file_data_sizes2 = {
-    {"text_txt", text_txt, sizeof(text_txt)},
-    {"quickstart_dense_csv_gz",
-     quickstart_dense_csv_gz,
-     sizeof(quickstart_dense_csv_gz)},
-    {"quickstart_dense_csv",
-     quickstart_dense_csv,
-     sizeof(quickstart_dense_csv)},
-    {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
-    {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
-    {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
-    {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
-    {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
-    {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
-    {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
-    {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
-    {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
-    {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
-    {"empty_text", empty_txt, strlen(empty_txt)}};
 
 TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
   magic_t magic_mimeenc_embedded;
@@ -331,8 +311,7 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
     magic_close(magic_mimetyp_external);
   };
 
-  auto proc_list = [&](const std::vector<FileData>& file_data,
-                       bool global_open_close = true) {
+  auto proc_list = [&](bool global_open_close = true) {
     if (global_open_close) {
       if (auto rval = magic_opens(); rval != 0) {
         return rval;
@@ -428,8 +407,6 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
     return 0;
   };
 
-  REQUIRE(proc_list(file_data_sizes1, true) == 0);
-  REQUIRE(proc_list(file_data_sizes2, true) == 0);
-  REQUIRE(proc_list(file_data_sizes1, false) == 0);
-  REQUIRE(proc_list(file_data_sizes2, false) == 0);
+  REQUIRE(proc_list(true) == 0);
+  REQUIRE(proc_list(false) == 0);
 }
