@@ -58,6 +58,9 @@ add_subdirectory(buffer)
 # `buffer_list`: depends on `buffer`
 add_subdirectory(buffer_list)
 
+# `current_domain`: depends on `ndrectangle`
+add_subdirectory(current_domain)
+
 # `error`: no dependencies
 add_subdirectory(error)
 
@@ -99,6 +102,9 @@ add_subdirectory(attribute)
 
 # `group`: depends on `config`, `context`
 add_subdirectory(group)
+
+# `ndrectangle`: depends on `domain`
+add_subdirectory(ndrectangle)
 
 # `object`: no dependencies
 add_subdirectory(object)
