@@ -33,8 +33,8 @@
 
 #include <test/support/tdb_catch.h>
 #include "filter_test_support.h"
-#include "test/support/src/whitebox_helpers.h"
 #include "test/support/src/mem_helpers.h"
+#include "test/support/src/whitebox_helpers.h"
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/tile/tile.h"
 

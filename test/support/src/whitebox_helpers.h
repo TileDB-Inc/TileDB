@@ -43,6 +43,6 @@ class WhiteboxWriterTile {
   }
 };
 
-}  // namespace tiledb::test
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_WHITEBOX_HELPERS_H
