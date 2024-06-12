@@ -194,52 +194,56 @@ char text_txt[] = {
     '\x6c', '\x69', '\x6e', '\x65', '\x73', '\x2e', '\x0a',
 };
 
-struct file_data_sizes_s {
-  const char* file_name;
-  char* file_data;
-  uint64_t file_data_len;
-} file_data_sizes1[] =
-    {{"empty_text", empty_txt, strlen(empty_txt)},
-     {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
-     {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
-     {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
-     {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
-     {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
-     {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
-     {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
-     {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
-     {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
-     {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
-     {"quickstart_dense_csv",
-      quickstart_dense_csv,
-      sizeof(quickstart_dense_csv)},
-     {"quickstart_dense_csv_gz",
-      quickstart_dense_csv_gz,
-      sizeof(quickstart_dense_csv_gz)},
-     {"text_txt", text_txt, sizeof(text_txt)},
+struct FileData {
+  const std::string_view file_name;
+  span<const char> file_data;
 
-     {0, 0, 0}},
-  file_data_sizes2[] = {
-      {"text_txt", text_txt, sizeof(text_txt)},
-      {"quickstart_dense_csv_gz",
-       quickstart_dense_csv_gz,
-       sizeof(quickstart_dense_csv_gz)},
-      {"quickstart_dense_csv",
-       quickstart_dense_csv,
-       sizeof(quickstart_dense_csv)},
-      {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
-      {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
-      {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
-      {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
-      {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
-      {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
-      {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
-      {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
-      {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
-      {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
-      {"empty_text", empty_txt, strlen(empty_txt)},
+  constexpr FileData(
+      std::string_view file_name, const char* file_data, size_t file_data_len)
+      : file_name(file_name)
+      , file_data(file_data, file_data_len) {
+  }
+};
 
-      {0, 0, 0}};
+std::vector<FileData> file_data_sizes1 = {
+    {"empty_text", empty_txt, strlen(empty_txt)},
+    {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
+    {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
+    {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
+    {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
+    {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
+    {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
+    {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
+    {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
+    {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
+    {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
+    {"quickstart_dense_csv",
+     quickstart_dense_csv,
+     sizeof(quickstart_dense_csv)},
+    {"quickstart_dense_csv_gz",
+     quickstart_dense_csv_gz,
+     sizeof(quickstart_dense_csv_gz)},
+    {"text_txt", text_txt, sizeof(text_txt)}};
+
+std::vector<FileData> file_data_sizes2 = {
+    {"text_txt", text_txt, sizeof(text_txt)},
+    {"quickstart_dense_csv_gz",
+     quickstart_dense_csv_gz,
+     sizeof(quickstart_dense_csv_gz)},
+    {"quickstart_dense_csv",
+     quickstart_dense_csv,
+     sizeof(quickstart_dense_csv)},
+    {"fileapi9_csv", fileapi9_csv, sizeof(fileapi9_csv)},
+    {"fileapi8_csv", fileapi8_csv, sizeof(fileapi8_csv)},
+    {"fileapi7_csv", fileapi7_csv, sizeof(fileapi7_csv)},
+    {"fileapi6_csv", fileapi6_csv, sizeof(fileapi6_csv)},
+    {"fileapi5_csv", fileapi5_csv, sizeof(fileapi5_csv)},
+    {"fileapi4_csv", fileapi4_csv, sizeof(fileapi4_csv)},
+    {"fileapi3_csv", fileapi3_csv, sizeof(fileapi3_csv)},
+    {"fileapi2_csv", fileapi2_csv, sizeof(fileapi2_csv)},
+    {"fileapi1_csv", fileapi1_csv, sizeof(fileapi1_csv)},
+    {"fileapi0_csv", fileapi0_csv, sizeof(fileapi0_csv)},
+    {"empty_text", empty_txt, strlen(empty_txt)}};
 
 TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
   magic_t magic_mimeenc_embedded;
@@ -327,7 +331,7 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
     magic_close(magic_mimetyp_external);
   };
 
-  auto proc_list = [&](file_data_sizes_s file_data_sizes[],
+  auto proc_list = [&](const std::vector<FileData>& file_data,
                        bool global_open_close = true) {
     if (global_open_close) {
       if (auto rval = magic_opens(); rval != 0) {
@@ -335,8 +339,7 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
       }
     }
 
-    auto file_item = &file_data_sizes[0];
-    while (file_item->file_data) {
+    for (auto& file_item : file_data) {
       if (!global_open_close) {
         if (auto rval = magic_opens(); rval != 0) {
           return rval;
@@ -349,8 +352,8 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
 
       mime_type_embedded = magic_buffer(
           magic_mimetyp_embedded,
-          file_item->file_data,
-          file_item->file_data_len);
+          file_item.file_data.data(),
+          file_item.file_data.size());
       if (!mime_type_embedded) {
         auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
         auto err = magic_error(magic_mimeenc_embedded);
@@ -363,8 +366,8 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
       }
       mime_type_external = magic_buffer(
           magic_mimetyp_external,
-          file_item->file_data,
-          file_item->file_data_len);
+          file_item.file_data.data(),
+          file_item.file_data.size());
       if (!mime_type_external) {
         auto str_rval = std::to_string(magic_errno(magic_mimetyp_external));
         auto err = magic_error(magic_mimetyp_external);
@@ -382,8 +385,8 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
 
       mime_enc_embedded = magic_buffer(
           magic_mimeenc_embedded,
-          file_item->file_data,
-          file_item->file_data_len);
+          file_item.file_data.data(),
+          file_item.file_data.size());
       if (!mime_enc_embedded) {
         auto str_rval = std::to_string(magic_errno(magic_mimeenc_embedded));
         auto err = magic_error(magic_mimeenc_embedded);
@@ -397,8 +400,8 @@ TEST_CASE("Test embedded data validity", "[mgc_dict][embedded_vs_external]") {
       }
       mime_enc_external = magic_buffer(
           magic_mimeenc_external,
-          file_item->file_data,
-          file_item->file_data_len);
+          file_item.file_data.data(),
+          file_item.file_data.size());
       if (!mime_enc_embedded) {
         auto str_rval = std::to_string(magic_errno(magic_mimeenc_external));
         auto err = magic_error(magic_mimeenc_external);
