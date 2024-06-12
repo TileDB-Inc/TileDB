@@ -33,6 +33,7 @@
 #ifndef TILEDB_FILTER_H
 #define TILEDB_FILTER_H
 
+#include <ostream>
 #include "tiledb/common/common.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
@@ -75,8 +76,7 @@ enum class Datatype : uint8_t;
  * and a reverse direction (for reads).
  */
 class Filter {
-  friend std::ostream& ::operator<<(
-      std::ostream & os, const tiledb::sm::Filter & filter);
+  friend std::ostream& ::operator<<(std::ostream&, const tiledb::sm::Filter&);
 
  public:
   /**
