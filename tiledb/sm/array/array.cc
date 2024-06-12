@@ -246,6 +246,7 @@ Status Array::create(
     const URI& array_uri,
     const shared_ptr<ArraySchema>& array_schema,
     const EncryptionKey& encryption_key) {
+
   // Check array schema
   if (array_schema == nullptr) {
     throw ArrayException("Cannot create array; Empty array schema");
@@ -386,7 +387,7 @@ Status Array::open_without_fragments(
     if (remote_) {
       auto rest_client = resources_.rest_client();
       if (rest_client == nullptr) {
-        throw Status_ArrayError(
+        throw ArrayException(
             "Cannot open array; remote array with no REST client.");
       }
       /* #TODO Change get_array_schema_from_rest function signature to
@@ -675,7 +676,7 @@ Status Array::close() {
         set_metadata_loaded(true);
         auto rest_client = resources_.rest_client();
         if (rest_client == nullptr) {
-          throw Status_ArrayError(
+          throw ArrayException(
               "Error closing array; remote array with no REST client.");
         }
         throw_if_not_ok(rest_client->post_array_metadata_to_rest(
@@ -699,7 +700,7 @@ Status Array::close() {
     opened_array_.reset();
   } catch (std::exception& e) {
     is_opening_or_closing_ = false;
-    throw Status_ArrayError(e.what());
+    throw ArrayException(e.what());
   }
 
   is_opening_or_closing_ = false;
@@ -1159,7 +1160,7 @@ Status Array::reopen(uint64_t timestamp_start, uint64_t timestamp_end) {
       set_array_closed();
     } catch (std::exception& e) {
       is_opening_or_closing_ = false;
-      throw Status_ArrayError(e.what());
+      throw ArrayException(e.what());
     }
     is_opening_or_closing_ = false;
 

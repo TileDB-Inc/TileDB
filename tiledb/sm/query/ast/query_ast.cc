@@ -33,6 +33,7 @@
 #include "query_ast.h"
 #include "tiledb/sm/array_schema/enumeration.h"
 #include "tiledb/sm/misc/integral_type_casts.h"
+#include "tiledb/sm/query/query_condition.h"
 
 using namespace tiledb::common;
 
@@ -317,8 +318,8 @@ Status ASTNodeVal::check_node_validity(const ArraySchema& array_schema) const {
       (op_ == QueryConditionOp::IN || op_ == QueryConditionOp::NOT_IN)) {
     for (auto& member : members_) {
       if (member.size() != cell_size) {
-        throw Status_QueryConditionError(
-            "Value node set memmber size mismatch: " +
+        throw QueryConditionException(
+            "Value node set member size mismatch: " +
             std::to_string(cell_size) + " != " + std::to_string(member.size()));
       }
     }

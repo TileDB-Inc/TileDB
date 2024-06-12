@@ -48,6 +48,13 @@
 
 namespace tiledb::sm {
 
+class FragmentInfoException : public StatusException {
+ public:
+  explicit FragmentInfoException(const std::string& message)
+      : StatusException("FragmentInfo", message) {
+  }
+};
+
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */
@@ -182,7 +189,7 @@ Status FragmentInfo::get_total_cell_num(uint64_t* cell_num) const {
 const std::string& FragmentInfo::fragment_name(uint32_t fid) const {
   ensure_loaded();
   if (fid >= fragment_num())
-    throw Status_FragmentInfoError(
+    throw FragmentInfoException(
         "Cannot get fragment URI; Invalid fragment index");
 
   return single_fragment_info_vec_[fid].name();
@@ -936,7 +943,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
 void FragmentInfo::ensure_loaded() const {
   if (!loaded_) {
-    throw Status_FragmentInfoError("Fragment info has not been loaded.");
+    throw FragmentInfoException("Fragment info has not been loaded.");
   }
 }
 

@@ -47,6 +47,13 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
+class QueryConditionException : public StatusException {
+ public:
+  explicit QueryConditionException(const std::string& message)
+      : StatusException("QueryCondition", message) {
+  }
+};
+
 class FragmentMetadata;
 class MemoryTracker;
 struct ResultCellSlab;

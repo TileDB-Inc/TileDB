@@ -46,6 +46,8 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/serialization/config.h"
 #include "tiledb/sm/serialization/consolidation.h"
+#include "tiledb/sm/misc/utils.h"
+
 
 using namespace tiledb::common;
 
@@ -269,18 +271,18 @@ void serialize_consolidation_plan_request(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error serializing consolidation plan request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing consolidation plan request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing consolidation plan request; exception " +
         std::string(e.what()));
   }
@@ -310,17 +312,17 @@ uint64_t deserialize_consolidation_plan_request(
         return consolidation_plan_request_from_capnp(reader);
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error deserializing consolidation plan request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing consolidation plan request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing consolidation plan request; exception " +
         std::string(e.what()));
   }
@@ -360,18 +362,18 @@ void serialize_consolidation_plan_response(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error serializing consolidation plan response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing consolidation plan response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing consolidation plan response; exception " +
         std::string(e.what()));
   }
@@ -401,17 +403,17 @@ std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
         return consolidation_plan_response_from_capnp(reader);
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error deserializing consolidation plan response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing consolidation plan response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing consolidation plan response; exception " +
         std::string(e.what()));
   }
@@ -433,25 +435,25 @@ Status array_consolidation_request_deserialize(
 
 void serialize_consolidation_plan_request(
     uint64_t, const Config&, SerializationType, Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
 uint64_t deserialize_consolidation_plan_request(
     SerializationType, const Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot deserialize; serialization not enabled.");
 }
 
 void serialize_consolidation_plan_response(
     const ConsolidationPlan&, SerializationType, Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
 std::vector<std::vector<std::string>> deserialize_consolidation_plan_response(
     SerializationType, const Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot deserialize; serialization not enabled.");
 }
 

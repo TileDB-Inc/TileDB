@@ -69,6 +69,8 @@
 #include "tiledb/sm/misc/constants.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/enumeration.h"
+#include "tiledb/sm/misc/utils.h"
+
 
 #include <cstring>
 #include <set>
@@ -1862,18 +1864,18 @@ void serialize_load_array_schema_request(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error serializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1907,17 +1909,17 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
         return load_array_schema_request_from_capnp(reader);
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error deserializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1963,18 +1965,18 @@ void serialize_load_array_schema_response(
         break;
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error serializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error serializing load array schema response; exception " +
         std::string(e.what()));
   }
@@ -2012,17 +2014,17 @@ shared_ptr<ArraySchema> deserialize_load_array_schema_response(
         return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
-        throw Status_SerializationError(
+        throw SerializationStatusException(
             "Error deserializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw Status_SerializationError(
+    throw SerializationStatusException(
         "Error deserializing load array schema response; exception " +
         std::string(e.what()));
   }
@@ -2081,25 +2083,25 @@ Status max_buffer_sizes_deserialize(
 
 void serialize_load_array_schema_request(
     const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType, const Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
 void serialize_load_array_schema_response(
     const ArraySchema&, SerializationType, Buffer&) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
-  throw Status_SerializationError(
+  throw GenericException(
       "Cannot serialize; serialization not enabled.");
 }
 
