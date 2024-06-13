@@ -45,7 +45,7 @@ if (DEFINED TILEDB_STATIC)
   endif()
 endif()
 
-if (NOT TILEDB_VCPKG)
+if (DEFINED TILEDB_VCPKG AND NOT TILEDB_VCPKG)
   message(FATAL_ERROR "Disabling TILEDB_VCPKG is not supported. To disable automatically downloading vcpkg, enable the TILEDB_DISABLE_AUTO_VCPKG option, or set ENV{TILEDB_DISABLE_AUTO_VCPKG} to any value.")
 endif()
 
