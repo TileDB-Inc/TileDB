@@ -31,13 +31,13 @@ set -xeuo pipefail
 
 cd $GITHUB_WORKSPACE/build
 
-make -j4
+cmake --build . -j4
 
-make -C tiledb install
+cmake --build tiledb --target install
 
 ls -la
 
-make -j4 -C tiledb tiledb_unit
-make -j4 -C tiledb unit_vfs
-make -j4 -C tiledb tiledb_regression
-make -j4 -C tiledb all_link_complete
+cmake --build tiledb -j4 --target tiledb_unit
+cmake --build tiledb -j4 --target unit_vfs
+cmake --build tiledb -j4 --target tiledb_regression
+cmake --build tiledb -j4 --target all_link_complete
