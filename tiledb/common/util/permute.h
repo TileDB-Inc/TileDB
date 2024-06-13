@@ -54,10 +54,14 @@ template <
     std::ranges::random_access_range Perm,
     std::ranges::random_access_range Done>
 void permute(Vector& b, const Perm& perm, Done& done) {
+  using flag_type = std::remove_cvref_t<decltype(done[0])>;
+  constexpr flag_type zero_flag{0};
+  constexpr flag_type one_flag{1};
+
   // @todo Is there a better way to track done-ness?  Hi bit of perm?
   for (size_t i = 0; i < perm.size(); ++i) {
-    if (true == done[i]) {
-      done[i] = false;
+    if (zero_flag != done[i]) {
+      done[i] = zero_flag;
       continue;
     }
 
@@ -67,7 +71,7 @@ void permute(Vector& b, const Perm& perm, Done& done) {
       // @todo Find with ADL???
       std::swap(b[ix], b[px]);
 
-      done[ix] = true;
+      done[ix] = one_flag;
       ix = px;
       px = perm[ix];
     }
