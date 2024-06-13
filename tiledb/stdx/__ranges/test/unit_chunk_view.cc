@@ -30,6 +30,8 @@
  * This file implements unit tests for the chunk_view class.
  */
 
+#include <numeric>
+
 #include <catch2/catch_all.hpp>
 #include "tiledb/stdx/__ranges/chunk_view.h"
 
@@ -408,20 +410,20 @@ TEST_CASE("chunk_view: Larger vector", "[chunk_view]") {
 
   SECTION("Verify base chunk view") {
     for (size_t i = 0; i < num_chunks; ++i) {
-      auto chunk = a[i];
+      auto current_chunk = a[i];
       for (size_t j = 0; j < chunk_size; ++j) {
-        CHECK(chunk[j] == base_17[i * chunk_size + j]);
+        CHECK(current_chunk[j] == base_17[i * chunk_size + j]);
       }
     }
   }
 
   SECTION("Verify base chunk view") {
     for (size_t i = 0; i < num_chunks; ++i) {
-      auto chunk = a[i];
+      auto current_chunk = a[i];
       for (size_t j = 0; j < chunk_size; ++j) {
-        CHECK(chunk[j] == base_17[i * chunk_size + j]);
-        chunk[j] = 0;
-        CHECK(chunk[j] == 0);
+        CHECK(current_chunk[j] == base_17[i * chunk_size + j]);
+        current_chunk[j] = 0;
+        CHECK(current_chunk[j] == 0);
       }
     }
     CHECK(std::ranges::equal(base_17, std::vector<int>(num_elements, 0)));
