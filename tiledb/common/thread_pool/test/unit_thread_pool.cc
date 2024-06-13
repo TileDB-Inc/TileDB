@@ -109,13 +109,13 @@ void wait_all(
   }
 }
 
-TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
+TEST_CASE("ThreadPool: Test empty", "[threadpool][empty]") {
   for (int i = 0; i < 10; i++) {
     ThreadPool pool{4};
   }
 }
 
-TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
+TEST_CASE("ThreadPool: Test single thread", "[threadpool][single-thread]") {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result = 0;  // needs to be atomic b/c scavenging thread can
                                 // run in addition to thread pool
@@ -133,7 +133,8 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   REQUIRE(result == 100);
 }
 
-TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
+TEST_CASE(
+    "ThreadPool: Test multiple threads", "[threadpool][multiple-threads]") {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   std::vector<ThreadPool::Task> results;
@@ -152,7 +153,7 @@ struct AtomicHolder {
   std::atomic<int> val_;
 };
 
-TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
+TEST_CASE("ThreadPool: Test no wait", "[threadpool][no-wait]") {
   {
     ThreadPool pool{4};
     auto ptr = tdb::make_shared<AtomicHolder>(HERE(), 0);
@@ -224,7 +225,8 @@ TEST_CASE(
 //  }
 // }
 
-TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
+TEST_CASE(
+    "ThreadPool: Test recursion, simplest case", "[threadpool][recursion]") {
   bool use_wait = GENERATE(true, false);
   ThreadPool pool{1};
 
@@ -247,7 +249,7 @@ TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
   REQUIRE(result == 1);
 }
 
-TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
+TEST_CASE("ThreadPool: Test recursion", "[threadpool][recursion]") {
   bool use_wait = GENERATE(true, false);
   size_t num_threads = 0;
   SECTION("- One thread") {
@@ -320,7 +322,9 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
     cv.wait(ul);
 }
 
-TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
+TEST_CASE(
+    "ThreadPool: Test recursion, two pools",
+    "[threadpool][recursion][two-pools]") {
   bool use_wait = GENERATE(true, false);
   size_t num_threads = 0;
 
@@ -428,7 +432,7 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
   }
 }
 
-TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
+TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
   bool use_wait = GENERATE(true, false);
   std::atomic<int> result(0);
   ThreadPool pool{7};
