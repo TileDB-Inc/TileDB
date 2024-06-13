@@ -740,11 +740,11 @@ void Array::delete_fragments(
   auto vfs = &(resources.vfs());
   throw_if_not_ok(parallel_for(
       &resources.compute_tp(), 0, fragment_uris.size(), [&](size_t i) {
-        RETURN_NOT_OK(vfs->remove_dir(fragment_uris[i].uri_));
+        throw_if_not_ok(vfs->remove_dir(fragment_uris[i].uri_));
         bool is_file = false;
-        RETURN_NOT_OK(vfs->is_file(commit_uris_to_delete[i], &is_file));
+        throw_if_not_ok(vfs->is_file(commit_uris_to_delete[i], &is_file));
         if (is_file) {
-          RETURN_NOT_OK(vfs->remove_file(commit_uris_to_delete[i]));
+          throw_if_not_ok(vfs->remove_file(commit_uris_to_delete[i]));
         }
         return Status::Ok();
       }));

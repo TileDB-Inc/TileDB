@@ -36,6 +36,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/misc/tdb_time.h"
+#include "tiledb/sm/query/iquery_strategy.h"
 #include "tiledb/sm/query/query_buffer.h"
 
 namespace tiledb {
@@ -98,6 +99,12 @@ void StrategyBase::get_dim_attr_stats() const {
         }
       }
     }
+  }
+}
+
+void StrategyBase::throw_if_cancellation_requested() const {
+  if (storage_manager_->cancellation_in_progress()) {
+    throw QueryException("Query was cancelled");
   }
 }
 

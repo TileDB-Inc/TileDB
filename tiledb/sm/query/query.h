@@ -61,14 +61,6 @@ using namespace tiledb::common;
 
 namespace tiledb::sm {
 
-/** Class for query status exceptions. */
-class QueryException : public StatusException {
- public:
-  explicit QueryException(const std::string& msg)
-      : StatusException("Query", msg) {
-  }
-};
-
 class Array;
 class ArrayDimensionLabelQueries;
 
