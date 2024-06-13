@@ -98,12 +98,14 @@ size_t random_ms(size_t max = 3) {
  */
 void wait_all(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
+  // Do not use REQUIRE_NOTHROW here; it will invoke more test code and Catch2's
+  // checks are not reentrant.
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE_NOTHROW(pool.wait(r));
+      pool.wait(r);
     }
   } else {
-    REQUIRE_NOTHROW(pool.wait_all(results));
+    pool.wait_all(results);
   }
 }
 
@@ -185,7 +187,7 @@ TEST_CASE(
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    REQUIRE_THROWS(cancelable_tasks.cancel_all_tasks());
+    REQUIRE_NOTHROW(cancelable_tasks.cancel_all_tasks());
   }
 
   SECTION("- With cancellation callback") {
@@ -206,7 +208,7 @@ TEST_CASE(
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    REQUIRE_THROWS(cancelable_tasks.cancel_all_tasks());
+    REQUIRE_NOTHROW(cancelable_tasks.cancel_all_tasks());
     REQUIRE(num_cancelled == ((int64_t)tasks.size() - result));
   }
 }
