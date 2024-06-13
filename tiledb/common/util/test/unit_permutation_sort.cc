@@ -38,9 +38,12 @@
 #include <vector>
 #include "tiledb/common/util/alt_var_length_view.h"
 #include "tiledb/common/util/permutation_view.h"
+
 #include "tiledb/common/util/proxy_sort.h"
 #include "tiledb/common/util/var_length_view.h"
 #include "tiledb/stdx/__ranges/zip_view.h"
+
+#include "tiledb/common/util/permute.h"
 
 TEST_CASE("permutation_sort: Null test", "[permutation_sort][null_test]") {
   REQUIRE(true);
@@ -338,4 +341,125 @@ TEST_CASE(
       }));
     }
   }
+}
+
+/**
+ * This function is set up to time various ways of sorting a set of arrays
+ * according to how one of them is ordered.  It compares the time of sorting
+ * with a proxy sort and in-place permutation vs in-place sort.
+ *
+ * Doing in-place sort with the zip view is the most efficient (especially when
+ * parallelized.
+ *
+ * To do the timings, access a version of timer.h (e.g., from the experimental
+ * dag hierarchy and uncomment the timer related lines.  To do the timing of
+ * parallel zip sort you will also need to use a parallel sort algorithm.  You
+ * may also want to increase the size of N to 20'000'000.
+ */
+TEST_CASE("permutation_sort: time", "[permutation_sort]") {
+  uint32_t seed = Catch::rngSeed();
+  size_t N = 2'000'000;
+  std::mt19937 g(seed);
+
+  std::vector<int> perm(N);
+  std::iota(begin(perm), end(perm), 0);
+
+  auto init_19 = std::vector<int>(N);
+  std::iota(begin(init_19), end(init_19), 19);
+  std::vector<int> shuffled(init_19);
+
+  std::shuffle(shuffled.begin(), shuffled.end(), g);
+  std::vector<int> sorted0(shuffled);
+  std::vector<int> sorted1(shuffled);
+  std::vector<int> sorted2(shuffled);
+  std::vector<int> sorted3(shuffled);
+  std::vector<int> sorted4(shuffled);
+  std::vector<int> sorted5(shuffled);
+  std::vector<int> sorted6(shuffled);
+  std::vector<int> sorted7(shuffled);
+  std::vector<int> sorted8(shuffled);
+  std::vector<int> sorted9(shuffled);
+
+  CHECK(!std::ranges::equal(shuffled, init_19));
+
+  // Different numbers of vectors have different performance characteristics
+  // auto z = zip(shuffled, sorted0, sorted1, sorted2);
+  // auto z = zip(shuffled, sorted0, sorted1, sorted2, sorted3, sorted4);
+  // auto z = zip(shuffled, sorted0, sorted1, sorted2, sorted3, sorted4,
+  // sorted5, sorted6);
+  auto z =
+      zip(shuffled,
+          sorted0,
+          sorted1,
+          sorted2,
+          sorted3,
+          sorted4,
+          sorted5,
+          sorted6,
+          sorted7,
+          sorted8,
+          sorted9);
+
+  std::vector<char> done(N, 0);
+
+  SECTION("separate sort") {
+    std::ranges::sort(shuffled);
+    std::ranges::sort(sorted0);
+    std::ranges::sort(sorted1);
+    std::ranges::sort(sorted2);
+
+    CHECK(std::ranges::equal(shuffled, init_19));
+    CHECK(std::ranges::equal(sorted0, init_19));
+    CHECK(std::ranges::equal(sorted1, init_19));
+    CHECK(std::ranges::equal(sorted2, init_19));
+  }
+  SECTION("proxy sort permute") {
+    proxy_sort(shuffled, perm);
+
+    permute(shuffled, perm);
+    permute(sorted0, perm);
+    permute(sorted1, perm);
+    permute(sorted2, perm);
+
+    CHECK(std::ranges::equal(shuffled, init_19));
+    CHECK(std::ranges::equal(sorted0, init_19));
+    CHECK(std::ranges::equal(sorted1, init_19));
+    CHECK(std::ranges::equal(sorted2, init_19));
+  }
+  SECTION("proxy sort permute zip") {
+    proxy_sort(shuffled, perm);
+
+    permute(z, perm, done);
+
+    CHECK(std::ranges::equal(shuffled, init_19));
+    CHECK(std::ranges::equal(sorted0, init_19));
+    CHECK(std::ranges::equal(sorted1, init_19));
+    CHECK(std::ranges::equal(sorted2, init_19));
+  }
+
+  SECTION("zip sort") {
+    std::sort(z.begin(), z.end(), [](auto&& a, auto&& b) {
+      return std::get<0>(a) < std::get<0>(b);
+    });
+
+    CHECK(std::ranges::equal(shuffled, init_19));
+    CHECK(std::ranges::equal(sorted0, init_19));
+    CHECK(std::ranges::equal(sorted1, init_19));
+    CHECK(std::ranges::equal(sorted2, init_19));
+  }
+
+// Enable if pmergesort is available
+#if 0
+  SECTION("zip par sort") {
+
+    pmergesort(z.begin(), z.end(), [](auto&& a, auto&& b) {
+     return std::get<0>(a) < std::get<0>(b);
+    });
+
+    CHECK(std::ranges::equal(shuffled, init_19));
+    CHECK(std::ranges::equal(sorted0, init_19));
+    CHECK(std::ranges::equal(sorted1, init_19));
+    CHECK(std::ranges::equal(sorted2, init_19));
+  }
+#endif
 }
