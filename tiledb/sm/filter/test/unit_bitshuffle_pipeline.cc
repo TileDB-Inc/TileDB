@@ -143,7 +143,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   pipeline.add_filter(BitshuffleFilter(Datatype::UINT64));
 
   SECTION("- Single stage") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     CHECK(
         pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
             .ok());
@@ -161,7 +161,7 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
   }
 
   SECTION("- Indivisible by 8") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     const uint32_t nelts2 = 1001;
     const uint64_t tile_size2 = nelts2 * sizeof(uint32_t);
 
@@ -194,5 +194,5 @@ TEST_CASE("Filter: Test bitshuffle var", "[filter][bitshuffle][var]") {
     }
   }
 
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }
