@@ -359,8 +359,8 @@ TEST_CASE(
 // #include "timer.h"
 // #include "pmergesort.h"
 TEST_CASE("permutation_sort: time", "[permutation_sort]") {
-  size_t seed = Catch::rngSeed();
-  size_t N = 2'000'000;
+  auto seed = Catch::rngSeed();
+  uint32_t N = 2'000'000;
   std::mt19937 g(seed);
 
   std::vector<int> perm(N);
@@ -402,7 +402,7 @@ TEST_CASE("permutation_sort: time", "[permutation_sort]") {
           sorted8,
           sorted9);
 
-  std::vector<char> done(N, false);
+  std::vector<char> done(N, 0);
 
   // timer t;
   // t.start();
