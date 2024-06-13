@@ -293,7 +293,7 @@ TEST_CASE(
 
   SECTION("- Multi-stage") {
     // Add a few more +1 filters and re-run.
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
     pipeline.add_filter(Add1InPlace(Datatype::UINT64));
 
