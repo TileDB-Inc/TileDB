@@ -135,11 +135,6 @@ TEST_CASE("sort_chunk: zip_view of vector and alt_var_length_view") {
     });
   }
 
-  // print_types(cz);                    // chunk_view of zip
-  // print_types(cz[0]);                 // subrange of zip
-  // print_types(cz[0][0]);              // tuple<int, subrange>
-  // print_types(std::get<1>(cz[0][0])); // subrange of char*
-
   // 26, 25, 24, 23, 22, 21, 20, 19, 18, 17
   // -> 25, 26, 23, 24, 21, 22, 19, 20, 17, 18
   // Where ox lips and the nod ding vio let grows

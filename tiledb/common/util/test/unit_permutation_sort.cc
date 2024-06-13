@@ -356,8 +356,6 @@ TEST_CASE(
  * parallel zip sort you will also need to use a parallel sort algorithm.  You
  * may also want to increase the size of N to 20'000'000.
  */
-// #include "timer.h"
-// #include "pmergesort.h"
 TEST_CASE("permutation_sort: time", "[permutation_sort]") {
   uint32_t seed = Catch::rngSeed();
   size_t N = 2'000'000;
@@ -404,8 +402,6 @@ TEST_CASE("permutation_sort: time", "[permutation_sort]") {
 
   std::vector<char> done(N, 0);
 
-  // timer t;
-  // t.start();
   SECTION("separate sort") {
     std::ranges::sort(shuffled);
     std::ranges::sort(sorted0);
@@ -466,5 +462,4 @@ TEST_CASE("permutation_sort: time", "[permutation_sort]") {
     CHECK(std::ranges::equal(sorted2, init_19));
   }
 #endif
-  // std::cout << "sort :  " << _.elapsed() << " " << sorted0[0] << std::endl;
 }
