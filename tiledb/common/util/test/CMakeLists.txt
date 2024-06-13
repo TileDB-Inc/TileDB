@@ -74,3 +74,8 @@ commence(unit_test block_view)
 )
 conclude(unit_test)
 
+commence(unit_test view_combo)
+this_target_sources(
+        unit_view_combo.cc
+)
+conclude(unit_test)
