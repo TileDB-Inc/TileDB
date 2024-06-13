@@ -98,10 +98,6 @@ uint32_t WriterTile::compute_chunk_size(
   return static_cast<uint32_t>(chunk_size64);
 }
 
-void WriterTile::set_max_tile_chunk_size(uint64_t max_tile_chunk_size) {
-  max_tile_chunk_size_ = max_tile_chunk_size;
-}
-
 /* ****************************** */
 /*   CONSTRUCTORS & DESTRUCTORS   */
 /* ****************************** */

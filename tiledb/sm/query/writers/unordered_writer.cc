@@ -387,8 +387,8 @@ Status UnorderedWriter::prepare_tiles(
       parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
-        RETURN_CANCEL_OR_ERROR(
-            prepare_tiles(tiles_it->first, &(tiles_it->second)));
+        throw_if_not_ok(prepare_tiles(tiles_it->first, &(tiles_it->second)));
+        this->throw_if_cancellation_requested();
         return Status::Ok();
       });
 

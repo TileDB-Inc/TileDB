@@ -51,9 +51,20 @@ on:
         description: 'Enable manylinux builds'
         required: false
         type: boolean
+      vcpkg_base_triplet:
+        default: ''
+        description: 'Base triplet for vcpkg'
+        required: false
+        type: string
+      cmake_generator:
+        default: 'Unix Makefiles' # TODO: Ninja is much better than makefiles. Should it be the default?
+        description: 'CMake generator'
+        required: false
+        type: string
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  CMAKE_GENERATOR: ${{ inputs.cmake_generator }}
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
   TILEDB_CI_OS: ${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'Linux' || 'macOS' }}
   # Installing Python does not work on manylinux.
@@ -63,7 +74,7 @@ env:
   CC: ${{ inputs.matrix_compiler_cc }}
   CFLAGS: ${{ inputs.matrix_compiler_cflags }}
   CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
-  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=x64-${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'linux' || 'osx' }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
@@ -118,6 +129,11 @@ jobs:
         with:
           python-version: '3.9'
           cache: 'pip'
+
+      # This must happen after checkout, because checkout would remove the directory.
+      - name: Install Ninja
+        if: inputs.cmake_generator == 'Ninja'
+        uses: seanmiddleditch/gha-setup-ninja@v4
 
       - name: 'Set up Python dependencies'
         if: ${{ !inputs.manylinux }}

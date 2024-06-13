@@ -50,7 +50,6 @@
 #include "tiledb/sm/serialization/array_directory.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/fragment_metadata.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 
 using namespace tiledb::common;
 using namespace tiledb::sm::stats;

@@ -143,13 +143,13 @@ class permutation_view : public std::ranges::view_interface<
         data_begin_, index_begin_, data_end_ - data_begin_};
   }
 
-  /** Size of the permutation view */
+  /** Size of the permutation view. */
   size_t size() const {
     return data_end_ - data_begin_;
   }
 
-  /** Accessor */
-  auto& operator[](size_t i) const {
+  /** Accessor.  Note use of decltype(auto).  */
+  decltype(auto) operator[](size_t i) const {
     // More general? return *(data_begin_ + *(index_begin_ + i));
     return data_begin_[index_begin_[i]];
   }

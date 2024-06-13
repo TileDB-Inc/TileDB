@@ -573,6 +573,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
     const bool var_sized{array_schema_.var_size(name)};
     const bool nullable{array_schema_.is_nullable(name)};
     filtered_data.emplace_back(
+        resources_,
         *this,
         min_batch_size_,
         max_batch_size_,
@@ -583,7 +584,6 @@ std::list<FilteredData> ReaderBase::read_tiles(
         var_sized,
         nullable,
         val_only,
-        storage_manager_,
         read_tasks,
         memory_tracker_);
 
@@ -817,7 +817,7 @@ Status ReaderBase::unfilter_tiles(
                 tiles_chunk_data[i],
                 tiles_chunk_var_data[i],
                 tiles_chunk_validity_data[i]);
-        RETURN_NOT_OK(st);
+        throw_if_not_ok(st);
         unfiltered_tile_size[i] = tile_size.value();
         unfiltered_tile_var_size[i] = tile_var_size.value();
         unfiltered_tile_validity_size[i] = tile_validity_size.value();
@@ -836,7 +836,7 @@ Status ReaderBase::unfilter_tiles(
       0,
       num_range_threads,
       [&](uint64_t i, uint64_t range_thread_idx) {
-        return unfilter_tile(
+        throw_if_not_ok(unfilter_tile(
             name,
             validity_only,
             result_tiles[i],
@@ -846,7 +846,8 @@ Status ReaderBase::unfilter_tiles(
             num_range_threads,
             tiles_chunk_data[i],
             tiles_chunk_var_data[i],
-            tiles_chunk_validity_data[i]);
+            tiles_chunk_validity_data[i]));
+        return Status::Ok();
       });
   RETURN_CANCEL_OR_ERROR(status);
 

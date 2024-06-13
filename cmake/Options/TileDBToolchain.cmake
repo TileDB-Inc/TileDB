@@ -32,7 +32,7 @@ if (NOT DEFINED CMAKE_TOOLCHAIN_FILE)
         set(CMAKE_TOOLCHAIN_FILE
             "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
             CACHE STRING "Vcpkg toolchain file")
-    elseif(NOT DEFINED ENV{TILEDB_DISABLE_AUTO_VCPKG})
+    elseif(NOT (DEFINED ENV{TILEDB_DISABLE_AUTO_VCPKG} OR TILEDB_DISABLE_AUTO_VCPKG))
         # Inspired from https://github.com/Azure/azure-sdk-for-cpp/blob/azure-core_1.10.3/cmake-modules/AzureVcpkg.cmake
         message("TILEDB_DISABLE_AUTO_VCPKG is not defined. Fetch a local copy of vcpkg.")
         # To help with resolving conflicts, when you update the commit, also update its date.

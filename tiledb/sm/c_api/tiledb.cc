@@ -1723,8 +1723,7 @@ capi_return_t tiledb_subarray_alloc(
         array->array_.get(),
         (tiledb::sm::stats::Stats*)nullptr,
         ctx->resources().logger(),
-        true,
-        ctx->storage_manager());
+        true);
     (*subarray)->is_allocated_ = true;
   } catch (...) {
     delete *subarray;

@@ -397,13 +397,6 @@ if(TILEDB_HDFS)
   endif()
 endif()
 
-# Add custom target 'check'
-add_custom_target(check
-  COMMAND ${CMAKE_CTEST_COMMAND} -V -C $<CONFIG>
-  DEPENDS tests
-  USES_TERMINAL
-)
-
 # CI tests
 add_subdirectory(ci)
 if(WIN32)

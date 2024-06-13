@@ -439,7 +439,7 @@ Status GCS::remove_dir(const URI& uri) const {
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
   auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
-    RETURN_NOT_OK(remove_object(URI(paths[i])));
+    throw_if_not_ok(remove_object(URI(paths[i])));
     return Status::Ok();
   });
   RETURN_NOT_OK(status);

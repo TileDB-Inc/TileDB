@@ -338,6 +338,11 @@ class StrategyBase {
    * the query.
    */
   void get_dim_attr_stats() const;
+
+  /**
+   * Throws an exception if the query is canceled.
+   */
+  void throw_if_cancellation_requested() const;
 };
 
 }  // namespace tiledb::sm

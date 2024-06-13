@@ -43,7 +43,6 @@
 #include "tiledb/sm/misc/tile_overlap.h"
 #include "tiledb/sm/misc/types.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/subarray/range_subset.h"
 #include "tiledb/sm/subarray/relevant_fragments.h"
 #include "tiledb/sm/subarray/subarray_tile_overlap.h"
@@ -368,8 +367,7 @@ class Subarray {
       const Array* array,
       stats::Stats* parent_stats,
       shared_ptr<Logger> logger,
-      bool coalesce_ranges = true,
-      StorageManager* storage_manager = nullptr);
+      bool coalesce_ranges = true);
 
   /**
    * Constructor.
@@ -388,8 +386,7 @@ class Subarray {
       Layout layout,
       stats::Stats* parent_stats,
       shared_ptr<Logger> logger,
-      bool coalesce_ranges = true,
-      StorageManager* storage_manager = nullptr);
+      bool coalesce_ranges = true);
 
   /**
    * Constructor.
@@ -408,8 +405,7 @@ class Subarray {
       Layout layout,
       stats::Stats* parent_stats,
       shared_ptr<Logger> logger,
-      bool coalesce_ranges = true,
-      StorageManager* storage_manager = nullptr);
+      bool coalesce_ranges = true);
 
   /**
    * Copy constructor. This performs a deep copy (including memcpy of

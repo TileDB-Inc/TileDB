@@ -30,6 +30,8 @@
  * This file implements unit tests for the chunk_view class.
  */
 
+#include <numeric>
+
 #include <catch2/catch_all.hpp>
 #include "tiledb/stdx/__ranges/chunk_view.h"
 
@@ -386,4 +388,44 @@ TEST_CASE("chunk_view: Iterators values", "[chunk_view]") {
   CHECK((*b)[4] == 10.0);
   ++b;
   CHECK(b == a.end());
+}
+
+TEST_CASE("chunk_view: Larger vector", "[chunk_view]") {
+  size_t num_elements = 8 * 1024;
+  size_t chunk_size = 128;
+  size_t num_chunks = num_elements / chunk_size;
+
+  // Don't worry about boundary cases for now
+  REQUIRE(num_elements % num_chunks == 0);
+
+  std::vector<int> base_17(num_elements);
+  std::iota(begin(base_17), end(base_17), 0);
+
+  REQUIRE(size(base_17) == num_elements);
+
+  REQUIRE(
+      std::ranges::equal(base_17, std::vector<int>(num_elements, 0)) == false);
+
+  auto a = _cpo::chunk(base_17, (long)chunk_size);
+
+  SECTION("Verify base chunk view") {
+    for (size_t i = 0; i < num_chunks; ++i) {
+      auto current_chunk = a[i];
+      for (size_t j = 0; j < chunk_size; ++j) {
+        CHECK(current_chunk[j] == base_17[i * chunk_size + j]);
+      }
+    }
+  }
+
+  SECTION("Verify base chunk view") {
+    for (size_t i = 0; i < num_chunks; ++i) {
+      auto current_chunk = a[i];
+      for (size_t j = 0; j < chunk_size; ++j) {
+        CHECK(current_chunk[j] == base_17[i * chunk_size + j]);
+        current_chunk[j] = 0;
+        CHECK(current_chunk[j] == 0);
+      }
+    }
+    CHECK(std::ranges::equal(base_17, std::vector<int>(num_elements, 0)));
+  }
 }
