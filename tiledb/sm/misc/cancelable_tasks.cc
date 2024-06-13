@@ -44,12 +44,10 @@ CancelableTasks::CancelableTasks()
 
 ThreadPool::Task CancelableTasks::execute(
     ThreadPool* const thread_pool,
-    std::function<Status()>&& fn,
+    std::function<void()>&& fn,
     std::function<void()>&& on_cancel) {
-  std::function<Status()> wrapped_fn =
-      std::bind(&CancelableTasks::fn_wrapper, this, fn, on_cancel);
-
-  ThreadPool::Task task = thread_pool->execute(std::move(wrapped_fn));
+  ThreadPool::Task task =
+      thread_pool->execute(&CancelableTasks::fn_wrapper, this, fn, on_cancel);
   if (task.valid()) {
     std::unique_lock<std::mutex> lck(outstanding_tasks_mutex_);
     ++outstanding_tasks_;
@@ -73,8 +71,8 @@ void CancelableTasks::cancel_all_tasks() {
   }
 }
 
-Status CancelableTasks::fn_wrapper(
-    const std::function<Status()>& fn, const std::function<void()>& on_cancel) {
+void CancelableTasks::fn_wrapper(
+    const std::function<void()>& fn, const std::function<void()>& on_cancel) {
   std::unique_lock<std::mutex> lck(outstanding_tasks_mutex_);
   if (should_cancel_) {
     if (on_cancel) {
@@ -85,10 +83,10 @@ Status CancelableTasks::fn_wrapper(
     if (--outstanding_tasks_ == 0) {
       outstanding_tasks_cv_.notify_all();
     }
-    return Status_Error("Task cancelled before execution.");
+    throw TaskException("Task cancelled before execution.");
   } else {
     lck.unlock();
-    Status st = fn();
+    fn();
     lck.lock();
     --outstanding_tasks_;
     // If 'should_cancel_' became true when the lock was released to execute
@@ -96,7 +94,6 @@ Status CancelableTasks::fn_wrapper(
     if (should_cancel_ && outstanding_tasks_ == 0) {
       outstanding_tasks_cv_.notify_all();
     }
-    return st;
   }
 }
 

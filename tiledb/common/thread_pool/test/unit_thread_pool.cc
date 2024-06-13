@@ -100,55 +100,11 @@ void wait_all(
     ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
   if (use_wait) {
     for (auto& r : results) {
-      REQUIRE(pool.wait(r).ok());
+      REQUIRE_NOTHROW(pool.wait(r));
     }
   } else {
-    REQUIRE(pool.wait_all(results).ok());
+    REQUIRE_NOTHROW(pool.wait_all(results));
   }
-}
-
-/**
- * Use the wait or wait_all function to wait on all status.
- *
- * @return First failed status code or success.
- */
-Status wait_all_status(
-    ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
-  if (use_wait) {
-    Status ret;
-    for (auto& r : results) {
-      auto st = pool.wait(r);
-      if (ret.ok() && !st.ok()) {
-        ret = st;
-      }
-    }
-
-    return ret;
-  } else {
-    return pool.wait_all(results);
-  }
-}
-
-/**
- * Use the wait or wait_all function to wait on all status.
- *
- * @return Number of successes.
- */
-uint64_t wait_all_num_status(
-    ThreadPool& pool, bool use_wait, std::vector<ThreadPool::Task>& results) {
-  int num_ok = 0;
-  if (use_wait) {
-    for (auto& r : results) {
-      num_ok += pool.wait(r).ok() ? 1 : 0;
-    }
-  } else {
-    std::vector<Status> statuses = pool.wait_all_status(results);
-    for (const auto& st : statuses) {
-      num_ok += st.ok() ? 1 : 0;
-    }
-  }
-
-  return num_ok;
 }
 
 TEST_CASE("ThreadPool: Test empty", "[threadpool]") {
@@ -165,10 +121,7 @@ TEST_CASE("ThreadPool: Test single thread", "[threadpool]") {
   ThreadPool pool{1};
 
   for (int i = 0; i < 100; i++) {
-    ThreadPool::Task task = pool.execute([&result]() {
-      result++;
-      return Status::Ok();
-    });
+    ThreadPool::Task task = pool.execute([&result]() { result++; });
 
     REQUIRE(task.valid());
 
@@ -184,27 +137,9 @@ TEST_CASE("ThreadPool: Test multiple threads", "[threadpool]") {
   std::vector<ThreadPool::Task> results;
   ThreadPool pool{4};
   for (int i = 0; i < 100; i++) {
-    results.push_back(pool.execute([&result]() {
-      result++;
-      return Status::Ok();
-    }));
+    results.push_back(pool.execute([&result]() { result++; }));
   }
   wait_all(pool, use_wait, results);
-  REQUIRE(result == 100);
-}
-
-TEST_CASE("ThreadPool: Test wait status", "[threadpool]") {
-  bool use_wait = GENERATE(true, false);
-  std::atomic<int> result(0);
-  std::vector<ThreadPool::Task> results;
-  ThreadPool pool{4};
-  for (int i = 0; i < 100; i++) {
-    results.push_back(pool.execute([&result, i]() {
-      result++;
-      return i == 50 ? Status_Error("Generic error") : Status::Ok();
-    }));
-  }
-  REQUIRE(wait_all_num_status(pool, use_wait, results) == 99);
   REQUIRE(result == 100);
 }
 
@@ -223,7 +158,6 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
       ThreadPool::Task task = pool.execute([result = ptr]() {
         result->val_++;
         std::this_thread::sleep_for(std::chrono::milliseconds(random_ms(1000)));
-        return Status::Ok();
       });
       REQUIRE(task.valid());
     }
@@ -234,7 +168,6 @@ TEST_CASE("ThreadPool: Test no wait", "[threadpool]") {
 
 TEST_CASE(
     "ThreadPool: Test pending task cancellation", "[threadpool][cancel]") {
-  bool use_wait = GENERATE(true, false);
   SECTION("- No cancellation callback") {
     ThreadPool pool{2};
 
@@ -247,17 +180,12 @@ TEST_CASE(
       tasks.push_back(cancelable_tasks.execute(&pool, [&result]() {
         std::this_thread::sleep_for(std::chrono::seconds(2));
         result++;
-        return Status::Ok();
       }));
     }
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    cancelable_tasks.cancel_all_tasks();
-
-    // The result is the number of threads that returned Ok (were not
-    // cancelled).
-    REQUIRE(result == wait_all_num_status(pool, use_wait, tasks));
+    REQUIRE_THROWS(cancelable_tasks.cancel_all_tasks());
   }
 
   SECTION("- With cancellation callback") {
@@ -272,18 +200,13 @@ TEST_CASE(
           [&result]() {
             std::this_thread::sleep_for(std::chrono::seconds(2));
             result++;
-            return Status::Ok();
           },
           [&num_cancelled]() { num_cancelled++; }));
     }
 
     // Because the thread pool has 2 threads, the first two will probably be
     // executing at this point, but some will still be queued.
-    cancelable_tasks.cancel_all_tasks();
-
-    // The result is the number of threads that returned Ok (were not
-    // cancelled).
-    REQUIRE(result == wait_all_num_status(pool, use_wait, tasks));
+    REQUIRE_THROWS(cancelable_tasks.cancel_all_tasks());
     REQUIRE(num_cancelled == ((int64_t)tasks.size() - result));
   }
 }
@@ -311,12 +234,10 @@ TEST_CASE("ThreadPool: Test recursion, simplest case", "[threadpool]") {
     auto b = pool.execute([&result]() {
       std::this_thread::sleep_for(std::chrono::milliseconds(100));
       ++result;
-      return Status::Ok();
     });
     REQUIRE(b.valid());
     tasks.emplace_back(std::move(b));
     wait_all(pool, use_wait, tasks);
-    return Status::Ok();
   });
   REQUIRE(a.valid());
   tasks.emplace_back(std::move(a));
@@ -353,14 +274,12 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
         auto inner_task = pool.execute([&]() {
           std::this_thread::sleep_for(std::chrono::milliseconds(random_ms()));
           ++result;
-          return Status::Ok();
         });
 
         inner_tasks.emplace_back(std::move(inner_task));
       }
 
       wait_all(pool, use_wait, inner_tasks);
-      return Status::Ok();
     });
 
     REQUIRE(task.valid());
@@ -383,11 +302,8 @@ TEST_CASE("ThreadPool: Test recursion", "[threadpool]") {
           if (--result == 0) {
             cv.notify_all();
           }
-          return Status::Ok();
         });
       }
-
-      return Status::Ok();
     });
 
     REQUIRE(task.valid());
@@ -445,21 +361,18 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
                 std::this_thread::sleep_for(
                     std::chrono::milliseconds(random_ms()));
                 ++result;
-                return Status::Ok();
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return Status::Ok();
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return Status::Ok();
       });
 
       REQUIRE(task_a.valid());
@@ -487,21 +400,18 @@ TEST_CASE("ThreadPool: Test recursion, two pools", "[threadpool]") {
                   std::unique_lock<std::mutex> ul(cv_mutex);
                   cv.notify_all();
                 }
-                return Status::Ok();
               });
 
               tasks_c.emplace_back(std::move(task_c));
             }
 
             wait_all(pool_a, use_wait, tasks_c);
-            return Status::Ok();
           });
 
           tasks_b.emplace_back(std::move(task_b));
         }
 
         wait_all(pool_b, use_wait, tasks_b);
-        return Status::Ok();
       });
 
       REQUIRE(task_a.valid());
@@ -533,14 +443,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         if (tmp == 13) {
           throw(std::string("Unripe banana"));
         }
-        return Status::Ok();
       }));
     }
 
-    REQUIRE(
-        wait_all_status(pool, use_wait, results).to_string() ==
-        unripe_banana_status.to_string());
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(wait_all(pool, use_wait, results), "Unripe banana");
   }
 
   SECTION("One tile error exception") {
@@ -550,16 +456,14 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
       results.push_back(pool.execute([&result, &unbaked_potato_status]() {
         auto tmp = result++;
         if (tmp == 31) {
-          throw(unbaked_potato_status);
+          throw StatusException(unbaked_potato_status);
         }
-        return Status::Ok();
       }));
     }
 
-    REQUIRE(
-        wait_all_status(pool, use_wait, results).to_string() ==
-        unbaked_potato_status.to_string());
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(
+        wait_all(pool, use_wait, results),
+        Catch::Matchers::EndsWith("Unbaked potato"));
   }
 
   SECTION("Two exceptions") {
@@ -574,16 +478,13 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         if (tmp == 31) {
           throw(Status_TileError("Unbaked potato"));
         }
-
-        return Status::Ok();
       }));
     }
 
-    auto pool_status = wait_all_status(pool, use_wait, results);
-    REQUIRE(
-        ((pool_status.to_string() == unripe_banana_status.to_string()) ||
-         (pool_status.to_string() == unbaked_potato_status.to_string())));
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(
+        wait_all(pool, use_wait, results),
+        Catch::Matchers::Equals("Unripe banana") ||
+            Catch::Matchers::Equals("Unbaked potato"));
   }
 
   SECTION("Two exceptions reverse order") {
@@ -598,16 +499,13 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         if (tmp == 13) {
           throw(Status_TileError("Unbaked potato"));
         }
-
-        return Status::Ok();
       }));
     }
 
-    auto pool_status = wait_all_status(pool, use_wait, results);
-    REQUIRE(
-        ((pool_status.to_string() == unripe_banana_status.to_string()) ||
-         (pool_status.to_string() == unbaked_potato_status.to_string())));
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(
+        wait_all(pool, use_wait, results),
+        Catch::Matchers::Equals("Unripe banana") ||
+            Catch::Matchers::Equals("Unbaked potato"));
   }
 
   SECTION("Two exceptions strict order") {
@@ -622,15 +520,13 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         if (i == 31) {
           throw(Status_TileError("Unbaked potato"));
         }
-
-        return Status::Ok();
       }));
     }
 
-    REQUIRE(
-        wait_all_status(pool, use_wait, results).to_string() ==
-        unripe_banana_status.to_string());
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(
+        wait_all(pool, use_wait, results),
+        Catch::Matchers::Equals("Unripe banana") ||
+            Catch::Matchers::Equals("Unbaked potato"));
   }
 
   SECTION("Two exceptions strict reverse order") {
@@ -645,14 +541,12 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool]") {
         if (i == 13) {
           throw(Status_TileError("Unbaked potato"));
         }
-
-        return Status::Ok();
       }));
     }
 
-    REQUIRE(
-        wait_all_status(pool, use_wait, results).to_string() ==
-        unbaked_potato_status.to_string());
-    REQUIRE(result == 207);
+    REQUIRE_THROWS_WITH(
+        wait_all(pool, use_wait, results),
+        Catch::Matchers::Equals("Unripe banana") ||
+            Catch::Matchers::Equals("Unbaked potato"));
   }
 }

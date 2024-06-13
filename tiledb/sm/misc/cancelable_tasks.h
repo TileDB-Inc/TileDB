@@ -65,7 +65,7 @@ class CancelableTasks {
    */
   ThreadPool::Task execute(
       ThreadPool* thread_pool,
-      std::function<Status()>&& fn,
+      std::function<void()>&& fn,
       std::function<void()>&& on_cancel = nullptr);
 
   /**
@@ -81,12 +81,9 @@ class CancelableTasks {
    *
    * @param function Task to be executed.
    * @param function Optional routine to execute on cancelation.
-   * @return Status The returned status from 'fn', or a non-OK status if tasks
-   * were cancelled.
    */
-  Status fn_wrapper(
-      const std::function<Status()>& fn,
-      const std::function<void()>& on_cancel);
+  void fn_wrapper(
+      const std::function<void()>& fn, const std::function<void()>& on_cancel);
 
   /** The number of outstanding tasks */
   uint32_t outstanding_tasks_;
