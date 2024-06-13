@@ -173,7 +173,7 @@ TEST_CASE(
     auto tile = make_increasing_tile(nelts, tracker);
     auto offsets_tile = make_offsets_tile(offsets, tracker);
 
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     CHECK(
         pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
             .ok());
@@ -240,7 +240,7 @@ TEST_CASE(
   }
 
   SECTION("- Window sizes") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
@@ -271,7 +271,7 @@ TEST_CASE(
     auto tile = make_increasing_tile(nelts, tracker);
     auto offsets_tile = make_offsets_tile(offsets, tracker);
 
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     for (uint64_t i = 0; i < nelts; i++) {
       auto val = nelts - i;
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
@@ -282,5 +282,5 @@ TEST_CASE(
              .ok());
   }
 
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }

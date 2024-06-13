@@ -45,13 +45,11 @@
 #include "tiledb/sm/query/strategy_base.h"
 #include "tiledb/sm/query/writers/dense_tiler.h"
 #include "tiledb/sm/stats/stats.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class DomainBuffersView;
@@ -501,7 +499,6 @@ class WriterBase : public StrategyBase, public IQueryStrategy {
   bool remote_query() const;
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_WRITER_BASE_H

@@ -269,7 +269,7 @@ TEST_CASE(
     auto tile = make_increasing_tile(nelts, tracker);
     auto offsets_tile = make_offsets_tile(offsets, tracker);
 
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     CHECK(
         pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
             .ok());
@@ -335,7 +335,7 @@ TEST_CASE(
   }
 
   SECTION("- Window sizes") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     std::vector<uint32_t> window_sizes = {
         32, 64, 128, 256, 437, 512, 1024, 2000};
     for (auto window_size : window_sizes) {
@@ -362,7 +362,7 @@ TEST_CASE(
   }
 
   SECTION("- Random values") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     std::random_device rd;
     auto seed = rd();
     std::mt19937 gen(seed), gen_copy(seed);
@@ -401,7 +401,7 @@ TEST_CASE(
   }
 
   SECTION(" - Random signed values") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     std::random_device rd;
     auto seed = rd();
     std::mt19937 gen(seed), gen_copy(seed);
@@ -460,7 +460,7 @@ TEST_CASE(
   }
 
   SECTION("- Byte overflow") {
-    WriterTile::set_max_tile_chunk_size(80);
+    WhiteboxWriterTile::set_max_tile_chunk_size(80);
     auto tile = make_shared<WriterTile>(
         HERE(),
         constants::format_version,
@@ -493,5 +493,5 @@ TEST_CASE(
     }
   }
 
-  WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+  WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
 }

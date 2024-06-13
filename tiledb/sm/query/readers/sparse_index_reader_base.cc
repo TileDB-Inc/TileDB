@@ -678,7 +678,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
           {
             auto timer_compute_results_count_sparse =
                 stats_->start_timer("compute_results_count_sparse");
-            RETURN_NOT_OK(rt->compute_results_count_sparse(
+            throw_if_not_ok(rt->compute_results_count_sparse(
                 dim_idx,
                 ranges_for_dim,
                 relevant_ranges,
@@ -738,7 +738,7 @@ void SparseIndexReaderBase::apply_query_condition(
             // Remove cells with partial overlap from the bitmap.
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
-            RETURN_NOT_OK(partial_overlap_condition_.apply_sparse<BitmapType>(
+            throw_if_not_ok(partial_overlap_condition_.apply_sparse<BitmapType>(
                 params, *rt, rt->bitmap()));
             rt->count_cells();
           }
@@ -755,8 +755,9 @@ void SparseIndexReaderBase::apply_query_condition(
             // Remove cells deleted cells using the open timestamp.
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
-            RETURN_NOT_OK(delete_timestamps_condition_.apply_sparse<BitmapType>(
-                params, *rt, rt->post_dedup_bitmap()));
+            throw_if_not_ok(
+                delete_timestamps_condition_.apply_sparse<BitmapType>(
+                    params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
             }
@@ -766,7 +767,7 @@ void SparseIndexReaderBase::apply_query_condition(
           if (condition_.has_value()) {
             QueryCondition::Params params(
                 query_memory_tracker_, *(frag_meta->array_schema().get()));
-            RETURN_NOT_OK(condition_->apply_sparse<BitmapType>(
+            throw_if_not_ok(condition_->apply_sparse<BitmapType>(
                 params, *rt, rt->post_dedup_bitmap()));
             if (array_schema_.allows_dups()) {
               rt->count_cells();
@@ -801,12 +802,12 @@ void SparseIndexReaderBase::apply_query_condition(
                       *(frag_meta->array_schema().get()));
                   if (!frag_meta->has_timestamps() ||
                       delete_timestamp > frag_meta->timestamp_range().second) {
-                    RETURN_NOT_OK(
+                    throw_if_not_ok(
                         delete_and_update_conditions_[i]
                             .apply_sparse<BitmapType>(
                                 params, *rt, rt->post_dedup_bitmap()));
                   } else {
-                    RETURN_NOT_OK(
+                    throw_if_not_ok(
                         timestamped_delete_and_update_conditions_[i]
                             .apply_sparse<BitmapType>(
                                 params, *rt, rt->post_dedup_bitmap()));
