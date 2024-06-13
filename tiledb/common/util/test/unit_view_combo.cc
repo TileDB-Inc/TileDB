@@ -190,16 +190,21 @@ TEST_CASE("view combo: chunk a permutation view", "[view_combo]") {
   auto w = var_length_view(qq, pp);
   auto x = permutation_view(w, oo);
 
+  auto a = stdx::ranges::chunk_view(x, 2);
+  CHECK(std::ranges::equal(
+      a[0],
+      std::vector<std::vector<double>>{
           {14.0, 13.0, 12.0},
           {21.0, 20.0},
+      },
       subrange_equal{}));
 
-          CHECK(std::ranges::equal(
-              a[1],
-              std::vector<std::vector<double>>{
-                  {19.0, 18.0, 17.0, 16.0, 15.0},
-              },
-              subrange_equal{}));
+  CHECK(std::ranges::equal(
+      a[1],
+      std::vector<std::vector<double>>{
+          {19.0, 18.0, 17.0, 16.0, 15.0},
+      },
+      subrange_equal{}));
 }
 
 TEST_CASE("view combo: permute a chunk view", "[view_combo]") {
