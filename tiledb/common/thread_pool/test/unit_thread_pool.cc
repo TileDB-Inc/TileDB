@@ -447,7 +447,7 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([&result]() {
         auto tmp = result++;
         if (tmp == 13) {
-          throw(std::string("Unripe banana"));
+          throw std::exception("Unripe banana");
         }
       }));
     }
@@ -479,10 +479,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([&result]() {
         auto tmp = result++;
         if (tmp == 13) {
-          throw(std::string("Unripe banana"));
+          throw std::string("Unripe banana");
         }
         if (tmp == 31) {
-          throw(Status_TileError("Unbaked potato"));
+          throw std::exception("Unbaked potato");
         }
       }));
     }
@@ -500,10 +500,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([&result]() {
         auto tmp = result++;
         if (tmp == 31) {
-          throw(std::string("Unripe banana"));
+          throw std::string("Unripe banana");
         }
         if (tmp == 13) {
-          throw(Status_TileError("Unbaked potato"));
+          throw std::exception("Unbaked potato");
         }
       }));
     }
@@ -521,10 +521,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([i, &result]() {
         result++;
         if (i == 13) {
-          throw(std::string("Unripe banana"));
+          throw std::exception("Unripe banana");
         }
         if (i == 31) {
-          throw(Status_TileError("Unbaked potato"));
+          throw std::exception("Unbaked potato");
         }
       }));
     }
@@ -542,10 +542,10 @@ TEST_CASE("ThreadPool: Test Exceptions", "[threadpool][exceptions]") {
       results.push_back(pool.execute([i, &result]() {
         ++result;
         if (i == 31) {
-          throw(std::string("Unripe banana"));
+          throw(std::exception("Unripe banana"));
         }
         if (i == 13) {
-          throw(Status_TileError("Unbaked potato"));
+          throw std::exception("Unbaked potato");
         }
       }));
     }
