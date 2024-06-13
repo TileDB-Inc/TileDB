@@ -501,7 +501,7 @@ void ReaderBase::load_tile_offsets(
   auto timer_se = stats_->start_timer("load_tile_offsets");
   const auto encryption_key = array_->encryption_key();
 
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
@@ -522,8 +522,7 @@ void ReaderBase::load_tile_offsets(
 
         fragment->loaded_metadata()->load_tile_offsets(
             *encryption_key, filtered_names);
-        return Status::Ok();
-      }));
+      });
 }
 
 void ReaderBase::load_tile_var_sizes(
@@ -532,7 +531,7 @@ void ReaderBase::load_tile_var_sizes(
   auto timer_se = stats_->start_timer("load_tile_var_sizes");
   const auto encryption_key = array_->encryption_key();
 
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
@@ -556,9 +555,7 @@ void ReaderBase::load_tile_var_sizes(
           fragment->loaded_metadata()->load_tile_var_sizes(
               *encryption_key, name);
         }
-
-        return Status::Ok();
-      }));
+      });
 }
 
 void ReaderBase::load_tile_metadata(
@@ -567,7 +564,7 @@ void ReaderBase::load_tile_metadata(
   auto timer_se = stats_->start_timer("load_tile_metadata");
   const auto encryption_key = array_->encryption_key();
 
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       relevant_fragments.size(),
@@ -598,9 +595,7 @@ void ReaderBase::load_tile_metadata(
             *encryption_key, to_load);
         fragment->loaded_metadata()->load_tile_null_count_values(
             *encryption_key, to_load);
-
-        return Status::Ok();
-      }));
+      });
 }
 
 void ReaderBase::load_processed_conditions() {
@@ -608,7 +603,7 @@ void ReaderBase::load_processed_conditions() {
   const auto encryption_key = array_->encryption_key();
 
   // Load all fragments in parallel.
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       fragment_metadata_.size(),
@@ -619,9 +614,7 @@ void ReaderBase::load_processed_conditions() {
           fragment->loaded_metadata()->load_processed_conditions(
               *encryption_key);
         }
-
-        return Status::Ok();
-      }));
+      });
 }
 
 Status ReaderBase::read_and_unfilter_attribute_tiles(
@@ -773,10 +766,7 @@ std::list<FilteredData> ReaderBase::read_tiles(
   stats_->add_counter("num_tiles_read", num_tiles_read);
 
   // Wait for the read tasks to finish.
-  auto statuses{resources_.io_tp().wait_all_status(read_tasks)};
-  for (const auto& st : statuses) {
-    throw_if_not_ok(st);
-  }
+  resources_.io_tp().wait_all(read_tasks);
 
   return filtered_data;
 }
@@ -935,31 +925,28 @@ Status ReaderBase::unfilter_tiles(
   std::vector<uint64_t> unfiltered_tile_validity_size(num_tiles);
 
   // Pre-compute chunk offsets.
-  auto status = parallel_for(
-      &resources_.compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
-        auto&& [st, tile_size, tile_var_size, tile_validity_size] =
-            load_tile_chunk_data(
-                name,
-                validity_only,
-                result_tiles[i],
-                var_size,
-                nullable,
-                tiles_chunk_data[i],
-                tiles_chunk_var_data[i],
-                tiles_chunk_validity_data[i]);
-        throw_if_not_ok(st);
-        unfiltered_tile_size[i] = tile_size.value();
-        unfiltered_tile_var_size[i] = tile_var_size.value();
-        unfiltered_tile_validity_size[i] = tile_validity_size.value();
-        return Status::Ok();
-      });
-  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
+  parallel_for(&resources_.compute_tp(), 0, num_tiles, [&, this](uint64_t i) {
+    auto&& [st, tile_size, tile_var_size, tile_validity_size] =
+        load_tile_chunk_data(
+            name,
+            validity_only,
+            result_tiles[i],
+            var_size,
+            nullable,
+            tiles_chunk_data[i],
+            tiles_chunk_var_data[i],
+            tiles_chunk_validity_data[i]);
+    throw_if_not_ok(st);
+    unfiltered_tile_size[i] = tile_size.value();
+    unfiltered_tile_var_size[i] = tile_var_size.value();
+    unfiltered_tile_validity_size[i] = tile_validity_size.value();
+  });
 
   if (tiles_chunk_data.empty())
     return Status::Ok();
 
   // Unfilter all tiles/chunks in parallel using the precomputed offsets.
-  status = parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       num_tiles,
@@ -977,9 +964,7 @@ Status ReaderBase::unfilter_tiles(
             tiles_chunk_data[i],
             tiles_chunk_var_data[i],
             tiles_chunk_validity_data[i]));
-        return Status::Ok();
       });
-  RETURN_CANCEL_OR_ERROR(status);
 
   // Perform required post-processing of unfiltered tiles
   for (size_t i = 0; i < num_tiles; i++) {
@@ -1221,16 +1206,14 @@ ReaderBase::cache_dimension_label_data() {
   auto tile_extent{index_dim->tile_extent().rvalue_as<IndexType>()};
   std::vector<const void*> non_empty_domains(fragment_metadata_.size());
   std::vector<uint64_t> frag_first_array_tile_idx(fragment_metadata_.size());
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](unsigned f) {
         non_empty_domains[f] =
             fragment_metadata_[f]->non_empty_domain()[0].data();
         auto ned = static_cast<const IndexType*>(non_empty_domains[f]);
         frag_first_array_tile_idx[f] =
             index_dim->tile_idx<IndexType>(ned[0], dim_dom[0], tile_extent);
-
-        return Status::Ok();
-      }));
+      });
 
   // Compute the array non empty domain.
   IndexType min = std::numeric_limits<IndexType>::max();
@@ -1268,15 +1251,13 @@ void ReaderBase::validate_attribute_order(
   // See if some values will already be processed by previous fragments.
   AttributeOrderValidator validator(
       attribute_name, fragment_metadata_.size(), query_memory_tracker_);
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](uint64_t f) {
         validator.find_fragments_to_check(
             array_min_idx, array_max_idx, f, non_empty_domains);
+      });
 
-        return Status::Ok();
-      }));
-
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 0, fragment_metadata_.size(), [&](int64_t f) {
         validator.validate_without_loading_tiles<IndexType, AttributeType>(
             index_dim,
@@ -1285,8 +1266,7 @@ void ReaderBase::validate_attribute_order(
             non_empty_domains,
             fragment_metadata_,
             frag_first_array_tile_idx);
-        return Status::Ok();
-      }));
+      });
 
   // If we need tiles to finish order validation, load them, then finish the
   // validation.
@@ -1297,7 +1277,7 @@ void ReaderBase::validate_attribute_order(
         read_and_unfilter_attribute_tiles({attribute_name}, tiles_to_load));
 
     // Validate bounds not validated using tile data.
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(),
         0,
         fragment_metadata_.size(),
@@ -1309,8 +1289,7 @@ void ReaderBase::validate_attribute_order(
               non_empty_domains,
               fragment_metadata_,
               frag_first_array_tile_idx);
-          return Status::Ok();
-        }));
+        });
   }
 }
 

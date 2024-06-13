@@ -373,96 +373,93 @@ void FragmentMetadata::compute_fragment_min_max_sum_null_count() {
   }
 
   // Process all attributes in parallel.
-  throw_if_not_ok(parallel_for(
-      &resources_->compute_tp(), 0, idx_map_.size(), [&](uint64_t n) {
-        // For easy reference.
-        const auto& name = names[n];
-        const auto& idx = idx_map_[name];
-        const auto var_size = array_schema_->var_size(name);
-        const auto type = array_schema_->type(name);
+  parallel_for(&resources_->compute_tp(), 0, idx_map_.size(), [&](uint64_t n) {
+    // For easy reference.
+    const auto& name = names[n];
+    const auto& idx = idx_map_[name];
+    const auto var_size = array_schema_->var_size(name);
+    const auto type = array_schema_->type(name);
 
-        // Compute null count.
-        loaded_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
-            loaded_metadata_ptr_->tile_null_counts()[idx].begin(),
-            loaded_metadata_ptr_->tile_null_counts()[idx].end(),
-            0);
+    // Compute null count.
+    loaded_metadata_ptr_->fragment_null_counts()[idx] = std::accumulate(
+        loaded_metadata_ptr_->tile_null_counts()[idx].begin(),
+        loaded_metadata_ptr_->tile_null_counts()[idx].end(),
+        0);
 
-        if (var_size) {
-          min_max_var(name);
-        } else {
-          // Switch depending on datatype.
-          switch (type) {
-            case Datatype::INT8:
-              compute_fragment_min_max_sum<int8_t>(name);
-              break;
-            case Datatype::INT16:
-              compute_fragment_min_max_sum<int16_t>(name);
-              break;
-            case Datatype::INT32:
-              compute_fragment_min_max_sum<int32_t>(name);
-              break;
-            case Datatype::INT64:
-              compute_fragment_min_max_sum<int64_t>(name);
-              break;
-            case Datatype::BOOL:
-            case Datatype::UINT8:
-              compute_fragment_min_max_sum<uint8_t>(name);
-              break;
-            case Datatype::UINT16:
-              compute_fragment_min_max_sum<uint16_t>(name);
-              break;
-            case Datatype::UINT32:
-              compute_fragment_min_max_sum<uint32_t>(name);
-              break;
-            case Datatype::UINT64:
-              compute_fragment_min_max_sum<uint64_t>(name);
-              break;
-            case Datatype::FLOAT32:
-              compute_fragment_min_max_sum<float>(name);
-              break;
-            case Datatype::FLOAT64:
-              compute_fragment_min_max_sum<double>(name);
-              break;
-            case Datatype::DATETIME_YEAR:
-            case Datatype::DATETIME_MONTH:
-            case Datatype::DATETIME_WEEK:
-            case Datatype::DATETIME_DAY:
-            case Datatype::DATETIME_HR:
-            case Datatype::DATETIME_MIN:
-            case Datatype::DATETIME_SEC:
-            case Datatype::DATETIME_MS:
-            case Datatype::DATETIME_US:
-            case Datatype::DATETIME_NS:
-            case Datatype::DATETIME_PS:
-            case Datatype::DATETIME_FS:
-            case Datatype::DATETIME_AS:
-            case Datatype::TIME_HR:
-            case Datatype::TIME_MIN:
-            case Datatype::TIME_SEC:
-            case Datatype::TIME_MS:
-            case Datatype::TIME_US:
-            case Datatype::TIME_NS:
-            case Datatype::TIME_PS:
-            case Datatype::TIME_FS:
-            case Datatype::TIME_AS:
-              compute_fragment_min_max_sum<int64_t>(name);
-              break;
-            case Datatype::STRING_ASCII:
-            case Datatype::CHAR:
-              compute_fragment_min_max_sum<char>(name);
-              break;
-            case Datatype::BLOB:
-            case Datatype::GEOM_WKB:
-            case Datatype::GEOM_WKT:
-              compute_fragment_min_max_sum<std::byte>(name);
-              break;
-            default:
-              break;
-          }
-        }
-
-        return Status::Ok();
-      }));
+    if (var_size) {
+      min_max_var(name);
+    } else {
+      // Switch depending on datatype.
+      switch (type) {
+        case Datatype::INT8:
+          compute_fragment_min_max_sum<int8_t>(name);
+          break;
+        case Datatype::INT16:
+          compute_fragment_min_max_sum<int16_t>(name);
+          break;
+        case Datatype::INT32:
+          compute_fragment_min_max_sum<int32_t>(name);
+          break;
+        case Datatype::INT64:
+          compute_fragment_min_max_sum<int64_t>(name);
+          break;
+        case Datatype::BOOL:
+        case Datatype::UINT8:
+          compute_fragment_min_max_sum<uint8_t>(name);
+          break;
+        case Datatype::UINT16:
+          compute_fragment_min_max_sum<uint16_t>(name);
+          break;
+        case Datatype::UINT32:
+          compute_fragment_min_max_sum<uint32_t>(name);
+          break;
+        case Datatype::UINT64:
+          compute_fragment_min_max_sum<uint64_t>(name);
+          break;
+        case Datatype::FLOAT32:
+          compute_fragment_min_max_sum<float>(name);
+          break;
+        case Datatype::FLOAT64:
+          compute_fragment_min_max_sum<double>(name);
+          break;
+        case Datatype::DATETIME_YEAR:
+        case Datatype::DATETIME_MONTH:
+        case Datatype::DATETIME_WEEK:
+        case Datatype::DATETIME_DAY:
+        case Datatype::DATETIME_HR:
+        case Datatype::DATETIME_MIN:
+        case Datatype::DATETIME_SEC:
+        case Datatype::DATETIME_MS:
+        case Datatype::DATETIME_US:
+        case Datatype::DATETIME_NS:
+        case Datatype::DATETIME_PS:
+        case Datatype::DATETIME_FS:
+        case Datatype::DATETIME_AS:
+        case Datatype::TIME_HR:
+        case Datatype::TIME_MIN:
+        case Datatype::TIME_SEC:
+        case Datatype::TIME_MS:
+        case Datatype::TIME_US:
+        case Datatype::TIME_NS:
+        case Datatype::TIME_PS:
+        case Datatype::TIME_FS:
+        case Datatype::TIME_AS:
+          compute_fragment_min_max_sum<int64_t>(name);
+          break;
+        case Datatype::STRING_ASCII:
+        case Datatype::CHAR:
+          compute_fragment_min_max_sum<char>(name);
+          break;
+        case Datatype::BLOB:
+        case Datatype::GEOM_WKB:
+        case Datatype::GEOM_WKT:
+          compute_fragment_min_max_sum<std::byte>(name);
+          break;
+        default:
+          break;
+      }
+    }
+  });
 }
 
 void FragmentMetadata::set_array_schema(
@@ -757,63 +754,60 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
   auto fragment_num = fragments_to_load.size();
   std::vector<shared_ptr<FragmentMetadata>> fragment_metadata;
   fragment_metadata.resize(fragment_num);
-  auto status =
-      parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
-        const auto& sf = fragments_to_load[f];
-        URI coords_uri =
-            sf.uri_.join_path(constants::coords + constants::file_suffix);
+  parallel_for(&resources.compute_tp(), 0, fragment_num, [&](size_t f) {
+    const auto& sf = fragments_to_load[f];
+    URI coords_uri =
+        sf.uri_.join_path(constants::coords + constants::file_suffix);
 
-        // Note that the fragment metadata version is >= the array schema
-        // version. Therefore, the check below is defensive and will always
-        // ensure backwards compatibility.
-        shared_ptr<FragmentMetadata> metadata;
-        FragmentID fragment_id{sf.uri_};
-        if (fragment_id.array_format_version() <= 2) {
-          bool sparse;
-          throw_if_not_ok(resources.vfs().is_file(coords_uri, &sparse));
-          metadata = make_shared<FragmentMetadata>(
-              HERE(),
-              &resources,
-              array_schema_latest,
-              sf.uri_,
-              sf.timestamp_range_,
-              memory_tracker,
-              !sparse);
-        } else {
-          // Fragment format version > 2
-          metadata = make_shared<FragmentMetadata>(
-              HERE(),
-              &resources,
-              array_schema_latest,
-              sf.uri_,
-              sf.timestamp_range_,
-              memory_tracker);
-        }
+    // Note that the fragment metadata version is >= the array schema
+    // version. Therefore, the check below is defensive and will always
+    // ensure backwards compatibility.
+    shared_ptr<FragmentMetadata> metadata;
+    FragmentID fragment_id{sf.uri_};
+    if (fragment_id.array_format_version() <= 2) {
+      bool sparse;
+      throw_if_not_ok(resources.vfs().is_file(coords_uri, &sparse));
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_,
+          memory_tracker,
+          !sparse);
+    } else {
+      // Fragment format version > 2
+      metadata = make_shared<FragmentMetadata>(
+          HERE(),
+          &resources,
+          array_schema_latest,
+          sf.uri_,
+          sf.timestamp_range_,
+          memory_tracker);
+    }
 
-        // Potentially find the basic fragment metadata in the consolidated
-        // metadata buffer
-        Tile* fragment_metadata_tile = nullptr;
-        uint64_t offset = 0;
+    // Potentially find the basic fragment metadata in the consolidated
+    // metadata buffer
+    Tile* fragment_metadata_tile = nullptr;
+    uint64_t offset = 0;
 
-        auto it = offsets.end();
-        if (metadata->format_version() >= 9) {
-          it = offsets.find(fragment_id.name());
-        } else {
-          it = offsets.find(sf.uri_.to_string());
-        }
-        if (it != offsets.end()) {
-          fragment_metadata_tile = it->second.first;
-          offset = it->second.second;
-        }
+    auto it = offsets.end();
+    if (metadata->format_version() >= 9) {
+      it = offsets.find(fragment_id.name());
+    } else {
+      it = offsets.find(sf.uri_.to_string());
+    }
+    if (it != offsets.end()) {
+      fragment_metadata_tile = it->second.first;
+      offset = it->second.second;
+    }
 
-        // Load fragment metadata
-        metadata->load(
-            encryption_key, fragment_metadata_tile, offset, array_schemas_all);
+    // Load fragment metadata
+    metadata->load(
+        encryption_key, fragment_metadata_tile, offset, array_schemas_all);
 
-        fragment_metadata[f] = metadata;
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
+    fragment_metadata[f] = metadata;
+  });
 
   return fragment_metadata;
 }

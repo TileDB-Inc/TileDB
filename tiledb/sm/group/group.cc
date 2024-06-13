@@ -845,19 +845,16 @@ void Group::load_metadata_from_storage(
   auto metadata_num = group_metadata_to_load.size();
   // TBD: Might use DynamicArray when it is more capable.
   std::vector<shared_ptr<Tile>> metadata_tiles(metadata_num);
-  throw_if_not_ok(
-      parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
-        const auto& uri = group_metadata_to_load[m].uri_;
+  parallel_for(&resources_.compute_tp(), 0, metadata_num, [&](size_t m) {
+    const auto& uri = group_metadata_to_load[m].uri_;
 
-        metadata_tiles[m] = GenericTileIO::load(
-            resources_,
-            uri,
-            0,
-            encryption_key,
-            resources_.ephemeral_memory_tracker());
-
-        return Status::Ok();
-      }));
+    metadata_tiles[m] = GenericTileIO::load(
+        resources_,
+        uri,
+        0,
+        encryption_key,
+        resources_.ephemeral_memory_tracker());
+  });
 
   // Compute array metadata size for the statistics
   uint64_t meta_size = 0;

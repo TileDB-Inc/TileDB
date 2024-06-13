@@ -473,16 +473,15 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
   // are going to run multiple range threads.
   if (num_range_threads != 1) {
     // Resize bitmaps to process for each tiles in parallel.
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           static_cast<ResultTileWithBitmap<BitmapType>*>(result_tiles[t])
               ->alloc_bitmap();
-          return Status::Ok();
-        }));
+        });
   }
 
   // Process all tiles/cells in parallel.
-  throw_if_not_ok(parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       result_tiles.size(),
@@ -503,7 +502,7 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
         // Prevent processing past the end of the cells in case there are more
         // threads than cells.
         if (range_thread_idx > cell_num - 1) {
-          return Status::Ok();
+          return;
         }
 
         // Get the MBR for this tile.
@@ -572,20 +571,17 @@ void SparseIndexReaderBase::compute_tile_bitmaps(
         if (num_range_threads == 1) {
           rt->count_cells();
         }
-
-        return Status::Ok();
-      }));
+      });
 
   // For multiple range threads, bitmap cell count is done in a separate
   // parallel for.
   if (num_range_threads != 1) {
     // Compute number of cells in each bitmaps in parallel.
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           static_cast<ResultTileWithBitmap<BitmapType>*>(result_tiles[t])
               ->count_cells();
-          return Status::Ok();
-        }));
+        });
   }
 
   logger_->debug("Done computing tile bitmaps");
@@ -599,7 +595,7 @@ void SparseIndexReaderBase::apply_query_condition(
   if (condition_.has_value() || !delete_and_update_conditions_.empty() ||
       use_timestamps_) {
     // Process all tiles in parallel.
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         &resources_.compute_tp(), 0, result_tiles.size(), [&](uint64_t t) {
           // For easy reference.
           auto rt = static_cast<ResultTileType*>(result_tiles[t]);
@@ -709,9 +705,7 @@ void SparseIndexReaderBase::apply_query_condition(
               }
             }
           }
-
-          return Status::Ok();
-        }));
+        });
   }
 
   logger_->debug("Done applying query condition");

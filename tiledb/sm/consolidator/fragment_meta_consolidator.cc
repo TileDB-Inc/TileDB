@@ -117,18 +117,14 @@ Status FragmentMetaConsolidator::consolidate(
 
   // Serialize all fragment metadata footers in parallel
   std::vector<shared_ptr<WriterTile>> tiles(meta.size());
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, tiles.size(), [&](size_t i) {
-        SizeComputationSerializer size_computation_serializer;
-        meta[i]->write_footer(size_computation_serializer);
-        tiles[i] = WriterTile::from_generic(
-            size_computation_serializer.size(), consolidator_memory_tracker_);
-        Serializer serializer(tiles[i]->data(), tiles[i]->size());
-        meta[i]->write_footer(serializer);
-
-        return Status::Ok();
-      });
-  throw_if_not_ok(status);
+  parallel_for(&resources_.compute_tp(), 0, tiles.size(), [&](size_t i) {
+    SizeComputationSerializer size_computation_serializer;
+    meta[i]->write_footer(size_computation_serializer);
+    tiles[i] = WriterTile::from_generic(
+        size_computation_serializer.size(), consolidator_memory_tracker_);
+    Serializer serializer(tiles[i]->data(), tiles[i]->size());
+    meta[i]->write_footer(serializer);
+  });
 
   auto serialize_data = [&](Serializer& serializer, uint64_t offset) {
     // Write number of fragments
@@ -202,16 +198,14 @@ void FragmentMetaConsolidator::vacuum(const char* array_name) {
   // Vacuum
   auto& vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
-  throw_if_not_ok(
-      parallel_for(&compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
-        auto& uri = fragment_meta_uris[i];
-        FragmentID fragment_id{uri};
-        auto timestamp_range{fragment_id.timestamp_range()};
-        if (timestamp_range.second != t_latest) {
-          throw_if_not_ok(vfs.remove_file(uri));
-        }
-        return Status::Ok();
-      }));
+  parallel_for(&compute_tp, 0, fragment_meta_uris.size(), [&](size_t i) {
+    auto& uri = fragment_meta_uris[i];
+    FragmentID fragment_id{uri};
+    auto timestamp_range{fragment_id.timestamp_range()};
+    if (timestamp_range.second != t_latest) {
+      throw_if_not_ok(vfs.remove_file(uri));
+    }
+  });
 }
 
 }  // namespace tiledb::sm

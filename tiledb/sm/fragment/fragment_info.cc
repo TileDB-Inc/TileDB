@@ -844,7 +844,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
 
   // Get fragment sizes
   std::vector<uint64_t> sizes(fragment_num, 0);
-  throw_if_not_ok(parallel_for(
+  parallel_for(
       &resources_->compute_tp(),
       0,
       fragment_num,
@@ -860,9 +860,7 @@ Status FragmentInfo::load(const ArrayDirectory& array_dir) {
         if (preload_rtrees & !meta->dense()) {
           meta->loaded_metadata()->load_rtree(enc_key_);
         }
-
-        return Status::Ok();
-      }));
+      });
 
   // Clear single fragment info vec and anterior range
   single_fragment_info_vec_.clear();
@@ -1000,14 +998,12 @@ FragmentInfo::load_array_schemas_and_fragment_metadata(
   std::vector<shared_ptr<Tile>> fragment_metadata_tiles(meta_uris.size());
   std::vector<std::vector<std::pair<std::string, uint64_t>>> offsets_vectors(
       meta_uris.size());
-  throw_if_not_ok(
-      parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
-        auto&& [tile_opt, offsets] = load_consolidated_fragment_meta(
-            resources, meta_uris[i], enc_key, memory_tracker);
-        fragment_metadata_tiles[i] = tile_opt;
-        offsets_vectors[i] = std::move(offsets);
-        return Status::Ok();
-      }));
+  parallel_for(&resources.compute_tp(), 0, meta_uris.size(), [&](size_t i) {
+    auto&& [tile_opt, offsets] = load_consolidated_fragment_meta(
+        resources, meta_uris[i], enc_key, memory_tracker);
+    fragment_metadata_tiles[i] = tile_opt;
+    offsets_vectors[i] = std::move(offsets);
+  });
 
   // Get the unique fragment metadatas into a map.
   std::unordered_map<std::string, std::pair<Tile*, uint64_t>> offsets;

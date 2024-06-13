@@ -436,11 +436,9 @@ Status GCS::remove_dir(const URI& uri) const {
 
   std::vector<std::string> paths;
   RETURN_NOT_OK(ls(uri, &paths, ""));
-  auto status = parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
+  parallel_for(thread_pool_, 0, paths.size(), [&](size_t i) {
     throw_if_not_ok(remove_object(URI(paths[i])));
-    return Status::Ok();
   });
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -1036,11 +1034,8 @@ Status GCS::write_parts(
   if (num_ops == 1) {
     const std::string object_part_path = state->next_part_path();
 
-    const Status st =
-        upload_part(bucket_name, object_part_path, buffer, length);
-    state->update_st(st);
+    upload_part(bucket_name, object_part_path, buffer, length);
     state_lck.unlock();
-    return st;
   } else {
     std::vector<ThreadPool::Task> tasks;
     tasks.reserve(num_ops);
@@ -1053,27 +1048,23 @@ Status GCS::write_parts(
       const uint64_t thread_buffer_len = end - begin + 1;
       const std::string object_part_path = state->next_part_path();
 
-      std::function<Status()> upload_part_fn = std::bind(
+      ThreadPool::Task task = thread_pool_->execute(
           &GCS::upload_part,
           this,
           bucket_name,
           object_part_path,
           thread_buffer,
           thread_buffer_len);
-      ThreadPool::Task task = thread_pool_->execute(std::move(upload_part_fn));
       tasks.emplace_back(std::move(task));
     }
 
-    const Status st = thread_pool_->wait_all(tasks);
-    state->update_st(st);
-    state_lck.unlock();
-    return st;
+    thread_pool_->wait_all(tasks);
   }
 
   return Status::Ok();
 }
 
-Status GCS::upload_part(
+void GCS::upload_part(
     const std::string& bucket_name,
     const std::string& object_part_path,
     const void* const buffer,
@@ -1088,12 +1079,10 @@ Status GCS::upload_part(
   if (!object_metadata.ok()) {
     const google::cloud::Status status = object_metadata.status();
 
-    return LOG_STATUS(Status_GCSError(std::string(
+    throw GCSException(std::string(
         "Upload part failed on: " + object_part_path + " (" + status.message() +
-        ")")));
+        ")"));
   }
-
-  return Status::Ok();
 }
 
 Status GCS::flush_object(const URI& uri) {
@@ -1201,28 +1190,25 @@ void GCS::delete_parts(
   std::vector<ThreadPool::Task> tasks;
   tasks.reserve(part_paths.size());
   for (const auto& part_path : part_paths) {
-    std::function<Status()> delete_part_fn =
-        std::bind(&GCS::delete_part, this, bucket_name, part_path);
-    ThreadPool::Task task = thread_pool_->execute(std::move(delete_part_fn));
-    tasks.emplace_back(std::move(task));
+    tasks.emplace_back(
+        thread_pool_->execute(&GCS::delete_part, this, bucket_name, part_path));
   }
 
-  const Status st = thread_pool_->wait_all(tasks);
-  if (!st.ok()) {
-    LOG_STATUS_NO_RETURN_VALUE(st);
+  try {
+    thread_pool_->wait_all(tasks);
+  } catch (const std::exception& e) {
+    LOG_ERROR(e.what());
   }
 }
 
-Status GCS::delete_part(
+void GCS::delete_part(
     const std::string& bucket_name, const std::string& part_path) {
   const google::cloud::Status status =
       client_->DeleteObject(bucket_name, part_path);
   if (!status.ok()) {
-    return Status_GCSError(std::string(
+    throw GCSException(std::string(
         "Delete part failed on: " + part_path + " (" + status.message() + ")"));
   }
-
-  return Status::Ok();
 }
 
 void GCS::finish_multi_part_upload(const URI& uri) {

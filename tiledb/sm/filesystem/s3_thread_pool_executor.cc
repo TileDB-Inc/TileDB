@@ -67,14 +67,12 @@ void S3ThreadPoolExecutor::Stop() {
 }
 
 bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
-  auto wrapped_fn = [this, fn]() -> Status {
+  auto wrapped_fn = [this, fn]() {
     fn();
 
     std::unique_lock<std::mutex> lock_guard(lock_);
     if (--outstanding_tasks_ == 0)
       cv_.notify_all();
-
-    return Status::Ok();
   };
 
   std::unique_lock<std::mutex> lock_guard(lock_);
@@ -84,7 +82,7 @@ bool S3ThreadPoolExecutor::SubmitToThread(std::function<void()>&& fn) {
   ++outstanding_tasks_;
   lock_guard.unlock();
 
-  ThreadPool::Task task = thread_pool_->execute(wrapped_fn);
+  ThreadPool::Task task = thread_pool_->execute(std::move(wrapped_fn));
 
   return task.valid();
 }

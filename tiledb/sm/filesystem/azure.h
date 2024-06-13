@@ -745,9 +745,8 @@ class Azure {
    * @param length The length of `buffer`.
    * @param block_id A base64-encoded string that is unique to this block
    * within the blob.
-   * @return Status
    */
-  Status upload_block(
+  void upload_block(
       const std::string& container_name,
       const std::string& blob_path,
       const void* const buffer,

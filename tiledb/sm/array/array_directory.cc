@@ -168,7 +168,7 @@ ArrayDirectory::load_all_array_schemas(
   auto schema_num = schema_uris.size();
   schema_vector.resize(schema_num);
 
-  auto status = parallel_for(
+  parallel_for(
       &resources_.get().compute_tp(), 0, schema_num, [&](size_t schema_ith) {
         auto& schema_uri = schema_uris[schema_ith];
         try {
@@ -182,10 +182,7 @@ ArrayDirectory::load_all_array_schemas(
           // when Status gets removed from this module.
           throw ArrayDirectoryException(e.what());
         }
-
-        return Status::Ok();
       });
-  throw_if_not_ok(status);
 
   std::unordered_map<std::string, shared_ptr<ArraySchema>> array_schemas;
   for (const auto& schema : schema_vector) {
@@ -209,11 +206,10 @@ ArrayDirectory::load_enumerations_from_paths(
 
   std::vector<shared_ptr<const Enumeration>> ret(enumeration_paths.size());
   auto& tp = resources_.get().io_tp();
-  throw_if_not_ok(parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
+  parallel_for(&tp, 0, enumeration_paths.size(), [&](size_t i) {
     ret[i] =
         load_enumeration(enumeration_paths[i], encryption_key, memory_tracker);
-    return Status::Ok();
-  }));
+  });
   return ret;
 }
 
@@ -317,17 +313,15 @@ void ArrayDirectory::delete_fragments_list(
   }
 
   // Delete fragments and commits
-  throw_if_not_ok(parallel_for(
-      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
-        auto& vfs = resources_.get().vfs();
-        throw_if_not_ok(vfs.remove_dir(uris[i]));
-        bool is_file = false;
-        throw_if_not_ok(vfs.is_file(commit_uris_to_delete[i], &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs.remove_file(commit_uris_to_delete[i]));
-        }
-        return Status::Ok();
-      }));
+  parallel_for(&resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+    auto& vfs = resources_.get().vfs();
+    throw_if_not_ok(vfs.remove_dir(uris[i]));
+    bool is_file = false;
+    throw_if_not_ok(vfs.is_file(commit_uris_to_delete[i], &is_file));
+    if (is_file) {
+      throw_if_not_ok(vfs.remove_file(commit_uris_to_delete[i]));
+    }
+  });
 }
 
 Status ArrayDirectory::load() {
@@ -342,16 +336,12 @@ Status ArrayDirectory::load() {
   // Some processing is also done here for things that don't depend on others.
   if (mode_ != ArrayDirectoryMode::SCHEMA_ONLY) {
     // List (in parallel) the root directory URIs
-    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-      root_dir_uris = list_root_dir_uris();
-      return Status::Ok();
-    }));
+    tasks.emplace_back(resources_.get().compute_tp().execute(
+        [&]() { root_dir_uris = list_root_dir_uris(); }));
 
     // List (in parallel) the commits directory URIs
-    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-      commits_dir_uris = list_commits_dir_uris();
-      return Status::Ok();
-    }));
+    tasks.emplace_back(resources_.get().compute_tp().execute(
+        [&]() { commits_dir_uris = list_commits_dir_uris(); }));
 
     // For commits mode, no need to load fragment/array metadata as they
     // are not used for commits consolidation/vacuuming.
@@ -360,14 +350,11 @@ Status ArrayDirectory::load() {
       tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
         fragment_meta_uris_v12_or_higher =
             list_fragment_metadata_dir_uris_v12_or_higher();
-        return Status::Ok();
       }));
 
       // Load (in parallel) the array metadata URIs
-      tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-        load_array_meta_uris();
-        return Status::Ok();
-      }));
+      tasks.emplace_back(resources_.get().compute_tp().execute(
+          [&]() { load_array_meta_uris(); }));
     }
   }
 
@@ -375,14 +362,12 @@ Status ArrayDirectory::load() {
   // commits consolidation/vacuuming.
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Load (in parallel) the array schema URIs
-    tasks.emplace_back(resources_.get().compute_tp().execute([&]() {
-      load_array_schema_uris();
-      return Status::Ok();
-    }));
+    tasks.emplace_back(resources_.get().compute_tp().execute(
+        [&]() { load_array_schema_uris(); }));
   }
 
   // Wait for all tasks to complete
-  RETURN_NOT_OK(resources_.get().compute_tp().wait_all(tasks));
+  resources_.get().compute_tp().wait_all(tasks);
 
   if (mode_ != ArrayDirectoryMode::COMMITS) {
     // Add old array schema, if required.
@@ -935,16 +920,14 @@ ArrayDirectory::compute_fragment_uris_v1_v11(
   // Get only the committed fragment uris
   std::vector<uint8_t> is_fragment(array_dir_uris.size(), 0);
   auto& tp = resources_.get().compute_tp();
-  auto status = parallel_for(&tp, 0, array_dir_uris.size(), [&](size_t i) {
+  parallel_for(&tp, 0, array_dir_uris.size(), [&](size_t i) {
     if (stdx::string::starts_with(array_dir_uris[i].last_path_part(), "."))
-      return Status::Ok();
+      return;
     int32_t flag;
     throw_if_not_ok(this->is_fragment(
         array_dir_uris[i], ok_uris, consolidated_commit_uris_set_, &flag));
     is_fragment[i] = (uint8_t)flag;
-    return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt);
 
   for (size_t i = 0; i < array_dir_uris.size(); ++i) {
     if (is_fragment[i]) {
@@ -1018,32 +1001,29 @@ ArrayDirectory::compute_uris_to_vacuum(
   std::vector<uint8_t> vac_file_bitmap(uris.size());
   std::vector<uint8_t> overlapping_vac_file_bitmap(uris.size());
   std::vector<uint8_t> non_vac_uri_bitmap(uris.size());
-  throw_if_not_ok(parallel_for(
-      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
-        auto& uri = uris[i];
+  parallel_for(&resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+    auto& uri = uris[i];
 
-        // Get the start and end timestamp for this fragment
-        FragmentID fragment_id{uri};
-        auto fragment_timestamp_range{fragment_id.timestamp_range()};
-        if (is_vacuum_file(uri)) {
-          vac_file_bitmap[i] = 1;
-          if (timestamps_overlap(
-                  fragment_timestamp_range,
-                  !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
-            overlapping_vac_file_bitmap[i] = 1;
-          }
-        } else {
-          if (!timestamps_overlap(
-                  fragment_timestamp_range,
-                  !full_overlap_only &&
-                      consolidation_with_timestamps_supported(uri))) {
-            non_vac_uri_bitmap[i] = 1;
-          }
-        }
-
-        return Status::Ok();
-      }));
+    // Get the start and end timestamp for this fragment
+    FragmentID fragment_id{uri};
+    auto fragment_timestamp_range{fragment_id.timestamp_range()};
+    if (is_vacuum_file(uri)) {
+      vac_file_bitmap[i] = 1;
+      if (timestamps_overlap(
+              fragment_timestamp_range,
+              !full_overlap_only &&
+                  consolidation_with_timestamps_supported(uri))) {
+        overlapping_vac_file_bitmap[i] = 1;
+      }
+    } else {
+      if (!timestamps_overlap(
+              fragment_timestamp_range,
+              !full_overlap_only &&
+                  consolidation_with_timestamps_supported(uri))) {
+        non_vac_uri_bitmap[i] = 1;
+      }
+    }
+  });
 
   auto num_vac_files =
       std::accumulate(vac_file_bitmap.begin(), vac_file_bitmap.end(), 0);
@@ -1076,7 +1056,7 @@ ArrayDirectory::compute_uris_to_vacuum(
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
   auto& tp = resources_.get().compute_tp();
-  auto status = parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
+  parallel_for(&tp, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
     auto& vfs = resources_.get().vfs();
     throw_if_not_ok(vfs.file_size(vac_files[i], &size));
@@ -1099,10 +1079,7 @@ ArrayDirectory::compute_uris_to_vacuum(
     }
 
     to_vacuum_vac_files_vec[i] = vacuum_vac_file;
-
-    return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
 
   // Compute the fragment URIs to vacuum
   std::vector<URI> uris_to_vacuum;
@@ -1144,30 +1121,28 @@ ArrayDirectory::compute_filtered_uris(
   std::vector<uint8_t> overlaps_bitmap(uris.size());
   std::vector<std::pair<uint64_t, uint64_t>> fragment_timestamp_ranges(
       uris.size());
-  throw_if_not_ok(parallel_for(
-      &resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
-        auto& uri = uris[i];
-        std::string short_uri = uri.to_string().substr(base_uri_size);
-        if (to_ignore_set.count(short_uri.c_str()) != 0) {
-          return Status::Ok();
-        }
+  parallel_for(&resources_.get().compute_tp(), 0, uris.size(), [&](size_t i) {
+    auto& uri = uris[i];
+    std::string short_uri = uri.to_string().substr(base_uri_size);
+    if (to_ignore_set.count(short_uri.c_str()) != 0) {
+      return;
+    }
 
-        // Also ignore any vac uris
-        if (is_vacuum_file(uri)) {
-          return Status::Ok();
-        }
+    // Also ignore any vac uris
+    if (is_vacuum_file(uri)) {
+      return;
+    }
 
-        // Get the start and end timestamp for this fragment
-        FragmentID fragment_id{uri};
-        fragment_timestamp_ranges[i] = fragment_id.timestamp_range();
-        if (timestamps_overlap(
-                fragment_timestamp_ranges[i],
-                !full_overlap_only &&
-                    consolidation_with_timestamps_supported(uri))) {
-          overlaps_bitmap[i] = 1;
-        }
-        return Status::Ok();
-      }));
+    // Get the start and end timestamp for this fragment
+    FragmentID fragment_id{uri};
+    fragment_timestamp_ranges[i] = fragment_id.timestamp_range();
+    if (timestamps_overlap(
+            fragment_timestamp_ranges[i],
+            !full_overlap_only &&
+                consolidation_with_timestamps_supported(uri))) {
+      overlaps_bitmap[i] = 1;
+    }
+  });
 
   auto count =
       std::accumulate(overlaps_bitmap.begin(), overlaps_bitmap.end(), 0);

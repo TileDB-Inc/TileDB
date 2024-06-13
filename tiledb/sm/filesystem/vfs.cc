@@ -448,14 +448,13 @@ void VFS::remove_dir_if_empty(const URI& uri) const {
 
 void VFS::remove_dirs(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
-  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+  parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     bool is_dir;
     throw_if_not_ok(this->is_dir(uris[i], &is_dir));
     if (is_dir) {
       throw_if_not_ok(remove_dir(uris[i]));
     }
-    return Status::Ok();
-  }));
+  });
 }
 
 Status VFS::remove_file(const URI& uri) const {
@@ -504,18 +503,16 @@ Status VFS::remove_file(const URI& uri) const {
 
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<URI>& uris) const {
-  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+  parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     throw_if_not_ok(remove_file(uris[i]));
-    return Status::Ok();
-  }));
+  });
 }
 
 void VFS::remove_files(
     ThreadPool* compute_tp, const std::vector<TimestampedURI>& uris) const {
-  throw_if_not_ok(parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
+  parallel_for(compute_tp, 0, uris.size(), [&](size_t i) {
     throw_if_not_ok(remove_file(uris[i].uri_));
-    return Status::Ok();
-  }));
+  });
 }
 
 Status VFS::max_parallel_ops(const URI& uri, uint64_t* ops) const {
@@ -1139,14 +1136,8 @@ Status VFS::read(
           });
       results.push_back(std::move(task));
     }
-    Status st = io_tp_->wait_all(results);
-    if (!st.ok()) {
-      std::stringstream errmsg;
-      errmsg << "VFS parallel read error '" << uri.to_string() << "'; "
-             << st.message();
-      return Status_VFSError(errmsg.str());
-    }
-    return st;
+    io_tp_->wait_all(results);
+    return Status::Ok();
   }
 }
 

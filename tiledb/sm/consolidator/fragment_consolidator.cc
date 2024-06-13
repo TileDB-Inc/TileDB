@@ -523,24 +523,21 @@ void FragmentConsolidator::vacuum(const char* array_name) {
   // Delete fragment directories
   auto& vfs = resources_.vfs();
   auto& compute_tp = resources_.compute_tp();
-  throw_if_not_ok(parallel_for(
-      &compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
-        // Remove the commit file, if present.
-        auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
-        bool is_file = false;
-        throw_if_not_ok(vfs.is_file(commit_uri, &is_file));
-        if (is_file) {
-          throw_if_not_ok(vfs.remove_file(commit_uri));
-        }
+  parallel_for(&compute_tp, 0, fragment_uris_to_vacuum.size(), [&](size_t i) {
+    // Remove the commit file, if present.
+    auto commit_uri = array_dir.get_commit_uri(fragment_uris_to_vacuum[i]);
+    bool is_file = false;
+    throw_if_not_ok(vfs.is_file(commit_uri, &is_file));
+    if (is_file) {
+      throw_if_not_ok(vfs.remove_file(commit_uri));
+    }
 
-        bool is_dir = false;
-        throw_if_not_ok(vfs.is_dir(fragment_uris_to_vacuum[i], &is_dir));
-        if (is_dir) {
-          throw_if_not_ok(vfs.remove_dir(fragment_uris_to_vacuum[i]));
-        }
-
-        return Status::Ok();
-      }));
+    bool is_dir = false;
+    throw_if_not_ok(vfs.is_dir(fragment_uris_to_vacuum[i], &is_dir));
+    if (is_dir) {
+      throw_if_not_ok(vfs.remove_dir(fragment_uris_to_vacuum[i]));
+    }
+  });
 
   // Delete the vacuum files.
   vfs.remove_files(

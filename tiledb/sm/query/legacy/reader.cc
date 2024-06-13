@@ -571,33 +571,24 @@ Status Reader::compute_range_result_coords(
     }
   }
 
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, range_num, [&](uint64_t r) {
-        // Compute overlapping coordinates per range
-        throw_if_not_ok(compute_range_result_coords(
-            subarray,
-            r,
-            result_tile_map,
-            result_tiles,
-            range_result_coords[r]));
+  parallel_for(&resources_.compute_tp(), 0, range_num, [&](uint64_t r) {
+    // Compute overlapping coordinates per range
+    throw_if_not_ok(compute_range_result_coords(
+        subarray, r, result_tile_map, result_tiles, range_result_coords[r]));
 
-        // Dedup unless there is a single fragment or array schema allows
-        // duplicates
-        if (!single_fragment[r] && !allows_dups) {
-          throw_if_not_ok(sort_result_coords(
-              range_result_coords[r].begin(),
-              range_result_coords[r].end(),
-              range_result_coords[r].size(),
-              sort_layout));
-          throw_if_cancelled();
-          throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
-          throw_if_cancelled();
-        }
-
-        return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
+    // Dedup unless there is a single fragment or array schema allows
+    // duplicates
+    if (!single_fragment[r] && !allows_dups) {
+      throw_if_not_ok(sort_result_coords(
+          range_result_coords[r].begin(),
+          range_result_coords[r].end(),
+          range_result_coords[r].size(),
+          sort_layout));
+      throw_if_cancelled();
+      throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
+      throw_if_cancelled();
+    }
+  });
 
   return Status::Ok();
 }
@@ -671,18 +662,15 @@ Status Reader::compute_range_result_coords(
   // Gather result range coordinates per fragment
   auto fragment_num = fragment_metadata_.size();
   std::vector<std::vector<ResultCoords>> range_result_coords_vec(fragment_num);
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint32_t f) {
-        throw_if_not_ok(compute_range_result_coords(
-            subarray,
-            range_idx,
-            f,
-            result_tile_map,
-            result_tiles,
-            range_result_coords_vec[f]));
-        return Status::Ok();
-      });
-  RETURN_NOT_OK(status);
+  parallel_for(&resources_.compute_tp(), 0, fragment_num, [&](uint32_t f) {
+    throw_if_not_ok(compute_range_result_coords(
+        subarray,
+        range_idx,
+        f,
+        result_tile_map,
+        result_tiles,
+        range_result_coords_vec[f]));
+  });
 
   // Consolidate the result coordinates in the single result vector
   for (const auto& vec : range_result_coords_vec) {
@@ -959,22 +947,19 @@ Status Reader::copy_fixed_cells(
   }
 
   // Copy result cell slabs in parallel.
-  std::function<Status(size_t)> copy_fn = std::bind(
-      &Reader::copy_partitioned_fixed_cells,
-      this,
-      std::placeholders::_1,
-      &name,
-      stride,
-      result_cell_slabs,
-      &cs_offsets,
-      fixed_cs_partitions);
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(),
       0,
       fixed_cs_partitions->size(),
-      std::move(copy_fn));
-
-  RETURN_NOT_OK(status);
+      std::bind(
+          &Reader::copy_partitioned_fixed_cells,
+          this,
+          std::placeholders::_1,
+          &name,
+          stride,
+          result_cell_slabs,
+          &cs_offsets,
+          fixed_cs_partitions));
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = buffer_offset;
@@ -1012,7 +997,7 @@ void Reader::compute_fixed_cs_partitions(
   }
 }
 
-Status Reader::copy_partitioned_fixed_cells(
+void Reader::copy_partitioned_fixed_cells(
     const size_t partition_idx,
     const std::string* const name,
     const uint64_t stride,
@@ -1087,20 +1072,20 @@ Status Reader::copy_partitioned_fixed_cells(
 
       if (stride == UINT64_MAX) {
         if (!nullable)
-          RETURN_NOT_OK(cs.tile_->read(
+          throw_if_not_ok(cs.tile_->read(
               *name, buffer, offset, cs.start_, cs_length, timestamp));
         else
-          RETURN_NOT_OK(cs.tile_->read_nullable(
+          throw_if_not_ok(cs.tile_->read_nullable(
               *name, buffer, offset, cs.start_, cs_length, buffer_validity));
       } else {
         auto cell_offset = offset;
         auto start = cs.start_;
         for (uint64_t j = 0; j < cs_length; ++j) {
           if (!nullable)
-            RETURN_NOT_OK(cs.tile_->read(
+            throw_if_not_ok(cs.tile_->read(
                 *name, buffer, cell_offset, start, 1, timestamp));
           else
-            RETURN_NOT_OK(cs.tile_->read_nullable(
+            throw_if_not_ok(cs.tile_->read_nullable(
                 *name, buffer, cell_offset, start, 1, buffer_validity));
           cell_offset += cell_size;
           start += stride;
@@ -1108,8 +1093,6 @@ Status Reader::copy_partitioned_fixed_cells(
       }
     }
   }
-
-  return Status::Ok();
 }
 
 Status Reader::copy_var_cells(
@@ -1148,20 +1131,20 @@ Status Reader::copy_var_cells(
   }
 
   // Copy result cell slabs in parallel
-  std::function<Status(size_t)> copy_fn = std::bind(
-      &Reader::copy_partitioned_var_cells,
-      this,
-      std::placeholders::_1,
-      &name,
-      stride,
-      result_cell_slabs,
-      &offset_offsets_per_cs,
-      &var_offsets_per_cs,
-      var_cs_partitions);
-  auto status = parallel_for(
-      &resources_.compute_tp(), 0, var_cs_partitions->size(), copy_fn);
-
-  RETURN_NOT_OK(status);
+  parallel_for(
+      &resources_.compute_tp(),
+      0,
+      var_cs_partitions->size(),
+      std::bind(
+          &Reader::copy_partitioned_var_cells,
+          this,
+          std::placeholders::_1,
+          &name,
+          stride,
+          result_cell_slabs,
+          &offset_offsets_per_cs,
+          &var_offsets_per_cs,
+          var_cs_partitions));
 
   // Update buffer offsets
   *(buffers_[name].buffer_size_) = total_offset_size;
@@ -1315,7 +1298,7 @@ Status Reader::compute_var_cell_destinations(
   return Status::Ok();
 }
 
-Status Reader::copy_partitioned_var_cells(
+void Reader::copy_partitioned_var_cells(
     const size_t partition_idx,
     const std::string* const name,
     uint64_t stride,
@@ -1412,8 +1395,6 @@ Status Reader::copy_partitioned_var_cells(
 
     arr_offset += cs_length;
   }
-
-  return Status::Ok();
 }
 
 Status Reader::process_tiles(
@@ -2178,20 +2159,16 @@ Status Reader::calculate_hilbert_values(
   auto coords_num = (uint64_t)hilbert_values->size();
 
   // Calculate Hilbert values in parallel
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, coords_num, [&](uint64_t c) {
-        std::vector<uint64_t> coords(dim_num);
-        for (uint32_t d = 0; d < dim_num; ++d) {
-          auto dim{array_schema_.dimension_ptr(d)};
-          coords[d] = hilbert_order::map_to_uint64(
-              *dim, *(iter_begin + c), d, bits, max_bucket_val);
-        }
-        (*hilbert_values)[c] =
-            std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
-        return Status::Ok();
-      });
-
-  RETURN_NOT_OK_ELSE(status, throw_if_not_ok(logger_->status(status)));
+  parallel_for(&resources_.compute_tp(), 0, coords_num, [&](uint64_t c) {
+    std::vector<uint64_t> coords(dim_num);
+    for (uint32_t d = 0; d < dim_num; ++d) {
+      auto dim{array_schema_.dimension_ptr(d)};
+      coords[d] = hilbert_order::map_to_uint64(
+          *dim, *(iter_begin + c), d, bits, max_bucket_val);
+    }
+    (*hilbert_values)[c] =
+        std::pair<uint64_t, uint64_t>(h.coords_to_hilbert(&coords[0]), c);
+  });
 
   return Status::Ok();
 }

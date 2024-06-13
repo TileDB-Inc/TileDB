@@ -497,11 +497,9 @@ void S3::remove_dir(const URI& uri) const {
     return;
   }
 
-  throw_if_not_ok(
-      parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(paths[i])));
-        return Status::Ok();
-      }));
+  parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+    throw_if_not_ok(remove_object(URI(paths[i])));
+  });
 
   // Minio changed their delete behavior when an object masks another object
   // with the same prefix. Previously, minio would delete any object with
@@ -518,11 +516,9 @@ void S3::remove_dir(const URI& uri) const {
   }
 
   // Delete the uncovered object prefixes.
-  throw_if_not_ok(
-      parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(paths[i])));
-        return Status::Ok();
-      }));
+  parallel_for(vfs_thread_pool_, 0, paths.size(), [&](size_t i) {
+    throw_if_not_ok(remove_object(URI(paths[i])));
+  });
 }
 
 void S3::touch(const URI& uri) const {
@@ -662,41 +658,37 @@ Status S3::disconnect() {
     for (auto& kv : multipart_upload_states_)
       states.emplace_back(&kv.second);
 
-    auto status =
-        parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
-          const MultiPartUploadState* state = states[i];
-          // Lock multipart state
-          std::unique_lock<std::mutex> state_lck(state->mtx);
+    parallel_for(vfs_thread_pool_, 0, states.size(), [&](uint64_t i) {
+      const MultiPartUploadState* state = states[i];
+      // Lock multipart state
+      std::unique_lock<std::mutex> state_lck(state->mtx);
 
-          if (state->st.ok()) {
-            Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
-                make_multipart_complete_request(*state);
-            auto outcome = client_->CompleteMultipartUpload(complete_request);
-            if (!outcome.IsSuccess()) {
-              const Status st = LOG_STATUS(Status_S3Error(
-                  std::string("Failed to disconnect and flush S3 objects. ") +
-                  outcome_error_message(outcome)));
-              if (!st.ok()) {
-                ret_st = st;
-              }
-            }
-          } else {
-            Aws::S3::Model::AbortMultipartUploadRequest abort_request =
-                make_multipart_abort_request(*state);
-            auto outcome = client_->AbortMultipartUpload(abort_request);
-            if (!outcome.IsSuccess()) {
-              ret_st = LOG_STATUS(Status_S3Error(
-                  std::string("Failed to disconnect and flush S3 objects. ") +
-                  outcome_error_message(outcome)));
-            } else {
-              ret_st = LOG_STATUS(Status_S3Error(
-                  std::string("Failed to disconnect and flush S3 objects. ")));
-            }
+      if (state->st.ok()) {
+        Aws::S3::Model::CompleteMultipartUploadRequest complete_request =
+            make_multipart_complete_request(*state);
+        auto outcome = client_->CompleteMultipartUpload(complete_request);
+        if (!outcome.IsSuccess()) {
+          const Status st = LOG_STATUS(Status_S3Error(
+              std::string("Failed to disconnect and flush S3 objects. ") +
+              outcome_error_message(outcome)));
+          if (!st.ok()) {
+            ret_st = st;
           }
-          return Status::Ok();
-        });
-
-    RETURN_NOT_OK(status);
+        }
+      } else {
+        Aws::S3::Model::AbortMultipartUploadRequest abort_request =
+            make_multipart_abort_request(*state);
+        auto outcome = client_->AbortMultipartUpload(abort_request);
+        if (!outcome.IsSuccess()) {
+          ret_st = LOG_STATUS(Status_S3Error(
+              std::string("Failed to disconnect and flush S3 objects. ") +
+              outcome_error_message(outcome)));
+        } else {
+          ret_st = LOG_STATUS(Status_S3Error(
+              std::string("Failed to disconnect and flush S3 objects. ")));
+        }
+      }
+    });
   }
 
   unique_rl.unlock();
@@ -815,7 +807,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
     }
 
     std::vector<std::byte> merged(sum_sizes);
-    throw_if_not_ok(parallel_for(
+    parallel_for(
         vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
           uint64_t length_returned;
           throw_if_not_ok(read_impl(
@@ -825,8 +817,7 @@ void S3::finalize_and_flush_object(const URI& uri) {
               intermediate_chunks[i].size,
               0,
               &length_returned));
-          return Status::Ok();
-        }));
+        });
 
     const int part_num = state.part_number++;
     auto ctx = make_upload_part_req(
@@ -861,11 +852,9 @@ void S3::finalize_and_flush_object(const URI& uri) {
   }
 
   // Remove intermediate chunk files if any
-  throw_if_not_ok(parallel_for(
-      vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
-        return Status::Ok();
-      }));
+  parallel_for(vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
+    throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
+  });
 
   // Remove the multipart upload state entry
   UniqueWriteLock unique_wl(&multipart_upload_rwlock_);
@@ -1217,18 +1206,16 @@ void S3::global_order_write(
   // Read all previously written chunks into one contiguous buffer and add the
   // current data at the end.
   std::vector<std::byte> merged(sum_sizes);
-  throw_if_not_ok(parallel_for(
-      vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        uint64_t length_returned;
-        throw_if_not_ok(read_impl(
-            URI(intermediate_chunks[i].uri),
-            0,
-            merged.data() + offsets[i],
-            intermediate_chunks[i].size,
-            0,
-            &length_returned));
-        return Status::Ok();
-      }));
+  parallel_for(vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
+    uint64_t length_returned;
+    throw_if_not_ok(read_impl(
+        URI(intermediate_chunks[i].uri),
+        0,
+        merged.data() + offsets[i],
+        intermediate_chunks[i].size,
+        0,
+        &length_returned));
+  });
   std::memcpy(merged.data() + offsets.back(), buffer, length);
 
   // Issue one more multiple part uploads depending on the cumulative size of
@@ -1256,22 +1243,19 @@ void S3::global_order_write(
     ctx_vec.resize(num_ops);
     const uint64_t bytes_per_op = s3_params_.multipart_part_size_;
     const int part_num_base = state.part_number;
-    throw_if_not_ok(
-        parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t op_idx) {
-          uint64_t begin = op_idx * bytes_per_op,
-                   end = std::min(
-                       (op_idx + 1) * bytes_per_op - 1,
-                       uint64_t(merged.size() - 1));
-          uint64_t thread_nbytes = end - begin + 1;
-          auto thread_buffer = static_cast<const char*>(
-                                   static_cast<const void*>(merged.data())) +
-                               begin;
-          int part_num = static_cast<int>(part_num_base + op_idx);
-          ctx_vec[op_idx] = make_upload_part_req(
-              aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
-
-          return Status::Ok();
-        }));
+    parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t op_idx) {
+      uint64_t begin = op_idx * bytes_per_op,
+               end = std::min(
+                   (op_idx + 1) * bytes_per_op - 1,
+                   uint64_t(merged.size() - 1));
+      uint64_t thread_nbytes = end - begin + 1;
+      auto thread_buffer =
+          static_cast<const char*>(static_cast<const void*>(merged.data())) +
+          begin;
+      int part_num = static_cast<int>(part_num_base + op_idx);
+      ctx_vec[op_idx] = make_upload_part_req(
+          aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
+    });
     state.part_number += num_ops;
 
     for (auto& ctx : ctx_vec) {
@@ -1282,11 +1266,9 @@ void S3::global_order_write(
     }
   }
 
-  throw_if_not_ok(parallel_for(
-      vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
-        throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
-        return Status::Ok();
-      }));
+  parallel_for(vfs_thread_pool_, 0, intermediate_chunks.size(), [&](size_t i) {
+    throw_if_not_ok(remove_object(URI(intermediate_chunks[i].uri)));
+  });
 
   intermediate_chunks.clear();
 }
@@ -1919,7 +1901,7 @@ Status S3::write_multipart(
     ctx_vec.resize(num_ops);
     const uint64_t bytes_per_op = s3_params_.multipart_part_size_;
     const int part_num_base = state->part_number;
-    auto status = parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t i) {
+    parallel_for(vfs_thread_pool_, 0, num_ops, [&](uint64_t i) {
       uint64_t begin = i * bytes_per_op,
                end = std::min((i + 1) * bytes_per_op - 1, length - 1);
       uint64_t thread_nbytes = end - begin + 1;
@@ -1927,8 +1909,6 @@ Status S3::write_multipart(
       int part_num = static_cast<int>(part_num_base + i);
       ctx_vec[i] = make_upload_part_req(
           aws_uri, thread_buffer, thread_nbytes, upload_id, part_num);
-
-      return Status::Ok();
     });
     state->part_number += num_ops;
     state_lck.unlock();

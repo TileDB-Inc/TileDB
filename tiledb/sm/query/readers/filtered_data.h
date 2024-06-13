@@ -394,11 +394,11 @@ class FilteredData {
     auto data{block.data()};
     auto size{block.size()};
     URI uri{file_uri(fragment_metadata_[block.frag_idx()].get(), type)};
-    auto task = resources_.io_tp().execute([this, offset, data, size, uri]() {
-      throw_if_not_ok(resources_.vfs().read(uri, offset, data, size, false));
-      return Status::Ok();
-    });
-    read_tasks_.push_back(std::move(task));
+    read_tasks_.push_back(
+        resources_.io_tp().execute([this, offset, data, size, uri]() {
+          throw_if_not_ok(
+              resources_.vfs().read(uri, offset, data, size, false));
+        }));
   }
 
   /** @return Data blocks corresponding to the tile type. */

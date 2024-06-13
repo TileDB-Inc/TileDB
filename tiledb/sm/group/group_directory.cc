@@ -134,19 +134,19 @@ Status GroupDirectory::load() {
     auto&& [st, uris] = list_root_dir_uris();
     throw_if_not_ok(st);
 
-    root_dir_uris = std::move(uris.value());
-
-    return Status::Ok();
+    root_dir_uris = std::move(uris).value();
   }));
 
   // Load (in parallel) the group metadata URIs
-  tasks.emplace_back(tp_.execute([&]() { return load_group_meta_uris(); }));
+  tasks.emplace_back(
+      tp_.execute([&]() { throw_if_not_ok(load_group_meta_uris()); }));
 
   // Load (in paralell) the group details URIs
-  tasks.emplace_back(tp_.execute([&] { return load_group_detail_uris(); }));
+  tasks.emplace_back(
+      tp_.execute([&] { throw_if_not_ok(load_group_detail_uris()); }));
 
   // Wait for all tasks to complete
-  throw_if_not_ok(tp_.wait_all(tasks));
+  tp_.wait_all(tasks);
 
   // Error check
   bool is_group = false;
@@ -268,7 +268,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Also determine which vac files to vacuum
   std::vector<int32_t> to_vacuum_vec(uris.size(), 0);
   std::vector<int32_t> to_vacuum_vac_files_vec(vac_files.size(), 0);
-  auto status = parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
+  parallel_for(&tp_, 0, vac_files.size(), [&](size_t i) {
     uint64_t size = 0;
     throw_if_not_ok(vfs_.file_size(vac_files[i], &size));
     std::string names;
@@ -288,10 +288,7 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
     }
 
     to_vacuum_vac_files_vec[i] = vacuum_vac_file;
-
-    return Status::Ok();
   });
-  RETURN_NOT_OK_TUPLE(status, nullopt, nullopt);
 
   // Compute the fragment URIs to vacuum
   std::vector<URI> uris_to_vacuum;

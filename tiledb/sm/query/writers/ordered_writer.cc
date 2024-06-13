@@ -205,26 +205,26 @@ Status OrderedWriter::ordered_write() {
   }
 
   if (attr_num > tile_num) {  // Parallelize over attributes
-    RETURN_NOT_OK(parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
+    parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
       auto& attr_tile_batches = tiles.at(attr);
-      return prepare_filter_and_write_tiles<T>(
-          attr, attr_tile_batches, frag_meta, &dense_tiler, 1);
-    }));
+      throw_if_not_ok(prepare_filter_and_write_tiles<T>(
+          attr, attr_tile_batches, frag_meta, &dense_tiler, 1));
+    });
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
       auto& attr_tile_batches = tiles.at(attr);
-      RETURN_NOT_OK(prepare_filter_and_write_tiles<T>(
+      throw_if_not_ok(prepare_filter_and_write_tiles<T>(
           attr, attr_tile_batches, frag_meta, &dense_tiler, thread_num));
     }
   }
 
   // Fix the tile metadata for var size attributes.
   if (attr_num > tile_num) {  // Parallelize over attributes
-    RETURN_NOT_OK(parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
+    parallel_for(compute_tp, 0, attr_num, [&](uint64_t i) {
       auto buff_it = buffers_.begin();
       std::advance(buff_it, i);
       const auto& attr = buff_it->first;
@@ -242,8 +242,7 @@ Status OrderedWriter::ordered_write() {
           }
         }
       }
-      return Status::Ok();
-    }));
+    });
   } else {  // Parallelize over tiles
     for (const auto& buff : buffers_) {
       const auto& attr = buff.first;
@@ -252,18 +251,16 @@ Status OrderedWriter::ordered_write() {
       if (has_min_max_metadata(attr, var_size) &&
           array_schema_.var_size(attr)) {
         frag_meta->convert_tile_min_max_var_sizes_to_offsets(attr);
-        RETURN_NOT_OK(parallel_for(
-            compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
-              const auto& attr = buff.first;
-              auto& batch = tiles.at(attr)[b];
-              auto idx = b * thread_num;
-              for (auto& tile : batch) {
-                frag_meta->set_tile_min_var(attr, idx, tile.min());
-                frag_meta->set_tile_max_var(attr, idx, tile.max());
-                idx++;
-              }
-              return Status::Ok();
-            }));
+        parallel_for(compute_tp, 0, attr_tile_batches.size(), [&](uint64_t b) {
+          const auto& attr = buff.first;
+          auto& batch = tiles.at(attr)[b];
+          auto idx = b * thread_num;
+          for (auto& tile : batch) {
+            frag_meta->set_tile_min_var(attr, idx, tile.min());
+            frag_meta->set_tile_max_var(attr, idx, tile.max());
+            idx++;
+          }
+        });
       }
     }
   }
@@ -331,40 +328,36 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
 
     {
       auto timer_se = stats_->start_timer("prepare_and_filter_tiles");
-      auto st = parallel_for(
-          &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
-            // Prepare and filter tiles
-            auto& writer_tile = tile_batches[b][i];
-            throw_if_not_ok(
-                dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
+      parallel_for(&resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
+        // Prepare and filter tiles
+        auto& writer_tile = tile_batches[b][i];
+        throw_if_not_ok(
+            dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
-            if (!var) {
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.fixed_tile(), nullptr, false, false));
-            } else {
-              auto offset_tile = &writer_tile.offset_tile();
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.var_tile(), offset_tile, false, false));
-              throw_if_not_ok(
-                  filter_tile(name, offset_tile, nullptr, true, false));
-            }
-            if (nullable) {
-              throw_if_not_ok(filter_tile(
-                  name, &writer_tile.validity_tile(), nullptr, false, true));
-            }
-            return Status::Ok();
-          });
-      RETURN_NOT_OK(st);
+        if (!var) {
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.fixed_tile(), nullptr, false, false));
+        } else {
+          auto offset_tile = &writer_tile.offset_tile();
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.var_tile(), offset_tile, false, false));
+          throw_if_not_ok(filter_tile(name, offset_tile, nullptr, true, false));
+        }
+        if (nullable) {
+          throw_if_not_ok(filter_tile(
+              name, &writer_tile.validity_tile(), nullptr, false, true));
+        }
+      });
     }
 
     if (write_task.has_value()) {
       write_task->wait();
-      RETURN_NOT_OK(write_task->get());
+      write_task->get();
     }
 
     write_task = resources_.io_tp().execute([&, b, frag_tile_id]() {
       close_files = (b == batch_num - 1);
-      RETURN_NOT_OK(write_tiles(
+      throw_if_not_ok(write_tiles(
           0,
           tile_batches[b].size(),
           name,
@@ -372,8 +365,6 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           frag_tile_id,
           &tile_batches[b],
           close_files));
-
-      return Status::Ok();
     });
 
     frag_tile_id += batch_size;
@@ -381,7 +372,7 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
 
   if (write_task.has_value()) {
     write_task->wait();
-    RETURN_NOT_OK(write_task->get());
+    write_task->get();
   }
 
   return Status::Ok();

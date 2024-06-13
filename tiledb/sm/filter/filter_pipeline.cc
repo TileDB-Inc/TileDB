@@ -238,7 +238,7 @@ Status FilterPipeline::filter_chunks_forward(
       nchunks);
 
   // Run each chunk through the entire pipeline.
-  auto status = parallel_for(compute_tp, 0, nchunks, [&](uint64_t i) {
+  parallel_for(compute_tp, 0, nchunks, [&](uint64_t i) {
     // TODO(ttd): can we instead allocate one FilterStorage per thread?
     // or make it threadsafe?
     FilterStorage storage;
@@ -252,7 +252,7 @@ Status FilterPipeline::filter_chunks_forward(
         i == nchunks - 1 ? last_buffer_size :
         var_sizes        ? chunk_offsets[i + 1] - chunk_offsets[i] :
                            chunk_size;
-    RETURN_NOT_OK(input_data.init(chunk_buffer, chunk_buffer_size));
+    throw_if_not_ok(input_data.init(chunk_buffer, chunk_buffer_size));
 
     // Apply the filters sequentially.
     for (auto it = filters_.begin(), ite = filters_.end(); it != ite; ++it) {
@@ -297,10 +297,7 @@ Status FilterPipeline::filter_chunks_forward(
     throw_if_not_ok(io_input.second.swap(input_data));
     throw_if_not_ok(io_output.first.swap(output_metadata));
     throw_if_not_ok(io_output.second.swap(output_data));
-    return Status::Ok();
   });
-
-  RETURN_NOT_OK(status);
 
   uint64_t total_processed_size = 0;
   std::vector<uint32_t> var_chunk_sizes(final_stage_io.size());
@@ -336,7 +333,7 @@ Status FilterPipeline::filter_chunks_forward(
   memcpy(output.data(), &nchunks, sizeof(uint64_t));
 
   // Concatenate all processed chunks into the final output buffer.
-  status = parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
+  parallel_for(compute_tp, 0, final_stage_io.size(), [&](uint64_t i) {
     auto& final_stage_output_metadata = final_stage_io[i].first.first;
     auto& final_stage_output_data = final_stage_io[i].first.second;
     auto filtered_size = (uint32_t)final_stage_output_data.size();
@@ -363,10 +360,7 @@ Status FilterPipeline::filter_chunks_forward(
     dest_offset += metadata_size;
     // Write the chunk data
     throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
-    return Status::Ok();
   });
-
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }

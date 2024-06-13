@@ -721,9 +721,8 @@ class GCS {
    * @param object_part_path The object's part path.
    * @param length The length of `buffer`.
    * @param part_id A unique integer identifier for this part.
-   * @return Status
    */
-  Status upload_part(
+  void upload_part(
       const std::string& bucket_name,
       const std::string& object_part_path,
       const void* const buffer,
@@ -746,9 +745,8 @@ class GCS {
    *
    * @param bucket_name The object's bucket name.
    * @param part_path The object part's path to delete.
-   * @return Status
    */
-  Status delete_part(
+  void delete_part(
       const std::string& bucket_name, const std::string& part_path);
 
   /**

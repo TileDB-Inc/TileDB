@@ -214,7 +214,7 @@ Status UnorderedWriter::check_coord_dups() const {
     buffs_var_sizes[d] = buffers_.find(dim_name)->second.buffer_var_size_;
   }
 
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -265,13 +265,9 @@ Status UnorderedWriter::check_coord_dups() const {
           std::stringstream ss;
           ss << "Duplicate coordinates " << coords_to_str(cell_pos_[i]);
           ss << " are not allowed";
-          return Status_WriterError(ss.str());
+          throw UnorderWriterException(ss.str());
         }
-
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK_ELSE(status, logger_->error(status.message()));
 
   return Status::Ok();
 }
@@ -304,7 +300,7 @@ Status UnorderedWriter::compute_coord_dups() {
   }
 
   std::mutex mtx;
-  auto status = parallel_for(
+  parallel_for(
       &resources_.compute_tp(), 1, coords_info_.coords_num_, [&](uint64_t i) {
         // Check for duplicate in adjacent cells
         bool found_dup = true;
@@ -355,11 +351,7 @@ Status UnorderedWriter::compute_coord_dups() {
           std::lock_guard<std::mutex> lock(mtx);
           coord_dups_.insert(cell_pos_[i]);
         }
-
-        return Status::Ok();
       });
-
-  RETURN_NOT_OK(status);
 
   return Status::Ok();
 }
@@ -381,16 +373,12 @@ Status UnorderedWriter::prepare_tiles(
   }
 
   // Prepare tiles for all attributes and coordinates
-  auto status =
-      parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
-        auto tiles_it = tiles->begin();
-        std::advance(tiles_it, i);
-        throw_if_not_ok(prepare_tiles(tiles_it->first, &(tiles_it->second)));
-        throw_if_cancelled();
-        return Status::Ok();
-      });
-
-  RETURN_NOT_OK(status);
+  parallel_for(&resources_.compute_tp(), 0, tiles->size(), [&](uint64_t i) {
+    auto tiles_it = tiles->begin();
+    std::advance(tiles_it, i);
+    throw_if_not_ok(prepare_tiles(tiles_it->first, &(tiles_it->second)));
+    throw_if_cancelled();
+  });
 
   return Status::Ok();
 }

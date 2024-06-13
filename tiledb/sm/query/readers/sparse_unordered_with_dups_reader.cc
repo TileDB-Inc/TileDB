@@ -758,7 +758,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
   auto val_buffer = query_buffer.validity_vector_.buffer();
 
   // Process all tiles/cells in parallel.
-  throw_if_not_ok(parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       result_tiles.size(),
@@ -793,7 +793,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
                 cell_offsets[i],
                 rt);
         if (skip_copy) {
-          return Status::Ok();
+          return;
         }
 
         // Copy tile.
@@ -807,9 +807,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_offsets_tiles(
             buffer + dest_cell_offset,
             val_buffer + dest_cell_offset,
             &var_data[dest_cell_offset - cell_offsets[0]]);
-
-        return Status::Ok();
-      }));
+      });
 }
 
 /** Copy Var data. */
@@ -864,7 +862,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
   auto var_data_buffer = (uint8_t*)query_buffer.buffer_var_;
 
   // Process all tiles/cells in parallel.
-  throw_if_not_ok(parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       result_tiles.size(),
@@ -884,7 +882,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
                 cell_offsets[i],
                 nullptr);
         if (skip_copy) {
-          return Status::Ok();
+          return;
         }
 
         copy_var_data_tile(
@@ -897,9 +895,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_var_data_tiles(
             (const void**)var_data.data(),
             offsets_buffer + dest_cell_offset,
             var_data_buffer);
-
-        return Status::Ok();
-      }));
+      });
 }
 
 /** Copy fixed data with a result count bitmap. */
@@ -1236,7 +1232,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
   auto val_buffer = query_buffer.validity_vector_.buffer();
 
   // Process all tiles/cells in parallel.
-  throw_if_not_ok(parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       result_tiles.size(),
@@ -1271,7 +1267,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
                 cell_offsets[i],
                 rt);
         if (skip_copy) {
-          return Status::Ok();
+          return;
         }
 
         // Copy tile.
@@ -1294,9 +1290,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::copy_fixed_data_tiles(
               buffer + dest_cell_offset * cell_size,
               val_buffer + dest_cell_offset);
         }
-
-        return Status::Ok();
-      }));
+      });
 }
 
 template <class BitmapType>
@@ -1440,73 +1434,69 @@ SparseUnorderedWithDupsReader<BitmapType>::respect_copy_memory_budget(
   uint64_t max_rt_idx = result_tiles.size();
   std::mutex max_rt_idx_mtx;
   std::vector<uint64_t> total_mem_usage_per_attr(names.size());
-  throw_if_not_ok(
-      parallel_for(&resources_.compute_tp(), 0, names.size(), [&](uint64_t i) {
-        // For easy reference.
-        const auto& name = names[i];
-        const bool agg_only = aggregate_only(name);
-        const auto var_sized = array_schema_.var_size(name);
-        auto mem_usage = &total_mem_usage_per_attr[i];
-        const bool is_timestamps = name == constants::timestamps ||
-                                   name == constants::delete_timestamps;
+  parallel_for(&resources_.compute_tp(), 0, names.size(), [&](uint64_t i) {
+    // For easy reference.
+    const auto& name = names[i];
+    const bool agg_only = aggregate_only(name);
+    const auto var_sized = array_schema_.var_size(name);
+    auto mem_usage = &total_mem_usage_per_attr[i];
+    const bool is_timestamps =
+        name == constants::timestamps || name == constants::delete_timestamps;
 
-        // For dimensions, when we have a subarray, tiles are already all
-        // loaded in memory.
-        if ((include_coords_ && array_schema_.is_dim(name)) ||
-            qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps ||
-            name == constants::count_of_rows) {
-          return Status::Ok();
+    // For dimensions, when we have a subarray, tiles are already all
+    // loaded in memory.
+    if ((include_coords_ && array_schema_.is_dim(name)) ||
+        qc_loaded_attr_names_set_.count(name) != 0 || is_timestamps ||
+        name == constants::count_of_rows) {
+      return;
+    }
+
+    // Get the size for all tiles.
+    uint64_t idx = 0;
+    for (; idx < max_rt_idx; idx++) {
+      // Size of the tile in memory.
+      auto rt = static_cast<UnorderedWithDupsResultTile<BitmapType>*>(
+          result_tiles[idx]);
+
+      // Skip this tile if it's aggregate only and we can aggregate it with
+      // the fragment metadata only.
+      if (agg_only && can_aggregate_tile_with_frag_md(rt)) {
+        continue;
+      }
+
+      // Skip for fields added in schema evolution.
+      if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(name)) {
+        continue;
+      }
+
+      auto tile_size =
+          get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
+
+      // Account for the pointers to the var data that is created in
+      // copy_tiles for var sized attributes.
+      if (var_sized) {
+        tile_size += sizeof(void*) * rt->result_num();
+      }
+
+      // Stop when we reach the upper limit.
+      if (*mem_usage + tile_size > upper_memory_limit) {
+        // We can allow the first tile to go above the upper limit if it
+        // fits the available memory.
+        if (idx != 0 || tile_size > available_memory()) {
+          break;
         }
+      }
 
-        // Get the size for all tiles.
-        uint64_t idx = 0;
-        for (; idx < max_rt_idx; idx++) {
-          // Size of the tile in memory.
-          auto rt = static_cast<UnorderedWithDupsResultTile<BitmapType>*>(
-              result_tiles[idx]);
+      // Adjust memory usage.
+      *mem_usage += tile_size;
+    }
 
-          // Skip this tile if it's aggregate only and we can aggregate it with
-          // the fragment metadata only.
-          if (agg_only && can_aggregate_tile_with_frag_md(rt)) {
-            continue;
-          }
-
-          // Skip for fields added in schema evolution.
-          if (!fragment_metadata_[rt->frag_idx()]->array_schema()->is_field(
-                  name)) {
-            continue;
-          }
-
-          auto tile_size =
-              get_attribute_tile_size(name, rt->frag_idx(), rt->tile_idx());
-
-          // Account for the pointers to the var data that is created in
-          // copy_tiles for var sized attributes.
-          if (var_sized) {
-            tile_size += sizeof(void*) * rt->result_num();
-          }
-
-          // Stop when we reach the upper limit.
-          if (*mem_usage + tile_size > upper_memory_limit) {
-            // We can allow the first tile to go above the upper limit if it
-            // fits the available memory.
-            if (idx != 0 || tile_size > available_memory()) {
-              break;
-            }
-          }
-
-          // Adjust memory usage.
-          *mem_usage += tile_size;
-        }
-
-        // Save the minimum result tile index that we saw for all attributes.
-        {
-          std::unique_lock<std::mutex> ul(max_rt_idx_mtx);
-          max_rt_idx = std::min(idx, max_rt_idx);
-        }
-
-        return Status::Ok();
-      }));
+    // Save the minimum result tile index that we saw for all attributes.
+    {
+      std::unique_lock<std::mutex> ul(max_rt_idx_mtx);
+      max_rt_idx = std::min(idx, max_rt_idx);
+    }
+  });
 
   if (max_rt_idx == 0) {
     throw SparseUnorderedWithDupsReaderException(
@@ -1919,7 +1909,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
   const bool count_bitmap = std::is_same<BitmapType, uint64_t>::value;
 
   // Process all tiles/cells in parallel.
-  throw_if_not_ok(parallel_for_2d(
+  parallel_for_2d(
       &resources_.compute_tp(),
       0,
       result_tiles.size(),
@@ -1932,7 +1922,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
         // The first tile might have already been processed by the last
         // computation. We only process a tile the first time.
         if (i == 0 && read_state_.frag_idx()[rt->frag_idx()].cell_idx_ != 0) {
-          return Status::Ok();
+          return;
         }
 
         if (can_aggregate_tile_with_frag_md(rt)) {
@@ -1956,7 +1946,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
                   cell_offsets[i],
                   nullptr);
           if (skip_aggregate) {
-            return Status::Ok();
+            return;
           }
 
           // Compute aggregate.
@@ -1973,9 +1963,7 @@ void SparseUnorderedWithDupsReader<BitmapType>::process_aggregates(
             aggregate->aggregate_data(aggregate_buffer);
           }
         }
-
-        return Status::Ok();
-      }));
+      });
 }
 
 template <class BitmapType>

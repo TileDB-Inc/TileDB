@@ -486,9 +486,8 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param result_cell_slabs The result cell slabs to copy cells for.
    * @param cs_offsets The cell slab offsets.
    * @param cs_partitions The cell slab partitions to operate on.
-   * @return Status
    */
-  Status copy_partitioned_fixed_cells(
+  void copy_partitioned_fixed_cells(
       size_t partition_idx,
       const std::string* name,
       uint64_t stride,
@@ -578,9 +577,8 @@ class Reader : public ReaderBase, public IQueryStrategy {
    * @param var_offsets_per_cs Maps each cell slab to its offset
    *     for its variable-length data.
    * @param cs_partitions The cell slab partitions to operate on.
-   * @return Status
    */
-  Status copy_partitioned_var_cells(
+  void copy_partitioned_var_cells(
       size_t partition_idx,
       const std::string* name,
       uint64_t stride,
