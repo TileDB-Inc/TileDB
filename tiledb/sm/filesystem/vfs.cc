@@ -1127,12 +1127,12 @@ Status VFS::read(
            thread_buffer,
            thread_nbytes,
            use_read_ahead]() {
-            return read_impl(
+            throw_if_not_ok(read_impl(
                 uri,
                 thread_offset,
                 thread_buffer,
                 thread_nbytes,
-                use_read_ahead);
+                use_read_ahead));
           });
       results.push_back(std::move(task));
     }
