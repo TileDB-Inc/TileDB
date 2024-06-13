@@ -330,9 +330,8 @@ Status Reader::load_initial_data() {
   }
 
   // Load delete conditions.
-  auto&& [conditions, update_values] =
-      load_delete_and_update_conditions(resources_, *array_.get());
-  delete_and_update_conditions_ = conditions;
+  std::tie(delete_and_update_conditions_, std::ignore) =
+      load_delete_and_update_conditions(resources_, *array_);
 
   // Set timestamps variables
   user_requested_timestamps_ = buffers_.count(constants::timestamps) != 0 ||

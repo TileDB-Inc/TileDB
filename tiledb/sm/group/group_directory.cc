@@ -70,10 +70,7 @@ GroupDirectory::GroupDirectory(
     , timestamp_start_(timestamp_start)
     , timestamp_end_(timestamp_end)
     , loaded_(false) {
-  auto st = load();
-  if (!st.ok()) {
-    throw GroupDirectoryException(st.message());
-  }
+  load();
 }
 
 /* ********************************* */
@@ -121,7 +118,7 @@ const std::vector<TimestampedURI>& GroupDirectory::group_detail_uris() const {
   return group_detail_uris_;
 }
 
-Status GroupDirectory::load() {
+void GroupDirectory::load() {
   assert(!loaded_);
   std::vector<ThreadPool::Task> tasks;
   std::vector<URI> root_dir_uris;
@@ -130,20 +127,15 @@ Status GroupDirectory::load() {
   // Lists all directories in parallel. Skipping for schema only.
   // Some processing is also done here for things that don't depend on others.
   // List (in parallel) the root directory URIs
-  tasks.emplace_back(tp_.execute([&]() {
-    auto&& [st, uris] = list_root_dir_uris();
-    throw_if_not_ok(st);
-
-    root_dir_uris = std::move(uris).value();
-  }));
+  tasks.emplace_back(
+      tp_.execute([&]() { root_dir_uris = list_root_dir_uris(); }));
 
   // Load (in parallel) the group metadata URIs
-  tasks.emplace_back(
-      tp_.execute([&]() { throw_if_not_ok(load_group_meta_uris()); }));
+  tasks.emplace_back(tp_.execute(&GroupDirectory::load_group_meta_uris, this));
 
-  // Load (in paralell) the group details URIs
+  // Load (in parallel) the group details URIs
   tasks.emplace_back(
-      tp_.execute([&] { throw_if_not_ok(load_group_detail_uris()); }));
+      tp_.execute(&GroupDirectory::load_group_detail_uris, this));
 
   // Wait for all tasks to complete
   tp_.wait_all(tasks);
@@ -167,8 +159,6 @@ Status GroupDirectory::load() {
 
   // The URI manager has been loaded successfully
   loaded_ = true;
-
-  return Status::Ok();
 }
 
 bool GroupDirectory::loaded() const {
@@ -179,69 +169,52 @@ bool GroupDirectory::loaded() const {
 /*         PRIVATE METHODS           */
 /* ********************************* */
 
-tuple<Status, optional<std::vector<URI>>> GroupDirectory::list_root_dir_uris() {
+std::vector<URI> GroupDirectory::list_root_dir_uris() {
   // List the group directory URIs
   std::vector<URI> group_dir_uris;
-  RETURN_NOT_OK_TUPLE(vfs_.ls(uri_, &group_dir_uris), nullopt);
+  throw_if_not_ok(vfs_.ls(uri_, &group_dir_uris));
 
-  return {Status::Ok(), group_dir_uris};
+  return group_dir_uris;
 }
 
-Status GroupDirectory::load_group_meta_uris() {
+void GroupDirectory::load_group_meta_uris() {
   // Load the URIs in the group metadata directory
   std::vector<URI> group_meta_dir_uris;
   auto group_meta_uri = uri_.join_path(constants::group_metadata_dir_name);
   throw_if_not_ok(vfs_.ls(group_meta_uri, &group_meta_dir_uris));
 
   // Compute and group metadata URIs and the vacuum file URIs to vacuum.
-  auto&& [st1, group_meta_uris_to_vacuum, group_meta_vac_uris_to_vacuum] =
+  std::tie(group_meta_uris_to_vacuum_, group_meta_vac_uris_to_vacuum_) =
       compute_uris_to_vacuum(group_meta_dir_uris);
-  RETURN_NOT_OK(st1);
-  group_meta_uris_to_vacuum_ = std::move(group_meta_uris_to_vacuum.value());
-  group_meta_vac_uris_to_vacuum_ =
-      std::move(group_meta_vac_uris_to_vacuum.value());
 
   // Compute filtered group metadata URIs
-  auto&& [st2, group_meta_filtered_uris] =
+  group_meta_uris_ =
       compute_filtered_uris(group_meta_dir_uris, group_meta_uris_to_vacuum_);
-  RETURN_NOT_OK(st2);
-  group_meta_uris_ = std::move(group_meta_filtered_uris.value());
   group_meta_dir_uris.clear();
-
-  return Status::Ok();
 }
 
-Status GroupDirectory::load_group_detail_uris() {
+void GroupDirectory::load_group_detail_uris() {
   // Load the URIs in the group details directory
   std::vector<URI> group_detail_dir_uris;
   auto group_detail_uri = uri_.join_path(constants::group_detail_dir_name);
   throw_if_not_ok(vfs_.ls(group_detail_uri, &group_detail_dir_uris));
 
   // Compute and group details URIs and the vacuum file URIs to vacuum.
-  auto&& [st1, group_detail_uris_to_vacuum, group_detail_vac_uris_to_vacuum] =
+  std::tie(group_detail_uris_to_vacuum_, group_detail_vac_uris_to_vacuum_) =
       compute_uris_to_vacuum(group_detail_dir_uris);
-  throw_if_not_ok(st1);
-  group_detail_uris_to_vacuum_ = std::move(group_detail_uris_to_vacuum.value());
-  group_detail_vac_uris_to_vacuum_ =
-      std::move(group_detail_vac_uris_to_vacuum.value());
 
   // Compute filtered group details URIs
-  auto&& [st2, group_detail_filtered_uris] = compute_filtered_uris(
+  group_detail_uris_ = compute_filtered_uris(
       group_detail_dir_uris, group_detail_uris_to_vacuum_);
-  throw_if_not_ok(st2);
-  group_detail_uris_ = std::move(group_detail_filtered_uris.value());
-  group_detail_dir_uris.clear();
 
   // Set the latest array schema URI
   if (!group_detail_uris_.empty()) {
     latest_group_details_uri_ = group_detail_uris_.back().uri_;
     assert(!latest_group_details_uri_.is_invalid());
   }
-
-  return Status::Ok();
 }
 
-tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
+tuple<std::vector<URI>, std::vector<URI>>
 GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
   // Get vacuum URIs
   std::vector<URI> vac_files;
@@ -304,17 +277,16 @@ GroupDirectory::compute_uris_to_vacuum(const std::vector<URI>& uris) const {
       vac_uris_to_vacuum.emplace_back(vac_files[i]);
   }
 
-  return {Status::Ok(), uris_to_vacuum, vac_uris_to_vacuum};
+  return {uris_to_vacuum, vac_uris_to_vacuum};
 }
 
-tuple<Status, optional<std::vector<TimestampedURI>>>
-GroupDirectory::compute_filtered_uris(
+std::vector<TimestampedURI> GroupDirectory::compute_filtered_uris(
     const std::vector<URI>& uris, const std::vector<URI>& to_ignore) const {
   std::vector<TimestampedURI> filtered_uris;
 
   // Do nothing if there are not enough URIs
   if (uris.empty()) {
-    return {Status::Ok(), filtered_uris};
+    return filtered_uris;
   }
 
   // Get the URIs that must be ignored
@@ -346,7 +318,7 @@ GroupDirectory::compute_filtered_uris(
   // Sort the names based on the timestamps
   std::sort(filtered_uris.begin(), filtered_uris.end());
 
-  return {Status::Ok(), filtered_uris};
+  return filtered_uris;
 }
 
 bool GroupDirectory::is_vacuum_file(const URI& uri) const {

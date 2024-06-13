@@ -323,7 +323,7 @@ class ArrayDirectory {
    *
    * @param array_schema_uri The URI path of the array schema.
    * @param encryption_key The encryption key to use.
-   * @return Status, the loaded array schema
+   * @return the loaded array schema
    */
   static shared_ptr<ArraySchema> load_array_schema_from_uri(
       ContextResources& resources,
@@ -348,7 +348,7 @@ class ArrayDirectory {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @return Status, a new ArraySchema
+   * @return a new ArraySchema
    */
   shared_ptr<ArraySchema> load_array_schema_latest(
       const EncryptionKey& encryption_key,
@@ -361,10 +361,8 @@ class ArrayDirectory {
    * @param array_dir The ArrayDirectory object used to retrieve the
    *     various URIs in the array directory.
    * @param encryption_key The encryption key to use.
-   * @return tuple of Status, latest array schema and all array schemas.
-   *   Status Ok on success, else error
-   *   ArraySchema The latest array schema.
-   *   ArraySchemaMap Map of all array schemas loaded, keyed by name
+   * @return tuple of latest array schema and all array schemas loaded, keyed by
+   * name.
    */
   tuple<
       shared_ptr<ArraySchema>,
@@ -377,10 +375,7 @@ class ArrayDirectory {
    * Loads all schemas of an array from persistent storage into memory.
    *
    * @param encryption_key The encryption key to use.
-   * @return tuple of Status and optional unordered map. If Status is an error
-   * the unordered_map will be nullopt
-   *        Status Ok on success, else error
-   *        ArraySchemaMap Map of all array schemas found keyed by name
+   * @return Map of all array schemas found keyed by name
    */
   std::unordered_map<std::string, shared_ptr<ArraySchema>>
   load_all_array_schemas(
@@ -663,9 +658,9 @@ class ArrayDirectory {
   /**
    * Loads the root directory uris for v1 to v11.
    *
-   * @return Status, vector of fragment URIs.
+   * @return vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_root_dir_uris_v1_v11(
+  std::vector<URI> load_root_dir_uris_v1_v11(
       const std::vector<URI>& root_dir_uris);
 
   /**
@@ -678,9 +673,9 @@ class ArrayDirectory {
   /**
    * Loads the commit directory uris for v12 or higher.
    *
-   * @return Status, vector of fragment URIs.
+   * @return vector of fragment URIs.
    */
-  tuple<Status, optional<std::vector<URI>>> load_commits_dir_uris_v12_or_higher(
+  std::vector<URI> load_commits_dir_uris_v12_or_higher(
       const std::vector<URI>& commits_dir_uris,
       const std::vector<URI>& consolidated_uris);
 
@@ -722,7 +717,7 @@ class ArrayDirectory {
    * Computes the fragment URIs from the input array directory URIs, for
    * versions 1 to 11.
    */
-  tuple<Status, optional<std::vector<URI>>> compute_fragment_uris_v1_v11(
+  std::vector<URI> compute_fragment_uris_v1_v11(
       const std::vector<URI>& array_dir_uris) const;
 
   /**
@@ -736,11 +731,10 @@ class ArrayDirectory {
    *
    * @param full_overlap_only Only enable full overlap.
    * @param uris The URIs to calculate the URIs to vacuum from.
-   * @return Status, a vector of the URIs to vacuum, a vector of
-   *     the vac file URIs to vacuum.
+   * @return a vector of the URIs to vacuum, a vector of the vac file URIs to
+   * vacuum.
    */
-  tuple<Status, optional<std::vector<URI>>, optional<std::vector<URI>>>
-  compute_uris_to_vacuum(
+  tuple<std::vector<URI>, std::vector<URI>> compute_uris_to_vacuum(
       const bool full_overlap_only, const std::vector<URI>& uris) const;
 
   /**
@@ -750,9 +744,9 @@ class ArrayDirectory {
    * @param full_overlap_only Only enable full overlap.
    * @param uris The URIs to filter.
    * @param to_ignore The URIs to ignore (because they are vacuumed).
-   * @return Status, vector of filtered timestamped URIs.
+   * @return vector of filtered timestamped URIs.
    */
-  tuple<Status, optional<std::vector<TimestampedURI>>> compute_filtered_uris(
+  std::vector<TimestampedURI> compute_filtered_uris(
       const bool full_overlap_only,
       const std::vector<URI>& uris,
       const std::vector<URI>& to_ignore) const;
