@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 WriterTileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 WriterTileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,8 +35,7 @@
 
 using namespace tiledb::common;
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 /* ****************************** */
 /*    STRUCTURED BINDINGS APIS    */
@@ -222,10 +221,12 @@ bool TileMetadataGenerator::has_min_max_metadata(
     return false;
   }
 
-  // No min max for any, blob, or non ascii strings.
+  // No min max for any, byte-type, or non ascii strings.
   switch (type) {
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -244,10 +245,12 @@ bool TileMetadataGenerator::has_sum_metadata(
   if (var_size || cell_val_num != 1)
     return false;
 
-  // No sum for any, blob, or non ascii strings.
+  // No sum for any, byte-type, or non ascii strings.
   switch (type) {
     case Datatype::ANY:
     case Datatype::BLOB:
+    case Datatype::GEOM_WKB:
+    case Datatype::GEOM_WKT:
     case Datatype::STRING_UTF8:
     case Datatype::STRING_UTF16:
     case Datatype::STRING_UTF32:
@@ -358,6 +361,8 @@ void TileMetadataGenerator::process_cell_slab(
         process_cell_range<char>(tile, start, end);
         break;
       case Datatype::BLOB:
+      case Datatype::GEOM_WKB:
+      case Datatype::GEOM_WKT:
         process_cell_range<std::byte>(tile, start, end);
         break;
       default:
@@ -458,7 +463,7 @@ void TileMetadataGenerator::min_max_nullable<char>(
     uint64_t start,
     uint64_t end) {
   // Get pointers to the data and cell num.
-  auto value = tile.data_as<char>();
+  auto value = tile.data_as<char>() + cell_size_ * start;
   auto validity_values = validity_tile.data_as<uint8_t>();
 
   // Process cell by cell.
@@ -616,5 +621,4 @@ inline void TileMetadataGenerator::min_max_var(
   }
 }
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm

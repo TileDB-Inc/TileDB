@@ -3,7 +3,7 @@
 #
 # The MIT License
 #
-# Copyright (c) 2022 TileDB, Inc.
+# Copyright (c) 2022-2024 TileDB, Inc.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -24,20 +24,9 @@
 # THE SOFTWARE.
 #
 
-include(common NO_POLICY_SCOPE)
+include(unit_test)
 
-add_executable(unit_capi_vfs EXCLUDE_FROM_ALL)
-find_package(Catch_EP REQUIRED)
-target_link_libraries(unit_capi_vfs PUBLIC Catch2::Catch2WithMain)
-target_link_libraries(unit_capi_vfs PUBLIC capi_vfs)
-
-# Sources for tests
-target_sources(unit_capi_vfs PUBLIC
-    unit_capi_vfs.cc
-)
-
-add_test(
-    NAME "unit_capi_vfs"
-    COMMAND $<TARGET_FILE:unit_capi_vfs>
-    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
-)
+commence(unit_test capi_vfs)
+  this_target_sources(unit_capi_vfs.cc)
+  this_target_object_libraries(capi_vfs)
+conclude(unit_test)

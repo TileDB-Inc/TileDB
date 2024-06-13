@@ -38,7 +38,6 @@
 #include <unordered_map>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/array_schema.h"
 #include "tiledb/sm/query/query_buffer.h"
@@ -146,6 +145,7 @@ class DenseTiler {
    *     from `subarray`). Otherwise, an assertion is raised.
    */
   DenseTiler(
+      shared_ptr<MemoryTracker> memory_tracker,
       const std::unordered_map<std::string, QueryBuffer>* buffers,
       const Subarray* subarray,
       stats::Stats* const parent_stats,
@@ -206,6 +206,9 @@ class DenseTiler {
   /* ********************************* */
   /*         PRIVATE ATTRIBUTES        */
   /* ********************************* */
+
+  /** The memory tracker. */
+  shared_ptr<MemoryTracker> memory_tracker_;
 
   /** The stats for the dense tiler. */
   stats::Stats* stats_;

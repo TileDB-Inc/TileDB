@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -33,6 +33,7 @@
 #include <test/support/tdb_catch.h>
 #include <iostream>
 
+#include "tiledb/common/logger.h"
 #include "unit_consistency.h"
 
 using namespace tiledb;
@@ -171,10 +172,9 @@ TEST_CASE(
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Register array
-  tdb_unique_ptr<Array> array = x.open_array(uri, &sm);
+  tdb_unique_ptr<Array> array = x.open_array(resources, uri);
   REQUIRE(x.registry_size() == 1);
   REQUIRE(x.is_open(uri) == true);
   REQUIRE(tiledb::sm::utils::parse::is_element_of(uri, uri) == true);
@@ -185,7 +185,7 @@ TEST_CASE(
   REQUIRE(x.is_open(uri) == false);
 
   // Clean up
-  REQUIRE(sm.vfs()->remove_dir(uri).ok());
+  REQUIRE(resources.vfs().remove_dir(uri).ok());
 }
 
 TEST_CASE(
@@ -197,7 +197,6 @@ TEST_CASE(
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   std::vector<tdb_unique_ptr<Array>> arrays;
   std::vector<URI> uris = {
@@ -206,7 +205,7 @@ TEST_CASE(
   // Register arrays
   size_t count = 0;
   for (auto uri : uris) {
-    arrays.insert(arrays.begin(), x.open_array(uri, &sm));
+    arrays.insert(arrays.begin(), x.open_array(resources, uri));
     count++;
     REQUIRE(x.registry_size() == count);
     REQUIRE(x.is_open(uri) == true);
@@ -226,7 +225,7 @@ TEST_CASE(
 
   // Clean up
   for (auto uri : uris) {
-    REQUIRE(sm.vfs()->remove_dir(uri).ok());
+    REQUIRE(resources.vfs().remove_dir(uri).ok());
   }
 }
 
@@ -240,10 +239,9 @@ TEST_CASE(
   Config config;
   auto logger = make_shared<Logger>(HERE(), "foo");
   ContextResources resources(config, logger, 1, 1, "");
-  StorageManager sm(resources, make_shared<Logger>(HERE(), ""), config);
 
   // Create an array
-  tdb_unique_ptr<Array> array = x.create_array(uri, &sm);
+  tdb_unique_ptr<Array> array = x.create_array(resources, uri);
 
   // Open an array for exclusive modification
   auto st = array->open(
@@ -282,5 +280,5 @@ TEST_CASE(
   REQUIRE(array.get()->close().ok());
   REQUIRE(x.registry_size() == 0);
   REQUIRE(x.is_open(uri) == false);
-  REQUIRE(sm.vfs()->remove_dir(uri).ok());
+  REQUIRE(resources.vfs().remove_dir(uri).ok());
 }

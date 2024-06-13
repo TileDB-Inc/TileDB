@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -56,7 +56,8 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
     const std::unordered_map<std::string, QueryBuffer>& label_buffers,
     const std::unordered_map<std::string, QueryBuffer>& array_buffers,
     const optional<std::string>& fragment_name)
-    : storage_manager_(storage_manager)
+    : resources_(storage_manager->resources())
+    , storage_manager_(storage_manager)
     , label_range_queries_by_dim_idx_(subarray.dim_num(), nullptr)
     , label_data_queries_by_dim_idx_(subarray.dim_num())
     , range_query_status_{QueryStatus::UNINITIALIZED}
@@ -90,7 +91,7 @@ ArrayDimensionLabelQueries::ArrayDimensionLabelQueries(
         // or to get the timestamp_end from the parent array. This fix is
         // blocked by current discussion on a timestamp refactor design.
         if (!fragment_name_.has_value()) {
-          fragment_name_ = storage_format::generate_fragment_name(
+          fragment_name_ = storage_format::generate_timestamped_name(
               array->timestamp_end_opened_at(),
               array->array_schema_latest().write_version());
         }
@@ -150,7 +151,7 @@ std::vector<DimensionLabelQuery*> ArrayDimensionLabelQueries::get_data_query(
 
 void ArrayDimensionLabelQueries::process_data_queries() {
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       data_queries_.size(),
       [&](const size_t query_idx) {
@@ -170,7 +171,7 @@ void ArrayDimensionLabelQueries::process_data_queries() {
 void ArrayDimensionLabelQueries::process_range_queries(Query* parent_query) {
   // Process queries and update the subarray.
   throw_if_not_ok(parallel_for(
-      storage_manager_->compute_tp(),
+      &resources_.compute_tp(),
       0,
       label_range_queries_by_dim_idx_.size(),
       [&](const uint32_t dim_idx) {
@@ -358,7 +359,7 @@ shared_ptr<Array> ArrayDimensionLabelQueries::open_dimension_label(
   // Create the dimension label.
   auto label_iter = dimension_labels_.try_emplace(
       dim_label_name,
-      make_shared<Array>(HERE(), dim_label_uri, storage_manager_));
+      make_shared<Array>(HERE(), storage_manager_->resources(), dim_label_uri));
   const auto dim_label = label_iter.first->second;
 
   // Open the dimension label with the same timestamps and encryption as the

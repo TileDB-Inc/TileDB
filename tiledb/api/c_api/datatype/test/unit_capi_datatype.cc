@@ -1,11 +1,11 @@
 /**
- * @file tiledeb/api/c_api/datatype/test/unit_capi_datatype.cc
+ * @file tiledb/api/c_api/datatype/test/unit_capi_datatype.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -106,7 +106,9 @@ TEST_CASE(
     TestCase(TILEDB_TIME_FS,        "TIME_FS",        38),
     TestCase(TILEDB_TIME_AS,        "TIME_AS",        39),
     TestCase(TILEDB_BLOB,           "BLOB",           40),
-    TestCase(TILEDB_BOOL,           "BOOL",           41));
+    TestCase(TILEDB_BOOL,           "BOOL",           41),
+    TestCase(TILEDB_GEOM_WKB,       "GEOM_WKB",       42),
+    TestCase(TILEDB_GEOM_WKT,       "GEOM_WKT",       43));
 
   DYNAMIC_SECTION("[" << test.name_ << "]") {
     test.run();

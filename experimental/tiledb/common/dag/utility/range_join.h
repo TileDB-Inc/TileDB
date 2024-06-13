@@ -73,7 +73,7 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
-#include "arrow_proxy.hpp"
+#include "tiledb/common/util/detail/arrow_proxy.h"
 
 #include "external/include/span/span.hpp"
 

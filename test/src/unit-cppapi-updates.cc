@@ -32,29 +32,18 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/cpp_api/tiledb"
 
 using namespace tiledb;
 
 TEST_CASE(
     "C++ API updates: test writing two identical fragments",
-    "[updates][updates-identical-fragments]") {
-  bool serialized = false, refactored_query_v2 = false;
-  SECTION("no serialization") {
-    serialized = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialized = true;
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-  const std::string array_name = "updates_identical_fragments";
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+    "[updates][updates-identical-fragments][rest]") {
+  test::VFSTestSetup vfs_test_setup;
+  const std::string array_name =
+      vfs_test_setup.array_uri("updates_identical_fragments");
+  Context ctx{vfs_test_setup.ctx()};
 
   // Create
   const int rowmin = 0, rowmax = 9, row_ext = rowmax - rowmin + 1;
@@ -90,15 +79,7 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w1,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  query_w1.submit();
   array_w1.close();
 
   // Second write
@@ -110,14 +91,7 @@ TEST_CASE(
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", data_a1)
       .set_offsets_buffer("a1", offsets_a1);
-  rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w2,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  query_w2.submit();
   array_w2.close();
 
   // Read
@@ -130,45 +104,27 @@ TEST_CASE(
   std::vector<int> r_data_a1;
   r_data_a1.resize(300);
 
-  query.set_subarray(subarray)
+  Subarray sub(ctx, array);
+  sub.set_subarray(subarray);
+  query.set_subarray(sub)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a1", r_data_a1)
       .set_offsets_buffer("a1", r_offsets_a1);
-  rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialized,
-      refactored_query_v2,
-      false);
-  REQUIRE(rc == TILEDB_OK);
+  query.submit();
   REQUIRE(query.query_status() == Query::Status::COMPLETE);
   array.close();
 
   for (int i = 0; i < (int)data_a1.size(); i++)
     REQUIRE(r_data_a1[i] == i);
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }
 
 TEST_CASE(
-    "C++ API updates: empty second write", "[updates][updates-empty-write]") {
-  bool serialized = false, refactored_query_v2 = false;
-#ifdef TILEDB_SERIALIZATION
-  serialized = GENERATE(false, true);
-  if (serialized) {
-    refactored_query_v2 = GENERATE(true, false);
-  }
-#endif
-
-  const std::string array_name = "updates_empty_write";
-  Context ctx;
-  VFS vfs(ctx);
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
+    "C++ API updates: empty second write",
+    "[updates][updates-empty-write][rest-fails][sc-45709]") {
+  test::VFSTestSetup vfs_test_setup;
+  const std::string array_name =
+      vfs_test_setup.array_uri("updates_empty_write");
+  Context ctx{vfs_test_setup.ctx()};
 
   // Create
   Domain domain(ctx);
@@ -188,16 +144,11 @@ TEST_CASE(
   query_w1.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  // Submit query
-  test::ServerQueryBuffers server_buffers_;
-  auto rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w1,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query_w1.submit_and_finalize();
+  } else {
+    query_w1.submit();
+  }
 
   array_w1.close();
 
@@ -208,18 +159,11 @@ TEST_CASE(
   query_w2.set_layout(layout).set_data_buffer("d", data).set_offsets_buffer(
       "d", offsets);
 
-  // Submit query
-  rc = test::submit_query_wrapper(
-      ctx,
-      array_name,
-      &query_w2,
-      server_buffers_,
-      serialized,
-      refactored_query_v2);
-  REQUIRE(rc == TILEDB_OK);
+  if (layout == TILEDB_GLOBAL_ORDER) {
+    query_w2.submit_and_finalize();
+  } else {
+    query_w2.submit();
+  }
 
   array_w2.close();
-
-  if (vfs.is_dir(array_name))
-    vfs.remove_dir(array_name);
 }

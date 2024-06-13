@@ -14,14 +14,10 @@ my_array                            # array folder
          |_ ...
 ```
 
-`<timestamped_name>` has format `__timestamp_timestamp_uuid`, where:
-* `timestamp` is timestamp in milliseconds elapsed since 1970-01-01 00:00:00 +0000 (UTC)
-* `uuid` is a unique identifier
-
-
 The array schema folder can contain:
 
-* Any number of [array schema files](#array-schema-file)
+* Any number of [array schema files](#array-schema-file) with name [`<timestamped_name>`](./timestamped_name.md). 
+   * Note: the name does _not_ include the format version.
 
 ## Previous Array Schema Version
 
@@ -58,6 +54,7 @@ The array schema file consists of a single [generic tile](./generic_tile.md), wi
 | Label 1 | [Dimension Label](#dimension_label) | First dimension label |
 | … | … | … |
 | Label N | [Dimension Label](#dimension_label) | Nth dimension label |
+| CurrentDomain | [CurrentDomain](./current_domain.md) | The array current domain |
 
 ## Domain
 

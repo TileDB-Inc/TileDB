@@ -110,7 +110,12 @@ class MemoryBudget {
 
   MemoryBudget() = delete;
 
-  MemoryBudget(Config& config, std::string reader_string) {
+  MemoryBudget(
+      Config& config,
+      std::string reader_string,
+      optional<uint64_t> total_budget)
+      : total_budget_(total_budget.value_or(0))
+      , memory_budget_from_query_(total_budget) {
     refresh_config(config, reader_string);
   }
 
@@ -128,8 +133,10 @@ class MemoryBudget {
    * @param reader_string String to identify the reader settings to load.
    */
   void refresh_config(Config& config, std::string reader_string) {
-    total_budget_ =
-        config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+    if (!memory_budget_from_query_.has_value()) {
+      total_budget_ =
+          config.get<uint64_t>("sm.mem.total_budget", Config::must_find);
+    }
 
     ratio_coords_ = config.get<double>(
         "sm.mem.reader." + reader_string + ".ratio_coords", Config::must_find);
@@ -191,6 +198,9 @@ class MemoryBudget {
 
   /** Total memory budget. */
   uint64_t total_budget_;
+
+  /** Total memory budget if overridden by the query. */
+  optional<uint64_t> memory_budget_from_query_;
 
   /** How much of the memory budget is reserved for coords. */
   double ratio_coords_;
@@ -296,11 +306,79 @@ class SparseIndexReaderBase : public ReaderBase {
    * it is really required to determine if a query is incomplete from the client
    * side of a cloud request.
    */
-  struct ReadState {
+  class ReadState {
+   public:
+    /* ********************************* */
+    /*     CONSTRUCTORS & DESTRUCTORS    */
+    /* ********************************* */
+
+    /** Delete default constructor. */
+    ReadState() = delete;
+
+    /** Constructor.
+     * @param frag_idxs_len The length of the fragment index vector.
+     */
+    ReadState(size_t frag_idxs_len)
+        : frag_idx_(frag_idxs_len) {
+    }
+
+    /** Constructor used in deserialization. */
+    ReadState(std::vector<FragIdx>&& frag_idx, bool done_adding_result_tiles)
+        : frag_idx_(std::move(frag_idx))
+        , done_adding_result_tiles_(done_adding_result_tiles) {
+    }
+
+    /* ********************************* */
+    /*                API                */
+    /* ********************************* */
+
+    /**
+     * Return whether the tiles that will be processed are loaded in memory.
+     * @return Done adding result tiles.
+     */
+    inline bool done_adding_result_tiles() const {
+      return done_adding_result_tiles_;
+    }
+
+    /**
+     * Sets the flag that determines whether the tiles that will be processed
+     * are loaded in memory.
+     * @param done_adding_result_tiles Done adding result tiles.
+     */
+    inline void set_done_adding_result_tiles(bool done_adding_result_tiles) {
+      done_adding_result_tiles_ = done_adding_result_tiles;
+    }
+
+    /**
+     * Sets a value in the fragment index vector.
+     * @param idx The index of the vector.
+     * @param val The value to set frag_idx[idx] to.
+     */
+    inline void set_frag_idx(uint64_t idx, FragIdx val) {
+      if (idx >= frag_idx_.size()) {
+        throw std::runtime_error(
+            "ReadState::set_frag_idx: idx greater than frag_idx_'s size.");
+      }
+      frag_idx_[idx] = std::move(val);
+    }
+
+    /**
+     * Returns a read-only version of the fragment index vector.
+     * @return The fragment index vector.
+     */
+    const std::vector<FragIdx>& frag_idx() const {
+      return frag_idx_;
+    }
+
+    /* ********************************* */
+    /*         PRIVATE ATTRIBUTES        */
+    /* ********************************* */
+
+   private:
     /** The tile index inside of each fragments. */
     std::vector<FragIdx> frag_idx_;
 
-    /** Is the reader done with the query. */
+    /** Have all tiles to be processed been loaded in memory? */
     bool done_adding_result_tiles_;
   };
 
@@ -493,16 +571,7 @@ class SparseIndexReaderBase : public ReaderBase {
       std::string reader_string,
       stats::Stats* stats,
       shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization,
+      StrategyParams& params,
       bool include_coords);
 
   /** Destructor. */
@@ -515,16 +584,16 @@ class SparseIndexReaderBase : public ReaderBase {
   /**
    * Returns the current read state.
    *
-   * @return pointer to the read state.
+   * @return const reference to the read state.
    */
-  const ReadState* read_state() const;
+  const ReadState& read_state() const;
 
   /**
-   * Returns the current read state.
+   * Sets the new read state. Used only for deserialization.
    *
-   * @return pointer to the read state.
+   * @param read_state New read_state value.
    */
-  ReadState* read_state();
+  void set_read_state(ReadState read_state);
 
  protected:
   /* ********************************* */
@@ -548,9 +617,6 @@ class SparseIndexReaderBase : public ReaderBase {
 
   /** Are dimensions var sized. */
   std::vector<bool> is_dim_var_size_;
-
-  /** Memory tracker object for the array. */
-  MemoryTracker* array_memory_tracker_;
 
   /** Memory used for coordinates tiles. */
   std::atomic<uint64_t> memory_used_for_coords_total_;
@@ -680,6 +746,7 @@ class SparseIndexReaderBase : public ReaderBase {
    * @param mem_usage_per_attr Computed per attribute memory usage.
    * @param buffer_idx Stores/return the current buffer index in process.
    * @param result_tiles Result tiles to process.
+   * @param agg_only Are we loading for aggregates only field.
    *
    * @return names_to_copy.
    */
@@ -687,7 +754,8 @@ class SparseIndexReaderBase : public ReaderBase {
       const std::vector<std::string>& names,
       const std::vector<uint64_t>& mem_usage_per_attr,
       uint64_t* buffer_idx,
-      std::vector<ResultTile*>& result_tiles);
+      std::vector<ResultTile*>& result_tiles,
+      bool agg_only);
 
   /**
    * Get the field names to process.

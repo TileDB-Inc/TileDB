@@ -35,7 +35,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
@@ -83,14 +82,14 @@ class CommitsConsolidator : public Consolidator {
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
-      uint32_t key_length);
+      uint32_t key_length) override;
 
   /**
    * Performs the vacuuming operation.
    *
    * @param array_name URI of array to consolidate.
    */
-  void vacuum(const char* array_name);
+  void vacuum(const char* array_name) override;
 };
 
 }  // namespace tiledb::sm

@@ -184,44 +184,61 @@ TEST_CASE("URI: Test schemes", "[uri]") {
   CHECK(URI("tiledb://namespace/array").is_tiledb());
 }
 
-TEST_CASE("URI: Test REST components", "[uri]") {
+TEST_CASE("URI: Test REST components, valid", "[uri]") {
   std::string ns, array;
 
-  CHECK(!URI("").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("abc").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("path/to/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("/path/to/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("file:///path/to/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("s3://bucket/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("azure://container/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("http://bucket/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("https://bucket/dir").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("hdfs://namenode/dir").get_rest_components(&ns, &array).ok());
+  struct test_vector {
+    std::string uri;
+    std::string ns;
+    std::string array;
+  };
+  const test_vector valid_rest_uri[] = {
+      {"tiledb://namespace/array", "namespace", "array"},
+      {"tiledb://namespace/array/uri", "namespace", "array/uri"},
+      {"tiledb://namespace/s3://bucket/dir", "namespace", "s3://bucket/dir"},
+      {"tiledb://namespace/azure://container/dir",
+       "namespace",
+       "azure://container/dir"}};
+  constexpr size_t N = sizeof(valid_rest_uri) / sizeof(test_vector);
 
-  CHECK(URI("tiledb://namespace/array").get_rest_components(&ns, &array).ok());
-  CHECK(ns == "namespace");
-  CHECK(array == "array");
-  CHECK(URI("tiledb://namespace/array/uri")
-            .get_rest_components(&ns, &array)
-            .ok());
-  CHECK(ns == "namespace");
-  CHECK(array == "array/uri");
-  CHECK(URI("tiledb://namespace/s3://bucket/dir")
-            .get_rest_components(&ns, &array)
-            .ok());
-  CHECK(ns == "namespace");
-  CHECK(array == "s3://bucket/dir");
-  CHECK(URI("tiledb://namespace/azure://container/dir")
-            .get_rest_components(&ns, &array)
-            .ok());
-  CHECK(ns == "namespace");
-  CHECK(array == "azure://container/dir");
+  for (size_t j = 0; j < N; ++j) {
+    auto x{valid_rest_uri[j]};
+    auto uri{x.uri};
+    DYNAMIC_SECTION("\"" << uri << "\" valid") {
+      CHECK(URI(uri).get_rest_components(&ns, &array).ok());
+      CHECK(ns == x.ns);
+      CHECK(array == x.array);
+    }
+  }
+}
 
-  CHECK(!URI("tiledb:///array").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("tiledb://ns").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("tiledb://ns/").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("tiledb://").get_rest_components(&ns, &array).ok());
-  CHECK(!URI("tiledb:///").get_rest_components(&ns, &array).ok());
+TEST_CASE("URI: Test REST components, invalid", "[uri]") {
+  std::string ns, array;
+
+  const std::string invalid_rest_uri[] = {
+      "",
+      "abc",
+      "path/to/dir",
+      "/path/to/dir",
+      "file:///path/to/dir",
+      "s3://bucket/dir",
+      "azure://container/dir",
+      "http://bucket/dir",
+      "https://bucket/dir",
+      "hdfs://namenode/dir",
+      "tiledb:///array",
+      "tiledb://ns",
+      "tiledb://ns/",
+      "tiledb://",
+      "tiledb:///"};
+  constexpr size_t N{sizeof(invalid_rest_uri) / sizeof(std::string)};
+
+  for (size_t j = 0; j < N; ++j) {
+    std::string x{invalid_rest_uri[j]};
+    DYNAMIC_SECTION("\"" << x << "\" invalid") {
+      CHECK(!URI(x).get_rest_components(&ns, &array).ok());
+    }
+  }
 }
 
 TEST_CASE("URI: Test get_fragment_name", "[uri][get_fragment_name]") {

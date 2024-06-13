@@ -7,7 +7,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2023 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -37,6 +37,7 @@
 
 #include "tiledb.h"
 
+#include <array>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -47,9 +48,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace tiledb {
-
-namespace impl {
+namespace tiledb::impl {
 
 /** Used to defer compilation of static_assert until type is known. **/
 template <typename T>
@@ -183,6 +182,20 @@ struct tiledb_to_type<TILEDB_BLOB> {
 };
 
 template <>
+struct tiledb_to_type<TILEDB_GEOM_WKB> {
+  using type = std::byte;
+  static const tiledb_datatype_t tiledb_type = TILEDB_GEOM_WKB;
+  static constexpr const char* name = "GEOM_WKB";
+};
+
+template <>
+struct tiledb_to_type<TILEDB_GEOM_WKT> {
+  using type = std::byte;
+  static const tiledb_datatype_t tiledb_type = TILEDB_GEOM_WKT;
+  static constexpr const char* name = "GEOM_WKT";
+};
+
+template <>
 struct tiledb_to_type<TILEDB_BOOL> {
   using type = uint8_t;
   static const tiledb_datatype_t tiledb_type = TILEDB_BOOL;
@@ -275,6 +288,17 @@ inline bool tiledb_string_type(tiledb_datatype_t type) {
     case TILEDB_STRING_UTF32:
     case TILEDB_STRING_UCS2:
     case TILEDB_STRING_UCS4:
+      return true;
+    default:
+      return false;
+  }
+}
+
+inline bool tiledb_byte_type(tiledb_datatype_t type) {
+  switch (type) {
+    case TILEDB_BLOB:
+    case TILEDB_GEOM_WKB:
+    case TILEDB_GEOM_WKT:
       return true;
     default:
       return false;
@@ -499,7 +523,6 @@ struct TypeHandler<T[N], enable_trivial<T>> {
   }
 };
 
-}  // namespace impl
-}  // namespace tiledb
+}  // namespace tiledb::impl
 
 #endif  // TILEDB_CPP_API_TYPE_H

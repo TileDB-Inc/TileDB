@@ -146,8 +146,7 @@ Status EncryptionAES256GCMFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
+    const Config&) const {
   if (key_bytes_ == nullptr)
     return LOG_STATUS(Status_FilterError("Encryption error; bad key."));
 

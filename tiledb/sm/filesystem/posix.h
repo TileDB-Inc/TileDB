@@ -35,15 +35,20 @@
 
 #ifndef _WIN32
 
+#include <dirent.h>
 #include <ftw.h>
 #include <sys/types.h>
+#include <unistd.h>
 
+#include <filesystem>
 #include <functional>
 #include <string>
 #include <vector>
 
 #include "tiledb/common/status.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/filesystem_base.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
 
@@ -60,79 +65,32 @@ class URI;
 /**
  * This class implements the POSIX filesystem functions.
  */
-class Posix {
+class Posix : public FilesystemBase {
  public:
+  /** Default constructor. */
+  Posix()
+      : Posix(Config()) {
+  }
+
   /** Constructor. */
-  Posix();
+  explicit Posix(const Config& config);
 
   /** Destructor. */
-  ~Posix() = default;
-
-  /**
-   * Returns the absolute posix (string) path of the input in the
-   * form "file://<absolute path>"
-   */
-  static std::string abs_path(const std::string& path);
+  ~Posix() override = default;
 
   /**
    * Creates a new directory.
    *
    * @param dir The name of the directory to be created.
-   * @return Status
    */
-  Status create_dir(const std::string& path) const;
+  void create_dir(const URI& uri) const override;
 
   /**
    * Creates an empty file.
    *
    * @param filename The name of the file to be created.
-   * @return Status
    */
-  Status touch(const std::string& filename) const;
-
-  /**
-   * Returns the directory where the program is executed.
-   *
-   * @return The directory path where the program is executed. If the program
-   * cannot retrieve the current working directory, the empty string is
-   * returned.
-   */
-  static std::string current_dir();
-
-  /**
-   * Removes a given directory recursively.
-   *
-   * @param path The path of the directory to be deleted.
-   * @return Status
-   */
-  Status remove_dir(const std::string& path) const;
-
-  /** Deletes the file in the input path. */
-
-  /**
-   * Removes a given path.
-   *
-   * @param path The path of the file / empty directory to be deleted.
-   * @return Status
-   */
-  Status remove_file(const std::string& path) const;
-
-  /**
-   * Returns the size of the input file.
-   *
-   * @param path The name of the file whose size is to be retrieved.
-   * @param nbytes Pointer to a value
-   * @return Status
-   */
-  Status file_size(const std::string& path, uint64_t* size) const;
-
-  /**
-   * Initialize this instance with the given config.
-   *
-   * @param config Config parameters.
-   * @return Status
-   */
-  Status init(const Config& config);
+  void touch(const URI& uri) const override;
 
   /**
    * Checks if the input is an existing directory.
@@ -140,7 +98,7 @@ class Posix {
    * @param dir The directory to be checked.
    * @return *True* if *dir* is an existing directory, and *False* otherwise.
    */
-  bool is_dir(const std::string& path) const;
+  bool is_dir(const URI& uri) const override;
 
   /**
    * Checks if the input is an existing file.
@@ -148,54 +106,65 @@ class Posix {
    * @param file The file to be checked.
    * @return *True* if *file* is an existing file, and *false* otherwise.
    */
-  bool is_file(const std::string& path) const;
+  bool is_file(const URI& uri) const override;
 
   /**
+   * Removes a given directory recursively.
    *
-   * Lists files one level deep under a given path.
-   *
-   * @param path  The parent path to list sub-paths.
-   * @param paths Pointer to a vector of strings to store the retrieved paths.
-   * @return Status
+   * @param path The path of the directory to be deleted.
    */
-  Status ls(const std::string& path, std::vector<std::string>* paths) const;
+  void remove_dir(const URI& path) const override;
 
   /**
+   * Removes a given path.
    *
-   * Lists files and file information one level deep under a given path.
-   *
-   * @param uri The parent path to list sub-paths.
-   * @return A list of directory_entry objects
+   * @param path The path of the file / empty directory to be deleted.
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& uri) const;
+  void remove_file(const URI& path) const override;
+
+  /**
+   * Returns the size of the input file.
+   *
+   * @param path The name of the file whose size is to be retrieved.
+   * @param nbytes Pointer to a value
+   */
+  void file_size(const URI& path, uint64_t* size) const override;
 
   /**
    * Move a given filesystem path.
+   * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
-   * @return Status
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    */
-  Status move_path(const std::string& old_path, const std::string& new_path);
+  void move_file(const URI& old_uri, const URI& new_uri) const override;
+
+  /**
+   * Renames a directory.
+   * Both URI must be of the same file:// backend type.
+   *
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
+   */
+  void move_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem file.
+   * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
-   * @return Status
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    */
-  Status copy_file(const std::string& old_path, const std::string& new_path);
+  void copy_file(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Copy a given filesystem directory.
+   * Both URI must be of the same file:// backend type.
    *
-   * @param old_path The old path.
-   * @param new_path The new path.
-   * @return Status
+   * @param old_uri The old URI.
+   * @param new_uri The new URI.
    */
-  Status copy_dir(const std::string& old_path, const std::string& new_path);
+  void copy_dir(const URI& old_uri, const URI& new_uri) const override;
 
   /**
    * Reads data from a file into a buffer.
@@ -204,21 +173,20 @@ class Posix {
    * @param offset The offset in the file from which the read will start.
    * @param buffer The buffer into which the data will be written.
    * @param nbytes The size of the data to be read from the file.
-   * @return Status.
    */
-  Status read(
-      const std::string& path,
+  void read(
+      const URI& uri,
       uint64_t offset,
       void* buffer,
-      uint64_t nbytes) const;
+      uint64_t nbytes,
+      bool use_read_ahead = true) const override;
 
   /**
    * Syncs a file or directory.
    *
    * @param path The name of the file.
-   * @return Status
    */
-  Status sync(const std::string& path);
+  void sync(const URI& uri) const override;
 
   /**
    * Writes the input buffer to a file.
@@ -229,24 +197,126 @@ class Posix {
    * @param path The name of the file.
    * @param buffer The input buffer.
    * @param buffer_size The size of the input buffer.
+   */
+  void write(
+      const URI& uri,
+      const void* buffer,
+      uint64_t buffer_size,
+      bool remote_global_order_write = false) override;
+
+  /**
+   * Checks if an object store bucket exists.
+   *
+   * @param uri The name of the object store bucket.
+   * @return True if the bucket exists, false otherwise.
+   */
+  bool is_bucket(const URI&) const override {
+    // No concept of buckets for Posix.
+    return false;
+  }
+
+  /**
+   * Checks if an object-store bucket is empty.
+   *
+   * @param uri The name of the object store bucket.
+   * @return True if the bucket is empty, false otherwise.
+   */
+  bool is_empty_bucket(const URI&) const override {
+    // No concept of buckets for Posix.
+    return true;
+  }
+
+  /**
+   * Creates an object store bucket.
+   *
+   * @param uri The name of the bucket to be created.
+   */
+  void create_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
+  }
+
+  /**
+   * Deletes an object store bucket.
+   *
+   * @param uri The name of the bucket to be deleted.
+   */
+  void remove_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
+  }
+
+  /**
+   * Deletes the contents of an object store bucket.
+   *
+   * @param uri The name of the bucket to be emptied.
+   */
+  void empty_bucket(const URI&) const override {
+    // No-op for Posix, stub function for cloud filesystems.
+  }
+
+  /**
+   *
+   * Lists files and file information one level deep under a given path.
+   *
+   * @param uri The parent path to list sub-paths.
+   * @return A list of directory_entry objects
+   */
+  std::vector<filesystem::directory_entry> ls_with_sizes(
+      const URI& uri) const override;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   *
+   * Note: the return type LsObjects does not match the other "ls" methods so as
+   * to match the S3 equivalent API.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    return std_filesystem_ls_filtered<F, D>(parent, f, d, recursive);
+  }
+
+  /**
+   * Lists files one level deep under a given path.
+   *
+   * @param path  The parent path to list sub-paths.
+   * @param paths Pointer to a vector of strings to store the retrieved paths.
    * @return Status
    */
-  Status write(
-      const std::string& path, const void* buffer, uint64_t buffer_size);
+  Status ls(const std::string& path, std::vector<std::string>* paths) const;
+
+  /**
+   * Returns the absolute posix (string) path of the input in the
+   * form "file://<absolute path>"
+   */
+  static std::string abs_path(std::string_view path);
+
+  /**
+   * Returns the directory where the program is executed.
+   *
+   * @return The directory path where the program is executed. If the program
+   * cannot retrieve the current working directory, the empty string is
+   * returned.
+   */
+  static std::string current_dir();
 
  private:
-  /** Default config. */
-  Config default_config_;
-
-  /** Config parameters inherited from parent VFS. */
-  std::reference_wrapper<const Config> config_;
-
   static void adjacent_slashes_dedup(std::string* path);
 
   static bool both_slashes(char a, char b);
 
   // Internal logic for 'abs_path()'.
-  static std::string abs_path_internal(const std::string& path);
+  static std::string abs_path_internal(std::string_view path);
 
   /**
    * It takes as input an **absolute** path, and returns it in its canonicalized
@@ -292,19 +362,8 @@ class Posix {
   static Status write_at(
       int fd, uint64_t file_offset, const void* buffer, uint64_t buffer_size);
 
-  /**
-   * Parse config to get posix permissions for creating new files
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_file_permissions(uint32_t* permissions) const;
-
-  /**
-   * Parse config to get posix permissions for creating new directories
-   * @param permissions parsed permissions are set to this parameter
-   * @return Status
-   */
-  Status get_posix_directory_permissions(uint32_t* permissions) const;
+ private:
+  uint32_t file_permissions_, directory_permissions_;
 };
 
 }  // namespace sm

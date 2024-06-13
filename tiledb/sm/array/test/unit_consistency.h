@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -36,9 +36,11 @@
 
 #include <test/support/tdb_catch.h>
 #include <iostream>
+#include "test/support/src/mem_helpers.h"
 
 #include "../array.h"
 #include "../consistency.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/encryption_type.h"
@@ -61,8 +63,13 @@ using array_entry = std::tuple<Array&, const QueryType>;
 using entry_type = std::multimap<const URI, array_entry>::const_iterator;
 
 class WhiteboxConsistencyController : public ConsistencyController {
+  shared_ptr<MemoryTracker> memory_tracker_;
+
  public:
-  WhiteboxConsistencyController() = default;
+  WhiteboxConsistencyController()
+      : memory_tracker_(tiledb::test::get_test_memory_tracker()) {
+  }
+
   ~WhiteboxConsistencyController() = default;
 
   entry_type register_array(
@@ -91,22 +98,23 @@ class WhiteboxConsistencyController : public ConsistencyController {
    * Warning: This does not clean up leftovers from previous failed runs.
    * Manual intervention may be required in the build tree.
    */
-  tdb_unique_ptr<Array> create_array(const URI uri, StorageManager* sm) {
+  tdb_unique_ptr<Array> create_array(
+      ContextResources& resources, const URI uri) {
     // Create Domain
     uint64_t dim_dom[2]{0, 1};
     uint64_t tile_extent = 1;
-    shared_ptr<Dimension> dim =
-        make_shared<Dimension>(HERE(), std::string("dim"), Datatype::UINT64);
+    shared_ptr<Dimension> dim = make_shared<Dimension>(
+        HERE(), std::string("dim"), Datatype::UINT64, memory_tracker_);
     throw_if_not_ok(dim->set_domain(&dim_dom));
     throw_if_not_ok(dim->set_tile_extent(&tile_extent));
 
     std::vector<shared_ptr<Dimension>> dims = {dim};
-    shared_ptr<Domain> domain =
-        make_shared<Domain>(HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR);
+    shared_ptr<Domain> domain = make_shared<Domain>(
+        HERE(), Layout::ROW_MAJOR, dims, Layout::ROW_MAJOR, memory_tracker_);
 
     // Create the ArraySchema
-    shared_ptr<ArraySchema> schema =
-        make_shared<ArraySchema>(HERE(), ArrayType::DENSE);
+    shared_ptr<ArraySchema> schema = make_shared<ArraySchema>(
+        HERE(), ArrayType::DENSE, tiledb::test::create_test_memory_tracker());
     throw_if_not_ok(schema->set_domain(domain));
     throw_if_not_ok(schema->add_attribute(
         make_shared<Attribute>(
@@ -116,19 +124,15 @@ class WhiteboxConsistencyController : public ConsistencyController {
     throw_if_not_ok(key.set_key(EncryptionType::NO_ENCRYPTION, nullptr, 0));
 
     // Create the (empty) array on disk.
-    Status st = sm->array_create(uri, schema, key);
-    if (!st.ok()) {
-      throw std::runtime_error(
-          "[WhiteboxConsistencyController] Could not create array.");
-    }
-    tdb_unique_ptr<Array> array(new Array{uri, sm, *this});
+    throw_if_not_ok(Array::create(resources, uri, schema, key));
+    tdb_unique_ptr<Array> array(new Array{resources, uri, *this});
 
     return array;
   }
 
-  tdb_unique_ptr<Array> open_array(const URI uri, StorageManager* sm) {
+  tdb_unique_ptr<Array> open_array(ContextResources& resources, const URI uri) {
     // Create array
-    tdb_unique_ptr<Array> array{create_array(uri, sm)};
+    tdb_unique_ptr<Array> array{create_array(resources, uri)};
 
     // Open the array
     Status st =

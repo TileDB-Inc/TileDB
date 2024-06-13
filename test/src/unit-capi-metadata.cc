@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -65,8 +65,6 @@ struct CMetadataFx {
   const char* ARRAY_NAME = "test_metadata";
   tiledb_array_t* array_ = nullptr;
   const char* key_ = "0123456789abcdeF0123456789abcdeF";
-  const uint32_t key_len_ =
-      (uint32_t)strlen("0123456789abcdeF0123456789abcdeF");
   const tiledb_encryption_type_t enc_type_ = TILEDB_AES_256_GCM;
 
   void create_default_array_1d();
@@ -149,7 +147,6 @@ void CMetadataFx::create_default_array_1d_with_key() {
       array_name_,
       enc_type_,
       key_,
-      key_len_,
       TILEDB_DENSE,
       {"d"},
       {TILEDB_UINT64},
@@ -230,8 +227,6 @@ TEST_CASE_METHOD(
   rc = tiledb_config_set(config, "sm.encryption_key", key_, &error);
   REQUIRE(rc == TILEDB_OK);
   REQUIRE(error == nullptr);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
@@ -335,6 +330,108 @@ TEST_CASE_METHOD(
   rc = tiledb_array_close(ctx_, array);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_free(&array);
+}
+
+TEST_CASE_METHOD(
+    CMetadataFx,
+    "C API: Array Metadata, sub-millisecond writes",
+    "[capi][array][metadata][sub-millisecond]") {
+  int32_t one = 1;
+  int32_t two = 2;
+  const void* v_r = nullptr;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+
+  // Run the test body 100 times
+  for (int i = 0; i < 100; i++) {
+    // Create and open array in write mode
+    create_default_array_1d();
+    tiledb_array_t* array;
+    int rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Write to disk twice
+    rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &one);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_put_metadata(ctx_, array, "aaa", TILEDB_INT32, 1, &two);
+    CHECK(rc == TILEDB_OK);
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+
+    // Open the array in read mode
+    rc = tiledb_array_alloc(ctx_, array_name_.c_str(), &array);
+    REQUIRE(rc == TILEDB_OK);
+    rc = tiledb_array_open(ctx_, array, TILEDB_READ);
+    REQUIRE(rc == TILEDB_OK);
+
+    // Read
+    rc = tiledb_array_get_metadata(ctx_, array, "aaa", &v_type, &v_num, &v_r);
+    CHECK(rc == TILEDB_OK);
+    CHECK(v_type == TILEDB_INT32);
+    CHECK(v_num == 1);
+    CHECK(*((const int32_t*)v_r) == 2);
+
+    // Cleanup
+    rc = tiledb_array_close(ctx_, array);
+    REQUIRE(rc == TILEDB_OK);
+    tiledb_array_free(&array);
+    remove_dir(array_name_, ctx_, vfs_);
+  }
+}
+
+TEST_CASE_METHOD(
+    CMetadataFx,
+    "C API: Group Metadata, sub-millisecond writes",
+    "[capi][group][metadata][sub-millisecond]") {
+  std::string group_name = "test_group_meta_sub_millisecond_writes";
+  int32_t one = 1;
+  int32_t two = 2;
+  const void* v_r = nullptr;
+  tiledb_datatype_t v_type;
+  uint32_t v_num;
+
+  // Run the test body 100 times
+  for (int i = 0; i < 100; i++) {
+    // Create and open group in write mode
+    create_dir(group_name, ctx_, vfs_);
+    REQUIRE(tiledb_group_create(ctx_, group_name.c_str()) == TILEDB_OK);
+    tiledb_group_t* group;
+    REQUIRE(tiledb_group_alloc(ctx_, group_name.c_str(), &group) == TILEDB_OK);
+    REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
+
+    // Write to disk twice
+    int rc =
+        tiledb_group_put_metadata(ctx_, group, "aaa", TILEDB_INT32, 1, &one);
+    REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+    REQUIRE(tiledb_group_open(ctx_, group, TILEDB_WRITE) == TILEDB_OK);
+    rc = tiledb_group_put_metadata(ctx_, group, "aaa", TILEDB_INT32, 1, &two);
+    CHECK(rc == TILEDB_OK);
+    REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+    tiledb_group_free(&group);
+
+    // Open the group in read mode
+    REQUIRE(tiledb_group_alloc(ctx_, group_name.c_str(), &group) == TILEDB_OK);
+    REQUIRE(tiledb_group_open(ctx_, group, TILEDB_READ) == TILEDB_OK);
+
+    // Read
+    rc = tiledb_group_get_metadata(ctx_, group, "aaa", &v_type, &v_num, &v_r);
+    CHECK(rc == TILEDB_OK);
+    CHECK(v_type == TILEDB_INT32);
+    CHECK(v_num == 1);
+    CHECK(*((const int32_t*)v_r) == 2);
+
+    // Cleanup
+    REQUIRE(tiledb_group_close(ctx_, group) == TILEDB_OK);
+    tiledb_group_free(&group);
+    remove_dir(group_name, ctx_, vfs_);
+  }
 }
 
 TEST_CASE_METHOD(
@@ -1030,8 +1127,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   REQUIRE(rc == TILEDB_OK);
 
@@ -1163,8 +1258,6 @@ TEST_CASE_METHOD(
   REQUIRE(error == nullptr);
   rc = tiledb_array_set_config(ctx_, array, config);
   REQUIRE(rc == TILEDB_OK);
-  tiledb::sm::UnitTestConfig::instance().array_encryption_key_length.set(
-      key_len_);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
 

@@ -265,11 +265,6 @@ class Config {
    *
    * **Parameters**
    *
-   * - `sm.allow_aggregates_experimental` <br>
-   *    **Experimental** <br>
-   *    Allow aggregates APIs. Experimental for testing purposes,
-   *    do not use.<br>
-   *    **Default**: false
    * - `sm.allow_separate_attribute_writes` <br>
    *    **Experimental** <br>
    *    Allow separate attribute write queries.<br>
@@ -281,14 +276,16 @@ class Config {
    * - `sm.dedup_coords` <br>
    *    If `true`, cells with duplicate coordinates will be removed during
    *    sparse fragment writes. Note that ties during deduplication are broken
-   *    arbitrarily. <br>
+   *    arbitrarily. Also note that this check means that it will take longer to
+   *    perform the write operation. <br>
    *    **Default**: false
    * - `sm.check_coord_dups` <br>
    *    This is applicable only if `sm.dedup_coords` is `false`.
    *    If `true`, an error will be thrown if there are cells with duplicate
-   *    coordinates during sparse fragment writes. If `false` and there are
-   *    duplicates, the duplicates will be written without errors. <br>
-   *    **Default**: true
+   *    coordinates during sparse fragmnet writes. If `false` and there are
+   *    duplicates, the duplicates will be written without errors. Note that
+   *    this check is much ligher weight than the coordinate deduplication check
+   *    enabled by `sm.dedup_coords`. <br>
    * - `sm.check_coord_oob` <br>
    *    If `true`, an error will be thrown if there are cells with coordinates
    *    falling outside the array domain during sparse fragment writes. <br>
@@ -345,6 +342,7 @@ class Config {
    *    (since the resulting fragments is dense). <br>
    *    **Default**: 1.0
    * - `sm.consolidation.buffer_size` <br>
+   *    **Deprecated**
    *    The size (in bytes) of the attribute buffers used during
    *    consolidation. <br>
    *    **Default**: 50,000,000
@@ -434,11 +432,29 @@ class Config {
    *    incur performance penalties during memory movement operations. It is a
    *    soft limit that we might go over if a single tile doesn't fit into
    *    memory, we will allow to load that tile if it still fits within
-   *    `sm.mem.total_budget`. <br>
-   *    **Default**: 1GB
    * - `sm.mem.total_budget` <br>
    *    Memory budget for readers and writers. <br>
    *    **Default**: 10GB
+   * - `sm.mem.consolidation.buffers_weight` <br>
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    consolidation buffers. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 1
+   * - `sm.mem.consolidation.reader_weight` <br>
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    reader query. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 3
+   *    Weight used to split `sm.mem.total_budget` and assign to the
+   *    writer query. The budget is split across 3 values,
+   *    `sm.mem.consolidation.buffers_weight`,
+   *    `sm.mem.consolidation.reader_weight` and
+   *    `sm.mem.consolidation.writer_weight`. <br>
+   *    **Default**: 2
    * - `sm.mem.reader.sparse_global_order.ratio_coords` <br>
    *    Ratio of the budget allocated for coordinates in the sparse global
    *    order reader. <br>
@@ -566,7 +582,27 @@ class Config {
    *    attempts, in milliseconds.
    *    **Default**: 60000
    * - `vfs.gcs.project_id` <br>
-   *    Set the GCS project id. <br>
+   *    Set the GCS project ID to create new buckets to. Not required unless you
+   *    are going to use the VFS to create buckets. <br>
+   *    **Default**: ""
+   * - `vfs.gcs.service_account_key` <br>
+   *    **Experimental** <br>
+   *    Set the JSON string with GCS service account key. Takes precedence
+   *    over `vfs.gcs.workload_identity_configuration` if both are specified. If
+   *    neither is specified, Application Default Credentials will be used. <br>
+   *    **Default**: ""
+   * - `vfs.gcs.workload_identity_configuration` <br>
+   *    **Experimental** <br>
+   *    Set the JSON string with Workload Identity Federation configuration.
+   *    `vfs.gcs.service_account_key` takes precedence over this if both are
+   *    specified. If neither is specified, Application Default Credentials will
+   *    be used. <br>
+   *    **Default**: ""
+   * - `vfs.gcs.impersonate_service_account` <br>
+   *    **Experimental** <br>
+   *    Set the GCS service account to impersonate. A chain of impersonated
+   *    accounts can be formed by specifying many service accounts, separated by
+   *    a comma. <br>
    *    **Default**: ""
    * - `vfs.gcs.multi_part_size` <br>
    *    The part size (in bytes) used in GCS multi part writes.
@@ -583,6 +619,10 @@ class Config {
    * - `vfs.gcs.request_timeout_ms` <br>
    *    The maximum amount of time to retry network requests to GCS. <br>
    *    **Default**: "3000"
+   * - `vfs.gcs.max_direct_upload_size` <br>
+   *    The maximum size in bytes of a direct upload to GCS. Ignored
+   *    if `vfs.gcs.use_multi_part_upload` is set to true. <br>
+   *    **Default**: "10737418240"
    * - `vfs.s3.region` <br>
    *    The S3 region, if S3 is enabled. <br>
    *    **Default**: us-east-1
@@ -658,6 +698,10 @@ class Config {
    *    The scale factor for exponential backofff when connecting to S3.
    *    Any `long` value is acceptable. <br>
    *    **Default**: 25
+   * - `vfs.s3.custom_headers.*` <br>
+   *    (Optional) Prefix for custom headers on s3 requests. For each custom
+   *    header, use "vfs.s3.custom_headers.header_key" = "header_value" <br>
+   *    **Optional. No Default**
    * - `vfs.s3.logging_level` <br>
    *    The AWS SDK logging level. This is a process-global setting. The
    *    configuration of the most recently constructed context will set
@@ -700,6 +744,23 @@ class Config {
    *    The server-side encryption key to use if
    *    vfs.s3.sse == "kms" (AWS key management service). <br>
    *    **Default**: ""
+   * - `vfs.s3.storage_class` <br>
+   *    The storage class to use for the newly uploaded S3 objects. The set of
+   *    accepted values is found in the Aws::S3::Model::StorageClass
+   *    enumeration.
+   *    "NOT_SET"
+   *    "STANDARD"
+   *    "REDUCED_REDUNDANCY"
+   *    "STANDARD_IA"
+   *    "ONEZONE_IA"
+   *    "INTELLIGENT_TIERING"
+   *    "GLACIER"
+   *    "DEEP_ARCHIVE"
+   *    "OUTPOSTS"
+   *    "GLACIER_IR"
+   *    "SNOW"
+   *    "EXPRESS_ONEZONE" <br>
+   *    **Default**: "NOT_SET"
    * - `vfs.s3.bucket_canned_acl` <br>
    *    Names of values found in Aws::S3::Model::BucketCannedACL enumeration.
    *    "NOT_SET"
@@ -731,6 +792,10 @@ class Config {
    * from config files with support for web tokens, commonly used by EKS/ECS).
    *    **Default**: auto
    *    <br>
+   * - `vfs.s3.install_sigpipe_handler` <br>
+   *    When set to `true`, the S3 SDK uses a handler that ignores SIGPIPE
+   *    signals.
+   *    **Default**: "true"
    * - `vfs.hdfs.name_node_uri"` <br>
    *    Name node for HDFS. <br>
    *    **Default**: ""
@@ -769,6 +834,10 @@ class Config {
    *    Authentication token for REST server (used instead of
    *    username/password). <br>
    *    **Default**: ""
+   * - `rest.resubmit_incomplete` <br>
+   *    If true, incomplete queries received from server are automatically
+   *    resubmitted before returning to user control. <br>
+   *    **Default**: "true"
    * - `rest.ignore_ssl_validation` <br>
    *    Have curl ignore ssl peer and host validation for REST server. <br>
    *    **Default**: false
@@ -804,10 +873,12 @@ class Config {
    *    together with the open array <br>
    *    **Default**: true
    * - `rest.use_refactored_array_open` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    will be used <br>
    *    **Default**: false
    * - `rest.use_refactored_array_open_and_query_submit` <br>
+   *    **Experimental** <br>
    *    If true, the new, experimental REST routes and APIs for opening an array
    *    and submitting a query will be used <br>
    *    **Default**: false

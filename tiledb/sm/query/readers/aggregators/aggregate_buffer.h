@@ -81,11 +81,6 @@ class AggregateBuffer {
   /*                API                */
   /* ********************************* */
 
-  /** Returns the validity buffer. */
-  uint8_t* validity_data() const {
-    return validity_data_.value();
-  }
-
   /** Returns if the bitmap is a count bitmap. */
   bool is_count_bitmap() const {
     return count_bitmap_;
@@ -96,20 +91,9 @@ class AggregateBuffer {
     return bitmap_data_.has_value();
   }
 
-  /** Returns types bitmap data. */
-  template <class BitmapType>
-  BitmapType* bitmap_data_as() const {
-    return static_cast<BitmapType*>(bitmap_data_.value());
-  }
-
-  /** Returns the min cell position to aggregate. */
-  uint64_t min_cell() const {
-    return min_cell_;
-  }
-
-  /** Returns the max cell position to aggregate. */
-  uint64_t max_cell() const {
-    return max_cell_;
+  /** Returns the number of cells to aggregate. */
+  uint64_t size() const {
+    return max_cell_ - min_cell_;
   }
 
   /**
@@ -122,7 +106,8 @@ class AggregateBuffer {
    * @return Value.
    */
   template <typename T>
-  inline T value_at(const uint64_t cell_idx) const {
+  inline T value_at(uint64_t cell_idx) const {
+    cell_idx += min_cell_;
     if constexpr (std::is_same_v<T, std::string_view>) {
       if (var_data_.has_value()) {
         auto offsets = static_cast<const uint64_t*>(fixed_data_);
@@ -139,6 +124,29 @@ class AggregateBuffer {
     } else {
       return static_cast<const T*>(fixed_data_)[cell_idx];
     }
+  }
+
+  /**
+   * Get the validity value at a certain cell index.
+   *
+   * @param cell_idx Cell index.
+   *
+   * @return Validity value.
+   */
+  inline uint8_t validity_at(const uint64_t cell_idx) const {
+    return validity_data_.value()[cell_idx + min_cell_];
+  }
+
+  /**
+   * Get the bitmap value at a certain cell index.
+   *
+   * @param cell_idx Cell index.
+   *
+   * @return Bitmap value.
+   */
+  template <class BitmapType>
+  inline BitmapType bitmap_at(const uint64_t cell_idx) const {
+    return static_cast<BitmapType*>(bitmap_data_.value())[cell_idx + min_cell_];
   }
 
  private:

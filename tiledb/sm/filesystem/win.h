@@ -42,6 +42,7 @@
 #include "tiledb/common/status.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/config/config.h"
+#include "tiledb/sm/filesystem/ls_scanner.h"
 
 using namespace tiledb::common;
 
@@ -160,8 +161,30 @@ class Win {
    * @param path The parent path to list sub-paths.
    * @return A list of directory_entry objects
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& path) const;
+  std::vector<filesystem::directory_entry> ls_with_sizes(const URI& path) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to recursively list subdirectories.
+   *
+   * Note: the return type LsObjects does not match the other "ls" methods so as
+   * to match the S3 equivalent API.
+   */
+  template <FilePredicate F, DirectoryPredicate D>
+  LsObjects ls_filtered(
+      const URI& parent,
+      F f,
+      D d = accept_all_dirs,
+      bool recursive = false) const {
+    return std_filesystem_ls_filtered<F, D>(parent, f, d, recursive);
+  }
 
   /**
    * Move a given filesystem path.

@@ -1,6 +1,8 @@
+.nova*
 .vscode*
 *.sw?
 build/*
+build-*/*
 dist/*
 cmake-build-*/*
 core/bin/*
@@ -25,8 +27,8 @@ examples/bin/*
 examples/obj/*
 scripts/deps-staging/*
 .idea
-*temp*
 *.DS_Store
+compile_commands.json
 doc/venv
 doc/source/__pycache__
 doc/source/_build
@@ -41,3 +43,6 @@ CMakeUserPresets.json
 docs/.quarto
 # Let CI build this
 /docs
+
+vcpkg
+external/vcpkg

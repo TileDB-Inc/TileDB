@@ -33,6 +33,7 @@
 
 #include <test/support/tdb_catch.h>
 #include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
 #include "tiledb/sm/c_api/tiledb.h"
 
 #include <cstring>
@@ -62,88 +63,84 @@ uint64_t UTF16_OFFSET_2 = sizeof(u"aαbβ") - UTF16_NULL_SIZE;
 uint64_t UTF16_OFFSET_3 = sizeof(u"aαbβcγ") - UTF16_NULL_SIZE;
 
 struct StringFx {
-  // Serialization parameters
-  bool serialize_ = false;
-  bool refactored_query_v2_ = false;
-  // Buffers to allocate on server side for serialized queries
-  ServerQueryBuffers server_buffers_;
-
+  StringFx();
   void create_array(const std::string& array_name);
-  void delete_array(const std::string& array_name);
   void read_array(const std::string& array_name);
   void write_array(const std::string& array_name);
+
+  VFSTestSetup vfs_test_setup_;
+  tiledb_ctx_t* ctx_;
 };
+
+StringFx::StringFx()
+    : ctx_(vfs_test_setup_.ctx_c) {
+}
 
 // Create a simple dense 1D array with three string attributes
 void StringFx::create_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Create dimensions
   uint64_t dim_domain[] = {1, 4};
   uint64_t tile_extent = 2;
   tiledb_dimension_t* d1;
-  rc = tiledb_dimension_alloc(
-      ctx, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
+  int rc = tiledb_dimension_alloc(
+      ctx_, "d1", TILEDB_UINT64, &dim_domain[0], &tile_extent, &d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create domain
   tiledb_domain_t* domain;
-  rc = tiledb_domain_alloc(ctx, &domain);
+  rc = tiledb_domain_alloc(ctx_, &domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_domain_add_dimension(ctx, domain, d1);
+  rc = tiledb_domain_add_dimension(ctx_, domain, d1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create fixed-sized UTF-8 attribute
   tiledb_attribute_t* a1;
-  rc = tiledb_attribute_alloc(ctx, "a1", TILEDB_STRING_ASCII, &a1);
+  rc = tiledb_attribute_alloc(ctx_, "a1", TILEDB_STRING_ASCII, &a1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_cell_val_num(ctx, a1, 2);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a1, 2);
   REQUIRE(rc == TILEDB_OK);
 
   // Create variable-sized UTF-8 attribute
   tiledb_attribute_t* a2;
-  rc = tiledb_attribute_alloc(ctx, "a2", TILEDB_STRING_UTF8, &a2);
+  rc = tiledb_attribute_alloc(ctx_, "a2", TILEDB_STRING_UTF8, &a2);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_cell_val_num(ctx, a2, TILEDB_VAR_NUM);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a2, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
-  rc = set_attribute_compression_filter(ctx, a2, TILEDB_FILTER_GZIP, -1);
+  rc = set_attribute_compression_filter(ctx_, a2, TILEDB_FILTER_GZIP, -1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create variable-sized UTF-16 attribute
   tiledb_attribute_t* a3;
-  rc = tiledb_attribute_alloc(ctx, "a3", TILEDB_STRING_UTF16, &a3);
+  rc = tiledb_attribute_alloc(ctx_, "a3", TILEDB_STRING_UTF16, &a3);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_attribute_set_cell_val_num(ctx, a3, TILEDB_VAR_NUM);
+  rc = tiledb_attribute_set_cell_val_num(ctx_, a3, TILEDB_VAR_NUM);
   REQUIRE(rc == TILEDB_OK);
-  rc = set_attribute_compression_filter(ctx, a3, TILEDB_FILTER_ZSTD, -1);
+  rc = set_attribute_compression_filter(ctx_, a3, TILEDB_FILTER_ZSTD, -1);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array schema
   tiledb_array_schema_t* array_schema;
-  rc = tiledb_array_schema_alloc(ctx, TILEDB_DENSE, &array_schema);
+  rc = tiledb_array_schema_alloc(ctx_, TILEDB_DENSE, &array_schema);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_cell_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_tile_order(ctx, array_schema, TILEDB_ROW_MAJOR);
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_ROW_MAJOR);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_set_domain(ctx, array_schema, domain);
+  rc = tiledb_array_schema_set_domain(ctx_, array_schema, domain);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a1);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a1);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a2);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a2);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_array_schema_add_attribute(ctx, array_schema, a3);
+  rc = tiledb_array_schema_add_attribute(ctx_, array_schema, a3);
   REQUIRE(rc == TILEDB_OK);
 
   // Check array schema
-  rc = tiledb_array_schema_check(ctx, array_schema);
+  rc = tiledb_array_schema_check(ctx_, array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Create array
-  rc = tiledb_array_create(ctx, array_name.c_str(), array_schema);
+  rc = tiledb_array_create(ctx_, array_name.c_str(), array_schema);
   REQUIRE(rc == TILEDB_OK);
 
   // Clean up
@@ -153,15 +150,9 @@ void StringFx::create_array(const std::string& array_name) {
   tiledb_dimension_free(&d1);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-  tiledb_ctx_free(&ctx);
 }
 
 void StringFx::write_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Prepare buffers
   void* buffer_a1 = std::malloc(sizeof(UTF8_STRINGS) - UTF8_NULL_SIZE);
   uint64_t buffer_a2_offsets[] = {
@@ -188,68 +179,56 @@ void StringFx::write_array(const std::string& array_name) {
 
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_WRITE);
+  rc = tiledb_array_open(ctx_, array, TILEDB_WRITE);
   CHECK(rc == TILEDB_OK);
 
   // Create query
   tiledb_query_t* query;
   const char* attributes[] = {"a1", "a2", "a3"};
-  rc = tiledb_query_alloc(ctx, array, TILEDB_WRITE, &query);
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_WRITE, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
-  REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[1], buffers[2], &buffer_sizes[2]);
+      ctx_, query, attributes[0], buffers[0], &buffer_sizes[0]);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_data_buffer(
+      ctx_, query, attributes[1], buffers[2], &buffer_sizes[2]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
+      ctx_, query, attributes[1], (uint64_t*)buffers[1], &buffer_sizes[1]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, attributes[2], buffers[4], &buffer_sizes[4]);
+      ctx_, query, attributes[2], buffers[4], &buffer_sizes[4]);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, attributes[2], (uint64_t*)buffers[3], &buffer_sizes[3]);
+      ctx_, query, attributes[2], (uint64_t*)buffers[3], &buffer_sizes[3]);
   REQUIRE(rc == TILEDB_OK);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit_and_finalize(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
   std::free(buffer_a2);
   std::free(buffer_a3);
 }
 
 void StringFx::read_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
   // Open array
   tiledb_array_t* array;
-  rc = tiledb_array_alloc(ctx, array_name.c_str(), &array);
+  int rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   CHECK(rc == TILEDB_OK);
-  rc = tiledb_array_open(ctx, array, TILEDB_READ);
+  rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   CHECK(rc == TILEDB_OK);
 
   // Compute max buffer sizes
@@ -269,36 +248,36 @@ void StringFx::read_array(const std::string& array_name) {
 
   // Create query
   tiledb_query_t* query;
-  rc = tiledb_query_alloc(ctx, array, TILEDB_READ, &query);
+  tiledb_subarray_t* sub;
+  rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, "a1", buffer_a1, &buffer_a1_size);
+      ctx_, query, "a1", buffer_a1, &buffer_a1_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, "a2", buffer_a2_val, &buffer_a2_val_size);
+      ctx_, query, "a2", buffer_a2_val, &buffer_a2_val_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, "a2", buffer_a2_off, &buffer_a2_off_size);
+      ctx_, query, "a2", buffer_a2_off, &buffer_a2_off_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_data_buffer(
-      ctx, query, "a3", buffer_a3_val, &buffer_a3_val_size);
+      ctx_, query, "a3", buffer_a3_val, &buffer_a3_val_size);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_query_set_offsets_buffer(
-      ctx, query, "a3", buffer_a3_off, &buffer_a3_off_size);
+      ctx_, query, "a3", buffer_a3_off, &buffer_a3_off_size);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_layout(ctx, query, TILEDB_GLOBAL_ORDER);
+  rc = tiledb_query_set_layout(ctx_, query, TILEDB_GLOBAL_ORDER);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx, query, subarray);
-  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_alloc(ctx_, array, &sub);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, sub, subarray);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_query_set_subarray_t(ctx_, query, sub);
+  REQUIRE(rc == TILEDB_OK);
+  tiledb_subarray_free(&sub);
 
   // Submit query
-  rc = submit_query_wrapper(
-      ctx,
-      array_name,
-      &query,
-      server_buffers_,
-      serialize_,
-      refactored_query_v2_);
+  rc = tiledb_query_submit(ctx_, query);
   REQUIRE(rc == TILEDB_OK);
 
   // Check results
@@ -320,13 +299,12 @@ void StringFx::read_array(const std::string& array_name) {
   CHECK(buffer_a3_off[3] == UTF16_OFFSET_3);
 
   // Close array
-  rc = tiledb_array_close(ctx, array);
+  rc = tiledb_array_close(ctx_, array);
   CHECK(rc == TILEDB_OK);
 
   // Clean up
   tiledb_array_free(&array);
   tiledb_query_free(&query);
-  tiledb_ctx_free(&ctx);
   std::free(buffer_a1);
   std::free(buffer_a2_off);
   std::free(buffer_a2_val);
@@ -334,40 +312,10 @@ void StringFx::read_array(const std::string& array_name) {
   std::free(buffer_a3_val);
 }
 
-void StringFx::delete_array(const std::string& array_name) {
-  // Create TileDB context
-  tiledb_ctx_t* ctx;
-  int rc = tiledb_ctx_alloc(nullptr, &ctx);
-  REQUIRE(rc == TILEDB_OK);
-
-  // Remove array
-  tiledb_object_t type;
-  rc = tiledb_object_type(ctx, array_name.c_str(), &type);
-  REQUIRE(rc == TILEDB_OK);
-  if (type == TILEDB_ARRAY) {
-    rc = tiledb_object_remove(ctx, array_name.c_str());
-    REQUIRE(rc == TILEDB_OK);
-  }
-
-  // Clean up
-  tiledb_ctx_free(&ctx);
-}
-
-TEST_CASE_METHOD(StringFx, "C API: Test string support", "[capi][string]") {
-  SECTION("no serialization") {
-    serialize_ = false;
-  }
-#ifdef TILEDB_SERIALIZATION
-  SECTION("serialization enabled global order write") {
-    serialize_ = true;
-    refactored_query_v2_ = GENERATE(true, false);
-  }
-#endif
-
-  std::string array_name = "foo";
-  delete_array(array_name);
+TEST_CASE_METHOD(
+    StringFx, "C API: Test string support", "[capi][string][rest]") {
+  std::string array_name = vfs_test_setup_.array_uri("foo");
   create_array(array_name);
   write_array(array_name);
   read_array(array_name);
-  delete_array(array_name);
 }

@@ -64,14 +64,8 @@ Watchdog::~Watchdog() {
   thread_.join();
 }
 
-Status Watchdog::initialize() {
-  try {
-    thread_ = std::thread([this]() { watchdog_thread(this); });
-  } catch (const std::exception& e) {
-    return Status_Error(
-        std::string("Could not initialize watchdog thread; ") + e.what());
-  }
-  return Status::Ok();
+void Watchdog::initialize() {
+  thread_ = std::thread([this]() { watchdog_thread(this); });
 }
 
 void Watchdog::watchdog_thread(Watchdog* watchdog) {

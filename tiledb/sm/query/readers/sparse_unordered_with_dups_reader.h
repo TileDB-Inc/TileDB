@@ -36,7 +36,6 @@
 #include <atomic>
 
 #include "tiledb/common/common.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/iquery_strategy.h"
@@ -68,18 +67,7 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
 
   /** Constructor. */
   SparseUnorderedWithDupsReader(
-      stats::Stats* stats,
-      shared_ptr<Logger> logger,
-      StorageManager* storage_manager,
-      Array* array,
-      Config& config,
-      std::unordered_map<std::string, QueryBuffer>& buffers,
-      std::unordered_map<std::string, QueryBuffer>& aggregate_buffers,
-      Subarray& subarray,
-      Layout layout,
-      std::optional<QueryCondition>& condition,
-      DefaultChannelAggregates& default_channel_aggregates,
-      bool skip_checks_serialization = false);
+      stats::Stats* stats, shared_ptr<Logger> logger, StrategyParams& params);
 
   /** Destructor. */
   ~SparseUnorderedWithDupsReader() = default;
@@ -511,6 +499,23 @@ class SparseUnorderedWithDupsReader : public SparseIndexReaderBase,
       const uint64_t min_cell,
       const uint64_t max_cell,
       UnorderedWithDupsResultTile<BitmapType>& rt);
+
+  /**
+   * Returns wether or not we can aggregate the tile with only the fragment
+   * metadata.
+   *
+   * @param rt Result tile.
+   * @return If we can do the aggregation with the frag md or not.
+   */
+  inline bool can_aggregate_tile_with_frag_md(
+      UnorderedWithDupsResultTile<BitmapType>* rt) {
+    auto& frag_md = fragment_metadata_[rt->frag_idx()];
+
+    // Here we only aggregate a full tile if first of all there are no missing
+    // cells in the bitmap. This can be validated with 'copy_full_tile'.
+    // Finally, we check the fragment metadata has indeed tile metadata.
+    return rt->copy_full_tile() && frag_md->has_tile_metadata();
+  }
 
   /**
    * Process aggregates.

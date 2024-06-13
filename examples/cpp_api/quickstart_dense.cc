@@ -41,34 +41,31 @@ using namespace tiledb;
 // Name of array.
 std::string array_name_("mem://quickstart_dense_array");
 
-// Example-global Context object.
-Context ctx_;
-
-void create_array() {
+void create_array(const Context& ctx) {
   // The array will be 4x4 with dimensions "rows" and "cols", with domain [1,4].
-  Domain domain(ctx_);
-  domain.add_dimension(Dimension::create<int>(ctx_, "rows", {{1, 4}}, 4))
-      .add_dimension(Dimension::create<int>(ctx_, "cols", {{1, 4}}, 4));
+  Domain domain(ctx);
+  domain.add_dimension(Dimension::create<int>(ctx, "rows", {{1, 4}}, 4))
+      .add_dimension(Dimension::create<int>(ctx, "cols", {{1, 4}}, 4));
 
   // The array will be dense.
-  ArraySchema schema(ctx_, TILEDB_DENSE);
+  ArraySchema schema(ctx, TILEDB_DENSE);
   schema.set_domain(domain).set_order({{TILEDB_ROW_MAJOR, TILEDB_ROW_MAJOR}});
 
   // Add a single attribute "a" so each (i,j) cell can store an integer.
-  schema.add_attribute(Attribute::create<int>(ctx_, "a"));
+  schema.add_attribute(Attribute::create<int>(ctx, "a"));
 
   // Create the (empty) array on disk.
   Array::create(array_name_, schema);
 }
 
-void write_array() {
+void write_array(const Context& ctx) {
   // Prepare some data for the array
   std::vector<int> data = {
       1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
 
   // Open the array for writing and create the query.
-  Array array(ctx_, array_name_, TILEDB_WRITE);
-  Query query(ctx_, array, TILEDB_WRITE);
+  Array array(ctx, array_name_, TILEDB_WRITE);
+  Query query(ctx, array, TILEDB_WRITE);
   query.set_layout(TILEDB_ROW_MAJOR).set_data_buffer("a", data);
 
   // Perform the write and close the array.
@@ -76,19 +73,19 @@ void write_array() {
   array.close();
 }
 
-void read_array() {
+void read_array(const Context& ctx) {
   // Prepare the array for reading
-  Array array(ctx_, array_name_, TILEDB_READ);
+  Array array(ctx, array_name_, TILEDB_READ);
 
   // Slice only rows 1, 2 and cols 2, 3, 4
-  Subarray subarray(ctx_, array);
+  Subarray subarray(ctx, array);
   subarray.add_range(0, 1, 2).add_range(1, 2, 4);
 
   // Prepare the vector that will hold the result (of size 6 elements)
   std::vector<int> data(6);
 
   // Prepare the query
-  Query query(ctx_, array, TILEDB_READ);
+  Query query(ctx, array, TILEDB_READ);
   query.set_subarray(subarray)
       .set_layout(TILEDB_ROW_MAJOR)
       .set_data_buffer("a", data);
@@ -104,11 +101,13 @@ void read_array() {
 }
 
 int main() {
-  if (Object::object(ctx_, array_name_).type() != Object::Type::Array) {
-    create_array();
-    write_array();
+  // Create TileDB context
+  Context ctx;
+  if (Object::object(ctx, array_name_).type() != Object::Type::Array) {
+    create_array(ctx);
+    write_array(ctx);
   }
 
-  read_array();
+  read_array(ctx);
   return 0;
 }

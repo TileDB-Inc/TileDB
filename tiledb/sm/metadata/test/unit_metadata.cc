@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -30,31 +30,42 @@
  * This file defines a test `main()`
  */
 
+#include <test/support/src/mem_helpers.h>
 #include <test/support/tdb_catch.h>
 #include "../metadata.h"
+#include "test/support/src/mem_helpers.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/filesystem/uri.h"
 #include "tiledb/sm/misc/tdb_time.h"
-#include "tiledb/sm/misc/uuid.h"
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using tiledb::test::create_test_memory_tracker;
 
 template <class T, int n>
 inline T& buffer_metadata(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
 }
 
+TEST_CASE("Metadata: Constructor validation", "[metadata][constructor]") {
+  auto tracker = create_test_memory_tracker();
+
+  SECTION("memory_tracker") {
+    REQUIRE_NOTHROW(Metadata(tracker));
+  }
+}
+
 TEST_CASE(
     "Metadata: Test metadata deserialization", "[metadata][deserialization]") {
+  auto tracker = create_test_memory_tracker();
   std::vector<shared_ptr<Tile>> metadata_tiles;
 
-  Metadata metadata_to_serialize1, metadata_to_serialize2,
-      metadata_to_serialize3;
+  Metadata metadata_to_serialize1(tracker), metadata_to_serialize2(tracker),
+      metadata_to_serialize3(tracker), meta(tracker);
 
   // key_1:a, value_1:100,200
   std::string key_1 = "key1";
@@ -75,20 +86,20 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer1;
   metadata_to_serialize1.serialize(size_computation_serializer1);
-  WriterTile tile1{
-      WriterTile::from_generic(size_computation_serializer1.size())};
+  auto tile1{
+      WriterTile::from_generic(size_computation_serializer1.size(), tracker)};
 
-  Serializer serializer1(tile1.data(), tile1.size());
+  Serializer serializer1(tile1->data(), tile1->size());
   metadata_to_serialize1.serialize(serializer1);
 
   metadata_to_serialize2.put(key_2.c_str(), Datatype::FLOAT64, 1, &value_2);
 
   SizeComputationSerializer size_computation_serializer2;
   metadata_to_serialize2.serialize(size_computation_serializer2);
-  WriterTile tile2{
-      WriterTile::from_generic(size_computation_serializer2.size())};
+  auto tile2{
+      WriterTile::from_generic(size_computation_serializer2.size(), tracker)};
 
-  Serializer serializer2(tile2.data(), tile2.size());
+  Serializer serializer2(tile2->data(), tile2->size());
   metadata_to_serialize2.serialize(serializer2);
 
   metadata_to_serialize3.put(
@@ -96,48 +107,50 @@ TEST_CASE(
 
   SizeComputationSerializer size_computation_serializer3;
   metadata_to_serialize3.serialize(size_computation_serializer3);
-  WriterTile tile3{
-      WriterTile::from_generic(size_computation_serializer3.size())};
+  auto tile3{
+      WriterTile::from_generic(size_computation_serializer3.size(), tracker)};
 
-  Serializer serializer3(tile3.data(), tile3.size());
+  Serializer serializer3(tile3->data(), tile3->size());
   metadata_to_serialize3.serialize(serializer3);
 
   metadata_tiles.resize(3);
   metadata_tiles[0] = tdb::make_shared<Tile>(
       HERE(),
-      tile1.format_version(),
-      tile1.type(),
-      tile1.cell_size(),
+      tile1->format_version(),
+      tile1->type(),
+      tile1->cell_size(),
       0,
-      tile1.size(),
-      tile1.filtered_buffer().data(),
-      tile1.filtered_buffer().size());
-  memcpy(metadata_tiles[0]->data(), tile1.data(), tile1.size());
+      tile1->size(),
+      tile1->filtered_buffer().data(),
+      tile1->filtered_buffer().size(),
+      tracker);
+  memcpy(metadata_tiles[0]->data(), tile1->data(), tile1->size());
 
   metadata_tiles[1] = tdb::make_shared<Tile>(
       HERE(),
-      tile2.format_version(),
-      tile2.type(),
-      tile2.cell_size(),
+      tile2->format_version(),
+      tile2->type(),
+      tile2->cell_size(),
       0,
-      tile2.size(),
-      tile2.filtered_buffer().data(),
-      tile2.filtered_buffer().size());
-  memcpy(metadata_tiles[1]->data(), tile2.data(), tile2.size());
+      tile2->size(),
+      tile2->filtered_buffer().data(),
+      tile2->filtered_buffer().size(),
+      tracker);
+  memcpy(metadata_tiles[1]->data(), tile2->data(), tile2->size());
 
   metadata_tiles[2] = tdb::make_shared<Tile>(
       HERE(),
-      tile3.format_version(),
-      tile3.type(),
-      tile3.cell_size(),
+      tile3->format_version(),
+      tile3->type(),
+      tile3->cell_size(),
       0,
-      tile3.size(),
-      tile3.filtered_buffer().data(),
-      tile3.filtered_buffer().size());
-  memcpy(metadata_tiles[2]->data(), tile3.data(), tile3.size());
+      tile3->size(),
+      tile3->filtered_buffer().data(),
+      tile3->filtered_buffer().size(),
+      tracker);
+  memcpy(metadata_tiles[2]->data(), tile3->data(), tile3->size());
 
-  auto meta{Metadata::deserialize(metadata_tiles)};
-
+  meta = Metadata::deserialize(metadata_tiles);
   Datatype type;
   uint32_t v_num;
 

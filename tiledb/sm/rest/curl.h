@@ -48,7 +48,6 @@
 #include <unordered_map>
 
 #include "tiledb/common/dynamic_memory/dynamic_memory.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/sm/buffer/buffer.h"
 #include "tiledb/sm/buffer/buffer_list.h"
 #include "tiledb/sm/config/config.h"
@@ -59,6 +58,11 @@
 using namespace tiledb::common;
 
 namespace tiledb {
+
+namespace common {
+class Logger;
+}
+
 namespace sm {
 
 /**

@@ -29,6 +29,7 @@ include(common-root)
 add_subdirectory(c_api)
 add_subdirectory(c_api_support)
 add_subdirectory(c_api_test_support)
+add_subdirectory(cpp_api_support)
 
 get_gathered(API_SOURCES)
 set(TILEDB_API_SOURCES ${API_SOURCES} PARENT_SCOPE)

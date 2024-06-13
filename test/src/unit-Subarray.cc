@@ -125,7 +125,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{5, 7, 6, 15, 33, 43}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
+  CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   // Prepare correct tile coordinates
   std::vector<std::vector<uint8_t>> c_tile_coords;
@@ -248,7 +248,7 @@ TEST_CASE_METHOD(
   SubarrayRanges<uint64_t> ranges = {{2, 2, 6, 10}, {2, 6, 5, 10}};
   Layout subarray_layout = Layout::ROW_MAJOR;
   create_subarray(array_->array_, ranges, subarray_layout, &subarray);
-  CHECK(subarray.compute_tile_coords<uint64_t>().ok());
+  CHECK_NOTHROW(subarray.compute_tile_coords<uint64_t>());
 
   auto tile_coords = subarray.tile_coords();
   CHECK(tile_coords == c_tile_coords);
@@ -310,12 +310,15 @@ TEST_CASE_METHOD(
       subarray.crop_to_tile(&tile_coords[0], Layout::ROW_MAJOR);
   const Range* range = nullptr;
   CHECK(cropped_subarray.range_num() == 2);
-  CHECK(cropped_subarray.get_range(0, 0, &range).ok());
+  CHECK_NOTHROW(cropped_subarray.get_range(0, 0, &range));
   CHECK(!memcmp(range->data(), &c_range_0_0[0], 2 * sizeof(uint64_t)));
-  CHECK(cropped_subarray.get_range(1, 0, &range).ok());
+  CHECK_NOTHROW(cropped_subarray.get_range(1, 0, &range));
   CHECK(!memcmp(range->data(), &c_range_1_0[0], 2 * sizeof(uint64_t)));
-  CHECK(cropped_subarray.get_range(1, 1, &range).ok());
+  CHECK_NOTHROW(cropped_subarray.get_range(1, 1, &range));
   CHECK(!memcmp(range->data(), &c_range_1_1[0], 2 * sizeof(uint64_t)));
+
+  auto tile_cell_num = subarray.tile_cell_num(&tile_coords[0]);
+  CHECK(tile_cell_num == cropped_subarray.cell_num());
 
   close_array(ctx_, array_);
 }

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB Inc.
+ * @copyright Copyright (c) 2023-2024 TileDB Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -58,6 +58,16 @@ TEST_CASE(
   }
 
   REQUIRE_THROWS(datatype_max_integral_value(Datatype::BLOB));
+  REQUIRE_THROWS(datatype_max_integral_value(Datatype::GEOM_WKB));
+  REQUIRE_THROWS(datatype_max_integral_value(Datatype::GEOM_WKT));
   REQUIRE_THROWS(datatype_max_integral_value(Datatype::FLOAT64));
   REQUIRE_THROWS(datatype_max_integral_value(Datatype::STRING_ASCII));
+}
+
+TEST_CASE("Test datatype_is_byte", "[enums][datatype][datatype_is_byte]") {
+  auto datatype =
+      GENERATE(Datatype::BLOB, Datatype::GEOM_WKB, Datatype::GEOM_WKT);
+
+  CHECK(datatype_is_byte(datatype));
+  CHECK(!datatype_is_byte(Datatype::BOOL));
 }

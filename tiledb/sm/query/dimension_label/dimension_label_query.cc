@@ -167,8 +167,7 @@ void DimensionLabelQuery::initialize_read_labels_query(
   if (!parent_subarray.is_default(dim_idx) &&
       !parent_subarray.has_label_ranges(dim_idx)) {
     Subarray subarray{*this->subarray()};
-    throw_if_not_ok(subarray.set_ranges_for_dim(
-        0, parent_subarray.ranges_for_dim(dim_idx)));
+    subarray.set_ranges_for_dim(0, parent_subarray.ranges_for_dim(dim_idx));
     set_subarray(subarray);
   }
 
@@ -193,8 +192,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     // Set the subarray if it has index ranges added to it.
     if (!parent_subarray.is_default(dim_idx)) {
       Subarray subarray{*this->subarray()};
-      throw_if_not_ok(subarray.set_ranges_for_dim(
-          0, parent_subarray.ranges_for_dim(dim_idx)));
+      subarray.set_ranges_for_dim(0, parent_subarray.ranges_for_dim(dim_idx));
       if (subarray.range_num() > 1) {
         throw DimensionLabelQueryStatusException(
             "Dimension label writes can only be set for a single range.");
@@ -209,8 +207,8 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     uint64_t count = *index_buffer.buffer_size_ /
                      datatype_size(array_schema().dimension_ptr(0)->type());
     Subarray subarray{*this->subarray()};
-    throw_if_not_ok(subarray.set_coalesce_ranges(true));
-    throw_if_not_ok(subarray.add_point_ranges(0, index_buffer.buffer_, count));
+    subarray.set_coalesce_ranges(true);
+    subarray.add_point_ranges(0, index_buffer.buffer_, count);
     if (subarray.range_num() > 1) {
       throw DimensionLabelQueryStatusException(
           "The dimension data must contain consecutive points when writing to "

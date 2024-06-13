@@ -879,6 +879,9 @@ TEST_CASE(
     // Consolidate fragments
     Config config;
     config["sm.consolidation.mode"] = "fragments";
+    config["sm.mem.consolidation.buffers_weight"] = "1";
+    config["sm.mem.consolidation.reader_weight"] = "5000";
+    config["sm.mem.consolidation.writer_weight"] = "5000";
     Array::consolidate(ctx, array_name, &config);
 
     // Load fragment info

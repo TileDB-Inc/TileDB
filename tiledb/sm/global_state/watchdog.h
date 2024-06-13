@@ -37,10 +37,6 @@
 #include <mutex>
 #include <thread>
 
-#include "tiledb/common/status.h"
-
-using namespace tiledb::common;
-
 namespace tiledb {
 namespace sm {
 namespace global_state {
@@ -61,10 +57,8 @@ class Watchdog {
 
   /**
    * Initializes the Watchdog thread.
-   *
-   * @return Status
    */
-  Status initialize();
+  void initialize();
 
  private:
   /** Condition variable for coordinating with the watchdog thread. */

@@ -47,12 +47,13 @@ GroupDetailsV1::GroupDetailsV1(const URI& group_uri)
 //   group_member #1
 //   group_member #2
 //   ...
-void GroupDetailsV1::serialize(Serializer& serializer) {
+void GroupDetailsV1::serialize(
+    const std::vector<std::shared_ptr<GroupMember>>& members,
+    Serializer& serializer) const {
   serializer.write<format_version_t>(GroupDetailsV1::format_version_);
-  uint64_t group_member_num = members_.size();
-  serializer.write<uint64_t>(group_member_num);
-  for (auto& it : members_) {
-    it.second->serialize(serializer);
+  serializer.write<uint64_t>(members.size());
+  for (auto& it : members) {
+    it->serialize(serializer);
   }
 }
 
@@ -70,42 +71,36 @@ shared_ptr<GroupDetails> GroupDetailsV1::deserialize(
   return group;
 }
 
-Status GroupDetailsV1::apply_pending_changes() {
+std::vector<std::shared_ptr<GroupMember>> GroupDetailsV1::members_to_serialize()
+    const {
   std::lock_guard<std::mutex> lck(mtx_);
+  decltype(members_) members = members_;
 
   // Remove members first
   for (const auto& member : members_to_modify_) {
-    auto& uri = member->uri();
+    auto key = member->key();
     if (member->deleted()) {
-      members_.erase(uri.to_string());
+      members.erase(key);
 
       // Check to remove relative URIs
-      auto uri_str = uri.to_string();
-      if (uri_str.find(group_uri_.add_trailing_slash().to_string()) !=
+      if (key.find(group_uri_.add_trailing_slash().to_string()) !=
           std::string::npos) {
         // Get the substring relative path
-        auto relative_uri = uri_str.substr(
-            group_uri_.add_trailing_slash().to_string().size(), uri_str.size());
-        members_.erase(relative_uri);
+        auto relative_uri = key.substr(
+            group_uri_.add_trailing_slash().to_string().size(), key.size());
+        members.erase(relative_uri);
       }
     } else {
-      members_.emplace(member->uri().to_string(), member);
-    }
-  }
-  changes_applied_ = !members_to_modify_.empty();
-  members_to_modify_.clear();
-
-  members_vec_.clear();
-  members_by_name_.clear();
-  members_vec_.reserve(members_.size());
-  for (auto& it : members_) {
-    members_vec_.emplace_back(it.second);
-    if (it.second->name().has_value()) {
-      members_by_name_.emplace(it.second->name().value(), it.second);
+      members.emplace(member->uri().to_string(), member);
     }
   }
 
-  return Status::Ok();
+  std::vector<std::shared_ptr<GroupMember>> result;
+  result.reserve(members.size());
+  for (auto& it : members) {
+    result.emplace_back(it.second);
+  }
+  return result;
 }
 
 }  // namespace sm

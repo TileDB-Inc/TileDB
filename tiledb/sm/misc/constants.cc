@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -51,10 +51,7 @@
 #include "tiledb/sm/enums/serialization_type.h"
 #include "tiledb/sm/misc/utils.h"
 
-namespace tiledb {
-namespace sm {
-
-namespace constants {
+namespace tiledb::sm::constants {
 
 /**
  * Reduction factor (must be in [0.0, 1.0]) for the multi_range subarray
@@ -186,6 +183,12 @@ const char empty_char = std::numeric_limits<char>::min();
 
 /** The special value for an empty blob. */
 constexpr std::byte empty_blob{0};
+
+/** The special value for an empty geom_wkb. */
+constexpr std::byte empty_geom_wkb{0};
+
+/** The special value for an empty geom_wkt. */
+constexpr std::byte empty_geom_wkt{0};
 
 /** The special value for an empty bool. */
 const uint8_t empty_bool = 0;
@@ -333,6 +336,12 @@ const std::string query_status_initialized_str = "INITIALIZED";
 
 /** TILEDB_UNINITIALIZED Query String **/
 const std::string query_status_uninitialized_str = "UNINITIALIZED";
+
+/** TILEDB_ALWAYS_TRUE Query Condition Op String **/
+const std::string query_condition_op_always_true_str = "ALWAYS_TRUE";
+
+/** TILEDB_ALWAYS_FALSE Query Condition Op String **/
+const std::string query_condition_op_always_false_str = "ALWAYS_FALSE";
 
 /** TILEDB_LT Query Condition Op String **/
 const std::string query_condition_op_lt_str = "LT";
@@ -490,6 +499,12 @@ const std::string char_str = "CHAR";
 
 /** The string representation for type blob. */
 const std::string blob_str = "BLOB";
+
+/** The string representation for type geom_wkb. */
+const std::string geom_wkb_str = "GEOM_WKB";
+
+/** The string representation for type geom_wkt. */
+const std::string geom_wkt_str = "GEOM_WKT";
 
 /** The string representation for type bool. */
 const std::string bool_str = "BOOL";
@@ -676,7 +691,7 @@ const int32_t library_version[3] = {
     TILEDB_VERSION_MAJOR, TILEDB_VERSION_MINOR, TILEDB_VERSION_PATCH};
 
 /** The TileDB serialization base format version number. */
-const format_version_t base_format_version = 20;
+const format_version_t base_format_version = 22;
 
 /**
  * The TileDB serialization format version number.
@@ -701,11 +716,23 @@ const format_version_t deletes_min_version = 16;
 /** The lowest version supported for updates. */
 const format_version_t updates_min_version = 16;
 
+/** The lowest version supported for tile min/max/sum/null count data. */
+const format_version_t tile_metadata_min_version = 11;
+
 /** The lowest version supported format version for enumerations. */
 const format_version_t enumerations_min_format_version = 20;
 
 /** The current enumerations version. */
 const format_version_t enumerations_version = 0;
+
+/** The lowest version supported format version for CurrentDomain API. */
+const format_version_t current_domain_min_format_version = 22;
+
+/** The current CurrentDomain API version. */
+const format_version_t current_domain_version = 0;
+
+/** The NDRectangle current domain */
+const std::string current_domain_ndrectangle_str = "NDRECTANGLE";
 
 /** The maximum size of a tile chunk (unit of compression) in bytes. */
 const uint64_t max_tile_chunk_size = 64 * 1024;
@@ -730,6 +757,9 @@ const unsigned int gcs_attempt_sleep_ms = 1000;
 
 /** An allocation tag used for logging. */
 const std::string s3_allocation_tag = "TileDB";
+
+/** The config key prefix for S3 custom headers. */
+const std::string s3_header_prefix = "vfs.s3.custom_headers.";
 
 /** Prefix indicating a special name reserved by TileDB. */
 const std::string special_name_prefix = "__";
@@ -791,6 +821,10 @@ const void* fill_value(Datatype type) {
   switch (type) {
     case Datatype::BLOB:
       return &constants::empty_blob;
+    case Datatype::GEOM_WKB:
+      return &constants::empty_geom_wkb;
+    case Datatype::GEOM_WKT:
+      return &constants::empty_geom_wkt;
     case Datatype::BOOL:
       return &constants::empty_bool;
     case Datatype::INT8:
@@ -858,7 +892,5 @@ const void* fill_value(Datatype type) {
 }
 
 const std::string config_delimiter = ",";
-}  // namespace constants
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm::constants

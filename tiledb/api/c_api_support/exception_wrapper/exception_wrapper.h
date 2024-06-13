@@ -515,17 +515,42 @@ using ExceptionActionCtxErr = detail::ExceptionActionDetailCtxErr;
 // Exception wrapper
 //-------------------------------------------------------
 /**
+ * Null aspect for `class CAPIFunction` has null operations for all aspects.
+ * @tparam f
+ */
+template <auto f>
+class CAPIFunctionNullAspect {
+ public:
+  template <typename... Args>
+  static void call(Args...) {
+  }
+};
+
+/**
+ * Selection struct defines the default aspect type for CAPIFunction. This class
+ * is always used with second template argument as `void`. This definition is
+ * for the general case; a specialization can override it.
+ */
+template <auto f, typename>
+struct CAPIFunctionSelector {
+  using aspect_type = CAPIFunctionNullAspect<f>;
+};
+
+/**
  * Non-specialized wrapper for implementations functions for the C API. May
  * only be used as a specialization.
  */
-template <auto f, class H>
+template <
+    auto f,
+    class H,
+    class A = typename CAPIFunctionSelector<f, void>::aspect_type>
 class CAPIFunction;
 
 /**
  * Wrapper for implementations functions for the C API
  */
-template <class... Args, capi_return_t (*f)(Args...), class H>
-class CAPIFunction<f, H> {
+template <class R, class... Args, R (*f)(Args...), class H, class A>
+class CAPIFunction<f, H, A> {
  public:
   /**
    * Forwarded alias to template parameter H.
@@ -539,7 +564,7 @@ class CAPIFunction<f, H> {
    * @param args Arguments to an API implementation function
    * @return
    */
-  static capi_return_t function(H& h, Args... args) {
+  static R function(H& h, Args... args) {
     /*
      * The order of the catch blocks is not arbitrary:
      * - `std::bad_alloc` comes first because it overrides other problems
@@ -561,27 +586,50 @@ class CAPIFunction<f, H> {
        * Note that we don't need std::forward here because all the arguments
        * must have "C" linkage.
        */
-      auto x{f(args...)};
-      h.action_on_success();
-      return x;
+      A::call(args...);
+      if constexpr (std::same_as<R, void>) {
+        f(args...);
+        h.action_on_success();
+      } else {
+        auto x{f(args...)};
+        h.action_on_success();
+        return x;
+      }
     } catch (const std::bad_alloc& e) {
       h.action(e);
-      return TILEDB_OOM;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_OOM;
+      }
     } catch (const detail::InvalidContextException& e) {
       h.action(e);
-      return TILEDB_INVALID_CONTEXT;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_INVALID_CONTEXT;
+      }
+    } catch (const BudgetUnavailable& e) {
+      h.action(e);
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_BUDGET_UNAVAILABLE;
+      }
     } catch (const detail::InvalidErrorException& e) {
       h.action(e);
-      return TILEDB_INVALID_ERROR;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_INVALID_ERROR;
+      }
     } catch (const StatusException& e) {
       h.action(e);
-      return TILEDB_ERR;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_ERR;
+      }
     } catch (const std::exception& e) {
       h.action(e);
-      return TILEDB_ERR;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_ERR;
+      }
     } catch (...) {
       h.action(CAPIException("unknown exception type; no further information"));
-      return TILEDB_ERR;
+      if constexpr (!std::same_as<R, void>) {
+        return TILEDB_ERR;
+      }
     }
   };
 
@@ -669,52 +717,14 @@ constexpr auto api_entry_plain =
     CAPIFunction<f, ExceptionAction>::function_plain;
 
 /**
- * Declaration only defined through a specialization.
- *
- * @tparam f An API implementation function
- */
-template <auto f>
-struct CAPIFunctionVoid;
-
-/**
- * Wrapper class for API implementation functions with `void` return.
- *
- * We require a separate wrapper class here so we can match the template
- * argument `f` to a function with void return, since `CAPIFunction` only
- * matches those that return `capi_return_t`.
- *
- * @tparam Args Argument types for the function
- * @tparam f An API implementation function
- */
-template <class... Args, void (*f)(Args...)>
-struct CAPIFunctionVoid<f> {
-  /**
-   * Function transformer changes an API implementation function with `void`
-   * return to one returning a (trivially constant) `capi_return_t` value.
-   *
-   * This function is used to match the function signature in `CAPIFunction`,
-   * which requires a return value. This allows us to reuse its wrapper function
-   * without duplicating code.
-   *
-   * @param args Arguments passed to the function
-   * @return TILEDB_OK
-   */
-  inline static capi_return_t function_from_void(Args... args) {
-    f(args...);
-    return TILEDB_OK;
-  }
-};
-
-/**
  * Function transformer changes an API implementation function with `void`
  * return to an API interface function, also with `void` return.
  *
  * @tparam f An implementation function.
  */
 template <auto f>
-constexpr auto api_entry_void = CAPIFunction<
-    CAPIFunctionVoid<f>::function_from_void,
-    tiledb::api::ExceptionAction>::void_function;
+constexpr auto api_entry_void =
+    CAPIFunction<f, tiledb::api::ExceptionAction>::void_function;
 
 /**
  * Declaration only defined through a specialization.

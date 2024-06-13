@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2023 TileDB, Inc.
  * @copyright Copyright (c) 2016 MIT and Intel Corporation
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
@@ -123,7 +123,6 @@ struct ArraySchemaFx {
   void delete_array(const std::string& path);
   bool is_array(const std::string& path);
   void load_and_check_array_schema(const std::string& path);
-  static std::string random_name(const std::string& prefix);
 
   int array_create_wrapper(
       const std::string& path, tiledb_array_schema_t* array_schema);
@@ -922,7 +921,11 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
       "- Cell val num: " + CELL_VAL_NUM_STR + "\n" + "- Filters: 2\n" +
       "  > BZIP2: COMPRESSION_LEVEL=5\n" +
       "  > BitWidthReduction: BIT_WIDTH_MAX_WINDOW=1000\n" +
-      "- Fill value: " + FILL_VALUE_STR + "\n";
+      "- Fill value: " + FILL_VALUE_STR + "\n" + "### Current domain ###\n" +
+      "- Version: " +
+      std::to_string(tiledb::sm::constants::current_domain_version) + "\n" +
+      "- Empty: 1" + "\n";
+
   FILE* gold_fout = fopen("gold_fout.txt", "w");
   const char* dump = dump_str.c_str();
   fwrite(dump, sizeof(char), strlen(dump), gold_fout);
@@ -943,13 +946,6 @@ void ArraySchemaFx::load_and_check_array_schema(const std::string& path) {
   tiledb_dimension_free(&dim);
   tiledb_domain_free(&domain);
   tiledb_array_schema_free(&array_schema);
-}
-
-std::string ArraySchemaFx::random_name(const std::string& prefix) {
-  std::stringstream ss;
-  ss << prefix << "-" << std::this_thread::get_id() << "-"
-     << TILEDB_TIMESTAMP_NOW_MS;
-  return ss.str();
 }
 
 int ArraySchemaFx::get_schema_file_struct(const char* path, void* data) {
@@ -1083,6 +1079,26 @@ TEST_CASE_METHOD(
 
   // Check that zero capacity fails
   rc = tiledb_array_schema_set_capacity(ctx_, array_schema, 0);
+  REQUIRE(rc == TILEDB_ERR);
+
+  // Clean up
+  tiledb_array_schema_free(&array_schema);
+}
+
+TEST_CASE_METHOD(
+    ArraySchemaFx,
+    "C API: Test array schema with invalid cell/tile order",
+    "[capi][array-schema]") {
+  // Create array schema
+  tiledb_array_schema_t* array_schema;
+  int rc = tiledb_array_schema_alloc(ctx_, TILEDB_SPARSE, &array_schema);
+  REQUIRE(rc == TILEDB_OK);
+
+  // Check that UNORDERED order fails
+  rc = tiledb_array_schema_set_tile_order(ctx_, array_schema, TILEDB_UNORDERED);
+  REQUIRE(rc == TILEDB_ERR);
+
+  rc = tiledb_array_schema_set_cell_order(ctx_, array_schema, TILEDB_UNORDERED);
   REQUIRE(rc == TILEDB_ERR);
 
   // Clean up
@@ -1996,7 +2012,7 @@ TEST_CASE_METHOD(
   int is_empty = false;
   rc = tiledb_array_get_non_empty_domain_wrapper(ctx_, array, dom, &is_empty);
   REQUIRE(rc == TILEDB_ERR);
-  void* subarray = nullptr;
+  void* sub = nullptr;
 
   // Get non-empty domain per dimension
   dom = nullptr;
@@ -2015,12 +2031,17 @@ TEST_CASE_METHOD(
       ctx_, array, "d2", dom, &is_empty);
   REQUIRE(rc == TILEDB_OK);
 
+  // Subarray checks
+  tiledb_subarray_t* subarray;
+  rc = tiledb_subarray_alloc(ctx_, array, &subarray);
+  CHECK(rc == TILEDB_OK);
+  rc = tiledb_subarray_set_subarray(ctx_, subarray, sub);
+  REQUIRE(rc == TILEDB_ERR);
+
   // Query checks
   tiledb_query_t* query;
   rc = tiledb_query_alloc(ctx_, array, TILEDB_READ, &query);
   REQUIRE(rc == TILEDB_OK);
-  rc = tiledb_query_set_subarray(ctx_, query, subarray);
-  REQUIRE(rc == TILEDB_ERR);
   void* buff = nullptr;
   uint64_t size = 1024;
   rc = tiledb_query_set_data_buffer(ctx_, query, "buff", buff, &size);
@@ -2039,6 +2060,7 @@ TEST_CASE_METHOD(
   tiledb_domain_free(&read_dom);
   tiledb_array_free(&array);
   tiledb_query_free(&query);
+  tiledb_subarray_free(&subarray);
   tiledb_array_schema_free(&array_schema);
   remove_temp_dir(local_fs.file_prefix() + local_fs.temp_dir());
 }
@@ -2148,6 +2170,8 @@ TEST_CASE_METHOD(
   // Open array
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
@@ -2292,6 +2316,8 @@ TEST_CASE_METHOD(
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_name.c_str(), &array);
   REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
+  REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);
   tiledb_array_schema_t* read_schema;
@@ -2383,6 +2409,8 @@ TEST_CASE_METHOD(
   // Open array
   tiledb_array_t* array;
   rc = tiledb_array_alloc(ctx_, array_uri.c_str(), &array);
+  REQUIRE(rc == TILEDB_OK);
+  rc = tiledb_array_set_open_timestamp_end(ctx_, array, now + 1);
   REQUIRE(rc == TILEDB_OK);
   rc = tiledb_array_open(ctx_, array, TILEDB_READ);
   REQUIRE(rc == TILEDB_OK);

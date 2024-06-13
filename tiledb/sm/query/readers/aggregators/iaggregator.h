@@ -35,7 +35,9 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/sm/misc/constants.h"
+#include "tiledb/sm/query/readers/aggregators/input_field_validator.h"
 #include "tiledb/sm/query/readers/aggregators/output_buffer_validator.h"
+#include "tiledb/sm/query/readers/aggregators/tile_metadata.h"
 
 namespace tiledb::sm {
 
@@ -65,7 +67,13 @@ class IAggregator {
   virtual bool need_recompute_on_overflow() = 0;
 
   /** Returns if the aggregation is var sized or not. */
-  virtual bool var_sized() = 0;
+  virtual bool aggregation_var_sized() = 0;
+
+  /** Returns if the aggregation is nullable or not. */
+  virtual bool aggregation_nullable() = 0;
+
+  /** Returns if the aggregation is for validity only data. */
+  virtual bool aggregation_validity_only() = 0;
 
   /**
    * Validate the result buffer.
@@ -85,6 +93,13 @@ class IAggregator {
   virtual void aggregate_data(AggregateBuffer& input_data) = 0;
 
   /**
+   * Aggregate a tile with fragment metadata.
+   *
+   * @param tile_metadata Tile metadata for aggregation.
+   */
+  virtual void aggregate_tile_with_frag_md(TileMetadata& tile_metadata) = 0;
+
+  /**
    * Copy final data to the user buffer.
    *
    * @param output_field_name Name for the output buffer.
@@ -93,6 +108,12 @@ class IAggregator {
   virtual void copy_to_user_buffer(
       std::string output_field_name,
       std::unordered_map<std::string, QueryBuffer>& buffers) = 0;
+
+  /** Returns name of the aggregate, e.g. COUNT, MIN, SUM. */
+  virtual std::string aggregate_name() = 0;
+
+  /** Returns the TileDB datatype of the output field for the aggregate. */
+  virtual Datatype output_datatype() = 0;
 };
 
 }  // namespace tiledb::sm

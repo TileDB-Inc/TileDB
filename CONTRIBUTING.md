@@ -78,7 +78,7 @@ Formatting conventions:
 
 - Submit a PR, writing a descriptive message.  If a PR closes an open issue, reference the issue in the PR message (ex. If an issue closes issue number 10, you would write `closes #10`)
 
-- Make sure CI (continuous integration) is passing for your PR -- click `Show all checks` in the pull request status box at the bottom of each PR page. The continous integration project pages will also list all recently-built PRs:
+- Make sure CI (continuous integration) is passing for your PR -- click `Show all checks` in the pull request status box at the bottom of each PR page. The continuous integration project pages will also list all recently-built PRs:
   - [Azure Pipelines](https://dev.azure.com/TileDB-Inc/CI/_build)
 
 ### Documentation Pull Requests:
@@ -107,8 +107,8 @@ This will install all the required packages in a Python virtual environment, and
   - [Organization](https://github.com/TileDB-Inc/)
 
 
-* Github / Git
+* GitHub / Git
   - [Git cheatsheet](https://services.github.com/on-demand/downloads/github-git-cheat-sheet/)
-  - [Github Documentation](https://help.github.com/)
+  - [GitHub Documentation](https://help.github.com/)
   - [Forking a Repo](https://help.github.com/articles/fork-a-repo/)
   - [More Learning Resources](https://help.github.com/articles/git-and-github-learning-resources/)

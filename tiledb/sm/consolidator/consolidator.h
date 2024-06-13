@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2022 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -35,7 +35,6 @@
 
 #include "tiledb/common/common.h"
 #include "tiledb/common/heap_memory.h"
-#include "tiledb/common/logger_public.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
@@ -45,6 +44,13 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm {
+
+class ConsolidatorException : public StatusException {
+ public:
+  explicit ConsolidatorException(const std::string& msg)
+      : StatusException("Consolidator", msg) {
+  }
+};
 
 class ArraySchema;
 class Config;
@@ -125,6 +131,90 @@ class Consolidator {
    */
   virtual void vacuum(const char* array_name);
 
+  /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @param storage_manager The storage manager.
+   */
+  static void array_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const Config& config,
+      StorageManager* storage_manager);
+
+  /**
+   * Consolidates the fragments of an array into a single one.
+   *
+   * @param array_name The name of the array to be consolidated.
+   * @param encryption_type The encryption type of the array
+   * @param encryption_key If the array is encrypted, the private encryption
+   *    key. For unencrypted arrays, pass `nullptr`.
+   * @param key_length The length in bytes of the encryption key.
+   * @param fragment_uris URIs of the fragments to consolidate.
+   * @param config Configuration parameters for the consolidation
+   *     (`nullptr` means default, which will use the config associated with
+   *      this instance).
+   * @param storage_manager The storage manager.
+   */
+  static void fragments_consolidate(
+      const char* array_name,
+      EncryptionType encryption_type,
+      const void* encryption_key,
+      uint32_t key_length,
+      const std::vector<std::string> fragment_uris,
+      const Config& config,
+      StorageManager* storage_manager);
+
+  /**
+   * Writes a consolidated commits file.
+   *
+   * @param write_version Write version.
+   * @param array_dir ArrayDirectory where the data is stored.
+   * @param commit_uris Commit files to include.
+   * @param resources The context resources.
+   */
+  static void write_consolidated_commits_file(
+      format_version_t write_version,
+      ArrayDirectory array_dir,
+      const std::vector<URI>& commit_uris,
+      ContextResources& resources);
+
+  /**
+   * Cleans up the array, such as its consolidated fragments and array
+   * metadata. Note that this will coarsen the granularity of time traveling
+   * (see docs for more information).
+   *
+   * @param array_name The name of the array to be vacuumed.
+   * @param config Configuration parameters for vacuuming.
+   * @param storage_manager The storage manager.
+   */
+  static void array_vacuum(
+      const char* array_name,
+      const Config& config,
+      StorageManager* storage_manager);
+
+  /* ********************************* */
+  /*           TYPE DEFINITIONS        */
+  /* ********************************* */
+
+  /** Consolidation configuration parameters. */
+  struct ConsolidationConfigBase {
+    /** Start time for consolidation. */
+    uint64_t timestamp_start_;
+    /** End time for consolidation. */
+    uint64_t timestamp_end_;
+  };
+
  protected:
   /* ********************************* */
   /*         PROTECTED METHODS         */
@@ -145,23 +235,17 @@ class Consolidator {
   void check_array_uri(const char* array_name);
 
   /* ********************************* */
-  /*           TYPE DEFINITIONS        */
-  /* ********************************* */
-
-  /** Consolidation configuration parameters. */
-  struct ConsolidationConfigBase {
-    /** Start time for consolidation. */
-    uint64_t timestamp_start_;
-    /** End time for consolidation. */
-    uint64_t timestamp_end_;
-  };
-
-  /* ********************************* */
   /*       PROTECTED ATTRIBUTES        */
   /* ********************************* */
 
+  /** Resources used to perform the operation. */
+  ContextResources& resources_;
+
   /** The storage manager. */
   StorageManager* storage_manager_;
+
+  /** The consolidator memory tracker. */
+  shared_ptr<MemoryTracker> consolidator_memory_tracker_;
 
   /** The class stats. */
   stats::Stats* stats_;

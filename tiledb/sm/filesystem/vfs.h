@@ -39,6 +39,8 @@
 #include <string>
 #include <vector>
 
+#include "filesystem_base.h"
+#include "ls_scanner.h"
 #include "tiledb/common/common.h"
 #include "tiledb/common/filesystem/directory_entry.h"
 #include "tiledb/common/macros.h"
@@ -59,23 +61,89 @@
 
 #ifdef HAVE_GCS
 #include "tiledb/sm/filesystem/gcs.h"
-#endif
+#endif  // HAVE_GCS
 
 #ifdef HAVE_S3
 #include "tiledb/sm/filesystem/s3.h"
-#endif
+#endif  // HAVE_S3
 
 #ifdef HAVE_HDFS
 #include "tiledb/sm/filesystem/hdfs_filesystem.h"
-#endif
+#endif  // HAVE_HDFS
 
 #ifdef HAVE_AZURE
 #include "tiledb/sm/filesystem/azure.h"
-#endif
+#endif  // HAVE_AZURE
 
 using namespace tiledb::common;
+using tiledb::common::filesystem::directory_entry;
 
 namespace tiledb::sm {
+
+namespace filesystem {
+class VFSException : public StatusException {
+ public:
+  explicit VFSException(const std::string& message)
+      : StatusException("VFS", message) {
+  }
+};
+
+class BuiltWithout : public VFSException {
+ public:
+  explicit BuiltWithout(const std::string& filesystem)
+      : VFSException("TileDB was built without " + filesystem + "support") {
+  }
+};
+
+class UnsupportedOperation : public VFSException {
+ public:
+  explicit UnsupportedOperation(const std::string& operation)
+      : VFSException(operation + " across filesystems is not supported yet") {
+  }
+};
+
+class UnsupportedURI : public VFSException {
+ public:
+  explicit UnsupportedURI(const std::string& uri)
+      : VFSException("Unsupported URI scheme: " + uri) {
+  }
+};
+
+// Local filesystem is always enabled
+static constexpr bool local_enabled = true;
+
+#ifdef _WIN32
+static constexpr bool windows_enabled = true;
+static constexpr bool posix_enabled = false;
+#else
+static constexpr bool windows_enabled = false;
+static constexpr bool posix_enabled = true;
+#endif
+
+#ifdef HAVE_GCS
+static constexpr bool gcs_enabled = true;
+#else
+static constexpr bool gcs_enabled = false;
+#endif  // HAVE_GCS
+
+#ifdef HAVE_S3
+static constexpr bool s3_enabled = true;
+#else
+static constexpr bool s3_enabled = false;
+#endif  // HAVE_S3
+
+#ifdef HAVE_HDFS
+static constexpr bool hdfs_enabled = true;
+#else
+static constexpr bool hdfs_enabled = false;
+#endif  // HAVE_HDFS
+
+#ifdef HAVE_AZURE
+static constexpr bool azure_enabled = true;
+#else
+static constexpr bool azure_enabled = false;
+#endif  // HAVE_AZURE
+}  // namespace filesystem
 
 class Tile;
 
@@ -160,15 +228,29 @@ struct VFSBase {
 
 /** The S3 filesystem. */
 #ifdef HAVE_S3
-struct S3_within_VFS {
+class S3_within_VFS {
+  /** Private member variable */
   S3 s3_;
+
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&... args)
       : s3_(std::forward<Args>(args)...) {
   }
+
+  /** Protected accessor for the S3 object. */
+  inline S3& s3() {
+    return s3_;
+  }
+
+  /** Protected accessor for the const S3 object. */
+  inline const S3& s3() const {
+    return s3_;
+  }
 };
 #else
-struct S3_within_VFS {
+class S3_within_VFS {
+ protected:
   template <typename... Args>
   S3_within_VFS(Args&&...) {
   }  // empty constructor
@@ -179,7 +261,7 @@ struct S3_within_VFS {
  * This class implements a virtual filesystem that directs filesystem-related
  * function execution to the appropriate backend based on the input URI.
  */
-class VFS : private VFSBase, S3_within_VFS {
+class VFS : private VFSBase, protected S3_within_VFS {
  public:
   /* ********************************* */
   /*          TYPE DEFINITIONS         */
@@ -250,11 +332,11 @@ class VFS : private VFSBase, S3_within_VFS {
    * @param path The input path.
    * @return The string with the absolute path.
    */
-  static std::string abs_path(const std::string& path);
+  static std::string abs_path(std::string_view path);
 
   /**
    * Return a config object containing the VFS parameters. All other non-VFS
-   * parameters will are set to default values.
+   * parameters are set to default values.
    */
   Config config() const;
 
@@ -424,8 +506,99 @@ class VFS : private VFSBase, S3_within_VFS {
    * @param parent The target directory to list.
    * @return All entries that are contained in the parent
    */
-  tuple<Status, optional<std::vector<filesystem::directory_entry>>>
-  ls_with_sizes(const URI& parent) const;
+  std::vector<directory_entry> ls_with_sizes(const URI& parent) const;
+
+  /**
+   * Lists objects and object information that start with `prefix`, invoking
+   * the FilePredicate on each entry collected and the DirectoryPredicate on
+   * common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3 and Azure.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @param recursive Whether to list the objects recursively.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_filtered(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d,
+      bool recursive) const {
+    LsObjects results;
+    try {
+      if (parent.is_file()) {
+#ifdef _WIN32
+        results = win_.ls_filtered(parent, f, d, recursive);
+#else
+        results = posix_.ls_filtered(parent, f, d, recursive);
+#endif
+      } else if (parent.is_s3()) {
+#ifdef HAVE_S3
+        results = s3().ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException("TileDB was built without S3 support");
+#endif
+      } else if (parent.is_gcs()) {
+#ifdef HAVE_GCS
+        results = gcs_.ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException("TileDB was built without GCS support");
+#endif
+      } else if (parent.is_azure()) {
+#ifdef HAVE_AZURE
+        results = azure_.ls_filtered(parent, f, d, recursive);
+#else
+        throw filesystem::VFSException(
+            "TileDB was built without Azure support");
+#endif
+      } else if (parent.is_hdfs()) {
+#ifdef HAVE_HDFS
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+#else
+        throw filesystem::VFSException("TileDB was built without HDFS support");
+#endif
+      } else {
+        throw filesystem::VFSException(
+            "Recursive ls over " + parent.backend_name() +
+            " storage backend is not supported.");
+      }
+    } catch (LsStopTraversal& e) {
+      // Do nothing, callback signaled to stop traversal.
+    } catch (...) {
+      // Rethrow exception thrown by the callback.
+      throw;
+    }
+    return results;
+  }
+
+  /**
+   * Recursively lists objects and object information that start with `prefix`,
+   * invoking the FilePredicate on each entry collected and the
+   * DirectoryPredicate on common prefixes for pruning.
+   *
+   * Currently this API is only supported for local files, S3, Azure and GCS.
+   *
+   * @param parent The parent prefix to list sub-paths.
+   * @param f The FilePredicate to invoke on each object for filtering.
+   * @param d The DirectoryPredicate to invoke on each common prefix for
+   *    pruning. This is currently unused, but is kept here for future support.
+   * @return Vector of results with each entry being a pair of the string URI
+   *    and object size.
+   */
+  template <FilePredicate F, DirectoryPredicate D = DirectoryFilter>
+  LsObjects ls_recursive(
+      const URI& parent,
+      [[maybe_unused]] F f,
+      [[maybe_unused]] D d = accept_all_dirs) const {
+    return ls_filtered(parent, f, d, true);
+  }
 
   /**
    * Renames a file.
@@ -727,8 +900,9 @@ class VFS : private VFSBase, S3_within_VFS {
 
       const uint64_t size = buffer.size();
       ReadAheadBuffer ra_buffer(offset, std::move(buffer));
-      return LRUCache<std::string, ReadAheadBuffer>::insert(
+      LRUCache<std::string, ReadAheadBuffer>::insert(
           uri.to_string(), std::move(ra_buffer), size);
+      return Status::Ok();
     }
 
    private:

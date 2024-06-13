@@ -28,6 +28,8 @@
  * @section DESCRIPTION
  *
  * This file declares the TileDB C API for serialization.
+ * APIs defined in this header are currently unstable and subject to breaking
+ * changes between minor releases.
  */
 
 #ifndef TILEDB_SERIALIZATION_H
@@ -106,6 +108,7 @@ TILEDB_EXPORT int32_t tiledb_serialize_array(
  * @param client_side Allows to specify different behavior depending on who is
  * serializing, the client (1) or the Cloud server (0). This is sometimes needed
  * since they are both using the same Core library APIs for serialization.
+ * @param array_uri uri of the array to deserialize.
  * @param array Will be set to a newly allocated array.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
@@ -114,6 +117,7 @@ TILEDB_EXPORT int32_t tiledb_deserialize_array(
     const tiledb_buffer_t* buffer,
     tiledb_serialization_type_t serialize_type,
     int32_t client_side,
+    const char* array_uri,
     tiledb_array_t** array) TILEDB_NOEXCEPT;
 
 /**
@@ -432,32 +436,36 @@ TILEDB_EXPORT int32_t tiledb_serialize_array_max_buffer_sizes(
     tiledb_buffer_t** buffer) TILEDB_NOEXCEPT;
 
 /**
- * Deserializes a delete fragments request from the given buffer.
+ * Process a delete fragments request.
  *
  * @param ctx The TileDB context.
+ * @param array The TileDB Array.
  * @param serialization_type Type of serialization to use
- * @param buffer Buffer containing serialized fragment timestamps.
+ * @param request Buffer containing serialized fragment timestamps.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT
-capi_return_t tiledb_deserialize_array_delete_fragments_timestamps_request(
+capi_return_t tiledb_handle_array_delete_fragments_timestamps_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
+    const tiledb_buffer_t* request) TILEDB_NOEXCEPT;
 
 /**
- * Deserializes a delete fragments list request from the given buffer.
+ * Process a delete fragments list request.
  *
  * @param ctx The TileDB context.
+ * @param array The TileDB Array.
  * @param serialization_type Type of serialization to use
  * @param buffer Buffer containing serialized fragments list.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT
-capi_return_t tiledb_deserialize_array_delete_fragments_list_request(
+capi_return_t tiledb_handle_array_delete_fragments_list_request(
     tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,
-    const tiledb_buffer_t* buffer) TILEDB_NOEXCEPT;
+    const tiledb_buffer_t* request) TILEDB_NOEXCEPT;
 
 /**
  * Serializes the array metadata into the given buffer.
@@ -769,12 +777,50 @@ TILEDB_EXPORT capi_return_t tiledb_handle_load_array_schema_request(
  *
  * @param ctx The TileDB context.
  * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
  * @param request A buffer containing the LoadEnumerationsRequest Capnp message.
  * @param response An allocated buffer that will contain the
  *        LoadEnumerationsResponse Capnp message.
  * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
  */
 TILEDB_EXPORT capi_return_t tiledb_handle_load_enumerations_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
+/**
+ * Process a query plan request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the QueryPlanRequest Capnp message.
+ * @param response An allocated buffer that will contain the QueryPlanResponse
+ * Capnp message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_query_plan_request(
+    tiledb_ctx_t* ctx,
+    tiledb_array_t* array,
+    tiledb_serialization_type_t serialization_type,
+    const tiledb_buffer_t* request,
+    tiledb_buffer_t* response) TILEDB_NOEXCEPT;
+
+/**
+ * Process a consolidation plan request.
+ *
+ * @param ctx The TileDB context.
+ * @param array The TileDB Array.
+ * @param serialization_type The type of Cap'n Proto serialization used.
+ * @param request A buffer containing the ConsolidationPlanRequest Capnp
+ * message.
+ * @param response An allocated buffer that will contain the
+ * ConsolidationPlanResponse Capnp message.
+ * @return capi_return_t TILEDB_OK on success, TILEDB_ERR on error.
+ */
+TILEDB_EXPORT capi_return_t tiledb_handle_consolidation_plan_request(
     tiledb_ctx_t* ctx,
     tiledb_array_t* array,
     tiledb_serialization_type_t serialization_type,

@@ -38,9 +38,6 @@ if(TILEDB_VCPKG)
   find_package(unofficial-libmagic CONFIG)
   if (unofficial-libmagic_FOUND)
     set(libmagic_DICTIONARY ${unofficial-libmagic_DICTIONARY})
-    install_target_libs(unofficial::libmagic::libmagic)
-    install_target_libs(PCRE2::8BIT)
-    install_target_libs(PCRE2::POSIX)
   else()
     find_path(libmagic_INCLUDE_DIR NAMES magic.h)
     find_library(libmagic_LIBRARIES magic)
@@ -65,7 +62,6 @@ if(TILEDB_VCPKG)
       IMPORTED_LOCATION "${libmagic_LIBRARIES}"
       INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
     )
-    install_target_libs(unofficial::libmagic::libmagic)
   endif()
   add_library(libmagic ALIAS unofficial::libmagic::libmagic)
   return()
@@ -169,11 +165,4 @@ if (libmagic_FOUND AND NOT TARGET libmagic)
     IMPORTED_LOCATION "${libmagic_LIBRARIES}"
     INTERFACE_INCLUDE_DIRECTORIES "${libmagic_INCLUDE_DIR}"
   )
-endif()
-
-# If we built a static EP, install it if required.
-if (TILEDB_LIBMAGIC_EP_BUILT AND TILEDB_INSTALL_STATIC_DEPS)
-  install_target_libs(libmagic)
-  install_target_libs(pcre2-posix)
-  install_target_libs(pcre2-8)
 endif()

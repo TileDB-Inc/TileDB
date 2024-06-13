@@ -80,9 +80,10 @@ Status EncryptionKey::set_key(
     EncryptionType encryption_type,
     const void* key_bytes,
     uint32_t key_length) {
-  if (!is_valid_key_length(encryption_type, key_length))
-    return LOG_STATUS(Status_EncryptionError(
+  if (!is_valid_key_length(encryption_type, key_length)) {
+    throw StatusException(Status_EncryptionError(
         "Cannot create key; invalid key length for encryption type."));
+  }
 
   encryption_type_ = encryption_type;
   key_length_ = key_length;

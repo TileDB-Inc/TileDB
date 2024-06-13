@@ -35,6 +35,7 @@
 
 #include "tiledb/api/c_api_support/handle/handle.h"
 #include "tiledb/sm/c_api/tiledb_struct_def.h"
+#include "tiledb/sm/enums/query_status.h"
 
 namespace tiledb::api {
 
@@ -48,6 +49,31 @@ inline void ensure_query_is_valid(tiledb_query_t* query) {
   if (!query || !query->query_) {
     throw CAPIStatusException("argument `query` may not be nullptr");
   }
+}
+
+/**
+ * Validation function for a TileDB query
+ * Throws in case the query is >= INITIALIZED with regards to its lifetime
+ *
+ * @param query A sm::Query pointer
+ */
+inline void ensure_query_is_not_initialized(const tiledb::sm::Query& query) {
+  if (query.status() != sm::QueryStatus::UNINITIALIZED) {
+    throw CAPIStatusException(
+        "argument `query` is at a too late state of its lifetime");
+  }
+}
+
+/**
+ * Validation function for a TileDB query
+ * Throws in case the query is >= INITIALIZED with regards to its lifetime
+ *
+ * @param query A C api query pointer
+ */
+inline void ensure_query_is_not_initialized(tiledb_query_t* query) {
+  ensure_query_is_valid(query);
+  // Indirection safe because previous statement will throw otherwise
+  ensure_query_is_not_initialized(*query->query_);
 }
 
 }  // namespace tiledb::api

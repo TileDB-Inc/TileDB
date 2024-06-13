@@ -32,7 +32,7 @@ include(common NO_POLICY_SCOPE)
 #   - Include path for `c_api` headers
 #
 add_library(export INTERFACE)
-target_compile_definitions(export INTERFACE -DTILEDB_CORE_OBJECTS_EXPORTS)
+target_compile_definitions(export INTERFACE -Dtiledb_EXPORTS)
 target_include_directories(export INTERFACE ${TILEDB_EXPORT_HEADER_DIR})
 target_include_directories(export INTERFACE ${TILEDB_SOURCE_ROOT}/tiledb/sm/c_api)
 
@@ -120,4 +120,7 @@ add_subdirectory(query_plan)
 
 # `query_aggregate`: no dependencies
 add_subdirectory(query_aggregate)
+
+# `query_field`: no dependencies
+add_subdirectory(query_field)
 

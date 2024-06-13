@@ -63,6 +63,10 @@ struct tiledb_ctx_handle_t
     return ctx_.resources();
   }
 
+  inline tiledb::sm::Config& config() {
+    return ctx_.resources().config();
+  }
+
   inline tiledb::sm::StorageManager* storage_manager() {
     return ctx_.storage_manager();
   }

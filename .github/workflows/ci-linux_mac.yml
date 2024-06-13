@@ -14,7 +14,7 @@ on:
         type: string
       bootstrap_args:
         default: ''
-        required: true
+        required: false
         type: string
       matrix_image:
         default: ''
@@ -28,6 +28,14 @@ on:
         default: 'g++'
         required: false
         type: string
+      matrix_compiler_cflags:
+        default: ''
+        required: false
+        type: string
+      matrix_compiler_cxxflags:
+        default: ''
+        required: false
+        type: string
       timeout:
         default: 90
         description: 'Job timeout (minutes)'
@@ -38,14 +46,35 @@ on:
         description: 'Enable Address Sanitizer'
         required: false
         type: boolean
+      manylinux:
+        default: false
+        description: 'Enable manylinux builds'
+        required: false
+        type: boolean
+      vcpkg_base_triplet:
+        default: ''
+        description: 'Base triplet for vcpkg'
+        required: false
+        type: string
+      cmake_generator:
+        default: 'Unix Makefiles' # TODO: Ninja is much better than makefiles. Should it be the default?
+        description: 'CMake generator'
+        required: false
+        type: string
 
 env:
   BACKWARDS_COMPATIBILITY_ARRAYS: OFF
+  CMAKE_GENERATOR: ${{ inputs.cmake_generator }}
   TILEDB_CI_BACKEND: ${{ inputs.ci_backend }}
-  TILEDB_CI_OS: runner.os
+  TILEDB_CI_OS: ${{ startsWith(inputs.matrix_image, 'ubuntu-') && 'Linux' || 'macOS' }}
+  # Installing Python does not work on manylinux.
+  TILEDB_ARROW_TESTS: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
+  TILEDB_MANYLINUX: ${{ !inputs.manylinux && 'ON' || 'OFF' }}
   CXX: ${{ inputs.matrix_compiler_cxx }}
   CC: ${{ inputs.matrix_compiler_cc }}
-  bootstrap_args: "--enable-ccache ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
+  CFLAGS: ${{ inputs.matrix_compiler_cflags }}
+  CXXFLAGS: ${{ inputs.matrix_compiler_cxxflags }}
+  bootstrap_args: "--enable-ccache --vcpkg-base-triplet=${{ inputs.vcpkg_base_triplet || (startsWith(inputs.matrix_image, 'ubuntu-') && 'x64-linux' || 'x64-osx') }} ${{ inputs.bootstrap_args }} ${{ inputs.asan && '--enable-sanitizer=address' || '' }}"
   VCPKG_BINARY_SOURCES: 'clear;x-gha,readwrite'
   SCCACHE_GHA_ENABLED: "true"
 
@@ -56,6 +85,7 @@ jobs:
         os:
           - ${{ inputs.matrix_image }}
     runs-on: ${{matrix.os}}
+    container: ${{inputs.manylinux && 'quay.io/pypa/manylinux2014_x86_64' || ''}}
 
     if: ${{ startsWith(github.ref , 'refs/tags') != true && startsWith(github.ref , 'build-') != true }}
     timeout-minutes: ${{ inputs.timeout || 90 }}
@@ -74,20 +104,8 @@ jobs:
             core.exportVariable('ACTIONS_CACHE_URL', process.env.ACTIONS_CACHE_URL || '');
             core.exportVariable('ACTIONS_RUNTIME_TOKEN', process.env.ACTIONS_RUNTIME_TOKEN || '');
 
-      - name: Setup vcpkg
-        uses: lukka/run-vcpkg@v11
-        id: runvcpkg
-        with:
-          vcpkgJsonGlob: 'vcpkg.json'
-          vcpkgDirectory: '${{ github.workspace }}/external/vcpkg'
-
-      - name: Prints output of run-vcpkg's action.
-        run: |
-          echo "run-vcpkg outputs:"
-          echo "${{ toJSON(steps.runvcpkg.outputs) }}"
-
       - name: Prevent vpckg from building debug variants
-        run: ./scripts/ci/posix/patch_vcpkg_triplets.sh
+        run: python ./scripts/ci/patch_vcpkg_triplets.py
 
       - name: Setup sccache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -97,14 +115,28 @@ jobs:
         run: ./scripts/ci/posix/prelim.sh
         shell: bash
 
+      - name: Install manylinux prerequisites
+        if: inputs.manylinux
+        run: |
+          set -e pipefail
+          yum install -y redhat-lsb-core centos-release-scl devtoolset-7
+          echo "source /opt/rh/devtoolset-7/enable" >> ~/.bashrc
+
       # Need this for virtualenv and arrow tests if enabled
       - name: 'Install Python'
         uses: actions/setup-python@v4
+        if: ${{ !inputs.manylinux }}
         with:
-          python-version: '3.8'
+          python-version: '3.9'
           cache: 'pip'
 
+      # This must happen after checkout, because checkout would remove the directory.
+      - name: Install Ninja
+        if: inputs.cmake_generator == 'Ninja'
+        uses: seanmiddleditch/gha-setup-ninja@v4
+
       - name: 'Set up Python dependencies'
+        if: ${{ !inputs.manylinux }}
         run: |
           set -e pipefail
           python -m pip install --upgrade pip virtualenv
@@ -148,6 +180,7 @@ jobs:
         env:
           ASAN_OPTIONS: ${{ inputs.asan && 'detect_leaks=0' || '' }}
           LD_PRELOAD: ${{ inputs.asan && '/usr/lib/x86_64-linux-gnu/libasan.so.6' || '' }}
+          VCPKG_TARGET_TRIPLET: ${{ runner.os == 'Linux' && 'x64-linux' || 'x64-osx' }}
         run: |
           set -e pipefail
 
@@ -174,6 +207,9 @@ jobs:
           ./tiledb/test/regression/tiledb_regression -d yes
           ./tiledb/test/ci/test_assert -d yes
           ./tiledb/test/tiledb_unit -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          ./tiledb/tiledb/sm/filesystem/test/unit_vfs -d yes | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
+          
+          ctest -R tiledb_timing_unit | awk '/1: ::set-output/{sub(/.*1: /, ""); print; next} 1'
 
           ###################################################
           # Stop helper processes, if applicable
@@ -187,17 +223,27 @@ jobs:
 
           ###################################################
           # Build and run Examples
-          make -C $GITHUB_WORKSPACE/build -j3 examples
-          source $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
+          # The following script must not be sourced.
+          # It relies on finding its source directory.
+          $GITHUB_WORKSPACE/scripts/run-nix-examples.sh
 
           ###################################################
           # Build benchmark code
 
           source $GITHUB_WORKSPACE/scripts/ci/build_benchmarks.sh
+          
+          ###################################################
+          # Perform package test
+
+          cmake --build $GITHUB_WORKSPACE/build/tiledb --target check-package
 
       - name: 'Dump core stacks on failure'
         if: ${{ failure() && startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed
         run: ./scripts/ci/posix/dump-core-stacks.sh
+
+      - name: List files in build directory on failure
+        run: du --exclude _deps -h $GITHUB_WORKSPACE/build
+        if: ${{ failure() }}
 
       - name: 'Upload failure artifacts (Linux)' # https://github.com/actions/upload-artifact#where-does-the-upload-go
         if: ${{ startsWith(matrix.os, 'ubuntu-') == true }} # only run this job if the build step failed

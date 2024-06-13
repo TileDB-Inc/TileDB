@@ -105,6 +105,12 @@ bool CompressionFilter::accepts_input_datatype(Datatype input_type) const {
                                                      input_type)) {
       return false;
     }
+    // We must receive an integral number of units of the reinterpret datatype
+    else if (
+        reinterpret_datatype_ != Datatype::ANY &&
+        datatype_size(input_type) % datatype_size(reinterpret_datatype_) != 0) {
+      return false;
+    }
   }
 
   return true;
@@ -310,9 +316,7 @@ Status CompressionFilter::run_reverse(
     FilterBuffer* input,
     FilterBuffer* output_metadata,
     FilterBuffer* output,
-    const Config& config) const {
-  (void)config;
-
+    const Config&) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
     RETURN_NOT_OK(output->append_view(input));
@@ -365,27 +369,26 @@ Status CompressionFilter::compress_part(
   uint32_t orig_size = (uint32_t)output->size();
   switch (compressor_) {
     case Compressor::GZIP:
-      RETURN_NOT_OK(GZip::compress(level_, &input_buffer, output));
+      GZip::compress(level_, &input_buffer, output);
       break;
     case Compressor::ZSTD:
-      RETURN_NOT_OK(ZStd::compress(
-          level_, zstd_compress_ctx_pool_, &input_buffer, output));
+      ZStd::compress(level_, zstd_compress_ctx_pool_, &input_buffer, output);
       break;
     case Compressor::LZ4:
-      RETURN_NOT_OK(LZ4::compress(level_, &input_buffer, output));
+      LZ4::compress(level_, &input_buffer, output);
       break;
     case Compressor::RLE:
-      RETURN_NOT_OK(RLE::compress(cell_size, &input_buffer, output));
+      RLE::compress(cell_size, &input_buffer, output);
       break;
     case Compressor::BZIP2:
-      RETURN_NOT_OK(BZip::compress(level_, &input_buffer, output));
+      BZip::compress(level_, &input_buffer, output);
       break;
     case Compressor::DOUBLE_DELTA:
-      RETURN_NOT_OK(DoubleDelta::compress(
+      DoubleDelta::compress(
           reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
-          output));
+          output);
       break;
     case Compressor::DICTIONARY_ENCODING:
       return LOG_STATUS(
@@ -448,20 +451,20 @@ Status CompressionFilter::decompress_part(
       assert(0);
       break;
     case Compressor::GZIP:
-      st = GZip::decompress(&input_buffer, &output_buffer);
+      GZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::ZSTD:
-      st = ZStd::decompress(
+      ZStd::decompress(
           zstd_decompress_ctx_pool_, &input_buffer, &output_buffer);
       break;
     case Compressor::LZ4:
-      st = LZ4::decompress(&input_buffer, &output_buffer);
+      LZ4::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::RLE:
-      st = RLE::decompress(cell_size, &input_buffer, &output_buffer);
+      RLE::decompress(cell_size, &input_buffer, &output_buffer);
       break;
     case Compressor::BZIP2:
-      st = BZip::decompress(&input_buffer, &output_buffer);
+      BZip::decompress(&input_buffer, &output_buffer);
       break;
     case Compressor::DELTA:
       Delta::decompress(
@@ -471,7 +474,7 @@ Status CompressionFilter::decompress_part(
           &output_buffer);
       break;
     case Compressor::DOUBLE_DELTA:
-      st = DoubleDelta::decompress(
+      DoubleDelta::decompress(
           reinterpret_datatype_ == Datatype::ANY ? filter_data_type_ :
                                                    reinterpret_datatype_,
           &input_buffer,
@@ -596,8 +599,8 @@ Status CompressionFilter::compress_var_string_coords(
       reinterpret_cast<std::byte*>(data_buffer->data()), output_size_ub);
 
   if (compressor_ == Compressor::RLE) {
-    RETURN_NOT_OK(RLE::compress(
-        input_view, rle_len_bytesize, string_len_bytesize, output_view));
+    RLE::compress(
+        input_view, rle_len_bytesize, string_len_bytesize, output_view);
     RETURN_NOT_OK(output_metadata.write(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(output_metadata.write(&string_len_bytesize, sizeof(uint8_t)));
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
@@ -647,12 +650,12 @@ Status CompressionFilter::decompress_var_string_coords(
     uint8_t rle_len_bytesize, string_len_bytesize;
     RETURN_NOT_OK(input_metadata.read(&rle_len_bytesize, sizeof(uint8_t)));
     RETURN_NOT_OK(input_metadata.read(&string_len_bytesize, sizeof(uint8_t)));
-    throw_if_not_ok(RLE::decompress(
+    RLE::decompress(
         input_view,
         rle_len_bytesize,
         string_len_bytesize,
         output_view,
-        offsets_view));
+        offsets_view);
   } else if (compressor_ == Compressor::DICTIONARY_ENCODING) {
     uint8_t ids_bytesize = 0, string_len_bytesize = 0;
     uint32_t dict_size = 0;
