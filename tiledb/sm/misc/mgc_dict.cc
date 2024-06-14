@@ -38,15 +38,11 @@
 
 namespace tiledb::sm::magic_dict {
 
-std::vector<uint8_t> prepare_data() {
-  std::vector<uint8_t> expanded_buffer(magic_mgc_decompressed_size);
-
+void prepare_data(span<uint8_t> expanded_buffer) {
   ConstBuffer input(magic_mgc_compressed_bytes, magic_mgc_compressed_size);
   PreallocatedBuffer output(expanded_buffer.data(), expanded_buffer.size());
   ZStd::ZSTD_Decompress_Context ctx;
   ZStd::decompress(ctx, input, output);
-
-  return expanded_buffer;
 }
 
 int magic_mgc_embedded_load(magic_t magic) {
@@ -59,8 +55,10 @@ int magic_mgc_embedded_load(magic_t magic) {
 }
 
 span<const uint8_t> expanded_buffer() {
+  static std::vector<uint8_t> expanded_buffer(magic_mgc_decompressed_size);
+  static std::once_flag once_flag;
   // Thread-safe initialization of the expanded data.
-  static auto expanded_buffer = prepare_data();
+  std::call_once(once_flag, [&]() { prepare_data(expanded_buffer); });
   return expanded_buffer;
 }
 
