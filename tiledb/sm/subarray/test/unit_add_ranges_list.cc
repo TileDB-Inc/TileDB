@@ -102,11 +102,7 @@ TEST_CASE("Subarray::add_ranges_list", "[subarray]") {
 
   // The Subarray used to test add_ranges_list.
   tiledb::sm::Subarray sa(
-      &a,
-      &test::g_helper_stats,
-      test::g_helper_logger(),
-      true,
-      ctx.storage_manager());
+      &a, &test::g_helper_stats, test::g_helper_logger(), true);
 
   // Add ranges
   // NOTE: The type used here for the range needs to match the type used for the

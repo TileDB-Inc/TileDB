@@ -770,7 +770,7 @@ std::vector<shared_ptr<FragmentMetadata>> FragmentMetadata::load(
         FragmentID fragment_id{sf.uri_};
         if (fragment_id.array_format_version() <= 2) {
           bool sparse;
-          RETURN_NOT_OK(resources.vfs().is_file(coords_uri, &sparse));
+          throw_if_not_ok(resources.vfs().is_file(coords_uri, &sparse));
           metadata = make_shared<FragmentMetadata>(
               HERE(),
               &resources,

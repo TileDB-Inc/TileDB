@@ -54,6 +54,7 @@ commence(unit_test run_filter_pipeline)
         unit_encryption_pipeline.cc
         unit_positive_delta_pipeline.cc
         unit_run_filter_pipeline.cc
+        unit_webp_pipeline.cc
         unit_xor_pipeline.cc
     )
 conclude(unit_test)

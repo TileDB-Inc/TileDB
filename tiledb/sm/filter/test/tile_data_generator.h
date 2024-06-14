@@ -37,6 +37,7 @@
 #include <algorithm>
 #include <numeric>
 #include <optional>
+#include "test/support/src/whitebox_helpers.h"
 #include "tiledb/sm/tile/tile.h"
 
 using namespace tiledb::common;
@@ -139,7 +140,7 @@ class IncrementTileDataGenerator : public TileDataGenerator {
   }
 
   ~IncrementTileDataGenerator() {
-    WriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
+    WhiteboxWriterTile::set_max_tile_chunk_size(constants::max_tile_chunk_size);
   }
 
   uint64_t cell_size() const override {

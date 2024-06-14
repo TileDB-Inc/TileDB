@@ -337,21 +337,21 @@ Status OrderedWriter::prepare_filter_and_write_tiles(
           &resources_.compute_tp(), 0, batch_size, [&](uint64_t i) {
             // Prepare and filter tiles
             auto& writer_tile = tile_batches[b][i];
-            RETURN_NOT_OK(
+            throw_if_not_ok(
                 dense_tiler->get_tile(frag_tile_id + i, name, writer_tile));
 
             if (!var) {
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.fixed_tile(), nullptr, false, false));
             } else {
               auto offset_tile = &writer_tile.offset_tile();
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.var_tile(), offset_tile, false, false));
-              RETURN_NOT_OK(
+              throw_if_not_ok(
                   filter_tile(name, offset_tile, nullptr, true, false));
             }
             if (nullable) {
-              RETURN_NOT_OK(filter_tile(
+              throw_if_not_ok(filter_tile(
                   name, &writer_tile.validity_tile(), nullptr, false, true));
             }
             return Status::Ok();

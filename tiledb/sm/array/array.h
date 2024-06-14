@@ -115,6 +115,11 @@ class OpenedArray {
         encryption_key_->set_key(encryption_type, key_bytes, key_length));
   }
 
+  /** Returns the context resources. */
+  inline ContextResources& resources() {
+    return resources_;
+  }
+
   /** Returns the array directory object. */
   inline const ArrayDirectory& array_directory() const {
     return array_dir_.value();

@@ -45,6 +45,7 @@
 #include "tiledb/sm/misc/parallel_functions.h"
 #include "tiledb/sm/stats/global_stats.h"
 #include "tiledb/sm/tile/tile.h"
+#include "webp_filter.h"
 
 using namespace tiledb::common;
 
@@ -357,11 +358,11 @@ Status FilterPipeline::filter_chunks_forward(
     std::memcpy((char*)dest + dest_offset, &metadata_size, sizeof(uint32_t));
     dest_offset += sizeof(uint32_t);
     // Write the chunk metadata
-    RETURN_NOT_OK(
+    throw_if_not_ok(
         final_stage_output_metadata.copy_to((char*)dest + dest_offset));
     dest_offset += metadata_size;
     // Write the chunk data
-    RETURN_NOT_OK(final_stage_output_data.copy_to((char*)dest + dest_offset));
+    throw_if_not_ok(final_stage_output_data.copy_to((char*)dest + dest_offset));
     return Status::Ok();
   });
 
@@ -638,6 +639,8 @@ bool FilterPipeline::use_tile_chunking(
     } else if (version >= 13 && has_filter(FilterType::FILTER_DICTIONARY)) {
       return false;
     }
+  } else if (has_filter(FilterType::FILTER_WEBP)) {
+    return false;
   }
 
   return true;

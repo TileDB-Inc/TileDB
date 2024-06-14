@@ -279,11 +279,7 @@ int32_t tiledb_filestore_uri_import(
   std::vector<std::byte> buffer(buffer_size);
 
   tiledb::sm::Subarray subarray(
-      array.get(),
-      nullptr,
-      context.resources().logger(),
-      true,
-      context.storage_manager());
+      array.get(), nullptr, context.resources().logger(), true);
   // We need to get the right end boundary of the last space tile.
   // The last chunk either falls exactly on the end of the file
   // or it goes beyond the end of the file so that it's equal in size
@@ -303,11 +299,7 @@ int32_t tiledb_filestore_uri_import(
     tiledb::sm::Query query(context.storage_manager(), array);
     throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
     tiledb::sm::Subarray subarray_cloud_fix(
-        array.get(),
-        nullptr,
-        context.resources().logger(),
-        true,
-        context.storage_manager());
+        array.get(), nullptr, context.resources().logger(), true);
 
     uint64_t cloud_fix_range_arr[] = {start, end};
     tiledb::type::Range subarray_range_cloud_fix(
@@ -431,11 +423,7 @@ int32_t tiledb_filestore_uri_export(
   do {
     uint64_t write_size = end_range - start_range + 1;
     tiledb::sm::Subarray subarray(
-        array.get(),
-        nullptr,
-        context.resources().logger(),
-        true,
-        context.storage_manager());
+        array.get(), nullptr, context.resources().logger(), true);
     uint64_t subarray_range_arr[] = {start_range, end_range};
     tiledb::type::Range subarray_range(
         static_cast<void*>(subarray_range_arr), sizeof(uint64_t) * 2);
@@ -548,11 +536,7 @@ int32_t tiledb_filestore_buffer_import(
   throw_if_not_ok(query.set_layout(tiledb::sm::Layout::ROW_MAJOR));
 
   tiledb::sm::Subarray subarray(
-      array.get(),
-      nullptr,
-      context.resources().logger(),
-      true,
-      context.storage_manager());
+      array.get(), nullptr, context.resources().logger(), true);
   uint64_t subarray_range_arr[] = {
       static_cast<uint64_t>(0), static_cast<uint64_t>(size - 1)};
   tiledb::type::Range subarray_range(
@@ -610,11 +594,7 @@ int32_t tiledb_filestore_buffer_export(
   }
 
   tiledb::sm::Subarray subarray(
-      array.get(),
-      nullptr,
-      context.resources().logger(),
-      true,
-      context.storage_manager());
+      array.get(), nullptr, context.resources().logger(), true);
   uint64_t subarray_range_arr[] = {
       static_cast<uint64_t>(offset), static_cast<uint64_t>(offset + size - 1)};
   tiledb::type::Range subarray_range(

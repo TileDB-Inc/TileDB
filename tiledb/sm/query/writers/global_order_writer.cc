@@ -872,8 +872,8 @@ Status GlobalOrderWriter::prepare_full_tiles(
     auto buff_it = buffers_.begin();
     std::advance(buff_it, i);
     const auto& name = buff_it->first;
-    RETURN_CANCEL_OR_ERROR(
-        prepare_full_tiles(name, coord_dups, &tiles->at(name)));
+    throw_if_not_ok(prepare_full_tiles(name, coord_dups, &tiles->at(name)));
+    this->throw_if_cancellation_requested();
     return Status::Ok();
   });
 

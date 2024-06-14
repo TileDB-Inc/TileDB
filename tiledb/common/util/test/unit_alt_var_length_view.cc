@@ -603,3 +603,51 @@ TEST_CASE("alt_var_length_view: Sort", "[alt_var_length_view]") {
     }
   }
 }
+
+TEST_CASE("alt_var_length_view: Sort and actualize", "[alt_var_length_view]") {
+  std::vector<double> r = {
+      1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0, 11.0, 12.0};
+  std::vector<double> s(r);
+  std::vector<size_t> o = {0, 3, 6, 10, 12};
+  alt_var_length_view<std::vector<double>, std::vector<size_t>> v(r, o);
+
+  SECTION("Sort by size, ascending") {
+    std::vector<std::vector<double>> expected = {
+        {11.0, 12.0},
+        {1.0, 2.0, 3.0},
+        {4.0, 5.0, 6.0},
+        {7.0, 8.0, 9.0, 10.0},
+    };
+
+    std::sort(v.begin(), v.end(), [](auto& a, auto& b) {
+      return a.size() < b.size();
+    });
+
+    CHECK(v.begin()->size() == 2);
+    CHECK((v.begin() + 1)->size() == 3);
+    CHECK((v.begin() + 2)->size() == 3);
+    CHECK((v.begin() + 3)->size() == 4);
+
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+
+    // Check the underlying data has not changed even though sorted
+    CHECK(std::ranges::equal(r, s));
+    std::vector<double> scratch(size(r));
+
+    actualize(v, r, o, scratch);
+
+    // Check the underlying data has changed to the expected sorted order
+    CHECK(std::ranges::equal(
+        r,
+        std::vector<double>{
+            11.0, 12.0, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0, 9.0, 10.0}));
+
+    // The alt_var_length_view should still "look" the same
+    CHECK(std::ranges::equal(o, std::vector<size_t>{2, 3, 3, 4, 12}));
+    for (auto&& i : v) {
+      CHECK(std::ranges::equal(i, expected[&i - &*v.begin()]));
+    }
+  }
+}

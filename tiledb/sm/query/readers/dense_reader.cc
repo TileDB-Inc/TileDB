@@ -1141,7 +1141,7 @@ Status DenseReader::apply_query_condition(
                       *(fragment_metadata_[frag_domains[i].fid()]
                             ->array_schema()
                             .get()));
-                  RETURN_NOT_OK(condition_->apply_dense(
+                  throw_if_not_ok(condition_->apply_dense(
                       params,
                       result_space_tile.result_tile(frag_domains[i].fid()),
                       start,
@@ -1172,7 +1172,7 @@ Status DenseReader::apply_query_condition(
 
             return Status::Ok();
           });
-      RETURN_NOT_OK(status);
+      throw_if_not_ok(status);
 
       // For `qc_coords_mode` just fill in the coordinates and skip
       // attribute
@@ -1273,7 +1273,7 @@ Status DenseReader::copy_attribute(
             auto& result_space_tile = result_space_tiles.at(tc);
 
             // Copy the tile offsets.
-            return copy_offset_tiles<DimType, OffType>(
+            throw_if_not_ok(copy_offset_tiles<DimType, OffType>(
                 name,
                 tile_extents,
                 result_space_tile,
@@ -1285,7 +1285,8 @@ Status DenseReader::copy_attribute(
                 range_info,
                 qc_result,
                 range_thread_idx,
-                num_range_threads);
+                num_range_threads));
+            return Status::Ok();
           });
       RETURN_NOT_OK(status);
     }
@@ -1332,7 +1333,7 @@ Status DenseReader::copy_attribute(
             const DimType* tc = (DimType*)&tile_coords[t][0];
             auto& result_space_tile = result_space_tiles.at(tc);
 
-            return copy_var_tiles<DimType, OffType>(
+            throw_if_not_ok(copy_var_tiles<DimType, OffType>(
                 name,
                 tile_extents,
                 result_space_tile,
@@ -1345,7 +1346,7 @@ Status DenseReader::copy_attribute(
                 t == iteration_tile_data->t_end() - 1,
                 var_buffer_size,
                 range_thread_idx,
-                num_range_threads);
+                num_range_threads));
 
             return Status::Ok();
           });
@@ -1375,7 +1376,7 @@ Status DenseReader::copy_attribute(
             auto& result_space_tile = result_space_tiles.at(tc);
 
             // Copy the tile fixed values.
-            RETURN_NOT_OK(copy_fixed_tiles(
+            throw_if_not_ok(copy_fixed_tiles(
                 name,
                 tile_extents,
                 result_space_tile,
@@ -1485,7 +1486,7 @@ Status DenseReader::process_aggregates(
             }
           }
         } else {
-          RETURN_NOT_OK(aggregate_tiles(
+          throw_if_not_ok(aggregate_tiles(
               name,
               tile_extents,
               result_space_tile,
