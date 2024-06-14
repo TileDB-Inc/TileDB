@@ -73,6 +73,7 @@ ObjectIter* object_iter_begin(
       }
     } catch (...) {
       tdb_delete(obj_iter);
+      throw;
     }
   }
 
@@ -106,6 +107,7 @@ ObjectIter* object_iter_begin(ContextResources& resources, const char* path) {
       }
     } catch (...) {
       tdb_delete(obj_iter);
+      throw;
     }
   }
 
