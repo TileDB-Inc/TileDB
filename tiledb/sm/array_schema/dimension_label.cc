@@ -259,17 +259,6 @@ shared_ptr<DimensionLabel> DimensionLabel::deserialize(
   }
 }
 
-void DimensionLabel::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 const shared_ptr<ArraySchema> DimensionLabel::schema() const {
   if (!schema_) {
     throw StatusException(
@@ -333,15 +322,15 @@ void DimensionLabel::serialize(Serializer& serializer, uint32_t) const {
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::DimensionLabel& dl) {
   os << "### Dimension Label ###\n";
-  os << "- Dimension Index: " << dl.dimension_index() << "\n";
-  os << "- Dimension Label Name: " << dl.name() << "\n";
-  os << "- URI: " << dl.uri().to_string() << "\n";
-  os << "- Label Attribute Name: " << dl.name() << "\n";
-  os << "- Label Type: " << datatype_str(dl.label_type()) << "\n";
+  os << "- Dimension Index: " << dl.dimension_index() << std::endl;
+  os << "- Dimension Label Name: " << dl.name() << std::endl;
+  os << "- URI: " << dl.uri().to_string() << std::endl;
+  os << "- Label Attribute Name: " << dl.name() << std::endl;
+  os << "- Label Type: " << datatype_str(dl.label_type()) << std::endl;
   (dl.label_cell_val_num() == tiledb::sm::constants::var_num) ?
       os << "- Label cell val num: var\n" :
-      os << "- Label cell val num: " << dl.label_cell_val_num() << "\n";
-  os << "\n";
+      os << "- Label cell val num: " << dl.label_cell_val_num() << std::endl;
+  os << std::endl;
 
   return os;
 }

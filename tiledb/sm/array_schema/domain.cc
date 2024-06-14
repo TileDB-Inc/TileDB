@@ -372,17 +372,6 @@ shared_ptr<Dimension> Domain::shared_dimension(const std::string& name) const {
   return {nullptr};
 }
 
-void Domain::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 void Domain::expand_ndrange(const NDRange& r1, NDRange* r2) const {
   assert(r2 != nullptr);
 
@@ -1185,7 +1174,7 @@ std::ostream& operator<<(std::ostream& os, const tiledb::sm::Domain& domain) {
   std::string tmp;
 
   for (unsigned i = 0; i < domain.dim_num(); i++) {
-    os << "\n";
+    os << std::endl;
     os << *domain.dimension_ptr(i);
   }
 

@@ -901,7 +901,7 @@ TILEDB_EXPORT int32_t tiledb_array_schema_has_attribute(
  *
  * @param ctx The TileDB context.
  * @param array_schema The array schema.
- * @param out The output file.
+ * @param out The output handle.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_array_schema_dump(

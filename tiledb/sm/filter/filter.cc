@@ -142,8 +142,6 @@ void Filter::init_decompression_resource_pool(uint64_t) {
 }  // namespace tiledb
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Filter& filter) {
-  std::string s;
-  filter.output(&s);
-  os << s;
+  filter.output(os);
   return os;
 }

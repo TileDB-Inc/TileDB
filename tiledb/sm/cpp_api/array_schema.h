@@ -157,18 +157,6 @@ class ArraySchema : public Schema {
   /*                API                */
   /* ********************************* */
 
-  /**
-   * Dumps the array schema in an ASCII representation to an output.
-   *
-   * @param out (Optional) File to dump output to. Defaults to `nullptr`
-   * which will lead to selection of `stdout`.
-   */
-  void dump(FILE* out = nullptr) const override {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(
-        tiledb_array_schema_dump(ctx.ptr().get(), schema_.get(), out));
-  }
-
   /** Returns the array type. */
   tiledb_array_type_t array_type() const {
     auto& ctx = ctx_.get();

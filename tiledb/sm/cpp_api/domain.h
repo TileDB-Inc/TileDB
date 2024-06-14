@@ -149,17 +149,6 @@ class Domain {
     return 0;
   }
 
-  /**
-   * Dumps the domain in an ASCII representation to an output.
-   *
-   * @param out (Optional) File to dump output to. Defaults to `nullptr`
-   * which will lead to selection of `stdout`.
-   */
-  void dump(FILE* out = nullptr) const {
-    auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_domain_dump(ctx.ptr().get(), domain_.get(), out));
-  }
-
   /** Returns the domain type. */
   tiledb_datatype_t type() const {
     auto& ctx = ctx_.get();

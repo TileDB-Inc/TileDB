@@ -116,10 +116,6 @@ struct tiledb_domain_handle_t
     throw_if_not_ok(domain_->has_dimension(name, &b));
     return b;
   }
-
-  void dump(FILE* out) const {
-    domain_->dump(out);
-  }
 };
 
 /**

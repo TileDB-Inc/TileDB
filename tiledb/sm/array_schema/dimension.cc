@@ -323,17 +323,6 @@ const Range& Dimension::domain() const {
   return domain_;
 }
 
-void Dimension::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 const FilterPipeline& Dimension::filters() const {
   return filters_;
 }
@@ -1677,17 +1666,17 @@ std::ostream& operator<<(std::ostream& os, const tiledb::sm::Dimension& dim) {
 
   // Dump
   os << "### Dimension ###\n";
-  os << "- Name: " << dim.name() << "\n";
-  os << "- Type: " << datatype_str(dim.type()) << "\n";
+  os << "- Name: " << dim.name() << std::endl;
+  os << "- Type: " << datatype_str(dim.type()) << std::endl;
   if (!dim.var_size())
-    os << "- Cell val num: " << dim.cell_val_num() << "\n";
+    os << "- Cell val num: " << dim.cell_val_num() << std::endl;
   else
     os << "- Cell val num: var\n";
-  os << "- Domain: " << domain_s << "\n";
-  os << "- Tile extent: " << tile_extent_s << "\n";
+  os << "- Domain: " << domain_s << std::endl;
+  os << "- Tile extent: " << tile_extent_s << std::endl;
   os << "- Filters: " << dim.filters().size();
   os << dim.filters();
-  os << "\n";
+  os << std::endl;
 
   return os;
 }

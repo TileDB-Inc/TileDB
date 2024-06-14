@@ -70,7 +70,9 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
   PseudoChecksumFilter* clone_impl() const override;
 
  protected:
-  inline std::ostream& output(std::ostream&) const override{};
+  inline std::ostream& output(std::ostream& os) const override {
+    return os;
+  };
 };
 
 }  // namespace tiledb::sm

@@ -74,7 +74,9 @@ class AddNInPlace : public tiledb::sm::Filter {
   AddNInPlace* clone_impl() const override;
 
  protected:
-  inline std::ostream& output(std::ostream&) const override {};
+  inline std::ostream& output(std::ostream& os) const override {
+    return os;
+  };
 
  private:
   uint64_t increment_;

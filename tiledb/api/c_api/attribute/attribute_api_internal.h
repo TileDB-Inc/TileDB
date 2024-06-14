@@ -90,7 +90,7 @@ struct tiledb_attribute_handle_t
   /**
    * Copy the underlying attribute object.
    */
-  [[nodiscard]] attribute_type copy_attribute() {
+  [[nodiscard]] attribute_type copy_attribute() const {
     return attr_;
   }
 
@@ -190,13 +190,6 @@ struct tiledb_attribute_handle_t
   [[nodiscard]] std::optional<std::string> get_enumeration_name() const {
     return attr_->get_enumeration_name();
   };
-
-  /**
-   * Facade for `Attribute` function
-   */
-  void dump(FILE* out) const {
-    attr_->dump(out);
-  }
 };
 
 namespace tiledb::api {

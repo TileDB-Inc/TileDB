@@ -44,7 +44,9 @@ void check_dump(const Attribute& attr, const std::string& gold_out) {
   fwrite(gold_out.c_str(), sizeof(char), gold_out.size(), gold_fout);
   fclose(gold_fout);
   FILE* fout = fopen("fout.txt", "w");
-  attr.dump(fout);
+  std::stringstream ss;
+  ss << attr;
+  fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), fout);
   fclose(fout);
 #ifdef _WIN32
   CHECK(!system("FC gold_fout.txt fout.txt > nul"));

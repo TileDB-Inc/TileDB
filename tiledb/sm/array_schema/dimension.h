@@ -161,9 +161,6 @@ class Dimension {
   /** Returns the domain. */
   const Range& domain() const;
 
-  /** Dumps the dimension contents in ASCII form in the selected output file. */
-  void dump(FILE* out) const;
-
   /** Returns the filter pipeline of this dimension. */
   const FilterPipeline& filters() const;
 

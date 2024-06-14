@@ -689,17 +689,6 @@ ArraySchema::dimension_size_type ArraySchema::dim_num() const {
   return domain_->dim_num();
 }
 
-void ArraySchema::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 Status ArraySchema::has_attribute(
     const std::string& name, bool* has_attr) const {
   *has_attr = false;
@@ -1806,12 +1795,12 @@ void ArraySchema::set_current_domain(
 
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::ArraySchema& schema) {
-  os << "- Array type: " << array_type_str(schema.array_type()) << "\n";
-  os << "- Cell order: " << layout_str(schema.cell_order()) << "\n";
-  os << "- Tile order: " << layout_str(schema.tile_order()) << "\n";
-  os << "- Capacity: " << schema.capacity() << "\n";
+  os << "- Array type: " << array_type_str(schema.array_type()) << std::endl;
+  os << "- Cell order: " << layout_str(schema.cell_order()) << std::endl;
+  os << "- Tile order: " << layout_str(schema.tile_order()) << std::endl;
+  os << "- Capacity: " << schema.capacity() << std::endl;
   os << "- Allows duplicates: " << (schema.allows_dups() ? "true" : "false")
-     << "\n";
+     << std::endl;
   os << "- Coordinates filters: " << schema.coords_filters().size();
 
   os << schema.coords_filters();
@@ -1822,19 +1811,19 @@ std::ostream& operator<<(
   os << "\n- Validity filters: " << schema.cell_validity_filters().size();
 
   os << schema.cell_validity_filters();
-  os << "\n";
+  os << std::endl;
 
   if (schema.shared_domain() != nullptr) {
     os << *schema.shared_domain();
   }
 
   for (auto& attr : schema.attributes()) {
-    os << "\n";
+    os << std::endl;
     os << *attr;
   }
 
   for (auto& enmr_iter : schema.enumeration_map()) {
-    os << "\n";
+    os << std::endl;
     if (enmr_iter.second != nullptr) {
       os << *enmr_iter.second;
     } else {
@@ -1845,7 +1834,7 @@ std::ostream& operator<<(
   }
 
   for (auto& label : schema.dimension_labels()) {
-    os << "\n";
+    os << std::endl;
     os << *label;
   }
 

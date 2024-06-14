@@ -302,9 +302,6 @@ class ArraySchema {
   /** Returns the number of dimensions. */
   dimension_size_type dim_num() const;
 
-  /** Dumps the array schema in ASCII format in the selected output file. */
-  void dump(FILE* out) const;
-
   /**
    * Checks if the array schema has a attribute of the given name.
    *

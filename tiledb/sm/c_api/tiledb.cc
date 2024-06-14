@@ -703,7 +703,16 @@ int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
-  array_schema->array_schema_->dump(out);
+  std::stringstream ss;
+
+  ss << *array_schema->array_schema_;
+  size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
+  if (r != ss.str().size()) {
+    throw CAPIException(
+        "Error writing array schema " +
+        array_schema->array_schema_->array_uri().to_string() + " to file");
+  }
+
   return TILEDB_OK;
 }
 

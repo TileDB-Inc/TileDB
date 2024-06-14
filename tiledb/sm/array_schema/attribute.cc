@@ -189,17 +189,6 @@ Attribute Attribute::deserialize(
       enmr_name);
 }
 
-void Attribute::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 const FilterPipeline& Attribute::filters() const {
   return filters_;
 }
@@ -474,16 +463,16 @@ ByteVecValue Attribute::default_fill_value(
 
 std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
   os << "### Attribute ###\n";
-  os << "- Name: " << a.name() << "\n";
-  os << "- Type: " << datatype_str(a.type()) << "\n";
-  os << "- Nullable: " << (a.nullable() ? "true" : "false") << "\n";
+  os << "- Name: " << a.name() << std::endl;
+  os << "- Type: " << datatype_str(a.type()) << std::endl;
+  os << "- Nullable: " << (a.nullable() ? "true" : "false") << std::endl;
   if (!a.var_size())
-    os << "- Cell val num: " << a.cell_val_num() << "\n";
+    os << "- Cell val num: " << a.cell_val_num() << std::endl;
   else
     os << "- Cell val num: var\n";
   os << "- Filters: " << a.filters().size();
   os << a.filters();
-  os << "\n";
+  os << std::endl;
 
   os << "- Fill value: ";
   auto v_size = tiledb::sm::datatype_size(a.type());
@@ -497,18 +486,18 @@ std::ostream& operator<<(std::ostream& os, const tiledb::sm::Attribute& a) {
   }
 
   if (a.nullable()) {
-    os << "\n";
+    os << std::endl;
     os << "- Fill value validity: " << std::to_string(a.fill_value_validity());
   }
   if (a.order() != tiledb::sm::DataOrder::UNORDERED_DATA) {
-    os << "\n";
+    os << std::endl;
     os << "- Data ordering: " << data_order_str(a.order());
   }
   if (a.get_enumeration_name().has_value()) {
-    os << "\n";
+    os << std::endl;
     os << "- Enumeration name: " << a.get_enumeration_name().value();
   }
-  os << "\n";
+  os << std::endl;
 
   return os;
 }

@@ -127,12 +127,6 @@ class FilterPipeline {
       Deserializer& deserializer, const uint32_t version, Datatype datatype);
 
   /**
-   * Dumps the filter pipeline details in ASCII format in the selected
-   * output file.
-   */
-  void dump(FILE* out) const;
-
-  /**
    * Checks that two filters have compatible input / output types.
    * Checks fail if the first filter outputs a type not accepted by the second
    * filter as input.

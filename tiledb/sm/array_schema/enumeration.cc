@@ -393,17 +393,6 @@ uint64_t Enumeration::index_of(const void* data, uint64_t size) const {
   return iter->second;
 }
 
-void Enumeration::dump(FILE* out) const {
-  if (out == nullptr) {
-    out = stdout;
-  }
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 void Enumeration::generate_value_map() {
   // If we've got no data, there are no values to generate.
   if (data_.size() == 0) {

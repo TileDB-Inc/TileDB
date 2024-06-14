@@ -306,7 +306,7 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_get_offsets(
  * @endcode
  *
  * @param ctx The TileDB context.
- * @param attr The attribute.
+ * @param enumeration The enumeration.
  * @param out The output.
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error./
  */
@@ -314,6 +314,31 @@ TILEDB_EXPORT capi_return_t tiledb_enumeration_dump(
     tiledb_ctx_t* ctx,
     tiledb_enumeration_t* enumeration,
     FILE* out) TILEDB_NOEXCEPT;
+
+/**
+ * Dumps the contents of an Enumeration in ASCII form to the selected string
+ * output.
+ *
+ * The output string handle must be freed by the user after use.
+ *
+ * **Example:**
+ *
+ * @code{.c}
+ * tiledb_string_t* tdb_string;
+ * tiledb_enumeration_dump_str(ctx, enumeration, &tdb_string);
+ * // Use the string
+ * tiledb_string_free(&tdb_string);
+ * @endcode
+ *
+ * @param ctx The TileDB context.
+ * @param enumeration The enumeration.
+ * @param out The output string.
+ * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
+ */
+TILEDB_EXPORT int32_t tiledb_enumeration_dump_str(
+    tiledb_ctx_t* ctx,
+    tiledb_enumeration_t* enumeration,
+    tiledb_string_t** out) TILEDB_NOEXCEPT;
 
 #ifdef __cplusplus
 }

@@ -101,18 +101,6 @@ void NDRectangle::serialize(Serializer& serializer) const {
   }
 }
 
-void NDRectangle::dump(FILE* out) const {
-  if (out == nullptr) {
-    out = stdout;
-  }
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 void NDRectangle::set_range(const Range& r, uint32_t idx) {
   if (idx >= range_data_.size()) {
     throw std::logic_error(

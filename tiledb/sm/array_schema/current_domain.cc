@@ -119,18 +119,6 @@ void CurrentDomain::serialize(Serializer& serializer) const {
   }
 }
 
-void CurrentDomain::dump(FILE* out) const {
-  if (out == nullptr) {
-    out = stdout;
-  }
-
-  std::stringstream ss;
-  ss << *this;
-  [[maybe_unused]] size_t r =
-      fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
-  assert(r == ss.str().size());
-}
-
 void CurrentDomain::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
   if (!empty_) {
     throw std::logic_error(

@@ -131,15 +131,6 @@ struct tiledb_enumeration_handle_t
   [[nodiscard]] inline const span<uint8_t> offsets() const {
     return enumeration_->offsets();
   }
-
-  /**
-   * Dump a representation of the Enumeration to out
-   *
-   * @param out Where to display the output, stdout if nullptr
-   */
-  inline void dump(FILE* out) const {
-    enumeration_->dump(out);
-  }
 };
 
 namespace tiledb::api {

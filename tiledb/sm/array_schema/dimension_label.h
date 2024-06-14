@@ -141,12 +141,6 @@ class DimensionLabel {
   }
 
   /**
-   * Dumps the dimension label contents in ASCII form in the selected output
-   * file.
-   */
-  void dump(FILE* out) const;
-
-  /**
    * Returns ``true`` if the dimension label is not contained inside the array.
    */
   inline bool is_external() const {

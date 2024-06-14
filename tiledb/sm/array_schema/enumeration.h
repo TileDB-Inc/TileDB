@@ -354,13 +354,6 @@ class Enumeration {
    */
   uint64_t index_of(const void* data, uint64_t size) const;
 
-  /**
-   * Dump a textual representation of the Enumeration to a FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
-
  private:
   /* ********************************* */
   /*        PRIVATE CONSTRUCTORS       */

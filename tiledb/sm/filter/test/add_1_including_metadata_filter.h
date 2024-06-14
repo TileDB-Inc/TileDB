@@ -72,7 +72,9 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
   Add1IncludingMetadataFilter* clone_impl() const override;
 
  protected:
-  inline std::ostream& output(std::ostream&) const override{};
+  inline std::ostream& output(std::ostream& os) const override {
+    return os;
+  };
 };
 
 }  // namespace tiledb::sm

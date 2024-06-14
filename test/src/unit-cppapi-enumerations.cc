@@ -676,21 +676,24 @@ template <typename T>
 void CPPEnumerationFx::check_dump(const T& val) {
   FILE* handle = fopen(dump_name.c_str(), "w");
   REQUIRE(handle != nullptr);
-  val.dump(handle);
+
+  std::stringstream ss1;
+  ss1 << val;
+  fwrite(ss1.str().c_str(), sizeof(char), ss1.str().size(), handle);
   fclose(handle);
 
-  std::stringstream ss;
+  std::stringstream ss2;
 
   // Scoped in an anonymous block to ensure that rstream closes before
   // we attempt to delete the file for cleanup.
   {
     std::ifstream rstream(dump_name);
     if (rstream.is_open()) {
-      ss << rstream.rdbuf();
+      ss2 << rstream.rdbuf();
     }
   }
 
-  auto data = ss.str();
+  auto data = ss2.str();
   auto iter = data.find("Enumeration");
   REQUIRE(iter != std::string::npos);
 

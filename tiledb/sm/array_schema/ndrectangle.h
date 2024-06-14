@@ -121,13 +121,6 @@ class NDRectangle {
    */
   void serialize(Serializer& serializer) const;
 
-  /**
-   * Dump a textual representation of the NDRectangle to the FILE
-   *
-   * @param out A file pointer to write to. If out is nullptr, use stdout
-   */
-  void dump(FILE* out) const;
-
   /** nd ranges accessor */
   const NDRange& get_ndranges() const {
     return range_data_;
