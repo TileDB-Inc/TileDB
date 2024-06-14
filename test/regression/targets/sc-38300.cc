@@ -53,7 +53,7 @@ void create_array(const std::string& array_uri) {
 void dump_schema(const std::string& array_uri) {
   Context ctx;
   Array array(ctx, array_uri, TILEDB_READ);
-  array.schema().dump();
+  std::cout << array.schema();
   ArrayExperimental::load_all_enumerations(ctx, array);
-  array.schema().dump();
+  std::cout << array.schema();
 }
