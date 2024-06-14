@@ -45,7 +45,7 @@ void AddNInPlace::dump(FILE* out) const {
   (void)out;
 }
 
-Status AddNInPlace::run_forward(
+void AddNInPlace::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -53,7 +53,7 @@ Status AddNInPlace::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   auto input_size = input->size();
-  RETURN_NOT_OK(output->append_view(input));
+  throw_if_not_ok(output->append_view(input));
   output->reset_offset();
 
   uint64_t nelts = input_size / sizeof(uint64_t);
@@ -64,8 +64,7 @@ Status AddNInPlace::run_forward(
   }
 
   // Metadata not modified by this filter.
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-  return Status::Ok();
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
 }
 
 Status AddNInPlace::run_reverse(

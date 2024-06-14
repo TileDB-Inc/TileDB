@@ -899,7 +899,7 @@ Status WriterBase::filter_tile(
   }
 
   // Append an encryption filter when necessary.
-  RETURN_NOT_OK(FilterPipeline::append_encryption_filter(
+  throw_if_not_ok(FilterPipeline::append_encryption_filter(
       &filters, array_->get_encryption_key()));
 
   // Check if chunk or tile level filtering/unfiltering is appropriate
@@ -907,8 +907,8 @@ Status WriterBase::filter_tile(
       array_schema_.var_size(name), array_schema_.version(), tile->type());
 
   assert(!tile->filtered());
-  RETURN_NOT_OK(filters.run_forward(
-      stats_, tile, offsets_tile, &resources_.compute_tp(), use_chunking));
+  filters.run_forward(
+      stats_, tile, offsets_tile, &resources_.compute_tp(), use_chunking);
   assert(tile->filtered());
 
   return Status::Ok();

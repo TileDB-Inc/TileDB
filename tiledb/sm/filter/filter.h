@@ -53,6 +53,13 @@ enum class FilterOption : uint8_t;
 enum class FilterType : uint8_t;
 enum class Datatype : uint8_t;
 
+class FilterStatusException : public StatusException {
+ public:
+  explicit FilterStatusException(const std::string& msg)
+      : StatusException("Filter", msg) {
+  }
+};
+
 /**
  * A Filter processes or modifies a byte region, modifying it in place, or
  * producing output in new buffers.
@@ -139,7 +146,7 @@ class Filter {
    * @param output Buffer with filtered data (unused by in-place filters).
    * @return
    */
-  virtual Status run_forward(
+  virtual void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,

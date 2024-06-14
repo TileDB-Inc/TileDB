@@ -79,7 +79,7 @@ class ByteshuffleFilter : public Filter {
   /**
    * Shuffle the bytes of the input data into the output data buffer.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,

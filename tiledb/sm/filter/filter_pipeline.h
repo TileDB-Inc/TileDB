@@ -223,7 +223,7 @@ class FilterPipeline {
    * filtering, false if not.
    * @return Status
    */
-  Status run_forward(
+  void run_forward(
       stats::Stats* writer_stats,
       WriterTile* tile,
       WriterTile* offsets_tile,
