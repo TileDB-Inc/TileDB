@@ -352,8 +352,6 @@ template <class R, class I, class J, class K, class L>
 alt_var_length_view(R, R, J, I, I, K, L)
     -> alt_var_length_view<std::ranges::subrange<R>, std::ranges::subrange<I>>;
 
-
-
 /**
  * Actually reorder the data underlying an alt_var_length_view (un-virtualize
  * the permutation).  Upon return, data will have the sorted data, offsets will
