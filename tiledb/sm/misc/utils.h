@@ -46,14 +46,6 @@
 namespace tiledb {
 namespace sm {
 
-/** Class for generic status exceptions. */
-class GenericException : public StatusException {
- public:
-  explicit GenericException(const std::string& msg)
-      : StatusException("Generic", msg) {
-  }
-};
-
 using namespace tiledb::common;
 
 class Posix;

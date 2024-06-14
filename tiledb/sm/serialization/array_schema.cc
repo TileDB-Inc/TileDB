@@ -67,7 +67,6 @@
 #include "tiledb/sm/filter/webp_filter.h"
 #include "tiledb/sm/filter/xor_filter.h"
 #include "tiledb/sm/misc/constants.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/array_schema.h"
 #include "tiledb/sm/serialization/enumeration.h"
 
@@ -78,6 +77,21 @@
 using namespace tiledb::common;
 
 namespace tiledb::sm::serialization {
+class ArraySchemaSerializationException : public StatusException {
+ public:
+  explicit ArraySchemaSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][ArraySchema]", message) {
+  }
+};
+
+class ArraySchemaSerializationDisabledException
+    : public ArraySchemaSerializationException {
+ public:
+  explicit ArraySchemaSerializationDisabledException()
+      : ArraySchemaSerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -358,7 +372,7 @@ tuple<Status, optional<shared_ptr<FilterPipeline>>> filter_pipeline_from_capnp(
 void attribute_to_capnp(
     const Attribute* attribute, capnp::Attribute::Builder* attribute_builder) {
   if (attribute == nullptr) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing attribute; attribute is null.");
   }
 
@@ -771,7 +785,7 @@ void dimension_label_to_capnp(
   if (dimension_label.uri_is_relative()) {
     dim_label_builder->setUri(dimension_label.uri().to_string());
   } else {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Serialization::dimension_label_to_capnp] Serialization of absolute "
         "dimension label URIs not yet implemented.");
   }
@@ -798,7 +812,7 @@ shared_ptr<DimensionLabel> dimension_label_from_capnp(
 
   auto is_relative = dim_label_reader.getRelative();
   if (!is_relative) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "[Deserialization::dimension_label_from_capnp] Deserialization of "
         "absolute dimension label URIs not yet implemented.");
   }
@@ -1863,18 +1877,18 @@ void serialize_load_array_schema_request(
         break;
       }
       default: {
-        throw SerializationStatusException(
+        throw ArraySchemaSerializationException(
             "Error serializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1908,17 +1922,17 @@ LoadArraySchemaRequest deserialize_load_array_schema_request(
         return load_array_schema_request_from_capnp(reader);
       }
       default: {
-        throw SerializationStatusException(
+        throw ArraySchemaSerializationException(
             "Error deserializing load array schema request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema request; exception " +
         std::string(e.what()));
   }
@@ -1964,18 +1978,18 @@ void serialize_load_array_schema_response(
         break;
       }
       default: {
-        throw SerializationStatusException(
+        throw ArraySchemaSerializationException(
             "Error serializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error serializing load array schema response; exception " +
         std::string(e.what()));
   }
@@ -2013,17 +2027,17 @@ shared_ptr<ArraySchema> deserialize_load_array_schema_response(
         return load_array_schema_response_from_capnp(reader, memory_tracker);
       }
       default: {
-        throw SerializationStatusException(
+        throw ArraySchemaSerializationException(
             "Error deserializing load array schema response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw ArraySchemaSerializationException(
         "Error deserializing load array schema response; exception " +
         std::string(e.what()));
   }
@@ -2082,22 +2096,22 @@ Status max_buffer_sizes_deserialize(
 
 void serialize_load_array_schema_request(
     const Config&, const LoadArraySchemaRequest&, SerializationType, Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw ArraySchemaSerializationDisabledException();
 }
 
 LoadArraySchemaRequest deserialize_load_array_schema_request(
     SerializationType, const Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw ArraySchemaSerializationDisabledException();
 }
 
 void serialize_load_array_schema_response(
     const ArraySchema&, SerializationType, Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw ArraySchemaSerializationDisabledException();
 }
 
 shared_ptr<ArraySchema> deserialize_load_array_schema_response(
     SerializationType, const Buffer&, shared_ptr<MemoryTracker>) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw ArraySchemaSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION

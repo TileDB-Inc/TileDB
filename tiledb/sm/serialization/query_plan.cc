@@ -46,13 +46,28 @@
 #include "tiledb/sm/enums/array_type.h"
 #include "tiledb/sm/enums/layout.h"
 #include "tiledb/sm/enums/serialization_type.h"
-#include "tiledb/sm/misc/utils.h"
 #include "tiledb/sm/serialization/query.h"
 #include "tiledb/sm/serialization/query_plan.h"
 
 using namespace tiledb::common;
 
 namespace tiledb::sm::serialization {
+
+class QueryPlanSerializationException : public StatusException {
+ public:
+  explicit QueryPlanSerializationException(const std::string& message)
+      : StatusException("[TileDB::Serialization][QueryPlan]", message) {
+  }
+};
+
+class QueryPlanSerializationDisabledException
+    : public QueryPlanSerializationException {
+ public:
+  explicit QueryPlanSerializationDisabledException()
+      : QueryPlanSerializationException(
+            "Cannot (de)serialize; serialization not enabled.") {
+  }
+};
 
 #ifdef TILEDB_SERIALIZATION
 
@@ -179,18 +194,18 @@ void serialize_query_plan_request(
         break;
       }
       default: {
-        throw SerializationStatusException(
+        throw QueryPlanSerializationException(
             "Error serializing query plan request; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error serializing query plan request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error serializing query plan request; exception " +
         std::string(e.what()));
   }
@@ -226,17 +241,17 @@ void deserialize_query_plan_request(
         break;
       }
       default: {
-        throw SerializationStatusException(
+        throw QueryPlanSerializationException(
             "Error deserializing query plan request; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error deserializing query plan request; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error deserializing query plan request; exception " +
         std::string(e.what()));
   }
@@ -276,18 +291,18 @@ void serialize_query_plan_response(
         break;
       }
       default: {
-        throw SerializationStatusException(
+        throw QueryPlanSerializationException(
             "Error serializing query plan response; "
             "Unknown serialization type passed");
       }
     }
 
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error serializing query plan response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error serializing query plan response; exception " +
         std::string(e.what()));
   }
@@ -319,17 +334,17 @@ QueryPlan deserialize_query_plan_response(
         return query_plan_response_from_capnp(reader, query);
       }
       default: {
-        throw SerializationStatusException(
+        throw QueryPlanSerializationException(
             "Error deserializing query plan response; "
             "Unknown serialization type passed");
       }
     }
   } catch (kj::Exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error deserializing query plan response; kj::Exception: " +
         std::string(e.getDescription().cStr()));
   } catch (std::exception& e) {
-    throw SerializationStatusException(
+    throw QueryPlanSerializationException(
         "Error deserializing query plan response; exception " +
         std::string(e.what()));
   }
@@ -339,22 +354,22 @@ QueryPlan deserialize_query_plan_response(
 
 void serialize_query_plan_request(
     const Config&, Query&, const SerializationType, Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw QueryPlanSerializationDisabledException();
 }
 
 void deserialize_query_plan_request(
     const SerializationType, const Buffer&, ThreadPool&, Query&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw QueryPlanSerializationDisabledException();
 }
 
 void serialize_query_plan_response(
     const QueryPlan&, const SerializationType, Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw QueryPlanSerializationDisabledException();
 }
 
 QueryPlan deserialize_query_plan_response(
     Query&, const SerializationType, const Buffer&) {
-  throw GenericException("Cannot serialize; serialization not enabled.");
+  throw QueryPlanSerializationDisabledException();
 }
 
 #endif  // TILEDB_SERIALIZATION
