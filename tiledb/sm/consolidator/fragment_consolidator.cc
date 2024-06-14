@@ -583,7 +583,9 @@ Status FragmentConsolidator::consolidate_internal(
     vac_uri =
         array_for_reads->array_directory().get_vacuum_uri(*new_fragment_uri);
   } catch (std::exception& e) {
-    std::throw_with_nested(FragmentConsolidatorException(e.what()));
+    std::throw_with_nested(FragmentConsolidatorException(
+        "Internal consolidation failed with exception" +
+        std::string(e.what())));
   }
 
   // Read from one array and write to the other
