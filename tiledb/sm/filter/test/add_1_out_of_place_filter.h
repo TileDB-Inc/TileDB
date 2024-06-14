@@ -50,8 +50,6 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
  public:
   Add1OutOfPlace(Datatype filter_data_type);
 
-  void dump(FILE* out) const override;
-
   Status run_forward(
       const WriterTile&,
       WriterTile* const,
@@ -72,7 +70,7 @@ class Add1OutOfPlace : public tiledb::sm::Filter {
   Add1OutOfPlace* clone_impl() const override;
 
  protected:
-  void output(std::string* out) const override;
+  inline std::ostream& output(std::ostream&) const override{};
 };
 
 }  // namespace tiledb::sm

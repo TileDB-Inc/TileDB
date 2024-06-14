@@ -45,25 +45,10 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-void FloatScalingFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::string s;
-  output(&s);
-  [[maybe_unused]] size_t r = fwrite(s.c_str(), sizeof(char), s.size(), out);
-  assert(r == s.size());
-}
-
-void FloatScalingFilter::output(std::string* out) const {
-  *out = dump_float_scaling_filter();
-}
-
-std::string FloatScalingFilter::dump_float_scaling_filter() const {
-  std::stringstream ss;
-  ss << "FloatScalingFilter: BYTE_WIDTH=" << static_cast<uint32_t>(byte_width_)
+std::ostream& FloatScalingFilter::output(std::ostream& os) const {
+  os << "FloatScalingFilter: BYTE_WIDTH=" << static_cast<uint32_t>(byte_width_)
      << ", SCALE=" << scale_ << ", OFFSET=" << offset_;
-  return ss.str();
+  return os;
 }
 
 void FloatScalingFilter::serialize_impl(Serializer& serializer) const {

@@ -120,31 +120,16 @@ int CompressionFilter::compression_level() const {
   return level_;
 }
 
-void CompressionFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  std::string s;
-  output(&s);
-  [[maybe_unused]] size_t r = fwrite(s.c_str(), sizeof(char), s.size(), out);
-  assert(r == s.size());
-}
-
-void CompressionFilter::output(std::string* out) const {
-  *out = dump_compression_filter();
-}
-
-std::string CompressionFilter::dump_compression_filter() const {
-  std::stringstream ss;
+std::ostream& CompressionFilter::output(std::ostream& os) const {
   std::string compressor_str = tiledb::sm::compressor_str(compressor_);
   if (compressor_ == Compressor::DELTA ||
       compressor_ == Compressor::DOUBLE_DELTA) {
-    ss << compressor_str << ": COMPRESSION_LEVEL=" << level_
+    os << compressor_str << ": COMPRESSION_LEVEL=" << level_
        << ", REINTERPRET_DATATYPE=" << datatype_str(reinterpret_datatype_);
   } else {
-    ss << compressor_str << ": COMPRESSION_LEVEL=" << level_;
+    os << compressor_str << ": COMPRESSION_LEVEL=" << level_;
   }
-  return ss.str();
+  return os;
 }
 
 CompressionFilter* CompressionFilter::clone_impl() const {

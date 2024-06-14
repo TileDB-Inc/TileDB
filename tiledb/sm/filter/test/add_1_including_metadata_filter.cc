@@ -40,14 +40,6 @@ Add1IncludingMetadataFilter::Add1IncludingMetadataFilter(
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-void Add1IncludingMetadataFilter::dump(FILE* out) const {
-  (void)out;
-}
-
-void Add1IncludingMetadataFilter::output(std::string* out) const {
-  (void)out;
-}
-
 Status Add1IncludingMetadataFilter::run_forward(
     const WriterTile&,
     WriterTile* const,

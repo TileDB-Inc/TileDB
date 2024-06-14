@@ -79,9 +79,6 @@ class ChecksumSHA256Filter : public Filter {
    */
   ChecksumSHA256Filter(Datatype filter_data_type);
 
-  /** Dumps the filter details in ASCII format in the selected output file. */
-  void dump(FILE* out) const override;
-
   /**
    * Encrypt the bytes of the input data into the output data buffer.
    */
@@ -107,7 +104,7 @@ class ChecksumSHA256Filter : public Filter {
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
-  void output(std::string* out) const override;
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Returns a new clone of this filter. */

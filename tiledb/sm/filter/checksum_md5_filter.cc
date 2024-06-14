@@ -53,15 +53,9 @@ ChecksumMD5Filter* ChecksumMD5Filter::clone_impl() const {
   return tdb_new(ChecksumMD5Filter, filter_data_type_);
 }
 
-void ChecksumMD5Filter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "ChecksumMD5");
-}
-
-void ChecksumMD5Filter::output(std::string* out) const {
-  *out = "ChecksumMD5";
+std::ostream& ChecksumMD5Filter::output(std::ostream& os) const {
+  os << "ChecksumMD5";
+  return os;
 }
 
 Status ChecksumMD5Filter::run_forward(

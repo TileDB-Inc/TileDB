@@ -40,14 +40,6 @@ Add1InPlace::Add1InPlace(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-void Add1InPlace::dump(FILE* out) const {
-  (void)out;
-}
-
-void Add1InPlace::output(std::string* out) const {
-  (void)out;
-}
-
 Status Add1InPlace::run_forward(
     const WriterTile&,
     WriterTile* const,

@@ -63,15 +63,9 @@ EncryptionAES256GCMFilter* EncryptionAES256GCMFilter::clone_impl() const {
   return clone;
 }
 
-void EncryptionAES256GCMFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-
-  fprintf(out, "EncryptionAES256GCM");
-}
-
-void EncryptionAES256GCMFilter::output(std::string* out) const {
-  *out = "EncryptionAES256GCM";
+std::ostream& EncryptionAES256GCMFilter::output(std::ostream& os) const {
+  os << "EncryptionAES256GCM";
+  return os;
 }
 
 Datatype EncryptionAES256GCMFilter::output_datatype(Datatype) const {

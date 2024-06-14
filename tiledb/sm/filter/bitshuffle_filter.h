@@ -81,9 +81,6 @@ class BitshuffleFilter : public Filter {
    */
   BitshuffleFilter(Datatype filter_data_type);
 
-  /** Dumps the filter details in ASCII format in the selected output file. */
-  void dump(FILE* out) const override;
-
   /**
    * Shuffle the bits of the input data into the output data buffer.
    */
@@ -109,7 +106,7 @@ class BitshuffleFilter : public Filter {
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
-  void output(std::string* out) const override;
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Returns a new clone of this filter. */

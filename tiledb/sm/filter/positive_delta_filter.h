@@ -91,9 +91,6 @@ class PositiveDeltaFilter : public Filter {
   /** Return the max window size used by the filter. */
   uint32_t max_window_size() const;
 
-  /** Dumps the filter details in ASCII format in the selected output file. */
-  void dump(FILE* out) const override;
-
   /**
    * Checks if the filter is applicable to the input datatype.
    *
@@ -129,7 +126,7 @@ class PositiveDeltaFilter : public Filter {
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
-  void output(std::string* out) const override;
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** Maximum size, in bytes, of a window of input elements to compress. */

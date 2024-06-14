@@ -120,9 +120,6 @@ class CompressionFilter : public Filter {
   /** Return the compression level used by this filter instance. */
   int compression_level() const;
 
-  /** Dumps the filter details in ASCII format in the selected output file. */
-  void dump(FILE* out) const override;
-
   /**
    * Compress the given input into the given output.
    */
@@ -154,7 +151,7 @@ class CompressionFilter : public Filter {
 
  protected:
   /** Dumps the filter details in ASCII format in the selected output string. */
-  void output(std::string* out) const override;
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /** The compressor. */
@@ -183,9 +180,6 @@ class CompressionFilter : public Filter {
 
   /** Datatype to reinterpret prior to compression. */
   Datatype reinterpret_datatype_;
-
-  /** Dumps the compression filter in ASCII format. */
-  std::string dump_compression_filter() const;
 
   /** Returns a new clone of this filter. */
   CompressionFilter* clone_impl() const override;

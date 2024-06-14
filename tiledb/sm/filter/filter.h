@@ -103,9 +103,6 @@ class Filter {
    */
   Filter* clone(Datatype data_type) const;
 
-  /** Dumps the filter details in ASCII format in the selected output file. */
-  virtual void dump(FILE* out) const = 0;
-
   /**
    * Returns the filter output type
    *
@@ -260,7 +257,7 @@ class Filter {
   virtual void serialize_impl(Serializer& serializer) const;
 
   /** Dumps the filter details in ASCII format in the selected output string. */
-  virtual void output(std::string* out) const = 0;
+  virtual std::ostream& output(std::ostream& os) const = 0;
 };
 
 }  // namespace sm

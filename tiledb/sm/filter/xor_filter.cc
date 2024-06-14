@@ -42,14 +42,9 @@ using namespace tiledb::common;
 namespace tiledb {
 namespace sm {
 
-void XORFilter::dump(FILE* out) const {
-  if (out == nullptr)
-    out = stdout;
-  fprintf(out, "XORFilter");
-}
-
-void XORFilter::output(std::string* out) const {
-  *out = "XORFilter";
+std::ostream& XORFilter::output(std::ostream& os) const {
+  os << "XORFilter";
+  return os;
 }
 
 bool XORFilter::accepts_input_datatype(Datatype datatype) const {

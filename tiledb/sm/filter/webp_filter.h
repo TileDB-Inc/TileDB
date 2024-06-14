@@ -148,12 +148,6 @@ class WebpFilter : public Filter {
   /* ****************************** */
 
   /**
-   * Dumps filter details in ASCII format.
-   * @param out File to write output.
-   */
-  void dump(FILE* out) const override;
-
-  /**
    * Checks if the filter is applicable to the input datatype.
    *
    * @param type Input datatype to check filter compatibility.
@@ -284,7 +278,7 @@ class WebpFilter : public Filter {
    * Dumps filter details in ASCII format.
    * @param out String to write output.
    */
-  void output(std::string* out) const override;
+  std::ostream& output(std::ostream& os) const override;
 
  private:
   /* ********************************* */
