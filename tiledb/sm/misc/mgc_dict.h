@@ -43,6 +43,10 @@ int magic_mgc_embedded_load(magic_t magic);
 /**
  * Provides access to the internally expanded data.
  *
+ * Data is stored in the library in a compressed form (approx. 270KB) and gets
+ * decompressed (approx. 7MB) on the first call to this function. Subsequent
+ * calls to this function will reuse the decompressed buffer.
+ *
  * @return a span to the internal buffer holding the expanded data.
  */
 span<const uint8_t> expanded_buffer();
