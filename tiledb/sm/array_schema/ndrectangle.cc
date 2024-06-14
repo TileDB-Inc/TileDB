@@ -77,7 +77,7 @@ NDRange NDRectangle::deserialize_ndranges(
   return nd;
 }
 
-shared_ptr<const NDRectangle> NDRectangle::deserialize(
+shared_ptr<NDRectangle> NDRectangle::deserialize(
     Deserializer& deserializer,
     shared_ptr<MemoryTracker> memory_tracker,
     shared_ptr<Domain> domain) {

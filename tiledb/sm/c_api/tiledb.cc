@@ -40,6 +40,7 @@
 #include "tiledb/api/c_api/buffer/buffer_api_internal.h"
 #include "tiledb/api/c_api/buffer_list/buffer_list_api_internal.h"
 #include "tiledb/api/c_api/config/config_api_internal.h"
+#include "tiledb/api/c_api/current_domain/current_domain_api_internal.h"
 #include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/domain/domain_api_internal.h"
 #include "tiledb/api/c_api/enumeration/enumeration_api_internal.h"
@@ -784,6 +785,40 @@ int32_t tiledb_array_schema_has_attribute(
   return TILEDB_OK;
 }
 
+int32_t tiledb_array_schema_set_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t* current_domain) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_handle_is_valid(current_domain);
+
+  array_schema->array_schema_->set_current_domain(
+      current_domain->current_domain());
+
+  return TILEDB_OK;
+}
+
+int32_t tiledb_array_schema_get_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t** current_domain) {
+  if (sanity_check(ctx, array_schema) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_output_pointer_is_valid(current_domain);
+
+  // There is always a current domain on an ArraySchema instance,
+  // when none was set explicitly, there is an empty current domain.
+  *current_domain = tiledb_current_domain_handle_t::make_handle(
+      array_schema->array_schema_->get_current_domain());
+
+  return TILEDB_OK;
+}
+
 /* ********************************* */
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
@@ -902,6 +937,22 @@ capi_return_t tiledb_array_schema_evolution_drop_enumeration(
   }
 
   array_schema_evolution->array_schema_evolution_->drop_enumeration(enmr_name);
+
+  return TILEDB_OK;
+}
+
+capi_return_t tiledb_array_schema_evolution_expand_current_domain(
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_current_domain_t* expanded_domain) {
+  if (sanity_check(ctx, array_schema_evolution) == TILEDB_ERR) {
+    return TILEDB_ERR;
+  }
+
+  api::ensure_handle_is_valid(expanded_domain);
+
+  array_schema_evolution->array_schema_evolution_->expand_current_domain(
+      expanded_domain->current_domain());
 
   return TILEDB_OK;
 }
@@ -5540,6 +5591,24 @@ CAPI_INTERFACE(
       ctx, array_schema, name, has_attr);
 }
 
+CAPI_INTERFACE(
+    array_schema_set_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t* current_domain) {
+  return api_entry<tiledb::api::tiledb_array_schema_set_current_domain>(
+      ctx, array_schema, current_domain);
+}
+
+CAPI_INTERFACE(
+    array_schema_get_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_t* array_schema,
+    tiledb_current_domain_t** current_domain) {
+  return api_entry<tiledb::api::tiledb_array_schema_get_current_domain>(
+      ctx, array_schema, current_domain);
+}
+
 /* ********************************* */
 /*            SCHEMA EVOLUTION       */
 /* ********************************* */
@@ -5603,6 +5672,16 @@ CAPI_INTERFACE(
     const char* enumeration_name) {
   return api_entry<tiledb::api::tiledb_array_schema_evolution_drop_enumeration>(
       ctx, array_schema_evolution, enumeration_name);
+}
+
+CAPI_INTERFACE(
+    array_schema_evolution_expand_current_domain,
+    tiledb_ctx_t* ctx,
+    tiledb_array_schema_evolution_t* array_schema_evolution,
+    tiledb_current_domain_t* expanded_domain) {
+  return api_entry<
+      tiledb::api::tiledb_array_schema_evolution_expand_current_domain>(
+      ctx, array_schema_evolution, expanded_domain);
 }
 
 TILEDB_EXPORT int32_t tiledb_array_schema_evolution_set_timestamp_range(

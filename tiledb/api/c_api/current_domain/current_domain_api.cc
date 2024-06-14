@@ -34,13 +34,15 @@
 #include "current_domain_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/domain/domain_api_internal.h"
+#include "tiledb/api/c_api/ndrectangle/ndrectangle_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
 capi_return_t tiledb_current_domain_create(
     tiledb_ctx_t* ctx,
-    tiledb_current_domain_type_t type,
+    // tiledb_current_domain_type_t type,
     tiledb_current_domain_t** current_domain) {
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(current_domain);
@@ -55,7 +57,7 @@ capi_return_t tiledb_current_domain_create(
 capi_return_t tiledb_current_domain_free(
     tiledb_current_domain_t** current_domain) {
   ensure_output_pointer_is_valid(current_domain);
-  tiledb_ndrectangle_handle_t::break_handle(*current_domain);
+  tiledb_current_domain_handle_t::break_handle(*current_domain);
 
   return TILEDB_OK;
 }
@@ -71,11 +73,14 @@ capi_return_t tiledb_current_domain_set_ndrectangle(
 }
 
 capi_return_t tiledb_current_domain_get_ndrectangle(
-    tiledb_current_domain_t* current_domain, tiledb_ndrectangle_t* ndr) {
+    tiledb_current_domain_t* current_domain, tiledb_ndrectangle_t** ndr) {
   ensure_handle_is_valid(current_domain);
-  ensure_handle_is_valid(ndr);
+  ensure_output_pointer_is_valid(ndr);
 
-  ndr->set_ndrectangle(current_domain->current_domain()->ndrectangle());
+  //
+
+  *ndr = tiledb_ndrectangle_handle_t::make_handle(
+      current_domain->current_domain()->ndrectangle());
 
   return TILEDB_OK;
 }
@@ -96,7 +101,8 @@ capi_return_t tiledb_current_domain_get_type(
   ensure_handle_is_valid(current_domain);
   ensure_output_pointer_is_valid(type);
 
-  *type = current_domain->current_domain()->type();
+  *type = static_cast<tiledb_current_domain_type_t>(
+      current_domain->current_domain()->type());
 
   return TILEDB_OK;
 }
@@ -107,22 +113,20 @@ using tiledb::api::api_entry_plain;
 using tiledb::api::api_entry_with_context;
 
 CAPI_INTERFACE(
-    tiledb_current_domain_create,
+    current_domain_create,
     tiledb_ctx_t* ctx,
-    tiledb_current_domain_type_t type,
     tiledb_current_domain_t** current_domain) {
   return api_entry_with_context<tiledb::api::tiledb_current_domain_create>(
-      ctx, type, current_domain);
+      ctx, current_domain);
 }
 
-CAPI_INTERFACE(
-    tiledb_current_domain_free, tiledb_current_domain_t** current_domain) {
+CAPI_INTERFACE(current_domain_free, tiledb_current_domain_t** current_domain) {
   return api_entry_plain<tiledb::api::tiledb_current_domain_free>(
       current_domain);
 }
 
 CAPI_INTERFACE(
-    tiledb_current_domain_set_ndrectangle,
+    current_domain_set_ndrectangle,
     tiledb_current_domain_t* current_domain,
     tiledb_ndrectangle_t* ndr) {
   return api_entry_plain<tiledb::api::tiledb_current_domain_set_ndrectangle>(
@@ -130,24 +134,25 @@ CAPI_INTERFACE(
 }
 
 CAPI_INTERFACE(
-    tiledb_current_domain_get_ndrectangle,
-    tiledb_current_domain_t* current_domain tiledb_ndrectangle_t* ndr) {
+    current_domain_get_ndrectangle,
+    tiledb_current_domain_t* current_domain,
+    tiledb_ndrectangle_t** ndr) {
   return api_entry_plain<tiledb::api::tiledb_current_domain_get_ndrectangle>(
       current_domain, ndr);
 }
 
 CAPI_INTERFACE(
-    tiledb_current_domain_get_is_empty,
+    current_domain_get_is_empty,
     tiledb_current_domain_t* current_domain,
     uint32_t* is_empty) {
-  return api_entry_plain<tiledb::api::tiledb_ndrectangle_set_range>(
+  return api_entry_plain<tiledb::api::tiledb_current_domain_get_is_empty>(
       current_domain, is_empty);
 }
 
 CAPI_INTERFACE(
-    tiledb_current_domain_get_type,
+    current_domain_get_type,
     tiledb_current_domain_t* current_domain,
     tiledb_current_domain_type_t* type) {
-  return api_entry_plain<tiledb::api::tiledb_ndrectangle_set_range>(
+  return api_entry_plain<tiledb::api::tiledb_current_domain_get_type>(
       current_domain, type);
 }

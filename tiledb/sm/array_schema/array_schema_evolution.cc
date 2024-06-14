@@ -92,7 +92,7 @@ ArraySchemaEvolution::ArraySchemaEvolution(
         enmrs_to_extend,
     std::unordered_set<std::string> enmrs_to_drop,
     std::pair<uint64_t, uint64_t> timestamp_range,
-    shared_ptr<const CurrentDomain> current_domain,
+    shared_ptr<CurrentDomain> current_domain,
     shared_ptr<MemoryTracker> memory_tracker)
     : memory_tracker_(memory_tracker)
     , attributes_to_add_map_(
@@ -379,7 +379,7 @@ std::pair<uint64_t, uint64_t> ArraySchemaEvolution::timestamp_range() const {
 }
 
 void ArraySchemaEvolution::expand_current_domain(
-    shared_ptr<const CurrentDomain> current_domain) {
+    shared_ptr<CurrentDomain> current_domain) {
   if (current_domain == nullptr) {
     throw ArraySchemaEvolutionException(
         "Cannot expand the array current domain; Input current domain is null");
@@ -395,7 +395,7 @@ void ArraySchemaEvolution::expand_current_domain(
   current_domain_to_expand_ = current_domain;
 }
 
-shared_ptr<const CurrentDomain> ArraySchemaEvolution::current_domain_to_expand()
+shared_ptr<CurrentDomain> ArraySchemaEvolution::current_domain_to_expand()
     const {
   std::lock_guard<std::mutex> lock(mtx_);
 

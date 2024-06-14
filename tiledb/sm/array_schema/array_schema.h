@@ -143,7 +143,7 @@ class ArraySchema {
       FilterPipeline cell_var_offsets_filters,
       FilterPipeline cell_validity_filters,
       FilterPipeline coords_filters,
-      shared_ptr<const CurrentDomain> current_domain,
+      shared_ptr<CurrentDomain> current_domain,
       shared_ptr<MemoryTracker> memory_tracker);
 
   /**
@@ -593,18 +593,17 @@ class ArraySchema {
    *
    * @param new_current_domain The new array current domain we want to expand to
    */
-  void expand_current_domain(
-      shared_ptr<const CurrentDomain> new_current_domain);
+  void expand_current_domain(shared_ptr<CurrentDomain> new_current_domain);
 
   /**
    * Set the array current domain on the schema
    *
    * @param current_domain The array current domain we want to set on the schema
    */
-  void set_current_domain(shared_ptr<const CurrentDomain> current_domain);
+  void set_current_domain(shared_ptr<CurrentDomain> current_domain);
 
   /** Array current domain accessor */
-  shared_ptr<const CurrentDomain> get_current_domain() const;
+  shared_ptr<CurrentDomain> get_current_domain() const;
 
  private:
   /* ********************************* */
@@ -722,7 +721,7 @@ class ArraySchema {
   FilterPipeline coords_filters_;
 
   /** The array current domain */
-  shared_ptr<const CurrentDomain> current_domain_;
+  shared_ptr<CurrentDomain> current_domain_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

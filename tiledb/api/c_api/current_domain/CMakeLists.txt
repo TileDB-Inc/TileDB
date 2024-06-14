@@ -27,13 +27,14 @@ include(common NO_POLICY_SCOPE)
 include(object_library)
 
 list(APPEND SOURCES
-  current_domain_api.cc,
+  current_domain_api.cc
   )
 gather_sources(${SOURCES})
 
 commence(object_library capi_current_domain)
   this_target_sources(${SOURCES})
-  this_target_object_libraries(current_domain)
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline current_domain)
 conclude(object_library)
 
 add_test_subdirectory()

@@ -54,7 +54,7 @@ struct tiledb_ndrectangle_handle_t
   tiledb_ndrectangle_handle_t() = delete;
 
   /**
-   * Ordinary constructor.
+   * Constructs a handle with a NDRectangle instance.
    * @param memory_tracker The memory tracker to use in the internal NDRectangle
    * @param domain The ArraySchema domain used for internal validations
    */
@@ -65,12 +65,21 @@ struct tiledb_ndrectangle_handle_t
             HERE(), memory_tracker, domain)} {
   }
 
+  /**
+   * Ordinary constructor.
+   * @param ndrectangle An internal tiledb NDRectangle instance
+   */
+  explicit tiledb_ndrectangle_handle_t(
+      shared_ptr<tiledb::sm::NDRectangle> ndrectangle)
+      : ndrectangle_(ndrectangle) {
+  }
+
   [[nodiscard]] inline shared_ptr<tiledb::sm::NDRectangle> ndrectangle() const {
     return ndrectangle_;
   }
 
-  inline set_ndrectangle(shared_ptr<tiledb::sm::NDRectangle> ndr) {
-    return ndrectangle_ = ndr;
+  inline void set_ndrectangle(shared_ptr<tiledb::sm::NDRectangle> ndr) {
+    ndrectangle_ = ndr;
   }
 };
 
