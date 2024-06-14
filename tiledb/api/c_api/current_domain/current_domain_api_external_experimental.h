@@ -34,9 +34,9 @@
 #ifndef TILEDB_CAPI_CURRENT_DOMAIN_API_EXTERNAL_EXPERIMENTAL_H
 #define TILEDB_CAPI_CURRENT_DOMAIN_API_EXTERNAL_EXPERIMENTAL_H
 
-#include "../api_external_common.h"
+#include "tiledb/api/c_api/api_external_common.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
-#include "tiledb/api/c_api/domain/domain_api_external.h"
+#include "tiledb/api/c_api/ndrectangle/ndrectangle_api_external_experimental.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -49,36 +49,34 @@ typedef enum {
 #undef TILEDB_CURRENT_DOMAIN_TYPE_ENUM
 } tiledb_current_domain_type_t;
 
-/**
- * C API carrier TODO
- *
- */
 typedef struct tiledb_current_domain_handle_t tiledb_current_domain_t;
 
 /**
- * TODO
+ * Create a current domain object
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_current_domain_t *current_domain;
+ * tiledb_current_domain_create(ctx, &current_domain);
+ * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
  * @param ctx The TileDB context
- * @param type The type of current domain
  * @param current_domain The current domain to be allocated
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_current_domain_create(
     tiledb_ctx_t* ctx,
-    tiledb_current_domain_type_t type,
     tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Free the resources associated with a current domain object
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_current_domain_t *current_domain;
+ * tiledb_current_domain_create(ctx, &current_domain);
+ * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
  * @param current_domain The current domain to be freed
@@ -88,11 +86,27 @@ TILEDB_EXPORT int32_t tiledb_current_domain_free(
     tiledb_current_domain_t** current_domain) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Set a N-dimensional rectangle representation on a current domain.
+ * Error if the current domain passed is not empty.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_current_domain_t *current_domain;
+ * tiledb_current_domain_create(ctx, &current_domain);
+ * tiledb_ndrectangle_t *ndr;
+ * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
+ *
+ * tiledb_range_t range;
+ * range.min = &min;
+ * range.min_size = sizeof(min);
+ * range.max = &max;
+ * range.max_size = sizeof(max);
+ * tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim", &range);
+ *
+ * tiledb_current_domain_set_ndrectangle(current_domain, ndr);
+ *
+ * tiledb_ndrectangle_free(&ndr);
+ * tiledb_current_domain_free(&current_domain);
  * @endcode
  *
  * @param current_domain The current domain to modify
@@ -104,11 +118,17 @@ TILEDB_EXPORT int32_t tiledb_current_domain_set_ndrectangle(
     tiledb_ndrectangle_t* ndr) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Get the N-dimensional rectangle associated with the current domain object,
+ * error if the current domain is empty or a different representation is set.
+ *
+ * It is the responsability of the caller to free the resources associated
+ * with the ndrectangle when the handle isn't needed anymore.
+ *
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_ndrectangle_t *ndr;
+ * tiledb_current_domain_get_ndrectangle(current_domain, &ndr);
  * @endcode
  *
  * @param current_domain The current domain to query
@@ -116,15 +136,16 @@ TILEDB_EXPORT int32_t tiledb_current_domain_set_ndrectangle(
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
 TILEDB_EXPORT int32_t tiledb_current_domain_get_ndrectangle(
-    tiledb_current_domain_t* current_domain tiledb_ndrectangle_t* ndr)
-    TILEDB_NOEXCEPT;
+    tiledb_current_domain_t* current_domain,
+    tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Query if the current domain object is empty or not.
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * uint32_t empty = 0;
+ * tiledb_current_domain_get_is_empty(current_domain, &empty);
  * @endcode
  *
  * @param current_domain The current domain to query
@@ -136,11 +157,12 @@ TILEDB_EXPORT int32_t tiledb_current_domain_get_is_empty(
     uint32_t* is_empty) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Query the type of current domain set on the object
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_current_domain_type_t type;
+ * tiledb_current_domain_get_type(current_domain, &type);
  * @endcode
  *
  * @param current_domain The current domain to query

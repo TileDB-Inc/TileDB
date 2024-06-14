@@ -54,7 +54,7 @@ struct tiledb_current_domain_handle_t
   tiledb_current_domain_handle_t() = delete;
 
   /**
-   * Ordinary constructor.
+   * Constructs a handle with an empty CurrentDomain instance.
    * @param memory_tracker The tracker to use in the internal CurrentDomain
    * @param version The on-disk format version of the CurrentDomain
    */
@@ -63,6 +63,15 @@ struct tiledb_current_domain_handle_t
       format_version_t version)
       : current_domain_{make_shared<tiledb::sm::CurrentDomain>(
             HERE(), memory_tracker, version)} {
+  }
+
+  /**
+   * Constructor.
+   * @param current_domain A CurrentDomain instance to assign to this handle
+   */
+  explicit tiledb_current_domain_handle_t(
+      std::shared_ptr<tiledb::sm::CurrentDomain> current_domain)
+      : current_domain_(current_domain) {
   }
 
   [[nodiscard]] inline shared_ptr<tiledb::sm::CurrentDomain> current_domain()

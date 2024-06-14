@@ -33,8 +33,10 @@
 #include "ndrectangle_api_external_experimental.h"
 #include "ndrectangle_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
+#include "tiledb/api/c_api/dimension/dimension_api_internal.h"
 #include "tiledb/api/c_api/domain/domain_api_internal.h"
 #include "tiledb/api/c_api_support/c_api_support.h"
+#include "tiledb/common/memory_tracker.h"
 
 namespace tiledb::api {
 
@@ -43,16 +45,7 @@ namespace tiledb::api {
  *
  * @param range A range struct
  */
-inline void ensure_range_ptr_is_valid(const tiledb_range_t* range) {
-  ensure_output_pointer_is_valid(range);
-}
-
-/**
- * Returns if the argument is a valid range
- *
- * @param range A range struct
- */
-inline void ensure_range_ptr_is_valid(const tiledb_range_t* range) {
+inline void ensure_range_ptr_is_valid(tiledb_range_t* range) {
   ensure_output_pointer_is_valid(range);
 }
 
@@ -75,15 +68,15 @@ inline void ensure_dim_name_is_valid(const char* name) {
  */
 inline void smrange_to_range(const Range& r, tiledb_range_t* range) {
   if (r.var_size()) {
-    range->min_size = r.start_size);
+    range->min_size = r.start_size();
     range->max_size = r.end_size();
-    range->min = r.start_str().data();
-    range->max = r.end_str().data();
+    std::memcpy(range->min, r.start_str().data(), r.start_size());
+    std::memcpy(range->max, r.end_str().data(), r.end_size());
   } else {
     range->min_size = r.size() / 2;
     range->max_size = r.size() / 2;
-    range->min = r.start_fixed();
-    range->max = r.end_fixed();
+    std::memcpy(range->min, r.start_fixed(), r.size() / 2);
+    std::memcpy(range->max, r.end_fixed(), r.size() / 2);
   }
 }
 
@@ -96,7 +89,8 @@ capi_return_t tiledb_ndrectangle_alloc(
   auto memory_tracker = ctx->resources().create_memory_tracker();
   memory_tracker->set_type(tiledb::sm::MemoryTrackerType::ARRAY_CREATE);
   *ndr = tiledb_ndrectangle_handle_t::make_handle(
-      memory_tracker, domain) return TILEDB_OK;
+      memory_tracker, domain->copy_domain());
+  return TILEDB_OK;
 }
 
 capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr) {
@@ -116,7 +110,7 @@ capi_return_t tiledb_ndrectangle_get_range_from_name(
   ensure_dim_name_is_valid(name);
   ensure_range_ptr_is_valid(range);
 
-  auto r = ndr->ndrectangle()->get_range_for_name(std::string_view(name));
+  auto r = ndr->ndrectangle()->get_range_for_name(name);
 
   smrange_to_range(r, range);
 
@@ -149,15 +143,14 @@ capi_return_t tiledb_ndrectangle_set_range_for_name(
   ensure_range_ptr_is_valid(range);
 
   Range r;
-  auto idx =
-      ndr->ndrectangle()->domain()->get_dimension_index(std::string_view(name));
+  auto idx = ndr->ndrectangle()->domain()->get_dimension_index(name);
   if (ndr->ndrectangle()->domain()->dimension_ptr(idx)->var_size()) {
     r.set_range_fixed(range->min, range->max, range->min_size);
   } else {
     r.set_range_var(range->min, range->min_size, range->max, range->max_size);
   }
 
-  ndr->ndrectangle()->set_range_for_name(r, std::string_view(name));
+  ndr->ndrectangle()->set_range_for_name(r, name);
 
   return TILEDB_OK;
 }

@@ -33,7 +33,8 @@ gather_sources(${SOURCES})
 
 commence(object_library capi_ndrectangle)
   this_target_sources(${SOURCES})
-  this_target_object_libraries(ndrectangle domain)
+  this_target_link_libraries(export)
+  this_target_object_libraries(baseline ndrectangle)
 conclude(object_library)
 
 add_test_subdirectory()

@@ -34,7 +34,7 @@
 #ifndef TILEDB_CAPI_NDRECTANGLE_API_EXTERNAL_EXPERIMENTAL_H
 #define TILEDB_CAPI_NDRECTANGLE_API_EXTERNAL_EXPERIMENTAL_H
 
-#include "../api_external_common.h"
+#include "tiledb/api/c_api/api_external_common.h"
 #include "tiledb/api/c_api/context/context_api_external.h"
 #include "tiledb/api/c_api/domain/domain_api_external.h"
 
@@ -53,18 +53,16 @@ typedef struct {
   uint64_t max_size;
 } tiledb_range_t;
 
-/**
- * C API carrier TODO
- *
- */
 typedef struct tiledb_ndrectangle_handle_t tiledb_ndrectangle_t;
 
 /**
- * TODO
+ * Allocate an N-dimensional rectangle given a TileDB array schema domain
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_ndrectangle_t *ndr;
+ * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
+ * tiledb_ndrectangle_free(&ndr);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -78,25 +76,28 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_alloc(
     tiledb_ndrectangle_t** ndr) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Free the resources associated with the N-dimensional rectangle arg
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_ndrectangle_t *ndr;
+ * tiledb_ndrectangle_alloc(ctx, domain, &ndr);
+ * tiledb_ndrectangle_free(&ndr);
  * @endcode
  *
  * @param ndr The n-dimensional rectangle to be freed
  * @return `TILEDB_OK` for success and `TILEDB_ERR` for error.
  */
-TILEDB_ EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
+TILEDB_EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
     TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Get the range set on an N-dimensional rectangle for a dimension name
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_range_t range;
+ * tiledb_ndrectangle_get_range_from_name(ctx, ndr, "dim", &range);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -112,11 +113,12 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range_from_name(
     tiledb_range_t* range) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Get the range set on an N-dimensional rectangle for a dimension ubdex
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_range_t range;
+ * tiledb_ndrectangle_get_range_from_name(ctx, ndr, 1, &range);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -132,11 +134,16 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range(
     tiledb_range_t* range) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Set the range on an N-dimensional rectangle for a dimension name
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_range_t range;
+ * range.min = &min;
+ * range.min_size = sizeof(min);
+ * range.max = &max;
+ * range.max_size = sizeof(max);
+ * tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim", &range);
  * @endcode
  *
  * @param ctx The TileDB context
@@ -152,11 +159,16 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_set_range_for_name(
     tiledb_range_t* range) TILEDB_NOEXCEPT;
 
 /**
- * TODO
+ * Set the range on an N-dimensional rectangle for dimension at idx,
  * **Example:**
  *
  * @code{.c}
- * TODO
+ * tiledb_range_t range;
+ * range.min = &min;
+ * range.min_size = sizeof(min);
+ * range.max = &max;
+ * range.max_size = sizeof(max);
+ * tiledb_ndrectangle_set_range(ctx, ndr, 1, &range);
  * @endcode
  *
  * @param ctx The TileDB context
