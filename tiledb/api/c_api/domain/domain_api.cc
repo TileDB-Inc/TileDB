@@ -145,12 +145,12 @@ int32_t tiledb_domain_has_dimension(
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
 
+  if (out == nullptr) {
+    out = stdout;
+  }
+
   std::stringstream ss;
   ss << *domain->copy_domain();
-  if (out == nullptr) {
-    std::cout << ss.str();
-    return TILEDB_OK;
-  }
   size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
   if (r != ss.str().size()) {
     throw CAPIException("Error writing domain to output stream");

@@ -703,6 +703,11 @@ int32_t tiledb_array_schema_dump(
     tiledb_ctx_t* ctx, const tiledb_array_schema_t* array_schema, FILE* out) {
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
+
+  if (out == nullptr) {
+    out = stdout;
+  }
+
   std::stringstream ss;
 
   ss << *array_schema->array_schema_;

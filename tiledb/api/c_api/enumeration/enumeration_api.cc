@@ -176,6 +176,11 @@ capi_return_t tiledb_enumeration_get_offsets(
 capi_return_t tiledb_enumeration_dump(
     tiledb_enumeration_t* enumeration, FILE* out) {
   ensure_enumeration_is_valid(enumeration);
+
+  if (out == nullptr) {
+    out = stdout;
+  }
+
   std::stringstream ss;
   ss << *enumeration->copy();
   size_t r = fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), out);
