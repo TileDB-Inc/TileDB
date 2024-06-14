@@ -54,7 +54,7 @@ if (NOT TILEDB_VCPKG)
 endif()
 
 if (TILEDB_HDFS)
-  message(DEPRECATION "The HDFS storage backend is deprecated and untested. It will be removed in TileDB 2.28.")
+  message(DEPRECATION "The HDFS storage backend is deprecated and receiving build-only official validation. It will be removed in TileDB 2.28.")
 endif()
 
 # enable assertions by default for debug builds
