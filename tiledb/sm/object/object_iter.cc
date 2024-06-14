@@ -64,16 +64,15 @@ ObjectIter* object_iter_begin(
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    auto st = object_type(resources, uri, &obj_type);
-    if (!st.ok()) {
+    try {
+      throw_if_not_ok(object_type(resources, uri, &obj_type));
+      if (obj_type != ObjectType::INVALID) {
+        obj_iter->objs_.push_back(uri);
+        if (order == WalkOrder::POSTORDER)
+          obj_iter->expanded_.push_back(false);
+      }
+    } catch (...) {
       tdb_delete(obj_iter);
-      std::throw_with_nested(ObjectIterException(
-          "Cannot create object iterator; " + st.message()));
-    }
-    if (obj_type != ObjectType::INVALID) {
-      obj_iter->objs_.push_back(uri);
-      if (order == WalkOrder::POSTORDER)
-        obj_iter->expanded_.push_back(false);
     }
   }
 
@@ -100,9 +99,13 @@ ObjectIter* object_iter_begin(ContextResources& resources, const char* path) {
   // Include the uris that are TileDB objects in the iterator state
   ObjectType obj_type;
   for (auto& uri : uris) {
-    throw_if_not_ok(object_type(resources, uri, &obj_type));
-    if (obj_type != ObjectType::INVALID) {
-      obj_iter->objs_.push_back(uri);
+    try {
+      throw_if_not_ok(object_type(resources, uri, &obj_type));
+      if (obj_type != ObjectType::INVALID) {
+        obj_iter->objs_.push_back(uri);
+      }
+    } catch (...) {
+      tdb_delete(obj_iter);
     }
   }
 
