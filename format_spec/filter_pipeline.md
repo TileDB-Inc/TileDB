@@ -42,13 +42,22 @@ The filter options are configuration parameters for the filters that do not chan
 
 ### Main Compressor Options
 
-For the compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DOUBLE_DELTA,DELTA,DICTIONARY}`\) the filter options have internal format:
+For the main compression filters \(any of the filter types `TILEDB_FILTER_{GZIP,ZSTD,LZ4,RLE,BZIP2,DICTIONARY}`\) the filter options have internal format:
 
 | **Field** | **Type** | **Description** |
 | :--- | :--- | :--- |
-| Compressor type | `uint8_t` | Type of compression \(e.g. `TILEDB_BZIP2`\) |
+| Compressor type | `uint8_t` | Type of compression \(e.g. `TILEDB_FILTER_BZIP2`\) |
 | Compression level | `int32_t` | Compression level used \(ignored by some compressors\). |
-| Reinterpret datatype | `uint8_t` | Type to reinterpret data prior to compression. Used for DOUBLE_DELTA and DELTA only. |
+
+### Delta Compressor Options
+
+For the `TILEDB_FILTER_DELTA` and `TILEDB_FILTER_DOUBLE_DELTA` compression filters the filter options have internal format:
+
+| **Field** | **Type** | **Description** |
+| :--- | :--- | :--- |
+| Compressor type | `uint8_t` | Type of compression \(e.g. `TILEDB_FILTER_DELTA`\) |
+| Compression level | `int32_t` | Ignored |
+| Reinterpret datatype | `uint8_t` | Type to reinterpret data prior to compression. |
 
 ### Bit-width Reduction Options
 
