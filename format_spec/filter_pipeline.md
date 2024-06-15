@@ -78,4 +78,4 @@ The filter options for `TILEDB_FILTER_POSITIVE_DELTA` has internal format:
 
 ### Other Filter Options
 
-The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR,DICTIONARY}`\) do not serialize any options.
+The remaining filters \(`TILEDB_FILTER_{BITSHUFFLE,BYTESHUFFLE,CHECKSUM_MD5,CHECKSUM_256,XOR}`\) do not serialize any options.
