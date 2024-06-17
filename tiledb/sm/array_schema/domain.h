@@ -227,7 +227,7 @@ class Domain {
    * @return non-null pointer to the dimension
    */
   inline const Dimension* dimension_ptr(dimension_size_type i) const {
-    if (i > dim_num_) {
+    if (i >= dim_num_) {
       throw std::invalid_argument("invalid dimension index");
     }
     return dimension_ptrs_[i];

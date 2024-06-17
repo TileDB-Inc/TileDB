@@ -36,18 +36,27 @@
 #include "tiledb/sm/enums/datatype.h"
 #include "tiledb/sm/enums/layout.h"
 
+#include "tiledb/api/c_api/context/context_api_internal.h"
+
+#include "test/support/src/helpers.h"
+#include "test/support/src/vfs_helpers.h"
+
 #include <test/support/tdb_catch.h>
 
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
+using namespace tiledb::test;
+
+struct DomainFx : TemporaryDirectoryFixture {};
 
 template <class T, int n>
 inline T& dom_buffer_offset(void* p) {
   return *static_cast<T*>(static_cast<void*>(static_cast<char*>(p) + n));
 }
 
-TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
+TEST_CASE_METHOD(
+    DomainFx, "Domain: Test deserialization", "[domain][deserialize]") {
   char serialized_buffer[72];
   char* p = &serialized_buffer[0];
 
@@ -112,8 +121,14 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   dom_buffer_offset<uint8_t, 71>(p) = null_tile_extent2;
 
   Deserializer deserializer(&serialized_buffer, sizeof(serialized_buffer));
-  auto dom{Domain::deserialize(
-      deserializer, 10, Layout::ROW_MAJOR, Layout::ROW_MAJOR)};
+  FilterPipeline fp;
+  auto dom{tiledb::sm::Domain::deserialize(
+      deserializer,
+      10,
+      Layout::ROW_MAJOR,
+      Layout::ROW_MAJOR,
+      fp,
+      ctx->resources().create_memory_tracker())};
   CHECK(dom->dim_num() == dim_num);
 
   auto dim1{dom->dimension_ptr("d1")};
@@ -127,4 +142,10 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
   CHECK(dim2->type() == type2);
   CHECK(dim2->cell_val_num() == cell_val_num2);
   CHECK(dim2->filters().size() == num_filters2);
+}
+
+TEST_CASE_METHOD(
+    DomainFx, "Domain: Test dimension_ptr is not oob", "[domain][oob]") {
+  auto d = tiledb::sm::Domain(ctx->resources().create_memory_tracker());
+  REQUIRE_THROWS(d.dimension_ptr(0));
 }
