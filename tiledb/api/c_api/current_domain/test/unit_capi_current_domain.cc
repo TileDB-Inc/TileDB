@@ -36,37 +36,29 @@
 #include "tiledb/api/c_api/config/config_api_internal.h"
 #include "tiledb/api/c_api/context/context_api_internal.h"
 #include "tiledb/api/c_api/current_domain/current_domain_api_external_experimental.h"
+#include "tiledb/api/c_api/current_domain/current_domain_api_internal.h"
+#include "tiledb/api/c_api/ndrectangle/ndrectangle_api_internal.h"
 #include "tiledb/api/c_api/vfs/vfs_api_internal.h"
 
 using namespace tiledb::test;
 
-truct CAPINDRectangleFx : TemporaryDirectoryFixture {
-  CAPINDRectangleFx()
+struct CAPICurrentDomainFx : TemporaryDirectoryFixture {
+  CAPICurrentDomainFx()
       : array_name_(temp_dir_ + "curent_domain_array") {
     create_domain();
   }
-  ~CAPINDRectangleFx() {
+  ~CAPICurrentDomainFx() {
     free_domain();
   }
   void create_domain();
   void free_domain();
 
   std::string array_name_;
-  tiledb_dimension_t *d1_, d2_;
+  tiledb_dimension_t *d1_, *d2_;
   tiledb_domain_t* domain_;
 };
 
-void CAPINDRectangleFx::rm_array() {
-  int32_t is_dir = 0;
-  tiledb_vfs_is_dir(ctx, vfs_, array_name_.c_str(), &is_dir);
-  if (is_dir) {
-    if (tiledb_vfs_remove_dir(ctx, vfs_, array_name_.c_str()) != TILEDB_OK) {
-      throw std::runtime_error("couldn't delete existing array " + array_name_);
-    }
-  }
-}
-
-void CAPINDRectangleFx::create_domain() {
+void CAPICurrentDomainFx::create_domain() {
   // Create dimensions
   uint64_t tile_extents[] = {2, 2};
   uint64_t dim_domain[] = {1, 10, 1, 10};
@@ -87,86 +79,51 @@ void CAPINDRectangleFx::create_domain() {
   CHECK(rc == TILEDB_OK);
 }
 
-void CAPINDRectangleFx::free_domain() {
+void CAPICurrentDomainFx::free_domain() {
   tiledb_dimension_free(&d1_);
   tiledb_dimension_free(&d2_);
   tiledb_domain_free(&domain_);
 }
 
 TEST_CASE_METHOD(
-    CAPINDRectangleFx,
+    CAPICurrentDomainFx,
     "C API: argument validation",
-    "[capi][ndrectangle][args]") {
+    "[capi][current_domain][args]") {
   CHECK(
-      tiledb_ndrectangle_alloc(nullptr, nullptr, nullptr) ==
-      TILEDB_INVALID_CONTEXT);
-  CHECK(tiledb_ndrectangle_alloc(ctx, nullptr, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_ndrectangle_alloc(ctx, domain_, nullptr) == TILEDB_ERR);
+      tiledb_current_domain_create(nullptr, nullptr) == TILEDB_INVALID_CONTEXT);
+  CHECK(tiledb_current_domain_create(ctx, nullptr) == TILEDB_ERR);
 
-  CHECK(tiledb_ndrectangle_free(nullptr) == TILEDB_ERR);
-  tiledb_ndrectangle_t* ndr = nullptr;
-  CHECK(tiledb_ndrectangle_free(&ndr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_free(nullptr) == TILEDB_ERR);
+  tiledb_current_domain_t* crd = nullptr;
+  CHECK(tiledb_current_domain_free(&crd) == TILEDB_ERR);
 
-  CHECK(
-      tiledb_ndrectangle_get_range_from_name(
-          nullptr, nullptr, nullptr, nullptr) == TILEDB_INVALID_CONTEXT);
-  CHECK(
-      tiledb_ndrectangle_get_range_from_name(ctx, nullptr, nullptr, nullptr) ==
-      TILEDB_ERR);
+  crd = nullptr;
+  CHECK(tiledb_current_domain_create(ctx, &crd) == TILEDB_OK);
 
-  REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
-  CHECK(
-      tiledb_ndrectangle_get_range_from_name(ctx, ndr, nullptr, nullptr) ==
-      TILEDB_ERR);
-  CHECK(
-      tiledb_ndrectangle_get_range_from_name(ctx, ndr, "dim1", nullptr) ==
-      TILEDB_ERR);
-  tiledb_range_t range;
-  CHECK(
-      tiledb_ndrectangle_get_range_from_name(ctx, ndr, "doesntexist", &range) ==
-      TILEDB_ERR);
+  CHECK(tiledb_current_domain_set_ndrectangle(nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_set_ndrectangle(crd, nullptr) == TILEDB_ERR);
 
-  CHECK(
-      tiledb_ndrectangle_get_range(nullptr, nullptr, 0, nullptr) ==
-      TILEDB_INVALID_CONTEXT);
-  CHECK(tiledb_ndrectangle_get_range(ctx, nullptr, 0, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_ndrectangle_get_range(ctx, ndr, 0, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_ndrectangle_get_range(ctx, ndr, 2, &range) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_ndrectangle(nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_ndrectangle(crd, nullptr) == TILEDB_ERR);
 
-  CHECK(
-      tiledb_ndrectangle_set_range(nullptr, nullptr, 0, nullptr) ==
-      TILEDB_INVALID_CONTEXT);
-  CHECK(tiledb_ndrectangle_set_range(ctx, nullptr, 0, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_ndrectangle_set_range(ctx, ndr, 0, nullptr) == TILEDB_ERR);
-  CHECK(tiledb_ndrectangle_set_range(ctx, ndr, 2, &range) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_is_empty(nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_is_empty(crd, nullptr) == TILEDB_ERR);
 
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(
-          nullptr, nullptr, nullptr, nullptr) == TILEDB_INVALID_CONTEXT);
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(ctx, nullptr, nullptr, nullptr) ==
-      TILEDB_ERR);
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(ctx, ndr, nullptr, nullptr) ==
-      TILEDB_ERR);
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(ctx, ndr, "dim1", nullptr) ==
-      TILEDB_ERR);
-  tiledb_range_t range;
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(ctx, ndr, "doesntexist", &range) ==
-      TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_type(nullptr, nullptr) == TILEDB_ERR);
+  CHECK(tiledb_current_domain_get_type(crd, nullptr) == TILEDB_ERR);
 
-  REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
+  tiledb_current_domain_free(&crd);
 }
 
 TEST_CASE_METHOD(
-    CAPINDRectangleFx,
-    "C API: setting and getting ranges works",
-    "[capi][ndrectangle][range]") {
+    CAPICurrentDomainFx,
+    "C API: Setting ND rectangles works",
+    "[capi][current_domain][ndr]") {
+  tiledb_current_domain_t* crd = nullptr;
+  REQUIRE(tiledb_current_domain_create(ctx, &crd) == TILEDB_OK);
+
   tiledb_ndrectangle_t* ndr = nullptr;
   REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
-
   tiledb_range_t range;
   uint64_t min = 2;
   uint64_t max = 5;
@@ -175,29 +132,29 @@ TEST_CASE_METHOD(
   range.max = &max;
   range.max_size = sizeof(uint64_t);
 
-  CHECK(
-      tiledb_ndrectangle_set_range_for_name(ctx, ndr, "d1", &range) ==
-      TILEDB_OK);
+  uint32_t is_empty = false;
+  REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
+  CHECK(is_empty == true);
 
-  CHECK(tiledb_ndrectangle_set_range(ctx, ndr, 1, &range) == TILEDB_OK);
+  tiledb_current_domain_type_t type;
+  CHECK(tiledb_current_domain_get_type(crd, &type) == TILEDB_ERR);
 
-  tiledb_range_t out_range_d1;
+  REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
 
-  REQUIRE(
-      tiledb_ndrectangle_get_range_from_name(ctx, ndr, "d1", &out_range_d1) ==
-      TILEDB_OK);
-  CHECK(range.min_size == out_range_d1.min_size);
-  CHECK(range.min_size == out_range_d1.min_size);
-  CHECK(std::memcmp(range.min, out_range_d1.min, range.min_size) == 0);
-  CHECK(std::memcmp(range.max, out_range_d1.max, range.max_size) == 0);
+  REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
+  CHECK(is_empty == false);
 
-  tiledb_range_t out_range_d2;
-  REQUIRE(
-      tiledb_ndrectangle_get_range(ctx, ndr, 1, &out_range_d2) == TILEDB_OK);
-  CHECK(range.min_size == out_range_d2.min_size);
-  CHECK(range.min_size == out_range_d2.min_size);
-  CHECK(std::memcmp(range.min, out_range_d2.min, range.min_size) == 0);
-  CHECK(std::memcmp(range.max, out_range_d2.max, range.max_size) == 0);
+  REQUIRE(tiledb_current_domain_get_type(crd, &type) == TILEDB_OK);
+  CHECK(type == TILEDB_NDRECTANGLE);
 
-  REQUIRE(tiledb_ndrectangle_free(&ndr) == TILEDB_OK);
+  tiledb_ndrectangle_t* out_ndr = nullptr;
+  REQUIRE(tiledb_current_domain_get_ndrectangle(crd, &out_ndr) == TILEDB_OK);
+  CHECK(out_ndr != nullptr);
+
+  // Verify that they point to the same tiledb::sm::NDRectangle instance.
+  CHECK(ndr->ndrectangle().get() == out_ndr->ndrectangle().get());
+
+  tiledb_ndrectangle_free(&out_ndr);
+  tiledb_ndrectangle_free(&ndr);
+  tiledb_current_domain_free(&crd);
 }
