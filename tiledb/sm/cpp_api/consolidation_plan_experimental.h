@@ -43,6 +43,8 @@ class ConsolidationPlan {
    * Constructor. This creates the consolidation plan for an array with the
    * given desired maximum fragment size.
    *
+   * Creating a consolidation plan is not supported for dense arrays.
+   *
    * @param ctx TileDB context.
    * @param array The array.
    * @param fragment_size The desired fragment size.

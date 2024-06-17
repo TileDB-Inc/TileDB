@@ -677,7 +677,8 @@ TILEDB_EXPORT capi_return_t tiledb_ctx_alloc_with_error(
  * Note: This API needs to be used with caution until we implement
  * consolidation with timestamps. For now, if the non-empty domain of the
  * consolidated fragments overlap anything in the fragments that come in
- * between, this could lead to unpredictable behavior.
+ * between, this could lead to unpredictable behavior. This API is also not
+ * supported for dense arrays.
  *
  * **Example:**
  *
@@ -902,6 +903,8 @@ TILEDB_EXPORT int32_t tiledb_fragment_info_get_total_cell_num(
 
 /**
  * Creates a consolidation plan object.
+ *
+ * Creating a consolidation plan is not supported for dense arrays.
  *
  * **Example:**
  *

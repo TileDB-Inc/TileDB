@@ -177,6 +177,7 @@ TILEDB_EXPORT void tiledb_config_free(tiledb_config_t** config) TILEDB_NOEXCEPT;
  *    created by consolidation. When it is reached, consolidation will continue
  *    the operation in a new fragment. The result will be a multiple fragments,
  *    but with seperate MBRs. <br>
+ *    This option is not supported for dense arrays. <br>
  * - `sm.consolidation.steps` <br>
  *    The number of consolidation steps to be performed when executing
  *    the consolidation algorithm.<br>

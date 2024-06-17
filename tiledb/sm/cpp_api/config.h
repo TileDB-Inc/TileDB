@@ -352,6 +352,7 @@ class Config {
    *    created by consolidation. When it is reached, consolidation will
    *    continue the operation in a new fragment. The result will be a multiple
    *    fragments, but with seperate MBRs. <br>
+   *    This option is not supported for dense arrays. <br>
    *    **Default**: UINT64_MAX
    * - `sm.consolidation.steps` <br>
    *    The number of consolidation steps to be performed when executing
