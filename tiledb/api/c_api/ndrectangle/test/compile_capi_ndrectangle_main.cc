@@ -29,17 +29,12 @@
 #include "../ndrectangle_api_external_experimental.h"
 
 int main() {
-  tiledb_query_get_default_channel(nullptr, nullptr, nullptr);
-  tiledb_create_unary_aggregate(nullptr, nullptr, nullptr, nullptr, nullptr);
-  tiledb_channel_apply_aggregate(nullptr, nullptr, nullptr, nullptr);
-  (void)tiledb_channel_operator_sum;
-  (void)tiledb_aggregate_count;
-  tiledb_channel_operator_sum_get(nullptr, nullptr);
-  tiledb_channel_operator_min_get(nullptr, nullptr);
-  tiledb_channel_operator_max_get(nullptr, nullptr);
-  tiledb_aggregate_count_get(nullptr, nullptr);
-  tiledb_aggregate_free(nullptr, nullptr);
-  tiledb_query_channel_free(nullptr, nullptr);
+  tiledb_ndrectangle_alloc(nullptr, nullptr, nullptr);
+  tiledb_ndrectangle_free(nullptr);
+  tiledb_ndrectangle_get_range_from_name(nullptr, nullptr, nullptr, nullptr);
+  tiledb_ndrectangle_get_range(nullptr, nullptr, 0, nullptr);
+  tiledb_ndrectangle_set_range_for_name(nullptr, nullptr, nullptr, nullptr);
+  tiledb_ndrectangle_set_range(nullptr, nullptr, 0, nullptr);
 
   return 0;
 }

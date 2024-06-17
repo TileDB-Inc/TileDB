@@ -30,17 +30,12 @@
 #include "../current_domain_api_external_experimental.h"
 
 int main() {
-  tiledb_query_get_default_channel(nullptr, nullptr, nullptr);
-  tiledb_create_unary_aggregate(nullptr, nullptr, nullptr, nullptr, nullptr);
-  tiledb_channel_apply_aggregate(nullptr, nullptr, nullptr, nullptr);
-  (void)tiledb_channel_operator_sum;
-  (void)tiledb_aggregate_count;
-  tiledb_channel_operator_sum_get(nullptr, nullptr);
-  tiledb_channel_operator_min_get(nullptr, nullptr);
-  tiledb_channel_operator_max_get(nullptr, nullptr);
-  tiledb_aggregate_count_get(nullptr, nullptr);
-  tiledb_aggregate_free(nullptr, nullptr);
-  tiledb_query_channel_free(nullptr, nullptr);
+  tiledb_current_domain_create(nullptr, nullptr);
+  tiledb_current_domain_free(nullptr);
+  tiledb_current_domain_set_ndrectangle(nullptr, nullptr);
+  tiledb_current_domain_get_ndrectangle(nullptr, nullptr);
+  tiledb_current_domain_get_is_empty(nullptr, nullptr);
+  tiledb_current_domain_get_type(nullptr, nullptr);
 
   return 0;
 }
