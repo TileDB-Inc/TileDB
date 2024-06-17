@@ -73,8 +73,8 @@ class CurrentDomain {
   /*           TYPE DEFINITIONS        */
   /* ********************************* */
 
-  /** The shape type. */
-  enum class Shape {
+  /** The currentDomain type. */
+  enum class CurrentDomainType {
     /** N-DImensional rectangle.*/
     NDRECTANGLE
   };
@@ -87,9 +87,9 @@ class CurrentDomain {
    * Creates a TileDB current_domain object.
    *
    * @param ctx TileDB context
-   * @param type The TileDB shape type
+   * @param type The TileDB currentDomain type
    */
-  CurrentDomain(const Context& ctx, tiledb_shape_type_t type)
+  CurrentDomain(const Context& ctx, tiledb_current_domain_type_t type)
       : ctx_(ctx) {
     tiledb_current_domain_t* cd;
     ctx.handle_error(tiledb_current_domain_alloc(ctx.ptr().get(), type, &cd));
@@ -110,9 +110,9 @@ class CurrentDomain {
     return current_domain_;
   }
 
-  /** Returns the shape type. */
-  Shape shape_type() const {
-    tiledb_shape_type_t type;
+  /** Returns the currentDomain type. */
+  CurrentDomainType type() const {
+    tiledb_current_domain_type_t type;
     auto& ctx = ctx_.get();
     // ctx.handle_error(); TODO
     return to_status(type);
@@ -134,8 +134,8 @@ class CurrentDomain {
    * Get the NDRectangle
    * @return NDRectangle
    */
-  NDRectangle ndrect() const {
-    tiledb_ndrect_t* nd;
+  NDRectangle ndrectangle() const {
+    tiledb_ndrectangle_t* nd;
     // TODO
     return NDRectangle(&nd);
   }
@@ -170,8 +170,8 @@ class CurrentDomain {
 /** Get a string representation of a current_domain status for an output stream.
  */
 inline std::ostream&
-operator<<(std::ostream& os, const Shape& shape) {
-  switch (shape) {
+operator<<(std::ostream& os, const CurrentDomainType& type) {
+  switch (type) {
     case NDRECTANGLE:
       os << "NDRECTANGLE";
       break;

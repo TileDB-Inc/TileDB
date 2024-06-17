@@ -71,9 +71,9 @@ class NDRectangle {
   NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
       : ctx_(ctx)
       , domain_(domain) {
-    tiledb_ndrect_t* capi_ndrect;
+    tiledb_ndrectangle_t* capi_ndrect;
     ctx.handle_error(tiledb_ndrect_alloc(ctx.ptr().get(), &capi_ndrect));
-    ndrect_ = std::shared_ptr<tiledb_ndrect_t>(capi_ndrect, deleter_);
+    ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(capi_ndrect, deleter_);
   }
 
   NDRectangle(const NDRectangle&) = default;
@@ -180,7 +180,7 @@ class NDRectangle {
   }
 
   /** Returns the C TileDB ndrect object. */
-  std::shared_ptr<tiledb_ndrect_t> ptr() const {
+  std::shared_ptr<tiledb_ndrectangle_t> ptr() const {
     return ndrect_;
   }
 
@@ -199,7 +199,7 @@ class NDRectangle {
   Domain domain_;
 
   /** Pointer to the C TileDB domain object. */
-  std::shared_ptr<tiledb_ndrect_t> ndrect_;
+  std::shared_ptr<tiledb_ndrectangle_t> ndrect_;
 };
 
 /* ********************************* */

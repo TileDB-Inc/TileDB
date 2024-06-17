@@ -36,11 +36,11 @@
 #include "array_schema.h"
 #include "attribute.h"
 #include "context.h"
+#include "current_domain.h"
 #include "deleter.h"
 #include "domain.h"
 #include "object.h"
 #include "tiledb.h"
-#include "current_domain.h"
 #include "tiledb_experimental.h"
 
 #include <array>
@@ -218,13 +218,14 @@ class ArraySchemaEvolution {
   }
 
   /**
-   * Expands the current domain with the given NDRectangle if applicable
+   * Expands the current domain during array schema evolution.
+   * TileDB will enforce that the new current domain is expanding
+   * on the current one and not contracting during `tiledb_array_evolve`.
    *
-   * @param current_domain The currentDomain to expand.
-   * @param ndrect The NDRectangle to use for the expansion.
+   * @param expanded_domain The current domain we want to expand the schema to.
    */
   ArraySchemaEvolution& expand_current_domain(
-      const CurrentDomain& current_domain, const NDRectangle& ndrect) {
+      const CurrentDomain& expanded_domain) {
     auto& ctx = ctx_.get();
     // ctx.handle_error(); TODO
     return *this;
