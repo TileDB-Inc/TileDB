@@ -33,7 +33,7 @@
 #include <catch2/catch_all.hpp>
 #include <vector>
 #include "tiledb/common/util/var_length_util.h"
-#include "tiledb/sm/external_sort/partition.h"
+#include "tiledb/sm/query/external_sort/partition.h"
 
 TEST_CASE("partition: Null test", "[partition][null_test]") {
   REQUIRE(true);
