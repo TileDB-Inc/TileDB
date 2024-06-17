@@ -73,6 +73,7 @@
 #include "tiledb/sm/filter/filter_pipeline.h"
 #include "tiledb/sm/misc/tdb_time.h"
 #include "tiledb/sm/object/object.h"
+#include "tiledb/sm/object/object_iter.h"
 #include "tiledb/sm/query/query.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/rest/rest_client.h"
@@ -3123,9 +3124,8 @@ int32_t tiledb_object_walk(
   }
 
   // Create an object iterator
-  tiledb::sm::StorageManager::ObjectIter* obj_iter;
-  throw_if_not_ok(ctx->storage_manager()->object_iter_begin(
-      &obj_iter, path, static_cast<tiledb::sm::WalkOrder>(order)));
+  tiledb::sm::ObjectIter* obj_iter = tiledb::sm::object_iter_begin(
+      ctx->resources(), path, static_cast<tiledb::sm::WalkOrder>(order));
 
   // For as long as there is another object and the callback indicates to
   // continue, walk over the TileDB objects in the path
@@ -3136,9 +3136,9 @@ int32_t tiledb_object_walk(
   do {
     if (SAVE_ERROR_CATCH(
             ctx,
-            ctx->storage_manager()->object_iter_next(
-                obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager()->object_iter_free(obj_iter);
+            tiledb::sm::object_iter_next(
+                ctx->resources(), obj_iter, &obj_name, &obj_type, &has_next))) {
+      tiledb::sm::object_iter_free(obj_iter);
       return TILEDB_ERR;
     }
     if (!has_next)
@@ -3147,7 +3147,7 @@ int32_t tiledb_object_walk(
   } while (rc == 1);
 
   // Clean up
-  ctx->storage_manager()->object_iter_free(obj_iter);
+  tiledb::sm::object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;
@@ -3170,8 +3170,8 @@ int32_t tiledb_object_ls(
   }
 
   // Create an object iterator
-  tiledb::sm::StorageManager::ObjectIter* obj_iter;
-  throw_if_not_ok(ctx->storage_manager()->object_iter_begin(&obj_iter, path));
+  tiledb::sm::ObjectIter* obj_iter =
+      tiledb::sm::object_iter_begin(ctx->resources(), path);
 
   // For as long as there is another object and the callback indicates to
   // continue, walk over the TileDB objects in the path
@@ -3182,9 +3182,9 @@ int32_t tiledb_object_ls(
   do {
     if (SAVE_ERROR_CATCH(
             ctx,
-            ctx->storage_manager()->object_iter_next(
-                obj_iter, &obj_name, &obj_type, &has_next))) {
-      ctx->storage_manager()->object_iter_free(obj_iter);
+            tiledb::sm::object_iter_next(
+                ctx->resources(), obj_iter, &obj_name, &obj_type, &has_next))) {
+      tiledb::sm::object_iter_free(obj_iter);
       return TILEDB_ERR;
     }
     if (!has_next)
@@ -3193,7 +3193,7 @@ int32_t tiledb_object_ls(
   } while (rc == 1);
 
   // Clean up
-  ctx->storage_manager()->object_iter_free(obj_iter);
+  tiledb::sm::object_iter_free(obj_iter);
 
   if (rc == -1)
     return TILEDB_ERR;

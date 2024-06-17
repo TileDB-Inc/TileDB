@@ -75,30 +75,6 @@ enum class EncryptionType : uint8_t;
 class StorageManagerCanonical {
  public:
   /* ********************************* */
-  /*          TYPE DEFINITIONS         */
-  /* ********************************* */
-
-  /** Enables iteration over TileDB objects in a path. */
-  class ObjectIter {
-   public:
-    /**
-     * There is a one-to-one correspondence between `expanded_` and `objs_`.
-     * An `expanded_` value is `true` if the corresponding `objs_` path
-     * has been expanded to the paths it contains in a post ored traversal.
-     * This is not used in a preorder traversal.
-     */
-    std::list<bool> expanded_;
-    /** The next URI in string format. */
-    std::string next_;
-    /** The next objects to be visited. */
-    std::list<URI> objs_;
-    /** The traversal order of the iterator. */
-    WalkOrder order_;
-    /** `True` if the iterator will recursively visit the directory tree. */
-    bool recursive_;
-  };
-
-  /* ********************************* */
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
@@ -150,79 +126,6 @@ class StorageManagerCanonical {
 
   /** Returns the current map of any set tags. */
   const std::unordered_map<std::string, std::string>& tags() const;
-
-  /**
-   * Creates a new object iterator for the input path. The iteration
-   * in this case will be recursive in the entire directory tree rooted
-   * at `path`.
-   *
-   * @param obj_iter The object iterator to be created (memory is allocated for
-   *     it by the function).
-   * @param path The path the iterator will target at.
-   * @param order The traversal order of the iterator.
-   * @return Status
-   */
-  Status object_iter_begin(
-      ObjectIter** obj_iter, const char* path, WalkOrder order);
-
-  /**
-   * Creates a new object iterator for the input path. The iteration will
-   * not be recursive, and only the children of `path` will be visited.
-   *
-   * @param obj_iter The object iterator to be created (memory is allocated for
-   *     it by the function).
-   * @param path The path the iterator will target at.
-   * @return Status
-   */
-  Status object_iter_begin(ObjectIter** obj_iter, const char* path);
-
-  /** Frees the object iterator. */
-  void object_iter_free(ObjectIter* obj_iter);
-
-  /**
-   * Retrieves the next object path and type.
-   *
-   * @param obj_iter The object iterator.
-   * @param path The object path that is retrieved.
-   * @param type The object type that is retrieved.
-   * @param has_next True if an object path was retrieved and false otherwise.
-   * @return Status
-   */
-  Status object_iter_next(
-      ObjectIter* obj_iter,
-      const char** path,
-      ObjectType* type,
-      bool* has_next);
-
-  /**
-   * Retrieves the next object in the post-order traversal.
-   *
-   * @param obj_iter The object iterator.
-   * @param path The object path that is retrieved.
-   * @param type The object type that is retrieved.
-   * @param has_next True if an object path was retrieved and false otherwise.
-   * @return Status
-   */
-  Status object_iter_next_postorder(
-      ObjectIter* obj_iter,
-      const char** path,
-      ObjectType* type,
-      bool* has_next);
-
-  /**
-   * Retrieves the next object in the post-order traversal.
-   *
-   * @param obj_iter The object iterator.
-   * @param path The object path that is retrieved.
-   * @param type The object type that is retrieved.
-   * @param has_next True if an object path was retrieved and false otherwise.
-   * @return Status
-   */
-  Status object_iter_next_preorder(
-      ObjectIter* obj_iter,
-      const char** path,
-      ObjectType* type,
-      bool* has_next);
 
   /** Submits a query for (sync) execution. */
   Status query_submit(Query* query);
