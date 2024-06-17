@@ -111,7 +111,7 @@ capi_return_t tiledb_ndrectangle_get_range_from_name(
   ensure_dim_name_is_valid(name);
   ensure_range_ptr_is_valid(range);
 
-  auto r = ndr->ndrectangle()->get_range_for_name(name);
+  auto& r = ndr->ndrectangle()->get_range_for_name(name);
 
   smrange_to_range(r, range);
 
@@ -127,7 +127,7 @@ capi_return_t tiledb_ndrectangle_get_range(
   ensure_handle_is_valid(ndr);
   ensure_range_ptr_is_valid(range);
 
-  auto r = ndr->ndrectangle()->get_range(idx);
+  auto& r = ndr->ndrectangle()->get_range(idx);
   smrange_to_range(r, range);
 
   return TILEDB_OK;
@@ -146,9 +146,9 @@ capi_return_t tiledb_ndrectangle_set_range_for_name(
   Range r;
   auto idx = ndr->ndrectangle()->domain()->get_dimension_index(name);
   if (ndr->ndrectangle()->domain()->dimension_ptr(idx)->var_size()) {
-    r.set_range_fixed(range->min, range->max, range->min_size);
-  } else {
     r.set_range_var(range->min, range->min_size, range->max, range->max_size);
+  } else {
+    r.set_range_fixed(range->min, range->max, range->min_size);
   }
 
   ndr->ndrectangle()->set_range_for_name(r, name);
@@ -167,9 +167,9 @@ capi_return_t tiledb_ndrectangle_set_range(
 
   Range r;
   if (ndr->ndrectangle()->domain()->dimension_ptr(idx)->var_size()) {
-    r.set_range_fixed(range->min, range->max, range->min_size);
-  } else {
     r.set_range_var(range->min, range->min_size, range->max, range->max_size);
+  } else {
+    r.set_range_fixed(range->min, range->max, range->min_size);
   }
 
   ndr->ndrectangle()->set_range(r, idx);
