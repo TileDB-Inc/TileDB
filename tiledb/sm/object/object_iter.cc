@@ -65,7 +65,7 @@ ObjectIter* object_iter_begin(
   ObjectType obj_type;
   for (auto& uri : uris) {
     try {
-      throw_if_not_ok(object_type(resources, uri, &obj_type));
+      obj_type = object_type(resources, uri);
       if (obj_type != ObjectType::INVALID) {
         obj_iter->objs_.push_back(uri);
         if (order == WalkOrder::POSTORDER)
@@ -101,7 +101,7 @@ ObjectIter* object_iter_begin(ContextResources& resources, const char* path) {
   ObjectType obj_type;
   for (auto& uri : uris) {
     try {
-      throw_if_not_ok(object_type(resources, uri, &obj_type));
+      obj_type = object_type(resources, uri);
       if (obj_type != ObjectType::INVALID) {
         obj_iter->objs_.push_back(uri);
       }
@@ -164,7 +164,7 @@ Status object_iter_next_postorder(
       // Push the new TileDB objects in the front of the iterator's list
       ObjectType obj_type;
       for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-        throw_if_not_ok(object_type(resources, *it, &obj_type));
+        obj_type = object_type(resources, *it);
         if (obj_type != ObjectType::INVALID) {
           obj_iter->objs_.push_front(*it);
           obj_iter->expanded_.push_front(false);
@@ -176,7 +176,7 @@ Status object_iter_next_postorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  throw_if_not_ok(object_type(resources, front_uri, type));
+  *type = object_type(resources, front_uri);
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -196,7 +196,7 @@ Status object_iter_next_preorder(
   // Prepare the values to be returned
   URI front_uri = obj_iter->objs_.front();
   obj_iter->next_ = front_uri.to_string();
-  throw_if_not_ok(object_type(resources, front_uri, type));
+  *type = object_type(resources, front_uri);
   *path = obj_iter->next_.c_str();
   *has_next = true;
 
@@ -214,7 +214,7 @@ Status object_iter_next_preorder(
   // Push the new TileDB objects in the front of the iterator's list
   ObjectType obj_type;
   for (auto it = uris.rbegin(); it != uris.rend(); ++it) {
-    throw_if_not_ok(object_type(resources, *it, &obj_type));
+    obj_type = object_type(resources, *it);
     if (obj_type != ObjectType::INVALID)
       obj_iter->objs_.push_front(*it);
   }
