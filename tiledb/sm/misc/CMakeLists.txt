@@ -26,6 +26,8 @@
 include(common NO_POLICY_SCOPE)
 include(object_library)
 
+find_package(Magic_EP REQUIRED)
+
 #
 # `cancelable_tasks` object library
 #
@@ -39,6 +41,30 @@ conclude(object_library)
 #
 commence(object_library constants)
     this_target_sources(constants.cc)
+conclude(object_library)
+
+#
+# `mgc_dict` object library
+#
+# The file is used as a header but we don't name it .h to avoid it being picked up by IDEs
+set(MGC_GZIPPED_H_OUTPUT_FILE "${PROJECT_BINARY_DIR}/magic_mgc.zst.h_")
+
+add_custom_command(
+  OUTPUT "${MGC_GZIPPED_H_OUTPUT_FILE}"
+  DEPENDS "${libmagic_DICTIONARY}" "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
+  COMMAND ${CMAKE_COMMAND} "-DINPUT_FILE=${libmagic_DICTIONARY}" "-DOUTPUT_FILE=${MGC_GZIPPED_H_OUTPUT_FILE}" -P "${CMAKE_CURRENT_LIST_DIR}/generate_embedded_data_header.script.cmake"
+)
+add_custom_target(gen_mgc_unarch
+  DEPENDS ${MGC_GZIPPED_H_OUTPUT_FILE}
+)
+
+commence(object_library mgc_dict)
+    add_dependencies(mgc_dict gen_mgc_unarch)
+    # change to `this_target_include_directories` when available
+    target_include_directories(mgc_dict PRIVATE "${PROJECT_BINARY_DIR}")
+    this_target_object_libraries(buffer compressors)
+    this_target_link_libraries(libmagic)
+    this_target_sources(mgc_dict.cc)
 conclude(object_library)
 
 #
@@ -72,34 +98,3 @@ commence(object_library time)
 conclude(object_library)
 
 add_test_subdirectory()
-
-#
-# `mgc_dict.*` tests are declared in this directory for the moment.
-#
-# See also `/tiledb/CMakeLists.txt` for related targets `gen_mgc_unarch` and
-# `update-embedded-magic-data`
-#
-if (TILEDB_TESTS)
-  # simple unit test of magic.mgc embedded data vs external data
-  find_package(Magic_EP REQUIRED)
-  if(NOT EXISTS ${libmagic_DICTIONARY})
-    message(FATAL_ERROR "Failed to find libmagic 'magic.mgc' file.")
-  endif()
-  add_executable(unit_mgc_dict EXCLUDE_FROM_ALL)
-  target_sources(unit_mgc_dict PRIVATE
-          test/unit_mgc_dict.cc
-          mgc_dict.cc
-  )
-  target_link_libraries(unit_mgc_dict PRIVATE
-    compressors
-    filter
-    libmagic
-    )
-
-  target_compile_options(unit_mgc_dict PRIVATE -DTILEDB_PATH_TO_MAGIC_MGC=\"${libmagic_DICTIONARY}\")
-  target_include_directories(unit_mgc_dict
-    PRIVATE
-      ${CMAKE_CURRENT_BINARY_DIR}
-     "${libmagic_INCLUDE_DIR}"
-  )
-endif()

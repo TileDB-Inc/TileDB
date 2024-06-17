@@ -1,11 +1,11 @@
 /**
- * @file mgc_dict.h
+ * @file compile_mgc_dict_main.cc
  *
  * @section LICENSE
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022-2024 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -26,29 +26,9 @@
  * THE SOFTWARE.
  */
 
-#include "magic.h"
+#include "../mgc_dict.h"
 
-#include "tiledb/common/common.h"
-
-namespace tiledb::sm::magic_dict {
-
-/**
- * Have libmagic load data from our embedded version.
- *
- * @param magic - libmagic object obtained from magic_open()
- * @return the value libmgaic returns from magic_load_buffers().
- */
-int magic_mgc_embedded_load(magic_t magic);
-
-/**
- * Provides access to the internally expanded data.
- *
- * Data is stored in the library in a compressed form (approx. 270KB) and gets
- * decompressed (approx. 7MB) on the first call to this function. Subsequent
- * calls to this function will reuse the decompressed buffer.
- *
- * @return a span to the internal buffer holding the expanded data.
- */
-span<const uint8_t> expanded_buffer();
-
-}  // namespace tiledb::sm::magic_dict
+int main() {
+  (void)tiledb::sm::magic_dict::expanded_buffer();
+  return 0;
+}
