@@ -73,7 +73,6 @@ In this case, there will be a sequence of incomplete queries.  In the initializa
 On the next iteration, all the big blocks can be processed in a single pass to create a single new big block.  All the blocks in the big block will be sorted and will be sorted with respect to each other.  This big block can be consolidated into a single (final) array, or it can fill user buffers directly. 
 
  #### Scenario 3:
-
 There is not enough memory to load the entire query into the
  user buffers.  After initialization, there are more temporary big blocks than then are input blocks in the input block buffer.
 
