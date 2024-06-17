@@ -240,12 +240,10 @@ TEST_CASE(
   const char* fragment_uris[2] = {
       short_fragment_name1.c_str(), short_fragment_name2.c_str()};
 
-  REQUIRE_NOTHROW(
-      Array::consolidate(ctx, array_name, fragment_uris, 2, &config));
-  CHECK(tiledb::test::num_fragments(array_name) == 3);
-
-  read_array(array_name, {1, 3}, {1, 2, 3});
-
+  REQUIRE_THROWS_WITH(
+      Array::consolidate(ctx, array_name, fragment_uris, 2, &config),
+      Catch::Matchers::ContainsSubstring(
+          "Fragment list consolidation is not supported for dense arrays."));
   remove_array(array_name);
 }
 
