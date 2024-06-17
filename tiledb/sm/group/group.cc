@@ -587,8 +587,8 @@ Status Group::consolidate_metadata(
   // Consolidate
   // Encryption credentials are loaded by Group from config
   StorageManager sm(resources, resources.logger(), config);
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  auto consolidator = Consolidator::create(
+      resources, ConsolidationMode::GROUP_META, config, &sm);
   return consolidator->consolidate(
       group_name, EncryptionType::NO_ENCRYPTION, nullptr, 0);
 }
@@ -610,8 +610,8 @@ void Group::vacuum_metadata(
   }
 
   StorageManager sm(resources, resources.logger(), config);
-  auto consolidator =
-      Consolidator::create(ConsolidationMode::GROUP_META, config, &sm);
+  auto consolidator = Consolidator::create(
+      resources, ConsolidationMode::GROUP_META, config, &sm);
   consolidator->vacuum(group_name);
 }
 

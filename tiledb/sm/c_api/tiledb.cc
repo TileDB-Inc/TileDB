@@ -2665,6 +2665,7 @@ int32_t tiledb_array_consolidate(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   api::ensure_config_is_valid_if_present(config);
   tiledb::sm::Consolidator::array_consolidate(
+      ctx->resources(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -2684,6 +2685,7 @@ int32_t tiledb_array_consolidate_with_key(
   // Sanity checks
 
   tiledb::sm::Consolidator::array_consolidate(
+      ctx->resources(),
       array_uri,
       static_cast<tiledb::sm::EncryptionType>(encryption_type),
       encryption_key,
@@ -2710,6 +2712,7 @@ int32_t tiledb_array_consolidate_fragments(
   }
 
   tiledb::sm::Consolidator::fragments_consolidate(
+      ctx->resources(),
       array_uri,
       tiledb::sm::EncryptionType::NO_ENCRYPTION,
       nullptr,
@@ -2724,6 +2727,7 @@ int32_t tiledb_array_consolidate_fragments(
 int32_t tiledb_array_vacuum(
     tiledb_ctx_t* ctx, const char* array_uri, tiledb_config_t* config) {
   tiledb::sm::Consolidator::array_vacuum(
+      ctx->resources(),
       array_uri,
       (config == nullptr) ? ctx->config() : config->config(),
       ctx->storage_manager());

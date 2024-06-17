@@ -37,6 +37,7 @@
 #include "tiledb/common/heap_memory.h"
 #include "tiledb/common/status.h"
 #include "tiledb/sm/array/array.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
@@ -76,13 +77,22 @@ class Consolidator {
   /**
    * Factory method to make a new Consolidator instance given the config mode.
    *
+   * @section Maturity Notes
+   * This is a transitional method in the sense that we are working
+   * on removing the dependency of the Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be create(ContextResources&, ...).
+   *
+   * @param resources The context resources.
    * @param mode Consolidation mode.
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default).
-   * @param storage_manager Storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    * @return New Consolidator instance or nullptr on error.
    */
   static shared_ptr<Consolidator> create(
+      ContextResources& resources,
       const ConsolidationMode mode,
       const Config& config,
       StorageManager* storage_manager);
@@ -134,6 +144,14 @@ class Consolidator {
   /**
    * Consolidates the fragments of an array into a single one.
    *
+   * @section Maturity Notes
+   * This is a transitional method in the sense that we are working
+   * on removing the dependency of the Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * array_consolidate(ContextResources&, ...).
+   *
+   * @param resources The context resources.
    * @param array_name The name of the array to be consolidated.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
@@ -142,9 +160,11 @@ class Consolidator {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @param storage_manager The storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   static void array_consolidate(
+      ContextResources& resources,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -155,6 +175,14 @@ class Consolidator {
   /**
    * Consolidates the fragments of an array into a single one.
    *
+   * @section Maturity Notes
+   * This is a transitional method in the sense that we are working
+   * on removing the dependency of the Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * fragments_consolidate(ContextResources&, ...).
+   *
+   * @param resources The context resources.
    * @param array_name The name of the array to be consolidated.
    * @param encryption_type The encryption type of the array
    * @param encryption_key If the array is encrypted, the private encryption
@@ -164,9 +192,11 @@ class Consolidator {
    * @param config Configuration parameters for the consolidation
    *     (`nullptr` means default, which will use the config associated with
    *      this instance).
-   * @param storage_manager The storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   static void fragments_consolidate(
+      ContextResources& resources,
       const char* array_name,
       EncryptionType encryption_type,
       const void* encryption_key,
@@ -194,11 +224,21 @@ class Consolidator {
    * metadata. Note that this will coarsen the granularity of time traveling
    * (see docs for more information).
    *
+   * @section Maturity Notes
+   * This is a transitional method in the sense that we are working
+   * on removing the dependency of the Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * array_vacuum(ContextResources&, ...).
+   *
+   * @param resources The context resources.
    * @param array_name The name of the array to be vacuumed.
    * @param config Configuration parameters for vacuuming.
-   * @param storage_manager The storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   static void array_vacuum(
+      ContextResources& resources,
       const char* array_name,
       const Config& config,
       StorageManager* storage_manager);
@@ -223,9 +263,18 @@ class Consolidator {
   /**
    * Constructor.
    *
-   * @param storage_manager Storage manager.
+   * Constructs a Consolidator object given a ContextResources reference.
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Consolidator class on StorageManager. For
+   * now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be Consolidator(ContextResources&).
+   *
+   * @param resources The context resources.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
-  explicit Consolidator(StorageManager* storage_manager);
+  explicit Consolidator(
+      ContextResources& resources, StorageManager* storage_manager);
 
   /**
    * Checks if the array is remote.
