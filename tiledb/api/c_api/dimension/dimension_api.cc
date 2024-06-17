@@ -139,9 +139,8 @@ int32_t tiledb_dimension_get_tile_extent(
 int32_t tiledb_dimension_dump(const tiledb_dimension_t* dim, FILE* out) {
   ensure_dimension_is_valid(dim);
 
-  if (out == nullptr) {
-    out = stdout;
-  }
+  if (out == nullptr)
+    return TILEDB_ERR;
 
   std::stringstream ss;
   ss << *dim->copy();

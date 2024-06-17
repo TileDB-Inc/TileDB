@@ -122,13 +122,10 @@ int CompressionFilter::compression_level() const {
 
 std::ostream& CompressionFilter::output(std::ostream& os) const {
   std::string compressor_str = tiledb::sm::compressor_str(compressor_);
-  if (compressor_ == Compressor::DELTA ||
-      compressor_ == Compressor::DOUBLE_DELTA) {
-    os << compressor_str << ": COMPRESSION_LEVEL=" << level_
-       << ", REINTERPRET_DATATYPE=" << datatype_str(reinterpret_datatype_);
-  } else {
-    os << compressor_str << ": COMPRESSION_LEVEL=" << level_;
-  }
+  os << compressor_str << ": COMPRESSION_LEVEL=" << level_;
+  if (compressor_ == Compressor::DELTA || compressor_ == Compressor::DOUBLE_DELTA)
+      os << ", REINTERPRET_DATATYPE=" << datatype_str(reinterpret_datatype_);
+  
   return os;
 }
 

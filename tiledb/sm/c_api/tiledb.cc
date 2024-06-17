@@ -704,9 +704,8 @@ int32_t tiledb_array_schema_dump(
   if (sanity_check(ctx, array_schema) == TILEDB_ERR)
     return TILEDB_ERR;
 
-  if (out == nullptr) {
-    out = stdout;
-  }
+  if (out == nullptr)
+    return TILEDB_ERR;
 
   std::stringstream ss;
 

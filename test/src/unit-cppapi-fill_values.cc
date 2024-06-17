@@ -40,25 +40,13 @@
 using namespace tiledb;
 
 void check_dump(const Attribute& attr, const std::string& gold_out) {
-  FILE* gold_fout = fopen("gold_fout.txt", "w");
-  fwrite(gold_out.c_str(), sizeof(char), gold_out.size(), gold_fout);
-  fclose(gold_fout);
-  FILE* fout = fopen("fout.txt", "w");
   std::stringstream ss;
   ss << attr;
-  fwrite(ss.str().c_str(), sizeof(char), ss.str().size(), fout);
-  fclose(fout);
-#ifdef _WIN32
-  CHECK(!system("FC gold_fout.txt fout.txt > nul"));
-#else
-  CHECK(!system("diff gold_fout.txt fout.txt"));
-#endif
+  CHECK(gold_out == ss.str());
 
   // Clean up
   Context ctx;
   VFS vfs(ctx);
-  CHECK_NOTHROW(vfs.remove_file("gold_fout.txt"));
-  CHECK_NOTHROW(vfs.remove_file("fout.txt"));
 }
 
 void create_array_1d(

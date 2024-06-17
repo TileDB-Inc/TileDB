@@ -145,9 +145,8 @@ int32_t tiledb_domain_has_dimension(
 int32_t tiledb_domain_dump(const tiledb_domain_t* domain, FILE* out) {
   ensure_domain_is_valid(domain);
 
-  if (out == nullptr) {
-    out = stdout;
-  }
+  if (out == nullptr)
+    return TILEDB_ERR;
 
   std::stringstream ss;
   ss << *domain->copy_domain();

@@ -177,9 +177,8 @@ capi_return_t tiledb_enumeration_dump(
     tiledb_enumeration_t* enumeration, FILE* out) {
   ensure_enumeration_is_valid(enumeration);
 
-  if (out == nullptr) {
-    out = stdout;
-  }
+  if (out == nullptr)
+    return TILEDB_ERR;
 
   std::stringstream ss;
   ss << *enumeration->copy();

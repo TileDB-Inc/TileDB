@@ -652,7 +652,7 @@ bool FilterPipeline::use_tile_chunking(
 std::ostream& operator<<(
     std::ostream& os, const tiledb::sm::FilterPipeline& fp) {
   for (const auto& filter : fp.filters()) {
-    os << "\n  > ";
+    os << std::endl << "  > ";
     os << *filter;
   }
   return os;

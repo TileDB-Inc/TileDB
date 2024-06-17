@@ -1805,10 +1805,10 @@ std::ostream& operator<<(
 
   os << schema.coords_filters();
 
-  os << "\n- Offsets filters: " << schema.cell_var_offsets_filters().size();
+  os << std::endl << "- Offsets filters: " << schema.cell_var_offsets_filters().size();
 
   os << schema.cell_var_offsets_filters();
-  os << "\n- Validity filters: " << schema.cell_validity_filters().size();
+  os << std::endl << "- Validity filters: " << schema.cell_validity_filters().size();
 
   os << schema.cell_validity_filters();
   os << std::endl;

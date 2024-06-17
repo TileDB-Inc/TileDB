@@ -136,9 +136,8 @@ int32_t tiledb_attribute_dump(
     const tiledb_attribute_handle_t* attr, FILE* out) {
   ensure_attribute_is_valid(attr);
 
-  if (out == nullptr) {
-    out = stdout;
-  }
+  if (out == nullptr)
+    return TILEDB_ERR;
 
   std::stringstream ss;
   ss << *attr->copy_attribute();

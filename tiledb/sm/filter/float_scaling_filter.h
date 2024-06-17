@@ -161,9 +161,6 @@ class FloatScalingFilter : public Filter {
   /** The byte width of the compressed representation. */
   uint64_t byte_width_;
 
-  /** Dumps the float scaling filter in ASCII format. */
-  std::string dump_float_scaling_filter() const;
-
   /** Returns a new clone of this filter. */
   FloatScalingFilter* clone_impl() const override;
 
