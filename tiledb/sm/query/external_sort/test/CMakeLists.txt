@@ -1,5 +1,5 @@
 #
-# tiledb/sm/external_sort/test/CMakeLists.txt
+# tiledb/sm/query/external_sort/test/CMakeLists.txt
 #
 # The MIT License
 #

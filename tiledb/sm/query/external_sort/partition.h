@@ -1,5 +1,5 @@
 /**
- * @file   tiledb/sm/external_sort/partition.h
+ * @file   tiledb/sm/query/external_sort/partition.h
  *
  * @section LICENSE
  *
