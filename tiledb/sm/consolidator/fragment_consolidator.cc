@@ -326,6 +326,13 @@ Status FragmentConsolidator::consolidate_fragments(
   RETURN_NOT_OK(array_for_reads->open_without_fragments(
       encryption_type, encryption_key, key_length));
 
+  // It is very tricky to properly make fragments that will not lead to
+  // inconsistencies for dense when consolidating.
+  if (array_for_reads->array_schema_latest().dense()) {
+    throw FragmentConsolidatorException(
+        "Fragment list consolidation is not supported for dense arrays.");
+  }
+
   // Open array for writing
   auto array_for_writes{make_shared<Array>(
       HERE(), storage_manager_->resources(), array_for_reads->array_uri())};
@@ -670,6 +677,15 @@ Status FragmentConsolidator::create_queries(
   query_r = tdb_unique_ptr<Query>(tdb_new(
       Query, storage_manager_, array_for_reads, nullopt, read_memory_budget));
   RETURN_NOT_OK(query_r->set_layout(Layout::GLOBAL_ORDER));
+
+  // It is very tricky to properly make fragments that will not lead to
+  // inconsistencies for dense when consolidating.
+  if (dense &&
+      config_.max_fragment_size_ < std::numeric_limits<uint64_t>::max()) {
+    throw FragmentConsolidatorException(
+        "Consolidation with a max fragment size limit is not supported for "
+        "dense arrays.");
+  }
 
   // Dense consolidation will do a tile aligned read.
   if (dense) {

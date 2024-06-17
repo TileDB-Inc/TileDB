@@ -107,6 +107,13 @@ std::string ConsolidationPlan::dump() const {
 /* ********************************* */
 
 void ConsolidationPlan::generate(shared_ptr<Array> array) {
+  // It is very tricky to properly make fragments that will not lead to
+  // inconsistencies for dense when consolidating.
+  if (array->array_schema_latest().dense()) {
+    throw ConsolidationPlanStatusException(
+        "Creating a consolidation plan is not supported for dense arrays.");
+  }
+
   // Start with the plan being a single fragment per node.
   std::list<PlanNode> plan;
   for (unsigned f = 0;
