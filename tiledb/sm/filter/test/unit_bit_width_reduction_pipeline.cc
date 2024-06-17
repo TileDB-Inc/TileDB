@@ -54,7 +54,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
   SECTION("- Single stage") {
     auto tile = make_increasing_tile(nelts, tracker);
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
 
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
@@ -103,7 +103,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
           window_size);
 
-      CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+      pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
       CHECK(tile->size() == 0);
       CHECK(tile->filtered_buffer().size() != 0);
 
@@ -139,7 +139,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -176,7 +176,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint32_t), sizeof(uint32_t)));
     }
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -205,7 +205,7 @@ TEST_CASE("Filter: Test bit width reduction", "[filter][bit-width-reduction]") {
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -270,10 +270,7 @@ TEST_CASE(
     auto offsets_tile = make_offsets_tile(offsets, tracker);
 
     WhiteboxWriterTile::set_max_tile_chunk_size(80);
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-            .ok());
-
+    pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -343,10 +340,7 @@ TEST_CASE(
       auto offsets_tile = make_offsets_tile(offsets, tracker);
       pipeline.get_filter<BitWidthReductionFilter>()->set_max_window_size(
           window_size);
-
-      CHECK(pipeline
-                .run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-                .ok());
+      pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
       CHECK(tile->size() == 0);
       CHECK(tile->filtered_buffer().size() != 0);
 
@@ -384,9 +378,7 @@ TEST_CASE(
       CHECK_NOTHROW(tile->write(&val, i * sizeof(uint64_t), sizeof(uint64_t)));
     }
 
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-            .ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -444,8 +436,7 @@ TEST_CASE(
           constants::cell_var_offset_size));
     }
 
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), &offsets_tile32, &tp)
-              .ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), &offsets_tile32, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -476,10 +467,7 @@ TEST_CASE(
     }
 
     auto offsets_tile = make_offsets_tile(offsets, tracker);
-
-    CHECK(
-        pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp)
-            .ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), offsets_tile.get(), &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 

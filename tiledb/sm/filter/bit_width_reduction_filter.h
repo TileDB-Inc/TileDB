@@ -113,7 +113,7 @@ class BitWidthReductionFilter : public Filter {
   /**
    * Reduce the bit size of the given input into the given output.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -192,7 +192,7 @@ class BitWidthReductionFilter : public Filter {
 
   /** Run_forward method templated on the tile cell datatype. */
   template <typename T>
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const tile_offsets,
       FilterBuffer* input_metadata,

@@ -171,9 +171,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -189,9 +188,8 @@ class WebpFilter : public Filter {
    * @param input Buffer with data to be filtered.
    * @param output_metadata Buffer with metadata for filtered data.
    * @param output Buffer with filtered data (unused by in-place filters).
-   * @return Status::Ok() on success. Throws on failure.
    */
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

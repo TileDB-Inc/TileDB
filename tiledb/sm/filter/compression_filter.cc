@@ -247,7 +247,7 @@ Status CompressionFilter::get_option_impl(
   return Status::Ok();
 }
 
-Status CompressionFilter::run_forward(
+void CompressionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
@@ -256,22 +256,24 @@ Status CompressionFilter::run_forward(
     FilterBuffer* output) const {
   // Easy case: no compression
   if (compressor_ == Compressor::NO_COMPRESSION) {
-    RETURN_NOT_OK(output->append_view(input));
-    RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-    return Status::Ok();
+    throw_if_not_ok(output->append_view(input));
+    throw_if_not_ok(output_metadata->append_view(input_metadata));
+    return;
   }
 
-  if (input->size() > std::numeric_limits<uint32_t>::max())
-    return LOG_STATUS(
-        Status_FilterError("Input is too large to be compressed."));
+  if (input->size() > std::numeric_limits<uint32_t>::max()) {
+    throw FilterStatusException("Input is too large to be compressed.");
+  }
 
   if ((filter_data_type_ == Datatype::STRING_ASCII ||
        filter_data_type_ == Datatype::STRING_UTF8) &&
       offsets_tile) {
     if (compressor_ == Compressor::RLE ||
-        compressor_ == Compressor::DICTIONARY_ENCODING)
-      return compress_var_string_coords(
-          *input, offsets_tile, *output, *output_metadata);
+        compressor_ == Compressor::DICTIONARY_ENCODING) {
+      throw_if_not_ok(compress_var_string_coords(
+          *input, offsets_tile, *output, *output_metadata));
+      return;
+    }
   }
 
   std::vector<ConstBuffer> data_parts =
@@ -283,9 +285,10 @@ Status CompressionFilter::run_forward(
       2 * sizeof(uint32_t) + total_num_parts * 2 * sizeof(uint32_t);
   auto num_metadata_parts = static_cast<uint32_t>(metadata_parts.size());
   auto num_data_parts = static_cast<uint32_t>(data_parts.size());
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(
+      output_metadata->write(&num_metadata_parts, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&num_data_parts, sizeof(uint32_t)));
 
   // Allocate output data
   uint64_t output_size_ub = 0;
@@ -295,18 +298,16 @@ Status CompressionFilter::run_forward(
     output_size_ub += part.size() + overhead(tile, part.size());
 
   // Ensure space in output buffer for worst case.
-  RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
+  throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   assert(buffer_ptr != nullptr);
   buffer_ptr->reset_offset();
 
   // Compress all parts.
   for (auto& part : metadata_parts)
-    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
+    throw_if_not_ok(compress_part(tile, &part, buffer_ptr, output_metadata));
   for (auto& part : data_parts)
-    RETURN_NOT_OK(compress_part(tile, &part, buffer_ptr, output_metadata));
-
-  return Status::Ok();
+    throw_if_not_ok(compress_part(tile, &part, buffer_ptr, output_metadata));
 }
 
 Status CompressionFilter::run_reverse(

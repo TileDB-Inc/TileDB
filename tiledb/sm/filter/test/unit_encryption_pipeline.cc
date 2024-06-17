@@ -54,7 +54,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     pipeline.add_filter(EncryptionAES256GCMFilter(Datatype::UINT64));
 
     // No key set
-    CHECK(!pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    CHECK_THROWS(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp));
 
     // Create and set a key
     char key[32];
@@ -64,7 +64,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
     filter->set_key(key);
 
     // Check success
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     CHECK(tile->size() == 0);
     CHECK(tile->filtered_buffer().size() != 0);
 
@@ -79,7 +79,7 @@ TEST_CASE("Filter: Test encryption", "[filter][encryption]") {
 
     // Check error decrypting with wrong key.
     tile = make_increasing_tile(nelts, tracker);
-    CHECK(pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp).ok());
+    pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp);
     key[0]++;
     filter->set_key(key);
 

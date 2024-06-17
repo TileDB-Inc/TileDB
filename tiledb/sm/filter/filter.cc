@@ -41,12 +41,6 @@ using namespace tiledb::common;
 
 namespace tiledb {
 namespace sm {
-class FilterStatusException : public StatusException {
- public:
-  explicit FilterStatusException(const std::string& msg)
-      : StatusException("Filter", msg) {
-  }
-};
 
 Filter::Filter(FilterType type, Datatype filter_data_type) {
   type_ = type;

@@ -196,8 +196,8 @@ void GenericTileIO::write_generic(
 
   // Filter tile
   assert(!tile->filtered());
-  throw_if_not_ok(header.filters.run_forward(
-      &resources_.stats(), tile.get(), nullptr, &resources_.compute_tp()));
+  header.filters.run_forward(
+      &resources_.stats(), tile.get(), nullptr, &resources_.compute_tp());
   header.persisted_size = tile->filtered_buffer().size();
   assert(tile->filtered());
 
