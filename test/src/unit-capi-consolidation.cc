@@ -7157,8 +7157,8 @@ TEST_CASE_METHOD(
 
 TEST_CASE_METHOD(
     ConsolidationFx,
-    "C API: Test consolidation, dense split fragments",
-    "[capi][consolidation][dense][split-fragments][non-rest]") {
+    "C API: Test consolidation, dense split fragments error",
+    "[capi][consolidation][dense][split-fragments][non-rest][error]") {
   remove_dense_array();
   create_dense_array();
   write_dense_subarray(1, 2, 1, 2);
@@ -7200,32 +7200,10 @@ TEST_CASE_METHOD(
   const char* uris[2] = {strrchr(uri, '/') + 1, strrchr(uri2, '/') + 1};
   rc = tiledb_array_consolidate_fragments(
       ctx_, dense_array_uri_.c_str(), uris, 2, cfg);
-  CHECK(rc == TILEDB_OK);
+  CHECK(rc != TILEDB_OK);
   tiledb_config_free(&cfg);
 
   tiledb_fragment_info_free(&fragment_info);
-
-  // Check number of fragments
-  get_num_struct data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_frag_dir_.c_str(), &get_dir_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 5);
-
-  // Check reading after consolidation
-  read_dense_four_tiles();
-
-  // Vacuum
-  rc = tiledb_array_vacuum(ctx_, dense_array_uri_.c_str(), NULL);
-  CHECK(rc == TILEDB_OK);
-  read_dense_four_tiles();
-
-  // Check number of fragments
-  data = {ctx_, vfs_, 0};
-  rc = tiledb_vfs_ls(
-      ctx_, vfs_, dense_array_frag_dir_.c_str(), &get_dir_num, &data);
-  CHECK(rc == TILEDB_OK);
-  CHECK(data.num == 3);
 
   // Clean up
   remove_dense_array();

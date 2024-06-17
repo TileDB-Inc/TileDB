@@ -504,3 +504,50 @@ TEST_CASE(
 
   array.close();
 }
+
+TEST_CASE_METHOD(
+    CPPMaxFragmentSizeFx,
+    "C++ API: Max fragment size, dense array error",
+    "[cppapi][max-frag-size][dense][error]") {
+  {
+    // Create a schema with one dimension and one int attribute.
+    Domain domain(ctx_);
+    auto d1 = Dimension::create<int>(ctx_, "d1", {{1, max_domain}}, 2);
+    domain.add_dimensions(d1);
+
+    auto a1 = Attribute::create<int>(ctx_, "a1");
+
+    ArraySchema schema(ctx_, TILEDB_DENSE);
+    schema.set_domain(domain);
+    schema.add_attributes(a1);
+    schema.set_capacity(10);
+
+    Array::create(array_name, schema);
+  }
+
+  // Write 2 fragments in different places.
+  {
+    Array array(ctx_, array_name, TILEDB_WRITE);
+    for (int i = 0; i < 2; i++) {
+      Query query(ctx_, array, TILEDB_WRITE);
+
+      std::vector<int> data{1, 2, 3, 4};
+
+      Subarray subarray(ctx_, array);
+      subarray.add_range(0, 4 * i + 1, 4 * i + 4);
+
+      query.set_layout(TILEDB_GLOBAL_ORDER)
+          .set_data_buffer("a1", data)
+          .set_subarray(subarray);
+
+      query.submit_and_finalize();
+    }
+  }
+
+  // Run fragment consolidation and vacuum.
+  CHECK_THROWS_WITH(
+      consolidate_fragments(10000),
+      Catch::Matchers::ContainsSubstring(
+          "Consolidation with a max fragment size limit is not supported for "
+          "dense arrays."));
+}
