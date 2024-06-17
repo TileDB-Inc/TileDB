@@ -47,9 +47,9 @@ extern "C" {
  * the limits of a dimension for a ND rectangle.
  */
 typedef struct {
-  void* min;
+  const void* min;
   uint64_t min_size;
-  void* max;
+  const void* max;
   uint64_t max_size;
 } tiledb_range_t;
 
@@ -93,6 +93,11 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
 
 /**
  * Get the range set on an N-dimensional rectangle for a dimension name
+ *
+ * The pointers within the returned range struct point to resources managed
+ * by the `tiledb_ndrectangle_t` instance, it is not the responsibility of the
+ * caller to free those resources, attempting to do so results in undefined
+ * behavior.
  * **Example:**
  *
  * @code{.c}
@@ -113,7 +118,12 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range_from_name(
     tiledb_range_t* range) TILEDB_NOEXCEPT;
 
 /**
- * Get the range set on an N-dimensional rectangle for a dimension ubdex
+ * Get the range set on an N-dimensional rectangle for a dimension index.
+ *
+ * The pointers within the returned range struct point to resources managed
+ * by the `tiledb_ndrectangle_t` instance, it is not the responsibility of the
+ * caller to free those resources, attempting to do so results in undefined
+ * behavior.
  * **Example:**
  *
  * @code{.c}

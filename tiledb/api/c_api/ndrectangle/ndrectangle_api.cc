@@ -70,13 +70,13 @@ inline void smrange_to_range(const Range& r, tiledb_range_t* range) {
   if (r.var_size()) {
     range->min_size = r.start_size();
     range->max_size = r.end_size();
-    std::memcpy(range->min, r.start_str().data(), r.start_size());
-    std::memcpy(range->max, r.end_str().data(), r.end_size());
+    range->min = static_cast<const void*>(r.start_str().data());
+    range->max = static_cast<const void*>(r.end_str().data());
   } else {
     range->min_size = r.size() / 2;
     range->max_size = r.size() / 2;
-    std::memcpy(range->min, r.start_fixed(), r.size() / 2);
-    std::memcpy(range->max, r.end_fixed(), r.size() / 2);
+    range->min = static_cast<const void*>(r.start_fixed());
+    range->max = static_cast<const void*>(r.end_fixed());
   }
 }
 
@@ -95,6 +95,7 @@ capi_return_t tiledb_ndrectangle_alloc(
 
 capi_return_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr) {
   ensure_output_pointer_is_valid(ndr);
+  ensure_handle_is_valid(*ndr);
   tiledb_ndrectangle_handle_t::break_handle(*ndr);
 
   return TILEDB_OK;
