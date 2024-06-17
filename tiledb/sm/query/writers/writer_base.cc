@@ -810,7 +810,7 @@ Status WriterBase::filter_tiles(
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
         throw_if_not_ok(filter_tiles(tiles_it->first, &tiles_it->second));
-        this->throw_if_cancellation_requested();
+        this->throw_if_cancelled();
         return Status::Ok();
       });
 

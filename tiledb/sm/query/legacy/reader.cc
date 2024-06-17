@@ -59,9 +59,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class ReaderStatusException : public StatusException {
+class ReaderException : public StatusException {
  public:
-  explicit ReaderStatusException(const std::string& message)
+  explicit ReaderException(const std::string& message)
       : StatusException("Reader", message) {
   }
 };
@@ -111,22 +111,21 @@ Reader::Reader(
     : ReaderBase(stats, logger->clone("Reader", ++logger_id_), params) {
   // Sanity checks
   if (storage_manager_ == nullptr) {
-    throw ReaderStatusException(
-        "Cannot initialize reader; Storage manager not set");
+    throw ReaderException("Cannot initialize reader; Storage manager not set");
   }
 
   if (!params.default_channel_aggregates().empty()) {
-    throw ReaderStatusException(
+    throw ReaderException(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!params.skip_checks_serialization() && buffers_.empty()) {
-    throw ReaderStatusException("Cannot initialize reader; Buffers not set");
+    throw ReaderException("Cannot initialize reader; Buffers not set");
   }
 
   if (!params.skip_checks_serialization() && array_schema_.dense() &&
       !subarray_.is_set()) {
-    throw ReaderStatusException(
+    throw ReaderException(
         "Cannot initialize reader; Dense reads must have a subarray set");
   }
 
@@ -596,9 +595,9 @@ Status Reader::compute_range_result_coords(
               range_result_coords[r].end(),
               range_result_coords[r].size(),
               sort_layout));
-          this->throw_if_cancellation_requested();
+          this->throw_if_cancelled();
           throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
-          this->throw_if_cancellation_requested();
+          this->throw_if_cancelled();
         }
 
         return Status::Ok();
@@ -1902,7 +1901,7 @@ void Reader::init_read_state() {
   // Check subarray
   if (subarray_.layout() == Layout::GLOBAL_ORDER &&
       subarray_.range_num() != 1) {
-    throw ReaderStatusException(
+    throw ReaderException(
         "Cannot initialize read state; Multi-range subarrays do not support "
         "global order");
   }
@@ -1911,21 +1910,21 @@ void Reader::init_read_state() {
   bool found = false;
   uint64_t memory_budget = 0;
   if (!config_.get<uint64_t>("sm.memory_budget", &memory_budget, &found).ok()) {
-    throw ReaderStatusException("Cannot get setting");
+    throw ReaderException("Cannot get setting");
   }
   assert(found);
 
   uint64_t memory_budget_var = 0;
   if (!config_.get<uint64_t>("sm.memory_budget_var", &memory_budget_var, &found)
            .ok()) {
-    throw ReaderStatusException("Cannot get setting");
+    throw ReaderException("Cannot get setting");
   }
   assert(found);
 
   offsets_format_mode_ = config_.get("sm.var_offsets.mode", &found);
   assert(found);
   if (offsets_format_mode_ != "bytes" && offsets_format_mode_ != "elements") {
-    throw ReaderStatusException(
+    throw ReaderException(
         "Cannot initialize reader; Unsupported offsets"
         " format in configuration");
   }
@@ -1934,19 +1933,19 @@ void Reader::init_read_state() {
            .get<bool>(
                "sm.var_offsets.extra_element", &offsets_extra_element_, &found)
            .ok()) {
-    throw ReaderStatusException("Cannot get setting");
+    throw ReaderException("Cannot get setting");
   }
   assert(found);
 
   if (!config_
            .get<uint32_t>("sm.var_offsets.bitsize", &offsets_bitsize_, &found)
            .ok()) {
-    throw ReaderStatusException("Cannot get setting");
+    throw ReaderException("Cannot get setting");
   }
   assert(found);
 
   if (offsets_bitsize_ != 32 && offsets_bitsize_ != 64) {
-    throw ReaderStatusException(
+    throw ReaderException(
         "Cannot initialize reader; Unsupported offsets"
         " bitsize in configuration");
   }
@@ -1981,14 +1980,14 @@ void Reader::init_read_state() {
         if (!read_state_.partitioner_
                  .set_result_budget(attr_name.c_str(), *buffer_size)
                  .ok()) {
-          throw ReaderStatusException("Cannot set result budget");
+          throw ReaderException("Cannot set result budget");
         }
       } else {
         if (!read_state_.partitioner_
                  .set_result_budget_nullable(
                      attr_name.c_str(), *buffer_size, *buffer_validity_size)
                  .ok()) {
-          throw ReaderStatusException("Cannot set result budget");
+          throw ReaderException("Cannot set result budget");
         }
       }
     } else {
@@ -1997,7 +1996,7 @@ void Reader::init_read_state() {
                  .set_result_budget(
                      attr_name.c_str(), *buffer_size, *buffer_var_size)
                  .ok()) {
-          throw ReaderStatusException("Cannot set result budget");
+          throw ReaderException("Cannot set result budget");
         }
       } else {
         if (!read_state_.partitioner_
@@ -2007,7 +2006,7 @@ void Reader::init_read_state() {
                      *buffer_var_size,
                      *buffer_validity_size)
                  .ok()) {
-          throw ReaderStatusException("Cannot set result budget");
+          throw ReaderException("Cannot set result budget");
         }
       }
     }

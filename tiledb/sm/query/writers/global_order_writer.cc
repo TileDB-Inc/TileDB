@@ -60,9 +60,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class GlobalOrderWriterStatusException : public StatusException {
+class GlobalOrderWriterException : public StatusException {
  public:
-  explicit GlobalOrderWriterStatusException(const std::string& message)
+  explicit GlobalOrderWriterException(const std::string& message)
       : StatusException("GlobalOrderWriter", message) {
   }
 };
@@ -96,14 +96,14 @@ GlobalOrderWriter::GlobalOrderWriter(
     , current_fragment_size_(0) {
   // Check the layout is global order.
   if (layout_ != Layout::GLOBAL_ORDER) {
-    throw GlobalOrderWriterStatusException(
+    throw GlobalOrderWriterException(
         "Failed to initialize global order writer. Layout " +
         layout_str(layout_) + " is not global order.");
   }
 
   // Check no ordered attributes.
   if (array_schema_.has_ordered_attributes()) {
-    throw GlobalOrderWriterStatusException(
+    throw GlobalOrderWriterException(
         "Failed to initialize global order writer. Global order writes to "
         "ordered attributes are not yet supported.");
   }
@@ -797,7 +797,7 @@ Status GlobalOrderWriter::global_write() {
     frag_meta->set_num_tiles(new_num_tiles);
 
     if (new_num_tiles == 0) {
-      throw GlobalOrderWriterStatusException(
+      throw GlobalOrderWriterException(
           "Fragment size is too small to write a single tile");
     }
 
@@ -873,7 +873,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
     std::advance(buff_it, i);
     const auto& name = buff_it->first;
     throw_if_not_ok(prepare_full_tiles(name, coord_dups, &tiles->at(name)));
-    this->throw_if_cancellation_requested();
+    this->throw_if_cancelled();
     return Status::Ok();
   });
 
