@@ -117,6 +117,11 @@ class CurrentDomain {
    * @return Returns the type of current domain stored in this instance
    */
   CurrentDomainType type() const {
+    if (empty_) {
+      throw std::logic_error(
+          "It's not possible to read the type, this CurrentDomain instance is "
+          "empty.");
+    }
     return type_;
   }
 

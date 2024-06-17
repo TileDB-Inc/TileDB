@@ -41,9 +41,7 @@
 namespace tiledb::api {
 
 capi_return_t tiledb_current_domain_create(
-    tiledb_ctx_t* ctx,
-    // tiledb_current_domain_type_t type,
-    tiledb_current_domain_t** current_domain) {
+    tiledb_ctx_t* ctx, tiledb_current_domain_t** current_domain) {
   ensure_context_is_valid(ctx);
   ensure_output_pointer_is_valid(current_domain);
 
@@ -57,6 +55,7 @@ capi_return_t tiledb_current_domain_create(
 capi_return_t tiledb_current_domain_free(
     tiledb_current_domain_t** current_domain) {
   ensure_output_pointer_is_valid(current_domain);
+  ensure_handle_is_valid(*current_domain);
   tiledb_current_domain_handle_t::break_handle(*current_domain);
 
   return TILEDB_OK;
@@ -76,8 +75,6 @@ capi_return_t tiledb_current_domain_get_ndrectangle(
     tiledb_current_domain_t* current_domain, tiledb_ndrectangle_t** ndr) {
   ensure_handle_is_valid(current_domain);
   ensure_output_pointer_is_valid(ndr);
-
-  //
 
   *ndr = tiledb_ndrectangle_handle_t::make_handle(
       current_domain->current_domain()->ndrectangle());
