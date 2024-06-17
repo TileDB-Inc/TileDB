@@ -3089,6 +3089,7 @@ int32_t tiledb_array_upgrade_version(
 
 int32_t tiledb_object_type(
     tiledb_ctx_t* ctx, const char* path, tiledb_object_t* type) {
+  ensure_output_pointer_is_valid(type);
   *type = static_cast<tiledb_object_t>(
       tiledb::sm::object_type(ctx->resources(), tiledb::sm::URI(path)));
   return TILEDB_OK;

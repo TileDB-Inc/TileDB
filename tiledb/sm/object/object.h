@@ -71,8 +71,7 @@ bool is_group(ContextResources& resources, const URI& uri);
  * Returns the tiledb object type
  *
  * @param resources the context resources.
- * @param uri Path to TileDB object resource
- * @param type The ObjectType to be retrieved.
+ * @param uri Path to TileDB object resource.
  * @return ObjectType
  */
 ObjectType object_type(ContextResources& resources, const URI& uri);

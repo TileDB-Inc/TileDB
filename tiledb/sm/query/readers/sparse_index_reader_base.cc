@@ -345,9 +345,10 @@ Status SparseIndexReaderBase::load_initial_data() {
   const auto dim_num = array_schema_.dim_num();
 
   // Load delete conditions.
-  auto&& [conditions, update_values] =
+  auto&& [st, conditions, update_values] =
       array_->load_delete_and_update_conditions();
-  delete_and_update_conditions_ = std::move(conditions);
+  RETURN_CANCEL_OR_ERROR(st);
+  delete_and_update_conditions_ = std::move(*conditions);
   bool make_timestamped_conditions = need_timestamped_conditions();
 
   if (make_timestamped_conditions) {
