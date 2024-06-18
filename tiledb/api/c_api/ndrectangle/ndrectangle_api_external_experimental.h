@@ -42,10 +42,7 @@
 extern "C" {
 #endif
 
-/**
- * C API struct exposed to the user to help specify
- * the limits of a dimension for a ND rectangle.
- */
+/** C API struct to specify the limits of a dimension for an ND rectangle. */
 typedef struct {
   const void* min;
   uint64_t min_size;
@@ -56,7 +53,10 @@ typedef struct {
 typedef struct tiledb_ndrectangle_handle_t tiledb_ndrectangle_t;
 
 /**
- * Allocate an N-dimensional rectangle given a TileDB array schema domain
+ * Allocate an N-dimensional rectangle given a TileDB array schema domain.
+ * The resulted rectangle will maintain the same number of dimensions as the
+ * array schema domain.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -77,6 +77,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_alloc(
 
 /**
  * Free the resources associated with the N-dimensional rectangle arg
+ *
  * **Example:**
  *
  * @code{.c}
@@ -94,10 +95,11 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_free(tiledb_ndrectangle_t** ndr)
 /**
  * Get the range set on an N-dimensional rectangle for a dimension name
  *
- * The pointers within the returned range struct point to resources managed
- * by the `tiledb_ndrectangle_t` instance, it is not the responsibility of the
- * caller to free those resources, attempting to do so results in undefined
- * behavior.
+ * The pointers within the returned range struct point to resources tied to
+ * the lifetime of the `tiledb_ndrectangle_t` object, it is not the
+ * responsibility of the caller to free those resources, attempting
+ * to do so results in undefined behavior.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -120,10 +122,11 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range_from_name(
 /**
  * Get the range set on an N-dimensional rectangle for a dimension index.
  *
- * The pointers within the returned range struct point to resources managed
- * by the `tiledb_ndrectangle_t` instance, it is not the responsibility of the
- * caller to free those resources, attempting to do so results in undefined
- * behavior.
+ * The pointers within the returned range struct point to resources tied to
+ * the lifetime of the `tiledb_ndrectangle_t` object, it is not the
+ * responsibility of the caller to free those resources, attempting
+ * to do so results in undefined behavior.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -145,6 +148,7 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_get_range(
 
 /**
  * Set the range on an N-dimensional rectangle for a dimension name
+ *
  * **Example:**
  *
  * @code{.c}
@@ -169,7 +173,8 @@ TILEDB_EXPORT int32_t tiledb_ndrectangle_set_range_for_name(
     tiledb_range_t* range) TILEDB_NOEXCEPT;
 
 /**
- * Set the range on an N-dimensional rectangle for dimension at idx,
+ * Set the range on an N-dimensional rectangle for dimension at idx.
+ *
  * **Example:**
  *
  * @code{.c}

@@ -53,6 +53,7 @@ typedef struct tiledb_current_domain_handle_t tiledb_current_domain_t;
 
 /**
  * Create a current domain object
+ *
  * **Example:**
  *
  * @code{.c}
@@ -71,6 +72,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_create(
 
 /**
  * Free the resources associated with a current domain object
+ *
  * **Example:**
  *
  * @code{.c}
@@ -88,6 +90,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_free(
 /**
  * Set a N-dimensional rectangle representation on a current domain.
  * Error if the current domain passed is not empty.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -118,8 +121,8 @@ TILEDB_EXPORT int32_t tiledb_current_domain_set_ndrectangle(
     tiledb_ndrectangle_t* ndr) TILEDB_NOEXCEPT;
 
 /**
- * Get the N-dimensional rectangle associated with the current domain object,
- * error if the current domain is empty or a different representation is set.
+ * Get the N-dimensional rectangle associated with the current domain object.
+ * Error if the current domain is empty or a different representation is set.
  *
  * It is the responsability of the caller to free the resources associated
  * with the ndrectangle when the handle isn't needed anymore.
@@ -141,6 +144,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_get_ndrectangle(
 
 /**
  * Query if the current domain object is empty or not.
+ *
  * **Example:**
  *
  * @code{.c}
@@ -158,6 +162,7 @@ TILEDB_EXPORT int32_t tiledb_current_domain_get_is_empty(
 
 /**
  * Query the type of current domain set on the object
+ *
  * **Example:**
  *
  * @code{.c}
