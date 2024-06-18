@@ -45,7 +45,7 @@ extern "C" {
 /** The current domain type */
 typedef enum {
 #define TILEDB_CURRENT_DOMAIN_TYPE_ENUM(id) TILEDB_##id
-#include "tiledb/sm/c_api/tiledb_enum.h"
+#include "tiledb/api/c_api/current_domain/current_domain_api_enum.h"
 #undef TILEDB_CURRENT_DOMAIN_TYPE_ENUM
 } tiledb_current_domain_type_t;
 
