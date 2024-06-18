@@ -38,6 +38,8 @@
 
 #include <test/support/tdb_catch.h>
 
+#include "src/mem_helpers.h"
+
 using namespace tiledb;
 using namespace tiledb::common;
 using namespace tiledb::sm;
@@ -120,7 +122,7 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
       Layout::ROW_MAJOR,
       Layout::ROW_MAJOR,
       fp,
-      get_test_memory_tracker())};
+      tiledb::test::get_test_memory_tracker())};
   CHECK(dom->dim_num() == dim_num);
 
   auto dim1{dom->dimension_ptr("d1")};
@@ -137,6 +139,6 @@ TEST_CASE("Domain: Test deserialization", "[domain][deserialize]") {
 }
 
 TEST_CASE("Domain: Test dimension_ptr is not oob", "[domain][oob]") {
-  auto d = tiledb::sm::Domain(get_test_memory_tracker());
+  auto d = tiledb::sm::Domain(tiledb::test::get_test_memory_tracker());
   REQUIRE_THROWS(d.dimension_ptr(0));
 }
