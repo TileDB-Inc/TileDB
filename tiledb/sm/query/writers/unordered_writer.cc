@@ -48,7 +48,6 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -170,7 +169,7 @@ Status UnorderedWriter::alloc_frag_meta() {
   // Alloc FragmentMetadata object.
   frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up.
-  frag_meta_->set_context_resources(&storage_manager_->resources());
+  frag_meta_->set_context_resources(&resources_);
 
   return Status::Ok();
 }
@@ -388,7 +387,7 @@ Status UnorderedWriter::prepare_tiles(
         auto tiles_it = tiles->begin();
         std::advance(tiles_it, i);
         throw_if_not_ok(prepare_tiles(tiles_it->first, &(tiles_it->second)));
-        this->throw_if_cancelled();
+        throw_if_cancelled();
         return Status::Ok();
       });
 

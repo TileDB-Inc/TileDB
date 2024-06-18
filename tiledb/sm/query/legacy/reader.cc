@@ -48,7 +48,6 @@
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/query/update_value.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/cell_slab.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/type/apply_with_type.h"
@@ -110,10 +109,6 @@ Reader::Reader(
     bool remote_query)
     : ReaderBase(stats, logger->clone("Reader", ++logger_id_), params) {
   // Sanity checks
-  if (storage_manager_ == nullptr) {
-    throw ReaderException("Cannot initialize reader; Storage manager not set");
-  }
-
   if (!params.default_channel_aggregates().empty()) {
     throw ReaderException(
         "Cannot initialize reader; Reader cannot process aggregates");
@@ -595,9 +590,9 @@ Status Reader::compute_range_result_coords(
               range_result_coords[r].end(),
               range_result_coords[r].size(),
               sort_layout));
-          this->throw_if_cancelled();
+          throw_if_cancelled();
           throw_if_not_ok(dedup_result_coords(range_result_coords[r]));
-          this->throw_if_cancelled();
+          throw_if_cancelled();
         }
 
         return Status::Ok();

@@ -48,7 +48,6 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"

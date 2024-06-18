@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -40,10 +40,8 @@
 #include "tiledb/sm/array_schema/dimension.h"
 #include "tiledb/sm/query/query_condition.h"
 #include "tiledb/sm/query/readers/result_cell_slab.h"
-#include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
-namespace tiledb {
-namespace sm {
+namespace tiledb::sm {
 
 class Array;
 class ArraySchema;
@@ -788,7 +786,6 @@ class SparseIndexReaderBase : public ReaderBase {
   void add_extra_offset();
 };
 
-}  // namespace sm
-}  // namespace tiledb
+}  // namespace tiledb::sm
 
 #endif  // TILEDB_SPARSE_INDEX_READER_BASE_H

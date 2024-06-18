@@ -43,7 +43,6 @@
 #include "tiledb/sm/query/readers/filtered_data.h"
 #include "tiledb/sm/query/readers/result_tile.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/subarray/subarray.h"
 #include "tiledb/type/apply_with_type.h"
 
@@ -55,9 +54,9 @@ using namespace tiledb::sm::stats;
 
 namespace tiledb::sm {
 
-class OrderedDimLabelReaderStatusException : public StatusException {
+class OrderedDimLabelReaderException : public StatusException {
  public:
-  explicit OrderedDimLabelReaderStatusException(const std::string& message)
+  explicit OrderedDimLabelReaderException(const std::string& message)
       : StatusException("OrderedDimLabelReader", message) {
   }
 };
@@ -82,59 +81,54 @@ OrderedDimLabelReader::OrderedDimLabelReader(
     , index_dim_(array_schema_.domain().dimension_ptr(0))
     , result_tiles_(fragment_metadata_.size()) {
   // Sanity checks.
-  if (storage_manager_ == nullptr) {
-    throw OrderedDimLabelReaderStatusException(
-        "Cannot initialize ordered dim label reader; Storage manager not set");
-  }
-
   if (!params.default_channel_aggregates().empty()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot initialize reader; Reader cannot process aggregates");
   }
 
   if (!params.skip_checks_serialization() && buffers_.empty()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader; Buffers not set");
   }
 
   if (!params.skip_checks_serialization() && buffers_.size() != 1) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader with " +
         std::to_string(buffers_.size()) + " buffers; Only one buffer allowed");
   }
 
   for (const auto& b : buffers_) {
     if (b.first != index_dim_->name()) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer set");
     }
 
     if (*b.second.buffer_size_ !=
         ranges_.size() * 2 * datatype_size(index_dim_->type())) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer size");
     }
 
     if (b.second.buffer_var_size_ != 0) {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot initialize ordered dim label reader; Wrong buffer var size");
     }
   }
 
   if (subarray_.is_set()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot initialize ordered dim label reader; Subarray is set");
   }
 
   if (condition_.has_value()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Ordered dimension label reader cannot process query condition");
   }
 
   bool found = false;
   if (!config_.get<uint64_t>("sm.mem.total_budget", &memory_budget_, &found)
            .ok()) {
-    throw OrderedDimLabelReaderStatusException("Cannot get setting");
+    throw OrderedDimLabelReaderException("Cannot get setting");
   }
   assert(found);
 }
@@ -196,7 +190,7 @@ void OrderedDimLabelReader::label_read() {
     if constexpr (tiledb::type::TileDBIntegral<decltype(T)>) {
       label_read<decltype(T)>();
     } else {
-      throw OrderedDimLabelReaderStatusException(
+      throw OrderedDimLabelReaderException(
           "Cannot read ordered label array; Unsupported domain type");
     }
   };
@@ -210,7 +204,7 @@ void OrderedDimLabelReader::label_read() {
 
   // Handle empty array.
   if (fragment_metadata_.empty()) {
-    throw OrderedDimLabelReaderStatusException(
+    throw OrderedDimLabelReaderException(
         "Cannot read dim label; Dimension label is empty");
   }
 
@@ -530,7 +524,7 @@ uint64_t OrderedDimLabelReader::create_result_tiles() {
                       query_memory_tracker_));
             } else {
               if (r == 0) {
-                throw OrderedDimLabelReaderStatusException(
+                throw OrderedDimLabelReaderException(
                     "Can't process a single range, increase memory budget");
               }
               return r;
@@ -577,7 +571,7 @@ LabelType OrderedDimLabelReader::get_value_at(
 
     // We should always find the value before the last fragment.
     if (f == 0) {
-      throw OrderedDimLabelReaderStatusException("Couldn't find value");
+      throw OrderedDimLabelReaderException("Couldn't find value");
     }
   }
 }
@@ -669,7 +663,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 0);
       if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) <
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
 
@@ -681,7 +675,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 1);
       if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) >
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
   } else {
@@ -694,7 +688,7 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 1);
       if (get_value_at<IndexType, LabelType>(dest[0], dim_dom[0], tile_extent) >
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
 
@@ -706,14 +700,14 @@ void OrderedDimLabelReader::compute_and_copy_range_indexes(
       LabelType value = get_range_as<LabelType>(r, 0);
       if (get_value_at<IndexType, LabelType>(dest[1], dim_dom[0], tile_extent) <
           value) {
-        throw OrderedDimLabelReaderStatusException("Range contained no values");
+        throw OrderedDimLabelReaderException("Range contained no values");
       }
     }
   }
 
   // If the range provided contained no values, throw an error.
   if (dest[0] > dest[1]) {
-    throw OrderedDimLabelReaderStatusException("Range contained no values");
+    throw OrderedDimLabelReaderException("Range contained no values");
   }
 }
 

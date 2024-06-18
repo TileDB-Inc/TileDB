@@ -48,7 +48,6 @@
 #include "tiledb/sm/query/hilbert_order.h"
 #include "tiledb/sm/query/query_macros.h"
 #include "tiledb/sm/stats/global_stats.h"
-#include "tiledb/sm/storage_manager/storage_manager.h"
 #include "tiledb/sm/tile/generic_tile_io.h"
 #include "tiledb/sm/tile/tile_metadata_generator.h"
 #include "tiledb/sm/tile/writer_tile_tuple.h"
@@ -186,8 +185,7 @@ Status GlobalOrderWriter::alloc_global_write_state() {
   // Alloc FragmentMetadata object
   global_write_state_->frag_meta_ = this->create_fragment_metadata();
   // Used in serialization when FragmentMetadata is built from ground up
-  global_write_state_->frag_meta_->set_context_resources(
-      &storage_manager_->resources());
+  global_write_state_->frag_meta_->set_context_resources(&resources_);
 
   return Status::Ok();
 }
@@ -873,7 +871,7 @@ Status GlobalOrderWriter::prepare_full_tiles(
     std::advance(buff_it, i);
     const auto& name = buff_it->first;
     throw_if_not_ok(prepare_full_tiles(name, coord_dups, &tiles->at(name)));
-    this->throw_if_cancelled();
+    throw_if_cancelled();
     return Status::Ok();
   });
 
