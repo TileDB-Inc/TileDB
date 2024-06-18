@@ -132,9 +132,9 @@ TEST_CASE_METHOD(
   range.max = &max;
   range.max_size = sizeof(uint64_t);
 
-  uint32_t is_empty = false;
+  uint32_t is_empty = 0;
   REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
-  CHECK(is_empty == true);
+  CHECK(is_empty == 1);
 
   tiledb_current_domain_type_t type;
   CHECK(tiledb_current_domain_get_type(crd, &type) == TILEDB_ERR);
@@ -142,7 +142,7 @@ TEST_CASE_METHOD(
   REQUIRE(tiledb_current_domain_set_ndrectangle(crd, ndr) == TILEDB_OK);
 
   REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
-  CHECK(is_empty == false);
+  CHECK(is_empty == 0);
 
   REQUIRE(tiledb_current_domain_get_type(crd, &type) == TILEDB_OK);
   CHECK(type == TILEDB_NDRECTANGLE);
