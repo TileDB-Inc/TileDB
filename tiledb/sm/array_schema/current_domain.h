@@ -77,7 +77,7 @@ class CurrentDomain {
   CurrentDomain(
       shared_ptr<MemoryTracker> memory_tracker,
       format_version_t version,
-      shared_ptr<const NDRectangle> ndr);
+      shared_ptr<NDRectangle> ndr);
 
   /** Destructor. */
   ~CurrentDomain() = default;
@@ -101,7 +101,7 @@ class CurrentDomain {
    * @param domain The array schema domain.
    * @return A new CurrentDomain.
    */
-  static shared_ptr<const CurrentDomain> deserialize(
+  static shared_ptr<CurrentDomain> deserialize(
       Deserializer& deserializer,
       shared_ptr<MemoryTracker> memory_tracker,
       shared_ptr<Domain> domain);
@@ -117,6 +117,11 @@ class CurrentDomain {
    * @return Returns the type of current domain stored in this instance
    */
   CurrentDomainType type() const {
+    if (empty_) {
+      throw std::logic_error(
+          "It's not possible to read the type, this CurrentDomain instance is "
+          "empty.");
+    }
     return type_;
   }
 
@@ -147,14 +152,14 @@ class CurrentDomain {
    *
    * @param ndr A NDRectangle to be set on this CurrentDomain object.
    */
-  void set_ndrectangle(std::shared_ptr<const NDRectangle> ndr);
+  void set_ndrectangle(std::shared_ptr<NDRectangle> ndr);
 
   /**
    * Throws if the current domain doesn't have a NDRectangle set
    *
    * @return Returns the ndrectangle set on a current domain.
    */
-  shared_ptr<const NDRectangle> ndrectangle() const;
+  shared_ptr<NDRectangle> ndrectangle() const;
 
   /**
    * Checks if the argument fully contains this current domain.
@@ -198,7 +203,7 @@ class CurrentDomain {
   bool empty_;
 
   /** The ndrectangle current domain */
-  shared_ptr<const NDRectangle> ndrectangle_;
+  shared_ptr<NDRectangle> ndrectangle_;
 
   /** The format version of this CurrentDomain */
   format_version_t version_;

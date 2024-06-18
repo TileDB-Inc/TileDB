@@ -58,7 +58,7 @@ class CurrentDomainFx {
   CurrentDomainFx();
   ~CurrentDomainFx();
 
-  shared_ptr<const CurrentDomain> create_current_domain(
+  shared_ptr<CurrentDomain> create_current_domain(
       const NDRange& ranges,
       shared_ptr<const ArraySchema> schema,
       shared_ptr<NDRectangle> ndrectangle = nullptr,
@@ -68,9 +68,9 @@ class CurrentDomainFx {
       shared_ptr<ArraySchema> schema, const NDRange& ranges);
 
   storage_size_t calculate_serialized_size(
-      shared_ptr<const CurrentDomain> current_domain);
+      shared_ptr<CurrentDomain> current_domain);
   shared_ptr<WriterTile> serialize_to_tile(
-      shared_ptr<const CurrentDomain> current_domain);
+      shared_ptr<CurrentDomain> current_domain);
 
   shared_ptr<ArraySchema> create_schema();
 
@@ -81,7 +81,7 @@ class CurrentDomainFx {
   shared_ptr<ArrayDirectory> get_array_directory();
   shared_ptr<ArraySchema> get_array_schema_latest();
   void check_current_domains_equal(
-      shared_ptr<const CurrentDomain> s1, shared_ptr<const CurrentDomain> s2);
+      shared_ptr<CurrentDomain> s1, shared_ptr<CurrentDomain> s2);
 
   void rm_array();
 
@@ -117,7 +117,7 @@ void CurrentDomainFx<T>::rm_array() {
 }
 
 template <class T>
-shared_ptr<const CurrentDomain> CurrentDomainFx<T>::create_current_domain(
+shared_ptr<CurrentDomain> CurrentDomainFx<T>::create_current_domain(
     const NDRange& ranges,
     shared_ptr<const ArraySchema> schema,
     shared_ptr<NDRectangle> ndrectangle,
@@ -158,7 +158,7 @@ void CurrentDomainFx<T>::check_storage_serialization(
 
 template <class T>
 void CurrentDomainFx<T>::check_current_domains_equal(
-    shared_ptr<const CurrentDomain> s1, shared_ptr<const CurrentDomain> s2) {
+    shared_ptr<CurrentDomain> s1, shared_ptr<CurrentDomain> s2) {
   REQUIRE(s1->empty() == s2->empty());
   REQUIRE(s1->type() == s2->type());
   REQUIRE(s1->version() == s2->version());
@@ -168,7 +168,7 @@ void CurrentDomainFx<T>::check_current_domains_equal(
 
 template <class T>
 storage_size_t CurrentDomainFx<T>::calculate_serialized_size(
-    shared_ptr<const CurrentDomain> current_domain) {
+    shared_ptr<CurrentDomain> current_domain) {
   storage_size_t num_bytes = 0;
 
   // uint32_t - version
@@ -200,7 +200,7 @@ storage_size_t CurrentDomainFx<T>::calculate_serialized_size(
 
 template <class T>
 shared_ptr<WriterTile> CurrentDomainFx<T>::serialize_to_tile(
-    shared_ptr<const CurrentDomain> current_domain) {
+    shared_ptr<CurrentDomain> current_domain) {
   SizeComputationSerializer size_serializer;
   current_domain->serialize(size_serializer);
 

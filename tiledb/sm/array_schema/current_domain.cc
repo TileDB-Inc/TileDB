@@ -54,12 +54,12 @@ CurrentDomain::CurrentDomain(
 CurrentDomain::CurrentDomain(
     shared_ptr<MemoryTracker> memory_tracker,
     format_version_t version,
-    shared_ptr<const NDRectangle> ndr)
+    shared_ptr<NDRectangle> ndr)
     : CurrentDomain(memory_tracker, version) {
   set_ndrectangle(ndr);
 }
 
-shared_ptr<const CurrentDomain> CurrentDomain::deserialize(
+shared_ptr<CurrentDomain> CurrentDomain::deserialize(
     Deserializer& deserializer,
     shared_ptr<MemoryTracker> memory_tracker,
     shared_ptr<Domain> domain) {
@@ -149,7 +149,7 @@ void CurrentDomain::dump(FILE* out) const {
   }
 }
 
-void CurrentDomain::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
+void CurrentDomain::set_ndrectangle(std::shared_ptr<NDRectangle> ndr) {
   if (!empty_) {
     throw std::logic_error(
         "Setting a rectangle on a non-empty CurrentDomain object is not "
@@ -160,7 +160,7 @@ void CurrentDomain::set_ndrectangle(std::shared_ptr<const NDRectangle> ndr) {
   empty_ = false;
 }
 
-shared_ptr<const NDRectangle> CurrentDomain::ndrectangle() const {
+shared_ptr<NDRectangle> CurrentDomain::ndrectangle() const {
   if (empty_ || type_ != CurrentDomainType::NDRECTANGLE) {
     throw std::logic_error(
         "It's not possible to get the ndrectangle from this current domain if "

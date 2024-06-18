@@ -92,7 +92,7 @@ class ArraySchemaEvolution {
           enmrs_to_extend,
       std::unordered_set<std::string> enmrs_to_drop,
       std::pair<uint64_t, uint64_t> timestamp_range,
-      shared_ptr<const CurrentDomain> current_domain,
+      shared_ptr<CurrentDomain> current_domain,
       shared_ptr<MemoryTracker> memory_tracker);
 
   DISABLE_COPY_AND_COPY_ASSIGN(ArraySchemaEvolution);
@@ -196,12 +196,12 @@ class ArraySchemaEvolution {
    *
    * @param current_domain The new current domain to expand to
    */
-  void expand_current_domain(shared_ptr<const CurrentDomain> current_domain);
+  void expand_current_domain(shared_ptr<CurrentDomain> current_domain);
 
   /**
    * Accessor for the current domain we want to expand to
    */
-  shared_ptr<const CurrentDomain> current_domain_to_expand() const;
+  shared_ptr<CurrentDomain> current_domain_to_expand() const;
 
  private:
   /* ********************************* */
@@ -241,7 +241,7 @@ class ArraySchemaEvolution {
   std::pair<uint64_t, uint64_t> timestamp_range_;
 
   /** The array current domain to expand */
-  shared_ptr<const CurrentDomain> current_domain_to_expand_;
+  shared_ptr<CurrentDomain> current_domain_to_expand_;
 
   /** Mutex for thread-safety. */
   mutable std::mutex mtx_;

@@ -132,7 +132,3 @@
     /** application/pdf*/
     TILEDB_MIME_TYPE_ENUM(MIME_PDF) = 2,
 #endif
-
-#ifdef TILEDB_CURRENT_DOMAIN_TYPE_ENUM
-    TILEDB_CURRENT_DOMAIN_TYPE_ENUM(NDRECTANGLE) = 0,
-#endif
