@@ -56,7 +56,6 @@ bool is_array(ContextResources& resources, const URI& uri) {
     auto&& [st, exists] =
         resources.rest_client()->check_array_exists_from_rest(uri);
     throw_if_not_ok(st);
-    assert(exists.has_value());
     return exists.value();
   } else {
     // Check if the schema directory exists or not
@@ -83,7 +82,6 @@ bool is_group(ContextResources& resources, const URI& uri) {
     auto&& [st, exists] =
         resources.rest_client()->check_group_exists_from_rest(uri);
     throw_if_not_ok(st);
-    assert(exists.has_value());
     return exists.value();
   } else {
     // Check for new group details directory

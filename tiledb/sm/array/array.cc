@@ -178,6 +178,7 @@ void Array::evolve_array_schema(
     throw_if_not_ok(
         resources.rest_client()->post_array_schema_evolution_to_rest(
             array_uri, schema_evolution));
+    return;
   }
 
   // Load URIs from the array directory
