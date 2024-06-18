@@ -173,7 +173,8 @@ class CurrentDomain {
 /** Get a string representation of a current_domain status for an output stream.
  */
 inline std::ostream& operator<<(std::ostream& os, const CurrentDomain& d) {
-  os << "CurrentDomain<" << " " << d.ndrectangle() << " >";
+  os << "CurrentDomain<";
+  os << '>';
   return os;
 }
 
