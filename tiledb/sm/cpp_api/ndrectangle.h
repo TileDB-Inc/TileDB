@@ -68,12 +68,27 @@ class NDRectangle {
   /*     CONSTRUCTORS & DESTRUCTORS    */
   /* ********************************* */
 
-  NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
+  explicit NDRectangle(const tiledb::Context& ctx, const tiledb::Domain& domain)
       : ctx_(ctx)
       , domain_(domain) {
     tiledb_ndrectangle_t* capi_ndrect;
-    ctx.handle_error(tiledb_ndrect_alloc(ctx.ptr().get(), &capi_ndrect));
-    ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(capi_ndrect, deleter_);
+    ctx.handle_error(tiledb_ndrectangle_alloc(
+        ctx.ptr().get(), domain.ptr().get(), &capi_ndrect));
+    ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(capi_ndrect);
+  }
+
+  /**
+   * Loads the NDRectangle of an existing currentDomain with the input C
+   * NDRectangle object.
+   *
+   * @param ctx TileDB context
+   * @param schema C API NDRectangle object
+   */
+
+  NDRectangle(const tiledb::Context& ctx, tiledb_ndrectangle_t* ndrect)
+      : ctx_(ctx)
+      , domain_(Domain(ctx, (tiledb_domain_t*)nullptr)) {
+    ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(ndrect);
   }
 
   NDRectangle(const NDRectangle&) = default;
@@ -119,7 +134,7 @@ class NDRectangle {
 
     // Pass the struct to tiledb_ndrectangle_set_range_for_name
     ctx.handle_error(tiledb_ndrectangle_set_range_for_name(
-        ctx.ptr(), ndrect_.ptr(), dim_name.c_str(), range));
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
 
     return *this;
   }
@@ -157,8 +172,8 @@ class NDRectangle {
     range.max_size = sizeof(T);
 
     // Pass the struct to tiledb_ndrectangle_set_range_for_name
-    ctx.handle_error(tiledb_ndrectangle_set_range_for_name(
-        ctx.ptr(), ndrect_.ptr(), dim_name.c_str(), range));
+    ctx.handle_error(tiledb_ndrectangle_set_range(
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
 
     return *this;
   }
@@ -174,16 +189,13 @@ class NDRectangle {
    */
   template <class T>
   std::array<T, 2> range(const std::string& dim_name) {
-    impl::type_check<T>(domain.dimension(dim_name).type());
+    impl::type_check<T>(domain_.dimension(dim_name).type());
     auto& ctx = ctx_.get();
-    void *start, *end;
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
-        ctx.get(), ndrect_.get(), dim_name.c_str(), &range));
-    start = range.min;
-    end = range.max;
+        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
 
-    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
+    std::array<T, 2> ret = {{*(const T*)range.min, *(const T*)range.max}};
     return ret;
   }
 
@@ -198,16 +210,13 @@ class NDRectangle {
    */
   template <class T>
   std::array<T, 2> range(unsigned dim_idx) {
-    impl::type_check<T>(domain.dimension(dim_idx).type());
+    impl::type_check<T>(domain_.dimension(dim_idx).type());
     auto& ctx = ctx_.get();
-    void *start, *end;
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range(
-        ctx.get(), ndrect_.get(), dim_idx, &range));
-    start = range.min;
-    end = range.max;
+        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
 
-    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
+    std::array<T, 2> ret = {{*(const T*)range.min, *(const T*)range.max}};
     return ret;
   }
 
@@ -224,14 +233,11 @@ class NDRectangle {
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
 
-  /** Deleter wrapper. */
-  impl::Deleter deleter_;
-
   /** The domain of the schema the query targets at */
   Domain domain_;
 
   /** Pointer to the C TileDB domain object. */
-  std::shared_ptr<tiledb_ndrect_t> ndrect_;
+  std::shared_ptr<tiledb_ndrectangle_t> ndrect_;
 };
 
 /* ********************************* */
@@ -239,8 +245,12 @@ class NDRectangle {
 /* ********************************* */
 
 /** Get a string representation of the domain for an output stream. */
-inline std::ostream& operator<<(std::ostream& os, const NDRectangle& d) {
-  os << "NDRectangle<";  // TODO
+inline std::ostream& operator<<(std::ostream& os, const NDRectangle& nd) {
+  (void)nd;
+  os << "NDRectangle<";
+  // for (const auto& dimension : domain_.dimensions()) {
+  //   os << " " << dimension;
+  // }
   os << '>';
   return os;
 }

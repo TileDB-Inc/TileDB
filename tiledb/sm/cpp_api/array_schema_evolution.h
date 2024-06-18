@@ -227,7 +227,8 @@ class ArraySchemaEvolution {
   ArraySchemaEvolution& expand_current_domain(
       const CurrentDomain& expanded_domain) {
     auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+    ctx.handle_error(tiledb_array_schema_evolution_expand_current_domain(
+        ctx.ptr().get(), evolution_.get(), expanded_domain.ptr().get()));
     return *this;
   }
 

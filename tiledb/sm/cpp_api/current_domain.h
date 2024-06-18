@@ -79,10 +79,15 @@ class CurrentDomain {
    * @param ctx TileDB context
    * @param type The TileDB currentDomain type
    */
-  CurrentDomain(const Context& ctx, tiledb_current_domain_type_t type)
+  explicit CurrentDomain(const Context& ctx)
       : ctx_(ctx) {
     tiledb_current_domain_t* cd;
-    ctx.handle_error(tiledb_current_domain_alloc(ctx.ptr().get(), type, &cd));
+    ctx.handle_error(tiledb_current_domain_create(ctx.ptr().get(), &cd));
+    current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
+  }
+
+  CurrentDomain(const tiledb::Context& ctx, tiledb_current_domain_t* cd)
+      : ctx_(ctx) {
     current_domain_ = std::shared_ptr<tiledb_current_domain_t>(cd, deleter_);
   }
 
@@ -105,7 +110,7 @@ class CurrentDomain {
     tiledb_current_domain_type_t type;
     auto& ctx = ctx_.get();
     ctx.handle_error(
-      tiledb_current_domain_get_type(current_domain_.get(), &type);
+        tiledb_current_domain_get_type(current_domain_.get(), &type));
     return type;
   }
 
@@ -131,16 +136,17 @@ class CurrentDomain {
    */
   NDRectangle ndrectangle() const {
     tiledb_ndrectangle_t* nd;
+    auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_current_domain_get_ndrectangle(current_domain_.get(), &nd));
-    return NDRectangle(&nd);
+    return NDRectangle(ctx, nd);
   }
 
   /**
    * Check if the current_domain is empty
    */
   bool is_empty() const {
-    int ret;
+    uint32_t ret;
     auto& ctx = ctx_.get();
     ctx.handle_error(
         tiledb_current_domain_get_is_empty(current_domain_.get(), &ret));
@@ -154,20 +160,19 @@ class CurrentDomain {
   /** The TileDB context. */
   std::reference_wrapper<const Context> ctx_;
 
-  /** Deleter wrapper. */
-  impl::Deleter deleter_;
-
   /** Pointer to the TileDB C current_domain object. */
   std::shared_ptr<tiledb_current_domain_t> current_domain_;
-}
+
+  /** An auxiliary deleter. */
+  impl::Deleter deleter_;
+};
 /* ********************************* */
 /*               MISC                */
 /* ********************************* */
 
 /** Get a string representation of a current_domain status for an output stream.
  */
-inline std::ostream&
-operator<<(std::ostream& os, const CurrentDomain& d) {
+inline std::ostream& operator<<(std::ostream& os, const CurrentDomain& d) {
   os << "CurrentDomain<" << " " << d.ndrectangle() << " >";
   return os;
 }

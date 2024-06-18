@@ -34,11 +34,11 @@
 #define TILEDB_CPP_API_ARRAY_SCHEMA_EXPERIMENTAL_H
 
 #include "array_schema.h"
+#include "current_domain.h"
 #include "dimension_label_experimental.h"
 #include "enumeration_experimental.h"
 #include "filter_list.h"
 #include "tiledb_experimental.h"
-#include "current_domain.h"
 
 #include <optional>
 
@@ -163,10 +163,12 @@ class ArraySchemaExperimental {
    *
    * @return Copy of the schema's currentDomain
    */
-  CurrentDomain current_domain() const {
-    auto& ctx = ctx_.get();
+  CurrentDomain current_domain(
+      const Context& ctx, const ArraySchema& array_schema) const {
     tiledb_current_domain_t* current_domain;
-    // ctx.handle_error(); TODO
+    ctx.handle_error(tiledb_array_schema_get_current_domain(
+        ctx.ptr().get(), array_schema.ptr().get(), &current_domain));
+
     return CurrentDomain(ctx, current_domain);
   }
 
@@ -176,9 +178,12 @@ class ArraySchemaExperimental {
    * @param current_domain The currentDomain to use
    * @return Reference to this `ArraySchema` instance.
    */
-  ArraySchemaExperimental& set_current_domain(const CurrentDomain& current_domain) {
-    auto& ctx = ctx_.get();
-    // ctx.handle_error(); TODO
+  ArraySchemaExperimental& set_current_domain(
+      const Context& ctx,
+      const ArraySchema& array_schema,
+      const CurrentDomain& current_domain) {
+    ctx.handle_error(tiledb_array_schema_set_current_domain(
+        ctx.ptr().get(), array_schema.ptr().get(), current_domain.ptr().get()));
     return *this;
   }
 
