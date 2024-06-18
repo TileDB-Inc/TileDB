@@ -72,7 +72,7 @@ class NDRectangle {
       : ctx_(ctx)
       , domain_(domain) {
     tiledb_ndrectangle_t* capi_ndrect;
-    ctx.handle_error(tiledb_ndrectangle_alloc(ctx.ptr().get(), &capi_ndrect));
+    ctx.handle_error(tiledb_ndrect_alloc(ctx.ptr().get(), &capi_ndrect));
     ndrect_ = std::shared_ptr<tiledb_ndrectangle_t>(capi_ndrect, deleter_);
   }
 
@@ -86,79 +86,129 @@ class NDRectangle {
   /* ********************************* */
 
   /**
-   * Set the range on an N-dimensional rectangle for a dimension name,
+   * Adds an 1D range along a dimension name, in the form
+   * (start, end). The datatype of the range
+   * must be the same as the dimension datatype.
+   *
    * **Example:**
    *
-   * @code{.c}
-   * tiledb_range_t range;
-   * range.min = &min;
-   * range.min_size = sizeof(min);
-   * range.max = &max;
-   * range.max_size = sizeof(max);
-   * nd.set_range(ctx, "dim", &range);
+   * @code{.cpp}
+   * // Set an 1D range on dimension 0, assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * ndrect.set_range(0, start, end);
    * @endcode
    *
+   * @tparam T The dimension datatype.
    * @param dim_name The name of the dimension to add the range to.
-   * @param range The range to add.
+   * @param start The range start to add.
+   * @param end The range end to add.
    * @return Reference to this NDRectangle.
    */
-  NDRectangle& set_range(const std::string& dim_name, tiledb_range_t range) {
+  template <class T>
+  NDRectangle& set_range(const std::string& dim_name, T start, T end) {
+    impl::type_check<T>(domain_.dimension(dim_name).type());
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_ndrectangle_set_range(
-        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
+
+    // Create the tiledb_range_t struct and fill it
+    tiledb_range_t range;
+    range.min = static_cast<const void*>(&start);
+    range.min_size = sizeof(T);
+    range.max = static_cast<const void*>(&end);
+    range.max_size = sizeof(T);
+
+    // Pass the struct to tiledb_ndrectangle_set_range_for_name
+    ctx.handle_error(tiledb_ndrectangle_set_range_for_name(
+        ctx.ptr(), ndrect_.ptr(), dim_name.c_str(), range));
+
     return *this;
   }
 
   /**
-   * Set the range on an N-dimensional rectangle for dimension at idx,
+   * Adds an 1D range along a dimension index, in the form
+   * (start, end). The datatype of the range
+   * must be the same as the dimension datatype.
+   *
    * **Example:**
    *
-   * @code{.c}
-   * tiledb_range_t range;
-   * range.min = &min;
-   * range.min_size = sizeof(min);
-   * range.max = &max;
-   * range.max_size = sizeof(max);
-   * nd.set_range(ctx, 1, &range);
+   * @code{.cpp}
+   * // Set an 1D range on dimension 0, assuming the domain type is int64.
+   * int64_t start = 10;
+   * int64_t end = 20;
+   * ndrect.set_range(0, start, end);
    * @endcode
    *
+   * @tparam T The dimension datatype.
    * @param dim_idx The index of the dimension to add the range to.
-   * @param range The range to add.
+   * @param start The range start to add.
+   * @param end The range end to add.
    * @return Reference to this NDRectangle.
    */
-  NDRectangle& set_range(uint32_t dim_idx, tiledb_range_t range) {
+  template <class T>
+  NDRectangle& set_range(uint32_t dim_idx, T start, T end) {
+    impl::type_check<T>(domain_.dimension(dim_idx).type());
     auto& ctx = ctx_.get();
-    ctx.handle_error(tiledb_ndrectangle_set_range(
-        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
+    // Create the tiledb_range_t struct and fill it
+    tiledb_range_t range;
+    range.min = static_cast<const void*>(&start);
+    // tiledb_datatype_size()
+    range.min_size = sizeof(T);
+    range.max = static_cast<const void*>(&end);
+    range.max_size = sizeof(T);
+
+    // Pass the struct to tiledb_ndrectangle_set_range_for_name
+    ctx.handle_error(tiledb_ndrectangle_set_range_for_name(
+        ctx.ptr(), ndrect_.ptr(), dim_name.c_str(), range));
+
     return *this;
   }
 
   /**
-   * Get the range set on an N-dimensional rectangle for a dimension name.
+   * Retrieves a range for a given dimension name.
+   * The template datatype must be the same as that of the
+   * underlying array.
    *
+   * @tparam T The dimension datatype.
    * @param dim_name The dimension name.
-   * @return The requested range.
+   * @return A duplex of the form (start, end).
    */
-  tiledb_range_t range(const std::string& dim_name) {
+  template <class T>
+  std::array<T, 2> range(const std::string& dim_name) {
+    impl::type_check<T>(domain.dimension(dim_name).type());
     auto& ctx = ctx_.get();
+    void *start, *end;
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range_from_name(
-        ctx.ptr().get(), ndrect_.get(), dim_name.c_str(), &range));
-    return range;
+        ctx.get(), ndrect_.get(), dim_name.c_str(), &range));
+    start = range.min;
+    end = range.max;
+
+    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
+    return ret;
   }
 
   /**
-   * Get the range set on an N-dimensional rectangle for a dimension index.
+   * Retrieves a range for a given dimension index.
+   * The template datatype must be the same as that of the
+   * underlying array.
    *
+   * @tparam T The dimension datatype.
    * @param dim_idx The dimension index.
-   * @return The requested range.
+   * @return A duplex of the form (start, end).
    */
-  tiledb_range_t range(unsigned dim_idx) {
+  template <class T>
+  std::array<T, 2> range(unsigned dim_idx) {
+    impl::type_check<T>(domain.dimension(dim_idx).type());
     auto& ctx = ctx_.get();
+    void *start, *end;
     tiledb_range_t range;
     ctx.handle_error(tiledb_ndrectangle_get_range(
-        ctx.ptr().get(), ndrect_.get(), dim_idx, &range));
-    return range;
+        ctx.get(), ndrect_.get(), dim_idx, &range));
+    start = range.min;
+    end = range.max;
+
+    std::array<T, 2> ret = {{*(const T*)start, *(const T*)end}};
+    return ret;
   }
 
   /** Returns the C TileDB ndrect object. */
@@ -181,7 +231,7 @@ class NDRectangle {
   Domain domain_;
 
   /** Pointer to the C TileDB domain object. */
-  std::shared_ptr<tiledb_ndrectangle_t> ndrect_;
+  std::shared_ptr<tiledb_ndrect_t> ndrect_;
 };
 
 /* ********************************* */
