@@ -2552,6 +2552,16 @@ TEST_CASE_METHOD(
   // No range was set on the ndrectangle, can't create array
   CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_ERR);
 
+  tiledb_error_t* err;
+  CHECK(tiledb_ctx_get_last_error(ctx_, &err) == TILEDB_OK);
+
+  const char* errmsg;
+  CHECK(tiledb_error_message(err, &errmsg) == TILEDB_OK);
+  CHECK_THAT(
+      errmsg,
+      Catch::Matchers::Equals("TileDB internal: This current domain has no "
+                              "range specified for dimension idx: 0"));
+
   tiledb_range_t range;
   int64_t min = 2;
   int64_t max = 100;
@@ -2565,6 +2575,15 @@ TEST_CASE_METHOD(
 
   // Range is out of schema domain bounds
   CHECK(tiledb_array_create(ctx_, array_name.c_str(), schema) == TILEDB_ERR);
+
+  CHECK(tiledb_ctx_get_last_error(ctx_, &err) == TILEDB_OK);
+
+  CHECK(tiledb_error_message(err, &errmsg) == TILEDB_OK);
+  CHECK_THAT(
+      errmsg,
+      Catch::Matchers::Equals(
+          "TileDB internal: This array current domain has ranges past the "
+          "boundaries of the array schema domain"));
 
   max = 5;
   REQUIRE(
@@ -2679,6 +2698,17 @@ TEST_CASE_METHOD(
       tiledb_array_schema_evolution_expand_current_domain(ctx_, evo, crd) ==
       TILEDB_ERR);
 
+  tiledb_error_t* err;
+  CHECK(tiledb_ctx_get_last_error(ctx_, &err) == TILEDB_OK);
+
+  const char* errmsg;
+  CHECK(tiledb_error_message(err, &errmsg) == TILEDB_OK);
+  CHECK_THAT(
+      errmsg,
+      Catch::Matchers::Equals(
+          "ArraySchemaEvolution: Unable to expand the array current domain, "
+          "the new current domain specified is empty"));
+
   REQUIRE(tiledb_ndrectangle_alloc(ctx_, domain, &ndr) == TILEDB_OK);
   max = 3;
   REQUIRE(
@@ -2690,8 +2720,17 @@ TEST_CASE_METHOD(
       tiledb_array_schema_evolution_expand_current_domain(ctx_, evo, crd) ==
       TILEDB_OK);
 
-  // That's a contraction
+  // The shape is smaller here so it should fail.
   CHECK(tiledb_array_evolve(ctx_, array_name.c_str(), evo) == TILEDB_ERR);
+
+  CHECK(tiledb_ctx_get_last_error(ctx_, &err) == TILEDB_OK);
+
+  CHECK(tiledb_error_message(err, &errmsg) == TILEDB_OK);
+  CHECK_THAT(
+      errmsg,
+      Catch::Matchers::Equals(
+          "ArraySchema: The current domain of an array can only be expanded, "
+          "please adjust your new current domain object."));
 
   max = 7;
   REQUIRE(
