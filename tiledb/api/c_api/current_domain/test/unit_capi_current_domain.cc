@@ -124,13 +124,6 @@ TEST_CASE_METHOD(
 
   tiledb_ndrectangle_t* ndr = nullptr;
   REQUIRE(tiledb_ndrectangle_alloc(ctx, domain_, &ndr) == TILEDB_OK);
-  tiledb_range_t range;
-  uint64_t min = 2;
-  uint64_t max = 5;
-  range.min = &min;
-  range.min_size = sizeof(uint64_t);
-  range.max = &max;
-  range.max_size = sizeof(uint64_t);
 
   uint32_t is_empty = 0;
   REQUIRE(tiledb_current_domain_get_is_empty(crd, &is_empty) == TILEDB_OK);
