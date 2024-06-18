@@ -138,8 +138,16 @@ class Query {
    * case the query will be used as writes and the given URI should be used
    * for the name of the new fragment to be created.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of the Query class on StorageManager.
+   * For now, we still need to keep the storage_manager argument, but once the
+   * dependency is gone, the signature will be
+   * Query(ContextResources&, shared_ptr<Array>, ...).
+   *
    * @note Array must be a properly opened array.
    *
+   * @param resources The context resources.
+   * @param storage_manager Storage manager object.
    * @param array The array that is being queried.
    * @param fragment_uri The full URI for the new fragment. Only used for
    * writes.
@@ -149,6 +157,7 @@ class Query {
    *     will be obtained from the sm.mem.total_budget config option.
    */
   Query(
+      ContextResources& resources,
       StorageManager* storage_manager,
       shared_ptr<Array> array,
       optional<std::string> fragment_name = nullopt,

@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2022 TileDB, Inc.
+ * @copyright Copyright (c) 2022-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -50,6 +50,7 @@ using namespace tiledb::common;
 namespace tiledb::sm {
 
 DimensionLabelQuery::DimensionLabelQuery(
+    ContextResources& resources,
     StorageManager* storage_manager,
     shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
@@ -57,7 +58,7 @@ DimensionLabelQuery::DimensionLabelQuery(
     const QueryBuffer& label_buffer,
     const QueryBuffer& index_buffer,
     optional<std::string> fragment_name)
-    : Query(storage_manager, dim_label, fragment_name)
+    : Query(resources, storage_manager, dim_label, fragment_name)
     , dim_label_name_{dim_label_ref.name()} {
   switch (dim_label->get_query_type()) {
     case (QueryType::READ):
@@ -92,7 +93,7 @@ DimensionLabelQuery::DimensionLabelQuery(
 
         default:
           // Invalid label order type.
-          throw DimensionLabelQueryStatusException(
+          throw DimensionLabelQueryException(
               "Unrecognized label order " +
               data_order_str(dim_label_ref.label_order()));
       }
@@ -100,18 +101,19 @@ DimensionLabelQuery::DimensionLabelQuery(
     }
 
     default:
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Query type " + query_type_str(dim_label->get_query_type()) +
           " not supported for dimension label queries.");
   }
 }
 
 DimensionLabelQuery::DimensionLabelQuery(
+    ContextResources& resources,
     StorageManager* storage_manager,
     shared_ptr<Array> dim_label,
     const DimensionLabel& dim_label_ref,
     const std::vector<Range>& label_ranges)
-    : Query(storage_manager, dim_label, nullopt)
+    : Query(resources, storage_manager, dim_label, nullopt)
     , dim_label_name_{dim_label_ref.name()}
     , index_data_{IndexDataCreate::make_index_data(
           array_schema().dimension_ptr(0)->type(),
@@ -123,12 +125,12 @@ DimensionLabelQuery::DimensionLabelQuery(
     case (DataOrder::DECREASING_DATA):
       break;
     case (DataOrder::UNORDERED_DATA):
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Support for reading ranges from unordered labels is not yet "
           "implemented.");
     default:
       // Invalid label order type.
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "Unrecognized label order " +
           data_order_str(dim_label_ref.label_order()));
   }
@@ -194,7 +196,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
       Subarray subarray{*this->subarray()};
       subarray.set_ranges_for_dim(0, parent_subarray.ranges_for_dim(dim_idx));
       if (subarray.range_num() > 1) {
-        throw DimensionLabelQueryStatusException(
+        throw DimensionLabelQueryException(
             "Dimension label writes can only be set for a single range.");
       }
       set_subarray(subarray);
@@ -210,7 +212,7 @@ void DimensionLabelQuery::initialize_ordered_write_query(
     subarray.set_coalesce_ranges(true);
     subarray.add_point_ranges(0, index_buffer.buffer_, count);
     if (subarray.range_num() > 1) {
-      throw DimensionLabelQueryStatusException(
+      throw DimensionLabelQueryException(
           "The dimension data must contain consecutive points when writing to "
           "a dimension label.");
     }
@@ -231,7 +233,7 @@ void DimensionLabelQuery::initialize_unordered_write_query(
     if (!parent_subarray.is_default(dim_idx)) {
       const auto& ranges = parent_subarray.ranges_for_dim(dim_idx);
       if (ranges.size() != 1) {
-        throw DimensionLabelQueryStatusException(
+        throw DimensionLabelQueryException(
             "Dimension label writes can only be set for a single range.");
       }
     }
