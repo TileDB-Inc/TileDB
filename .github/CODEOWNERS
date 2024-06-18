@@ -1,0 +1,2 @@
+# Flag all PR configuration changes for documentation follow-up.
+/tiledb/sm/cpp_api/config.h   @tiledb-docs
