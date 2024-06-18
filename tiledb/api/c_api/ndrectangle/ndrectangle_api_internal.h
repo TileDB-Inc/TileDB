@@ -74,10 +74,17 @@ struct tiledb_ndrectangle_handle_t
       : ndrectangle_(ndrectangle) {
   }
 
+  /**
+   * Get the internal instance of NDRectangle
+   * @returns The internal NDRectangle
+   */
   [[nodiscard]] inline shared_ptr<tiledb::sm::NDRectangle> ndrectangle() const {
     return ndrectangle_;
   }
-
+  /**
+   * Set the internal NDRectangle instance to be managed by this handle
+   * @param ndr The NDRectangle to manage
+   */
   inline void set_ndrectangle(shared_ptr<tiledb::sm::NDRectangle> ndr) {
     ndrectangle_ = ndr;
   }

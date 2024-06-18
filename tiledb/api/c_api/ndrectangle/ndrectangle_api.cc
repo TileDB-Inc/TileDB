@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2023 TileDB, Inc.
+ * @copyright Copyright (c) 2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -41,7 +41,7 @@
 namespace tiledb::api {
 
 /**
- * Returns if the argument is a valid range pointer
+ * Ensure the argument is a valid range pointer
  *
  * @param range A range struct
  */
@@ -50,7 +50,7 @@ inline void ensure_range_ptr_is_valid(tiledb_range_t* range) {
 }
 
 /**
- * Returns if the argument is a valid char pointer
+ * Ensure the argument is a valid char pointer
  *
  * @param name A char pointer
  */
@@ -61,12 +61,12 @@ inline void ensure_dim_name_is_valid(const char* name) {
 }
 
 /**
- * Lays out a sm Range into a tiledb_range_t
+ * Lays out an internal Range into a tiledb_range_t
  *
  * @param r The internal sm Range
  * @param range The C API range
  */
-inline void smrange_to_range(const Range& r, tiledb_range_t* range) {
+inline void internal_range_to_range(const Range& r, tiledb_range_t* range) {
   if (r.var_size()) {
     range->min_size = r.start_size();
     range->max_size = r.end_size();
@@ -113,7 +113,7 @@ capi_return_t tiledb_ndrectangle_get_range_from_name(
 
   auto& r = ndr->ndrectangle()->get_range_for_name(name);
 
-  smrange_to_range(r, range);
+  internal_range_to_range(r, range);
 
   return TILEDB_OK;
 }
@@ -128,7 +128,7 @@ capi_return_t tiledb_ndrectangle_get_range(
   ensure_range_ptr_is_valid(range);
 
   auto& r = ndr->ndrectangle()->get_range(idx);
-  smrange_to_range(r, range);
+  internal_range_to_range(r, range);
 
   return TILEDB_OK;
 }
