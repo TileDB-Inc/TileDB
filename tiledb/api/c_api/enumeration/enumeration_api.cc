@@ -36,20 +36,6 @@
 #include "enumeration_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 
-
-/**
- * Output stream operator for enumeration handles.
- *
- * @param os Output stream.
- * @param enumeration Enumeration handle.
- * @return Output stream.
- */
-std::ostream& operator<<(
-    std::ostream& os, const tiledb_enumeration_handle_t& enumeration) {
-  os << *enumeration.enumeration_;
-  return os;
-}
-
 namespace tiledb::api {
 
 capi_return_t tiledb_enumeration_alloc(
@@ -215,6 +201,12 @@ capi_return_t tiledb_enumeration_dump_str(
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_enumeration_handle_t& enumeration) {
+  os << *enumeration.enumeration_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 using tiledb::api::api_entry_void;

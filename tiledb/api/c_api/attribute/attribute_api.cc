@@ -38,13 +38,6 @@
 #include "attribute_api_internal.h"
 #include "tiledb/sm/enums/datatype.h"
 
-
-std::ostream& operator<<(
-    std::ostream& os, const tiledb_attribute_handle_t& attr) {
-  os << *attr.attr_;
-  return os;
-}
-
 namespace tiledb::api {
 
 int32_t tiledb_attribute_alloc(
@@ -232,6 +225,12 @@ capi_return_t tiledb_attribute_get_enumeration_name(
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_attribute_handle_t& attr) {
+  os << *attr.attr_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 

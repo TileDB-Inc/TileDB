@@ -117,14 +117,6 @@ struct tiledb_domain_handle_t
     return b;
   }
 
-  /**
-   * Facade for `Domain::operator<<`.
-   * @param out
-   * @return
-   * @note This is a non-member function.
-   * @note This is a friend function.
-   */
-
   friend std::ostream& operator<<(
       std::ostream& os, const tiledb_domain_handle_t& domain);
 };

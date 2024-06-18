@@ -229,7 +229,7 @@ TILEDB_EXPORT int32_t tiledb_domain_dump(
     FILE* out) TILEDB_NOEXCEPT;
 
 /**
- * Dumps the contents of a Domain in ASCII form to the selected string output.
+ * Dumps the contents of a domain in ASCII form to the selected string output.
  *
  * The output string handle must be freed by the user after use.
  *

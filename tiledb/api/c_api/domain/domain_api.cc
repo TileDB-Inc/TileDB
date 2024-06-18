@@ -34,13 +34,6 @@
 #include "tiledb/api/c_api/string/string_api_internal.h"
 #include "tiledb/common/memory_tracker.h"
 
-
-std::ostream& operator<<(
-    std::ostream& os, const tiledb_domain_handle_t& domain) {
-  os << *domain.domain_;
-  return os;
-}
-
 namespace tiledb::api {
 
 int32_t tiledb_domain_alloc(
@@ -177,6 +170,12 @@ int32_t tiledb_domain_dump_str(
 }
 
 }  // namespace tiledb::api
+
+std::ostream& operator<<(
+    std::ostream& os, const tiledb_domain_handle_t& domain) {
+  os << *domain.domain_;
+  return os;
+}
 
 using tiledb::api::api_entry_context;
 
