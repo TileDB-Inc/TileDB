@@ -50,7 +50,7 @@ class PseudoChecksumFilter : public tiledb::sm::Filter {
  public:
   PseudoChecksumFilter(Datatype filter_data_type);
 
-  Status run_forward(
+  void run_forward(
       const WriterTile&,
       WriterTile* const,
       FilterBuffer* input_metadata,

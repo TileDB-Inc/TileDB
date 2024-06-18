@@ -85,9 +85,7 @@ TEST_CASE("Filter: Round trip WebpFilter RGB data", "[filter][webp]") {
       width * 3,
       Datatype::UINT8));
   bool use_chunking = true;
-  CHECK(
-      pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp, use_chunking)
-          .ok());
+  pipeline.run_forward(&dummy_stats, tile.get(), nullptr, &tp, use_chunking);
 
   // Check the original unfiltered data was removed.
   CHECK(tile->size() == 0);

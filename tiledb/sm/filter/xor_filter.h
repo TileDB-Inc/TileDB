@@ -87,7 +87,7 @@ class XORFilter : public Filter {
    * element in the part, and then the differences of each consecutive pair
    * of elements.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -120,7 +120,7 @@ class XORFilter : public Filter {
   template <
       typename T,
       typename std::enable_if<std::is_integral<T>::value>::type* = nullptr>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

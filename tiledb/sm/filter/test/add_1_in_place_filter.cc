@@ -40,7 +40,7 @@ Add1InPlace::Add1InPlace(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-Status Add1InPlace::run_forward(
+void Add1InPlace::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -48,7 +48,7 @@ Status Add1InPlace::run_forward(
     FilterBuffer* output_metadata,
     FilterBuffer* output) const {
   auto input_size = input->size();
-  RETURN_NOT_OK(output->append_view(input));
+  throw_if_not_ok(output->append_view(input));
   output->reset_offset();
 
   uint64_t nelts = input_size / sizeof(uint64_t);
@@ -59,9 +59,7 @@ Status Add1InPlace::run_forward(
   }
 
   // Metadata not modified by this filter.
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-
-  return Status::Ok();
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
 }
 
 Status Add1InPlace::run_reverse(

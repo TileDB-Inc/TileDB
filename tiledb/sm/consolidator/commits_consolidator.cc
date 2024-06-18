@@ -49,8 +49,9 @@ namespace tiledb::sm {
 /*          CONSTRUCTOR           */
 /* ****************************** */
 
-CommitsConsolidator::CommitsConsolidator(StorageManager* storage_manager)
-    : Consolidator(storage_manager) {
+CommitsConsolidator::CommitsConsolidator(
+    ContextResources& resources, StorageManager* storage_manager)
+    : Consolidator(resources, storage_manager) {
 }
 
 /* ****************************** */
@@ -68,16 +69,16 @@ Status CommitsConsolidator::consolidate(
 
   // Open array for writing
   auto array_uri = URI(array_name);
-  Array array_for_writes(storage_manager_->resources(), array_uri);
-  RETURN_NOT_OK(array_for_writes.open(
+  Array array_for_writes(resources_, array_uri);
+  throw_if_not_ok(array_for_writes.open(
       QueryType::WRITE, encryption_type, encryption_key, key_length));
 
   // Ensure write version is at least 12.
   auto write_version = array_for_writes.array_schema_latest().write_version();
-  RETURN_NOT_OK(array_for_writes.close());
+  throw_if_not_ok(array_for_writes.close());
   if (write_version < 12) {
-    return logger_->status(Status_ConsolidatorError(
-        "Array version should be at least 12 to consolidate commits."));
+    throw ConsolidatorException(
+        "Array version should be at least 12 to consolidate commits.");
   }
 
   // Get the array uri to consolidate from the array directory.

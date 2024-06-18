@@ -215,9 +215,8 @@ class FilterPipeline {
    * @param compute_tp The thread pool for compute-bound tasks.
    * @param chunking True if the tile should be cut into chunks before
    * filtering, false if not.
-   * @return Status
    */
-  Status run_forward(
+  void run_forward(
       stats::Stats* writer_stats,
       WriterTile* tile,
       WriterTile* offsets_tile,

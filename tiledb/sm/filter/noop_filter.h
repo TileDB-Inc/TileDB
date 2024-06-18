@@ -56,7 +56,7 @@ class NoopFilter : public Filter {
   /**
    * Run forward.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,

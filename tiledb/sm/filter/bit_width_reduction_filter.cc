@@ -105,7 +105,7 @@ bool BitWidthReductionFilter::accepts_input_datatype(Datatype datatype) const {
   return false;
 }
 
-Status BitWidthReductionFilter::run_forward(
+void BitWidthReductionFilter::run_forward(
     const WriterTile& tile,
     WriterTile* const offsets_tile,
     FilterBuffer* input_metadata,
@@ -155,9 +155,9 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::TIME_AS:
       if (tile.format_version() < 20) {
         // Return data as-is for backwards compatibility
-        RETURN_NOT_OK(output->append_view(input));
-        RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-        return Status::Ok();
+        throw_if_not_ok(output->append_view(input));
+        throw_if_not_ok(output_metadata->append_view(input_metadata));
+        return;
       }
       return run_forward<int64_t>(
           tile, offsets_tile, input_metadata, input, output_metadata, output);
@@ -169,14 +169,14 @@ Status BitWidthReductionFilter::run_forward(
     case Datatype::UINT8:
     default:
       // If bit width compression can't work, just return the input unmodified.
-      RETURN_NOT_OK(output->append_view(input));
-      RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-      return Status::Ok();
+      throw_if_not_ok(output->append_view(input));
+      throw_if_not_ok(output_metadata->append_view(input_metadata));
+      return;
   }
 }
 
 template <typename T>
-Status BitWidthReductionFilter::run_forward(
+void BitWidthReductionFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -207,24 +207,22 @@ Status BitWidthReductionFilter::run_forward(
   }
 
   // Allocate space in output buffer for the upper bound.
-  RETURN_NOT_OK(output->prepend_buffer(output_size_ub));
+  throw_if_not_ok(output->prepend_buffer(output_size_ub));
   Buffer* buffer_ptr = output->buffer_ptr(0);
   buffer_ptr->reset_offset();
   assert(buffer_ptr != nullptr);
 
   // Forward the existing metadata
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
   // Allocate a buffer for this filter's metadata and write the header.
-  RETURN_NOT_OK(output_metadata->prepend_buffer(metadata_size));
-  RETURN_NOT_OK(output_metadata->write(&input_size, sizeof(uint32_t)));
-  RETURN_NOT_OK(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->prepend_buffer(metadata_size));
+  throw_if_not_ok(output_metadata->write(&input_size, sizeof(uint32_t)));
+  throw_if_not_ok(output_metadata->write(&total_num_windows, sizeof(uint32_t)));
 
   // Compress all parts.
   for (unsigned i = 0; i < num_parts; i++) {
-    RETURN_NOT_OK(compress_part<T>(&parts[i], output, output_metadata));
+    throw_if_not_ok(compress_part<T>(&parts[i], output, output_metadata));
   }
-
-  return Status::Ok();
 }
 
 template <typename T>

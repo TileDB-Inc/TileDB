@@ -39,7 +39,7 @@ Add1OutOfPlace::Add1OutOfPlace(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-Status Add1OutOfPlace::run_forward(
+void Add1OutOfPlace::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -50,28 +50,26 @@ Status Add1OutOfPlace::run_forward(
   auto nelts = input_size / sizeof(uint64_t);
 
   // Add another output buffer.
-  RETURN_NOT_OK(output->prepend_buffer(input_size));
+  throw_if_not_ok(output->prepend_buffer(input_size));
   output->reset_offset();
 
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t inc;
-    RETURN_NOT_OK(input->read(&inc, sizeof(uint64_t)));
+    throw_if_not_ok(input->read(&inc, sizeof(uint64_t)));
     inc++;
-    RETURN_NOT_OK(output->write(&inc, sizeof(uint64_t)));
+    throw_if_not_ok(output->write(&inc, sizeof(uint64_t)));
   }
 
   // Finish any remaining bytes to ensure no data loss.
   auto rem = input_size % sizeof(uint64_t);
   for (unsigned i = 0; i < rem; i++) {
     char byte;
-    RETURN_NOT_OK(input->read(&byte, sizeof(char)));
-    RETURN_NOT_OK(output->write(&byte, sizeof(char)));
+    throw_if_not_ok(input->read(&byte, sizeof(char)));
+    throw_if_not_ok(output->write(&byte, sizeof(char)));
   }
 
   // Metadata not modified by this filter.
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-
-  return Status::Ok();
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
 }
 
 Status Add1OutOfPlace::run_reverse(

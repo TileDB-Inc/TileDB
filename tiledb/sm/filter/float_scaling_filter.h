@@ -103,7 +103,7 @@ class FloatScalingFilter : public Filter {
    * stores it as integers with the value round((raw_float - offset) / scale)
    * with the pre-specified byte width.
    */
-  Status run_forward(
+  void run_forward(
       const WriterTile& tile,
       WriterTile* const offsets_tile,
       FilterBuffer* input_metadata,
@@ -168,7 +168,7 @@ class FloatScalingFilter : public Filter {
    * Run forward, templated on the size of the input type.
    */
   template <typename T>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,
@@ -178,7 +178,7 @@ class FloatScalingFilter : public Filter {
    * Run forward, templated on the size of the input type and byte width.
    */
   template <typename T, typename W>
-  Status run_forward(
+  void run_forward(
       FilterBuffer* input_metadata,
       FilterBuffer* input,
       FilterBuffer* output_metadata,

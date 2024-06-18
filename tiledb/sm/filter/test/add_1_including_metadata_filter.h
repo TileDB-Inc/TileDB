@@ -52,7 +52,7 @@ class Add1IncludingMetadataFilter : public tiledb::sm::Filter {
  public:
   Add1IncludingMetadataFilter(Datatype filter_data_type);
 
-  Status run_forward(
+  void run_forward(
       const WriterTile&,
       WriterTile* const,
       FilterBuffer* input_metadata,

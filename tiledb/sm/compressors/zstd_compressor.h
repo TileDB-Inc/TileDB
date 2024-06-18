@@ -5,7 +5,7 @@
  *
  * The MIT License
  *
- * @copyright Copyright (c) 2017-2021 TileDB, Inc.
+ * @copyright Copyright (c) 2017-2024 TileDB, Inc.
  *
  * Permission is hereby granted, free of charge, to any person obtaining a copy
  * of this software and associated documentation files (the "Software"), to deal
@@ -118,6 +118,18 @@ class ZStd {
           decompress_ctx_pool,
       ConstBuffer* input_buffer,
       PreallocatedBuffer* output_buffer);
+
+  /**
+   * Decompression function.
+   *
+   * @param decompress_ctx_pool decompression context
+   * @param input_buffer Input buffer to read from.
+   * @param output_buffer Output buffer to write the decompressed data to.
+   */
+  static void decompress(
+      ZSTD_Decompress_Context& decompress_ctx,
+      ConstBuffer& input_buffer,
+      PreallocatedBuffer& output_buffer);
 
   /** Returns the default compression level. */
   static int default_level() {

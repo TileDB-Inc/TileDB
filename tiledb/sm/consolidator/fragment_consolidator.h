@@ -40,6 +40,7 @@
 #include "tiledb/sm/array/array.h"
 #include "tiledb/sm/consolidator/consolidator.h"
 #include "tiledb/sm/misc/types.h"
+#include "tiledb/sm/storage_manager/context_resources.h"
 #include "tiledb/sm/storage_manager/storage_manager_declaration.h"
 
 #include <vector>
@@ -173,11 +174,21 @@ class FragmentConsolidator : public Consolidator {
   /**
    * Constructor.
    *
+   * This is a transitional constructor in the sense that we are working
+   * on removing the dependency of all Consolidator classes on StorageManager.
+   * For now we still need to keep the storage_manager argument, but once the
+   * dependency is gone the signature will be
+   * FragmentConsolidator(ContextResources&, const Config&).
+   *
+   * @param resources The context resources.
    * @param config Config.
-   * @param storage_manager Storage manager.
+   * @param storage_manager A StorageManager pointer.
+   *    (this will go away in the near future)
    */
   explicit FragmentConsolidator(
-      const Config& config, StorageManager* storage_manager);
+      ContextResources& resources,
+      const Config& config,
+      StorageManager* storage_manager);
 
   /** Destructor. */
   ~FragmentConsolidator() = default;

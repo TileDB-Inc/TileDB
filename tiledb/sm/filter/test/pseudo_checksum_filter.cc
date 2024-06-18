@@ -39,7 +39,7 @@ PseudoChecksumFilter::PseudoChecksumFilter(Datatype filter_data_type)
     : Filter(FilterType::FILTER_NONE, filter_data_type) {
 }
 
-Status PseudoChecksumFilter::run_forward(
+void PseudoChecksumFilter::run_forward(
     const WriterTile&,
     WriterTile* const,
     FilterBuffer* input_metadata,
@@ -50,24 +50,22 @@ Status PseudoChecksumFilter::run_forward(
   auto nelts = input_size / sizeof(uint64_t);
 
   // The input is unmodified by this filter.
-  RETURN_NOT_OK(output->append_view(input));
+  throw_if_not_ok(output->append_view(input));
 
   // Forward the existing metadata and prepend a metadata buffer for the
   // checksum.
-  RETURN_NOT_OK(output_metadata->append_view(input_metadata));
-  RETURN_NOT_OK(output_metadata->prepend_buffer(sizeof(uint64_t)));
+  throw_if_not_ok(output_metadata->append_view(input_metadata));
+  throw_if_not_ok(output_metadata->prepend_buffer(sizeof(uint64_t)));
   output_metadata->reset_offset();
 
   uint64_t sum = 0;
   for (uint64_t i = 0; i < nelts; i++) {
     uint64_t val;
-    RETURN_NOT_OK(input->read(&val, sizeof(uint64_t)));
+    throw_if_not_ok(input->read(&val, sizeof(uint64_t)));
     sum += val;
   }
 
-  RETURN_NOT_OK(output_metadata->write(&sum, sizeof(uint64_t)));
-
-  return Status::Ok();
+  throw_if_not_ok(output_metadata->write(&sum, sizeof(uint64_t)));
 }
 
 Status PseudoChecksumFilter::run_reverse(

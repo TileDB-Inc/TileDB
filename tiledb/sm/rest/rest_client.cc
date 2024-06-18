@@ -318,7 +318,7 @@ shared_ptr<ArraySchema> RestClient::post_array_schema_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting array schema from REST; server returned no data.");
   }
 
@@ -676,7 +676,7 @@ RestClient::post_enumerations_from_rest(
     const std::vector<std::string>& enumeration_names,
     shared_ptr<MemoryTracker> memory_tracker) {
   if (array == nullptr) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting enumerations from REST; array is null.");
   }
 
@@ -721,7 +721,7 @@ RestClient::post_enumerations_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting enumerations from REST; server returned no data.");
   }
 
@@ -736,7 +736,8 @@ void RestClient::post_query_plan_from_rest(
   // Get array
   const Array* array = query.array();
   if (array == nullptr) {
-    throw Status_RestError("Error submitting query plan to REST; null array.");
+    throw RestClientException(
+        "Error submitting query plan to REST; null array.");
   }
 
   Buffer buff;
@@ -779,7 +780,7 @@ void RestClient::post_query_plan_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting query plan from REST; server returned no data.");
   }
 
@@ -1650,7 +1651,7 @@ RestClient::post_consolidation_plan_from_rest(
       &returned_data,
       cache_key));
   if (returned_data.data() == nullptr || returned_data.size() == 0) {
-    throw Status_RestError(
+    throw RestClientException(
         "Error getting query plan from REST; server returned no data.");
   }
 
